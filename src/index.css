@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Cores baseadas nas especificações */
+    --background: 0 0% 7%;             /* #121212 - Fundo escuro */
+    --foreground: 0 0% 100%;           /* #FFFFFF - Texto branco puro */
+
+    --card: 0 0% 14%;                  /* #242424 - Cards escuros */
+    --card-foreground: 0 0% 100%;      /* #FFFFFF - Texto branco puro */
+
+    --popover: 0 0% 14%;               /* #242424 - Popovers escuros */
+    --popover-foreground: 0 0% 100%;   /* #FFFFFF - Texto branco puro */
+
+    --primary: 221.2 83.2% 53.3%;      /* #2563eb - Azul Sonda */
+    --primary-foreground: 0 0% 100%;   /* #FFFFFF - Texto branco puro */
+
+    --secondary: 0 0% 20%;             /* #333333 - Secundário escuro */
+    --secondary-foreground: 0 0% 100%; /* #FFFFFF - Texto branco puro */
+
+    --muted: 0 0% 25%;                 /* #404040 - Muted escuro */
+    --muted-foreground: 0 0% 69%;      /* #B0B0B0 - Texto cinza claro */
+
+    --accent: 0 0% 18%;                /* #2E2E2E - Destaque escuro */
+    --accent-foreground: 0 0% 100%;    /* #FFFFFF - Texto branco puro */
+
+    --destructive: 0 84.2% 60.2%;      /* #EF4444 - Vermelho vibrante */
+    --destructive-foreground: 0 0% 100%;/* #FFFFFF - Texto branco puro */
+
+    --border: 0 0% 25%;                /* #404040 - Bordas escuras */
+    --input: 0 0% 20%;                 /* #333333 - Inputs escuros */
+    --ring: 221.2 83.2% 53.3%;         /* #2563eb - Azul Sonda para focus */
+    
+    /* Cores específicas para a sidebar */
+    --sidebar-background: 0 0% 10%;     /* #1A1A1A - Fundo da sidebar */
+    --sidebar-foreground: 0 0% 100%;    /* #FFFFFF - Texto branco puro */
+    --sidebar-primary: 221.2 83.2% 53.3%; /* #2563eb - Azul Sonda */
+    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - Texto branco puro */
+    --sidebar-accent: 0 0% 20%;         /* #333333 - Hover escuro */
+    --sidebar-accent-foreground: 0 0% 100%; /* #FFFFFF - Texto branco puro */
+    --sidebar-border: 0 0% 25%;         /* #404040 - Bordas da sidebar */
+    --sidebar-ring: 221.2 83.2% 53.3%;  /* #2563eb - Azul Sonda */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .form-step {
+    @apply animate-fade-in;
+  }
+  
+  .step-indicator {
+    @apply flex items-center justify-center w-8 h-8 rounded-full border-2 font-medium text-sm transition-all duration-300;
+  }
+  
+  .step-indicator.active {
+    @apply bg-primary border-primary text-white;
+  }
+  
+  .step-indicator.completed {
+    @apply bg-success border-success text-white;
+  }
+  
+  .step-indicator.inactive {
+    @apply bg-gray-100 border-gray-300 text-gray-500;
+  }
+
+  /* Dark Mode Elegante - Classes Personalizadas */
+  .dark-card-elegant {
+    @apply bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50;
+  }
+  
+  .dark-sidebar-elegant {
+    @apply bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700/50;
+  }
+  
+  .dark-input-elegant {
+    @apply bg-slate-800/60 border-slate-600/50 focus:border-blue-500/50 focus:ring-blue-500/20;
+  }
+  
+  .dark-button-elegant {
+    @apply bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 border border-slate-500/50 shadow-lg;
+  }
+  
+  .dark-table-elegant {
+    @apply bg-slate-800/30 border border-slate-700/30;
+  }
+  
+  .dark-table-row-elegant {
+    @apply hover:bg-slate-700/20 border-b border-slate-700/20;
+  }
+
+  /* Títulos e headings com máximo contraste */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white font-semibold;
+  }
+  
+  .dark .card-title, .dark .dialog-title, .dark .alert-title {
+    @apply text-white font-semibold;
+  }
+  
+  .dark .breadcrumb-item {
+    @apply text-gray-200;
+  }
+  
+  .dark .nav-title {
+    @apply text-white font-medium;
+  }
+}
