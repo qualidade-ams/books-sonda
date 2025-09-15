@@ -22,6 +22,22 @@ export const useControleDisparos = (mes: number, ano: number) => {
     refetchOnWindowFocus: false,
   });
 
+  // Mutation para disparo por empresas selecionadas
+  const {
+    mutateAsync: dispararSelecionados,
+    isPending: isDisparandoSelecionados
+  } = useMutation({
+    mutationFn: ({ mes, ano, empresaIds, forceResend = false }: { mes: number; ano: number; empresaIds: string[]; forceResend?: boolean }) =>
+      booksDisparoService.dispararEmpresasSelecionadas(mes, ano, empresaIds, { forceResend }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+    },
+    onError: (error) => {
+      console.error('Erro no disparo por seleção:', error);
+    }
+  });
+
   // Mutation para disparo mensal
   const {
     mutateAsync: dispararBooksMensal,
@@ -84,6 +100,14 @@ export const useControleDisparos = (mes: number, ano: number) => {
     return await agendarDisparo(agendamento);
   };
 
+  const handleDispararSelecionados = async (mes: number, ano: number, empresaIds: string[]): Promise<DisparoResult> => {
+    return await dispararSelecionados({ mes, ano, empresaIds, forceResend: false });
+  };
+
+  const handleReenviarSelecionados = async (mes: number, ano: number, empresaIds: string[]): Promise<DisparoResult> => {
+    return await dispararSelecionados({ mes, ano, empresaIds, forceResend: true });
+  };
+
   return {
     // Data
     statusMensal,
@@ -92,6 +116,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     isLoading,
     isDisparando,
     isReenviando,
+    isDisparandoSelecionados,
     isAgendando,
     
     // Error
@@ -101,6 +126,8 @@ export const useControleDisparos = (mes: number, ano: number) => {
     dispararBooksMensal: handleDispararBooksMensal,
     reenviarFalhas: handleReenviarFalhas,
     agendarDisparo: handleAgendarDisparo,
+    dispararSelecionados: handleDispararSelecionados,
+    reenviarSelecionados: handleReenviarSelecionados,
     refetch,
   };
 };

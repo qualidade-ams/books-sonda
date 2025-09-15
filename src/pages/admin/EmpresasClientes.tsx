@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Filter, Upload } from 'lucide-react';
+import { Plus, Filter, Upload, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -208,6 +209,17 @@ const EmpresasClientes = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
+              <Link to="/admin/data-maintenance">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Normalizar Dados
+                </Button>
+              </Link>
+            </ProtectedAction>
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
               <ExcelImportDialog
                 onImportComplete={handleImportComplete}
@@ -423,6 +435,7 @@ const EmpresasClientes = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Empresa</DialogTitle>
+              <p>Preencha os dados para cadastrar um novo colaborador</p>
             </DialogHeader>
             <EmpresaForm
               mode="create"
@@ -430,7 +443,7 @@ const EmpresasClientes = () => {
               onSubmit={handleCreate}
               onCancel={() => setShowCreateModal(false)}
               isLoading={isCreating}
-            />
+            />   
           </DialogContent>
         </Dialog>
 

@@ -41,6 +41,7 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
+
       if (!empresas || empresas.length === 0) {
         return {
           sucesso: 0,
@@ -176,6 +177,160 @@ class BooksDisparoService {
 
     } catch (error) {
       throw new Error(`Erro no disparo mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Dispara books para empresas selecionadas.
+   * Se options.forceResend = true, reenvia mesmo que já conste como 'enviado'.
+   * Sempre registra no histórico, preservando disparos anteriores.
+   */
+  async dispararEmpresasSelecionadas(
+    mes: number,
+    ano: number,
+    empresaIds: string[],
+    options?: { forceResend?: boolean }
+  ): Promise<DisparoResult> {
+    const forceResend = options?.forceResend === true;
+    try {
+      if (!empresaIds || empresaIds.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
+      // Buscar empresas selecionadas e ativas
+      const { data: empresas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select(`
+          *,
+          colaboradores!inner(*)
+        `)
+        .in('id', empresaIds)
+        .eq('status', 'ativo')
+        .eq('colaboradores.status', 'ativo');
+
+      if (empresasError) {
+        throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
+      }
+
+      if (!empresas || empresas.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
+      const detalhes: DisparoDetalhe[] = [];
+      let sucessos = 0;
+      let falhas = 0;
+
+      for (const empresa of empresas) {
+        try {
+          // Se não for reenvio forçado, pular já enviados
+          if (!forceResend) {
+            const { data: controleExistente } = await supabase
+              .from('controle_mensal')
+              .select('*')
+              .eq('mes', mes)
+              .eq('ano', ano)
+              .eq('empresa_id', empresa.id)
+              .single();
+            if (controleExistente && controleExistente.status === 'enviado') {
+              continue;
+            }
+          }
+
+          // Buscar colaboradores ativos
+          const { data: colaboradores, error: colaboradoresError } = await supabase
+            .from('colaboradores')
+            .select('*')
+            .eq('empresa_id', empresa.id)
+            .eq('status', 'ativo');
+
+          if (colaboradoresError || !colaboradores || colaboradores.length === 0) {
+            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum colaborador ativo encontrado');
+            continue;
+          }
+
+          // Coletar e-mails em cópia
+          const { data: gruposEmpresas } = await supabase
+            .from('empresa_grupos')
+            .select(`
+              grupos_responsaveis(
+                grupo_emails(email, nome)
+              )
+            `)
+            .eq('empresa_id', empresa.id);
+
+          const emailsCC: string[] = [];
+          if (gruposEmpresas) {
+            gruposEmpresas.forEach(grupo => {
+              if (grupo.grupos_responsaveis?.grupo_emails) {
+                grupo.grupos_responsaveis.grupo_emails.forEach(email => emailsCC.push(email.email));
+              }
+            });
+          }
+          if (empresa.email_gestor) emailsCC.push(empresa.email_gestor);
+
+          let emailsEnviados = 0;
+          for (const colaborador of colaboradores) {
+            try {
+              const resultadoDisparo = await this.enviarBookColaborador(
+                empresa,
+                colaborador,
+                emailsCC,
+                mes,
+                ano
+              );
+              if (resultadoDisparo.sucesso) emailsEnviados++;
+              detalhes.push({
+                empresaId: empresa.id,
+                colaboradorId: colaborador.id,
+                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
+                erro: resultadoDisparo.erro,
+                emailsEnviados: resultadoDisparo.sucesso ? [colaborador.email, ...emailsCC] : []
+              });
+            } catch (error) {
+              detalhes.push({
+                empresaId: empresa.id,
+                colaboradorId: colaborador.id,
+                status: 'falhou',
+                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                emailsEnviados: []
+              });
+            }
+          }
+
+          // Atualizar controle mensal com observação apropriada
+          if (emailsEnviados > 0) {
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'enviado',
+              forceResend ? `Reenvio manual: ${emailsEnviados} e-mails enviados` : `${emailsEnviados} e-mails enviados`
+            );
+            sucessos++;
+          } else {
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'falhou',
+              forceResend ? 'Reenvio manual: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso'
+            );
+            falhas++;
+          }
+        } catch (error) {
+          falhas++;
+          await this.registrarFalhaControle(
+            mes,
+            ano,
+            empresa.id,
+            error instanceof Error ? error.message : 'Erro desconhecido'
+          );
+        }
+      }
+
+      return { sucesso: sucessos, falhas, total: empresaIds.length, detalhes };
+    } catch (error) {
+      throw new Error(`Erro no disparo por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
@@ -527,14 +682,14 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar controles mensais: ${error.message}`);
       }
 
-      return data?.filter(item => item.empresas_clientes) as ControleMensalCompleto[] || [];
+      return (data?.filter(item => item.empresas_clientes) as unknown) as ControleMensalCompleto[] || [];
 
     } catch (error) {
       throw new Error(`Erro ao buscar controles mensais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
-  // Métodos privados auxiliares
+  // ...
 
   private async enviarBookColaborador(
     empresa: EmpresaCliente,
@@ -545,7 +700,7 @@ class BooksDisparoService {
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
       // Buscar template apropriado para books
-      const template = await clientBooksTemplateService.buscarTemplateBooks(empresa.template_padrao);
+      const template = await clientBooksTemplateService.buscarTemplateBooks((empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues');
       
       if (!template) {
         return {

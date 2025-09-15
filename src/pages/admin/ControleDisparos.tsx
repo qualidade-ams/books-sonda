@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -85,15 +86,29 @@ const ControleDisparos = () => {
     statusMensal,
     isLoading,
     isDisparando,
+    isDisparandoSelecionados,
     isReenviando,
     isAgendando,
     dispararBooksMensal,
+    dispararSelecionados,
+    reenviarSelecionados,
     reenviarFalhas,
     agendarDisparo,
     refetch
   } = useControleDisparos(mesAtual, anoAtual);
 
-  const { empresas } = useEmpresas({ status: ['ativo'] });
+  const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
+
+  // Seleção de empresas
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const allIds = useMemo(() => statusMensal.map(s => s.empresaId), [statusMensal]);
+  const allSelected = selecionadas.length > 0 && selecionadas.length === allIds.length;
+  const toggleSelectAll = () => {
+    setSelecionadas(prev => (prev.length === allIds.length ? [] : allIds));
+  };
+  const toggleSelectOne = (id: string) => {
+    setSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   // Estatísticas do mês
   const stats = useMemo(() => {
@@ -140,6 +155,42 @@ const ControleDisparos = () => {
   // Handlers para ações
   const handleDisparoMensal = async () => {
     setShowDisparoModal(true);
+  };
+
+  const handleDispararSelecionados = async () => {
+    if (selecionadas.length === 0) return;
+    try {
+      const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
+      toast({
+        title: 'Disparo concluído',
+        description: `${resultado.sucesso} empresas processadas com sucesso, ${resultado.falhas} falhas`,
+      });
+      setSelecionadas([]);
+    } catch (error) {
+      toast({
+        title: 'Erro no disparo selecionado',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleReenviarSelecionados = async () => {
+    if (selecionadas.length === 0) return;
+    try {
+      const resultado = await reenviarSelecionados(mesAtual, anoAtual, selecionadas);
+      toast({
+        title: 'Reenvio concluído',
+        description: `${resultado.sucesso} empresas reprocessadas com sucesso`,
+      });
+      setSelecionadas([]);
+    } catch (error) {
+      toast({
+        title: 'Erro no reenvio selecionado',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
   };
 
   const confirmarDisparoMensal = async () => {
@@ -220,7 +271,7 @@ const ControleDisparos = () => {
 
     try {
       // Buscar colaboradores da empresa
-      const empresa = empresas.find(e => e.id === empresaSelecionada);
+      const empresa = (empresas as any)?.find((e: any) => e.id === empresaSelecionada);
       if (!empresa?.colaboradores) return;
 
       const agendamento: AgendamentoDisparo = {
@@ -420,7 +471,7 @@ const ControleDisparos = () => {
             <CardTitle>Ações de Disparo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
               <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                 <Button
                   onClick={handleDisparoMensal}
@@ -443,6 +494,32 @@ const ControleDisparos = () => {
                   {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
                 </Button>
               </ProtectedAction>
+
+              {/* Ações por Seleção */}
+              <div className="ml-auto flex gap-2 items-center">
+                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                  <Button
+                    variant="secondary"
+                    onClick={handleDispararSelecionados}
+                    disabled={isDisparandoSelecionados || selecionadas.length === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${selecionadas.length})`}
+                  </Button>
+                </ProtectedAction>
+                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                  <Button
+                    variant="outline"
+                    onClick={handleReenviarSelecionados}
+                    disabled={selecionadas.length === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    {`Reenviar Selecionados (${selecionadas.length})`}
+                  </Button>
+                </ProtectedAction>
+              </div>
             </div>
 
             {/* Progresso do Disparo */}
@@ -481,7 +558,15 @@ const ControleDisparos = () => {
         {/* Lista de Status por Empresa */}
         <Card>
           <CardHeader>
-            <CardTitle>Status por Empresa</CardTitle>
+            <CardTitle className="flex items-center gap-3">
+              Status por Empresa
+              {statusMensal.length > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
+                  <Label htmlFor="select-all">Selecionar todas</Label>
+                </div>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -504,6 +589,11 @@ const ControleDisparos = () => {
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selecionadas.includes(status.empresaId)}
+                        onCheckedChange={() => toggleSelectOne(status.empresaId)}
+                        aria-label={`Selecionar ${status.empresa.nome_completo}`}
+                      />
                       {getStatusIcon(status.status)}
                       <div>
                         <h3 className="font-medium text-gray-900 dark:text-white">

@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import type { GrupoFormData, GrupoEmailFormData } from '@/types/clientBooks';
 
@@ -93,12 +93,21 @@ const GrupoForm: React.FC<GrupoFormProps> = ({
   const handleSubmit = async (data: GrupoFormData) => {
     setIsSubmitting(true);
     try {
-      // Filtrar e-mails vazios antes de enviar
-      const emailsFiltrados = data.emails.filter(email => email.email.trim() !== '');
-      await onSubmit({
-        ...data,
+      // Normalizar e filtrar dados antes de enviar
+      const emailsFiltrados = data.emails
+        .filter(email => email.email.trim() !== '')
+        .map(email => ({
+          email: email.email.toLowerCase().trim(),
+          nome: email.nome?.trim() || ''
+        }));
+      
+      const normalizedData: GrupoFormData = {
+        nome: data.nome.trim(),
+        descricao: data.descricao?.trim() || '',
         emails: emailsFiltrados,
-      });
+      };
+      
+      await onSubmit(normalizedData);
     } catch (error) {
       console.error('Erro ao salvar grupo:', error);
     } finally {
@@ -117,14 +126,7 @@ const GrupoForm: React.FC<GrupoFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>
-          {mode === 'create' ? 'Novo Grupo de Responsáveis' : 'Editar Grupo de Responsáveis'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
+    <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Informações Básicas */}
             <FormField
@@ -279,8 +281,6 @@ const GrupoForm: React.FC<GrupoFormProps> = ({
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
   );
 };
 

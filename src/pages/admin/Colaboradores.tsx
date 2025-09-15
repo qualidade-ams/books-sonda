@@ -24,7 +24,7 @@ import { ColaboradorForm, ColaboradoresTable } from '@/components/admin/client-b
 import { useColaboradores } from '@/hooks/useColaboradores';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import type { ColaboradorCompleto, ColaboradorFormData, ColaboradorFiltros } from '@/types/clientBooksTypes';
+import type { ColaboradorCompleto, ColaboradorFormData, ColaboradorFiltros, ColaboradorStatus } from '@/types/clientBooksTypes';
 
 const Colaboradores: React.FC = () => {
   // Estados para modais
@@ -47,7 +47,10 @@ const Colaboradores: React.FC = () => {
     isDeletando,
   } = useColaboradores();
 
-  const { empresas, isLoading: isLoadingEmpresas } = useEmpresas();
+  const { empresas, isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] });
+
+  // Garantir que empresas é sempre um array válido
+  const empresasArray = Array.isArray(empresas) ? empresas : [];
 
   // Handlers para ações
   const handleNovoColaborador = () => {
@@ -105,14 +108,14 @@ const Colaboradores: React.FC = () => {
   // Preparar dados iniciais do formulário
   const dadosIniciais = colaboradorEditando
     ? {
-        nomeCompleto: colaboradorEditando.nome_completo,
-        email: colaboradorEditando.email,
-        funcao: colaboradorEditando.funcao || '',
-        empresaId: colaboradorEditando.empresa_id,
-        status: colaboradorEditando.status,
-        descricaoStatus: colaboradorEditando.descricao_status || '',
-        principalContato: colaboradorEditando.principal_contato,
-      }
+      nomeCompleto: colaboradorEditando.nome_completo,
+      email: colaboradorEditando.email,
+      funcao: colaboradorEditando.funcao || '',
+      empresaId: colaboradorEditando.empresa_id,
+      status: colaboradorEditando.status as ColaboradorStatus,
+      descricaoStatus: colaboradorEditando.descricao_status || '',
+      principalContato: colaboradorEditando.principal_contato,
+    }
     : undefined;
 
   if (error) {
@@ -145,101 +148,101 @@ const Colaboradores: React.FC = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Users className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Gerenciamento de Colaboradores
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Cadastre e gerencie colaboradores das empresas clientes
-            </p>
+          <div className="flex items-center space-x-3">
+            <Users className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Gerenciamento de Colaboradores
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Cadastre e gerencie colaboradores das empresas clientes
+              </p>
+            </div>
           </div>
-        </div>
-        <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
-          <Button
-            onClick={handleNovoColaborador}
-            className="flex items-center space-x-2"
-            disabled={isLoadingEmpresas}
-          >
-            <Plus className="h-4 w-4" />
-            <span>Novo Colaborador</span>
-          </Button>
-        </ProtectedAction>
-      </div>
-
-      {/* Tabela de Colaboradores */}
-      <ColaboradoresTable
-        colaboradores={colaboradores}
-        empresas={empresas}
-        loading={isLoading}
-        filtros={filtrosAtivos}
-        onFiltrosChange={handleFiltrosChange}
-        onEdit={handleEditarColaborador}
-        onDelete={handleExcluirColaborador}
-        showEmpresaColumn={true}
-      />
-
-      {/* Modal de Formulário */}
-      <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {colaboradorEditando ? 'Editar Colaborador' : 'Novo Colaborador'}
-            </DialogTitle>
-            <DialogDescription>
-              {colaboradorEditando
-                ? 'Atualize as informações do colaborador'
-                : 'Preencha os dados para cadastrar um novo colaborador'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <ColaboradorForm
-            initialData={dadosIniciais}
-            empresas={empresas}
-            onSubmit={handleSalvarColaborador}
-            onCancel={handleFecharModal}
-            isLoading={isCriando || isAtualizando}
-            mode={colaboradorEditando ? 'edit' : 'create'}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de Confirmação de Exclusão */}
-      <AlertDialog
-        open={!!colaboradorExcluindo}
-        onOpenChange={() => setColaboradorExcluindo(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o colaborador{' '}
-              <strong>{colaboradorExcluindo?.nome_completo}</strong>?
-              <br />
-              <br />
-              Esta ação não pode ser desfeita. O colaborador será removido permanentemente
-              do sistema.
-              <br />
-              <br />
-              <strong>Nota:</strong> Colaboradores com histórico de disparos de e-mail não
-              podem ser excluídos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletando}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmarExclusao}
-              disabled={isDeletando}
-              className="bg-red-600 hover:bg-red-700"
+          <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
+            <Button
+              onClick={handleNovoColaborador}
+              className="flex items-center space-x-2"
+              disabled={isLoadingEmpresas}
             >
-              {isDeletando ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Plus className="h-4 w-4" />
+              <span>Novo Colaborador</span>
+            </Button>
+          </ProtectedAction>
+        </div>
+
+        {/* Tabela de Colaboradores */}
+        <ColaboradoresTable
+          colaboradores={colaboradores}
+          empresas={empresasArray}
+          loading={isLoading}
+          filtros={filtrosAtivos}
+          onFiltrosChange={handleFiltrosChange}
+          onEdit={handleEditarColaborador}
+          onDelete={handleExcluirColaborador}
+          showEmpresaColumn={true}
+        />
+
+        {/* Modal de Formulário */}
+        <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {colaboradorEditando ? 'Editar Colaborador' : 'Novo Colaborador'}
+              </DialogTitle>
+              <DialogDescription>
+                {colaboradorEditando
+                  ? 'Atualize as informações do colaborador'
+                  : 'Preencha os dados para cadastrar um novo colaborador'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <ColaboradorForm
+              initialData={dadosIniciais}
+              empresas={empresasArray}
+              onSubmit={handleSalvarColaborador}
+              onCancel={handleFecharModal}
+              isLoading={isCriando || isAtualizando}
+              mode={colaboradorEditando ? 'edit' : 'create'}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Confirmação de Exclusão */}
+        <AlertDialog
+          open={!!colaboradorExcluindo}
+          onOpenChange={() => setColaboradorExcluindo(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o colaborador{' '}
+                <strong>{colaboradorExcluindo?.nome_completo}</strong>?
+                <br />
+                <br />
+                Esta ação não pode ser desfeita. O colaborador será removido permanentemente
+                do sistema.
+                <br />
+                <br />
+                <strong>Nota:</strong> Colaboradores com histórico de disparos de e-mail não
+                podem ser excluídos.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletando}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmarExclusao}
+                disabled={isDeletando}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeletando ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

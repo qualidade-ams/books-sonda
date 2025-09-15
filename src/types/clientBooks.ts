@@ -40,7 +40,7 @@ export interface EmpresaFormData {
   nomeCompleto: string;
   nomeAbreviado: string;
   linkSharepoint?: string;
-  templatePadrao: TemplatePadrao;
+  templatePadrao: string; // Pode ser 'portugues', 'ingles' ou ID do template personalizado
   status: StatusEmpresa;
   descricaoStatus?: string;
   emailGestor?: string;

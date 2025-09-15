@@ -34,7 +34,7 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import type { 
   ColaboradorCompleto, 
   ColaboradorFiltros, 
-  StatusColaborador,
+  ColaboradorStatus,
   EmpresaCliente 
 } from '@/types/clientBooksTypes';
 import { STATUS_COLABORADOR_OPTIONS } from '@/types/clientBooksTypes';
@@ -70,7 +70,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
     if (status === 'todos') {
       onFiltrosChange({ ...filtros, status: undefined });
     } else {
-      onFiltrosChange({ ...filtros, status: [status as StatusColaborador] });
+      onFiltrosChange({ ...filtros, status: [status as ColaboradorStatus] });
     }
   };
 
@@ -82,7 +82,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
     }
   };
 
-  const getStatusBadge = (status: StatusColaborador) => {
+  const getStatusBadge = (status: ColaboradorStatus) => {
     switch (status) {
       case 'ativo':
         return (
@@ -268,7 +268,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
                   </TableCell>
 
                   <TableCell>
-                    {getStatusBadge(colaborador.status as StatusColaborador)}
+                    {getStatusBadge(colaborador.status as ColaboradorStatus)}
                   </TableCell>
 
                   <TableCell>

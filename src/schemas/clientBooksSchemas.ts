@@ -43,10 +43,8 @@ const statusColaboradorSchema = z.enum(['ativo', 'inativo'] as const, {
   errorMap: () => ({ message: 'Status deve ser ativo ou inativo' })
 });
 
-// Schema para template padrão
-const templatePadraoSchema = z.enum(['portugues', 'ingles'] as const, {
-  errorMap: () => ({ message: 'Template deve ser português ou inglês' })
-});
+// Schema para template padrão (aceita templates padrão ou IDs de templates personalizados)
+const templatePadraoSchema = z.string().min(1, 'Template é obrigatório');
 
 // Schema para produtos
 const produtoSchema = z.enum(['CE_PLUS', 'FISCAL', 'GALLERY'] as const, {

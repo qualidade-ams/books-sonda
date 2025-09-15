@@ -41,9 +41,9 @@ export class ColaboradoresService {
 
       // Preparar dados para inserção
       const colaboradorData: ColaboradorInsert = {
-        nome_completo: data.nomeCompleto,
+        nome_completo: data.nomeCompleto.trim(),
         email: data.email.toLowerCase().trim(),
-        funcao: data.funcao || null,
+        funcao: data.funcao?.trim() || null,
         empresa_id: data.empresaId,
         status: data.status,
         data_status: new Date().toISOString(),
@@ -93,11 +93,15 @@ export class ColaboradoresService {
         query = query.eq('empresa_id', filtros.empresaId);
       }
 
-      if (filtros?.status) {
-        query = query.eq('status', filtros.status);
+      if (filtros?.status && filtros.status.length > 0) {
+        if (filtros.status.length === 1) {
+          query = query.eq('status', filtros.status[0]);
+        } else {
+          query = query.in('status', filtros.status);
+        }
       } else {
         // Por padrão, mostrar apenas colaboradores ativos
-        query = query.eq('status', COLABORADOR_STATUS.ATIVO);
+        query = query.eq('status', COLABORADOR_STATUS.ATIVO as any);
       }
 
       if (filtros?.busca) {
@@ -123,7 +127,7 @@ export class ColaboradoresService {
    * Listar colaboradores por empresa
    */
   async listarPorEmpresa(empresaId: string): Promise<ColaboradorCompleto[]> {
-    return this.listarColaboradores({ empresaId });
+    return this.listarColaboradores({ empresaId, status: [COLABORADOR_STATUS.ATIVO as any] });
   }
 
   /**
@@ -191,13 +195,13 @@ export class ColaboradoresService {
 
       // Preparar dados para atualização
       const updateData: ColaboradorUpdate = {};
-      
-      if (data.nomeCompleto) updateData.nome_completo = data.nomeCompleto;
+
+      if (data.nomeCompleto) updateData.nome_completo = data.nomeCompleto.trim();
       if (data.email) updateData.email = data.email.toLowerCase().trim();
-      if (data.funcao !== undefined) updateData.funcao = data.funcao || null;
+      if (data.funcao !== undefined) updateData.funcao = data.funcao?.trim() || null;
       if (data.empresaId) updateData.empresa_id = data.empresaId;
       if (data.principalContato !== undefined) updateData.principal_contato = data.principalContato;
-      
+
       // Se status mudou, atualizar data e descrição
       if (data.status) {
         updateData.status = data.status;
@@ -313,7 +317,7 @@ export class ColaboradoresService {
         `)
         .eq('empresa_id', empresaId)
         .eq('principal_contato', true)
-        .eq('status', COLABORADOR_STATUS.ATIVO)
+        .eq('status', COLABORADOR_STATUS.ATIVO as any)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -335,7 +339,7 @@ export class ColaboradoresService {
   async listarAtivos(empresaId: string): Promise<ColaboradorCompleto[]> {
     return this.listarColaboradores({
       empresaId,
-      status: COLABORADOR_STATUS.ATIVO
+      status: [COLABORADOR_STATUS.ATIVO as any]
     });
   }
 
@@ -422,7 +426,7 @@ export class ColaboradoresService {
   private async removerPrincipalContatoExistente(empresaId: string, excludeId?: string): Promise<void> {
     let query = supabase
       .from('colaboradores')
-      .update({ 
+      .update({
         principal_contato: false,
         updated_at: new Date().toISOString()
       })

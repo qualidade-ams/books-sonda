@@ -1,6 +1,7 @@
 
 export interface EmailData {
   to: string;
+  cc?: string | string[];  // Aceita um único e-mail ou array de e-mails
   subject: string;
   html: string;
   attachments?: Array<{
@@ -23,6 +24,22 @@ import { emailTemplateMappingService, EmailTemplateError } from './emailTemplate
 
 // URL padrão do Power Automate para envio de e-mails (fallback)
 const POWER_AUTOMATE_URL = 'https://defaultf149d0bc0eb54f9a9e8224a76eacf8.de.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6dcbd557c39b4d74afe41a7f223caf2e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=YocumRps2l3lHcxPtOCb8B1GBU9Hip4mDPzmPl2tLMg';
+
+// Utilitário para mapear número do mês (1..12, ou string '01'..'12') para nome em PT-BR
+const getMesPorExtenso = (mes: number | string | null | undefined): string | undefined => {
+  if (mes === null || mes === undefined) return undefined;
+  const n = typeof mes === 'string' ? parseInt(mes, 10) : mes;
+  if (!Number.isFinite(n)) return undefined;
+  const idx = (n as number) - 1;
+  const nomes = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return nomes[idx] ?? undefined;
+};
+
+// Escapar caracteres especiais para uso em RegExp (inclusive ponto em chaves como 'disparo.mes')
+const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Função para buscar URL do webhook configurado
 const getWebhookUrl = async (): Promise<string> => {
@@ -117,10 +134,18 @@ export const emailService = {
         ...dadosFormulario // Incluir todos os dados do formulário
       };
 
-      Object.entries(variaveisSubstituicao).forEach(([key, value]) => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        assuntoFinal = assuntoFinal.replace(regex, String(value));
-        corpoFinal = corpoFinal.replace(regex, String(value));
+      // Variáveis especiais derivadas (ex.: disparo.mes → nome do mês)
+      const variaveisEspeciais: Record<string, string> = {};
+      const mesDisparo = getMesPorExtenso(dadosFormulario?.disparo?.mes);
+      if (mesDisparo) {
+        variaveisEspeciais['disparo.mes'] = mesDisparo;
+      }
+
+      Object.entries({ ...variaveisSubstituicao, ...variaveisEspeciais }).forEach(([key, value]) => {
+        const safeKey = escapeRegex(key);
+        const regex = new RegExp(`{{${safeKey}}}`, 'g');
+        assuntoFinal = assuntoFinal.replace(regex, String(value ?? ''));
+        corpoFinal = corpoFinal.replace(regex, String(value ?? ''));
       });
 
       // Enviar e-mail usando o método existente
@@ -181,6 +206,7 @@ export const emailService = {
         body: JSON.stringify({
           nome: emailData.subject,
           email: emailData.to,
+          email_cc: emailData.cc || '',  // Envia string vazia se não houver CC
           mensagem: emailData.html // Enviar HTML completo
         })
       });
@@ -330,8 +356,16 @@ export const emailService = {
     let assuntoFinal = template.assunto;
     let corpoFinal = template.corpo;
 
-    Object.entries(dadosTeste).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
+    // Variáveis especiais: disparo.mes (usa personalizado se houver, senão mês atual)
+    const mesAtualNome = getMesPorExtenso(new Date().getMonth() + 1) || '';
+    const mesDisparoTeste = getMesPorExtenso(dadosPersonalizados?.disparo?.mes) || mesAtualNome;
+    const variaveisEspeciaisTeste: Record<string, string> = {
+      'disparo.mes': mesDisparoTeste
+    };
+
+    Object.entries({ ...dadosTeste, ...variaveisEspeciaisTeste }).forEach(([key, value]) => {
+      const safeKey = escapeRegex(key);
+      const regex = new RegExp(`{{${safeKey}}}`, 'g');
       const valorString = String(value || '');
 
       // Log específico para campos problemáticos
@@ -440,7 +474,9 @@ export const emailService = {
       dataVencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
       numeroOrcamento: 'ORC-2025-001',
       vendedor: 'Maria Santos',
-      observacoes: 'Proposta válida por 30 dias'
+      observacoes: 'Proposta válida por 30 dias',
+      // Fornece "disparo.mes" como número para permitir substituição do nome do mês
+      disparo: { mes: new Date().getMonth() + 1 }
     };
 
     console.log(`Enviando e-mail de teste com mapeamento: ${formulario} + ${modalidade}`);

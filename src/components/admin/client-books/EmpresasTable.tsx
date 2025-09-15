@@ -14,11 +14,13 @@ import {
   Edit, 
   Trash2, 
   ExternalLink,
-  Users
+  Users,
+  Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { useBookTemplates } from '@/hooks/useBookTemplates';
 import type { 
   EmpresaClienteCompleta
 } from '@/types/clientBooks';
@@ -40,6 +42,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { getTemplateById, isDefaultTemplate } = useBookTemplates();
   const getStatusBadge = (status: string) => {
     const variants = {
       ativo: 'default',
@@ -88,6 +91,30 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     }
   };
 
+  const getTemplateBadge = (templateId: string) => {
+    const template = getTemplateById(templateId);
+    
+    if (!template) {
+      return (
+        <Badge variant="destructive" className="text-xs">
+          Template não encontrado
+        </Badge>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1">
+        <Mail className="h-3 w-3" />
+        <Badge 
+          variant={isDefaultTemplate(templateId) ? "secondary" : "default"} 
+          className="text-xs"
+        >
+          {template.label}
+        </Badge>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -115,6 +142,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableHead>Nome</TableHead>
             <TableHead>Nome Abreviado</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Template</TableHead>
             <TableHead>Produtos</TableHead>
             <TableHead>Colaboradores</TableHead>
             <TableHead>E-mail Gestor</TableHead>
@@ -157,6 +185,9 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                     </span>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {getTemplateBadge(empresa.template_padrao)}
               </TableCell>
               <TableCell>
                 {getProdutosBadges(empresa.produtos || [])}

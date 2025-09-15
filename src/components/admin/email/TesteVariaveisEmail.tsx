@@ -129,7 +129,31 @@ const TesteVariaveisEmail: React.FC<TesteVariaveisEmailProps> = ({ template, tem
   // Função para lidar com o evento de blur
   const handleBlur = useCallback((campo: keyof FormularioData, valor: string | number) => {
     console.log(`🔵 onBlur no campo ${campo}:`, valor);
-    updateDados({ [campo]: valor }, true);
+    
+    // Normalizar dados específicos no blur
+    let valorNormalizado = valor;
+    if (typeof valor === 'string') {
+      switch (campo) {
+        case 'email':
+          valorNormalizado = valor.toLowerCase().trim();
+          break;
+        case 'razaoSocial':
+        case 'responsavel':
+        case 'localizacao':
+        case 'volumetria':
+        case 'mensagemBuscaAtiva':
+          valorNormalizado = valor.trim();
+          break;
+        case 'cnpj':
+          // Manter formatação do CNPJ mas remover espaços extras
+          valorNormalizado = valor.trim();
+          break;
+        default:
+          valorNormalizado = typeof valor === 'string' ? valor.trim() : valor;
+      }
+    }
+    
+    updateDados({ [campo]: valorNormalizado }, true);
   }, [updateDados]);
 
   // Funções para gerenciar conjuntos de dados de teste

@@ -22,19 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Save, X } from 'lucide-react';
+import { useBookTemplates } from '@/hooks/useBookTemplates';
+
 import type {
   EmpresaFormData,
-  StatusEmpresa,
-  TemplatePadrao,
   Produto,
   GrupoResponsavel,
 } from '@/types/clientBooks';
 import {
   PRODUTOS_OPTIONS,
   STATUS_EMPRESA_OPTIONS,
-  TEMPLATE_PADRAO_OPTIONS,
 } from '@/types/clientBooks';
 
 // Schema de validação com Zod
@@ -52,7 +51,7 @@ const empresaSchema = z.object({
     .url('Link deve ser uma URL válida')
     .optional()
     .or(z.literal('')),
-  templatePadrao: z.enum(['portugues', 'ingles']),
+  templatePadrao: z.string().min(1, 'Template é obrigatório'),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   descricaoStatus: z
     .string()
@@ -87,6 +86,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   mode,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
 
   const form = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
@@ -94,7 +94,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       nomeCompleto: '',
       nomeAbreviado: '',
       linkSharepoint: '',
-      templatePadrao: 'portugues',
+      templatePadrao: '',
       status: 'ativo',
       descricaoStatus: '',
       emailGestor: '',
@@ -106,6 +106,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
   const watchStatus = form.watch('status');
 
+
   // Reset form quando initialData mudar
   useEffect(() => {
     if (initialData) {
@@ -113,7 +114,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         nomeCompleto: '',
         nomeAbreviado: '',
         linkSharepoint: '',
-        templatePadrao: 'portugues',
+        templatePadrao: '',
         status: 'ativo',
         descricaoStatus: '',
         emailGestor: '',
@@ -127,7 +128,19 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const handleSubmit = async (data: EmpresaFormData) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      // Normalizar dados antes do envio
+      const normalizedData: EmpresaFormData = {
+        ...data,
+        nomeCompleto: data.nomeCompleto.trim(),
+        nomeAbreviado: data.nomeAbreviado.trim(),
+        linkSharepoint: data.linkSharepoint?.trim() || '',
+        emailGestor: data.emailGestor?.toLowerCase().trim() || '',
+        descricaoStatus: data.descricaoStatus?.trim() || '',
+        produtos: data.produtos.map(p => p.toUpperCase() as any), // Normalizar produtos para uppercase
+        grupos: data.grupos || []
+      };
+
+      await onSubmit(normalizedData);
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
     } finally {
@@ -154,14 +167,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>
-          {mode === 'create' ? 'Nova Empresa Cliente' : 'Editar Empresa Cliente'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
+    <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Informações Básicas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -175,6 +181,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                       <Input
                         placeholder="Digite o nome completo da empresa"
                         {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                         disabled={isSubmitting || isLoading}
                       />
                     </FormControl>
@@ -193,6 +200,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                       <Input
                         placeholder="Nome para uso no assunto dos e-mails"
                         {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                         disabled={isSubmitting || isLoading}
                       />
                     </FormControl>
@@ -257,7 +265,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      disabled={isSubmitting || isLoading}
+                      disabled={isSubmitting || isLoading || templatesLoading}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -265,13 +273,23 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {TEMPLATE_PADRAO_OPTIONS.map((option) => (
+                        {bookTemplateOptions.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                            <div className="flex flex-col">
+                              <span>{option.label}</span>
+                              {option.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {option.description}
+                                </span>
+                              )}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription>
+                      Selecione o template de e-mail que será usado para enviar os books desta empresa
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -432,15 +450,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   {isSubmitting
                     ? 'Salvando...'
                     : mode === 'create'
-                    ? 'Criar Empresa'
-                    : 'Salvar Alterações'}
+                      ? 'Criar Empresa'
+                      : 'Salvar Alterações'}
                 </span>
               </Button>
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
   );
 };
 

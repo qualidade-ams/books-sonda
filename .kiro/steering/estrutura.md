@@ -2,22 +2,35 @@
    Add Rules to this file or a short description and have Kiro refine them for you:   
 -------------------------------------------------------------------------------------> 
 books-snd/
+├── examples/                   						      # Exemplos de uso e integração
+│   └── template-selection-example.tsx				   # Exemplos completos de uso da funcionalidade de seleção de templates (padrão e personalizados)
+│			
 ├── public/                     						      # Arquivos estáticos
+│   ├── favicon.ico             						      # Ícone da aplicação
+│   ├── robots.txt              						      # Arquivo de configuração para crawlers
 │   └── images/                 						      # Imagens do projeto
 │       ├── qualidade/          						      # Imagens relacionadas a qualidade
-│       ├── fundo-sonda.png			
-│       └── login-sonda.jpg			
+│       ├── fundo-sonda.png			                      # Imagem de fundo da Sonda
+│       ├── login-sonda.jpg			                      # Imagem de login da Sonda
+│       ├── login-sonda2.jpg                            # Imagem alternativa de login da Sonda
+│       ├── logo-sonda-16x16.png                        # Logo da Sonda 16x16
+│       ├── logo-sonda.png                              # Logo principal da Sonda
+│       ├── n-sonda-azul.png                            # Logo N da Sonda em azul
+│       └── sonda-logo.png                              # Logo da Sonda			
 │			
 ├── src/                        						      # Código-fonte principal
 │   ├── components/             						      # Componentes reutilizáveis
 │   │   ├── admin/              						      # Componentes de administração
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
+│   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
+│   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
 │   │   │   │   └── ColaboradoresTable.tsx				   # Tabela de listagem de colaboradores
 │   │   │   │   └── ColaboradorForm.tsx					   # Formulário de cadastro/edição de colaboradores
 │   │   │   │   └── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas
 │   │   │   │   └── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes
 │   │   │   │   └── GrupoForm.tsx						   # Formulário de cadastro/edição de grupos responsáveis
 │   │   │   │   └── GruposTable.tsx						   # Tabela de listagem de grupos responsáveis
+│   │   │   │   └── TemplatePreview.tsx					   # Componente de prévia visual de templates selecionados no formulário de empresas (exibe informações de templates padrão e personalizados com badges, assunto e conteúdo)
 │   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes
 │   │   │   ├── email/ 									      # Template de emails
 │   │   │   │   └── EditorEmail.tsx						   # Editor HTML
@@ -26,11 +39,17 @@ books-snd/
 │   │   │   │   └── FormularioConfiguracaoWebhook.tsx	# Tela configuração Webhook
 │   │   │   │   └── FormularioNovoTemplate.tsx			# Tela criação novo template
 │   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Listagem de templates
+│   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes de email
 │   │   │   │   └── PreviewEmail.tsx					   # Preview Template HTML
+│   │   │   │   └── PreviewEmailClientBooks.tsx		   # Preview específico para templates do sistema de books
 │   │   │   │   └── TemplateMappingList.tsx				# Listagem de templates
 │   │   │   │   └── TemplateMappingValidation.tsx		# Validação de template
+│   │   │   │   └── TemplateValidationStatus.tsx		   # Status de validação de templates
+│   │   │   │   └── TesteVariaveisClientBooks.tsx		# Teste de variáveis específico para sistema de books
 │   │   │   │   └── TesteVariaveisEmail.tsx				# Simula variáveis --- Ajustar variáveis
+│   │   │   │   └── TesteVariaveisUnificado.tsx			# Teste unificado de variáveis para todos os sistemas
 │   │   │   │   └── VariaveisTemplate.tsx				   # Listagem de variáveis
+│   │   │   │   └── VariaveisTemplateExtendido.tsx		# Listagem estendida de variáveis com mais detalhes
 │   │   │   │   └── VisualizadorLogsEmail.tsx			# Listagem de logs e-mail
 │   │   │   ├── excel/          						      # Componentes de importação Excel
 │   │   │   │   └── ExcelImportDialog.tsx				   # Modal de importação de arquivos Excel
@@ -52,6 +71,7 @@ books-snd/
 │   │   │   │   └── GrupoFormModal.tsx					   # Modal de formulário de grupo responsável
 │   │   │   │   └── GruposTable.tsx						   # Tabela de grupos responsáveis
 │   │   │   └── Breadcrumb.tsx  						      # Navegação em migalhas de pão com suporte às rotas do sistema de client books
+│   │   │   └── DataNormalizationTool.tsx				   # Ferramenta para normalização de dados (uppercase/lowercase)
 │   │   │   └── DialogTesteEmail.tsx 					   # Modal de teste de envio de email
 │   │   │   └── LayoutAdmin.tsx							   # Layout principal da área administrativa
 │   │   │   └── PerformanceMonitor.tsx					   # Monitor de performance da aplicação
@@ -93,10 +113,13 @@ books-snd/
 │   │   └── permissionErrors.ts							   # Erros relacionados a permissões
 │   │				
 │   ├── hooks/                                   		# Custom hooks
+│   │   ├── __tests__/          						      # Testes dos custom hooks
+│   │   │   └── useBookTemplates.test.ts			   # Testes do hook de templates de books personalizados
 │   │   ├── use-mobile.tsx                       		# Hook para detectar dispositivos móveis
 │   │   ├── use-toast.ts                         		# Hook para sistema de notificações toast
 │   │   ├── useApprovalService.ts                		# Hook para serviços de aprovação
 │   │   ├── useAuth.tsx                          		# Hook de autenticação com Supabase
+│   │   ├── useBookTemplates.ts                  		# Hook especializado para templates de books personalizados (templates padrão removidos)
 │   │   ├── useClientBooksPermissions.ts         		# Hook para permissões específicas do sistema de books
 │   │   ├── useClientBooksVariables.ts           		# Hook para variáveis do sistema de clientes e books
 │   │   ├── useColaboradores.ts                  		# Hook para gerenciamento de colaboradores
@@ -144,6 +167,7 @@ books-snd/
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
 │   │   │   ├── ControleDisparos.tsx    				   # Controle mensal de disparos
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo
+│   │   │   ├── DataMaintenance.tsx     				   # Manutenção e normalização de dados
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
 │   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
@@ -239,7 +263,8 @@ books-snd/
 │   ├── utils/                  						      # Funções utilitárias
 │   │   ├── __tests__/          						      # Testes das funções utilitárias
 │   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis
-│   │   │   └── errorRecovery.test.ts                # Testes de recuperação de erros
+│   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
+│   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
 │   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates
@@ -247,6 +272,7 @@ books-snd/
 │   │   ├── configurationDebug.ts      					# Debug de configurações
 │   │   ├── configurationLogger.ts     					# Logging estruturado
 │   │   ├── configurationMapper.ts     					# Mapeamento de configurações
+│   │   ├── dataFixUtils.ts            					# Utilitários para correção e normalização de dados
 │   │   ├── emailValidation.ts         					# Validação de emails
 │   │   ├── emailVariableMapping.ts              		# Mapeamento de variáveis de email
 │   │   ├── environmentCheck.ts        					# Verificação de ambiente
@@ -268,20 +294,36 @@ books-snd/
 │   ├── main.tsx                					      	# Ponto de entrada da aplicação React
 │   └── vite-env.d.ts           					      	# Definições de tipos para Vite
 │				
+├── docs/                       					      	# Documentação do projeto
+│   ├── excel-import.md         					      	# Documentação sobre importação de Excel
+│   └── validacoes-tratamento-erros.md              	# Documentação sobre validações e tratamento de erros
+│				
 ├── supabase/                   					      	# Configurações do banco de dados
 │   ├── .temp/                  					      	# Arquivos temporários do Supabase
+│   │   └── cli-latest                              # CLI do Supabase
 │   └── migration/              					      	# Scripts de migração do banco
+│       ├── add_user_registration_screen.sql       # Migração para tela de registro de usuários
 │       ├── client_books_management_migration.sql		# Migração principal do sistema de books
 │       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
-│       └── grups_and_profile_migration.sql         # Migração de grupos e perfis de usuário
+│       ├── client_books_rls_policies.sql          # Políticas RLS para sistema de books
+│       ├── email_logs_templates_migration.sql     # Migração para logs e templates de email
+│       ├── email_test_data_migration.sql          # Migração para dados de teste de email
+│       ├── grups_and_profile_migration.sql        # Migração de grupos e perfis de usuário
+│       ├── jobs_queue_migration.sql               # Migração para fila de jobs
+│       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
+│       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
+│       └── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
 │				
 ├── .env.example                					      	# Exemplo de variáveis de ambiente
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
 ├── index.html                  					      	# Template HTML principal
+├── NORMALIZACAO_CAMPOS_UPPERCASE.md                # Documentação sobre normalização de campos (uppercase/lowercase)
 ├── package.json               						   	# Dependências e scripts do projeto
 ├── package-lock.json           					      	# Lock file das dependências
 ├── PERMISSIONS_SETUP_SUMMARY.md                    # Documentação do sistema de permissões
+├── README_TEMPLATE_SELECTION.md                    # Documentação completa da implementação da funcionalidade de seleção de templates (padrão e personalizados)
+├── TEMPLATE_SELECTION_GUIDE.md                     # Guia completo da funcionalidade de seleção de templates para empresas
 ├── postcss.config.js          						   	# Configuração do PostCSS
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS

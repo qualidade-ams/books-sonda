@@ -84,7 +84,7 @@ export function GrupoForm({ grupo, onSubmit, onCancel, isLoading = false }: Grup
         nome: data.nome.trim(),
         descricao: data.descricao?.trim() || undefined,
         emails: emailsValidos.map(email => ({
-          email: email.email.trim(),
+          email: email.email.toLowerCase().trim(), // Normalizar email para lowercase
           nome: email.nome?.trim() || undefined,
         })),
       };

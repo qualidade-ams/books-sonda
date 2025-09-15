@@ -79,9 +79,10 @@ export class EmpresasClientesService {
       throw ClientBooksErrorFactory.databaseError('criar empresa', error);
     }
 
-    // Associar produtos
+    // Associar produtos (normalizar para uppercase)
     if (data.produtos && data.produtos.length > 0) {
-      await this.associarProdutos(empresa.id, data.produtos);
+      const produtosNormalizados = data.produtos.map(p => p.toUpperCase());
+      await this.associarProdutos(empresa.id, produtosNormalizados);
     }
 
     // Associar grupos
@@ -334,9 +335,10 @@ export class EmpresasClientesService {
         throw ClientBooksErrorFactory.databaseError('atualizar empresa', error);
       }
 
-      // Atualizar produtos se fornecidos
+      // Atualizar produtos se fornecidos (normalizar para uppercase)
       if (data.produtos) {
-        await this.atualizarProdutos(id, data.produtos);
+        const produtosNormalizados = data.produtos.map(p => p.toUpperCase());
+        await this.atualizarProdutos(id, produtosNormalizados);
       }
 
       // Atualizar grupos se fornecidos
@@ -484,7 +486,7 @@ export class EmpresasClientesService {
   private async associarProdutos(empresaId: string, produtos: string[]): Promise<void> {
     const produtosData = produtos.map(produto => ({
       empresa_id: empresaId,
-      produto
+      produto: produto.toUpperCase() // Normalizar para uppercase
     }));
 
     const { error } = await supabase
