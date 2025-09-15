@@ -19,9 +19,7 @@ export const useBookTemplates = () => {
   useEffect(() => {
     const options: BookTemplateOption[] = [];
 
-    // Templates padrão removidos conforme solicitação
-
-    // Adicionar templates personalizados ativos para books
+    // Adicionar apenas templates personalizados ativos para books
     const bookTemplates = templates.filter(
       template =>
         template.ativo &&

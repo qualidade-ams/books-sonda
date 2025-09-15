@@ -699,8 +699,14 @@ class BooksDisparoService {
     ano: number
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
+      // Debug: verificar template_padrao da empresa
+      const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+      console.log(`🏢 Empresa: ${empresa.nome_completo}`);
+      console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
+      console.log(`📧 Enviando para: ${colaborador.email}`);
+      
       // Buscar template apropriado para books
-      const template = await clientBooksTemplateService.buscarTemplateBooks((empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues');
+      const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
       
       if (!template) {
         return {
@@ -768,7 +774,7 @@ class BooksDisparoService {
     colaborador: Colaborador
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
-      // Preparar dados para o emailService
+      // Preparar dados para o emailService - usar método direto para evitar conflito de templates
       const emailData = {
         to: destinatario,
         cc: emailsCC.length > 0 ? emailsCC : undefined,
@@ -784,8 +790,8 @@ class BooksDisparoService {
         }
       };
 
-      // Enviar usando o emailService
-      const resultado = await emailService.sendEmail(emailData);
+      // Usar método direto de envio para evitar reprocessamento de template
+      const resultado = await emailService.sendDirectEmail(emailData);
 
       if (resultado.success) {
         return { sucesso: true };

@@ -264,7 +264,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     <FormLabel>Template Padrão *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                       disabled={isSubmitting || isLoading || templatesLoading}
                     >
                       <FormControl>
@@ -303,7 +303,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     <FormLabel>Status *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                       disabled={isSubmitting || isLoading}
                     >
                       <FormControl>

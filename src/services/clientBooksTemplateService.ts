@@ -131,10 +131,40 @@ export class ClientBooksTemplateService {
   /**
    * Busca template apropriado para books (formulário 'book')
    */
-  async buscarTemplateBooks(
-    templatePadrao: 'portugues' | 'ingles' = 'portugues'
-  ): Promise<EmailTemplate | null> {
+  async buscarTemplateBooks(templatePadrao: string): Promise<EmailTemplate | null> {
     try {
+      console.log(`🔍 Buscando template de books para: "${templatePadrao}"`);
+      console.log(`📝 Tipo do valor: ${typeof templatePadrao}`);
+      console.log(`📏 Comprimento: ${templatePadrao.length}`);
+      
+      // Verificar se templatePadrao é um UUID (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templatePadrao);
+      
+      if (isUUID) {
+        console.log(`🆔 Template padrão é um UUID, buscando diretamente por ID: ${templatePadrao}`);
+        
+        // Buscar template específico pelo ID
+        const { data: templateEspecifico, error: templateError } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('id', templatePadrao)
+          .eq('formulario', 'book')
+          .eq('ativo', true)
+          .single();
+
+        if (!templateError && templateEspecifico) {
+          console.log(`✅ Template encontrado por ID:`, {
+            id: templateEspecifico.id,
+            nome: templateEspecifico.nome,
+            assunto: templateEspecifico.assunto?.substring(0, 100) + '...'
+          });
+          return templateEspecifico as EmailTemplate;
+        } else {
+          console.warn(`⚠️ Template com ID ${templatePadrao} não encontrado ou inativo`);
+        }
+      }
+      
+      // Buscar todos os templates de books ativos
       const { data, error } = await supabase
         .from('email_templates')
         .select('*')
@@ -143,29 +173,49 @@ export class ClientBooksTemplateService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erro ao buscar template de books:', error);
+        console.error('❌ Erro ao buscar template de books:', error);
         return null;
       }
 
       if (!data || data.length === 0) {
-        console.warn('Nenhum template de books encontrado');
+        console.warn('⚠️ Nenhum template de books encontrado');
         return null;
       }
 
-      // Tentar encontrar template específico para o idioma
-      const templateEspecifico = data.find(t => 
-        t.nome?.toLowerCase().includes(templatePadrao) ||
-        t.descricao?.toLowerCase().includes(templatePadrao)
-      );
+      console.log(`📋 Templates encontrados (${data.length}):`, data.map(t => ({
+        id: t.id,
+        nome: t.nome,
+        descricao: t.descricao,
+        assunto: t.assunto?.substring(0, 50) + '...'
+      })));
 
-      if (templateEspecifico) {
-        return templateEspecifico as EmailTemplate;
+      // Se não é UUID, tentar encontrar por nome/descrição (fallback para compatibilidade)
+      if (!isUUID) {
+        const templateEspecifico = data.find(t => 
+          t.nome?.toLowerCase().includes(templatePadrao.toLowerCase()) ||
+          t.descricao?.toLowerCase().includes(templatePadrao.toLowerCase())
+        );
+
+        if (templateEspecifico) {
+          console.log(`✅ Template específico encontrado para ${templatePadrao}:`, {
+            id: templateEspecifico.id,
+            nome: templateEspecifico.nome,
+            assunto: templateEspecifico.assunto?.substring(0, 100) + '...'
+          });
+          return templateEspecifico as EmailTemplate;
+        }
       }
+
+      console.log(`⚠️ Template específico não encontrado para ${templatePadrao}, usando primeiro disponível:`, {
+        id: data[0].id,
+        nome: data[0].nome,
+        assunto: data[0].assunto?.substring(0, 100) + '...'
+      });
 
       // Retornar o primeiro template disponível
       return data[0] as EmailTemplate;
     } catch (error) {
-      console.error('Erro ao buscar template de books:', error);
+      console.error('❌ Erro ao buscar template de books:', error);
       return null;
     }
   }
@@ -200,6 +250,17 @@ export class ClientBooksTemplateService {
 
 
   /**
+   * Converte número do mês para nome em português
+   */
+  private obterNomeMes(numeroMes: number): string {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return meses[numeroMes - 1] || 'Janeiro';
+  }
+
+  /**
    * Gera dados de exemplo para validação
    */
   private gerarDadosExemplo(): ClientBooksTemplateData {
@@ -213,13 +274,24 @@ export class ClientBooksTemplateService {
         link_sharepoint: 'https://sharepoint.exemplo.com/pasta-cliente',
         template_padrao: 'portugues',
         status: 'ativo',
-        data_status: dataAtual,
+        data_status: dataAtual.toISOString(),
+        descricao_status: null,
         email_gestor: 'gestor@exemplo.com',
-        created_at: dataAtual,
-        updated_at: dataAtual,
+        created_at: dataAtual.toISOString(),
+        updated_at: dataAtual.toISOString(),
         produtos: [
-          { produto: 'CE_PLUS' },
-          { produto: 'FISCAL' }
+          { 
+            id: 'exemplo-produto-1',
+            empresa_id: 'exemplo-empresa-id',
+            produto: 'CE_PLUS',
+            created_at: dataAtual.toISOString()
+          },
+          { 
+            id: 'exemplo-produto-2',
+            empresa_id: 'exemplo-empresa-id',
+            produto: 'FISCAL',
+            created_at: dataAtual.toISOString()
+          }
         ]
       } as EmpresaClienteCompleta,
       colaborador: {
@@ -229,19 +301,23 @@ export class ClientBooksTemplateService {
         funcao: 'Gerente Fiscal',
         empresa_id: 'exemplo-empresa-id',
         status: 'ativo',
-        data_status: dataAtual,
+        data_status: dataAtual.toISOString(),
+        descricao_status: null,
         principal_contato: true,
-        created_at: dataAtual,
-        updated_at: dataAtual,
+        created_at: dataAtual.toISOString(),
+        updated_at: dataAtual.toISOString(),
         empresa: {
           id: 'exemplo-empresa-id',
           nome_completo: 'Empresa Exemplo Ltda',
           nome_abreviado: 'Empresa Exemplo',
+          link_sharepoint: 'https://sharepoint.exemplo.com/pasta-cliente',
           template_padrao: 'portugues',
           status: 'ativo',
-          data_status: dataAtual,
-          created_at: dataAtual,
-          updated_at: dataAtual
+          data_status: dataAtual.toISOString(),
+          descricao_status: null,
+          email_gestor: 'gestor@exemplo.com',
+          created_at: dataAtual.toISOString(),
+          updated_at: dataAtual.toISOString()
         }
       } as ColaboradorCompleto,
       disparo: {

@@ -147,18 +147,16 @@ const Colaboradores: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Users className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Gerenciamento de Colaboradores
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Gerenciamento de Colaboradores
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
                 Cadastre e gerencie colaboradores das empresas clientes
-              </p>
-            </div>
+            </p>
           </div>
+          <div className="flex gap-2">         
           <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
             <Button
               onClick={handleNovoColaborador}
@@ -169,6 +167,7 @@ const Colaboradores: React.FC = () => {
               <span>Novo Colaborador</span>
             </Button>
           </ProtectedAction>
+          </div>
         </div>
 
         {/* Tabela de Colaboradores */}

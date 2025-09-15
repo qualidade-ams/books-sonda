@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Filter, Upload, Settings } from 'lucide-react';
+import { Plus, Filter, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,7 @@ const EmpresasClientes = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // Estados para empresa selecionada
   const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaClienteCompleta | null>(null);
@@ -210,17 +211,6 @@ const EmpresasClientes = () => {
           </div>
           <div className="flex gap-2">
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
-              <Link to="/admin/data-maintenance">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Settings className="h-4 w-4" />
-                  Normalizar Dados
-                </Button>
-              </Link>
-            </ProtectedAction>
-            <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
               <ExcelImportDialog
                 onImportComplete={handleImportComplete}
                 trigger={
@@ -340,6 +330,15 @@ const EmpresasClientes = () => {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center space-x-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={selectAllEmpresas}
                   disabled={empresasArray.length === 0}
                 >
@@ -350,7 +349,8 @@ const EmpresasClientes = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filtros Compactos */}
-            <div className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            {mostrarFiltros && (
+            <div className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t">
               <div className="flex items-center gap-6 flex-1">
                 {/* Busca */}
                 <div className="flex items-center gap-2 flex-1 max-w-xs">
@@ -418,6 +418,8 @@ const EmpresasClientes = () => {
                 Limpar
               </Button>
             </div>
+            )}
+
 
             <EmpresasTable
               empresas={empresasArray}
