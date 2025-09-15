@@ -429,12 +429,10 @@ export class GruposResponsaveisService {
         },
         {
           nome: 'Todos',
-          descricao: 'Grupo com todos os responsáveis (Andreia, Aline, Angela e Qualidade)',
+          descricao: 'Grupo com demais responsáveis',
           emails: [
             { email: 'andreia@sonda.com', nome: 'Andreia' },
-            { email: 'aline@sonda.com', nome: 'Aline' },
-            { email: 'angela@sonda.com', nome: 'Angela' },
-            { email: 'qualidade@sonda.com', nome: 'Qualidade' }
+            { email: 'qualidadeams@sonda.com', nome: 'Qualidade' }
           ]
         }
       ];

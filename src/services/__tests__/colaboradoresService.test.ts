@@ -212,7 +212,7 @@ describe('ColaboradoresService', () => {
         .toThrow(new ColaboradorError('Já existe um colaborador com este e-mail nesta empresa', 'EMAIL_ALREADY_EXISTS'));
     });
 
-    it('deve remover principal contato existente quando novo colaborador for principal', async () => {
+    it('deve remover principal contato existente quando novo cliente for principal', async () => {
       const dadosComPrincipal = { ...colaboradorValidoData, principalContato: true };
 
       // Mock para empresa válida

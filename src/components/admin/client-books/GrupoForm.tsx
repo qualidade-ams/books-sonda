@@ -137,7 +137,7 @@ const GrupoForm: React.FC<GrupoFormProps> = ({
                   <FormLabel>Nome do Grupo *</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ex: CE Plus, Fiscal, Gallery, Todos"
+                      placeholder="Ex: CE Plus, Fiscal, Gallery, Outros - Emails"
                       {...field}
                       disabled={isSubmitting || isLoading}
                     />

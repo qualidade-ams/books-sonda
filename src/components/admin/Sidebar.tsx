@@ -99,12 +99,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       screenKey: 'precificacao'
     },
     {
-      icon: Mail,
-      label: 'E-mails',
-      path: '/admin/email-config',
-      screenKey: 'email-config'
-    },
-    {
       icon: Smartphone,
       label: 'Aplicativos',
       path: '/admin/aplicativos',
@@ -119,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Contact,
-      label: 'Colaboradores',
+      label: 'Cadastro E-mails Clientes',
       path: '/admin/colaboradores',
       screenKey: 'colaboradores'
     },
@@ -166,6 +160,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       label: 'Logs de Auditoria',
       path: '/admin/audit-logs',
       screenKey: 'audit-logs'
+    },
+    {
+      icon: Mail,
+      label: 'Template E-mails',
+      path: '/admin/email-config',
+      screenKey: 'email-config'
     }
   ];
 

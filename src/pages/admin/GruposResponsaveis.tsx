@@ -70,14 +70,23 @@ export default function GruposResponsaveis() {
       } else {
         await criarGrupo(data);
       }
+      // Fechar modal após sucesso
+      setIsFormModalOpen(false);
+      setSelectedGrupo(null);
     } catch (error) {
       console.error('Erro ao salvar grupo:', error);
+      // Não fechar modal em caso de erro para permitir correção
     }
   };
 
   const handleDeleteGrupo = async (id: string) => {
     try {
       await deletarGrupo(id);
+      // Limpar seleção após exclusão bem-sucedida
+      if (selectedGrupo?.id === id) {
+        setSelectedGrupo(null);
+        setIsDetailsModalOpen(false);
+      }
     } catch (error) {
       console.error('Erro ao deletar grupo:', error);
     }
@@ -86,6 +95,7 @@ export default function GruposResponsaveis() {
   const handleCreateGruposPadrao = async () => {
     try {
       await criarGruposPadrao();
+      // Dados serão atualizados automaticamente via invalidação do cache
     } catch (error) {
       console.error('Erro ao criar grupos padrão:', error);
     }

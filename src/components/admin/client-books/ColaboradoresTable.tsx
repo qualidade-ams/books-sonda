@@ -127,7 +127,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <Users className="h-5 w-5" />
-            <span>Colaboradores ({colaboradores.length})</span>
+            <span>Clientes ({colaboradores.length})</span>
           </CardTitle>
           <Button
             variant="outline"
@@ -206,19 +206,19 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nenhum colaborador encontrado
+              Nenhum cliente encontrado
             </h3>
             <p className="text-gray-600 mb-4">
               {filtros.busca || filtros.status || filtros.empresaId
-                ? 'Tente ajustar os filtros para encontrar colaboradores'
-                : 'Cadastre o primeiro colaborador para começar'}
+                ? 'Tente ajustar os filtros para encontrar clientes'
+                : 'Cadastre o primeiro cliente para começar'}
             </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Colaborador</TableHead>
+                <TableHead>Cliente</TableHead>
                 {showEmpresaColumn && <TableHead>Empresa</TableHead>}
                 <TableHead>Função</TableHead>
                 <TableHead>Status</TableHead>

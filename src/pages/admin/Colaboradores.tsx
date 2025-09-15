@@ -164,7 +164,7 @@ const Colaboradores: React.FC = () => {
               disabled={isLoadingEmpresas}
             >
               <Plus className="h-4 w-4" />
-              <span>Novo Colaborador</span>
+              <span>Novo Cliente</span>
             </Button>
           </ProtectedAction>
           </div>
@@ -187,12 +187,12 @@ const Colaboradores: React.FC = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {colaboradorEditando ? 'Editar Colaborador' : 'Novo Colaborador'}
+                {colaboradorEditando ? 'Editar Colaborador' : 'Novo Cliente'}
               </DialogTitle>
               <DialogDescription>
                 {colaboradorEditando
                   ? 'Atualize as informações do colaborador'
-                  : 'Preencha os dados para cadastrar um novo colaborador'}
+                  : 'Preencha os dados para cadastrar um novo cliente'}
               </DialogDescription>
             </DialogHeader>
 

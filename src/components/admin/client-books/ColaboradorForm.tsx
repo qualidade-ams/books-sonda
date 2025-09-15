@@ -163,7 +163,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                 <FormControl>
                   <Input
                     type="email"
-                    placeholder="colaborador@empresa.com"
+                    placeholder="cliente@empresa.com"
                     {...field}
                     disabled={isSubmitting || isLoading}
                   />

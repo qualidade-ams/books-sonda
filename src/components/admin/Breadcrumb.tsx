@@ -15,7 +15,7 @@ const Breadcrumb = () => {
     'usuarios-grupos': 'Atribuir Usuários',
     'audit-logs': 'Logs de Auditoria',
     'empresas-clientes': 'Empresas Clientes',
-    'colaboradores': 'Colaboradores',
+    'colaboradores': 'Cadastro E-mails Clientes',
     'grupos-responsaveis': 'Grupos Responsáveis',
     'controle-disparos': 'Controle de Disparos',
     'historico-books': 'Histórico de Books',

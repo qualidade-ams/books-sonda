@@ -24,8 +24,13 @@ export function GrupoFormModal({
   isLoading = false 
 }: GrupoFormModalProps) {
   const handleSubmit = async (data: GrupoFormData) => {
-    await onSubmit(data);
-    onOpenChange(false);
+    try {
+      await onSubmit(data);
+      // O modal será fechado pelo componente pai após sucesso
+    } catch (error) {
+      // Em caso de erro, manter modal aberto para correção
+      console.error('Erro no formulário:', error);
+    }
   };
 
   const handleCancel = () => {

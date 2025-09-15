@@ -48,6 +48,8 @@ export function useGruposResponsaveis() {
       // Invalidar cache específico
       clientBooksCacheService.invalidateGruposCache();
       queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      // Forçar refetch imediato para garantir atualização
+      refetchGrupos();
       toast.success('Grupo criado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -60,7 +62,10 @@ export function useGruposResponsaveis() {
     mutationFn: ({ id, data }: { id: string; data: Partial<GrupoFormData> }) =>
       gruposResponsaveisService.atualizarGrupo(id, data),
     onSuccess: () => {
+      // Invalidar cache e forçar refetch
+      clientBooksCacheService.invalidateGruposCache();
       queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      refetchGrupos();
       toast.success('Grupo atualizado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -72,7 +77,10 @@ export function useGruposResponsaveis() {
   const deleteGrupoMutation = useMutation({
     mutationFn: (id: string) => gruposResponsaveisService.deletarGrupo(id),
     onSuccess: () => {
+      // Invalidar cache e forçar refetch
+      clientBooksCacheService.invalidateGruposCache();
       queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      refetchGrupos();
       toast.success('Grupo deletado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -110,7 +118,10 @@ export function useGruposResponsaveis() {
   const createGruposPadraoMutation = useMutation({
     mutationFn: () => gruposResponsaveisService.criarGruposPadrao(),
     onSuccess: () => {
+      // Invalidar cache e forçar refetch
+      clientBooksCacheService.invalidateGruposCache();
       queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      refetchGrupos();
       toast.success('Grupos padrão criados com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {

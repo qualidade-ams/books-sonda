@@ -240,7 +240,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 name="emailGestor"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-mail do Gestor</FormLabel>
+                    <FormLabel>E-mail do Customer Success</FormLabel>
                     <FormControl>
                       <Input
                         type="email"

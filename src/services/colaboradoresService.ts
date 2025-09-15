@@ -24,7 +24,7 @@ export class ColaboradorError extends Error {
  */
 export class ColaboradoresService {
   /**
-   * Criar um novo colaborador
+   * Criar um novo cliente
    */
   async criarColaborador(data: ColaboradorFormData): Promise<Colaborador> {
     try {

@@ -71,7 +71,7 @@ export class TemplateValidationService {
         'empresa.nomeAbreviado': '[Empresa]',
         'empresa.emailGestor': '[gestor@empresa.com]',
         'colaborador.nomeCompleto': '[Nome do Colaborador]',
-        'colaborador.email': '[colaborador@empresa.com]',
+        'colaborador.email': '[cliente@empresa.com]',
         'colaborador.funcao': '[Função]',
         'disparo.mesNome': '[Mês]',
         'disparo.ano': '[Ano]',

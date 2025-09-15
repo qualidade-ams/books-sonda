@@ -125,7 +125,7 @@ INSERT INTO grupos_responsaveis (nome, descricao) VALUES
 ('CE Plus', 'Grupo responsável pelo produto CE Plus'),
 ('Fiscal', 'Grupo responsável pelo produto Fiscal'),
 ('Gallery', 'Grupo responsável pelo produto Gallery'),
-('Todos', 'Grupo com todos os responsáveis (Andreia, Aline, Angela e Qualidade)')
+('Todos', 'Grupo com demais responsáveis')
 ON CONFLICT (nome) DO NOTHING;
 
 -- Inserir e-mails padrão para o grupo "Todos" (exemplo - ajustar conforme necessário)

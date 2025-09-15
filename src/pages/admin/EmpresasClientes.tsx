@@ -437,7 +437,7 @@ const EmpresasClientes = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Empresa</DialogTitle>
-              <p>Preencha os dados para cadastrar um novo colaborador</p>
+              <p>Preencha os dados para cadastrar um novo cliente</p>
             </DialogHeader>
             <EmpresaForm
               mode="create"
