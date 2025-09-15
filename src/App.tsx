@@ -15,7 +15,12 @@ import GroupManagement from "./pages/admin/GroupManagement";
 import UserGroupAssignment from "./pages/admin/UserGroupAssignment";
 import UserConfig from "./pages/admin/UserConfig";
 import UserManagement from "./pages/admin/UserManagement";
-
+import EmpresasClientes from "./pages/admin/EmpresasClientes";
+import Colaboradores from "./pages/admin/Colaboradores";
+import GruposResponsaveis from "./pages/admin/GruposResponsaveis";
+import ControleDisparos from "./pages/admin/ControleDisparos";
+import HistoricoBooks from "./pages/admin/HistoricoBooks";
+import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
 import AuditLogs from "./pages/admin/AuditLogs";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -45,6 +50,12 @@ const App = () => (
                   <Route path="/admin/usuarios-grupos" element={<ProtectedRoute screenKey="usuarios-grupos"><UserGroupAssignment /></ProtectedRoute>} />
                   <Route path="/admin/user-config" element={<ProtectedRoute screenKey="user-config"><UserConfig /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-usuarios" element={<ProtectedRoute screenKey="cadastro-usuarios"><UserManagement /></ProtectedRoute>} />
+                  <Route path="/admin/empresas-clientes" element={<ProtectedRoute screenKey="empresas_clientes"><EmpresasClientes /></ProtectedRoute>} />
+                  <Route path="/admin/colaboradores" element={<ProtectedRoute screenKey="colaboradores"><Colaboradores /></ProtectedRoute>} />
+                  <Route path="/admin/grupos-responsaveis" element={<ProtectedRoute screenKey="grupos_responsaveis"><GruposResponsaveis /></ProtectedRoute>} />
+                  <Route path="/admin/controle-disparos" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparos /></ProtectedRoute>} />
+                  <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
+                  <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}

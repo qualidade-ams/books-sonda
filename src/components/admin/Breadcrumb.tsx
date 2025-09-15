@@ -13,7 +13,13 @@ const Breadcrumb = () => {
     'user-config': 'Configurações de Usuário',
     'grupos': 'Grupos de Usuários',
     'usuarios-grupos': 'Atribuir Usuários',
-    'audit-logs': 'Logs de Auditoria'
+    'audit-logs': 'Logs de Auditoria',
+    'empresas-clientes': 'Empresas Clientes',
+    'colaboradores': 'Colaboradores',
+    'grupos-responsaveis': 'Grupos Responsáveis',
+    'controle-disparos': 'Controle de Disparos',
+    'historico-books': 'Histórico de Books',
+    'configurar-permissoes-client-books': 'Configurar Permissões - Client Books'
   };
 
   return (

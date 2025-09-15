@@ -1025,6 +1025,317 @@ export type Database = {
           }
         ]
       }
+      empresas_clientes: {
+        Row: {
+          id: string
+          nome_completo: string
+          nome_abreviado: string
+          link_sharepoint: string | null
+          template_padrao: string
+          status: string
+          data_status: string
+          descricao_status: string | null
+          email_gestor: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome_completo: string
+          nome_abreviado: string
+          link_sharepoint?: string | null
+          template_padrao?: string
+          status?: string
+          data_status?: string
+          descricao_status?: string | null
+          email_gestor?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome_completo?: string
+          nome_abreviado?: string
+          link_sharepoint?: string | null
+          template_padrao?: string
+          status?: string
+          data_status?: string
+          descricao_status?: string | null
+          email_gestor?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      empresa_produtos: {
+        Row: {
+          id: string
+          empresa_id: string
+          produto: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          produto: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          produto?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_produtos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      grupos_responsaveis: {
+        Row: {
+          id: string
+          nome: string
+          descricao: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          descricao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          descricao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      grupo_emails: {
+        Row: {
+          id: string
+          grupo_id: string
+          email: string
+          nome: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          grupo_id: string
+          email: string
+          nome?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          grupo_id?: string
+          email?: string
+          nome?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_emails_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_responsaveis"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      empresa_grupos: {
+        Row: {
+          id: string
+          empresa_id: string
+          grupo_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          grupo_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          grupo_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_grupos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empresa_grupos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_responsaveis"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      colaboradores: {
+        Row: {
+          id: string
+          nome_completo: string
+          email: string
+          funcao: string | null
+          empresa_id: string
+          status: string
+          data_status: string
+          descricao_status: string | null
+          principal_contato: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome_completo: string
+          email: string
+          funcao?: string | null
+          empresa_id: string
+          status?: string
+          data_status?: string
+          descricao_status?: string | null
+          principal_contato?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome_completo?: string
+          email?: string
+          funcao?: string | null
+          empresa_id?: string
+          status?: string
+          data_status?: string
+          descricao_status?: string | null
+          principal_contato?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      historico_disparos: {
+        Row: {
+          id: string
+          empresa_id: string | null
+          colaborador_id: string | null
+          template_id: string | null
+          status: string
+          data_disparo: string | null
+          data_agendamento: string | null
+          erro_detalhes: string | null
+          assunto: string | null
+          emails_cc: string[] | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id?: string | null
+          colaborador_id?: string | null
+          template_id?: string | null
+          status: string
+          data_disparo?: string | null
+          data_agendamento?: string | null
+          erro_detalhes?: string | null
+          assunto?: string | null
+          emails_cc?: string[] | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string | null
+          colaborador_id?: string | null
+          template_id?: string | null
+          status?: string
+          data_disparo?: string | null
+          data_agendamento?: string | null
+          erro_detalhes?: string | null
+          assunto?: string | null
+          emails_cc?: string[] | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_disparos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_disparos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      controle_mensal: {
+        Row: {
+          id: string
+          mes: number
+          ano: number
+          empresa_id: string | null
+          status: string
+          data_processamento: string | null
+          observacoes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          mes: number
+          ano: number
+          empresa_id?: string | null
+          status?: string
+          data_processamento?: string | null
+          observacoes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          mes?: number
+          ano?: number
+          empresa_id?: string | null
+          status?: string
+          data_processamento?: string | null
+          observacoes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_mensal_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

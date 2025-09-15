@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClientBooksPermissions } from '@/hooks/useClientBooksPermissions';
 
 interface FixResult {
   success: boolean;
@@ -16,6 +17,7 @@ const PermissionsFixer: React.FC = () => {
   const { user } = useAuth();
   const [isFixing, setIsFixing] = useState(false);
   const [result, setResult] = useState<FixResult | null>(null);
+  const { setupPermissions, isLoading: isSettingUpClientBooks } = useClientBooksPermissions();
 
   const fixPermissions = async () => {
     if (!user) {
@@ -220,6 +222,33 @@ const PermissionsFixer: React.FC = () => {
             </div>
           </Alert>
         )}
+
+        {/* Configuração específica do sistema de Client Books */}
+        <div className="border-t pt-4">
+          <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-500" />
+            Sistema de Gerenciamento de Clientes e Books
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Configure as permissões específicas para o sistema de gerenciamento de clientes e books.
+          </p>
+          
+          <Button
+            onClick={setupPermissions}
+            disabled={isSettingUpClientBooks || !user}
+            variant="outline"
+            className="w-full"
+          >
+            {isSettingUpClientBooks ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Configurando permissões do Client Books...
+              </>
+            ) : (
+              'Configurar Permissões do Client Books'
+            )}
+          </Button>
+        </div>
 
         {result?.success && (
           <Alert className="border-blue-200 bg-blue-50">

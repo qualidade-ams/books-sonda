@@ -1,0 +1,229 @@
+import React, { useState } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { 
+  MoreHorizontal, 
+  Edit, 
+  Trash2, 
+  Mail, 
+  Users,
+  Eye
+} from 'lucide-react';
+import ProtectedAction from '@/components/auth/ProtectedAction';
+import { GrupoResponsavelCompleto } from '@/types/clientBooksTypes';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface GruposTableProps {
+  grupos: GrupoResponsavelCompleto[];
+  onEdit: (grupo: GrupoResponsavelCompleto) => void;
+  onDelete: (id: string) => void;
+  onView: (grupo: GrupoResponsavelCompleto) => void;
+  isLoading?: boolean;
+  isDeleting?: boolean;
+}
+
+export function GruposTable({ 
+  grupos, 
+  onEdit, 
+  onDelete, 
+  onView,
+  isLoading = false,
+  isDeleting = false 
+}: GruposTableProps) {
+  const [grupoToDelete, setGrupoToDelete] = useState<GrupoResponsavelCompleto | null>(null);
+
+  const handleDeleteClick = (grupo: GrupoResponsavelCompleto) => {
+    setGrupoToDelete(grupo);
+  };
+
+  const handleConfirmDelete = () => {
+    if (grupoToDelete) {
+      onDelete(grupoToDelete.id);
+      setGrupoToDelete(null);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), {
+        addSuffix: true,
+        locale: ptBR,
+      });
+    } catch {
+      return 'Data inválida';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Carregando grupos...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (grupos.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Users className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum grupo encontrado</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Comece criando um novo grupo de responsáveis.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Grupos de Responsáveis ({grupos.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>E-mails</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grupos.map((grupo) => (
+                  <TableRow key={grupo.id}>
+                    <TableCell className="font-medium">
+                      {grupo.nome}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-[200px] truncate">
+                        {grupo.descricao || (
+                          <span className="text-gray-400 italic">Sem descrição</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-400" />
+                        <Badge variant="secondary">
+                          {grupo.emails?.length || 0} e-mail{(grupo.emails?.length || 0) !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-500">
+                      {formatDate(grupo.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onView(grupo)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Visualizar
+                          </DropdownMenuItem>
+                          <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                            <DropdownMenuItem onClick={() => onEdit(grupo)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          </ProtectedAction>
+                          <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(grupo)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Deletar
+                            </DropdownMenuItem>
+                          </ProtectedAction>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={!!grupoToDelete} onOpenChange={() => setGrupoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar o grupo "{grupoToDelete?.nome}"?
+              {grupoToDelete?.emails && grupoToDelete.emails.length > 0 && (
+                <span className="block mt-2 text-sm">
+                  Este grupo possui {grupoToDelete.emails.length} e-mail{grupoToDelete.emails.length !== 1 ? 's' : ''} cadastrado{grupoToDelete.emails.length !== 1 ? 's' : ''}.
+                </span>
+              )}
+              <span className="block mt-2 font-medium text-red-600">
+                Esta ação não pode ser desfeita.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deletando...' : 'Deletar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

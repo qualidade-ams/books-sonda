@@ -17,9 +17,9 @@ import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { useTemplateMappingValidation } from '@/hooks/useTemplateMappingValidation';
 import EmailEditor from './EditorEmail';
 import EmailPreview from './PreviewEmail';
-import TemplateVariables from './VariaveisTemplate';
+import VariaveisTemplateExtendido from './VariaveisTemplateExtendido';
 import TestEmailDialog from '../DialogTesteEmail';
-import TesteVariaveisEmail from './TesteVariaveisEmail';
+import TesteVariaveisUnificado from './TesteVariaveisUnificado';
 import type { EmailTemplate } from '@/types/approval';
 import { FormularioData } from '@/hooks/useEmailVariableMapping';
 import { useTemplateTestData } from '@/hooks/useTemplateTestData';
@@ -234,15 +234,18 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
                 template={formData}
                 onTemplateChange={handleTemplateChange}
               />
-              <TemplateVariables />
+              <VariaveisTemplateExtendido 
+                mostrarVariaveisBooks={template.formulario === 'book'}
+                mostrarVariaveisFormulario={template.formulario !== 'book'}
+              />
             </TabsContent>
 
             <TabsContent value="teste">
-              <TesteVariaveisEmail 
+              <TesteVariaveisUnificado 
                 template={formData} 
                 templateId={template.id}
-                dadosIniciais={dadosTeste}
-                onDadosChange={handleDadosTesteChange}
+                dadosFormularioIniciais={dadosTeste}
+                onDadosFormularioChange={handleDadosTesteChange}
               />
             </TabsContent>
           </Tabs>

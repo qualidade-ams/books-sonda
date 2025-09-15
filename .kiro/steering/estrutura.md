@@ -2,159 +2,292 @@
    Add Rules to this file or a short description and have Kiro refine them for you:   
 -------------------------------------------------------------------------------------> 
 books-snd/
-├── public/                     						# Arquivos estáticos
-│   └── images/                 						# Imagens do projeto
-│       ├── qualidade/          						# Imagens relacionadas a qualidade
+├── public/                     						      # Arquivos estáticos
+│   └── images/                 						      # Imagens do projeto
+│       ├── qualidade/          						      # Imagens relacionadas a qualidade
 │       ├── fundo-sonda.png			
 │       └── login-sonda.jpg			
 │			
-├── src/                        						# Código-fonte principal
-│   ├── components/             						# Componentes reutilizáveis
-│   │   ├── admin/              						# Componentes de administração
-│   │   │   ├── email/ 									# Template de emails
-│   │   │   │   └── EditorEmail.tsx						# Editor HTML
+├── src/                        						      # Código-fonte principal
+│   ├── components/             						      # Componentes reutilizáveis
+│   │   ├── admin/              						      # Componentes de administração
+│   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
+│   │   │   │   └── ColaboradoresTable.tsx				   # Tabela de listagem de colaboradores
+│   │   │   │   └── ColaboradorForm.tsx					   # Formulário de cadastro/edição de colaboradores
+│   │   │   │   └── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas
+│   │   │   │   └── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes
+│   │   │   │   └── GrupoForm.tsx						   # Formulário de cadastro/edição de grupos responsáveis
+│   │   │   │   └── GruposTable.tsx						   # Tabela de listagem de grupos responsáveis
+│   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes
+│   │   │   ├── email/ 									      # Template de emails
+│   │   │   │   └── EditorEmail.tsx						   # Editor HTML
 │   │   │   │   └── EditorTemplateCompleto.tsx			# Tela completa editor template
 │   │   │   │   └── EmailTemplateErrorFallback.tsx		# Erro ao encontrar template
 │   │   │   │   └── FormularioConfiguracaoWebhook.tsx	# Tela configuração Webhook
 │   │   │   │   └── FormularioNovoTemplate.tsx			# Tela criação novo template
 │   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Listagem de templates
-│   │   │   │   └── PreviewEmail.tsx					# Preview Template HTML
+│   │   │   │   └── PreviewEmail.tsx					   # Preview Template HTML
 │   │   │   │   └── TemplateMappingList.tsx				# Listagem de templates
 │   │   │   │   └── TemplateMappingValidation.tsx		# Validação de template
 │   │   │   │   └── TesteVariaveisEmail.tsx				# Simula variáveis --- Ajustar variáveis
-│   │   │   │   └── VariaveisTemplate.tsx				# Listagem de variáveis
+│   │   │   │   └── VariaveisTemplate.tsx				   # Listagem de variáveis
 │   │   │   │   └── VisualizadorLogsEmail.tsx			# Listagem de logs e-mail
-│   │   │   ├── groups/         						# Gerenciamento de grupos
-│   │   │   │   └── DeleteGroupDialog.tsx				# Deletar grupo
+│   │   │   ├── excel/          						      # Componentes de importação Excel
+│   │   │   │   └── ExcelImportDialog.tsx				   # Modal de importação de arquivos Excel
+│   │   │   │   └── ExcelPreview.tsx					   # Preview dos dados do Excel antes da importação
+│   │   │   │   └── ExcelUpload.tsx						   # Componente de upload de arquivos Excel
+│   │   │   │   └── ImportResult.tsx					   # Resultado da importação com relatórios
+│   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes Excel
+│   │   │   ├── groups/         						      # Gerenciamento de grupos (sistema de permissões)
+│   │   │   │   └── DeleteGroupDialog.tsx				   # Deletar grupo
 │   │   │   │   └── GroupFormDialog.tsx					# Modal Cadastro grupo
-│   │   │   │   └── GroupsTable.tsx						# Tela listagem grupos
+│   │   │   │   └── GroupsTable.tsx						   # Tela listagem grupos
 │   │   │   │   └── PermissionConfigDialog.tsx			# Mensagem de permissão da tela
 │   │   │   │   └── PermissionLevelSelect.tsx			# Select Box das permissões
-│   │   │   │   └── PermissionMatrix.tsx				# Tela de permissão
+│   │   │   │   └── PermissionMatrix.tsx				   # Tela de permissão
 │   │   │   │   └── UserGroupAssignmentTable.tsx		# Listagem de usuários aos grupos
-│   │   │   └── Breadcrumb.tsx  						# Navegação em migalhas de pão
-│   │   │   └── DialogTesteEmail.tsx 					# 
-│   │   │   └── LayoutAdmin.tsx							# Tela Administração
-│   │   │   └── PermissionsFixer.tsx  					# Configurador de permissões
-│   │   │   └── SessionInfo.tsx  						# Expiração de sessão
-│   │   │   └── Sidebar.tsx  							# Menu lateral
-│   │   │   └── ThemeToggle.tsx  						# Alteração de tema
+│   │   │   ├── grupos/         						      # Gerenciamento de grupos responsáveis (sistema de books)
+│   │   │   │   └── GrupoDetailsModal.tsx				   # Modal de detalhes do grupo responsável
+│   │   │   │   └── GrupoForm.tsx						   # Formulário de grupo responsável
+│   │   │   │   └── GrupoFormModal.tsx					   # Modal de formulário de grupo responsável
+│   │   │   │   └── GruposTable.tsx						   # Tabela de grupos responsáveis
+│   │   │   └── Breadcrumb.tsx  						      # Navegação em migalhas de pão com suporte às rotas do sistema de client books
+│   │   │   └── DialogTesteEmail.tsx 					   # Modal de teste de envio de email
+│   │   │   └── LayoutAdmin.tsx							   # Layout principal da área administrativa
+│   │   │   └── PerformanceMonitor.tsx					   # Monitor de performance da aplicação
+│   │   │   └── PermissionsFixer.tsx  					   # Configurador de permissões
+│   │   │   └── SessionInfo.tsx  						   # Informações de expiração de sessão
+│   │   │   └── Sidebar.tsx  							      # Menu lateral de navegação
+│   │   │   └── ThemeToggle.tsx  						   # Alternador de tema (claro/escuro)
 │   │   │			
-│   │   ├── auth/               						# Componentes de autenticação
-│   │   │   └── index.ts								# Monta os componentes Action, Route e Timeout
-│   │   │   └── PermissionFeedback.tsx					# Informa que o usuário não tem permissão
-│   │   │   └── ProtectedAction.tsx						# Componente que renderiza filhos condicionalmente com base nas permissões do usuário
-│   │   │   └── ProtectedRoute.tsx						# Permissóes de rotas
-│   │   │   └── SessionTimeoutModal.tsx					# Modar de expiração da sessão
-│   │   ├── errors/             						# Componentes de erro
+│   │   ├── auth/               						      # Componentes de autenticação
+│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de auth
+│   │   │   └── PermissionFeedback.tsx					   # Feedback quando usuário não tem permissão
+│   │   │   └── ProtectedAction.tsx						   # Componente que renderiza filhos condicionalmente com base nas permissões
+│   │   │   └── ProtectedRoute.tsx						   # Proteção de rotas baseada em permissões
+│   │   │   └── SessionTimeoutModal.tsx					# Modal de expiração da sessão
+│   │   ├── errors/             						      # Componentes de tratamento de erro
 │   │   │   └── GlobalErrorBoundary.tsx					# Captura todos os erros não tratados na aplicação
-│   │   │   └── index.ts								# Monta os componentes GlobalErrorBoundary, LoadingFallback e PermissionErrorBoundary
-│   │   │   └── LoadingFallback.tsx						# Fallback de carregamento reutilizável com estados de erro e funcionalidade de nova tentativa
-│   │   │   └── PermissionErrorBoundary.tsx				# Limite de erro projetado especificamente para lidar com erros relacionados a permissões
-│   │   └── ui/                 						# Componentes de interface genéricos
+│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de erro
+│   │   │   └── LoadingFallback.tsx						   # Fallback de carregamento com estados de erro e retry
+│   │   │   └── PermissionErrorBoundary.tsx				# Boundary específico para erros de permissão
+│   │   ├── notifications/      						      # Componentes de notificação
+│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de notificação
+│   │   │   └── ProgressIndicator.tsx					   # Indicador de progresso para operações longas
+│   │   │   └── RealTimeNotifications.tsx				   # Notificações em tempo real via Supabase
+│   │   └── ui/                 						      # Componentes de interface genéricos (shadcn/ui)
+│   │       └── [60+ componentes UI]                    # Componentes base da biblioteca shadcn/ui
 │   │				
-│   ├── config/                 						# Configurações da aplicação
-│   │   └──emailTemplateConfig.ts						# Configurações template de emails
-│   │   └── sessionConfig.ts							# Configuração de expiração da sessão
+│   ├── config/                 						      # Configurações da aplicação
+│   │   └── emailTemplateConfig.ts						   # Configurações de templates de email
+│   │   └── sessionConfig.ts							      # Configuração de timeout de sessão
 │   │				
-│   ├── contexts/               						# Contextos React
-│   │   └── PermissionsContext.tsx						# Cria um contexto para permissões
+│   ├── contexts/               						      # Contextos React
+│   │   └── PermissionsContext.tsx						   # Contexto global para sistema de permissões
 │   │				
-│   ├── errors/                 						# Tratamento de erros
-│   │   └──EmailTemplateError.ts						# Tratamento de erros dos templates de email
-│   │   └── permissionErrors.ts							# Carrega permissões e grupo do usuário
+│   ├── errors/                 						      # Classes de erro customizadas
+│   │   ├── __tests__/          						      # Testes das classes de erro
+│   │   │   └── clientBooksErrors.test.ts				   # Testes dos erros do sistema de books
+│   │   ├── clientBooksErrors.ts						      # Erros específicos do sistema de books
+│   │   ├── EmailTemplateError.ts						   # Erros específicos de templates de email
+│   │   └── permissionErrors.ts							   # Erros relacionados a permissões
 │   │				
 │   ├── hooks/                                   		# Custom hooks
 │   │   ├── use-mobile.tsx                       		# Hook para detectar dispositivos móveis
 │   │   ├── use-toast.ts                         		# Hook para sistema de notificações toast
-│   │   ├── useAuth.tsx                          		# Hook de autenticação com Supabase (login/logout)
+│   │   ├── useApprovalService.ts                		# Hook para serviços de aprovação
+│   │   ├── useAuth.tsx                          		# Hook de autenticação com Supabase
+│   │   ├── useClientBooksPermissions.ts         		# Hook para permissões específicas do sistema de books
+│   │   ├── useClientBooksVariables.ts           		# Hook para variáveis do sistema de clientes e books
+│   │   ├── useColaboradores.ts                  		# Hook para gerenciamento de colaboradores
+│   │   ├── useControleDisparos.ts               		# Hook para controle de disparos de books
 │   │   ├── useEmailLogs.ts                      		# Hook para logs de email
 │   │   ├── useEmailTemplateMapping.ts           		# Hook para mapeamento de templates de email
-│   │   ├── useEmailTemplatePreview.ts           		# Hook para preview de templates de email
-│   │   ├── useEmailTemplates.ts                 		# Hook para gerenciar templates de email
+│   │   ├── useEmailTemplatePreview.ts           		# Hook para preview de templates
+│   │   ├── useEmailTemplates.ts                 		# Hook para gerenciamento de templates
 │   │   ├── useEmailVariableMapping.ts           		# Hook para mapeamento de variáveis de email
-│   │   ├── usePermissionFallbacks.ts            		# Hook para fallbacks de permissões
-│   │   ├── usePermissions.ts                    		# Hook para sistema de permissões
+│   │   ├── useEmpresas.ts                       		# Hook para gerenciamento de empresas clientes
+│   │   ├── useExcelImport.ts                    		# Hook para importação de arquivos Excel
+│   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
+│   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
+│   │   ├── useHistorico.ts                      		# Hook para histórico de books
+│   │   ├── useJobScheduler.ts                   		# Hook para agendamento de jobs
+│   │   ├── usePagination.ts                     		# Hook para paginação otimizada
+│   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
+│   │   ├── usePermissions.ts                    		# Hook principal do sistema de permissões
+│   │   ├── useRealTimeNotifications.ts          		# Hook para notificações em tempo real
 │   │   ├── useSessionPersistence.ts             		# Hook para persistência de sessão
 │   │   ├── useSessionTimeout.ts                 		# Hook para timeout de sessão
 │   │   ├── useSidebar.ts                        		# Hook para controle da sidebar
 │   │   ├── useTemplateMappingValidation.ts      		# Hook para validação de mapeamento de templates
 │   │   ├── useTemplateTestData.ts               		# Hook para dados de teste de templates
-│   │   ├── useTestData.ts                       		# Hook para gerenciar dados de teste
+│   │   ├── useTemplateValidation.ts             		# Hook para validação de templates
+│   │   ├── useTestData.ts                       		# Hook para gerenciamento de dados de teste
 │   │   ├── useTextToSpeech.ts                   		# Hook para funcionalidade text-to-speech
-│   │   ├── useTheme.ts                          		# Hook para sistema de temas (dark/light)
+│   │   ├── useTheme.ts                          		# Hook para sistema de temas
 │   │   ├── useUserSettings.ts                   		# Hook para configurações do usuário
-│   │   └── useWebhookConfig.ts                  		# Hook para configurações de webhook     				
+│   │   └── useWebhookConfig.ts                  		# Hook para configurações de webhook
 │   │				
-│   ├── integrations/           						# Integrações com serviços externos
-│   │   ├── supabase/									# Integrações banco de dados
-│   │       └──client.ts								# Cria instância com Supabase
-│	 │       └──types.ts									# Define a estrutura de todas as tabelas, views, funções
+│   ├── integrations/           						      # Integrações com serviços externos
+│   │   └── supabase/									      # Integração com Supabase
+│   │       ├── adminClient.ts                       # Cliente Supabase para operações administrativas
+│   │       ├── client.ts								      # Cliente principal do Supabase
+│   │       └── types.ts									      # Tipos gerados automaticamente do banco de dados
 │   │				
-│   ├── lib/                    						# Utilitários e bibliotecas
-│	 │   └──utils.ts										# Importação de bibliotecas
+│   ├── lib/                    						      # Utilitários e bibliotecas
+│   │   └── utils.ts										      # Utilitários gerais (clsx, tailwind-merge, etc.)
 │   │				
-│   ├── pages/                  						# Páginas da aplicação (Next.js)
-│   │   ├── admin/              						# Páginas de administração
-│   │   │   ├── AuditLogs.tsx           				# Logs de Auditoria
-│   │   │   ├── Dashboard.tsx           				# Painel de Controle
-│   │   │   ├── EmailConfig.tsx         				# Configuração de E-mail
-│   │   │   ├── GroupManagement.tsx     				# Gerenciamento de Grupos
-│   │   │   ├── UserConfig.tsx          				# Configuração do Usuário
-│   │   │   ├── UserManagement.tsx						# Listagem usuário do sistema
-│   │   │   └── UserGroupAssignment.tsx 				# Atribuição de Usuários a Grupos
+│   ├── pages/                  						      # Páginas da aplicação
+│   │   ├── admin/              						      # Páginas administrativas
+│   │   │   ├── AuditLogs.tsx           				   # Visualização de logs de auditoria
+│   │   │   ├── Colaboradores.tsx       				   # Gerenciamento de colaboradores
+│   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
+│   │   │   ├── ControleDisparos.tsx    				   # Controle mensal de disparos
+│   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo
+│   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
+│   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes
+│   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
+│   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
+│   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books
+│   │   │   ├── UserConfig.tsx          			   	# Configurações do usuário
+│   │   │   ├── UserGroupAssignment.tsx 			   	# Atribuição de usuários a grupos
+│   │   │   └── UserManagement.tsx						   # Gerenciamento de usuários do sistema
 │   │   │				
-│   │   ├── AccessDenied.tsx    						# Acesso Negado
-│   │   ├── FixPermissions.tsx  						# Correção de Permissões
-│   │   ├── Login.tsx           						# Tela de Login
-│   │   ├── NotFound.tsx        						# Página 404
-│   │   └── SystemError.tsx     						# Erro do Sistema
+│   │   ├── AccessDenied.tsx    						      # Página de acesso negado
+│   │   ├── FixPermissions.tsx  						      # Página para correção de permissões
+│   │   ├── Login.tsx           					      	# Página de login
+│   │   ├── NotFound.tsx        					      	# Página 404
+│   │   └── SystemError.tsx     					      	# Página de erro do sistema
 │   │				
-│   ├── services/               						# Serviços e chamadas de API
-│   │   ├── configuration/      						# Configurações do serviço
-│   │   │   └──index.ts									# Exportações centralizadas da infraestrutura de configuração dinâmica
-│   │   ├── adminNotificationService.ts       			# Sistema de notificações para administradores (alertas críticos, falhas de sistema)
-│   │   ├── auditLogger.ts            					# Logger de auditoria para operações de mapeamento e templates
-│   │   ├── auditService.ts            					# Serviço de auditoria para logs de permissões e ações do sistema
-│   │   ├── cacheManager.ts            					# Gerenciador de cache avançado com TTL e estatísticas de performance
-│   │   ├── configurationAdminService.ts       			# Utilitários administrativos para gerenciar configurações dinâmicas
-│   │   ├── configurationRepository.ts       			# Repository para acesso aos dados de configuração no banco (calibracao_colunas/valores)
-│   │   ├── configurationService.ts       				# Serviço principal de configuração dinâmica com cache e fallback
-│   │   ├── emailService.ts            					# Serviço base para envio de emails com anexos
-│   │   ├── emailTemplateMappingService.ts       		# Mapeamento e gerenciamento de templates de email por formulário/modalidade
-│   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação automática de erros com retry e fallback
-│   │   ├── permissionsService.ts       				# Gerenciamento de permissões de usuários e controle de acesso
-│   │   ├── screenService.ts            				# Gerenciamento de telas e suas configurações de permissão
-│   │   ├── testDataService.ts            				# Gerenciamento de conjuntos de dados de teste para templates
+│   ├── schemas/                						      # Schemas de validação Zod
+│   │   ├── __tests__/          						      # Testes dos schemas
+│   │   │   └── clientBooksSchemas.test.ts			   # Testes dos schemas do sistema de books
+│   │   └── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books
 │   │				
-│   ├── styles/                 						# Estilos globais
-│   │   └── login.css 									# Estilo do Login
+│   ├── services/               						      # Serviços e lógica de negócio
+│   │   ├── __tests__/          						      # Testes dos serviços
+│   │   │   ├── booksDisparoService.test.ts          # Testes do serviço de controle de disparos de books
+│   │   │   ├── colaboradoresService.test.ts         # Testes do serviço de colaboradores
+│   │   │   ├── empresasClientesService.test.ts      # Testes do serviço de empresas clientes
+│   │   │   ├── excelImportService.test.ts           # Testes do serviço de importação Excel
+│   │   │   ├── gruposResponsaveisService.test.ts    # Testes do serviço de grupos responsáveis
+│   │   │   ├── historicoService.test.ts             # Testes do serviço de histórico
+│   │   │   ├── jobSchedulerService.test.ts          # Testes do serviço de agendamento de jobs
+│   │   │   ├── realTimeNotificationService.test.ts  # Testes do serviço de notificações em tempo real
+│   │   │   └── templateValidationService.test.ts    # Testes do serviço de validação de templates
+│   │   ├── configuration/      						      # Serviços de configuração
+│   │   │   └── index.ts									      # Exportações da infraestrutura de configuração
+│   │   ├── adminNotificationService.ts       			# Notificações para administradores
+│   │   ├── auditLogger.ts            				   	# Logger de auditoria
+│   │   ├── auditService.ts            					# Serviço de auditoria do sistema
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books
+│   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
+│   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
+│   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books
+│   │   ├── clientBooksServices.ts       				# Serviços centralizados do sistema de books
+│   │   ├── clientBooksTemplateService.ts            # Serviço de templates para sistema de books
+│   │   ├── colaboradoresService.ts       				# CRUD de colaboradores
+│   │   ├── configurationAdminService.ts       		# Administração de configurações dinâmicas
+│   │   ├── configurationRepository.ts       			# Repository de configurações
+│   │   ├── configurationService.ts       				# Serviço principal de configuração
+│   │   ├── emailService.ts            					# Serviço base de envio de emails
+│   │   ├── emailTemplateMappingService.ts       		# Mapeamento de templates de email
+│   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
+│   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
+│   │   ├── excelImportService.ts       				# Importação e processamento de Excel
+│   │   ├── gruposResponsaveisService.ts       		# CRUD de grupos responsáveis
+│   │   ├── historicoService.ts       					# Consultas e relatórios de histórico
+│   │   ├── jobConfigurationService.ts       			# Configuração de jobs e tarefas agendadas
+│   │   ├── jobSchedulerService.ts       				# Agendamento e execução de jobs automáticos
+│   │   ├── performanceOptimizationService.ts        # Serviço de otimização de performance
+│   │   ├── permissionsService.ts       			   	# Gerenciamento de permissões
+│   │   ├── realTimeNotificationService.ts       		# Notificações em tempo real via Supabase subscriptions
+│   │   ├── screenService.ts            			      # Gerenciamento de telas do sistema
+│   │   ├── templateValidationService.ts             # Validação de templates
+│   │   ├── testDataService.ts            				# Gerenciamento de dados de teste
+│   │   ├── userManagementService.ts       			# Gerenciamento de usuários
+│   │   └── userSettingsService.ts       				# Configurações e preferências do usuário
 │   │				
-│   ├── types/                  						# Tipos TypeScript
+│   ├── styles/                 					      	# Estilos globais
+│   │   └── login.css 									      # Estilos específicos da página de login
 │   │				
-│   └── utils/                  						# Utilitários
-│       ├── cacheKeyGenerator.ts       					# Gerar chaves de cache otimizadas para configurações dinâmicas
-│       ├── cnpjMask.ts            						# Formatação e máscara de CNPJ (XX.XXX.XXX/XXXX-XX)
-│       ├── configurationDebug.ts      					# Ferramentas de debug e diagnóstico para configurações
-│       ├── configurationLogger.ts     					# Sistema de logging estruturado para eventos e performance
-│       ├── configurationMapper.ts     					# Mapeamento entre formatos de configuração (legacy/novo)
-│       ├── emailValidation.ts         					# Validação de emails e verificação de domínio Sonda
-│       ├── environmentCheck.ts        					# Verificar se ambiente está configurado corretamente
-│       ├── errorHandler.ts           					# Tratamento de erros com estratégias de recuperação
-│       ├── fallbackManager.ts         					# Gerenciar mecanismos de fallback com valores padrão
-│       ├── formatters.ts             					# Formatação de moeda e outros valores
-│       ├── performance-optimizations.ts				# Otimizações de performance para sistema de permissões
-│       ├── permissionUtils.ts         					# Verificação e validação de permissões de usuário
-│       ├── permissionsUtils.ts        					# Funções auxiliares para trabalhar com permissões
-│       ├── retryUtils.ts             					# Lógica de retry com backoff exponencial
-│       ├── submissionLock.ts          					# Sistema de lock para prevenir submissões duplicadas
-│       ├── templateMappingValidation.ts				# Validação de mapeamento de templates de email
-│       └── validation.ts             					# Validações para configuração dinâmica (porcentagens, colunas)
+│   ├── test/                   					      	# Arquivos de teste
+│   │   ├── integration/        					      	# Testes de integração
+│   │   │   ├── cadastroCompleto.test.ts             # Teste de fluxo completo de cadastro
+│   │   │   ├── disparoEmails.test.ts                # Teste de disparo de emails
+│   │   │   └── importacaoExcel.test.ts              # Teste de importação de Excel
+│   │   ├── clientBooksTypes.test.ts             		# Testes dos tipos do sistema de books
+│   │   ├── permissions.test.ts                  		# Testes do sistema de permissões
+│   │   └── setup.ts                             		# Configuração dos testes
+│   │				
+│   ├── types/                  						      # Definições de tipos TypeScript
+│   │   ├── api.ts                               		# Tipos para APIs
+│   │   ├── approval.ts                          		# Tipos para sistema de aprovação
+│   │   ├── audit.ts                             		# Tipos para auditoria
+│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books
+│   │   ├── clientBooksTypes.ts                  		# Tipos específicos do sistema de books
+│   │   ├── configuration.ts                     		# Tipos para configurações
+│   │   ├── constants.ts                         		# Constantes tipadas
+│   │   ├── database.ts                          		# Tipos do banco de dados
+│   │   ├── formData.ts                          		# Tipos para dados de formulário
+│   │   ├── formDataFiscal.ts                    		# Tipos para formulários fiscais
+│   │   ├── formTypes.ts                         		# Tipos gerais de formulários
+│   │   ├── index.ts                             		# Exportações centralizadas de tipos
+│   │   ├── permissions.ts                       		# Tipos do sistema de permissões
+│   │   └── userSettings.ts                      		# Tipos para configurações do usuário
+│   │				
+│   ├── utils/                  						      # Funções utilitárias
+│   │   ├── __tests__/          						      # Testes das funções utilitárias
+│   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis
+│   │   │   └── errorRecovery.test.ts                # Testes de recuperação de erros
+│   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
+│   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
+│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates
+│   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
+│   │   ├── configurationDebug.ts      					# Debug de configurações
+│   │   ├── configurationLogger.ts     					# Logging estruturado
+│   │   ├── configurationMapper.ts     					# Mapeamento de configurações
+│   │   ├── emailValidation.ts         					# Validação de emails
+│   │   ├── emailVariableMapping.ts              		# Mapeamento de variáveis de email
+│   │   ├── environmentCheck.ts        					# Verificação de ambiente
+│   │   ├── errorHandler.ts           				   	# Tratamento de erros
+│   │   ├── errorRecovery.ts           				   	# Estratégias de recuperação de erros
+│   │   ├── fallbackManager.ts         					# Gerenciamento de fallbacks
+│   │   ├── formatters.ts             				   	# Formatação de valores
+│   │   ├── paginationUtils.ts         					# Utilitários de paginação
+│   │   ├── performance-optimizations.ts			   	# Otimizações de performance
+│   │   ├── permissionUtils.ts         					# Utilitários de permissões (legacy)
+│   │   ├── permissionsUtils.ts        					# Utilitários de permissões (novo)
+│   │   ├── retryUtils.ts             				   	# Lógica de retry com backoff
+│   │   ├── templateMappingValidation.ts				   # Validação de mapeamento de templates
+│   │   └── validation.ts             				   	# Validações para configuração dinâmica
+│   │				
+│   ├── App.css                 					      	# Estilos principais da aplicação
+│   ├── App.tsx                 					      	# Componente raiz da aplicação com roteamento
+│   ├── index.css               					      	# Estilos globais e Tailwind CSS
+│   ├── main.tsx                					      	# Ponto de entrada da aplicação React
+│   └── vite-env.d.ts           					      	# Definições de tipos para Vite
 │				
-├── .env                       							# Variáveis de ambiente
-├── .gitignore                 							# Arquivos ignorados pelo Git
-├── package.json               							# Dependências e scripts
-├── postcss.config.js          							# Configuração do PostCSS
-├── tailwind.config.ts         							# Configuração do Tailwind CSS
-├── tsconfig.json              							# Configuração do TypeScript
-└── vite.config.ts            							# Configuração do Vite
+├── supabase/                   					      	# Configurações do banco de dados
+│   ├── .temp/                  					      	# Arquivos temporários do Supabase
+│   └── migration/              					      	# Scripts de migração do banco
+│       ├── client_books_management_migration.sql		# Migração principal do sistema de books
+│       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
+│       └── grups_and_profile_migration.sql         # Migração de grupos e perfis de usuário
+│				
+├── .env.example                					      	# Exemplo de variáveis de ambiente
+├── .env.local                  					      	# Variáveis de ambiente locais
+├── .gitignore                 						   	# Arquivos ignorados pelo Git
+├── index.html                  					      	# Template HTML principal
+├── package.json               						   	# Dependências e scripts do projeto
+├── package-lock.json           					      	# Lock file das dependências
+├── PERMISSIONS_SETUP_SUMMARY.md                    # Documentação do sistema de permissões
+├── postcss.config.js          						   	# Configuração do PostCSS
+├── setup-permissions.js        					      	# Script de configuração de permissões
+├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
+├── tsconfig.app.json           					      	# Configuração TypeScript para aplicação
+├── tsconfig.json              					   		# Configuração principal do TypeScript
+├── tsconfig.node.json          					      	# Configuração TypeScript para Node.js
+├── vercel.json                 					      	# Configuração para deploy no Vercel
+├── vite.config.ts            					   		# Configuração do Vite
+└── vitest.config.ts            					      	# Configuração do Vitest para testes

@@ -16,7 +16,12 @@ import {
   Users,
   UserCheck,
   UserPlus,
-  History
+  History,
+  Building2,
+  Contact,
+  Send,
+  UsersRound,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -105,6 +110,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       path: '/admin/aplicativos',
       screenKey: 'aplicativos'
     },
+    // Seção: Gerenciamento de Clientes e Books
+    {
+      icon: Building2,
+      label: 'Empresas Clientes',
+      path: '/admin/empresas-clientes',
+      screenKey: 'empresas_clientes'
+    },
+    {
+      icon: Contact,
+      label: 'Colaboradores',
+      path: '/admin/colaboradores',
+      screenKey: 'colaboradores'
+    },
+    {
+      icon: UsersRound,
+      label: 'Grupos Responsáveis',
+      path: '/admin/grupos-responsaveis',
+      screenKey: 'grupos_responsaveis'
+    },
+    {
+      icon: Send,
+      label: 'Controle de Disparos',
+      path: '/admin/controle-disparos',
+      screenKey: 'controle_disparos'
+    },
+    {
+      icon: BarChart3,
+      label: 'Histórico de Books',
+      path: '/admin/historico-books',
+      screenKey: 'historico_books'
+    },
+    // Seção: Gerenciamento de Usuários
     {
       icon: Users,
       label: 'Grupos de Usuários',
@@ -123,6 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       path: '/admin/cadastro-usuarios',
       screenKey: 'cadastro-usuarios'
     },
+    // Seção: Auditoria
     {
       icon: History,
       label: 'Logs de Auditoria',

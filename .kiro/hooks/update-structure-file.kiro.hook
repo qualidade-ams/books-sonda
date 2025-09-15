@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Update Structure File",
+  "description": "Automatically updates the estrutura.md file whenever any file is created or deleted in the project, maintaining an up-to-date documentation of the project structure with file names and their purposes",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A file has been created or deleted in the project. Please update the estrutura.md file to reflect the current project structure. Include the file name and a brief description of what the file is used for, following the existing pattern in the estrutura.md file. Make sure to maintain the hierarchical structure and include appropriate comments for each file's purpose."
+  }
+}

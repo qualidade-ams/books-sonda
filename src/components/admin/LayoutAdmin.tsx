@@ -9,6 +9,7 @@ import Sidebar from './Sidebar';
 import Breadcrumb from './Breadcrumb';
 import ThemeToggle from './ThemeToggle';
 import SessionTimeoutModal from '../auth/SessionTimeoutModal';
+import { RealTimeNotifications } from '@/components/notifications';
 import { User } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -44,7 +45,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {/* User Info */}
             <div className="flex items-center space-x-4">
               <ThemeToggle />
-              
+              <RealTimeNotifications />
 
               <div 
                 className="flex items-center space-x-3 bg-gray-50 dark:bg-sonda-gray2 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-sonda-gray1 transition-colors"
