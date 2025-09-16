@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColaboradorForm, ColaboradoresTable } from '@/components/admin/client-books';
+import { ClientImportExportButtons } from '@/components/admin/client-books/ClientImportExportButtons';
 import { useColaboradores } from '@/hooks/useColaboradores';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
@@ -156,17 +157,22 @@ const Colaboradores: React.FC = () => {
                 Cadastre e gerencie clientes relacionados a empresas
             </p>
           </div>
-          <div className="flex gap-2">         
-          <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
-            <Button
-              onClick={handleNovoColaborador}
-              className="flex items-center space-x-2"
-              disabled={isLoadingEmpresas}
-            >
-              <Plus className="h-4 w-4" />
-              <span>Novo Cliente</span>
-            </Button>
-          </ProtectedAction>
+          <div className="flex gap-2">
+            <ClientImportExportButtons 
+              empresas={empresasArray}
+              colaboradores={colaboradores}
+              showColaboradores={true}
+            />         
+            <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
+              <Button
+                onClick={handleNovoColaborador}
+                className="flex items-center space-x-2"
+                disabled={isLoadingEmpresas}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Novo Cliente</span>
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 

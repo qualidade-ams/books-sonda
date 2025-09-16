@@ -163,6 +163,37 @@ export const useEmpresas = (
     return deleteMutation.mutateAsync(id);
   }, [deleteMutation]);
 
+  // Mutation para importação em lote
+  const importarEmpresasMutation = useMutation({
+    mutationFn: async (empresas: EmpresaFormData[]) => {
+      const resultados = [];
+      for (const empresa of empresas) {
+        try {
+          const resultado = await empresasClientesService.criarEmpresa(empresa);
+          resultados.push(resultado);
+        } catch (error) {
+          console.error(`Erro ao importar empresa ${empresa.nomeCompleto}:`, error);
+          throw error;
+        }
+      }
+      return resultados;
+    },
+    onSuccess: async () => {
+      clientBooksCacheService.invalidateEmpresaCache('');
+      await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.refetchQueries({ queryKey: ['empresas'] });
+      toast.success('Empresas importadas com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Erro ao importar empresas:', error);
+      toast.error('Erro ao importar empresas');
+    },
+  });
+
+  const importarEmpresas = useCallback((data: EmpresaFormData[]) => {
+    return importarEmpresasMutation.mutateAsync(data);
+  }, [importarEmpresasMutation]);
+
   const alterarStatusLote = useCallback((ids: string[], status: string, descricao: string) => {
     return batchUpdateMutation.mutateAsync({ ids, status, descricao });
   }, [batchUpdateMutation]);
@@ -196,11 +227,13 @@ export const useEmpresas = (
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isBatchUpdating: batchUpdateMutation.isPending,
+    isImporting: importarEmpresasMutation.isPending,
     
     // Ações
     criarEmpresa,
     atualizarEmpresa,
     deletarEmpresa,
+    importarEmpresas,
     alterarStatusLote,
     refetch,
     
