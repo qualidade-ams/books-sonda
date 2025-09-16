@@ -12,6 +12,7 @@ import {
 import { GruposTable } from '@/components/admin/grupos/GruposTable';
 import { GrupoFormModal } from '@/components/admin/grupos/GrupoFormModal';
 import { GrupoDetailsModal } from '@/components/admin/grupos/GrupoDetailsModal';
+import { ImportExportButtons } from '@/components/admin/grupos/ImportExportButtons';
 import { useGruposResponsaveis } from '@/hooks/useGruposResponsaveis';
 import { GrupoFormData, GrupoResponsavelCompleto } from '@/types/clientBooksTypes';
 import { toast } from 'sonner';
@@ -30,9 +31,11 @@ export default function GruposResponsaveis() {
     isCreating,
     isUpdating,
     isDeleting,
+    isImporting,
     criarGrupo,
     atualizarGrupo,
     deletarGrupo,
+    importarGrupos,
   } = useGruposResponsaveis();
 
   // Filtrar grupos baseado no termo de busca
@@ -103,6 +106,11 @@ export default function GruposResponsaveis() {
           </p>
         </div>
         <div className="flex gap-2">
+          <ImportExportButtons 
+            grupos={grupos}
+            onImportGrupos={importarGrupos}
+            isImporting={isImporting}
+          />
           <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
             <Button onClick={handleCreateGrupo}>
               <Plus className="h-4 w-4 mr-2" />

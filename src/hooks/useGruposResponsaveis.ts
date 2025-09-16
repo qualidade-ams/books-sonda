@@ -67,17 +67,44 @@ export function useGruposResponsaveis() {
   });
 
   // Mutation para deletar grupo
-  const deleteGrupoMutation = useMutation({
-    mutationFn: (id: string) => gruposResponsaveisService.deletarGrupo(id),
+  const deletarGrupoMutation = useMutation({
+    mutationFn: gruposResponsaveisService.deletarGrupo,
     onSuccess: async () => {
-      // Invalidar cache e forçar refetch
       clientBooksCacheService.invalidateGruposCache();
       await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
       await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('Grupo deletado com sucesso!');
     },
-    onError: (error: GrupoResponsavelError) => {
-      toast.error(`Erro ao deletar grupo: ${error.message}`);
+    onError: (error) => {
+      console.error('Erro ao deletar grupo:', error);
+      toast.error('Erro ao deletar grupo');
+    },
+  });
+
+  // Mutation para importação em lote
+  const importarGruposMutation = useMutation({
+    mutationFn: async (grupos: GrupoFormData[]) => {
+      const resultados = [];
+      for (const grupo of grupos) {
+        try {
+          const resultado = await gruposResponsaveisService.criarGrupo(grupo);
+          resultados.push(resultado);
+        } catch (error) {
+          console.error(`Erro ao importar grupo ${grupo.nome}:`, error);
+          throw error;
+        }
+      }
+      return resultados;
+    },
+    onSuccess: async () => {
+      clientBooksCacheService.invalidateGruposCache();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
+      toast.success('Grupos importados com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Erro ao importar grupos:', error);
+      toast.error('Erro ao importar grupos');
     },
   });
 
@@ -197,10 +224,10 @@ export function useGruposResponsaveis() {
     isLoadingGrupos,
     isCreating: createGrupoMutation.isPending,
     isUpdating: updateGrupoMutation.isPending,
-    isDeleting: deleteGrupoMutation.isPending,
+    isDeleting: deletarGrupoMutation.isPending,
     isAddingEmail: addEmailMutation.isPending,
     isRemovingEmail: removeEmailMutation.isPending,
-    isCreatingPadrao: createGruposPadraoMutation.isPending,
+    isImporting: importarGruposMutation.isPending,
     
     // Erros
     error: errorGrupos,
@@ -208,10 +235,10 @@ export function useGruposResponsaveis() {
     // Funções de mutação
     criarGrupo: createGrupoMutation.mutateAsync,
     atualizarGrupo: updateGrupoMutation.mutateAsync,
-    deletarGrupo: deleteGrupoMutation.mutateAsync,
+    deletarGrupo: deletarGrupoMutation.mutateAsync,
+    importarGrupos: importarGruposMutation.mutateAsync,
     adicionarEmail: addEmailMutation.mutateAsync,
     removerEmail: removeEmailMutation.mutateAsync,
-    criarGruposPadrao: createGruposPadraoMutation.mutateAsync,
     
     // Funções de consulta
     obterGrupoPorId,
