@@ -472,7 +472,7 @@ const ControleDisparos = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4 items-center">
-              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+            {/*<ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                 <Button
                   onClick={handleDisparoMensal}
                   disabled={isDisparando || disparoEmAndamento}
@@ -481,25 +481,12 @@ const ControleDisparos = () => {
                   <Send className="h-4 w-4" />
                   {isDisparando || disparoEmAndamento ? 'Disparando...' : 'Disparar Books Mensal'}
                 </Button>
-              </ProtectedAction>
+              </ProtectedAction>/*}
               
-              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                <Button
-                  variant="outline"
-                  onClick={handleReenvioFalhas}
-                  disabled={isReenviando || stats.falhas === 0}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
-                </Button>
-              </ProtectedAction>
-
               {/* Ações por Seleção */}
-              <div className="ml-auto flex gap-2 items-center">
+              
                 <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                   <Button
-                    variant="secondary"
                     onClick={handleDispararSelecionados}
                     disabled={isDisparandoSelecionados || selecionadas.length === 0}
                     className="flex items-center gap-2"
@@ -519,6 +506,19 @@ const ControleDisparos = () => {
                     {`Reenviar Selecionados (${selecionadas.length})`}
                   </Button>
                 </ProtectedAction>
+              
+              <div className="ml-auto flex gap-2 items-center">
+              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                <Button
+                  variant="outline"
+                  onClick={handleReenvioFalhas}
+                  disabled={isReenviando || stats.falhas === 0}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                </Button>
+              </ProtectedAction>
               </div>
             </div>
 

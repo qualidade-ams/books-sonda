@@ -28,28 +28,21 @@ export function useGruposResponsaveis() {
     refetch: refetchGrupos
   } = useQuery({
     queryKey: ['grupos-responsaveis'],
-    queryFn: () => performanceOptimizationService.monitorQuery(
-      'grupos_list',
-      () => gruposResponsaveisService.listarGrupos(),
-      {
-        enableCache: true,
-        cacheKey: 'grupos_responsaveis_all',
-        ttl: 30 * 60 // 30 minutos - grupos mudam raramente
-      }
-    ),
-    staleTime: 30 * 60 * 1000, // 30 minutos
-    gcTime: 60 * 60 * 1000, // 1 hora
+    queryFn: () => gruposResponsaveisService.listarGrupos(),
+    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Mutation para criar grupo com invalidação otimizada
   const createGrupoMutation = useMutation({
     mutationFn: (data: GrupoFormData) => gruposResponsaveisService.criarGrupo(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidar cache específico
       clientBooksCacheService.invalidateGruposCache();
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
-      // Forçar refetch imediato para garantir atualização
-      refetchGrupos();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('Grupo criado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -61,11 +54,11 @@ export function useGruposResponsaveis() {
   const updateGrupoMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<GrupoFormData> }) =>
       gruposResponsaveisService.atualizarGrupo(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidar cache e forçar refetch
       clientBooksCacheService.invalidateGruposCache();
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
-      refetchGrupos();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('Grupo atualizado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -76,11 +69,11 @@ export function useGruposResponsaveis() {
   // Mutation para deletar grupo
   const deleteGrupoMutation = useMutation({
     mutationFn: (id: string) => gruposResponsaveisService.deletarGrupo(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidar cache e forçar refetch
       clientBooksCacheService.invalidateGruposCache();
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
-      refetchGrupos();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('Grupo deletado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -92,8 +85,11 @@ export function useGruposResponsaveis() {
   const addEmailMutation = useMutation({
     mutationFn: ({ grupoId, email, nome }: { grupoId: string; email: string; nome?: string }) =>
       gruposResponsaveisService.adicionarEmailAoGrupo(grupoId, email, nome),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+    onSuccess: async () => {
+      // Invalidar todos os caches relacionados
+      clientBooksCacheService.invalidateGruposCache();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('E-mail adicionado com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -105,8 +101,11 @@ export function useGruposResponsaveis() {
   const removeEmailMutation = useMutation({
     mutationFn: ({ grupoId, emailId }: { grupoId: string; emailId: string }) =>
       gruposResponsaveisService.removerEmailDoGrupo(grupoId, emailId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+    onSuccess: async () => {
+      // Invalidar todos os caches relacionados
+      clientBooksCacheService.invalidateGruposCache();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('E-mail removido com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {
@@ -117,11 +116,11 @@ export function useGruposResponsaveis() {
   // Mutation para criar grupos padrão
   const createGruposPadraoMutation = useMutation({
     mutationFn: () => gruposResponsaveisService.criarGruposPadrao(),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidar cache e forçar refetch
       clientBooksCacheService.invalidateGruposCache();
-      queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
-      refetchGrupos();
+      await queryClient.invalidateQueries({ queryKey: ['grupos-responsaveis'] });
+      await queryClient.refetchQueries({ queryKey: ['grupos-responsaveis'] });
       toast.success('Grupos padrão criados com sucesso!');
     },
     onError: (error: GrupoResponsavelError) => {

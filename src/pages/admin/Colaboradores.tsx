@@ -150,10 +150,10 @@ const Colaboradores: React.FC = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Gerenciamento de Colaboradores
+              Gerenciamento de Clientes
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-                Cadastre e gerencie colaboradores das empresas clientes
+                Cadastre e gerencie clientes relacionados a empresas
             </p>
           </div>
           <div className="flex gap-2">         

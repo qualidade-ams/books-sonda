@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
@@ -32,7 +33,9 @@ import {
   Trash2, 
   Mail, 
   Users,
-  Eye
+  Eye,
+  Filter,
+  Search
 } from 'lucide-react';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { GrupoResponsavelCompleto } from '@/types/clientBooksTypes';
@@ -46,6 +49,8 @@ interface GruposTableProps {
   onView: (grupo: GrupoResponsavelCompleto) => void;
   isLoading?: boolean;
   isDeleting?: boolean;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
 }
 
 export function GruposTable({ 
@@ -54,9 +59,12 @@ export function GruposTable({
   onDelete, 
   onView,
   isLoading = false,
-  isDeleting = false 
+  isDeleting = false,
+  searchTerm = '',
+  onSearchChange
 }: GruposTableProps) {
   const [grupoToDelete, setGrupoToDelete] = useState<GrupoResponsavelCompleto | null>(null);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const handleDeleteClick = (grupo: GrupoResponsavelCompleto) => {
     setGrupoToDelete(grupo);
@@ -113,10 +121,42 @@ export function GruposTable({
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Grupos de Responsáveis ({grupos.length})
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Grupos de Responsáveis ({grupos.length})
+            </CardTitle>
+            {onSearchChange && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                className="flex items-center space-x-2"
+              >
+                <Filter className="h-4 w-4" />
+                <span>Filtros</span>
+              </Button>
+            )}
+          </div>
+
+          {/* Filtros */}
+          {mostrarFiltros && onSearchChange && (
+            <div className="pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Buscar por nome, descrição ou e-mail..."
+                      value={searchTerm}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">

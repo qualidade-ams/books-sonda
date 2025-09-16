@@ -57,7 +57,8 @@ import type {
   FiltrosAvancados,
   RelatorioDetalhado,
   ExportacaoConfig,
-  StatusDisparo
+  StatusDisparo,
+  EmpresaClienteCompleta
 } from '@/types/clientBooks';
 import {
   STATUS_DISPARO_OPTIONS
@@ -109,7 +110,7 @@ const HistoricoBooks = () => {
     refetch
   } = useHistorico(filtros);
 
-  const { empresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] });
+  const { empresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] }) as { empresas: EmpresaClienteCompleta[] };
   const { colaboradores } = useColaboradores({});
 
   // Dados filtrados para busca
@@ -526,8 +527,8 @@ const HistoricoBooks = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(item.status)}
-                                <Badge className={getStatusColor(item.status)}>
+                                {getStatusIcon(item.status as StatusDisparo)}
+                                <Badge className={getStatusColor(item.status as StatusDisparo)}>
                                   {STATUS_DISPARO_OPTIONS.find(opt => opt.value === item.status)?.label}
                                 </Badge>
                               </div>
@@ -1061,7 +1062,7 @@ const HistoricoBooks = () => {
                   
                   <div>
                     <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Colaborador
+                      Cliente
                     </Label>
                     <p className="font-medium">{itemSelecionado.colaboradores?.nome_completo}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1074,8 +1075,8 @@ const HistoricoBooks = () => {
                       Status
                     </Label>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(itemSelecionado.status)}
-                      <Badge className={getStatusColor(itemSelecionado.status)}>
+                      {getStatusIcon(itemSelecionado.status as StatusDisparo)}
+                      <Badge className={getStatusColor(itemSelecionado.status as StatusDisparo)}>
                         {STATUS_DISPARO_OPTIONS.find(opt => opt.value === itemSelecionado.status)?.label}
                       </Badge>
                     </div>

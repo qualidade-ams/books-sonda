@@ -7,8 +7,7 @@ import {
   Plus, 
   Search, 
   Users, 
-  Settings,
-  RefreshCw
+  Filter
 } from 'lucide-react';
 import { GruposTable } from '@/components/admin/grupos/GruposTable';
 import { GrupoFormModal } from '@/components/admin/grupos/GrupoFormModal';
@@ -23,6 +22,7 @@ export default function GruposResponsaveis() {
   const [selectedGrupo, setSelectedGrupo] = useState<GrupoResponsavelCompleto | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const {
     grupos,
@@ -30,12 +30,9 @@ export default function GruposResponsaveis() {
     isCreating,
     isUpdating,
     isDeleting,
-    isCreatingPadrao,
     criarGrupo,
     atualizarGrupo,
     deletarGrupo,
-    criarGruposPadrao,
-    refetch,
   } = useGruposResponsaveis();
 
   // Filtrar grupos baseado no termo de busca
@@ -92,19 +89,7 @@ export default function GruposResponsaveis() {
     }
   };
 
-  const handleCreateGruposPadrao = async () => {
-    try {
-      await criarGruposPadrao();
-      // Dados serão atualizados automaticamente via invalidação do cache
-    } catch (error) {
-      console.error('Erro ao criar grupos padrão:', error);
-    }
-  };
 
-  const handleRefresh = () => {
-    refetch();
-    toast.success('Lista de grupos atualizada!');
-  };
 
   return (
     <AdminLayout>
@@ -118,24 +103,6 @@ export default function GruposResponsaveis() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
-          <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-            <Button
-              variant="outline"
-              onClick={handleCreateGruposPadrao}
-              disabled={isCreatingPadrao}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              {isCreatingPadrao ? 'Criando...' : 'Criar Grupos Padrão'}
-            </Button>
-          </ProtectedAction>
           <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
             <Button onClick={handleCreateGrupo}>
               <Plus className="h-4 w-4 mr-2" />
@@ -191,28 +158,6 @@ export default function GruposResponsaveis() {
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nome, descrição ou e-mail..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Tabela de grupos */}
       <GruposTable
         grupos={gruposFiltrados}
@@ -221,6 +166,8 @@ export default function GruposResponsaveis() {
         onView={handleViewGrupo}
         isLoading={isLoading}
         isDeleting={isDeleting}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
       />
 
       {/* Modal de formulário */}

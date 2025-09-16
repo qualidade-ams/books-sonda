@@ -177,8 +177,8 @@ export interface AgendamentoDisparo {
 }
 
 export interface HistoricoDisparoCompleto extends HistoricoDisparo {
-  empresa?: EmpresaCliente;
-  colaborador?: Colaborador;
+  empresas_clientes?: EmpresaCliente;
+  colaboradores?: Colaborador;
 }
 
 export interface ControleMensalCompleto extends ControleMensal {
