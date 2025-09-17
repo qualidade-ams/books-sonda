@@ -103,6 +103,10 @@ export interface EmpresaFormData {
   emailGestor?: string;
   produtos: Produto[];
   grupos: string[];
+  bookPersonalizado?: boolean;
+  anexo?: boolean;
+  vigenciaInicial?: string;
+  vigenciaFinal?: string;
 }
 
 export interface ColaboradorFormData {

@@ -97,6 +97,21 @@ const Colaboradores: React.FC = () => {
     }
   };
 
+  // Handler para importação de colaboradores em lote
+  const handleImportColaboradores = async (colaboradores: ColaboradorFormData[]) => {
+    const resultados = [];
+    for (const colaborador of colaboradores) {
+      try {
+        const resultado = await criarColaborador(colaborador);
+        resultados.push(resultado);
+      } catch (error) {
+        console.error('Erro ao importar colaborador:', colaborador.nomeCompleto, error);
+        throw error;
+      }
+    }
+    return resultados;
+  };
+
   const handleFiltrosChange = (novosFiltros: ColaboradorFiltros) => {
     atualizarFiltros(novosFiltros);
   };
@@ -161,6 +176,7 @@ const Colaboradores: React.FC = () => {
             <ClientImportExportButtons 
               empresas={empresasArray}
               colaboradores={colaboradores}
+              onImportColaboradores={handleImportColaboradores}
               showColaboradores={true}
             />         
             <ProtectedAction screenKey="colaboradores" requiredLevel="edit">

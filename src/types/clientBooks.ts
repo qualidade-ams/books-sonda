@@ -1,9 +1,24 @@
 import type { Database } from '@/integrations/supabase/types';
 
 // Tipos base das tabelas
-export type EmpresaCliente = Database['public']['Tables']['empresas_clientes']['Row'];
-export type EmpresaClienteInsert = Database['public']['Tables']['empresas_clientes']['Insert'];
-export type EmpresaClienteUpdate = Database['public']['Tables']['empresas_clientes']['Update'];
+export type EmpresaCliente = Database['public']['Tables']['empresas_clientes']['Row'] & {
+  book_personalizado?: boolean;
+  anexo?: boolean;
+  vigencia_inicial?: string;
+  vigencia_final?: string;
+};
+export type EmpresaClienteInsert = Database['public']['Tables']['empresas_clientes']['Insert'] & {
+  book_personalizado?: boolean;
+  anexo?: boolean;
+  vigencia_inicial?: string;
+  vigencia_final?: string;
+};
+export type EmpresaClienteUpdate = Database['public']['Tables']['empresas_clientes']['Update'] & {
+  book_personalizado?: boolean;
+  anexo?: boolean;
+  vigencia_inicial?: string;
+  vigencia_final?: string;
+};
 
 export type Colaborador = Database['public']['Tables']['colaboradores']['Row'];
 export type ColaboradorInsert = Database['public']['Tables']['colaboradores']['Insert'];
@@ -46,6 +61,10 @@ export interface EmpresaFormData {
   emailGestor?: string;
   produtos: Produto[];
   grupos: string[];
+  bookPersonalizado?: boolean;
+  anexo?: boolean;
+  vigenciaInicial?: string;
+  vigenciaFinal?: string;
 }
 
 export interface ColaboradorFormData {

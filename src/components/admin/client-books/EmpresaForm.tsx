@@ -66,6 +66,24 @@ const empresaSchema = z.object({
     .array(z.enum(['CE_PLUS', 'FISCAL', 'GALLERY']))
     .min(1, 'Selecione pelo menos um produto'),
   grupos: z.array(z.string()).optional(),
+  bookPersonalizado: z.boolean().optional(),
+  anexo: z.boolean().optional(),
+  vigenciaInicial: z
+    .string()
+    .optional()
+    .or(z.literal('')),
+  vigenciaFinal: z
+    .string()
+    .optional()
+    .or(z.literal('')),
+}).refine((data) => {
+  if (data.vigenciaInicial && data.vigenciaFinal) {
+    return new Date(data.vigenciaFinal) >= new Date(data.vigenciaInicial);
+  }
+  return true;
+}, {
+  message: 'Vigência final deve ser posterior à vigência inicial',
+  path: ['vigenciaFinal'],
 });
 
 interface EmpresaFormProps {
@@ -100,6 +118,10 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       emailGestor: '',
       produtos: [],
       grupos: [],
+      bookPersonalizado: false,
+      anexo: false,
+      vigenciaInicial: '',
+      vigenciaFinal: '',
       ...initialData,
     },
   });
@@ -120,6 +142,10 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         emailGestor: '',
         produtos: [],
         grupos: [],
+        bookPersonalizado: false,
+        anexo: false,
+        vigenciaInicial: '',
+        vigenciaFinal: '',
         ...initialData,
       });
     }
@@ -137,7 +163,11 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
         produtos: data.produtos.map(p => p.toUpperCase() as any), // Normalizar produtos para uppercase
-        grupos: data.grupos || []
+        grupos: data.grupos || [],
+        bookPersonalizado: data.bookPersonalizado || false,
+        anexo: data.anexo || false,
+        vigenciaInicial: data.vigenciaInicial || undefined,
+        vigenciaFinal: data.vigenciaFinal || undefined
       };
 
       await onSubmit(normalizedData);
@@ -287,9 +317,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Selecione o template de e-mail que será usado para enviar os books desta empresa
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -382,6 +409,94 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 </FormItem>
               )}
             />
+
+            {/* Vigência */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="vigenciaInicial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vigência Inicial</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="date"
+                        disabled={isSubmitting || isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="vigenciaFinal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vigência Final</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="date"
+                        disabled={isSubmitting || isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Book Personalizado */}
+            <div className="flex w-full">
+            <FormLabel className="w-full">Opções do Book *</FormLabel>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="bookPersonalizado"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting || isLoading}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="font-normal">
+                      Book Personalizado
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Anexo */}
+            <FormField
+              control={form.control}
+              name="anexo"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting || isLoading}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="font-normal">
+                      Permitir Anexos
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            </div>
 
             {/* Grupos de Responsáveis */}
             {grupos.length > 0 && (

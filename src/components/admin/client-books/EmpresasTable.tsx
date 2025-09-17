@@ -15,12 +15,15 @@ import {
   Trash2, 
   ExternalLink,
   Users,
-  Mail
+  Mail,
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
+import { verificarVigenciaEmpresa } from '@/services/vigenciaService';
 import type { 
   EmpresaClienteCompleta
 } from '@/types/clientBooks';
@@ -43,6 +46,37 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   onDelete,
 }) => {
   const { getTemplateById, isDefaultTemplate } = useBookTemplates();
+  
+  const getVigenciaIndicator = (empresa: EmpresaClienteCompleta) => {
+    // Verificar se a empresa tem campos de vigência (pode não ter se migração não foi aplicada)
+    if (!('vigencia_final' in empresa) || !empresa.vigencia_final) {
+      return null;
+    }
+
+    const vigenciaInfo = verificarVigenciaEmpresa(empresa.vigencia_final, 30);
+    
+    if (vigenciaInfo.vencida) {
+      return (
+        <div className="flex items-center gap-1 text-red-600" title="Vigência vencida">
+          <AlertTriangle className="h-3 w-3" />
+          <span className="text-xs">Vencida</span>
+        </div>
+      );
+    }
+    
+    if (vigenciaInfo.proximaVencimento) {
+      const dias = vigenciaInfo.diasRestantes || 0;
+      return (
+        <div className="flex items-center gap-1 text-orange-600" title={`Vence em ${dias} dias`}>
+          <Clock className="h-3 w-3" />
+          <span className="text-xs">{dias}d</span>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   const getStatusBadge = (status: string) => {
     const variants = {
       ativo: 'default',
@@ -102,6 +136,13 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
       );
     }
 
+    // Mapear templates para siglas mais concisas
+    const getTemplateDisplayName = (label: string) => {
+      if (label.toLowerCase().includes('português') || label.toLowerCase().includes('portugues')) return 'PT-BR';
+      if (label.toLowerCase().includes('inglês') || label.toLowerCase().includes('ingles')) return 'EN';
+      return label; // Para outros templates, manter o nome original
+    };
+
     return (
       <div className="flex items-center gap-1">
         <Mail className="h-3 w-3" />
@@ -109,7 +150,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
           variant={isDefaultTemplate(templateId) ? "secondary" : "default"} 
           className="text-xs"
         >
-          {template.label}
+          {getTemplateDisplayName(template.label)}
         </Badge>
       </div>
     );
@@ -142,6 +183,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableHead>Nome</TableHead>
             <TableHead>Nome Abreviado</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Vigência</TableHead>
             <TableHead>Template</TableHead>
             <TableHead>Produtos</TableHead>
             <TableHead>Colaboradores</TableHead>
@@ -185,6 +227,9 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                     </span>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {getVigenciaIndicator(empresa)}
               </TableCell>
               <TableCell>
                 {getTemplateBadge(empresa.template_padrao)}

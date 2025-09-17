@@ -62,7 +62,11 @@ export class EmpresasClientesService {
       status: data.status,
       data_status: new Date().toISOString(),
       descricao_status: data.descricaoStatus || null,
-      email_gestor: data.emailGestor || null
+      email_gestor: data.emailGestor || null,
+      book_personalizado: data.bookPersonalizado || false,
+      anexo: data.anexo || false,
+      vigencia_inicial: data.vigenciaInicial ? data.vigenciaInicial : null,
+      vigencia_final: data.vigenciaFinal ? data.vigenciaFinal : null
     };
 
     // Inserir empresa
@@ -103,6 +107,7 @@ export class EmpresasClientesService {
         *,
         produtos:empresa_produtos(
           id,
+          empresa_id,
           produto,
           created_at
         ),
@@ -111,15 +116,23 @@ export class EmpresasClientesService {
           grupos_responsaveis(
             id,
             nome,
-            descricao
+            descricao,
+            created_at,
+            updated_at
           )
         ),
         colaboradores(
           id,
           nome_completo,
           email,
+          funcao,
+          empresa_id,
           status,
-          principal_contato
+          principal_contato,
+          data_status,
+          descricao_status,
+          created_at,
+          updated_at
         )
       `);
 
@@ -180,6 +193,7 @@ export class EmpresasClientesService {
         *,
         produtos:empresa_produtos(
           id,
+          empresa_id,
           produto,
           created_at
         ),
@@ -188,15 +202,23 @@ export class EmpresasClientesService {
           grupos_responsaveis(
             id,
             nome,
-            descricao
+            descricao,
+            created_at,
+            updated_at
           )
         ),
         colaboradores(
           id,
           nome_completo,
           email,
+          funcao,
+          empresa_id,
           status,
-          principal_contato
+          principal_contato,
+          data_status,
+          descricao_status,
+          created_at,
+          updated_at
         )
       `, { count: 'exact' });
 
@@ -257,6 +279,7 @@ export class EmpresasClientesService {
         *,
         produtos:empresa_produtos(
           id,
+          empresa_id,
           produto,
           created_at
         ),
@@ -266,6 +289,8 @@ export class EmpresasClientesService {
             id,
             nome,
             descricao,
+            created_at,
+            updated_at,
             emails:grupo_emails(
               id,
               email,
@@ -278,10 +303,13 @@ export class EmpresasClientesService {
           nome_completo,
           email,
           funcao,
+          empresa_id,
           status,
           principal_contato,
           data_status,
-          descricao_status
+          descricao_status,
+          created_at,
+          updated_at
         )
       `)
       .eq('id', id)
@@ -315,6 +343,10 @@ export class EmpresasClientesService {
       if (data.linkSharepoint !== undefined) updateData.link_sharepoint = data.linkSharepoint || null;
       if (data.templatePadrao) updateData.template_padrao = data.templatePadrao;
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
+      if (data.bookPersonalizado !== undefined) updateData.book_personalizado = data.bookPersonalizado;
+      if (data.anexo !== undefined) updateData.anexo = data.anexo;
+      if (data.vigenciaInicial !== undefined) updateData.vigencia_inicial = data.vigenciaInicial ? data.vigenciaInicial : null;
+      if (data.vigenciaFinal !== undefined) updateData.vigencia_final = data.vigenciaFinal ? data.vigenciaFinal : null;
       
       // Se status mudou, atualizar data e descrição
       if (data.status) {

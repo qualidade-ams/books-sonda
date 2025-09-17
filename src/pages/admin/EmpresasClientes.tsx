@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Filter, Upload } from 'lucide-react';
+import { Plus, Filter, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -34,9 +34,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
+import { useVigenciaMonitor } from '@/hooks/useVigenciaMonitor';
 import { EmpresaForm, EmpresasTable } from '@/components/admin/client-books';
 import { ExcelImportDialog } from '@/components/admin/excel';
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { exportClientesToExcel } from '@/utils/clientExportUtils';
+import { toast } from 'sonner';
 import type {
   EmpresaFormData,
   EmpresaFiltros,
@@ -92,10 +95,29 @@ const EmpresasClientes = () => {
 
   const { grupos } = useGrupos();
 
+  // Hook para monitoramento automático de vigências
+  useVigenciaMonitor({
+    intervaloMinutos: 60, // Verificar a cada 1 hora
+    diasAlerta: 30, // Alertar 30 dias antes do vencimento
+    inativarAutomaticamente: true,
+    executarAoIniciar: false // Não executar ao carregar a página para evitar sobrecarga
+  });
+
   // Handler para refresh após importação
   const handleImportComplete = () => {
     // O hook useEmpresas já tem revalidação automática via React Query
     // Não é necessário fazer nada específico aqui
+  };
+
+  // Handler para exportar clientes para Excel
+  const handleExportClientesExcel = () => {
+    try {
+      exportClientesToExcel(empresasArray);
+      toast.success('Dados de clientes exportados para Excel com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar dados de clientes para Excel');
+      console.error('Erro na exportação Excel:', error);
+    }
   };
 
   // Estatísticas das empresas
@@ -193,6 +215,10 @@ const EmpresasClientes = () => {
       emailGestor: empresa.email_gestor || '',
       produtos: empresa.produtos?.map(p => p.produto as Produto) || [],
       grupos: empresa.grupos?.map(g => g.grupo_id) || [],
+      bookPersonalizado: empresa.book_personalizado || false,
+      anexo: empresa.anexo || false,
+      vigenciaInicial: empresa.vigencia_inicial || '',
+      vigenciaFinal: empresa.vigencia_final || '',
     };
   };
 
@@ -210,6 +236,16 @@ const EmpresasClientes = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
+              <Button
+                variant="outline"
+                onClick={handleExportClientesExcel}
+                className="flex items-center gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Clientes para Excel
+              </Button>
+            </ProtectedAction>
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
               <ExcelImportDialog
                 onImportComplete={handleImportComplete}

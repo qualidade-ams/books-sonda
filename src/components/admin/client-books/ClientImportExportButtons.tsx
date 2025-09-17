@@ -334,20 +334,15 @@ export function ClientImportExportButtons({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExportClientesExcel}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Clientes para Excel
-            </DropdownMenuItem>
             {showColaboradores && (
               <DropdownMenuItem onClick={handleExportColaboradoresExcel}>
-                <Users className="mr-2 h-4 w-4" />
-                Colaboradores para Excel
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Exportar para Excel
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportClientesPDF}>
-              <FileText className="mr-2 h-4 w-4" />
-              Relatório PDF
+            <FileText className="mr-2 h-4 w-4" />
+            Exportar para PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -366,24 +361,25 @@ export function ClientImportExportButtons({
               <>
                 <DropdownMenuItem onClick={() => handleDownloadTemplate('empresas')}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Template Empresas
+                  Baixar Template Excel
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleImportClick('empresas')}>
                   <Upload className="mr-2 h-4 w-4" />
-                  Importar Empresas
+                  Importar do Excel
                 </DropdownMenuItem>
               </>
             )}
-            {onImportColaboradores && (
+            {onImportColaboradores && !onImportEmpresas && (
               <>
-                {onImportEmpresas && <DropdownMenuSeparator />}
                 <DropdownMenuItem onClick={() => handleDownloadTemplate('colaboradores')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Template Colaboradores
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Baixar Template Excel
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleImportClick('colaboradores')}>
                   <Upload className="mr-2 h-4 w-4" />
-                  Importar Colaboradores
+                  Importar do Excel
                 </DropdownMenuItem>
               </>
             )}
