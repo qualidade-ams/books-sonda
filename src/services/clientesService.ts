@@ -99,10 +99,12 @@ export class ClientesService {
         } else {
           query = query.in('status', filtros.status);
         }
-      } else {
-        // Por padrão, mostrar apenas clientes ativos
-        query = query.eq('status', Cliente_STATUS.ATIVO as any);
       }
+      // Comentado temporariamente para debug - mostrar todos os clientes
+      // else {
+      //   // Por padrão, mostrar apenas clientes ativos
+      //   query = query.eq('status', Cliente_STATUS.ATIVO as any);
+      // }
 
       if (filtros?.busca) {
         query = query.or(`nome_completo.ilike.%${filtros.busca}%,email.ilike.%${filtros.busca}%,funcao.ilike.%${filtros.busca}%`);
@@ -111,9 +113,11 @@ export class ClientesService {
       const { data, error } = await query.order('nome_completo');
 
       if (error) {
+        console.error('Erro na query de clientes:', error);
         throw new ClienteError(`Erro ao listar clientes: ${error.message}`, 'LIST_ERROR');
       }
 
+      console.log('Clientes retornados do banco:', data);
       return data as ClienteCompleto[] || [];
     } catch (error) {
       if (error instanceof ClienteError) {

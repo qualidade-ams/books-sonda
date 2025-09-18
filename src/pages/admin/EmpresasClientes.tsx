@@ -46,11 +46,11 @@ import type {
   StatusEmpresa,
   Produto,
   EmpresaClienteCompleta
-} from '@/types/clientBooks';
+} from '@/types/clientBooksTypes';
 import {
   STATUS_EMPRESA_OPTIONS,
   PRODUTOS_OPTIONS
-} from '@/types/clientBooks';
+} from '@/types/clientBooksTypes';
 
 const EmpresasClientes = () => {
   // Estados para filtros
