@@ -66,7 +66,9 @@ export class EmpresasClientesService {
       book_personalizado: data.bookPersonalizado || false,
       anexo: data.anexo || false,
       vigencia_inicial: data.vigenciaInicial ? data.vigenciaInicial : null,
-      vigencia_final: data.vigenciaFinal ? data.vigenciaFinal : null
+      vigencia_final: data.vigenciaFinal ? data.vigenciaFinal : null,
+      tem_ams: data.temAms || false,
+      tipo_book: data.tipoBook || 'nao_tem_book'
     };
 
     // Inserir empresa
@@ -347,6 +349,8 @@ export class EmpresasClientesService {
       if (data.anexo !== undefined) updateData.anexo = data.anexo;
       if (data.vigenciaInicial !== undefined) updateData.vigencia_inicial = data.vigenciaInicial ? data.vigenciaInicial : null;
       if (data.vigenciaFinal !== undefined) updateData.vigencia_final = data.vigenciaFinal ? data.vigenciaFinal : null;
+      if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
+      if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;
       
       // Se status mudou, atualizar data e descrição
       if (data.status) {

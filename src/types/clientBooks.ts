@@ -49,6 +49,7 @@ export type TemplatePadrao = 'portugues' | 'ingles';
 export type Produto = 'CE_PLUS' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
+export type TipoBook = 'nao_tem_book' | 'qualidade' | 'outros';
 
 // Interfaces para formulários
 export interface EmpresaFormData {
@@ -65,6 +66,8 @@ export interface EmpresaFormData {
   anexo?: boolean;
   vigenciaInicial?: string;
   vigenciaFinal?: string;
+  temAms?: boolean;
+  tipoBook?: TipoBook;
 }
 
 export interface ColaboradorFormData {
@@ -159,6 +162,12 @@ export const STATUS_CONTROLE_MENSAL_OPTIONS: SelectOption[] = [
   { value: 'enviado', label: 'Enviado' },
   { value: 'falhou', label: 'Falhou' },
   { value: 'agendado', label: 'Agendado' }
+];
+
+export const TIPO_BOOK_OPTIONS: SelectOption[] = [
+  { value: 'nao_tem_book', label: 'Não tem Book' },
+  { value: 'qualidade', label: 'Qualidade' },
+  { value: 'outros', label: 'Outros' }
 ];
 
 // Interfaces para sistema de disparos

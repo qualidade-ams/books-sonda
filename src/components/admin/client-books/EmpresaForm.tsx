@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -30,10 +31,12 @@ import type {
   EmpresaFormData,
   Produto,
   GrupoResponsavel,
+  TipoBook,
 } from '@/types/clientBooks';
 import {
   PRODUTOS_OPTIONS,
   STATUS_EMPRESA_OPTIONS,
+  TIPO_BOOK_OPTIONS,
 } from '@/types/clientBooks';
 
 // Schema de validação com Zod
@@ -76,6 +79,8 @@ const empresaSchema = z.object({
     .string()
     .optional()
     .or(z.literal('')),
+  temAms: z.boolean().optional(),
+  tipoBook: z.enum(['nao_tem_book', 'qualidade', 'outros']).optional(),
 }).refine((data) => {
   if (data.vigenciaInicial && data.vigenciaFinal) {
     return new Date(data.vigenciaFinal) >= new Date(data.vigenciaInicial);
@@ -122,11 +127,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       anexo: false,
       vigenciaInicial: '',
       vigenciaFinal: '',
+      temAms: false,
+      tipoBook: 'nao_tem_book',
       ...initialData,
     },
   });
 
   const watchStatus = form.watch('status');
+  const watchTipoBook = form.watch('tipoBook');
 
 
   // Reset form quando initialData mudar
@@ -146,6 +154,8 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         anexo: false,
         vigenciaInicial: '',
         vigenciaFinal: '',
+        temAms: false,
+        tipoBook: 'nao_tem_book',
         ...initialData,
       });
     }
@@ -167,7 +177,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         bookPersonalizado: data.bookPersonalizado || false,
         anexo: data.anexo || false,
         vigenciaInicial: data.vigenciaInicial || undefined,
-        vigenciaFinal: data.vigenciaFinal || undefined
+        vigenciaFinal: data.vigenciaFinal || undefined,
+        temAms: data.temAms || false,
+        tipoBook: data.tipoBook || 'nao_tem_book'
       };
 
       await onSubmit(normalizedData);
@@ -352,6 +364,60 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               />
             </div>
 
+            {/* Configurações AMS e Book */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="temAms"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Tem AMS?</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting || isLoading}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tipoBook"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Book *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting || isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TIPO_BOOK_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {field.value === 'qualidade' && 'Empresa aparecerá na tela Controle Disparos'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             {/* Descrição do Status - só aparece se status for inativo ou suspenso */}
             {(watchStatus === 'inativo' || watchStatus === 'suspenso') && (
               <FormField
@@ -449,54 +515,57 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               />
             </div>
 
-            {/* Book Personalizado */}
-            <div className="flex w-full">
-            <FormLabel className="w-full">Opções do Book *</FormLabel>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="bookPersonalizado"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isSubmitting || isLoading}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="font-normal">
-                      Book Personalizado
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
+            {/* Opções do Book - só aparece quando Tipo de Book for "Qualidade" */}
+            {watchTipoBook === 'qualidade' && (
+              <>
+                <div className="flex w-full">
+                  <FormLabel className="w-full">Opções do Book *</FormLabel>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="bookPersonalizado"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isSubmitting || isLoading}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Book Personalizado
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
 
-            {/* Anexo */}
-            <FormField
-              control={form.control}
-              name="anexo"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isSubmitting || isLoading}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="font-normal">
-                      Permitir Anexos
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-            </div>
+                  <FormField
+                    control={form.control}
+                    name="anexo"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isSubmitting || isLoading}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Permitir Anexos
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Grupos de Responsáveis */}
             {grupos.length > 0 && (

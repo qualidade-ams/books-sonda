@@ -27,7 +27,7 @@ class BooksDisparoService {
    */
   async dispararBooksMensal(mes: number, ano: number): Promise<DisparoResult> {
     try {
-      // Buscar empresas ativas
+      // Buscar empresas ativas que têm AMS ou são do tipo Qualidade
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -35,7 +35,8 @@ class BooksDisparoService {
           colaboradores!inner(*)
         `)
         .eq('status', 'ativo')
-        .eq('colaboradores.status', 'ativo');
+        .eq('colaboradores.status', 'ativo')
+        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -197,7 +198,7 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
-      // Buscar empresas selecionadas e ativas
+      // Buscar empresas selecionadas e ativas que têm AMS ou são do tipo Qualidade
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -206,7 +207,8 @@ class BooksDisparoService {
         `)
         .in('id', empresaIds)
         .eq('status', 'ativo')
-        .eq('colaboradores.status', 'ativo');
+        .eq('colaboradores.status', 'ativo')
+        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -392,11 +394,12 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar status mensal: ${error.message}`);
       }
 
-      // Buscar empresas que não têm controle mensal ainda
+      // Buscar empresas que não têm controle mensal ainda (apenas com AMS ou tipo Qualidade)
       const { data: todasEmpresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
-        .eq('status', 'ativo');
+        .eq('status', 'ativo')
+        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);

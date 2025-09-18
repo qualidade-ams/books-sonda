@@ -61,6 +61,11 @@ const statusControleMensalSchema = z.enum(['pendente', 'enviado', 'falhou', 'age
   errorMap: () => ({ message: 'Status deve ser pendente, enviado, falhou ou agendado' })
 });
 
+// Schema para tipo de book
+const tipoBookSchema = z.enum(['nao_tem_book', 'qualidade', 'outros'] as const, {
+  errorMap: () => ({ message: 'Tipo de book deve ser nao_tem_book, qualidade ou outros' })
+});
+
 /**
  * Schema para formulário de empresa cliente
  */
@@ -87,7 +92,13 @@ export const empresaFormSchema = z.object({
   grupos: z
     .array(z.string().uuid('ID do grupo deve ser um UUID válido'))
     .optional()
-    .default([])
+    .default([]),
+  bookPersonalizado: z.boolean().optional().default(false),
+  anexo: z.boolean().optional().default(false),
+  vigenciaInicial: z.string().optional().or(z.literal('')),
+  vigenciaFinal: z.string().optional().or(z.literal('')),
+  temAms: z.boolean().optional().default(false),
+  tipoBook: tipoBookSchema.optional().default('nao_tem_book')
 }).refine((data) => {
   // Se status for inativo ou suspenso, descrição é obrigatória
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -97,6 +108,15 @@ export const empresaFormSchema = z.object({
 }, {
   message: 'Descrição é obrigatória quando status for inativo ou suspenso',
   path: ['descricaoStatus']
+}).refine((data) => {
+  // Validar vigências se fornecidas
+  if (data.vigenciaInicial && data.vigenciaFinal) {
+    return new Date(data.vigenciaFinal) >= new Date(data.vigenciaInicial);
+  }
+  return true;
+}, {
+  message: 'Vigência final deve ser posterior à vigência inicial',
+  path: ['vigenciaFinal']
 });
 
 /**

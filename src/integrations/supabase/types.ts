@@ -1036,6 +1036,8 @@ export type Database = {
           data_status: string
           descricao_status: string | null
           email_gestor: string | null
+          tem_ams: boolean
+          tipo_book: 'nao_tem_book' | 'qualidade' | 'outros'
           created_at: string
           updated_at: string
         }
@@ -1049,6 +1051,8 @@ export type Database = {
           data_status?: string
           descricao_status?: string | null
           email_gestor?: string | null
+          tem_ams?: boolean
+          tipo_book?: 'nao_tem_book' | 'qualidade' | 'outros'
           created_at?: string
           updated_at?: string
         }
@@ -1062,6 +1066,8 @@ export type Database = {
           data_status?: string
           descricao_status?: string | null
           email_gestor?: string | null
+          tem_ams?: boolean
+          tipo_book?: 'nao_tem_book' | 'qualidade' | 'outros'
           created_at?: string
           updated_at?: string
         }

@@ -186,7 +186,7 @@ books-snd/
 │   ├── schemas/                						      # Schemas de validação Zod
 │   │   ├── __tests__/          						      # Testes dos schemas
 │   │   │   └── clientBooksSchemas.test.ts			   # Testes dos schemas do sistema de books
-│   │   └── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books
+│   │   └── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books (inclui tipoBookSchema para validação dos tipos: nao_tem_book, qualidade, outros)
 │   │				
 │   ├── services/               						      # Serviços e lógica de negócio
 │   │   ├── __tests__/          						      # Testes dos serviços
@@ -204,7 +204,7 @@ books-snd/
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books (filtra empresas com AMS ativo ou tipo book "qualidade")
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books
@@ -248,7 +248,7 @@ books-snd/
 │   │   ├── api.ts                               		# Tipos para APIs
 │   │   ├── approval.ts                          		# Tipos para sistema de aprovação
 │   │   ├── audit.ts                             		# Tipos para auditoria
-│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books
+│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros)
 │   │   ├── clientBooksTypes.ts                  		# Tipos específicos do sistema de books
 │   │   ├── configuration.ts                     		# Tipos para configurações
 │   │   ├── constants.ts                         		# Constantes tipadas
@@ -310,6 +310,7 @@ books-snd/
 │       ├── email_test_data_migration.sql          # Migração para dados de teste de email
 │       ├── grups_and_profile_migration.sql        # Migração de grupos e perfis de usuário
 │       ├── jobs_queue_migration.sql               # Migração para fila de jobs
+│       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
 │       └── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
@@ -323,6 +324,7 @@ books-snd/
 ├── package-lock.json           					      	# Lock file das dependências
 ├── PERMISSIONS_SETUP_SUMMARY.md                    # Documentação do sistema de permissões
 ├── README_TEMPLATE_SELECTION.md                    # Documentação completa da implementação da funcionalidade de seleção de templates (padrão e personalizados)
+├── RESUMO_MODIFICACOES_EMPRESA.md                  # Resumo das modificações implementadas no cadastro de empresa (campos AMS e Tipo de Book)
 ├── TEMPLATE_SELECTION_GUIDE.md                     # Guia completo da funcionalidade de seleção de templates para empresas
 ├── postcss.config.js          						   	# Configuração do PostCSS
 ├── setup-permissions.js        					      	# Script de configuração de permissões
