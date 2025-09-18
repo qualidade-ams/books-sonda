@@ -10,9 +10,9 @@ import {
   Produto
 } from '@/types/clientBooks';
 import { empresaFormSchema } from '@/schemas/clientBooksSchemas';
-import { 
-  ClientBooksError, 
-  ClientBooksErrorFactory 
+import {
+  ClientBooksError,
+  ClientBooksErrorFactory
 } from '@/errors/clientBooksErrors';
 import { PaginationUtils, type PaginationParams, type PaginationResult } from '@/utils/paginationUtils';
 import { clientBooksCacheService } from './clientBooksCache';
@@ -63,10 +63,6 @@ export class EmpresasClientesService {
       data_status: new Date().toISOString(),
       descricao_status: data.descricaoStatus || null,
       email_gestor: data.emailGestor || null,
-      book_personalizado: data.bookPersonalizado || false,
-      anexo: data.anexo || false,
-      vigencia_inicial: data.vigenciaInicial ? data.vigenciaInicial : null,
-      vigencia_final: data.vigenciaFinal ? data.vigenciaFinal : null,
       tem_ams: data.temAms || false,
       tipo_book: data.tipoBook || 'nao_tem_book'
     };
@@ -122,19 +118,6 @@ export class EmpresasClientesService {
             created_at,
             updated_at
           )
-        ),
-        colaboradores(
-          id,
-          nome_completo,
-          email,
-          funcao,
-          empresa_id,
-          status,
-          principal_contato,
-          data_status,
-          descricao_status,
-          created_at,
-          updated_at
         )
       `);
 
@@ -162,7 +145,7 @@ export class EmpresasClientesService {
     // Filtrar por produtos se especificado
     let empresas = data || [];
     if (filtros?.produtos && filtros.produtos.length > 0) {
-      empresas = empresas.filter(empresa => 
+      empresas = empresas.filter(empresa =>
         empresa.produtos.some(p => filtros.produtos!.includes(p.produto as any))
       );
     }
@@ -187,7 +170,7 @@ export class EmpresasClientesService {
 
     // Verificar cache primeiro
     const cacheKey = PaginationUtils.generateCacheKey('empresas_paginated', validatedParams, filtros);
-    
+
     // Construir query base
     let query = supabase
       .from('empresas_clientes')
@@ -208,19 +191,6 @@ export class EmpresasClientesService {
             created_at,
             updated_at
           )
-        ),
-        colaboradores(
-          id,
-          nome_completo,
-          email,
-          funcao,
-          empresa_id,
-          status,
-          principal_contato,
-          data_status,
-          descricao_status,
-          created_at,
-          updated_at
         )
       `, { count: 'exact' });
 
@@ -252,7 +222,7 @@ export class EmpresasClientesService {
 
     // Filtrar por produtos se especificado (pós-processamento para manter paginação correta)
     if (filtros?.produtos && filtros.produtos.length > 0) {
-      empresas = empresas.filter(empresa => 
+      empresas = empresas.filter(empresa =>
         empresa.produtos.some(p => filtros.produtos!.includes(p.produto as any))
       );
     }
@@ -299,19 +269,6 @@ export class EmpresasClientesService {
               nome
             )
           )
-        ),
-        colaboradores(
-          id,
-          nome_completo,
-          email,
-          funcao,
-          empresa_id,
-          status,
-          principal_contato,
-          data_status,
-          descricao_status,
-          created_at,
-          updated_at
         )
       `)
       .eq('id', id)
@@ -337,21 +294,22 @@ export class EmpresasClientesService {
         this.validarDadosEmpresa(data as EmpresaFormData, true);
       }
 
+      // Verificar duplicatas se nome completo ou abreviado foram alterados
+      if (data.nomeCompleto || data.nomeAbreviado) {
+        await this.verificarDuplicatasParaEdicao(id, data.nomeCompleto, data.nomeAbreviado);
+      }
+
       // Preparar dados para atualização
       const updateData: EmpresaClienteUpdate = {};
-      
+
       if (data.nomeCompleto) updateData.nome_completo = data.nomeCompleto;
       if (data.nomeAbreviado) updateData.nome_abreviado = data.nomeAbreviado;
       if (data.linkSharepoint !== undefined) updateData.link_sharepoint = data.linkSharepoint || null;
       if (data.templatePadrao) updateData.template_padrao = data.templatePadrao;
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
-      if (data.bookPersonalizado !== undefined) updateData.book_personalizado = data.bookPersonalizado;
-      if (data.anexo !== undefined) updateData.anexo = data.anexo;
-      if (data.vigenciaInicial !== undefined) updateData.vigencia_inicial = data.vigenciaInicial ? data.vigenciaInicial : null;
-      if (data.vigenciaFinal !== undefined) updateData.vigencia_final = data.vigenciaFinal ? data.vigenciaFinal : null;
       if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
       if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;
-      
+
       // Se status mudou, atualizar data e descrição
       if (data.status) {
         updateData.status = data.status;
@@ -403,15 +361,15 @@ export class EmpresasClientesService {
       throw ClientBooksErrorFactory.empresaNotFound(id);
     }
 
-    // Verificar se empresa tem colaboradores ativos
-    const { data: colaboradores } = await supabase
-      .from('colaboradores')
+    // Verificar se empresa tem clientes ativos
+    const { data: clientes } = await supabase
+      .from('clientes')
       .select('id')
       .eq('empresa_id', id)
       .eq('status', 'ativo');
 
-    if (colaboradores && colaboradores.length > 0) {
-      throw ClientBooksErrorFactory.empresaHasActiveCollaborators(id, colaboradores.length);
+    if (clientes && clientes.length > 0) {
+      throw ClientBooksErrorFactory.empresaHasActiveCollaborators(id, clientes.length);
     }
 
     const { error } = await supabase
@@ -516,6 +474,34 @@ export class EmpresasClientesService {
 
     if (existingByAbbrev) {
       throw ClientBooksErrorFactory.empresaDuplicateName(nomeAbreviado);
+    }
+  }
+
+  private async verificarDuplicatasParaEdicao(empresaId: string, nomeCompleto?: string, nomeAbreviado?: string): Promise<void> {
+    if (nomeCompleto) {
+      const { data: existingByName } = await supabase
+        .from('empresas_clientes')
+        .select('id')
+        .eq('nome_completo', nomeCompleto)
+        .neq('id', empresaId)
+        .single();
+
+      if (existingByName) {
+        throw ClientBooksErrorFactory.empresaDuplicateName(nomeCompleto);
+      }
+    }
+
+    if (nomeAbreviado) {
+      const { data: existingByAbbrev } = await supabase
+        .from('empresas_clientes')
+        .select('id')
+        .eq('nome_abreviado', nomeAbreviado)
+        .neq('id', empresaId)
+        .single();
+
+      if (existingByAbbrev) {
+        throw ClientBooksErrorFactory.empresaDuplicateName(nomeAbreviado);
+      }
     }
   }
 

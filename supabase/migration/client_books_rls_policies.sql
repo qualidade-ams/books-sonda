@@ -7,7 +7,7 @@ ALTER TABLE empresa_produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grupos_responsaveis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grupo_emails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE empresa_grupos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE colaboradores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historico_disparos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE controle_mensal ENABLE ROW LEVEL SECURITY;
 
@@ -128,18 +128,18 @@ CREATE POLICY "Usuários podem deletar relacionamento empresa-grupos se têm per
         has_screen_permission('grupos_responsaveis', 'edit')
     );
 
--- Políticas para colaboradores
-CREATE POLICY "Usuários podem visualizar colaboradores se têm permissão" ON colaboradores
-    FOR SELECT USING (has_screen_permission('colaboradores', 'view'));
+-- Políticas para clientes
+CREATE POLICY "Usuários podem visualizar clientes se têm permissão" ON clientes
+    FOR SELECT USING (has_screen_permission('clientes', 'view'));
 
-CREATE POLICY "Usuários podem inserir colaboradores se têm permissão de edição" ON colaboradores
-    FOR INSERT WITH CHECK (has_screen_permission('colaboradores', 'edit'));
+CREATE POLICY "Usuários podem inserir clientes se têm permissão de edição" ON clientes
+    FOR INSERT WITH CHECK (has_screen_permission('clientes', 'edit'));
 
-CREATE POLICY "Usuários podem atualizar colaboradores se têm permissão de edição" ON colaboradores
-    FOR UPDATE USING (has_screen_permission('colaboradores', 'edit'));
+CREATE POLICY "Usuários podem atualizar clientes se têm permissão de edição" ON clientes
+    FOR UPDATE USING (has_screen_permission('clientes', 'edit'));
 
-CREATE POLICY "Usuários podem deletar colaboradores se têm permissão de edição" ON colaboradores
-    FOR DELETE USING (has_screen_permission('colaboradores', 'edit'));
+CREATE POLICY "Usuários podem deletar clientes se têm permissão de edição" ON clientes
+    FOR DELETE USING (has_screen_permission('clientes', 'edit'));
 
 -- Políticas para historico_disparos
 CREATE POLICY "Usuários podem visualizar histórico se têm permissão" ON historico_disparos
@@ -184,7 +184,7 @@ CREATE POLICY "Service role tem acesso completo" ON grupo_emails
 CREATE POLICY "Service role tem acesso completo" ON empresa_grupos
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
-CREATE POLICY "Service role tem acesso completo" ON colaboradores
+CREATE POLICY "Service role tem acesso completo" ON clientes
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
 CREATE POLICY "Service role tem acesso completo" ON historico_disparos

@@ -87,12 +87,12 @@ export type ClientBooksErrorCode =
   | 'EMPRESA_HAS_ACTIVE_COLLABORATORS'
   | 'EMPRESA_VALIDATION_FAILED'
   
-  // Erros de colaborador
-  | 'COLABORADOR_NOT_FOUND'
-  | 'COLABORADOR_DUPLICATE_EMAIL'
-  | 'COLABORADOR_INVALID_STATUS'
-  | 'COLABORADOR_VALIDATION_FAILED'
-  | 'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT'
+  // Erros de cliente
+  | 'Cliente_NOT_FOUND'
+  | 'Cliente_DUPLICATE_EMAIL'
+  | 'Cliente_INVALID_STATUS'
+  | 'Cliente_VALIDATION_FAILED'
+  | 'Cliente_PRINCIPAL_CONTATO_CONFLICT'
   
   // Erros de grupo
   | 'GRUPO_NOT_FOUND'
@@ -229,11 +229,11 @@ export const ERROR_RECOVERY_STRATEGIES: Record<ClientBooksErrorCode, RecoveryStr
   'EMPRESA_INVALID_STATUS': 'manual',
   'EMPRESA_HAS_ACTIVE_COLLABORATORS': 'manual',
   'EMPRESA_VALIDATION_FAILED': 'manual',
-  'COLABORADOR_NOT_FOUND': 'manual',
-  'COLABORADOR_DUPLICATE_EMAIL': 'manual',
-  'COLABORADOR_INVALID_STATUS': 'manual',
-  'COLABORADOR_VALIDATION_FAILED': 'manual',
-  'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT': 'manual',
+  'Cliente_NOT_FOUND': 'manual',
+  'Cliente_DUPLICATE_EMAIL': 'manual',
+  'Cliente_INVALID_STATUS': 'manual',
+  'Cliente_VALIDATION_FAILED': 'manual',
+  'Cliente_PRINCIPAL_CONTATO_CONFLICT': 'manual',
   'GRUPO_NOT_FOUND': 'manual',
   'GRUPO_DUPLICATE_NAME': 'manual',
   'GRUPO_HAS_ASSOCIATED_COMPANIES': 'manual',
@@ -277,33 +277,33 @@ export class ClientBooksErrorFactory {
 
   static empresaHasActiveCollaborators(empresaId: string, count: number): ClientBooksError {
     return new ClientBooksError(
-      `Não é possível inativar empresa com ${count} colaboradores ativos`,
+      `Não é possível inativar empresa com ${count} clientes ativos`,
       'EMPRESA_HAS_ACTIVE_COLLABORATORS',
       { empresaId, activeCollaborators: count }
     );
   }
 
-  // Erros de colaborador
-  static colaboradorNotFound(colaboradorId: string): ClientBooksError {
+  // Erros de cliente
+  static clienteNotFound(clienteId: string): ClientBooksError {
     return new ClientBooksError(
-      `Colaborador com ID ${colaboradorId} não encontrado`,
-      'COLABORADOR_NOT_FOUND',
-      { colaboradorId }
+      `Cliente com ID ${clienteId} não encontrado`,
+      'Cliente_NOT_FOUND',
+      { clienteId }
     );
   }
 
-  static colaboradorDuplicateEmail(email: string, empresaId: string): ClientBooksError {
+  static clienteDuplicateEmail(email: string, empresaId: string): ClientBooksError {
     return new ClientBooksError(
-      `Já existe um colaborador com o e-mail "${email}" nesta empresa`,
-      'COLABORADOR_DUPLICATE_EMAIL',
+      `Já existe um cliente com o e-mail "${email}" nesta empresa`,
+      'Cliente_DUPLICATE_EMAIL',
       { email, empresaId }
     );
   }
 
-  static colaboradorPrincipalContatoConflict(empresaId: string, existingId: string): ClientBooksError {
+  static clientePrincipalContatoConflict(empresaId: string, existingId: string): ClientBooksError {
     return new ClientBooksError(
       'Já existe um principal contato definido para esta empresa',
-      'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT',
+      'Cliente_PRINCIPAL_CONTATO_CONFLICT',
       { empresaId, existingPrincipalContatoId: existingId }
     );
   }
@@ -345,7 +345,7 @@ export class ClientBooksErrorFactory {
 
   static disparoNoActiveCollaborators(empresaId: string): ClientBooksError {
     return new ClientBooksError(
-      'Empresa não possui colaboradores ativos para receber o book',
+      'Empresa não possui clientes ativos para receber o book',
       'DISPARO_NO_ACTIVE_COLLABORATORS',
       { empresaId }
     );
@@ -423,14 +423,14 @@ export class ClientBooksErrorHandler {
       'EMPRESA_NOT_FOUND': 'Empresa não encontrada',
       'EMPRESA_DUPLICATE_NAME': 'Já existe uma empresa com este nome',
       'EMPRESA_INVALID_STATUS': 'Status da empresa é inválido',
-      'EMPRESA_HAS_ACTIVE_COLLABORATORS': 'Não é possível inativar empresa com colaboradores ativos',
+      'EMPRESA_HAS_ACTIVE_COLLABORATORS': 'Não é possível inativar empresa com clientes ativos',
       'EMPRESA_VALIDATION_FAILED': 'Dados da empresa são inválidos',
       
-      'COLABORADOR_NOT_FOUND': 'Colaborador não encontrado',
-      'COLABORADOR_DUPLICATE_EMAIL': 'Já existe um colaborador com este e-mail',
-      'COLABORADOR_INVALID_STATUS': 'Status do colaborador é inválido',
-      'COLABORADOR_VALIDATION_FAILED': 'Dados do colaborador são inválidos',
-      'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT': 'Já existe um principal contato para esta empresa',
+      'Cliente_NOT_FOUND': 'Cliente não encontrado',
+      'Cliente_DUPLICATE_EMAIL': 'Já existe um cliente com este e-mail',
+      'Cliente_INVALID_STATUS': 'Status do cliente é inválido',
+      'Cliente_VALIDATION_FAILED': 'Dados do cliente são inválidos',
+      'Cliente_PRINCIPAL_CONTATO_CONFLICT': 'Já existe um principal contato para esta empresa',
       
       'GRUPO_NOT_FOUND': 'Grupo não encontrado',
       'GRUPO_DUPLICATE_NAME': 'Já existe um grupo com este nome',
@@ -440,7 +440,7 @@ export class ClientBooksErrorHandler {
       
       'DISPARO_FAILED': 'Falha no envio do e-mail',
       'DISPARO_TEMPLATE_NOT_FOUND': 'Template de e-mail não encontrado',
-      'DISPARO_NO_ACTIVE_COLLABORATORS': 'Empresa não possui colaboradores ativos',
+      'DISPARO_NO_ACTIVE_COLLABORATORS': 'Empresa não possui clientes ativos',
       'DISPARO_ALREADY_SENT': 'Book já foi enviado neste período',
       'DISPARO_SCHEDULING_FAILED': 'Falha no agendamento do disparo',
       'DISPARO_EMAIL_SERVICE_ERROR': 'Erro no serviço de e-mail',
@@ -479,10 +479,10 @@ export class ClientBooksErrorHandler {
       'EMPRESA_DUPLICATE_NAME',
       'EMPRESA_HAS_ACTIVE_COLLABORATORS',
       'EMPRESA_VALIDATION_FAILED',
-      'COLABORADOR_NOT_FOUND',
-      'COLABORADOR_DUPLICATE_EMAIL',
-      'COLABORADOR_VALIDATION_FAILED',
-      'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT',
+      'Cliente_NOT_FOUND',
+      'Cliente_DUPLICATE_EMAIL',
+      'Cliente_VALIDATION_FAILED',
+      'Cliente_PRINCIPAL_CONTATO_CONFLICT',
       'GRUPO_NOT_FOUND',
       'GRUPO_DUPLICATE_NAME',
       'GRUPO_HAS_ASSOCIATED_COMPANIES',
@@ -505,11 +505,11 @@ export class ClientBooksErrorHandler {
   static getRecommendedAction(error: ClientBooksError): string {
     const actions: Partial<Record<ClientBooksErrorCode, string>> = {
       'EMPRESA_DUPLICATE_NAME': 'Escolha um nome diferente para a empresa',
-      'EMPRESA_HAS_ACTIVE_COLLABORATORS': 'Inative os colaboradores antes de inativar a empresa',
-      'COLABORADOR_DUPLICATE_EMAIL': 'Use um e-mail diferente ou atualize o colaborador existente',
-      'COLABORADOR_PRINCIPAL_CONTATO_CONFLICT': 'Remova o principal contato atual antes de definir um novo',
+      'EMPRESA_HAS_ACTIVE_COLLABORATORS': 'Inative os clientes antes de inativar a empresa',
+      'Cliente_DUPLICATE_EMAIL': 'Use um e-mail diferente ou atualize o cliente existente',
+      'Cliente_PRINCIPAL_CONTATO_CONFLICT': 'Remova o principal contato atual antes de definir um novo',
       'GRUPO_HAS_ASSOCIATED_COMPANIES': 'Remova as associações com empresas antes de excluir o grupo',
-      'DISPARO_NO_ACTIVE_COLLABORATORS': 'Adicione colaboradores ativos à empresa',
+      'DISPARO_NO_ACTIVE_COLLABORATORS': 'Adicione clientes ativos à empresa',
       'IMPORT_FILE_INVALID': 'Verifique o formato do arquivo e tente novamente',
       'IMPORT_VALIDATION_FAILED': 'Corrija os dados inválidos e importe novamente'
     };

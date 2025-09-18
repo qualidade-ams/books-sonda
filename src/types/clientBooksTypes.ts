@@ -23,9 +23,9 @@ export type EmpresaGrupo = Tables<'empresa_grupos'>;
 export type EmpresaGrupoInsert = TablesInsert<'empresa_grupos'>;
 export type EmpresaGrupoUpdate = TablesUpdate<'empresa_grupos'>;
 
-export type Colaborador = Tables<'colaboradores'>;
-export type ColaboradorInsert = TablesInsert<'colaboradores'>;
-export type ColaboradorUpdate = TablesUpdate<'colaboradores'>;
+export type Cliente = Tables<'clientes'>;
+export type ClienteInsert = TablesInsert<'clientes'>;
+export type ClienteUpdate = TablesUpdate<'clientes'>;
 
 export type HistoricoDisparo = Tables<'historico_disparos'>;
 export type HistoricoDisparoInsert = TablesInsert<'historico_disparos'>;
@@ -42,7 +42,7 @@ export const EMPRESA_STATUS = {
   SUSPENSO: 'suspenso'
 } as const;
 
-export const COLABORADOR_STATUS = {
+export const Cliente_STATUS = {
   ATIVO: 'ativo',
   INATIVO: 'inativo'
 } as const;
@@ -76,10 +76,10 @@ export const CONTROLE_STATUS = {
 export interface EmpresaClienteCompleta extends EmpresaCliente {
   produtos: EmpresaProduto[];
   grupos: GrupoResponsavel[];
-  colaboradores: Colaborador[];
+  clientes: Cliente[];
 }
 
-export interface ColaboradorCompleto extends Colaborador {
+export interface ClienteCompleto extends Cliente {
   empresa: EmpresaCliente;
 }
 
@@ -89,7 +89,7 @@ export interface GrupoResponsavelCompleto extends GrupoResponsavel {
 
 export interface HistoricoDisparoCompleto extends HistoricoDisparo {
   empresa?: EmpresaCliente;
-  colaborador?: Colaborador;
+  cliente?: Cliente;
 }
 
 // Interfaces para formulários
@@ -109,12 +109,12 @@ export interface EmpresaFormData {
   vigenciaFinal?: string;
 }
 
-export interface ColaboradorFormData {
+export interface ClienteFormData {
   nomeCompleto: string;
   email: string;
   funcao?: string;
   empresaId: string;
-  status: ColaboradorStatus;
+  status: ClienteStatus;
   descricaoStatus?: string;
   principalContato: boolean;
 }
@@ -135,15 +135,15 @@ export interface EmpresaFiltros {
   busca?: string;
 }
 
-export interface ColaboradorFiltros {
+export interface ClienteFiltros {
   empresaId?: string;
-  status?: ColaboradorStatus[];
+  status?: ClienteStatus[];
   busca?: string;
 }
 
 export interface HistoricoFiltros {
   empresaId?: string;
-  colaboradorId?: string;
+  clienteId?: string;
   status?: keyof typeof DISPARO_STATUS;
   dataInicio?: string;
   dataFim?: string;
@@ -168,7 +168,7 @@ export interface DisparoResult {
   falhas: number;
   detalhes: Array<{
     empresaId: string;
-    colaboradorId: string;
+    clienteId: string;
     status: keyof typeof DISPARO_STATUS;
     erro?: string;
   }>;
@@ -185,7 +185,7 @@ export interface StatusMensal {
 // Interfaces para variáveis de template
 export interface TemplateVariables {
   empresa: EmpresaCliente;
-  colaborador: Colaborador;
+  cliente: Cliente;
   disparo: {
     mes: number;
     ano: number;
@@ -205,9 +205,9 @@ export const STATUS_EMPRESA_OPTIONS: SelectOption[] = [
   { value: EMPRESA_STATUS.SUSPENSO, label: 'Suspenso' }
 ];
 
-export const STATUS_COLABORADOR_OPTIONS: SelectOption[] = [
-  { value: COLABORADOR_STATUS.ATIVO, label: 'Ativo' },
-  { value: COLABORADOR_STATUS.INATIVO, label: 'Inativo' }
+export const STATUS_Cliente_OPTIONS: SelectOption[] = [
+  { value: Cliente_STATUS.ATIVO, label: 'Ativo' },
+  { value: Cliente_STATUS.INATIVO, label: 'Inativo' }
 ];
 
 export const TEMPLATE_PADRAO_OPTIONS: SelectOption[] = [
@@ -223,7 +223,7 @@ export const PRODUTOS_OPTIONS: SelectOption[] = [
 
 // Tipos para validação
 export type EmpresaStatus = typeof EMPRESA_STATUS[keyof typeof EMPRESA_STATUS];
-export type ColaboradorStatus = typeof COLABORADOR_STATUS[keyof typeof COLABORADOR_STATUS];
+export type ClienteStatus = typeof Cliente_STATUS[keyof typeof Cliente_STATUS];
 export type TemplatePadrao = typeof TEMPLATE_PADRAO[keyof typeof TEMPLATE_PADRAO];
 export type Produto = typeof PRODUTOS[keyof typeof PRODUTOS];
 export type DisparoStatus = typeof DISPARO_STATUS[keyof typeof DISPARO_STATUS];

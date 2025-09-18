@@ -37,7 +37,7 @@ export const TableLoadingFallback = memo<{
         <Skeleton key={`header-${i}`} className="h-4 flex-1" />
       ))}
     </div>
-    
+
     {/* Rows */}
     {Array.from({ length: rows }).map((_, rowIndex) => (
       <div key={`row-${rowIndex}`} className="flex gap-4">
@@ -104,10 +104,10 @@ interface LazyErrorFallbackProps {
   message?: string;
 }
 
-export const LazyErrorFallback = memo<LazyErrorFallbackProps>(({ 
-  error, 
-  retry, 
-  message = "Erro ao carregar componente" 
+export const LazyErrorFallback = memo<LazyErrorFallbackProps>(({
+  error,
+  retry,
+  message = "Erro ao carregar componente"
 }) => (
   <Alert variant="destructive">
     <AlertDescription className="flex items-center justify-between">
@@ -149,7 +149,7 @@ export function withLazyLoading<P extends object>(
 
   return memo<P>((props) => (
     <Suspense fallback={<FallbackComponent />}>
-      <LazyComponent {...props} />
+      <LazyComponent {...(props as any)} />
     </Suspense>
   ));
 }
@@ -197,18 +197,22 @@ class LazyErrorBoundary extends React.Component<
   }
 }
 
-export const LazyWrapper = memo<LazyWrapperProps>(({ 
-  children, 
+export const LazyWrapper = memo<LazyWrapperProps>(({
+  children,
   fallback = LoadingFallback,
   errorFallback,
-  onError 
-}) => (
-  <LazyErrorBoundary errorFallback={errorFallback} onError={onError}>
-    <Suspense fallback={<fallback />}>
-      {children}
-    </Suspense>
-  </LazyErrorBoundary>
-));
+  onError
+}) => {
+  const FallbackComponent = fallback;
+
+  return (
+    <LazyErrorBoundary errorFallback={errorFallback} onError={onError}>
+      <Suspense fallback={<FallbackComponent />}>
+        {children}
+      </Suspense>
+    </LazyErrorBoundary>
+  );
+});
 
 LazyWrapper.displayName = 'LazyWrapper';
 
@@ -253,11 +257,6 @@ export const LazyEmpresasTable = withLazyLoading(
   () => <TableLoadingFallback columns={6} rows={10} />
 );
 
-export const LazyColaboradoresTable = withLazyLoading(
-  () => import('@/components/admin/client-books/ColaboradoresTable'),
-  () => <TableLoadingFallback columns={5} rows={8} />
-);
-
 export const LazyGruposTable = withLazyLoading(
   () => import('@/components/admin/client-books/GruposTable'),
   () => <TableLoadingFallback columns={4} rows={6} />
@@ -269,22 +268,12 @@ export const LazyEmpresaForm = withLazyLoading(
   () => <FormLoadingFallback fields={8} />
 );
 
-export const LazyColaboradorForm = withLazyLoading(
-  () => import('@/components/admin/client-books/ColaboradorForm'),
-  () => <FormLoadingFallback fields={6} />
-);
-
 // Lazy loading para componentes de importação
-export const LazyExcelImport = withLazyLoading(
-  () => import('@/components/admin/excel/ExcelImportDialog'),
-  () => <LoadingFallback rows={3} />
-);
-
-// Lazy loading para relatórios e histórico
-export const LazyHistoricoTable = withLazyLoading(
-  () => import('@/components/admin/client-books/HistoricoTable'),
-  () => <TableLoadingFallback columns={7} rows={15} />
-);
+// Temporariamente removido - componente não tem export default
+// export const LazyExcelImport = withLazyLoading(
+//   () => import('@/components/admin/excel/ExcelImportDialog'),
+//   () => <LoadingFallback rows={3} />
+// );
 
 /**
  * Utilitário para pré-carregar componentes
@@ -316,10 +305,11 @@ export class LazyPreloader {
         name: 'EmpresasTable',
         import: () => import('@/components/admin/client-books/EmpresasTable')
       },
-      {
-        name: 'ColaboradoresTable',
-        import: () => import('@/components/admin/client-books/ColaboradoresTable')
-      },
+      // Temporariamente removido devido a erros de compilação
+      // {
+      //   name: 'ClientesTable',
+      //   import: () => import('@/components/admin/client-books/ClientesTable')
+      // },
       {
         name: 'EmpresaForm',
         import: () => import('@/components/admin/client-books/EmpresaForm')

@@ -121,11 +121,11 @@ export function useEmpresasPagination(initialOptions?: Partial<UsePaginationOpti
 }
 
 /**
- * Hook específico para colaboradores
+ * Hook específico para clientes
  */
-export function useColaboradoresPagination(initialOptions?: Partial<UsePaginationOptions>) {
+export function useClientesPagination(initialOptions?: Partial<UsePaginationOptions>) {
   return usePagination({
-    entityType: 'colaboradores',
+    entityType: 'clientes',
     ...initialOptions
   });
 }

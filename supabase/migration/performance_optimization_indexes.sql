@@ -23,26 +23,26 @@ ON empresas_clientes(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_empresas_clientes_data_status 
 ON empresas_clientes(data_status DESC) WHERE status IN ('inativo', 'suspenso');
 
--- Índices para tabela colaboradores
+-- Índices para tabela clientes
 -- Índice composto para consultas por empresa e status
-CREATE INDEX IF NOT EXISTS idx_colaboradores_empresa_status 
-ON colaboradores(empresa_id, status);
+CREATE INDEX IF NOT EXISTS idx_clientes_empresa_status 
+ON clientes(empresa_id, status);
 
 -- Índice para busca por email (único por empresa)
-CREATE INDEX IF NOT EXISTS idx_colaboradores_email_empresa 
-ON colaboradores(email, empresa_id);
+CREATE INDEX IF NOT EXISTS idx_clientes_email_empresa 
+ON clientes(email, empresa_id);
 
 -- Índice para busca por nome (case-insensitive)
-CREATE INDEX IF NOT EXISTS idx_colaboradores_nome_lower 
-ON colaboradores(LOWER(nome_completo));
+CREATE INDEX IF NOT EXISTS idx_clientes_nome_lower 
+ON clientes(LOWER(nome_completo));
 
 -- Índice para principal contato por empresa
-CREATE INDEX IF NOT EXISTS idx_colaboradores_principal_contato 
-ON colaboradores(empresa_id) WHERE principal_contato = true;
+CREATE INDEX IF NOT EXISTS idx_clientes_principal_contato 
+ON clientes(empresa_id) WHERE principal_contato = true;
 
 -- Índice para ordenação por data de criação
-CREATE INDEX IF NOT EXISTS idx_colaboradores_created_at 
-ON colaboradores(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_clientes_created_at 
+ON clientes(created_at DESC);
 
 -- Índices para tabela empresa_produtos
 -- Índice composto para consultas por empresa e produto
@@ -85,9 +85,9 @@ ON grupo_emails(email);
 CREATE INDEX IF NOT EXISTS idx_historico_disparos_empresa_data 
 ON historico_disparos(empresa_id, data_disparo DESC);
 
--- Índice composto para consultas por colaborador e data
-CREATE INDEX IF NOT EXISTS idx_historico_disparos_colaborador_data 
-ON historico_disparos(colaborador_id, data_disparo DESC);
+-- Índice composto para consultas por cliente e data
+CREATE INDEX IF NOT EXISTS idx_historico_disparos_cliente_data 
+ON historico_disparos(cliente_id, data_disparo DESC);
 
 -- Índice para consultas por status e data
 CREATE INDEX IF NOT EXISTS idx_historico_disparos_status_data 
@@ -103,7 +103,7 @@ ON historico_disparos(
 
 -- Índice para consultas de falhas
 CREATE INDEX IF NOT EXISTS idx_historico_disparos_falhas 
-ON historico_disparos(colaborador_id, data_disparo DESC) 
+ON historico_disparos(cliente_id, data_disparo DESC) 
 WHERE status = 'falhou';
 
 -- Índice para ordenação por data de criação
@@ -145,26 +145,26 @@ GROUP BY status;
 CREATE INDEX IF NOT EXISTS idx_mv_empresas_stats_status 
 ON mv_empresas_stats(status);
 
--- View materializada para estatísticas de colaboradores
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_colaboradores_stats AS
+-- View materializada para estatísticas de clientes
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_clientes_stats AS
 SELECT 
   e.id as empresa_id,
   e.nome_completo as empresa_nome,
   e.status as empresa_status,
-  COUNT(c.id) as total_colaboradores,
-  COUNT(CASE WHEN c.status = 'ativo' THEN 1 END) as colaboradores_ativos,
+  COUNT(c.id) as total_clientes,
+  COUNT(CASE WHEN c.status = 'ativo' THEN 1 END) as clientes_ativos,
   COUNT(CASE WHEN c.principal_contato = true THEN 1 END) as principal_contatos,
-  MAX(c.created_at) as ultimo_colaborador_criado
+  MAX(c.created_at) as ultimo_cliente_criado
 FROM empresas_clientes e
-LEFT JOIN colaboradores c ON e.id = c.empresa_id
+LEFT JOIN clientes c ON e.id = c.empresa_id
 GROUP BY e.id, e.nome_completo, e.status;
 
--- Índices para a view materializada de colaboradores
-CREATE INDEX IF NOT EXISTS idx_mv_colaboradores_stats_empresa 
-ON mv_colaboradores_stats(empresa_id);
+-- Índices para a view materializada de clientes
+CREATE INDEX IF NOT EXISTS idx_mv_clientes_stats_empresa 
+ON mv_clientes_stats(empresa_id);
 
-CREATE INDEX IF NOT EXISTS idx_mv_colaboradores_stats_status 
-ON mv_colaboradores_stats(empresa_status);
+CREATE INDEX IF NOT EXISTS idx_mv_clientes_stats_status 
+ON mv_clientes_stats(empresa_status);
 
 -- View materializada para métricas mensais de disparos
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_disparos_mensais AS
@@ -174,7 +174,7 @@ SELECT
   empresa_id,
   status,
   COUNT(*) as total_disparos,
-  COUNT(DISTINCT colaborador_id) as colaboradores_unicos
+  COUNT(DISTINCT cliente_id) as clientes_unicos
 FROM historico_disparos 
 WHERE data_disparo IS NOT NULL
 GROUP BY 
@@ -202,7 +202,7 @@ CREATE OR REPLACE FUNCTION refresh_client_books_stats()
 RETURNS void AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_empresas_stats;
-  REFRESH MATERIALIZED VIEW CONCURRENTLY mv_colaboradores_stats;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY mv_clientes_stats;
   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_disparos_mensais;
 END;
 $$ LANGUAGE plpgsql;
@@ -234,8 +234,8 @@ CREATE TRIGGER trigger_empresas_cache_invalidate
   AFTER INSERT OR UPDATE OR DELETE ON empresas_clientes
   FOR EACH ROW EXECUTE FUNCTION invalidate_client_books_cache();
 
-CREATE TRIGGER trigger_colaboradores_cache_invalidate
-  AFTER INSERT OR UPDATE OR DELETE ON colaboradores
+CREATE TRIGGER trigger_clientes_cache_invalidate
+  AFTER INSERT OR UPDATE OR DELETE ON clientes
   FOR EACH ROW EXECUTE FUNCTION invalidate_client_books_cache();
 
 CREATE TRIGGER trigger_historico_cache_invalidate
@@ -270,8 +270,8 @@ COMMENT ON INDEX idx_historico_disparos_empresa_data IS
 COMMENT ON MATERIALIZED VIEW mv_empresas_stats IS 
 'View materializada com estatísticas agregadas de empresas para dashboards';
 
-COMMENT ON MATERIALIZED VIEW mv_colaboradores_stats IS 
-'View materializada com estatísticas de colaboradores por empresa';
+COMMENT ON MATERIALIZED VIEW mv_clientes_stats IS 
+'View materializada com estatísticas de clientes por empresa';
 
 COMMENT ON MATERIALIZED VIEW mv_disparos_mensais IS 
 'View materializada com métricas mensais de disparos para relatórios';
@@ -289,7 +289,7 @@ BEGIN
   
   -- Atualizar estatísticas das tabelas principais
   ANALYZE empresas_clientes;
-  ANALYZE colaboradores;
+  ANALYZE clientes;
   ANALYZE historico_disparos;
   ANALYZE controle_mensal;
   
@@ -304,7 +304,7 @@ $$ LANGUAGE plpgsql;
 
 -- Garantir que o usuário da aplicação pode usar as views e funções
 GRANT SELECT ON mv_empresas_stats TO authenticated;
-GRANT SELECT ON mv_colaboradores_stats TO authenticated;
+GRANT SELECT ON mv_clientes_stats TO authenticated;
 GRANT SELECT ON mv_disparos_mensais TO authenticated;
 GRANT EXECUTE ON FUNCTION refresh_client_books_stats() TO service_role;
 GRANT EXECUTE ON FUNCTION maintain_client_books_performance() TO service_role;

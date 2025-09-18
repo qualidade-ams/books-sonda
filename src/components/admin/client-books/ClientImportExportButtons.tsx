@@ -27,40 +27,40 @@ import {
   X,
   Users
 } from 'lucide-react';
-import { EmpresaClienteCompleta, ColaboradorCompleto, EmpresaFormData, ColaboradorFormData } from '@/types/clientBooksTypes';
+import { EmpresaClienteCompleta, ClienteCompleto, EmpresaFormData, ClienteFormData } from '@/types/clientBooksTypes';
 import { 
-  exportClientesToExcel, 
-  exportColaboradoresToExcel,
+  exportEmpresasToExcel, 
+  exportClientesToExcel,
   exportClientesToPDF, 
   processImportEmpresasExcel, 
-  processImportColaboradoresExcel,
+  processImportClientesExcel,
   processProdutosString,
   downloadImportEmpresasTemplate,
-  downloadImportColaboradoresTemplate,
+  downloadImportClientesTemplate,
   EmpresaImportData,
-  ColaboradorImportData
+  ClienteImportData
 } from '@/utils/clientExportUtils';
 import { toast } from 'sonner';
 
 interface ClientImportExportButtonsProps {
   empresas: EmpresaClienteCompleta[];
-  colaboradores?: ColaboradorCompleto[];
+  clientes?: ClienteCompleto[];
   onImportEmpresas?: (empresas: EmpresaFormData[]) => Promise<any>;
-  onImportColaboradores?: (colaboradores: ColaboradorFormData[]) => Promise<any>;
+  onImportClientes?: (clientes: ClienteFormData[]) => Promise<any>;
   isImporting?: boolean;
-  showColaboradores?: boolean;
+  showClientes?: boolean;
 }
 
 export function ClientImportExportButtons({ 
   empresas, 
-  colaboradores = [],
+  clientes = [],
   onImportEmpresas,
-  onImportColaboradores,
+  onImportClientes,
   isImporting = false,
-  showColaboradores = false
+  showClientes = false
 }: ClientImportExportButtonsProps) {
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importType, setImportType] = useState<'empresas' | 'colaboradores'>('empresas');
+  const [importType, setImportType] = useState<'empresas' | 'clientes'>('empresas');
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<{
     success: number;
@@ -69,22 +69,22 @@ export function ClientImportExportButtons({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportClientesExcel = () => {
+  const handleExportEmpresasExcel = () => {
     try {
-      exportClientesToExcel(empresas);
-      toast.success('Dados de clientes exportados para Excel com sucesso!');
+      exportEmpresasToExcel(empresas);
+      toast.success('Dados de empresas exportados para Excel com sucesso!');
     } catch (error) {
-      toast.error('Erro ao exportar dados de clientes para Excel');
+      toast.error('Erro ao exportar dados de empresas para Excel');
       console.error('Erro na exportação Excel:', error);
     }
   };
 
-  const handleExportColaboradoresExcel = () => {
+  const handleExportClientesExcel = () => {
     try {
-      exportColaboradoresToExcel(colaboradores);
-      toast.success('Dados de colaboradores exportados para Excel com sucesso!');
+      exportClientesToExcel(clientes);
+      toast.success('Dados de clientes exportados para Excel com sucesso!');
     } catch (error) {
-      toast.error('Erro ao exportar dados de colaboradores para Excel');
+      toast.error('Erro ao exportar dados de clientes para Excel');
       console.error('Erro na exportação Excel:', error);
     }
   };
@@ -99,7 +99,7 @@ export function ClientImportExportButtons({
     }
   };
 
-  const handleImportClick = (type: 'empresas' | 'colaboradores') => {
+  const handleImportClick = (type: 'empresas' | 'clientes') => {
     setImportType(type);
     fileInputRef.current?.click();
   };
@@ -122,7 +122,7 @@ export function ClientImportExportButtons({
       if (importType === 'empresas') {
         await processImportEmpresas(file);
       } else {
-        await processImportColaboradores(file);
+        await processImportClientes(file);
       }
 
       // Limpar input
@@ -212,21 +212,21 @@ export function ClientImportExportButtons({
     });
   };
 
-  const processImportColaboradores = async (file: File) => {
-    if (!onImportColaboradores) {
-      throw new Error('Função de importação de colaboradores não fornecida');
+  const processImportClientes = async (file: File) => {
+    if (!onImportClientes) {
+      throw new Error('Função de importação de clientes não fornecida');
     }
 
     // Processar arquivo
-    const importData = await processImportColaboradoresExcel(file);
+    const importData = await processImportClientesExcel(file);
     setImportProgress(30);
 
     if (importData.length === 0) {
-      throw new Error('Nenhum colaborador válido encontrado no arquivo');
+      throw new Error('Nenhum cliente válido encontrado no arquivo');
     }
 
     // Converter dados para formato do formulário
-    const colaboradoresParaImportar: ColaboradorFormData[] = [];
+    const clientesParaImportar: ClienteFormData[] = [];
     const erros: string[] = [];
 
     for (let i = 0; i < importData.length; i++) {
@@ -270,7 +270,7 @@ export function ClientImportExportButtons({
           continue;
         }
 
-        colaboradoresParaImportar.push({
+        clientesParaImportar.push({
           nomeCompleto: item.nomeCompleto.trim(),
           email: item.email.trim(),
           funcao: item.funcao?.trim(),
@@ -280,34 +280,34 @@ export function ClientImportExportButtons({
           principalContato: ['sim', 'yes', 'true', '1'].includes(item.principalContato.toLowerCase())
         });
       } catch (error) {
-        erros.push(`Linha ${i + 2}: Erro ao processar colaborador "${item.nomeCompleto}": ${error}`);
+        erros.push(`Linha ${i + 2}: Erro ao processar cliente "${item.nomeCompleto}": ${error}`);
       }
     }
 
     setImportProgress(70);
 
-    // Importar colaboradores válidos
-    if (colaboradoresParaImportar.length > 0) {
-      await onImportColaboradores(colaboradoresParaImportar);
+    // Importar clientes válidos
+    if (clientesParaImportar.length > 0) {
+      await onImportClientes(clientesParaImportar);
       setImportProgress(100);
     }
 
     // Mostrar resultados
     setImportResults({
-      success: colaboradoresParaImportar.length,
+      success: clientesParaImportar.length,
       errors: erros,
       total: importData.length
     });
   };
 
-  const handleDownloadTemplate = (type: 'empresas' | 'colaboradores') => {
+  const handleDownloadTemplate = (type: 'empresas' | 'clientes') => {
     try {
       if (type === 'empresas') {
         downloadImportEmpresasTemplate();
         toast.success('Template de importação de empresas baixado com sucesso!');
       } else {
-        downloadImportColaboradoresTemplate();
-        toast.success('Template de importação de colaboradores baixado com sucesso!');
+        downloadImportClientesTemplate();
+        toast.success('Template de importação de clientes baixado com sucesso!');
       }
     } catch (error) {
       toast.error('Erro ao baixar template');
@@ -334,10 +334,14 @@ export function ClientImportExportButtons({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {showColaboradores && (
-              <DropdownMenuItem onClick={handleExportColaboradoresExcel}>
+            <DropdownMenuItem onClick={handleExportEmpresasExcel}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Exportar Empresas para Excel
+            </DropdownMenuItem>
+            {showClientes && (
+              <DropdownMenuItem onClick={handleExportClientesExcel}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar para Excel
+                Exportar Clientes para Excel
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleExportClientesPDF}>
@@ -370,14 +374,14 @@ export function ClientImportExportButtons({
                 </DropdownMenuItem>
               </>
             )}
-            {onImportColaboradores && !onImportEmpresas && (
+            {onImportClientes && !onImportEmpresas && (
               <>
-                <DropdownMenuItem onClick={() => handleDownloadTemplate('colaboradores')}>
+                <DropdownMenuItem onClick={() => handleDownloadTemplate('clientes')}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   Baixar Template Excel
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleImportClick('colaboradores')}>
+                <DropdownMenuItem onClick={() => handleImportClick('clientes')}>
                   <Upload className="mr-2 h-4 w-4" />
                   Importar do Excel
                 </DropdownMenuItem>
@@ -401,7 +405,7 @@ export function ClientImportExportButtons({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Importando {importType === 'empresas' ? 'Empresas' : 'Colaboradores'}
+              Importando {importType === 'empresas' ? 'Empresas' : 'Clientes'}
             </DialogTitle>
             <DialogDescription>
               Processando arquivo Excel...
@@ -434,8 +438,8 @@ export function ClientImportExportButtons({
                     <span className="font-medium">{importResults.total}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>{importType === 'empresas' ? 'Empresas' : 'Colaboradores'} importados:</span>
-                    <span className="font-medium text-green-600">{importResults.success}</span>
+                    <span>{importType === 'empresas' ? 'Empresas' : 'Clientes'} importados:</span>
+<span className="font-medium text-green-600">{importResults.success}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Erros:</span>

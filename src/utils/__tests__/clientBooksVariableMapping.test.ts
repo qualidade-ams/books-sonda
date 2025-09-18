@@ -21,13 +21,13 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['empresa.status']).toBe('Ativo');
     });
 
-    it('deve mapear corretamente os dados de colaborador', () => {
+    it('deve mapear corretamente os dados de cliente', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
 
-      expect(variaveis['colaborador.nomeCompleto']).toBe('João Silva');
-      expect(variaveis['colaborador.email']).toBe('joao.silva@exemplo.com');
-      expect(variaveis['colaborador.funcao']).toBe('Gerente Fiscal');
-      expect(variaveis['colaborador.principalContato']).toBe('Sim');
+      expect(variaveis['cliente.nomeCompleto']).toBe('João Silva');
+      expect(variaveis['cliente.email']).toBe('joao.silva@exemplo.com');
+      expect(variaveis['cliente.funcao']).toBe('Gerente Fiscal');
+      expect(variaveis['cliente.principalContato']).toBe('Sim');
     });
 
     it('deve mapear corretamente os dados de disparo', () => {
@@ -51,7 +51,7 @@ describe('clientBooksVariableMapping', () => {
   describe('substituirVariaveisClientBooks', () => {
     it('deve substituir variáveis simples no template', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
-      const template = 'Olá {{colaborador.nomeCompleto}}, da empresa {{empresa.nomeCompleto}}';
+      const template = 'Olá {{cliente.nomeCompleto}}, da empresa {{empresa.nomeCompleto}}';
       
       const resultado = substituirVariaveisClientBooks(template, variaveis);
       
@@ -69,7 +69,7 @@ describe('clientBooksVariableMapping', () => {
 
     it('deve manter variáveis não encontradas inalteradas', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
-      const template = 'Olá {{colaborador.nomeCompleto}}, {{variavel.inexistente}}';
+      const template = 'Olá {{cliente.nomeCompleto}}, {{variavel.inexistente}}';
       
       const resultado = substituirVariaveisClientBooks(template, variaveis);
       
@@ -80,7 +80,7 @@ describe('clientBooksVariableMapping', () => {
   describe('validarVariaveisClientBooks', () => {
     it('deve validar template com todas as variáveis encontradas', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
-      const template = 'Olá {{colaborador.nomeCompleto}}, da empresa {{empresa.nomeCompleto}}';
+      const template = 'Olá {{cliente.nomeCompleto}}, da empresa {{empresa.nomeCompleto}}';
       
       const resultado = validarVariaveisClientBooks(template, variaveis);
       
@@ -90,7 +90,7 @@ describe('clientBooksVariableMapping', () => {
 
     it('deve identificar variáveis não encontradas', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
-      const template = 'Olá {{colaborador.nomeCompleto}}, {{variavel.inexistente}}';
+      const template = 'Olá {{cliente.nomeCompleto}}, {{variavel.inexistente}}';
       
       const resultado = validarVariaveisClientBooks(template, variaveis);
       
@@ -114,7 +114,7 @@ describe('clientBooksVariableMapping', () => {
       const variaveis = obterVariaveisClientBooksDisponiveis();
       
       expect(variaveis).toHaveProperty('Dados da Empresa');
-      expect(variaveis).toHaveProperty('Dados do Colaborador');
+      expect(variaveis).toHaveProperty('Dados do Cliente');
       expect(variaveis).toHaveProperty('Dados do Disparo');
       expect(variaveis).toHaveProperty('Sistema');
     });
@@ -127,12 +127,12 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['Dados da Empresa']).toContain('empresa.produtos');
     });
 
-    it('deve incluir variáveis essenciais de colaborador', () => {
+    it('deve incluir variáveis essenciais de cliente', () => {
       const variaveis = obterVariaveisClientBooksDisponiveis();
       
-      expect(variaveis['Dados do Colaborador']).toContain('colaborador.nomeCompleto');
-      expect(variaveis['Dados do Colaborador']).toContain('colaborador.email');
-      expect(variaveis['Dados do Colaborador']).toContain('colaborador.funcao');
+      expect(variaveis['Dados do Cliente']).toContain('cliente.nomeCompleto');
+      expect(variaveis['Dados do Cliente']).toContain('cliente.email');
+      expect(variaveis['Dados do Cliente']).toContain('cliente.funcao');
     });
   });
 
@@ -141,11 +141,11 @@ describe('clientBooksVariableMapping', () => {
       const dados = gerarDadosExemplo();
       
       expect(dados.empresa).toBeDefined();
-      expect(dados.colaborador).toBeDefined();
+      expect(dados.cliente).toBeDefined();
       expect(dados.disparo).toBeDefined();
       
       expect(dados.empresa.nome_completo).toBeDefined();
-      expect(dados.colaborador.nome_completo).toBeDefined();
+      expect(dados.cliente.nome_completo).toBeDefined();
       expect(dados.disparo.mes).toBeGreaterThan(0);
       expect(dados.disparo.mes).toBeLessThanOrEqual(12);
     });
@@ -155,7 +155,7 @@ describe('clientBooksVariableMapping', () => {
       const dados2 = gerarDadosExemplo();
       
       expect(dados1.empresa.nome_completo).toBe(dados2.empresa.nome_completo);
-      expect(dados1.colaborador.nome_completo).toBe(dados2.colaborador.nome_completo);
+      expect(dados1.cliente.nome_completo).toBe(dados2.cliente.nome_completo);
     });
   });
 });

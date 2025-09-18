@@ -34,12 +34,12 @@ export class PerformanceOptimizationService {
       batchSize: 50
     });
 
-    // Otimizações para consultas de colaboradores
-    this.queryOptimizations.set('colaboradores_by_empresa', {
-      cacheKey: 'colaboradores_empresa',
+    // Otimizações para consultas de clientes
+    this.queryOptimizations.set('clientes_by_empresa', {
+      cacheKey: 'clientes_empresa',
       ttl: 5 * 60, // 5 minutos
       preloadStrategy: 'lazy',
-      indexHints: ['idx_colaboradores_empresa_status'],
+      indexHints: ['idx_clientes_empresa_status'],
       batchSize: 100
     });
 
@@ -113,7 +113,7 @@ export class PerformanceOptimizationService {
     error?: Error
   ): void {
     const existing = this.performanceMetrics.get(queryName);
-    
+
     if (existing) {
       existing.totalExecutions++;
       existing.totalDuration += duration;
@@ -121,11 +121,11 @@ export class PerformanceOptimizationService {
       existing.cacheHits += fromCache ? 1 : 0;
       existing.errors += error ? 1 : 0;
       existing.lastExecution = new Date();
-      
+
       if (duration > existing.maxDuration) {
         existing.maxDuration = duration;
       }
-      
+
       if (duration < existing.minDuration) {
         existing.minDuration = duration;
       }
@@ -231,7 +231,7 @@ export class PerformanceOptimizationService {
       // Pré-carregar estatísticas do mês atual
       const mesAtual = new Date().getMonth() + 1;
       const anoAtual = new Date().getFullYear();
-      
+
       await this.monitorQuery(
         'preload_stats_mes_atual',
         async () => {
@@ -264,7 +264,7 @@ export class PerformanceOptimizationService {
    */
   async optimizeBasedOnUsage(): Promise<void> {
     const metrics = Array.from(this.performanceMetrics.values());
-    
+
     // Identificar consultas mais frequentes
     const frequentQueries = metrics
       .filter(m => m.totalExecutions > 50)
@@ -302,7 +302,7 @@ export class PerformanceOptimizationService {
    */
   private async applyAutomaticOptimizations(metric: PerformanceMetric): Promise<void> {
     const cacheHitRate = metric.cacheHits / metric.totalExecutions;
-    
+
     // Se a consulta é frequente mas tem baixo cache hit, aumentar TTL
     if (metric.totalExecutions > 100 && cacheHitRate < 0.5) {
       const optimization = this.queryOptimizations.get(metric.queryName);
@@ -327,11 +327,11 @@ export class PerformanceOptimizationService {
    */
   async intelligentCacheCleanup(): Promise<void> {
     const stats = cacheManager.getStats();
-    
+
     // Se o cache está muito cheio, limpar entradas menos usadas
     if (stats.totalEntries > stats.maxSize * 0.8) {
       console.info('🧹 Iniciando limpeza inteligente do cache...');
-      
+
       // Limpar cache de consultas com baixo hit rate
       const metrics = Array.from(this.performanceMetrics.values());
       const lowHitRateQueries = metrics
@@ -438,7 +438,8 @@ export class PerformanceOptimizationService {
       }
 
       // Refresh das views materializadas no banco
-      await supabase.rpc('refresh_client_books_stats');
+      // TODO: Implementar função RPC refresh_client_books_stats no banco
+      // await supabase.rpc('refresh_client_books_stats');
 
       console.info('✅ Manutenção automática concluída');
 

@@ -15,7 +15,7 @@ describe('TemplateValidationService', () => {
       id: 'test-template',
       nome: 'Template Teste',
       assunto: 'Book {{empresa.nomeAbreviado}} - {{disparo.mesNome}}/{{disparo.ano}}',
-      corpo: 'Olá {{colaborador.nomeCompleto}}, segue o book da {{empresa.nomeCompleto}}.',
+      corpo: 'Olá {{cliente.nomeCompleto}}, segue o book da {{empresa.nomeCompleto}}.',
       formulario: 'book',
       modalidade: null,
       ativo: true,
@@ -99,7 +99,7 @@ describe('TemplateValidationService', () => {
 
   describe('aplicarFallbacksNoTemplate', () => {
     it('deve aplicar fallbacks corretamente', () => {
-      const template = 'Olá {{colaborador.nomeCompleto}}, da {{empresa.inexistente}}';
+      const template = 'Olá {{cliente.nomeCompleto}}, da {{empresa.inexistente}}';
       const fallbacks = {
         'empresa.inexistente': '[Empresa Não Encontrada]'
       };
@@ -107,7 +107,7 @@ describe('TemplateValidationService', () => {
       const resultado = service.aplicarFallbacksNoTemplate(template, fallbacks);
 
       expect(resultado).toContain('[Empresa Não Encontrada]');
-      expect(resultado).toContain('{{colaborador.nomeCompleto}}'); // Não deve alterar variáveis sem fallback
+      expect(resultado).toContain('{{cliente.nomeCompleto}}'); // Não deve alterar variáveis sem fallback
     });
 
     it('deve aplicar múltiplos fallbacks', () => {

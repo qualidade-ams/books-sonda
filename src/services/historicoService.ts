@@ -6,7 +6,7 @@ import type {
   ControleMensalCompleto,
   ControleMensalFiltros,
   EmpresaCliente,
-  Colaborador,
+  Cliente,
   StatusDisparo,
   StatusControleMensal
 } from '@/types/clientBooks';
@@ -14,8 +14,8 @@ import type {
 export interface RelatorioMetricas {
   totalEmpresas: number;
   empresasAtivas: number;
-  totalColaboradores: number;
-  colaboradoresAtivos: number;
+  totalClientes: number;
+  clientesAtivos: number;
   emailsEnviadosMes: number;
   emailsFalharamMes: number;
   taxaSucessoMes: number;
@@ -35,7 +35,7 @@ export interface FiltrosAvancados extends HistoricoFiltros {
   apenasComFalhas?: boolean;
   apenasComSucesso?: boolean;
   empresasIds?: string[];
-  colaboradoresIds?: string[];
+  clientesIds?: string[];
 }
 
 export interface ExportacaoConfig {
@@ -56,7 +56,7 @@ class HistoricoService {
         .select(`
           *,
           empresas_clientes(*),
-          colaboradores(*)
+          clientes(*)
         `);
 
       // Aplicar filtros básicos
@@ -68,12 +68,12 @@ class HistoricoService {
         query = query.in('empresa_id', filtros.empresasIds);
       }
 
-      if (filtros.colaboradorId) {
-        query = query.eq('colaborador_id', filtros.colaboradorId);
+      if (filtros.clienteId) {
+        query = query.eq('cliente_id', filtros.clienteId);
       }
 
-      if (filtros.colaboradoresIds && filtros.colaboradoresIds.length > 0) {
-        query = query.in('colaborador_id', filtros.colaboradoresIds);
+      if (filtros.clientesIds && filtros.clientesIds.length > 0) {
+        query = query.in('cliente_id', filtros.clientesIds);
       }
 
       if (filtros.status && filtros.status.length > 0) {
@@ -103,7 +103,7 @@ class HistoricoService {
         const dataInicio = new Date(filtros.ano, filtros.mes - 1, 1);
         const dataFim = new Date(filtros.ano, filtros.mes, 0, 23, 59, 59);
         query = query.gte('data_disparo', dataInicio.toISOString())
-                    .lte('data_disparo', dataFim.toISOString());
+          .lte('data_disparo', dataFim.toISOString());
       }
 
       // Ordenação
@@ -117,11 +117,11 @@ class HistoricoService {
 
       let historico = data || [];
 
-      // Filtrar por status de empresa/colaborador se necessário
+      // Filtrar por status de empresa/cliente se necessário
       if (!filtros.incluirInativos) {
-        historico = historico.filter(item => 
+        historico = historico.filter(item =>
           item.empresas_clientes?.status === 'ativo' &&
-          item.colaboradores?.status === 'ativo'
+          item.clientes?.status === 'ativo'
         );
       }
 
@@ -181,13 +181,13 @@ class HistoricoService {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'ativo');
 
-      // Contar colaboradores totais e ativos
-      const { count: totalColaboradores } = await supabase
-        .from('colaboradores')
+      // Contar clientes totais e ativos
+      const { count: totalClientes } = await supabase
+        .from('clientes')
         .select('*', { count: 'exact', head: true });
 
-      const { count: colaboradoresAtivos } = await supabase
-        .from('colaboradores')
+      const { count: clientesAtivos } = await supabase
+        .from('clientes')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'ativo');
 
@@ -211,8 +211,8 @@ class HistoricoService {
 
       // Calcular taxa de sucesso
       const totalEmailsMes = (emailsEnviadosMes || 0) + (emailsFalharamMes || 0);
-      const taxaSucessoMes = totalEmailsMes > 0 
-        ? ((emailsEnviadosMes || 0) / totalEmailsMes) * 100 
+      const taxaSucessoMes = totalEmailsMes > 0
+        ? ((emailsEnviadosMes || 0) / totalEmailsMes) * 100
         : 0;
 
       // Identificar empresas sem books no mês
@@ -221,8 +221,8 @@ class HistoricoService {
       return {
         totalEmpresas: totalEmpresas || 0,
         empresasAtivas: empresasAtivas || 0,
-        totalColaboradores: totalColaboradores || 0,
-        colaboradoresAtivos: colaboradoresAtivos || 0,
+        totalClientes: totalClientes || 0,
+        clientesAtivos: clientesAtivos || 0,
         emailsEnviadosMes: emailsEnviadosMes || 0,
         emailsFalharamMes: emailsFalharamMes || 0,
         taxaSucessoMes: Math.round(taxaSucessoMes * 100) / 100,
@@ -313,7 +313,7 @@ class HistoricoService {
       }
 
       query = query.order('ano', { ascending: false })
-                  .order('mes', { ascending: false });
+        .order('mes', { ascending: false });
 
       const { data, error } = await query;
 
@@ -321,7 +321,10 @@ class HistoricoService {
         throw new Error(`Erro ao buscar controles mensais: ${error.message}`);
       }
 
-      return data?.filter(item => item.empresas_clientes) as ControleMensalCompleto[] || [];
+      return data?.filter(item => item.empresas_clientes).map(item => ({
+        ...item,
+        empresa: item.empresas_clientes
+      })) as ControleMensalCompleto[] || [];
 
     } catch (error) {
       throw new Error(`Erro ao buscar controles mensais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -332,7 +335,7 @@ class HistoricoService {
    * Busca estatísticas de performance por período
    */
   async buscarEstatisticasPerformance(
-    dataInicio: Date, 
+    dataInicio: Date,
     dataFim: Date
   ): Promise<{
     totalDisparos: number;
@@ -340,7 +343,7 @@ class HistoricoService {
     falhas: number;
     taxaSucesso: number;
     empresasAtendidas: number;
-    colaboradoresAtendidos: number;
+    clientesAtendidos: number;
     mediaDisparosPorDia: number;
   }> {
     try {
@@ -362,7 +365,7 @@ class HistoricoService {
           falhas: 0,
           taxaSucesso: 0,
           empresasAtendidas: 0,
-          colaboradoresAtendidos: 0,
+          clientesAtendidos: 0,
           mediaDisparosPorDia: 0
         };
       }
@@ -372,9 +375,9 @@ class HistoricoService {
       const falhas = disparos.filter(d => d.status === 'falhou').length;
       const taxaSucesso = totalDisparos > 0 ? (sucessos / totalDisparos) * 100 : 0;
 
-      // Contar empresas e colaboradores únicos
+      // Contar empresas e clientes únicos
       const empresasUnicas = new Set(disparos.map(d => d.empresa_id));
-      const colaboradoresUnicos = new Set(disparos.map(d => d.colaborador_id));
+      const clientesUnicos = new Set(disparos.map(d => d.cliente_id));
 
       // Calcular média de disparos por dia
       const diasPeriodo = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24));
@@ -386,7 +389,7 @@ class HistoricoService {
         falhas,
         taxaSucesso: Math.round(taxaSucesso * 100) / 100,
         empresasAtendidas: empresasUnicas.size,
-        colaboradoresAtendidos: colaboradoresUnicos.size,
+        clientesAtendidos: clientesUnicos.size,
         mediaDisparosPorDia: Math.round(mediaDisparosPorDia * 100) / 100
       };
 
@@ -399,7 +402,7 @@ class HistoricoService {
    * Busca histórico de uma empresa específica
    */
   async buscarHistoricoEmpresa(
-    empresaId: string, 
+    empresaId: string,
     meses: number = 12
   ): Promise<{
     empresa: EmpresaCliente;
@@ -463,13 +466,13 @@ class HistoricoService {
   }
 
   /**
-   * Busca colaboradores com mais falhas de envio
+   * Busca clientes com mais falhas de envio
    */
-  async buscarColaboradoresComFalhas(
+  async buscarClientesComFalhas(
     limite: number = 10,
     meses: number = 3
   ): Promise<{
-    colaborador: Colaborador;
+    cliente: Cliente;
     empresa: EmpresaCliente;
     totalFalhas: number;
     ultimaFalha?: Date;
@@ -479,13 +482,13 @@ class HistoricoService {
       const dataInicio = new Date();
       dataInicio.setMonth(dataInicio.getMonth() - meses);
 
-      // Buscar falhas agrupadas por colaborador
+      // Buscar falhas agrupadas por cliente
       const { data: falhas, error } = await supabase
         .from('historico_disparos')
         .select(`
-          colaborador_id,
+          cliente_id,
           data_disparo,
-          colaboradores(*),
+          clientes(*),
           empresas_clientes(*)
         `)
         .eq('status', 'falhou')
@@ -500,34 +503,34 @@ class HistoricoService {
         return [];
       }
 
-      // Agrupar por colaborador
-      const falhasPorColaborador = new Map<string, {
-        colaborador: Colaborador;
+      // Agrupar por cliente
+      const falhasPorCliente = new Map<string, {
+        cliente: Cliente;
         empresa: EmpresaCliente;
         falhas: Date[];
       }>();
 
       for (const falha of falhas) {
-        if (!falha.colaboradores || !falha.empresas_clientes) continue;
+        if (!falha.clientes || !falha.empresas_clientes) continue;
 
-        const colaboradorId = falha.colaborador_id!;
+        const clienteId = falha.cliente_id!;
         const dataFalha = new Date(falha.data_disparo!);
 
-        if (!falhasPorColaborador.has(colaboradorId)) {
-          falhasPorColaborador.set(colaboradorId, {
-            colaborador: falha.colaboradores,
+        if (!falhasPorCliente.has(clienteId)) {
+          falhasPorCliente.set(clienteId, {
+            cliente: falha.clientes,
             empresa: falha.empresas_clientes,
             falhas: []
           });
         }
 
-        falhasPorColaborador.get(colaboradorId)!.falhas.push(dataFalha);
+        falhasPorCliente.get(clienteId)!.falhas.push(dataFalha);
       }
 
       // Converter para array e ordenar por número de falhas
-      const resultado = Array.from(falhasPorColaborador.values())
+      const resultado = Array.from(falhasPorCliente.values())
         .map(item => ({
-          colaborador: item.colaborador,
+          cliente: item.cliente,
           empresa: item.empresa,
           totalFalhas: item.falhas.length,
           ultimaFalha: item.falhas.length > 0 ? item.falhas[0] : undefined
@@ -538,7 +541,7 @@ class HistoricoService {
       return resultado;
 
     } catch (error) {
-      throw new Error(`Erro ao buscar colaboradores com falhas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      throw new Error(`Erro ao buscar clientes com falhas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
@@ -553,7 +556,7 @@ class HistoricoService {
     try {
       // Buscar dados baseado nos filtros
       const historico = await this.buscarHistoricoDetalhado(config.filtros);
-      
+
       let dados: any[] = [];
       let nomeArquivo = '';
 
@@ -562,8 +565,8 @@ class HistoricoService {
         dados = historico.map(item => ({
           'Data Disparo': item.data_disparo ? new Date(item.data_disparo).toLocaleString('pt-BR') : '',
           'Empresa': item.empresas_clientes?.nome_completo || '',
-          'Colaborador': item.colaboradores?.nome_completo || '',
-          'Email': item.colaboradores?.email || '',
+          'Cliente': item.clientes?.nome_completo || '',
+          'Email': item.clientes?.email || '',
           'Status': this.formatarStatus(item.status),
           'Template': item.template_id || '',
           'Assunto': item.assunto || '',
@@ -575,12 +578,12 @@ class HistoricoService {
       // Adicionar métricas se solicitado
       if (config.incluirMetricas && config.filtros.mes && config.filtros.ano) {
         const metricas = await this.calcularMetricasMensais(config.filtros.mes, config.filtros.ano);
-        
+
         // Adicionar linha de métricas no início
         dados.unshift({
           'Data Disparo': 'MÉTRICAS DO MÊS',
           'Empresa': `Total de Empresas: ${metricas.totalEmpresas}`,
-          'Colaborador': `Empresas Ativas: ${metricas.empresasAtivas}`,
+          'Cliente': `Empresas Ativas: ${metricas.empresasAtivas}`,
           'Email': `E-mails Enviados: ${metricas.emailsEnviadosMes}`,
           'Status': `Taxa de Sucesso: ${metricas.taxaSucessoMes}%`,
           'Template': '',
@@ -612,8 +615,8 @@ class HistoricoService {
 
   // Métodos auxiliares privados
 
-  private formatarStatus(status: StatusDisparo): string {
-    const statusMap: Record<StatusDisparo, string> = {
+  private formatarStatus(status: StatusDisparo | string): string {
+    const statusMap: Record<string, string> = {
       'enviado': 'Enviado',
       'falhou': 'Falhou',
       'agendado': 'Agendado',

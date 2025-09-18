@@ -67,13 +67,13 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     enabled: !!(filtros.mes && filtros.ano)
   });
 
-  // Query para colaboradores com falhas
+  // Query para clientes com falhas
   const {
-    data: colaboradoresComFalhas = [],
-    isLoading: isLoadingColaboradoresFalhas
+    data: clientesComFalhas = [],
+    isLoading: isLoadingClientesFalhas
   } = useQuery({
-    queryKey: ['colaboradores-com-falhas'],
-    queryFn: () => historicoService.buscarColaboradoresComFalhas(10, 3), // Top 10, últimos 3 meses
+    queryKey: ['clientes-com-falhas'],
+    queryFn: () => historicoService.buscarClientesComFalhas(10, 3), // Top 10, últimos 3 meses
     staleTime: 1000 * 60 * 15, // 15 minutos
     refetchOnWindowFocus: false
   });
@@ -161,7 +161,7 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     }
     queryClient.invalidateQueries({ queryKey: ['estatisticas-performance'] });
     queryClient.invalidateQueries({ queryKey: ['empresas-sem-books'] });
-    queryClient.invalidateQueries({ queryKey: ['colaboradores-com-falhas'] });
+    queryClient.invalidateQueries({ queryKey: ['clientes-com-falhas'] });
   };
 
   // Estados de loading combinados
@@ -176,7 +176,7 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     relatorioMensal,
     estatisticasPerformance,
     empresasSemBooks,
-    colaboradoresComFalhas,
+    clientesComFalhas,
     
     // Loading states
     isLoading,
@@ -184,7 +184,7 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     isLoadingRelatorio,
     isLoadingEstatisticas,
     isLoadingEmpresasSemBooks,
-    isLoadingColaboradoresFalhas,
+    isLoadingClientesFalhas,
     isBuscandoHistorico,
     isGerandoRelatorio,
     isExportando,

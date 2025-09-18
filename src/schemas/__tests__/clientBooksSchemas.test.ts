@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   empresaFormSchema,
-  colaboradorFormSchema,
+  clienteFormSchema,
   grupoFormSchema,
   historicoFiltrosSchema,
   agendamentoDisparoSchema,
@@ -88,8 +88,8 @@ describe('clientBooksSchemas', () => {
     });
   });
 
-  describe('colaboradorFormSchema', () => {
-    it('deve validar dados válidos de colaborador', () => {
+  describe('clienteFormSchema', () => {
+    it('deve validar dados válidos de cliente', () => {
       const validData = {
         nomeCompleto: 'João Silva',
         email: 'joao@empresa.com',
@@ -99,7 +99,7 @@ describe('clientBooksSchemas', () => {
         principalContato: false
       };
 
-      const result = colaboradorFormSchema.safeParse(validData);
+      const result = clienteFormSchema.safeParse(validData);
       expect(result.success).toBe(true);
     });
 
@@ -112,7 +112,7 @@ describe('clientBooksSchemas', () => {
         principalContato: false
       };
 
-      const result = colaboradorFormSchema.safeParse(invalidData);
+      const result = clienteFormSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
       expect(result.error?.issues[0].message).toContain('E-mail deve ter um formato válido');
     });
@@ -126,7 +126,7 @@ describe('clientBooksSchemas', () => {
         principalContato: false
       };
 
-      const result = colaboradorFormSchema.safeParse(invalidData);
+      const result = clienteFormSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
       expect(result.error?.issues.some(issue => 
         issue.message.includes('Descrição é obrigatória quando status for inativo')
@@ -142,7 +142,7 @@ describe('clientBooksSchemas', () => {
         principalContato: false
       };
 
-      const result = colaboradorFormSchema.safeParse(invalidData);
+      const result = clienteFormSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
       expect(result.error?.issues[0].message).toContain('ID da empresa deve ser um UUID válido');
     });
@@ -198,7 +198,7 @@ describe('clientBooksSchemas', () => {
 
       const validData = {
         empresaId: '123e4567-e89b-12d3-a456-426614174000',
-        colaboradorIds: ['123e4567-e89b-12d3-a456-426614174001'],
+        clienteIds: ['123e4567-e89b-12d3-a456-426614174001'],
         dataAgendamento: futureDate
       };
 
@@ -212,7 +212,7 @@ describe('clientBooksSchemas', () => {
 
       const invalidData = {
         empresaId: '123e4567-e89b-12d3-a456-426614174000',
-        colaboradorIds: ['123e4567-e89b-12d3-a456-426614174001'],
+        clienteIds: ['123e4567-e89b-12d3-a456-426614174001'],
         dataAgendamento: pastDate
       };
 

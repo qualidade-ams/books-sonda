@@ -19,11 +19,11 @@ export class ClientBooksPermissionsService {
           route: '/admin/empresas-clientes'
         },
         {
-          key: 'colaboradores',
-          name: 'Cadastro de Colaboradores',
-          description: 'Gerenciamento de colaboradores',
+          key: 'clientes',
+          name: 'Cadastro de Clientes',
+          description: 'Gerenciamento de clientes',
           category: 'client_books',
-          route: '/admin/colaboradores'
+          route: '/admin/clientes'
         },
         {
           key: 'grupos_responsaveis',
@@ -34,7 +34,7 @@ export class ClientBooksPermissionsService {
         },
         {
           key: 'controle_disparos',
-          name: 'Controle de Disparos',
+          name: 'Disparos',
           description: 'Controle mensal de envio de books',
           category: 'client_books',
           route: '/admin/controle-disparos'
@@ -96,7 +96,7 @@ export class ClientBooksPermissionsService {
       // 2. Telas do sistema de client books
       const clientBooksScreens = [
         'empresas_clientes',
-        'colaboradores', 
+        'clientes', 
         'grupos_responsaveis',
         'controle_disparos',
         'historico_books'
@@ -140,7 +140,7 @@ export class ClientBooksPermissionsService {
         .select('key, name, description, category, route')
         .in('key', [
           'empresas_clientes',
-          'colaboradores',
+          'clientes',
           'grupos_responsaveis', 
           'controle_disparos',
           'historico_books'
@@ -160,7 +160,7 @@ export class ClientBooksPermissionsService {
         `)
         .in('screen_key', [
           'empresas_clientes',
-          'colaboradores',
+          'clientes',
           'grupos_responsaveis',
           'controle_disparos', 
           'historico_books'

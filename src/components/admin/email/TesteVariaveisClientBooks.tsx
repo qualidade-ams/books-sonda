@@ -17,7 +17,7 @@ import { RefreshCw, TestTube } from 'lucide-react';
 import { useClientBooksVariables } from '@/hooks/useClientBooksVariables';
 import PreviewEmailClientBooks from './PreviewEmailClientBooks';
 import type { ClientBooksTemplateData } from '@/utils/clientBooksVariableMapping';
-import type { EmpresaClienteCompleta, ColaboradorCompleto } from '@/types/clientBooks';
+import type { EmpresaClienteCompleta, ClienteCompleto } from '@/types/clientBooks';
 
 interface TesteVariaveisClientBooksProps {
   template: {
@@ -59,13 +59,13 @@ const TesteVariaveisClientBooks = ({
     });
   };
 
-  const atualizarColaborador = (campo: string, valor: any) => {
+  const atualizarCliente = (campo: string, valor: any) => {
     if (!dadosPersonalizados) return;
 
     setDadosPersonalizados({
       ...dadosPersonalizados,
-      colaborador: {
-        ...dadosPersonalizados.colaborador,
+      cliente: {
+        ...dadosPersonalizados.cliente,
         [campo]: valor
       }
     });
@@ -194,42 +194,42 @@ const TesteVariaveisClientBooks = ({
 
               <Separator />
 
-              {/* Dados do Colaborador */}
+              {/* Dados do Cliente */}
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Dados do Colaborador</h4>
+                <h4 className="font-medium text-gray-900">Dados do Cliente</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="colaborador-nome">Nome Completo</Label>
+                    <Label htmlFor="cliente-nome">Nome Completo</Label>
                     <Input
-                      id="colaborador-nome"
-                      value={dadosPersonalizados.colaborador.nome_completo}
-                      onChange={(e) => atualizarColaborador('nome_completo', e.target.value)}
+                      id="cliente-nome"
+                      value={dadosPersonalizados.cliente.nome_completo}
+                      onChange={(e) => atualizarCliente('nome_completo', e.target.value)}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="colaborador-email">E-mail</Label>
+                    <Label htmlFor="cliente-email">E-mail</Label>
                     <Input
-                      id="colaborador-email"
+                      id="cliente-email"
                       type="email"
-                      value={dadosPersonalizados.colaborador.email}
-                      onChange={(e) => atualizarColaborador('email', e.target.value)}
+                      value={dadosPersonalizados.cliente.email}
+                      onChange={(e) => atualizarCliente('email', e.target.value)}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="colaborador-funcao">Função</Label>
+                    <Label htmlFor="cliente-funcao">Função</Label>
                     <Input
-                      id="colaborador-funcao"
-                      value={dadosPersonalizados.colaborador.funcao || ''}
-                      onChange={(e) => atualizarColaborador('funcao', e.target.value)}
+                      id="cliente-funcao"
+                      value={dadosPersonalizados.cliente.funcao || ''}
+                      onChange={(e) => atualizarCliente('funcao', e.target.value)}
                     />
                   </div>
                   <div className="flex items-center space-x-2 pt-6">
                     <Checkbox
-                      id="colaborador-principal"
-                      checked={dadosPersonalizados.colaborador.principal_contato}
-                      onCheckedChange={(checked) => atualizarColaborador('principal_contato', checked)}
+                      id="cliente-principal"
+                      checked={dadosPersonalizados.cliente.principal_contato}
+                      onCheckedChange={(checked) => atualizarCliente('principal_contato', checked)}
                     />
-                    <Label htmlFor="colaborador-principal">
+                    <Label htmlFor="cliente-principal">
                       Principal contato
                     </Label>
                   </div>

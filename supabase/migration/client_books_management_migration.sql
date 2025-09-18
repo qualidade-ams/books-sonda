@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS empresa_grupos (
   UNIQUE(empresa_id, grupo_id)
 );
 
--- Tabela de colaboradores
-CREATE TABLE IF NOT EXISTS colaboradores (
+-- Tabela de clientes
+CREATE TABLE IF NOT EXISTS clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome_completo VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS colaboradores (
 CREATE TABLE IF NOT EXISTS historico_disparos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id UUID REFERENCES empresas_clientes(id),
-  colaborador_id UUID REFERENCES colaboradores(id),
+  cliente_id UUID REFERENCES clientes(id),
   template_id UUID,
   status VARCHAR(20) NOT NULL CHECK (status IN ('enviado', 'falhou', 'agendado', 'cancelado')),
   data_disparo TIMESTAMP,
@@ -99,9 +99,9 @@ CREATE TABLE IF NOT EXISTS controle_mensal (
 -- Índices para otimização de consultas
 CREATE INDEX IF NOT EXISTS idx_empresas_clientes_status ON empresas_clientes(status);
 CREATE INDEX IF NOT EXISTS idx_empresas_clientes_nome ON empresas_clientes(nome_completo);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_empresa ON colaboradores(empresa_id);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_status ON colaboradores(status);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_email ON colaboradores(email);
+CREATE INDEX IF NOT EXISTS idx_clientes_empresa ON clientes(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_clientes_status ON clientes(status);
+CREATE INDEX IF NOT EXISTS idx_clientes_email ON clientes(email);
 CREATE INDEX IF NOT EXISTS idx_historico_disparos_empresa ON historico_disparos(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_historico_disparos_data ON historico_disparos(data_disparo);
 CREATE INDEX IF NOT EXISTS idx_controle_mensal_periodo ON controle_mensal(ano, mes);
@@ -118,7 +118,7 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_empresas_clientes_updated_at BEFORE UPDATE ON empresas_clientes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_grupos_responsaveis_updated_at BEFORE UPDATE ON grupos_responsaveis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_colaboradores_updated_at BEFORE UPDATE ON colaboradores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_clientes_updated_at BEFORE UPDATE ON clientes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Inserir grupos padrão
 INSERT INTO grupos_responsaveis (nome, descricao) VALUES
@@ -148,7 +148,7 @@ ON CONFLICT (grupo_id, email) DO NOTHING;
 -- Registrar novas telas no sistema de permissões
 INSERT INTO screens (key, name, description, category, route) VALUES
 ('empresas_clientes', 'Cadastro de Empresas', 'Gerenciamento de empresas clientes', 'Administração', '/admin/empresas-clientes'),
-('colaboradores', 'Cadastro de Colaboradores', 'Gerenciamento de colaboradores', 'Administração', '/admin/colaboradores'),
+('clientes', 'Cadastro de Clientes', 'Gerenciamento de clientes', 'Administração', '/admin/clientes'),
 ('grupos_responsaveis', 'Grupos de Responsáveis', 'Gerenciamento de grupos de e-mail', 'Administração', '/admin/grupos-responsaveis'),
 ('controle_disparos', 'Controle de Disparos', 'Controle mensal de envio de books', 'Administração', '/admin/controle-disparos'),
 ('historico_books', 'Histórico de Books', 'Relatórios e histórico de envios', 'Administração', '/admin/historico-books')
@@ -160,6 +160,6 @@ COMMENT ON TABLE empresa_produtos IS 'Relacionamento N:N entre empresas e produt
 COMMENT ON TABLE grupos_responsaveis IS 'Grupos de responsáveis para receber cópias dos e-mails';
 COMMENT ON TABLE grupo_emails IS 'E-mails associados aos grupos de responsáveis';
 COMMENT ON TABLE empresa_grupos IS 'Relacionamento N:N entre empresas e grupos responsáveis';
-COMMENT ON TABLE colaboradores IS 'Colaboradores das empresas clientes';
+COMMENT ON TABLE clientes IS 'Clientes das empresas clientes';
 COMMENT ON TABLE historico_disparos IS 'Histórico detalhado de todos os disparos de e-mail';
 COMMENT ON TABLE controle_mensal IS 'Controle de status dos disparos mensais por empresa';

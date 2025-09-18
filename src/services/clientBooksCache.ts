@@ -1,7 +1,7 @@
 import { cacheManager } from './cacheManager';
 import type {
   EmpresaClienteCompleta,
-  ColaboradorCompleto,
+  ClienteCompleto,
   GrupoResponsavelCompleto,
   HistoricoDisparoCompleto,
   ControleMensalCompleto
@@ -16,8 +16,8 @@ export class ClientBooksCacheService {
   private static readonly CACHE_KEYS = {
     EMPRESAS_ATIVAS: 'client_books:empresas:ativas',
     EMPRESAS_ALL: 'client_books:empresas:all',
-    COLABORADORES_EMPRESA: (empresaId: string) => `client_books:colaboradores:empresa:${empresaId}`,
-    COLABORADORES_ATIVOS: 'client_books:colaboradores:ativos',
+    CLIENTES_EMPRESA: (empresaId: string) => `client_books:clientes:empresa:${empresaId}`,
+    CLIENTES_ATIVOS: 'client_books:clientes:ativos',
     GRUPOS_RESPONSAVEIS: 'client_books:grupos:all',
     GRUPOS_POR_EMPRESA: (empresaId: string) => `client_books:grupos:empresa:${empresaId}`,
     HISTORICO_EMPRESA: (empresaId: string, meses: number) => `client_books:historico:empresa:${empresaId}:${meses}`,
@@ -30,7 +30,7 @@ export class ClientBooksCacheService {
   // TTL padrão para diferentes tipos de dados (em segundos)
   private static readonly TTL = {
     EMPRESAS: 10 * 60, // 10 minutos - dados que mudam com frequência moderada
-    COLABORADORES: 5 * 60, // 5 minutos - dados que podem mudar frequentemente
+    CLIENTES: 5 * 60, // 5 minutos - dados que podem mudar frequentemente
     GRUPOS: 30 * 60, // 30 minutos - dados que mudam raramente
     HISTORICO: 60 * 60, // 1 hora - dados históricos são estáveis
     CONTROLE_MENSAL: 15 * 60, // 15 minutos - dados de controle podem mudar durante o mês
@@ -73,39 +73,39 @@ export class ClientBooksCacheService {
   }
 
   /**
-   * Cache para colaboradores por empresa
+   * Cache para clientes por empresa
    */
-  async cacheColaboradoresPorEmpresa(
+  async cacheClientesPorEmpresa(
     empresaId: string, 
-    colaboradores: ColaboradorCompleto[]
+    clientes: ClienteCompleto[]
   ): Promise<void> {
     cacheManager.set(
-      ClientBooksCacheService.CACHE_KEYS.COLABORADORES_EMPRESA(empresaId),
-      colaboradores,
-      ClientBooksCacheService.TTL.COLABORADORES
+      ClientBooksCacheService.CACHE_KEYS.CLIENTES_EMPRESA(empresaId),
+      clientes,
+      ClientBooksCacheService.TTL.CLIENTES
     );
   }
 
-  async getColaboradoresPorEmpresa(empresaId: string): Promise<ColaboradorCompleto[] | null> {
-    return cacheManager.get<ColaboradorCompleto[]>(
-      ClientBooksCacheService.CACHE_KEYS.COLABORADORES_EMPRESA(empresaId)
+  async getClientesPorEmpresa(empresaId: string): Promise<ClienteCompleto[] | null> {
+    return cacheManager.get<ClienteCompleto[]>(
+      ClientBooksCacheService.CACHE_KEYS.CLIENTES_EMPRESA(empresaId)
     );
   }
 
   /**
-   * Cache para colaboradores ativos
+   * Cache para clientes ativos
    */
-  async cacheColaboradoresAtivos(colaboradores: ColaboradorCompleto[]): Promise<void> {
+  async cacheClientesAtivos(clientes: ClienteCompleto[]): Promise<void> {
     cacheManager.set(
-      ClientBooksCacheService.CACHE_KEYS.COLABORADORES_ATIVOS,
-      colaboradores,
-      ClientBooksCacheService.TTL.COLABORADORES
+      ClientBooksCacheService.CACHE_KEYS.CLIENTES_ATIVOS,
+      clientes,
+      ClientBooksCacheService.TTL.CLIENTES
     );
   }
 
-  async getColaboradoresAtivos(): Promise<ColaboradorCompleto[] | null> {
-    return cacheManager.get<ColaboradorCompleto[]>(
-      ClientBooksCacheService.CACHE_KEYS.COLABORADORES_ATIVOS
+  async getClientesAtivos(): Promise<ClienteCompleto[] | null> {
+    return cacheManager.get<ClienteCompleto[]>(
+      ClientBooksCacheService.CACHE_KEYS.CLIENTES_ATIVOS
     );
   }
 
@@ -274,7 +274,7 @@ export class ClientBooksCacheService {
    */
   invalidateEmpresaCache(empresaId: string): void {
     // Invalidar cache específico da empresa
-    cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.COLABORADORES_EMPRESA(empresaId));
+    cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.CLIENTES_EMPRESA(empresaId));
     cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.GRUPOS_POR_EMPRESA(empresaId));
     
     // Invalidar histórico da empresa (todos os períodos)
@@ -286,14 +286,14 @@ export class ClientBooksCacheService {
   }
 
   /**
-   * Invalida cache relacionado a colaboradores
+   * Invalida cache relacionado a clientes
    */
-  invalidateColaboradoresCache(empresaId?: string): void {
+  invalidateClientesCache(empresaId?: string): void {
     if (empresaId) {
-      cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.COLABORADORES_EMPRESA(empresaId));
+      cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.CLIENTES_EMPRESA(empresaId));
     }
     
-    cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.COLABORADORES_ATIVOS);
+    cacheManager.clear(ClientBooksCacheService.CACHE_KEYS.CLIENTES_ATIVOS);
   }
 
   /**
@@ -357,7 +357,7 @@ export class ClientBooksCacheService {
   getClientBooksStats(): {
     totalEntries: number;
     empresasEntries: number;
-    colaboradoresEntries: number;
+    clientesEntries: number;
     gruposEntries: number;
     historicoEntries: number;
     metricas: any;
@@ -366,7 +366,7 @@ export class ClientBooksCacheService {
     
     // Contar entradas por categoria
     let empresasEntries = 0;
-    let colaboradoresEntries = 0;
+    let clientesEntries = 0;
     let gruposEntries = 0;
     let historicoEntries = 0;
 
@@ -376,7 +376,7 @@ export class ClientBooksCacheService {
     return {
       totalEntries: stats.totalEntries,
       empresasEntries,
-      colaboradoresEntries,
+      clientesEntries,
       gruposEntries,
       historicoEntries,
       metricas: stats

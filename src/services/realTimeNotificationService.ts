@@ -6,7 +6,7 @@ import { auditLogger } from './auditLogger';
 /**
  * Tipos de eventos em tempo real
  */
-export type RealTimeEventType = 
+export type RealTimeEventType =
   | 'job_status_changed'
   | 'dispatch_completed'
   | 'dispatch_failed'
@@ -86,16 +86,12 @@ export class RealTimeNotificationService {
       this.isConnected = true;
       console.log('[RealTimeNotification] Serviço inicializado com sucesso');
 
-      await auditLogger.logOperation(
-        'realtime_service_initialized',
-        'system',
-        { channelsCount: this.channels.size },
-        'success'
-      );
+      // Log de auditoria removido - auditLogger é específico para templates
+      // await auditLogger.logOperation(...);
 
     } catch (error) {
       console.error('[RealTimeNotification] Erro ao inicializar serviço:', error);
-      
+
       await adminNotificationService.notifySystemIssue(
         'system_failure',
         'Falha na inicialização do serviço de notificações',
@@ -103,7 +99,7 @@ export class RealTimeNotificationService {
         'error',
         { error: String(error) }
       );
-      
+
       throw error;
     }
   }
@@ -127,12 +123,8 @@ export class RealTimeNotificationService {
 
       console.log('[RealTimeNotification] Serviço finalizado');
 
-      await auditLogger.logOperation(
-        'realtime_service_shutdown',
-        'system',
-        {},
-        'success'
-      );
+      // Log de auditoria removido - auditLogger é específico para templates
+      // await auditLogger.logOperation(...);
 
     } catch (error) {
       console.error('[RealTimeNotification] Erro ao finalizar serviço:', error);
@@ -221,7 +213,7 @@ export class RealTimeNotificationService {
     data?: Record<string, any>
   ): Promise<void> {
     const existingStatus = this.progressStatuses.get(operationId);
-    
+
     const status: ProgressStatus = {
       id: operationId,
       operation: existingStatus?.operation || 'Operação',
@@ -445,7 +437,7 @@ export class RealTimeNotificationService {
 
   private handleJobStatusChange(payload: any): void {
     const { new: newRecord, old: oldRecord } = payload;
-    
+
     if (newRecord.status !== oldRecord.status) {
       const event: RealTimeEvent = {
         id: this.generateEventId(),
@@ -470,20 +462,20 @@ export class RealTimeNotificationService {
 
   private handleDispatchEvent(payload: any): void {
     const record = payload.new;
-    
+
     const event: RealTimeEvent = {
       id: this.generateEventId(),
       type: record.status === 'enviado' ? 'dispatch_completed' : 'dispatch_failed',
       title: record.status === 'enviado' ? 'E-mail enviado' : 'Falha no envio',
-      message: record.status === 'enviado' 
-        ? `E-mail enviado com sucesso para ${record.colaborador_id}`
+      message: record.status === 'enviado'
+        ? `E-mail enviado com sucesso para ${record.cliente_id}`
         : `Falha ao enviar e-mail: ${record.erro_detalhes}`,
       severity: record.status === 'enviado' ? 'info' : 'error',
       timestamp: new Date().toISOString(),
       source: 'email_dispatcher',
       data: {
         empresaId: record.empresa_id,
-        colaboradorId: record.colaborador_id,
+        clienteId: record.cliente_id,
         status: record.status,
         error: record.erro_detalhes
       }
@@ -494,7 +486,7 @@ export class RealTimeNotificationService {
 
   private handleNotificationEvent(payload: any): void {
     const record = payload.new;
-    
+
     const event: RealTimeEvent = {
       id: this.generateEventId(),
       type: 'system_alert',
@@ -511,7 +503,7 @@ export class RealTimeNotificationService {
 
   private handleConfigurationChange(payload: any): void {
     const { new: newRecord, old: oldRecord } = payload;
-    
+
     const event: RealTimeEvent = {
       id: this.generateEventId(),
       type: 'configuration_changed',
@@ -532,7 +524,7 @@ export class RealTimeNotificationService {
 
   private notifyEventCallbacks(event: RealTimeEvent): void {
     const callbacks = this.eventCallbacks.get(event.type) || [];
-    
+
     callbacks.forEach(callback => {
       try {
         callback(event);

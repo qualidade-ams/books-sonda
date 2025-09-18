@@ -12,7 +12,7 @@ import type {
   StatusDisparo,
   StatusControleMensal,
   EmpresaCliente,
-  Colaborador,
+  Cliente,
   HistoricoFiltros,
   ControleMensalFiltros,
   HistoricoDisparoCompleto,
@@ -32,10 +32,10 @@ class BooksDisparoService {
         .from('empresas_clientes')
         .select(`
           *,
-          colaboradores!inner(*)
+          clientes!inner(*)
         `)
         .eq('status', 'ativo')
-        .eq('colaboradores.status', 'ativo')
+        .eq('clientes.status', 'ativo')
         .or('tem_ams.eq.true,tipo_book.eq.qualidade');
 
       if (empresasError) {
@@ -73,15 +73,15 @@ class BooksDisparoService {
             continue;
           }
 
-          // Buscar colaboradores ativos da empresa
-          const { data: colaboradores, error: colaboradoresError } = await supabase
-            .from('colaboradores')
+          // Buscar clientes ativos da empresa
+          const { data: clientes, error: clientesError } = await supabase
+            .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
             .eq('status', 'ativo');
 
-          if (colaboradoresError || !colaboradores || colaboradores.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum colaborador ativo encontrado');
+          if (clientesError || !clientes || clientes.length === 0) {
+            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
             continue;
           }
 
@@ -111,15 +111,15 @@ class BooksDisparoService {
             emailsCC.push(empresa.email_gestor);
           }
 
-          // Processar cada colaborador
+          // Processar cada cliente
           let emailsEnviados = 0;
-          const colaboradoresProcessados: string[] = [];
+          const clientesProcessados: string[] = [];
 
-          for (const colaborador of colaboradores) {
+          for (const cliente of clientes) {
             try {
-              const resultadoDisparo = await this.enviarBookColaborador(
+              const resultadoDisparo = await this.enviarBookCliente(
                 empresa,
-                colaborador,
+                cliente,
                 emailsCC,
                 mes,
                 ano
@@ -127,21 +127,21 @@ class BooksDisparoService {
 
               if (resultadoDisparo.sucesso) {
                 emailsEnviados++;
-                colaboradoresProcessados.push(colaborador.id);
+                clientesProcessados.push(cliente.id);
               }
 
               detalhes.push({
                 empresaId: empresa.id,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
                 erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [colaborador.email, ...emailsCC] : []
+                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
               });
 
             } catch (error) {
               detalhes.push({
                 empresaId: empresa.id,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
@@ -203,11 +203,11 @@ class BooksDisparoService {
         .from('empresas_clientes')
         .select(`
           *,
-          colaboradores!inner(*)
+          clientes!inner(*)
         `)
         .in('id', empresaIds)
         .eq('status', 'ativo')
-        .eq('colaboradores.status', 'ativo')
+        .eq('clientes.status', 'ativo')
         .or('tem_ams.eq.true,tipo_book.eq.qualidade');
 
       if (empresasError) {
@@ -238,15 +238,15 @@ class BooksDisparoService {
             }
           }
 
-          // Buscar colaboradores ativos
-          const { data: colaboradores, error: colaboradoresError } = await supabase
-            .from('colaboradores')
+          // Buscar clientes ativos
+          const { data: clientes, error: clientesError } = await supabase
+            .from('clientes')
             .select('*')
             .eq('empresa_id', empresa.id)
             .eq('status', 'ativo');
 
-          if (colaboradoresError || !colaboradores || colaboradores.length === 0) {
-            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum colaborador ativo encontrado');
+          if (clientesError || !clientes || clientes.length === 0) {
+            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
             continue;
           }
 
@@ -271,11 +271,11 @@ class BooksDisparoService {
           if (empresa.email_gestor) emailsCC.push(empresa.email_gestor);
 
           let emailsEnviados = 0;
-          for (const colaborador of colaboradores) {
+          for (const cliente of clientes) {
             try {
-              const resultadoDisparo = await this.enviarBookColaborador(
+              const resultadoDisparo = await this.enviarBookCliente(
                 empresa,
-                colaborador,
+                cliente,
                 emailsCC,
                 mes,
                 ano
@@ -283,15 +283,15 @@ class BooksDisparoService {
               if (resultadoDisparo.sucesso) emailsEnviados++;
               detalhes.push({
                 empresaId: empresa.id,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
                 erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [colaborador.email, ...emailsCC] : []
+                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
               });
             } catch (error) {
               detalhes.push({
                 empresaId: empresa.id,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
@@ -342,9 +342,9 @@ class BooksDisparoService {
   async agendarDisparo(agendamento: AgendamentoDisparo): Promise<void> {
     try {
       // Registrar agendamentos no histórico
-      const agendamentos: HistoricoDisparoInsert[] = agendamento.colaboradorIds.map(colaboradorId => ({
+      const agendamentos: HistoricoDisparoInsert[] = agendamento.clienteIds.map(clienteId => ({
         empresa_id: agendamento.empresaId,
-        colaborador_id: colaboradorId,
+        cliente_id: clienteId,
         template_id: agendamento.templateId,
         status: 'agendado',
         data_agendamento: agendamento.dataAgendamento.toISOString(),
@@ -410,9 +410,9 @@ class BooksDisparoService {
       for (const empresa of todasEmpresas || []) {
         const controle = controles?.find(c => c.empresa_id === empresa.id);
         
-        // Contar colaboradores ativos
-        const { count: colaboradoresAtivos } = await supabase
-          .from('colaboradores')
+        // Contar clientes ativos
+        const { count: clientesAtivos } = await supabase
+          .from('clientes')
           .select('*', { count: 'exact', head: true })
           .eq('empresa_id', empresa.id)
           .eq('status', 'ativo');
@@ -432,7 +432,7 @@ class BooksDisparoService {
           status: controle?.status as StatusControleMensal || 'pendente',
           dataProcessamento: controle?.data_processamento ? new Date(controle.data_processamento) : undefined,
           observacoes: controle?.observacoes || undefined,
-          colaboradoresAtivos: colaboradoresAtivos || 0,
+          clientesAtivos: clientesAtivos || 0,
           emailsEnviados: emailsEnviados || 0
         });
       }
@@ -481,14 +481,14 @@ class BooksDisparoService {
         if (!controle.empresas_clientes) continue;
 
         try {
-          // Buscar colaboradores ativos
-          const { data: colaboradores } = await supabase
-            .from('colaboradores')
+          // Buscar clientes ativos
+          const { data: clientes } = await supabase
+            .from('clientes')
             .select('*')
             .eq('empresa_id', controle.empresa_id)
             .eq('status', 'ativo');
 
-          if (!colaboradores || colaboradores.length === 0) {
+          if (!clientes || clientes.length === 0) {
             continue;
           }
 
@@ -519,12 +519,12 @@ class BooksDisparoService {
 
           let emailsEnviados = 0;
 
-          // Reenviar para cada colaborador
-          for (const colaborador of colaboradores) {
+          // Reenviar para cada cliente
+          for (const cliente of clientes) {
             try {
-              const resultado = await this.enviarBookColaborador(
+              const resultado = await this.enviarBookCliente(
                 controle.empresas_clientes,
-                colaborador,
+                cliente,
                 emailsCC,
                 mes,
                 ano
@@ -536,16 +536,16 @@ class BooksDisparoService {
 
               detalhes.push({
                 empresaId: controle.empresa_id!,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: resultado.sucesso ? 'enviado' : 'falhou',
                 erro: resultado.erro,
-                emailsEnviados: resultado.sucesso ? [colaborador.email, ...emailsCC] : []
+                emailsEnviados: resultado.sucesso ? [cliente.email, ...emailsCC] : []
               });
 
             } catch (error) {
               detalhes.push({
                 empresaId: controle.empresa_id!,
-                colaboradorId: colaborador.id,
+                clienteId: cliente.id,
                 status: 'falhou',
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
@@ -601,7 +601,7 @@ class BooksDisparoService {
         .select(`
           *,
           empresas_clientes(*),
-          colaboradores(*)
+          clientes(*)
         `);
 
       // Aplicar filtros
@@ -609,8 +609,8 @@ class BooksDisparoService {
         query = query.eq('empresa_id', filtros.empresaId);
       }
 
-      if (filtros.colaboradorId) {
-        query = query.eq('colaborador_id', filtros.colaboradorId);
+      if (filtros.clienteId) {
+        query = query.eq('cliente_id', filtros.clienteId);
       }
 
       if (filtros.status && filtros.status.length > 0) {
@@ -694,9 +694,9 @@ class BooksDisparoService {
 
   // ...
 
-  private async enviarBookColaborador(
+  private async enviarBookCliente(
     empresa: EmpresaCliente,
-    colaborador: Colaborador,
+    cliente: Cliente,
     emailsCC: string[],
     mes: number,
     ano: number
@@ -706,7 +706,7 @@ class BooksDisparoService {
       const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
       console.log(`🏢 Empresa: ${empresa.nome_completo}`);
       console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
-      console.log(`📧 Enviando para: ${colaborador.email}`);
+      console.log(`📧 Enviando para: ${cliente.email}`);
       
       // Buscar template apropriado para books
       const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
@@ -719,7 +719,7 @@ class BooksDisparoService {
       }
 
       // Validar template antes do processamento
-      const validacao = clientBooksTemplateService.validarTemplate(template, empresa as any, colaborador as any);
+      const validacao = clientBooksTemplateService.validarTemplate(template, empresa as any, cliente as any);
       
       if (!validacao.valido) {
         console.warn('Template possui variáveis não encontradas:', validacao.variaveisNaoEncontradas);
@@ -730,24 +730,24 @@ class BooksDisparoService {
       const templateProcessado = await clientBooksTemplateService.processarTemplate(
         template,
         empresa as any,
-        colaborador as any,
+        cliente as any,
         { mes, ano, dataDisparo: new Date() }
       );
 
       // Enviar e-mail usando o emailService
       const resultadoEnvio = await this.enviarEmailComTemplate(
-        colaborador.email,
+        cliente.email,
         emailsCC,
         templateProcessado.assunto,
         templateProcessado.corpo,
         empresa,
-        colaborador
+        cliente
       );
 
       // Registrar no histórico
       const historicoData: HistoricoDisparoInsert = {
         empresa_id: empresa.id,
-        colaborador_id: colaborador.id,
+        cliente_id: cliente.id,
         template_id: template.id,
         status: resultadoEnvio.sucesso ? 'enviado' : 'falhou',
         data_disparo: new Date().toISOString(),
@@ -774,7 +774,7 @@ class BooksDisparoService {
     assunto: string,
     corpo: string,
     empresa: EmpresaCliente,
-    colaborador: Colaborador
+    cliente: Cliente
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
       // Preparar dados para o emailService - usar método direto para evitar conflito de templates
@@ -786,10 +786,10 @@ class BooksDisparoService {
         // Adicionar metadados para rastreamento
         metadata: {
           empresaId: empresa.id,
-          colaboradorId: colaborador.id,
+          clienteId: cliente.id,
           tipo: 'book_mensal',
           nomeEmpresa: empresa.nome_completo,
-          nomeColaborador: colaborador.nome_completo
+          nomeCliente: cliente.nome_completo
         }
       };
 

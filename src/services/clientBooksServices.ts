@@ -6,20 +6,25 @@
 export { 
   EmpresasClientesService, 
   empresasClientesService,
-  EmpresaError 
+  EMPRESA_STATUS,
+  PRODUTOS
 } from './empresasClientesService';
 
 export { 
-  ColaboradoresService, 
-  colaboradoresService,
-  ColaboradorError 
-} from './colaboradoresService';
+  ClientesService, 
+  clientesService
+} from './clientesService';
 
 export { 
   GruposResponsaveisService, 
-  gruposResponsaveisService,
-  GrupoResponsavelError 
+  gruposResponsaveisService
 } from './gruposResponsaveisService';
+
+// Erros centralizados
+export {
+  ClientBooksError,
+  ClientBooksErrorFactory
+} from '@/errors/clientBooksErrors';
 
 // Re-exportar tipos para conveniência
 export type {
@@ -27,10 +32,10 @@ export type {
   EmpresaClienteCompleta,
   EmpresaFormData,
   EmpresaFiltros,
-  Colaborador,
-  ColaboradorCompleto,
-  ColaboradorFormData,
-  ColaboradorFiltros,
+  Cliente,
+  ClienteCompleto,
+  ClienteFormData,
+  ClienteFiltros,
   GrupoResponsavel,
   GrupoResponsavelCompleto,
   GrupoFormData,

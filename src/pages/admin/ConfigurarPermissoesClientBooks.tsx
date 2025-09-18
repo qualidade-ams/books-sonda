@@ -53,7 +53,7 @@ const ConfigurarPermissoesClientBooks: React.FC = () => {
 
   const telasEsperadas = [
     { key: 'empresas_clientes', name: 'Cadastro de Empresas' },
-    { key: 'colaboradores', name: 'Cadastro de Colaboradores' },
+    { key: 'clientes', name: 'Cadastro de Clientes' },
     { key: 'grupos_responsaveis', name: 'Grupos de Responsáveis' },
     { key: 'controle_disparos', name: 'Controle de Disparos' },
     { key: 'historico_books', name: 'Histórico de Books' }

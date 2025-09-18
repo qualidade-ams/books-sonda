@@ -1,29 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Calendar, 
-  Send, 
-  RefreshCw, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Filter,
-  Download,
-  Play,
-  Pause
+import { useState, useMemo } from 'react';
+import {
+  Calendar,
+  Send,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import {
   Dialog,
   DialogContent,
@@ -49,7 +39,6 @@ import { useControleDisparos } from '@/hooks/useControleDisparos';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type {
-  StatusMensal,
   AgendamentoDisparo,
   StatusControleMensal,
   DisparoResult
@@ -60,22 +49,22 @@ import {
 
 const ControleDisparos = () => {
   const { toast } = useToast();
-  
+
   // Estados para controle de mês/ano
   const currentDate = new Date();
   const [mesAtual, setMesAtual] = useState(currentDate.getMonth() + 1);
   const [anoAtual, setAnoAtual] = useState(currentDate.getFullYear());
-  
+
   // Estados para modais
   const [showAgendamentoModal, setShowAgendamentoModal] = useState(false);
   const [showReenvioModal, setShowReenvioModal] = useState(false);
   const [showDisparoModal, setShowDisparoModal] = useState(false);
-  
+
   // Estados para agendamento
   const [empresaSelecionada, setEmpresaSelecionada] = useState<string>('');
   const [dataAgendamento, setDataAgendamento] = useState('');
   const [observacoesAgendamento, setObservacoesAgendamento] = useState('');
-  
+
   // Estados para disparo em andamento
   const [disparoEmAndamento, setDisparoEmAndamento] = useState(false);
   const [progressoDisparo, setProgressoDisparo] = useState(0);
@@ -117,18 +106,18 @@ const ControleDisparos = () => {
     const pendentes = statusMensal.filter(s => s.status === 'pendente').length;
     const falhas = statusMensal.filter(s => s.status === 'falhou').length;
     const agendados = statusMensal.filter(s => s.status === 'agendado').length;
-    
+
     const totalEmails = statusMensal.reduce((acc, s) => acc + s.emailsEnviados, 0);
-    const totalColaboradores = statusMensal.reduce((acc, s) => acc + s.colaboradoresAtivos, 0);
-    
-    return { 
-      total, 
-      enviados, 
-      pendentes, 
-      falhas, 
-      agendados, 
-      totalEmails, 
-      totalColaboradores,
+    const totalClientes = statusMensal.reduce((acc, s) => acc + s.clientesAtivos, 0);
+
+    return {
+      total,
+      enviados,
+      pendentes,
+      falhas,
+      agendados,
+      totalEmails,
+      totalClientes,
       percentualConcluido: total > 0 ? Math.round((enviados / total) * 100) : 0
     };
   }, [statusMensal]);
@@ -153,7 +142,7 @@ const ControleDisparos = () => {
   };
 
   // Handlers para ações
-  const handleDisparoMensal = async () => {
+  const handleDisparoMensal = () => {
     setShowDisparoModal(true);
   };
 
@@ -198,7 +187,7 @@ const ControleDisparos = () => {
       setShowDisparoModal(false);
       setDisparoEmAndamento(true);
       setProgressoDisparo(0);
-      
+
       // Simular progresso
       const interval = setInterval(() => {
         setProgressoDisparo(prev => {
@@ -211,11 +200,11 @@ const ControleDisparos = () => {
       }, 500);
 
       const resultado = await dispararBooksMensal(mesAtual, anoAtual);
-      
+
       clearInterval(interval);
       setProgressoDisparo(100);
       setResultadoDisparo(resultado);
-      
+
       setTimeout(() => {
         setDisparoEmAndamento(false);
         setProgressoDisparo(0);
@@ -246,7 +235,7 @@ const ControleDisparos = () => {
     try {
       setShowReenvioModal(false);
       const resultado = await reenviarFalhas(mesAtual, anoAtual);
-      
+
       toast({
         title: "Reenvio concluído",
         description: `${resultado.sucesso} empresas processadas com sucesso`,
@@ -270,19 +259,19 @@ const ControleDisparos = () => {
     if (!empresaSelecionada || !dataAgendamento) return;
 
     try {
-      // Buscar colaboradores da empresa
+      // Buscar clientes da empresa
       const empresa = (empresas as any)?.find((e: any) => e.id === empresaSelecionada);
-      if (!empresa?.colaboradores) return;
+      if (!empresa?.clientes) return;
 
       const agendamento: AgendamentoDisparo = {
         empresaId: empresaSelecionada,
-        colaboradorIds: empresa.colaboradores.map(c => c.id),
+        clienteIds: empresa.clientes.map((c: any) => c.id),
         dataAgendamento: new Date(dataAgendamento),
         observacoes: observacoesAgendamento
       };
 
       await agendarDisparo(agendamento);
-      
+
       setShowAgendamentoModal(false);
       setEmpresaSelecionada('');
       setDataAgendamento('');
@@ -342,7 +331,7 @@ const ControleDisparos = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Controle de Disparos
+              Disparos
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               Acompanhe e gerencie o envio mensal de books
@@ -378,7 +367,7 @@ const ControleDisparos = () => {
               >
                 ← Anterior
               </Button>
-              
+
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {nomesMeses[mesAtual - 1]} {anoAtual}
@@ -387,7 +376,7 @@ const ControleDisparos = () => {
                   {stats.percentualConcluido}% concluído
                 </p>
               </div>
-              
+
               <Button
                 variant="outline"
                 onClick={handleProximoMes}
@@ -396,7 +385,7 @@ const ControleDisparos = () => {
                 Próximo →
               </Button>
             </div>
-            
+
             {/* Barra de Progresso */}
             <div className="mt-4">
               <Progress value={stats.percentualConcluido} className="w-full" />
@@ -417,11 +406,11 @@ const ControleDisparos = () => {
                 {stats.total}
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stats.totalColaboradores} colaboradores
+                {stats.totalClientes} clientes
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-green-600">
@@ -437,7 +426,7 @@ const ControleDisparos = () => {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-red-600">
@@ -450,7 +439,7 @@ const ControleDisparos = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-yellow-600">
@@ -472,7 +461,7 @@ const ControleDisparos = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4 items-center">
-            {/*<ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                 <Button
                   onClick={handleDisparoMensal}
                   disabled={isDisparando || disparoEmAndamento}
@@ -481,44 +470,44 @@ const ControleDisparos = () => {
                   <Send className="h-4 w-4" />
                   {isDisparando || disparoEmAndamento ? 'Disparando...' : 'Disparar Books Mensal'}
                 </Button>
-              </ProtectedAction>/*}
-              
+              </ProtectedAction>
+
               {/* Ações por Seleção */}
-              
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    onClick={handleDispararSelecionados}
-                    disabled={isDisparandoSelecionados || selecionadas.length === 0}
-                    className="flex items-center gap-2"
-                  >
-                    <Send className="h-4 w-4" />
-                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${selecionadas.length})`}
-                  </Button>
-                </ProtectedAction>
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    variant="outline"
-                    onClick={handleReenviarSelecionados}
-                    disabled={selecionadas.length === 0}
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {`Reenviar Selecionados (${selecionadas.length})`}
-                  </Button>
-                </ProtectedAction>
-              
-              <div className="ml-auto flex gap-2 items-center">
+
+              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                <Button
+                  onClick={handleDispararSelecionados}
+                  disabled={isDisparandoSelecionados || selecionadas.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${selecionadas.length})`}
+                </Button>
+              </ProtectedAction>
               <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                 <Button
                   variant="outline"
-                  onClick={handleReenvioFalhas}
-                  disabled={isReenviando || stats.falhas === 0}
+                  onClick={handleReenviarSelecionados}
+                  disabled={selecionadas.length === 0}
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className="h-4 w-4" />
-                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                  {`Reenviar Selecionados (${selecionadas.length})`}
                 </Button>
               </ProtectedAction>
+
+              <div className="ml-auto flex gap-2 items-center">
+                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                  <Button
+                    variant="outline"
+                    onClick={handleReenvioFalhas}
+                    disabled={isReenviando || stats.falhas === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                  </Button>
+                </ProtectedAction>
               </div>
             </div>
 
@@ -537,7 +526,7 @@ const ControleDisparos = () => {
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
                   {progressoDisparo}% concluído
                 </p>
-                
+
                 {resultadoDisparo && (
                   <div className="mt-2 text-sm">
                     <p className="text-green-700 dark:text-green-300">
@@ -600,7 +589,7 @@ const ControleDisparos = () => {
                           {status.empresa.nome_completo}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {status.colaboradoresAtivos} colaboradores ativos
+                          {status.clientesAtivos} clientes ativos
                           {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} e-mails enviados`}
                         </p>
                         {status.observacoes && (
@@ -610,12 +599,12 @@ const ControleDisparos = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(status.status)}>
                         {STATUS_CONTROLE_MENSAL_OPTIONS.find(opt => opt.value === status.status)?.label}
                       </Badge>
-                      
+
                       {status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
@@ -629,7 +618,7 @@ const ControleDisparos = () => {
                           </Button>
                         </ProtectedAction>
                       )}
-                      
+
                       {status.dataProcessamento && (
                         <span className="text-xs text-gray-500 dark:text-gray-500">
                           {status.dataProcessamento.toLocaleDateString()}
@@ -711,7 +700,7 @@ const ControleDisparos = () => {
                   min={new Date().toISOString().slice(0, 16)}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="observacoes-agendamento">Observações (opcional)</Label>
                 <Textarea
@@ -721,7 +710,7 @@ const ControleDisparos = () => {
                   placeholder="Observações sobre o agendamento..."
                 />
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"

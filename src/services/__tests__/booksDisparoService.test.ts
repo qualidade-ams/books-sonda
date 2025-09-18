@@ -75,7 +75,7 @@ describe('BooksDisparoService', () => {
         status: 'ativo',
         template_padrao: 'portugues',
         email_gestor: 'gestor1@empresa.com',
-        colaboradores: [
+        clientes: [
           {
             id: 'colab-1',
             nome_completo: 'João Silva',
@@ -91,7 +91,7 @@ describe('BooksDisparoService', () => {
         status: 'ativo',
         template_padrao: 'portugues',
         email_gestor: 'gestor2@empresa.com',
-        colaboradores: [
+        clientes: [
           {
             id: 'colab-2',
             nome_completo: 'Maria Santos',
@@ -121,12 +121,12 @@ describe('BooksDisparoService', () => {
         single: vi.fn().mockResolvedValue({ data: null, error: null })
       };
 
-      // Mock para buscar colaboradores
-      const mockColaboradoresQuery = {
+      // Mock para buscar clientes
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockColaboradoresQuery.eq.mockResolvedValue({
-        data: [empresasMock[0].colaboradores[0]],
+      mockClientesQuery.eq.mockResolvedValue({
+        data: [empresasMock[0].clientes[0]],
         error: null
       });
 
@@ -150,7 +150,7 @@ describe('BooksDisparoService', () => {
       const templateMock = {
         id: 'template-1',
         assunto: 'Book Mensal - {{empresa.nomeCompleto}}',
-        corpo: 'Olá {{colaborador.nomeCompleto}}'
+        corpo: 'Olá {{cliente.nomeCompleto}}'
       };
 
       (clientBooksTemplateService.buscarTemplateBooks as any).mockResolvedValue(templateMock);
@@ -170,7 +170,7 @@ describe('BooksDisparoService', () => {
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresasQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControleQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert })
         .mockReturnValueOnce({ upsert: mockUpsert });
@@ -258,7 +258,7 @@ describe('BooksDisparoService', () => {
     it('deve agendar disparo para data específica', async () => {
       const agendamento: AgendamentoDisparo = {
         empresaId: 'empresa-1',
-        colaboradorIds: ['colab-1', 'colab-2'],
+        clienteIds: ['colab-1', 'colab-2'],
         templateId: 'template-1',
         dataAgendamento: new Date('2024-04-15'),
         observacoes: 'Agendamento de teste'
@@ -276,7 +276,7 @@ describe('BooksDisparoService', () => {
       expect(mockInsert).toHaveBeenCalledWith([
         {
           empresa_id: 'empresa-1',
-          colaborador_id: 'colab-1',
+          cliente_id: 'colab-1',
           template_id: 'template-1',
           status: 'agendado',
           data_agendamento: agendamento.dataAgendamento.toISOString(),
@@ -284,7 +284,7 @@ describe('BooksDisparoService', () => {
         },
         {
           empresa_id: 'empresa-1',
-          colaborador_id: 'colab-2',
+          cliente_id: 'colab-2',
           template_id: 'template-1',
           status: 'agendado',
           data_agendamento: agendamento.dataAgendamento.toISOString(),
@@ -296,7 +296,7 @@ describe('BooksDisparoService', () => {
     it('deve tratar erro ao agendar disparo', async () => {
       const agendamento: AgendamentoDisparo = {
         empresaId: 'empresa-1',
-        colaboradorIds: ['colab-1'],
+        clienteIds: ['colab-1'],
         templateId: 'template-1',
         dataAgendamento: new Date('2024-04-15')
       };
@@ -361,8 +361,8 @@ describe('BooksDisparoService', () => {
         eq: vi.fn().mockResolvedValue({ data: empresasMock, error: null })
       };
 
-      // Mock para contar colaboradores ativos
-      const mockCountColaboradores = {
+      // Mock para contar clientes ativos
+      const mockCountClientes = {
         eq: vi.fn().mockReturnThis(),
         count: 'exact',
         head: true
@@ -440,7 +440,7 @@ describe('BooksDisparoService', () => {
         }
       ];
 
-      const colaboradoresMock = [
+      const clientesMock = [
         {
           id: 'colab-1',
           nome_completo: 'João Silva',
@@ -458,12 +458,12 @@ describe('BooksDisparoService', () => {
         error: null 
       });
 
-      // Mock para buscar colaboradores
-      const mockColaboradoresQuery = {
+      // Mock para buscar clientes
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockColaboradoresQuery.eq.mockResolvedValue({
-        data: colaboradoresMock,
+      mockClientesQuery.eq.mockResolvedValue({
+        data: clientesMock,
         error: null
       });
 
@@ -495,7 +495,7 @@ describe('BooksDisparoService', () => {
 
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControlesQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert })
         .mockReturnValueOnce({ upsert: mockUpsert });
@@ -544,14 +544,14 @@ describe('BooksDisparoService', () => {
         {
           id: 'hist-1',
           empresa_id: 'empresa-1',
-          colaborador_id: 'colab-1',
+          cliente_id: 'colab-1',
           status: 'enviado',
           data_disparo: '2024-03-15T10:00:00Z',
           empresas_clientes: {
             id: 'empresa-1',
             nome_completo: 'Empresa Teste'
           },
-          colaboradores: {
+          clientes: {
             id: 'colab-1',
             nome_completo: 'João Silva'
           }

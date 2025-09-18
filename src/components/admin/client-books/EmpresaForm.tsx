@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -26,18 +25,19 @@ import {
 
 import { Save, X } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
+import { useToast } from '@/hooks/use-toast';
 
 import type {
   EmpresaFormData,
   Produto,
   GrupoResponsavel,
-  TipoBook,
 } from '@/types/clientBooks';
 import {
   PRODUTOS_OPTIONS,
   STATUS_EMPRESA_OPTIONS,
   TIPO_BOOK_OPTIONS,
 } from '@/types/clientBooks';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Schema de validação com Zod
 const empresaSchema = z.object({
@@ -51,9 +51,8 @@ const empresaSchema = z.object({
     .max(100, 'Nome abreviado deve ter no máximo 100 caracteres'),
   linkSharepoint: z
     .string()
-    .url('Link deve ser uma URL válida')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Link SharePoint é obrigatório')
+    .url('Link deve ser uma URL válida'),
   templatePadrao: z.string().min(1, 'Template é obrigatório'),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   descricaoStatus: z
@@ -62,33 +61,25 @@ const empresaSchema = z.object({
     .optional(),
   emailGestor: z
     .string()
-    .email('E-mail deve ser válido')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'E-mail do Customer Success é obrigatório')
+    .email('E-mail deve ser válido'),
   produtos: z
     .array(z.enum(['CE_PLUS', 'FISCAL', 'GALLERY']))
     .min(1, 'Selecione pelo menos um produto'),
   grupos: z.array(z.string()).optional(),
-  bookPersonalizado: z.boolean().optional(),
-  anexo: z.boolean().optional(),
-  vigenciaInicial: z
-    .string()
-    .optional()
-    .or(z.literal('')),
-  vigenciaFinal: z
-    .string()
-    .optional()
-    .or(z.literal('')),
-  temAms: z.boolean().optional(),
-  tipoBook: z.enum(['nao_tem_book', 'qualidade', 'outros']).optional(),
+  temAms: z.boolean(),
+  tipoBook: z.enum(['nao_tem_book', 'outros', 'qualidade'], {
+    required_error: 'Tipo de Book é obrigatório'
+  }),
 }).refine((data) => {
-  if (data.vigenciaInicial && data.vigenciaFinal) {
-    return new Date(data.vigenciaFinal) >= new Date(data.vigenciaInicial);
+  // Validação condicional para descrição do status
+  if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
+    return false;
   }
   return true;
 }, {
-  message: 'Vigência final deve ser posterior à vigência inicial',
-  path: ['vigenciaFinal'],
+  message: 'Justificativa do status é obrigatória para status Inativo ou Suspenso',
+  path: ['descricaoStatus'],
 });
 
 interface EmpresaFormProps {
@@ -110,6 +101,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
+  const { toast } = useToast();
 
   const form = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
@@ -123,10 +115,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       emailGestor: '',
       produtos: [],
       grupos: [],
-      bookPersonalizado: false,
-      anexo: false,
-      vigenciaInicial: '',
-      vigenciaFinal: '',
       temAms: false,
       tipoBook: 'nao_tem_book',
       ...initialData,
@@ -150,10 +138,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         emailGestor: '',
         produtos: [],
         grupos: [],
-        bookPersonalizado: false,
-        anexo: false,
-        vigenciaInicial: '',
-        vigenciaFinal: '',
         temAms: false,
         tipoBook: 'nao_tem_book',
         ...initialData,
@@ -174,10 +158,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         descricaoStatus: data.descricaoStatus?.trim() || '',
         produtos: data.produtos.map(p => p.toUpperCase() as any), // Normalizar produtos para uppercase
         grupos: data.grupos || [],
-        bookPersonalizado: data.bookPersonalizado || false,
-        anexo: data.anexo || false,
-        vigenciaInicial: data.vigenciaInicial || undefined,
-        vigenciaFinal: data.vigenciaFinal || undefined,
         temAms: data.temAms || false,
         tipoBook: data.tipoBook || 'nao_tem_book'
       };
@@ -185,6 +165,30 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       await onSubmit(normalizedData);
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
+
+      // Verificar se é erro de nome duplicado
+      if (error instanceof Error) {
+        if (error.message.includes('Já existe uma empresa com o nome')) {
+          // Definir erro específico no campo nome completo
+          form.setError('nomeCompleto', {
+            type: 'manual',
+            message: error.message
+          });
+        } else if (error.message.includes('nome abreviado')) {
+          // Definir erro específico no campo nome abreviado
+          form.setError('nomeAbreviado', {
+            type: 'manual',
+            message: error.message
+          });
+        } else {
+          // Erro genérico - mostrar toast
+          toast({
+            title: "Erro ao salvar empresa",
+            description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
+            variant: "destructive",
+          });
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -193,264 +197,284 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const handleProdutoChange = (produto: Produto, checked: boolean) => {
     const currentProdutos = form.getValues('produtos');
     if (checked) {
-      form.setValue('produtos', [...currentProdutos, produto]);
+      form.setValue('produtos', [...currentProdutos, produto], { shouldValidate: true });
     } else {
-      form.setValue('produtos', currentProdutos.filter(p => p !== produto));
+      form.setValue('produtos', currentProdutos.filter(p => p !== produto), { shouldValidate: true });
     }
   };
 
   const handleGrupoChange = (grupoId: string, checked: boolean) => {
     const currentGrupos = form.getValues('grupos') || [];
     if (checked) {
-      form.setValue('grupos', [...currentGrupos, grupoId]);
+      form.setValue('grupos', [...currentGrupos, grupoId], { shouldValidate: true });
     } else {
-      form.setValue('grupos', currentGrupos.filter(g => g !== grupoId));
+      form.setValue('grupos', currentGrupos.filter(g => g !== grupoId), { shouldValidate: true });
     }
   };
 
   return (
     <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {/* Informações Básicas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="nomeCompleto"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Digite o nome completo da empresa"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="nomeAbreviado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Abreviado *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Nome para uso no assunto dos e-mails"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Usado no assunto dos e-mails enviados
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="linkSharepoint"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Link SharePoint</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://..."
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Link da pasta do cliente no SharePoint
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="emailGestor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>E-mail do Customer Success</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="gestor@empresa.com"
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="templatePadrao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Template Padrão *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting || isLoading || templatesLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o template" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {bookTemplateOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex flex-col">
-                              <span>{option.label}</span>
-                              {option.description && (
-                                <span className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting || isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {STATUS_EMPRESA_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Configurações AMS e Book */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="temAms"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Tem AMS?</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tipoBook"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Book *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting || isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TIPO_BOOK_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {field.value === 'qualidade' && 'Empresa aparecerá na tela Controle Disparos'}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Descrição do Status - só aparece se status for inativo ou suspenso */}
-            {(watchStatus === 'inativo' || watchStatus === 'suspenso') && (
-              <FormField
-                control={form.control}
-                name="descricaoStatus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Justificativa do Status *</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descreva o motivo da alteração do status"
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                        rows={3}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Obrigatório para status Inativo ou Suspenso
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Informações Básicas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="nomeCompleto"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome Completo *</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Digite o nome completo da empresa"
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.nomeCompleto ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
+          />
 
-            {/* Produtos Contratados */}
+          <FormField
+            control={form.control}
+            name="nomeAbreviado"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome Abreviado *</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Nome para uso no assunto dos e-mails"
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.nomeAbreviado ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="temAms"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tem AMS? *</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value === 'true')}
+                  value={field.value ? 'true' : 'false'}
+                  disabled={isSubmitting || isLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger className={form.formState.errors.temAms ? 'border-red-500 focus:border-red-500' : ''}>
+                      <SelectValue placeholder="Selecione uma opção" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="true">Sim</SelectItem>
+                    <SelectItem value="false">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={isSubmitting || isLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger className={form.formState.errors.status ? 'border-red-500 focus:border-red-500' : ''}>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {STATUS_EMPRESA_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Descrição do Status - só aparece se status for inativo ou suspenso */}
+        {(watchStatus === 'inativo' || watchStatus === 'suspenso') && (
+          <FormField
+            control={form.control}
+            name="descricaoStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Justificativa do Status *</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Descreva o motivo da alteração do status"
+                    {...field}
+                    disabled={isSubmitting || isLoading}
+                    rows={3}
+                    className={form.formState.errors.descricaoStatus ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="templatePadrao"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Template Padrão *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={isSubmitting || isLoading || templatesLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger className={form.formState.errors.templatePadrao ? 'border-red-500 focus:border-red-500' : ''}>
+                      <SelectValue placeholder="Selecione o template" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {bookTemplateOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex flex-col">
+                          <span>{option.label}</span>
+                          {option.description && (
+                            <span className="text-xs text-muted-foreground">
+                              {option.description}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="emailGestor"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>E-mail do Customer Success *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="gestor@sonda.com"
+                    {...field}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <FormField
+            control={form.control}
+            name="linkSharepoint"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Link SharePoint *</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="https://..."
+                    {...field}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+
+
+        {/* Configurações Book */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="tipoBook"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Book *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={isSubmitting || isLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger className={form.formState.errors.tipoBook ? 'border-red-500 focus:border-red-500' : ''}>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {TIPO_BOOK_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Opções do Book - só aparece quando Tipo de Book for "Qualidade" */}
+        {watchTipoBook === 'qualidade' && (
+          <Card>
+            <CardContent>
+              <FormItem>
+                <FormLabel>Opções do Book</FormLabel>
+
+                <FormMessage />
+              </FormItem>
+            </CardContent>
+          </Card>
+        )}
+
+
+        {/* Produtos Contratados */}
+        <Card>
+          <CardContent>
             <FormField
               control={form.control}
               name="produtos"
               render={() => (
                 <FormItem>
-                  <FormLabel>Produtos Contratados *</FormLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormLabel className={form.formState.errors.produtos ? 'text-red-500' : ''}>Produtos Contratados *</FormLabel>
+                  <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${form.formState.errors.produtos ? 'border border-red-500 rounded-md p-3' : ''}`}>
                     {PRODUTOS_OPTIONS.map((produto) => (
                       <FormItem
                         key={produto.value}
@@ -475,99 +499,12 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
 
-            {/* Vigência */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="vigenciaInicial"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vigência Inicial</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="date"
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="vigenciaFinal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vigência Final</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="date"
-                        disabled={isSubmitting || isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Opções do Book - só aparece quando Tipo de Book for "Qualidade" */}
-            {watchTipoBook === 'qualidade' && (
-              <>
-                <div className="flex w-full">
-                  <FormLabel className="w-full">Opções do Book *</FormLabel>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="bookPersonalizado"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isSubmitting || isLoading}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="font-normal">
-                            Book Personalizado
-                          </FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="anexo"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isSubmitting || isLoading}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="font-normal">
-                            Permitir Anexos
-                          </FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Grupos de Responsáveis */}
+        {/* Grupos de Responsáveis */}
+        <Card>
+          <CardContent>
             {grupos.length > 0 && (
               <FormField
                 control={form.control}
@@ -575,9 +512,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 render={() => (
                   <FormItem>
                     <FormLabel>Grupos de Responsáveis</FormLabel>
-                    <FormDescription>
-                      Grupos que receberão cópia dos e-mails enviados
-                    </FormDescription>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {grupos.map((grupo) => (
                         <FormItem
@@ -611,36 +545,38 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 )}
               />
             )}
+          </CardContent>
+        </Card>
 
-            {/* Botões de Ação */}
-            <div className="flex justify-end space-x-4 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isSubmitting || isLoading}
-                className="flex items-center space-x-2"
-              >
-                <X className="h-4 w-4" />
-                <span>Cancelar</span>
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || isLoading}
-                className="flex items-center space-x-2"
-              >
-                <Save className="h-4 w-4" />
-                <span>
-                  {isSubmitting
-                    ? 'Salvando...'
-                    : mode === 'create'
-                      ? 'Criar Empresa'
-                      : 'Salvar Alterações'}
-                </span>
-              </Button>
-            </div>
-          </form>
-        </Form>
+        {/* Botões de Ação */}
+        <div className="flex justify-end space-x-4 pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting || isLoading}
+            className="flex items-center space-x-2"
+          >
+            <X className="h-4 w-4" />
+            <span>Cancelar</span>
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || isLoading}
+            className="flex items-center space-x-2"
+          >
+            <Save className="h-4 w-4" />
+            <span>
+              {isSubmitting
+                ? 'Salvando...'
+                : mode === 'create'
+                  ? 'Criar Empresa'
+                  : 'Salvar Alterações'}
+            </span>
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 };
 

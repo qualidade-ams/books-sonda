@@ -60,7 +60,7 @@ describe('HistoricoService', () => {
       {
         id: 'hist-1',
         empresa_id: 'empresa-1',
-        colaborador_id: 'colab-1',
+        cliente_id: 'colab-1',
         status: 'enviado',
         data_disparo: '2024-03-15T10:00:00Z',
         empresas_clientes: {
@@ -68,7 +68,7 @@ describe('HistoricoService', () => {
           nome_completo: 'Empresa Teste',
           status: 'ativo'
         },
-        colaboradores: {
+        clientes: {
           id: 'colab-1',
           nome_completo: 'João Silva',
           status: 'ativo'
@@ -77,7 +77,7 @@ describe('HistoricoService', () => {
       {
         id: 'hist-2',
         empresa_id: 'empresa-2',
-        colaborador_id: 'colab-2',
+        cliente_id: 'colab-2',
         status: 'falhou',
         data_disparo: '2024-03-14T09:00:00Z',
         empresas_clientes: {
@@ -85,7 +85,7 @@ describe('HistoricoService', () => {
           nome_completo: 'Empresa Inativa',
           status: 'inativo'
         },
-        colaboradores: {
+        clientes: {
           id: 'colab-2',
           nome_completo: 'Maria Santos',
           status: 'inativo'
@@ -395,8 +395,8 @@ describe('HistoricoService', () => {
 
       expect(resultado.totalEmpresas).toBe(10);
       expect(resultado.empresasAtivas).toBe(8);
-      expect(resultado.totalColaboradores).toBe(25);
-      expect(resultado.colaboradoresAtivos).toBe(20);
+      expect(resultado.totalClientes).toBe(25);
+      expect(resultado.clientesAtivos).toBe(20);
       expect(resultado.emailsEnviadosMes).toBe(15);
       expect(resultado.emailsFalharamMes).toBe(3);
       expect(resultado.taxaSucessoMes).toBe(83.33);
@@ -477,10 +477,10 @@ describe('HistoricoService', () => {
       const dataFim = new Date('2024-03-31');
 
       const disparosMock = [
-        { id: '1', status: 'enviado', empresa_id: 'emp-1', colaborador_id: 'col-1' },
-        { id: '2', status: 'enviado', empresa_id: 'emp-1', colaborador_id: 'col-2' },
-        { id: '3', status: 'falhou', empresa_id: 'emp-2', colaborador_id: 'col-3' },
-        { id: '4', status: 'enviado', empresa_id: 'emp-2', colaborador_id: 'col-1' }
+        { id: '1', status: 'enviado', empresa_id: 'emp-1', cliente_id: 'col-1' },
+        { id: '2', status: 'enviado', empresa_id: 'emp-1', cliente_id: 'col-2' },
+        { id: '3', status: 'falhou', empresa_id: 'emp-2', cliente_id: 'col-3' },
+        { id: '4', status: 'enviado', empresa_id: 'emp-2', cliente_id: 'col-1' }
       ];
 
       const mockQuery = {
@@ -499,7 +499,7 @@ describe('HistoricoService', () => {
       expect(resultado.falhas).toBe(1);
       expect(resultado.taxaSucesso).toBe(75);
       expect(resultado.empresasAtendidas).toBe(2);
-      expect(resultado.colaboradoresAtendidos).toBe(3);
+      expect(resultado.clientesAtendidos).toBe(3);
       expect(resultado.mediaDisparosPorDia).toBeGreaterThan(0);
     });
 
@@ -523,7 +523,7 @@ describe('HistoricoService', () => {
       expect(resultado.falhas).toBe(0);
       expect(resultado.taxaSucesso).toBe(0);
       expect(resultado.empresasAtendidas).toBe(0);
-      expect(resultado.colaboradoresAtendidos).toBe(0);
+      expect(resultado.clientesAtendidos).toBe(0);
       expect(resultado.mediaDisparosPorDia).toBe(0);
     });
   });
@@ -589,13 +589,13 @@ describe('HistoricoService', () => {
     });
   });
 
-  describe('buscarColaboradoresComFalhas', () => {
-    it('deve retornar colaboradores com mais falhas', async () => {
+  describe('buscarClientesComFalhas', () => {
+    it('deve retornar clientes com mais falhas', async () => {
       const falhasMock = [
         {
-          colaborador_id: 'colab-1',
+          cliente_id: 'colab-1',
           data_disparo: '2024-03-15T10:00:00Z',
-          colaboradores: {
+          clientes: {
             id: 'colab-1',
             nome_completo: 'João Silva'
           },
@@ -605,9 +605,9 @@ describe('HistoricoService', () => {
           }
         },
         {
-          colaborador_id: 'colab-1',
+          cliente_id: 'colab-1',
           data_disparo: '2024-03-10T09:00:00Z',
-          colaboradores: {
+          clientes: {
             id: 'colab-1',
             nome_completo: 'João Silva'
           },
@@ -617,9 +617,9 @@ describe('HistoricoService', () => {
           }
         },
         {
-          colaborador_id: 'colab-2',
+          cliente_id: 'colab-2',
           data_disparo: '2024-03-12T11:00:00Z',
-          colaboradores: {
+          clientes: {
             id: 'colab-2',
             nome_completo: 'Maria Santos'
           },
@@ -640,12 +640,12 @@ describe('HistoricoService', () => {
         select: vi.fn().mockReturnValue(mockQuery) 
       });
 
-      const resultado = await historicoService.buscarColaboradoresComFalhas(5, 3);
+      const resultado = await historicoService.buscarClientesComFalhas(5, 3);
 
       expect(resultado).toHaveLength(2);
-      expect(resultado[0].colaborador.nome_completo).toBe('João Silva');
+      expect(resultado[0].cliente.nome_completo).toBe('João Silva');
       expect(resultado[0].totalFalhas).toBe(2);
-      expect(resultado[1].colaborador.nome_completo).toBe('Maria Santos');
+      expect(resultado[1].cliente.nome_completo).toBe('Maria Santos');
       expect(resultado[1].totalFalhas).toBe(1);
     });
 
@@ -660,7 +660,7 @@ describe('HistoricoService', () => {
         select: vi.fn().mockReturnValue(mockQuery) 
       });
 
-      const resultado = await historicoService.buscarColaboradoresComFalhas(5, 3);
+      const resultado = await historicoService.buscarClientesComFalhas(5, 3);
 
       expect(resultado).toEqual([]);
     });
@@ -689,7 +689,7 @@ describe('HistoricoService', () => {
           empresas_clientes: {
             nome_completo: 'Empresa Teste'
           },
-          colaboradores: {
+          clientes: {
             nome_completo: 'João Silva',
             email: 'joao@empresa.com'
           }
@@ -710,7 +710,7 @@ describe('HistoricoService', () => {
 
       expect(resultado.dados).toHaveLength(1);
       expect(resultado.dados[0]['Empresa']).toBe('Empresa Teste');
-      expect(resultado.dados[0]['Colaborador']).toBe('João Silva');
+      expect(resultado.dados[0]['Cliente']).toBe('João Silva');
       expect(resultado.dados[0]['Status']).toBe('Enviado');
       expect(resultado.nomeArquivo).toContain('historico_books_');
       expect(resultado.tipo).toBe('csv');

@@ -119,7 +119,7 @@ const VariaveisTemplateExtendido = ({
       {mostrarVariaveisBooks && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
           {renderVariaveisSection(
-            'Sistema de Books (Empresas e Colaboradores)',
+            'Sistema de Books (Empresas e Clientes)',
             <Book className="h-5 w-5 text-green-600" />,
             variaveisBooks,
             'books-'
@@ -143,9 +143,9 @@ const VariaveisTemplateExtendido = ({
         <div className="text-sm text-amber-700 space-y-1">
           {mostrarVariaveisBooks && (
             <>
-              <p><strong>Sistema de Books:</strong> Variáveis relacionadas a empresas clientes, colaboradores e disparos mensais</p>
+              <p><strong>Sistema de Books:</strong> Variáveis relacionadas a empresas clientes, clientes e disparos mensais</p>
               <p><strong>Dados da Empresa:</strong> Informações cadastrais da empresa cliente (nome, produtos, status, etc.)</p>
-              <p><strong>Dados do Colaborador:</strong> Informações do destinatário do e-mail (nome, função, contato principal)</p>
+              <p><strong>Dados do Cliente:</strong> Informações do destinatário do e-mail (nome, função, contato principal)</p>
               <p><strong>Dados do Disparo:</strong> Informações sobre o envio atual (mês, ano, data de disparo)</p>
             </>
           )}

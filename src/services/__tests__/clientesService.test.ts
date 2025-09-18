@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { colaboradoresService, ColaboradorError } from '../colaboradoresService';
+import { clientesService, ClienteError } from '../clientesService';
 import { supabase } from '@/integrations/supabase/client';
-import { COLABORADOR_STATUS } from '@/types/clientBooksTypes';
-import type { ColaboradorFormData } from '@/types/clientBooksTypes';
+import { Cliente_STATUS } from '@/types/clientBooksTypes';
+import type { ClienteFormData } from '@/types/clientBooksTypes';
 
 // Mock do Supabase
 vi.mock('@/integrations/supabase/client', () => ({
@@ -38,7 +38,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   }
 }));
 
-describe('ColaboradoresService', () => {
+describe('ClientesService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -47,8 +47,8 @@ describe('ColaboradoresService', () => {
     vi.restoreAllMocks();
   });
 
-  describe('criarColaborador', () => {
-    const colaboradorValidoData: ColaboradorFormData = {
+  describe('criarCliente', () => {
+    const clienteValidoData: ClienteFormData = {
       nomeCompleto: 'João Silva',
       email: 'joao.silva@empresa.com',
       funcao: 'Gerente',
@@ -57,9 +57,9 @@ describe('ColaboradoresService', () => {
       principalContato: false
     };
 
-    it('deve criar um colaborador com dados válidos', async () => {
-      const colaboradorCriado = {
-        id: 'colaborador-1',
+    it('deve criar um cliente com dados válidos', async () => {
+      const clienteCriado = {
+        id: 'cliente-1',
         nome_completo: 'João Silva',
         email: 'joao.silva@empresa.com',
         status: 'ativo'
@@ -86,7 +86,7 @@ describe('ColaboradoresService', () => {
       const mockInsert = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: colaboradorCriado,
+            data: clienteCriado,
             error: null
           })
         })
@@ -97,9 +97,9 @@ describe('ColaboradoresService', () => {
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmailQuery) })
         .mockReturnValueOnce({ insert: mockInsert });
 
-      const resultado = await colaboradoresService.criarColaborador(colaboradorValidoData);
+      const resultado = await clientesService.criarCliente(clienteValidoData);
 
-      expect(resultado).toEqual(colaboradorCriado);
+      expect(resultado).toEqual(clienteCriado);
       expect(mockInsert).toHaveBeenCalledWith({
         nome_completo: 'João Silva',
         email: 'joao.silva@empresa.com',
@@ -113,35 +113,35 @@ describe('ColaboradoresService', () => {
     });
 
     it('deve lançar erro quando nome completo não for fornecido', async () => {
-      const dadosInvalidos = { ...colaboradorValidoData, nomeCompleto: '' };
+      const dadosInvalidos = { ...clienteValidoData, nomeCompleto: '' };
 
-      await expect(colaboradoresService.criarColaborador(dadosInvalidos))
+      await expect(clientesService.criarCliente(dadosInvalidos))
         .rejects
-        .toThrow(new ColaboradorError('Nome completo é obrigatório', 'NOME_COMPLETO_REQUIRED'));
+        .toThrow(new ClienteError('Nome completo é obrigatório', 'NOME_COMPLETO_REQUIRED'));
     });
 
     it('deve lançar erro quando e-mail não for fornecido', async () => {
-      const dadosInvalidos = { ...colaboradorValidoData, email: '' };
+      const dadosInvalidos = { ...clienteValidoData, email: '' };
 
-      await expect(colaboradoresService.criarColaborador(dadosInvalidos))
+      await expect(clientesService.criarCliente(dadosInvalidos))
         .rejects
-        .toThrow(new ColaboradorError('E-mail é obrigatório', 'EMAIL_REQUIRED'));
+        .toThrow(new ClienteError('E-mail é obrigatório', 'EMAIL_REQUIRED'));
     });
 
     it('deve lançar erro quando empresa não for fornecida', async () => {
-      const dadosInvalidos = { ...colaboradorValidoData, empresaId: '' };
+      const dadosInvalidos = { ...clienteValidoData, empresaId: '' };
 
-      await expect(colaboradoresService.criarColaborador(dadosInvalidos))
+      await expect(clientesService.criarCliente(dadosInvalidos))
         .rejects
-        .toThrow(new ColaboradorError('Empresa é obrigatória', 'EMPRESA_REQUIRED'));
+        .toThrow(new ClienteError('Empresa é obrigatória', 'EMPRESA_REQUIRED'));
     });
 
     it('deve lançar erro quando e-mail for inválido', async () => {
-      const dadosInvalidos = { ...colaboradorValidoData, email: 'email-invalido' };
+      const dadosInvalidos = { ...clienteValidoData, email: 'email-invalido' };
 
-      await expect(colaboradoresService.criarColaborador(dadosInvalidos))
+      await expect(clientesService.criarCliente(dadosInvalidos))
         .rejects
-        .toThrow(new ColaboradorError('E-mail inválido', 'INVALID_EMAIL'));
+        .toThrow(new ClienteError('E-mail inválido', 'INVALID_EMAIL'));
     });
 
     it('deve lançar erro quando empresa não existir', async () => {
@@ -158,9 +158,9 @@ describe('ColaboradoresService', () => {
         select: vi.fn().mockReturnValue(mockEmpresaQuery) 
       });
 
-      await expect(colaboradoresService.criarColaborador(colaboradorValidoData))
+      await expect(clientesService.criarCliente(clienteValidoData))
         .rejects
-        .toThrow(new ColaboradorError('Empresa não encontrada', 'EMPRESA_NOT_FOUND'));
+        .toThrow(new ClienteError('Empresa não encontrada', 'EMPRESA_NOT_FOUND'));
     });
 
     it('deve lançar erro quando empresa estiver inativa', async () => {
@@ -177,9 +177,9 @@ describe('ColaboradoresService', () => {
         select: vi.fn().mockReturnValue(mockEmpresaQuery) 
       });
 
-      await expect(colaboradoresService.criarColaborador(colaboradorValidoData))
+      await expect(clientesService.criarCliente(clienteValidoData))
         .rejects
-        .toThrow(new ColaboradorError('Não é possível associar colaborador a empresa inativa', 'EMPRESA_INACTIVE'));
+        .toThrow(new ClienteError('Não é possível associar cliente a empresa inativa', 'EMPRESA_INACTIVE'));
     });
 
     it('deve lançar erro quando e-mail já existir na empresa', async () => {
@@ -199,7 +199,7 @@ describe('ColaboradoresService', () => {
         neq: vi.fn().mockReturnThis()
       };
       mockEmailQuery.eq.mockResolvedValue({ 
-        data: [{ id: 'colaborador-existente' }], 
+        data: [{ id: 'cliente-existente' }], 
         error: null 
       });
 
@@ -207,13 +207,13 @@ describe('ColaboradoresService', () => {
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresaQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmailQuery) });
 
-      await expect(colaboradoresService.criarColaborador(colaboradorValidoData))
+      await expect(clientesService.criarCliente(clienteValidoData))
         .rejects
-        .toThrow(new ColaboradorError('Já existe um colaborador com este e-mail nesta empresa', 'EMAIL_ALREADY_EXISTS'));
+        .toThrow(new ClienteError('Já existe um cliente com este e-mail nesta empresa', 'EMAIL_ALREADY_EXISTS'));
     });
 
     it('deve remover principal contato existente quando novo cliente for principal', async () => {
-      const dadosComPrincipal = { ...colaboradorValidoData, principalContato: true };
+      const dadosComPrincipal = { ...clienteValidoData, principalContato: true };
 
       // Mock para empresa válida
       const mockEmpresaQuery = {
@@ -242,7 +242,7 @@ describe('ColaboradoresService', () => {
       const mockInsert = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: { id: 'colaborador-1' },
+            data: { id: 'cliente-1' },
             error: null
           })
         })
@@ -254,76 +254,76 @@ describe('ColaboradoresService', () => {
         .mockReturnValueOnce({ update: mockUpdatePrincipal })
         .mockReturnValueOnce({ insert: mockInsert });
 
-      await colaboradoresService.criarColaborador(dadosComPrincipal);
+      await clientesService.criarCliente(dadosComPrincipal);
 
       expect(mockUpdatePrincipal).toHaveBeenCalled();
     });
   });
 
-  describe('listarColaboradores', () => {
-    it('deve listar colaboradores ativos por padrão', async () => {
-      const colaboradores = [
+  describe('listarClientes', () => {
+    it('deve listar clientes ativos por padrão', async () => {
+      const clientes = [
         { id: '1', nome_completo: 'João Silva', status: 'ativo' },
         { id: '2', nome_completo: 'Maria Santos', status: 'ativo' }
       ];
 
       const mockQuery = {
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: colaboradores, error: null })
+        order: vi.fn().mockResolvedValue({ data: clientes, error: null })
       };
 
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.listarColaboradores();
+      const resultado = await clientesService.listarClientes();
 
-      expect(resultado).toEqual(colaboradores);
-      expect(mockQuery.eq).toHaveBeenCalledWith('status', COLABORADOR_STATUS.ATIVO);
+      expect(resultado).toEqual(clientes);
+      expect(mockQuery.eq).toHaveBeenCalledWith('status', Cliente_STATUS.ATIVO);
     });
 
     it('deve aplicar filtro por empresa', async () => {
-      const colaboradores = [
+      const clientes = [
         { id: '1', nome_completo: 'João Silva', empresa_id: 'empresa-1' }
       ];
 
       const mockQuery = {
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: colaboradores, error: null })
+        order: vi.fn().mockResolvedValue({ data: clientes, error: null })
       };
 
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.listarColaboradores({ empresaId: 'empresa-1' });
+      const resultado = await clientesService.listarClientes({ empresaId: 'empresa-1' });
 
-      expect(resultado).toEqual(colaboradores);
+      expect(resultado).toEqual(clientes);
       expect(mockQuery.eq).toHaveBeenCalledWith('empresa_id', 'empresa-1');
     });
 
     it('deve aplicar filtro de busca', async () => {
-      const colaboradores = [
+      const clientes = [
         { id: '1', nome_completo: 'João Silva' }
       ];
 
       const mockQuery = {
         eq: vi.fn().mockReturnThis(),
         or: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: colaboradores, error: null })
+        order: vi.fn().mockResolvedValue({ data: clientes, error: null })
       };
 
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.listarColaboradores({ busca: 'João' });
+      const resultado = await clientesService.listarClientes({ busca: 'João' });
 
-      expect(resultado).toEqual(colaboradores);
+      expect(resultado).toEqual(clientes);
       expect(mockQuery.or).toHaveBeenCalledWith('nome_completo.ilike.%João%,email.ilike.%João%,funcao.ilike.%João%');
     });
   });
 
-  describe('obterColaboradorPorId', () => {
-    it('deve retornar colaborador quando encontrado', async () => {
-      const colaborador = {
+  describe('obterClientePorId', () => {
+    it('deve retornar cliente quando encontrado', async () => {
+      const cliente = {
         id: '1',
         nome_completo: 'João Silva',
         email: 'joao@empresa.com'
@@ -331,20 +331,20 @@ describe('ColaboradoresService', () => {
 
       const mockQuery = {
         eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: colaborador, error: null })
+          single: vi.fn().mockResolvedValue({ data: cliente, error: null })
         })
       };
 
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.obterColaboradorPorId('1');
+      const resultado = await clientesService.obterClientePorId('1');
 
-      expect(resultado).toEqual(colaborador);
+      expect(resultado).toEqual(cliente);
       expect(mockQuery.eq).toHaveBeenCalledWith('id', '1');
     });
 
-    it('deve retornar null quando colaborador não for encontrado', async () => {
+    it('deve retornar null quando cliente não for encontrado', async () => {
       const mockQuery = {
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({ 
@@ -357,15 +357,15 @@ describe('ColaboradoresService', () => {
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.obterColaboradorPorId('inexistente');
+      const resultado = await clientesService.obterClientePorId('inexistente');
 
       expect(resultado).toBeNull();
     });
   });
 
-  describe('atualizarColaborador', () => {
-    it('deve atualizar colaborador com dados válidos', async () => {
-      const colaboradorAtual = {
+  describe('atualizarCliente', () => {
+    it('deve atualizar cliente com dados válidos', async () => {
+      const clienteAtual = {
         id: '1',
         nome_completo: 'João Silva',
         email: 'joao@empresa.com',
@@ -373,10 +373,10 @@ describe('ColaboradoresService', () => {
         principal_contato: false
       };
 
-      // Mock para obter colaborador atual
+      // Mock para obter cliente atual
       const mockGetQuery = {
         eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: colaboradorAtual, error: null })
+          single: vi.fn().mockResolvedValue({ data: clienteAtual, error: null })
         })
       };
 
@@ -395,7 +395,7 @@ describe('ColaboradoresService', () => {
         descricaoStatus: 'Saiu da empresa'
       };
 
-      await colaboradoresService.atualizarColaborador('1', dadosAtualizacao);
+      await clientesService.atualizarCliente('1', dadosAtualizacao);
 
       expect(mockUpdate).toHaveBeenCalledWith({
         nome_completo: 'João Silva Santos',
@@ -406,7 +406,7 @@ describe('ColaboradoresService', () => {
       });
     });
 
-    it('deve lançar erro quando colaborador não for encontrado', async () => {
+    it('deve lançar erro quando cliente não for encontrado', async () => {
       const mockGetQuery = {
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({ data: null, error: null })
@@ -417,9 +417,9 @@ describe('ColaboradoresService', () => {
         select: vi.fn().mockReturnValue(mockGetQuery) 
       });
 
-      await expect(colaboradoresService.atualizarColaborador('inexistente', {}))
+      await expect(clientesService.atualizarCliente('inexistente', {}))
         .rejects
-        .toThrow(new ColaboradorError('Colaborador não encontrado', 'NOT_FOUND'));
+        .toThrow(new ClienteError('Cliente não encontrado', 'NOT_FOUND'));
     });
   });
 
@@ -431,7 +431,7 @@ describe('ColaboradoresService', () => {
 
       (supabase.from as any).mockReturnValue({ update: mockUpdate });
 
-      await colaboradoresService.atualizarStatus('1', COLABORADOR_STATUS.INATIVO, 'Saiu da empresa');
+      await clientesService.atualizarStatus('1', Cliente_STATUS.INATIVO, 'Saiu da empresa');
 
       expect(mockUpdate).toHaveBeenCalledWith({
         status: 'inativo',
@@ -442,20 +442,20 @@ describe('ColaboradoresService', () => {
     });
 
     it('deve lançar erro quando status for inválido', async () => {
-      await expect(colaboradoresService.atualizarStatus('1', 'status-invalido', ''))
+      await expect(clientesService.atualizarStatus('1', 'status-invalido', ''))
         .rejects
-        .toThrow(new ColaboradorError('Status inválido', 'INVALID_STATUS'));
+        .toThrow(new ClienteError('Status inválido', 'INVALID_STATUS'));
     });
 
     it('deve exigir descrição para status inativo', async () => {
-      await expect(colaboradoresService.atualizarStatus('1', COLABORADOR_STATUS.INATIVO, ''))
+      await expect(clientesService.atualizarStatus('1', Cliente_STATUS.INATIVO, ''))
         .rejects
-        .toThrow(new ColaboradorError('Descrição é obrigatória para status Inativo', 'DESCRIPTION_REQUIRED'));
+        .toThrow(new ClienteError('Descrição é obrigatória para status Inativo', 'DESCRIPTION_REQUIRED'));
     });
   });
 
-  describe('deletarColaborador', () => {
-    it('deve deletar colaborador quando não há histórico de disparos', async () => {
+  describe('deletarCliente', () => {
+    it('deve deletar cliente quando não há histórico de disparos', async () => {
       // Mock para verificar histórico
       const mockHistoricoQuery = {
         eq: vi.fn().mockReturnValue({
@@ -472,7 +472,7 @@ describe('ColaboradoresService', () => {
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockHistoricoQuery) })
         .mockReturnValueOnce({ delete: mockDelete });
 
-      await colaboradoresService.deletarColaborador('1');
+      await clientesService.deletarCliente('1');
 
       expect(mockDelete).toHaveBeenCalled();
     });
@@ -491,9 +491,9 @@ describe('ColaboradoresService', () => {
         select: vi.fn().mockReturnValue(mockHistoricoQuery) 
       });
 
-      await expect(colaboradoresService.deletarColaborador('1'))
+      await expect(clientesService.deletarCliente('1'))
         .rejects
-        .toThrow(new ColaboradorError('Não é possível deletar colaborador com histórico de disparos', 'HAS_DISPATCH_HISTORY'));
+        .toThrow(new ClienteError('Não é possível deletar cliente com histórico de disparos', 'HAS_DISPATCH_HISTORY'));
     });
   });
 
@@ -513,12 +513,12 @@ describe('ColaboradoresService', () => {
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.obterPrincipalContato('empresa-1');
+      const resultado = await clientesService.obterPrincipalContato('empresa-1');
 
       expect(resultado).toEqual(principalContato);
       expect(mockQuery.eq).toHaveBeenCalledWith('empresa_id', 'empresa-1');
       expect(mockQuery.eq).toHaveBeenCalledWith('principal_contato', true);
-      expect(mockQuery.eq).toHaveBeenCalledWith('status', COLABORADOR_STATUS.ATIVO);
+      expect(mockQuery.eq).toHaveBeenCalledWith('status', Cliente_STATUS.ATIVO);
     });
 
     it('deve retornar null quando não há principal contato', async () => {
@@ -533,38 +533,38 @@ describe('ColaboradoresService', () => {
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.obterPrincipalContato('empresa-1');
+      const resultado = await clientesService.obterPrincipalContato('empresa-1');
 
       expect(resultado).toBeNull();
     });
   });
 
   describe('listarAtivos', () => {
-    it('deve listar apenas colaboradores ativos da empresa', async () => {
-      const colaboradoresAtivos = [
+    it('deve listar apenas clientes ativos da empresa', async () => {
+      const clientesAtivos = [
         { id: '1', nome_completo: 'João Silva', status: 'ativo' },
         { id: '2', nome_completo: 'Maria Santos', status: 'ativo' }
       ];
 
       const mockQuery = {
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: colaboradoresAtivos, error: null })
+        order: vi.fn().mockResolvedValue({ data: clientesAtivos, error: null })
       };
 
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await colaboradoresService.listarAtivos('empresa-1');
+      const resultado = await clientesService.listarAtivos('empresa-1');
 
-      expect(resultado).toEqual(colaboradoresAtivos);
+      expect(resultado).toEqual(clientesAtivos);
       expect(mockQuery.eq).toHaveBeenCalledWith('empresa_id', 'empresa-1');
-      expect(mockQuery.eq).toHaveBeenCalledWith('status', COLABORADOR_STATUS.ATIVO);
+      expect(mockQuery.eq).toHaveBeenCalledWith('status', Cliente_STATUS.ATIVO);
     });
   });
 
   describe('Validações', () => {
     it('deve validar e-mail corretamente', () => {
-      const service = colaboradoresService as any;
+      const service = clientesService as any;
       
       expect(service.validarEmail('teste@email.com')).toBe(true);
       expect(service.validarEmail('email.invalido')).toBe(false);
@@ -572,8 +572,8 @@ describe('ColaboradoresService', () => {
       expect(service.validarEmail('teste@')).toBe(false);
     });
 
-    it('deve validar dados do colaborador corretamente', async () => {
-      const service = colaboradoresService as any;
+    it('deve validar dados do cliente corretamente', async () => {
+      const service = clientesService as any;
       
       // Mock para empresa válida
       const mockEmpresaQuery = {
@@ -590,19 +590,19 @@ describe('ColaboradoresService', () => {
       });
 
       // Teste de nome muito longo
-      await expect(service.validarDadosColaborador({
+      await expect(service.validarDadosCliente({
         nomeCompleto: 'a'.repeat(256),
         email: 'teste@email.com',
         empresaId: 'empresa-1'
-      })).rejects.toThrow(new ColaboradorError('Nome completo deve ter no máximo 255 caracteres', 'NOME_COMPLETO_TOO_LONG'));
+      })).rejects.toThrow(new ClienteError('Nome completo deve ter no máximo 255 caracteres', 'NOME_COMPLETO_TOO_LONG'));
 
       // Teste de função muito longa
-      await expect(service.validarDadosColaborador({
+      await expect(service.validarDadosCliente({
         nomeCompleto: 'João Silva',
         email: 'teste@email.com',
         funcao: 'a'.repeat(101),
         empresaId: 'empresa-1'
-      })).rejects.toThrow(new ColaboradorError('Função deve ter no máximo 100 caracteres', 'FUNCAO_TOO_LONG'));
+      })).rejects.toThrow(new ClienteError('Função deve ter no máximo 100 caracteres', 'FUNCAO_TOO_LONG'));
     });
   });
 });

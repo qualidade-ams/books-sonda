@@ -20,33 +20,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ColaboradorForm, ColaboradoresTable } from '@/components/admin/client-books';
+import { ClienteForm, ClientesTable } from '@/components/admin/client-books';
 import { ClientImportExportButtons } from '@/components/admin/client-books/ClientImportExportButtons';
-import { useColaboradores } from '@/hooks/useColaboradores';
+import { useClientes } from '@/hooks/useClientes';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import type { ColaboradorCompleto, ColaboradorFormData, ColaboradorFiltros, ColaboradorStatus } from '@/types/clientBooksTypes';
+import type { ClienteCompleto, ClienteFormData, ClienteFiltros, ClienteStatus } from '@/types/clientBooksTypes';
 
-const Colaboradores: React.FC = () => {
+const Clientes: React.FC = () => {
   // Estados para modais
   const [modalAberto, setModalAberto] = useState(false);
-  const [colaboradorEditando, setColaboradorEditando] = useState<ColaboradorCompleto | null>(null);
-  const [colaboradorExcluindo, setColaboradorExcluindo] = useState<ColaboradorCompleto | null>(null);
+  const [clienteEditando, setClienteEditando] = useState<ClienteCompleto | null>(null);
+  const [clienteExcluindo, setClienteExcluindo] = useState<ClienteCompleto | null>(null);
 
   // Hooks
   const {
-    colaboradores,
+    clientes,
     isLoading,
     error,
     filtrosAtivos,
     atualizarFiltros,
-    criarColaborador,
-    atualizarColaborador,
-    deletarColaborador,
+    criarCliente,
+    atualizarCliente,
+    deletarCliente,
     isCriando,
     isAtualizando,
     isDeletando,
-  } = useColaboradores();
+  } = useClientes();
 
   const { empresas, isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] });
 
@@ -54,83 +54,83 @@ const Colaboradores: React.FC = () => {
   const empresasArray = Array.isArray(empresas) ? empresas : [];
 
   // Handlers para ações
-  const handleNovoColaborador = () => {
-    setColaboradorEditando(null);
+  const handleNovoCliente = () => {
+    setClienteEditando(null);
     setModalAberto(true);
   };
 
-  const handleEditarColaborador = (colaborador: ColaboradorCompleto) => {
-    setColaboradorEditando(colaborador);
+  const handleEditarCliente = (cliente: ClienteCompleto) => {
+    setClienteEditando(cliente);
     setModalAberto(true);
   };
 
-  const handleExcluirColaborador = (colaborador: ColaboradorCompleto) => {
-    setColaboradorExcluindo(colaborador);
+  const handleExcluirCliente = (cliente: ClienteCompleto) => {
+    setClienteExcluindo(cliente);
   };
 
   const handleConfirmarExclusao = async () => {
-    if (!colaboradorExcluindo) return;
+    if (!clienteExcluindo) return;
 
     try {
-      await deletarColaborador(colaboradorExcluindo.id);
-      setColaboradorExcluindo(null);
+      await deletarCliente(clienteExcluindo.id);
+      setClienteExcluindo(null);
     } catch (error) {
-      console.error('Erro ao excluir colaborador:', error);
+      console.error('Erro ao excluir cliente:', error);
     }
   };
 
-  const handleSalvarColaborador = async (data: ColaboradorFormData) => {
+  const handleSalvarCliente = async (data: ClienteFormData) => {
     try {
-      if (colaboradorEditando) {
-        await atualizarColaborador({
-          id: colaboradorEditando.id,
+      if (clienteEditando) {
+        await atualizarCliente({
+          id: clienteEditando.id,
           data,
         });
       } else {
-        await criarColaborador(data);
+        await criarCliente(data);
       }
       setModalAberto(false);
-      setColaboradorEditando(null);
+      setClienteEditando(null);
     } catch (error) {
-      console.error('Erro ao salvar colaborador:', error);
+      console.error('Erro ao salvar cliente:', error);
       throw error; // Re-throw para o form lidar com o erro
     }
   };
 
-  // Handler para importação de colaboradores em lote
-  const handleImportColaboradores = async (colaboradores: ColaboradorFormData[]) => {
+  // Handler para importação de clientes em lote
+  const handleImportClientes = async (clientes: ClienteFormData[]) => {
     const resultados = [];
-    for (const colaborador of colaboradores) {
+    for (const cliente of clientes) {
       try {
-        const resultado = await criarColaborador(colaborador);
+        const resultado = await criarCliente(cliente);
         resultados.push(resultado);
       } catch (error) {
-        console.error('Erro ao importar colaborador:', colaborador.nomeCompleto, error);
+        console.error('Erro ao importar cliente:', cliente.nomeCompleto, error);
         throw error;
       }
     }
     return resultados;
   };
 
-  const handleFiltrosChange = (novosFiltros: ColaboradorFiltros) => {
+  const handleFiltrosChange = (novosFiltros: ClienteFiltros) => {
     atualizarFiltros(novosFiltros);
   };
 
   const handleFecharModal = () => {
     setModalAberto(false);
-    setColaboradorEditando(null);
+    setClienteEditando(null);
   };
 
   // Preparar dados iniciais do formulário
-  const dadosIniciais = colaboradorEditando
+  const dadosIniciais = clienteEditando
     ? {
-      nomeCompleto: colaboradorEditando.nome_completo,
-      email: colaboradorEditando.email,
-      funcao: colaboradorEditando.funcao || '',
-      empresaId: colaboradorEditando.empresa_id,
-      status: colaboradorEditando.status as ColaboradorStatus,
-      descricaoStatus: colaboradorEditando.descricao_status || '',
-      principalContato: colaboradorEditando.principal_contato,
+      nomeCompleto: clienteEditando.nome_completo,
+      email: clienteEditando.email,
+      funcao: clienteEditando.funcao || '',
+      empresaId: clienteEditando.empresa_id,
+      status: clienteEditando.status as ClienteStatus,
+      descricaoStatus: clienteEditando.descricao_status || '',
+      principalContato: clienteEditando.principal_contato,
     }
     : undefined;
 
@@ -143,7 +143,7 @@ const Colaboradores: React.FC = () => {
               <div className="text-center">
                 <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Erro ao carregar colaboradores
+                  Erro ao carregar clientes
                 </h3>
                 <p className="text-gray-600 mb-4">
                   Ocorreu um erro ao carregar os dados. Tente novamente.
@@ -175,13 +175,13 @@ const Colaboradores: React.FC = () => {
           <div className="flex gap-2">
             <ClientImportExportButtons 
               empresas={empresasArray}
-              colaboradores={colaboradores}
-              onImportColaboradores={handleImportColaboradores}
-              showColaboradores={true}
+              clientes={clientes}
+              onImportClientes={handleImportClientes}
+              showClientes={true}
             />         
-            <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
+            <ProtectedAction screenKey="clientes" requiredLevel="edit">
               <Button
-                onClick={handleNovoColaborador}
+                onClick={handleNovoCliente}
                 className="flex items-center space-x-2"
                 disabled={isLoadingEmpresas}
               >
@@ -192,15 +192,15 @@ const Colaboradores: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabela de Colaboradores */}
-        <ColaboradoresTable
-          colaboradores={colaboradores}
+        {/* Tabela de Clientes */}
+        <ClientesTable
+          clientes={clientes}
           empresas={empresasArray}
           loading={isLoading}
           filtros={filtrosAtivos}
           onFiltrosChange={handleFiltrosChange}
-          onEdit={handleEditarColaborador}
-          onDelete={handleExcluirColaborador}
+          onEdit={handleEditarCliente}
+          onDelete={handleExcluirCliente}
           showEmpresaColumn={true}
         />
 
@@ -209,44 +209,44 @@ const Colaboradores: React.FC = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {colaboradorEditando ? 'Editar Colaborador' : 'Novo Cliente'}
+                {clienteEditando ? 'Editar Cliente' : 'Novo Cliente'}
               </DialogTitle>
               <DialogDescription>
-                {colaboradorEditando
-                  ? 'Atualize as informações do colaborador'
+                {clienteEditando
+                  ? 'Atualize as informações do cliente'
                   : 'Preencha os dados para cadastrar um novo cliente'}
               </DialogDescription>
             </DialogHeader>
 
-            <ColaboradorForm
+            <ClienteForm
               initialData={dadosIniciais}
               empresas={empresasArray}
-              onSubmit={handleSalvarColaborador}
+              onSubmit={handleSalvarCliente}
               onCancel={handleFecharModal}
               isLoading={isCriando || isAtualizando}
-              mode={colaboradorEditando ? 'edit' : 'create'}
+              mode={clienteEditando ? 'edit' : 'create'}
             />
           </DialogContent>
         </Dialog>
 
         {/* Dialog de Confirmação de Exclusão */}
         <AlertDialog
-          open={!!colaboradorExcluindo}
-          onOpenChange={() => setColaboradorExcluindo(null)}
+          open={!!clienteExcluindo}
+          onOpenChange={() => setClienteExcluindo(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja excluir o colaborador{' '}
-                <strong>{colaboradorExcluindo?.nome_completo}</strong>?
+                Tem certeza que deseja excluir o cliente{' '}
+                <strong>{clienteExcluindo?.nome_completo}</strong>?
                 <br />
                 <br />
-                Esta ação não pode ser desfeita. O colaborador será removido permanentemente
+                Esta ação não pode ser desfeita. O cliente será removido permanentemente
                 do sistema.
                 <br />
                 <br />
-                <strong>Nota:</strong> Colaboradores com histórico de disparos de e-mail não
+                <strong>Nota:</strong> Clientes com histórico de disparos de e-mail não
                 podem ser excluídos.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -269,4 +269,4 @@ const Colaboradores: React.FC = () => {
   );
 };
 
-export default Colaboradores;
+export default Clientes;

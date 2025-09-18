@@ -49,8 +49,8 @@ export class TemplateValidationService {
       variaveisObrigatorias: {
         book: [
           'empresa.nomeCompleto',
-          'colaborador.nomeCompleto',
-          'colaborador.email',
+          'cliente.nomeCompleto',
+          'cliente.email',
           'disparo.mesNome',
           'disparo.ano'
         ],
@@ -70,9 +70,9 @@ export class TemplateValidationService {
         'empresa.nomeCompleto': '[Nome da Empresa]',
         'empresa.nomeAbreviado': '[Empresa]',
         'empresa.emailGestor': '[gestor@empresa.com]',
-        'colaborador.nomeCompleto': '[Nome do Colaborador]',
-        'colaborador.email': '[cliente@empresa.com]',
-        'colaborador.funcao': '[Função]',
+        'cliente.nomeCompleto': '[Nome do Cliente]',
+        'cliente.email': '[cliente@empresa.com]',
+        'cliente.funcao': '[Função]',
         'disparo.mesNome': '[Mês]',
         'disparo.ano': '[Ano]',
         'disparo.dataDisparo': '[Data]',

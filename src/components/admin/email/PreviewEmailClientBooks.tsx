@@ -35,6 +35,9 @@ const PreviewEmailClientBooks = ({
     usarDadosExemplo
   });
 
+  // Determinar quais dados usar para validação
+  const dadosParaUsar = usarDadosExemplo ? dadosExemplo : dadosTemplate;
+
   // Processar template
   const templateProcessado = useMemo(() => {
     if (!template.assunto && !template.corpo) {
@@ -167,7 +170,7 @@ const PreviewEmailClientBooks = ({
                 <h4 className="font-medium text-blue-900 mb-2">Dados de Exemplo Utilizados:</h4>
                 <div className="text-sm text-blue-800 space-y-1">
                   <p><strong>Empresa:</strong> {dadosExemplo.empresa.nome_completo}</p>
-                  <p><strong>Colaborador:</strong> {dadosExemplo.colaborador.nome_completo} ({dadosExemplo.colaborador.email})</p>
+                  <p><strong>Cliente:</strong> {dadosExemplo.cliente.nome_completo} ({dadosExemplo.cliente.email})</p>
                   <p><strong>Período:</strong> {dadosExemplo.disparo.mes}/{dadosExemplo.disparo.ano}</p>
                 </div>
               </div>

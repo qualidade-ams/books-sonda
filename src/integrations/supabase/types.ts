@@ -1037,7 +1037,7 @@ export type Database = {
           descricao_status: string | null
           email_gestor: string | null
           tem_ams: boolean
-          tipo_book: 'nao_tem_book' | 'qualidade' | 'outros'
+          tipo_book: 'nao_tem_book' | 'outros' | 'qualidade'
           created_at: string
           updated_at: string
         }
@@ -1052,7 +1052,7 @@ export type Database = {
           descricao_status?: string | null
           email_gestor?: string | null
           tem_ams?: boolean
-          tipo_book?: 'nao_tem_book' | 'qualidade' | 'outros'
+          tipo_book?: 'nao_tem_book' | 'outros' | 'qualidade' 
           created_at?: string
           updated_at?: string
         }
@@ -1067,7 +1067,7 @@ export type Database = {
           descricao_status?: string | null
           email_gestor?: string | null
           tem_ams?: boolean
-          tipo_book?: 'nao_tem_book' | 'qualidade' | 'outros'
+          tipo_book?: 'nao_tem_book' | 'outros' | 'qualidade'
           created_at?: string
           updated_at?: string
         }
@@ -1194,7 +1194,7 @@ export type Database = {
           }
         ]
       }
-      colaboradores: {
+      clientes: {
         Row: {
           id: string
           nome_completo: string
@@ -1236,7 +1236,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "colaboradores_empresa_id_fkey"
+            foreignKeyName: "clientes_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas_clientes"
@@ -1248,7 +1248,7 @@ export type Database = {
         Row: {
           id: string
           empresa_id: string | null
-          colaborador_id: string | null
+          cliente_id: string | null
           template_id: string | null
           status: string
           data_disparo: string | null
@@ -1261,7 +1261,7 @@ export type Database = {
         Insert: {
           id?: string
           empresa_id?: string | null
-          colaborador_id?: string | null
+          cliente_id?: string | null
           template_id?: string | null
           status: string
           data_disparo?: string | null
@@ -1274,7 +1274,7 @@ export type Database = {
         Update: {
           id?: string
           empresa_id?: string | null
-          colaborador_id?: string | null
+          cliente_id?: string | null
           template_id?: string | null
           status?: string
           data_disparo?: string | null
@@ -1293,10 +1293,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "historico_disparos_colaborador_id_fkey"
-            columns: ["colaborador_id"]
+            foreignKeyName: "historico_disparos_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "colaboradores"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           }
         ]

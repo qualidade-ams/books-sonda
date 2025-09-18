@@ -16,7 +16,7 @@ import UserGroupAssignment from "./pages/admin/UserGroupAssignment";
 import UserConfig from "./pages/admin/UserConfig";
 import UserManagement from "./pages/admin/UserManagement";
 import EmpresasClientes from "./pages/admin/EmpresasClientes";
-import Colaboradores from "./pages/admin/Colaboradores";
+import Clientes from "./pages/admin/Clientes";
 import GruposResponsaveis from "./pages/admin/GruposResponsaveis";
 import ControleDisparos from "./pages/admin/ControleDisparos";
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
@@ -42,7 +42,7 @@ const App = () => (
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Login />} />
-                  
+
                   {/* Rotas administrativas protegidas */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute screenKey="dashboard"><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin/email-config" element={<ProtectedRoute screenKey="email-config"><EmailConfig /></ProtectedRoute>} />
@@ -51,7 +51,7 @@ const App = () => (
                   <Route path="/admin/user-config" element={<ProtectedRoute screenKey="user-config"><UserConfig /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-usuarios" element={<ProtectedRoute screenKey="cadastro-usuarios"><UserManagement /></ProtectedRoute>} />
                   <Route path="/admin/empresas-clientes" element={<ProtectedRoute screenKey="empresas_clientes"><EmpresasClientes /></ProtectedRoute>} />
-                  <Route path="/admin/colaboradores" element={<ProtectedRoute screenKey="colaboradores"><Colaboradores /></ProtectedRoute>} />
+                  <Route path="/admin/clientes" element={<ProtectedRoute screenKey="clientes"><Clientes /></ProtectedRoute>} />
                   <Route path="/admin/grupos-responsaveis" element={<ProtectedRoute screenKey="grupos_responsaveis"><GruposResponsaveis /></ProtectedRoute>} />
                   <Route path="/admin/controle-disparos" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparos /></ProtectedRoute>} />
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
@@ -60,14 +60,14 @@ const App = () => (
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-                  
+
                   {/* Páginas de erro */}
                   <Route path="/access-denied" element={<AccessDenied />} />
                   <Route path="/system-error" element={<SystemError />} />
-                  
+
                   {/* Página temporária para configurar permissões */}
                   <Route path="/fix-permissions" element={<FixPermissions />} />
-                  
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

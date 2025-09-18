@@ -36,7 +36,7 @@ export const PAGINATION_CONFIGS: Record<string, PaginationConfig> = {
     maxPageSize: 100,
     allowedSortFields: ['nome_completo', 'nome_abreviado', 'status', 'created_at', 'updated_at']
   },
-  colaboradores: {
+  clientes: {
     defaultPageSize: 25,
     maxPageSize: 100,
     allowedSortFields: ['nome_completo', 'email', 'funcao', 'status', 'created_at', 'updated_at']

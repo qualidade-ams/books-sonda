@@ -10,21 +10,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Edit, 
-  Trash2, 
+import {
+  Edit,
+  Trash2,
   ExternalLink,
   Users,
-  Mail,
-  AlertTriangle,
-  Clock
+  Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
-import { verificarVigenciaEmpresa } from '@/services/vigenciaService';
-import type { 
+
+import type {
   EmpresaClienteCompleta
 } from '@/types/clientBooks';
 
@@ -46,34 +44,10 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   onDelete,
 }) => {
   const { getTemplateById, isDefaultTemplate } = useBookTemplates();
-  
-  const getVigenciaIndicator = (empresa: EmpresaClienteCompleta) => {
-    // Verificar se a empresa tem campos de vigência (pode não ter se migração não foi aplicada)
-    if (!('vigencia_final' in empresa) || !empresa.vigencia_final) {
-      return null;
-    }
 
-    const vigenciaInfo = verificarVigenciaEmpresa(empresa.vigencia_final, 30);
-    
-    if (vigenciaInfo.vencida) {
-      return (
-        <div className="flex items-center gap-1 text-red-600" title="Vigência vencida">
-          <AlertTriangle className="h-3 w-3" />
-          <span className="text-xs">Vencida</span>
-        </div>
-      );
-    }
-    
-    if (vigenciaInfo.proximaVencimento) {
-      const dias = vigenciaInfo.diasRestantes || 0;
-      return (
-        <div className="flex items-center gap-1 text-orange-600" title={`Vence em ${dias} dias`}>
-          <Clock className="h-3 w-3" />
-          <span className="text-xs">{dias}d</span>
-        </div>
-      );
-    }
-    
+  const getVigenciaIndicator = (empresa: EmpresaClienteCompleta) => {
+    // Funcionalidade de vigência removida temporariamente
+    // Os campos vigencia_inicial e vigencia_final não existem na tabela atual
     return null;
   };
 
@@ -99,7 +73,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
 
   const getProdutosBadges = (produtos: any[]) => {
     if (!produtos || produtos.length === 0) return '-';
-    
+
     const produtoLabels = {
       CE_PLUS: 'CE Plus',
       FISCAL: 'Fiscal',
@@ -127,7 +101,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
 
   const getTemplateBadge = (templateId: string) => {
     const template = getTemplateById(templateId);
-    
+
     if (!template) {
       return (
         <Badge variant="destructive" className="text-xs">
@@ -146,8 +120,8 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     return (
       <div className="flex items-center gap-1">
         <Mail className="h-3 w-3" />
-        <Badge 
-          variant={isDefaultTemplate(templateId) ? "secondary" : "default"} 
+        <Badge
+          variant={isDefaultTemplate(templateId) ? "secondary" : "default"}
           className="text-xs"
         >
           {getTemplateDisplayName(template.label)}
@@ -186,7 +160,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableHead>Vigência</TableHead>
             <TableHead>Template</TableHead>
             <TableHead>Produtos</TableHead>
-            <TableHead>Colaboradores</TableHead>
+            <TableHead>Clientes</TableHead>
             <TableHead>E-mail Gestor</TableHead>
             <TableHead>Data Status</TableHead>
             <TableHead className="w-32">Ações</TableHead>
@@ -240,12 +214,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
               <TableCell>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4 text-gray-500" />
-                  <span>{empresa.colaboradores?.length || 0}</span>
-                  {empresa.colaboradores?.some(c => c.principal_contato) && (
-                    <Badge variant="outline" className="text-xs ml-1">
-                      Principal
-                    </Badge>
-                  )}
+                  <span>-</span>
                 </div>
               </TableCell>
               <TableCell>

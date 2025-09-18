@@ -80,7 +80,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
           status: 'ativo',
           template_padrao: 'portugues',
           email_gestor: 'gestor1@empresa.com',
-          colaboradores: [
+          clientes: [
             {
               id: 'colab-1',
               nome_completo: 'João Silva',
@@ -96,7 +96,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
           status: 'ativo',
           template_padrao: 'ingles',
           email_gestor: 'gestor2@empresa.com',
-          colaboradores: [
+          clientes: [
             {
               id: 'colab-2',
               nome_completo: 'Maria Santos',
@@ -109,13 +109,16 @@ describe('Testes de Integração - Disparo de E-mails', () => {
 
       const templateMock = {
         id: 'template-1',
+        nome: 'Template Book Mensal',
         assunto: 'Book Mensal - {{empresa.nomeCompleto}}',
         corpo: `
           <h1>Book Mensal</h1>
-          <p>Olá {{colaborador.nomeCompleto}},</p>
+          <p>Olá {{cliente.nomeCompleto}},</p>
           <p>Segue o book mensal da {{empresa.nomeCompleto}}.</p>
           <p>Link do SharePoint: {{empresa.linkSharepoint}}</p>
-        `
+        `,
+        ativo: true,
+        vinculado_formulario: false
       };
 
       const gruposEmailsMock = [
@@ -135,9 +138,9 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       const mockEmpresasQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockEmpresasQuery.eq.mockResolvedValue({ 
-        data: empresasMock, 
-        error: null 
+      mockEmpresasQuery.eq.mockResolvedValue({
+        data: empresasMock,
+        error: null
       });
 
       // 2. Verificar controle mensal (não existe)
@@ -146,13 +149,13 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         single: vi.fn().mockResolvedValue({ data: null, error: null })
       };
 
-      // 3. Buscar colaboradores por empresa
-      const mockColaboradoresQuery = {
+      // 3. Buscar clientes por empresa
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockColaboradoresQuery.eq
-        .mockResolvedValueOnce({ data: [empresasMock[0].colaboradores[0]], error: null })
-        .mockResolvedValueOnce({ data: [empresasMock[1].colaboradores[0]], error: null });
+      mockClientesQuery.eq
+        .mockResolvedValueOnce({ data: [empresasMock[0].clientes[0]], error: null })
+        .mockResolvedValueOnce({ data: [empresasMock[1].clientes[0]], error: null });
 
       // 4. Buscar grupos de e-mail
       const mockGruposQuery = {
@@ -193,18 +196,18 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       (supabase.from as any)
         // Buscar empresas ativas
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresasQuery) })
-        
+
         // Para cada empresa:
         // Empresa 1
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControleQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert }) // histórico
         .mockReturnValueOnce({ upsert: mockUpsert }) // controle mensal
-        
+
         // Empresa 2
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControleQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert }) // histórico
         .mockReturnValueOnce({ upsert: mockUpsert }); // controle mensal
@@ -230,7 +233,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
 
       // Verificar conteúdo dos e-mails
       const emailCalls = (emailService.sendEmail as any).mock.calls;
-      
+
       expect(emailCalls[0][0]).toMatchObject({
         to: 'joao@empresa.com',
         cc: ['responsavel1@sonda.com', 'responsavel2@sonda.com', 'gestor1@empresa.com'],
@@ -261,7 +264,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         nome_completo: 'Empresa Teste',
         status: 'ativo',
         template_padrao: 'portugues',
-        colaboradores: [
+        clientes: [
           {
             id: 'colab-1',
             nome_completo: 'João Silva',
@@ -275,9 +278,9 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       const mockEmpresasQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockEmpresasQuery.eq.mockResolvedValue({ 
-        data: [empresaMock], 
-        error: null 
+      mockEmpresasQuery.eq.mockResolvedValue({
+        data: [empresaMock],
+        error: null
       });
 
       // Mock para controle mensal
@@ -286,13 +289,13 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         single: vi.fn().mockResolvedValue({ data: null, error: null })
       };
 
-      // Mock para colaboradores
-      const mockColaboradoresQuery = {
+      // Mock para clientes
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockColaboradoresQuery.eq.mockResolvedValue({ 
-        data: [empresaMock.colaboradores[0]], 
-        error: null 
+      mockClientesQuery.eq.mockResolvedValue({
+        data: [empresaMock.clientes[0]],
+        error: null
       });
 
       // Mock para grupos (vazio)
@@ -311,7 +314,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresasQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControleQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert })
         .mockReturnValueOnce({ upsert: mockUpsert });
@@ -333,24 +336,24 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         id: 'empresa-1',
         nome_completo: 'Empresa Teste',
         status: 'ativo',
-        colaboradores: []
+        clientes: []
       };
 
       // Mock para buscar empresas
       const mockEmpresasQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockEmpresasQuery.eq.mockResolvedValue({ 
-        data: [empresaMock], 
-        error: null 
+      mockEmpresasQuery.eq.mockResolvedValue({
+        data: [empresaMock],
+        error: null
       });
 
       // Mock para controle mensal já processado
       const mockControleQuery = {
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ 
-          data: { status: 'enviado' }, 
-          error: null 
+        single: vi.fn().mockResolvedValue({
+          data: { status: 'enviado' },
+          error: null
         })
       };
 
@@ -374,7 +377,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
     it('deve agendar disparos corretamente', async () => {
       const agendamento: AgendamentoDisparo = {
         empresaId: 'empresa-1',
-        colaboradorIds: ['colab-1', 'colab-2'],
+        clienteIds: ['colab-1', 'colab-2'],
         templateId: 'template-1',
         dataAgendamento: new Date('2024-04-15T10:00:00Z'),
         observacoes: 'Agendamento de teste'
@@ -393,7 +396,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       expect(mockInsert).toHaveBeenCalledWith([
         {
           empresa_id: 'empresa-1',
-          colaborador_id: 'colab-1',
+          cliente_id: 'colab-1',
           template_id: 'template-1',
           status: 'agendado',
           data_agendamento: '2024-04-15T10:00:00.000Z',
@@ -401,7 +404,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         },
         {
           empresa_id: 'empresa-1',
-          colaborador_id: 'colab-2',
+          cliente_id: 'colab-2',
           template_id: 'template-1',
           status: 'agendado',
           data_agendamento: '2024-04-15T10:00:00.000Z',
@@ -442,7 +445,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         }
       ];
 
-      const colaboradoresMock = [
+      const clientesMock = [
         {
           id: 'colab-1',
           nome_completo: 'João Silva',
@@ -453,24 +456,27 @@ describe('Testes de Integração - Disparo de E-mails', () => {
 
       const templateMock = {
         id: 'template-1',
+        nome: 'Template Book Mensal - Reenvio',
         assunto: 'Book Mensal - Reenvio',
-        corpo: 'Conteúdo do book'
+        corpo: 'Conteúdo do book',
+        ativo: true,
+        vinculado_formulario: false
       };
 
       // Mocks
       const mockControlesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockControlesQuery.eq.mockResolvedValue({ 
-        data: controlesFalhaMock, 
-        error: null 
+      mockControlesQuery.eq.mockResolvedValue({
+        data: controlesFalhaMock,
+        error: null
       });
 
-      const mockColaboradoresQuery = {
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis()
       };
-      mockColaboradoresQuery.eq.mockResolvedValue({
-        data: colaboradoresMock,
+      mockClientesQuery.eq.mockResolvedValue({
+        data: clientesMock,
         error: null
       });
 
@@ -498,7 +504,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
 
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockControlesQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) })
         .mockReturnValueOnce({ insert: mockInsert })
         .mockReturnValueOnce({ upsert: mockUpsert });
@@ -517,10 +523,10 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         html: 'Olá João Silva, conteúdo do book',
         metadata: {
           empresaId: 'empresa-1',
-          colaboradorId: 'colab-1',
+          clienteId: 'colab-1',
           tipo: 'book_mensal',
           nomeEmpresa: 'Empresa Teste',
-          nomeColaborador: 'João Silva'
+          nomeCliente: 'João Silva'
         }
       });
 
@@ -546,7 +552,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         email_gestor: 'gestor@teste.com'
       };
 
-      const colaborador = {
+      const cliente = {
         id: 'colab-1',
         nome_completo: 'João Silva',
         email: 'joao@teste.com',
@@ -556,13 +562,16 @@ describe('Testes de Integração - Disparo de E-mails', () => {
 
       const template = {
         id: 'template-1',
-        assunto: 'Book {{empresa.nomeAbreviado}} - {{colaborador.funcao}}',
+        nome: 'Template Book Mensal',
+        assunto: 'Book {{empresa.nomeAbreviado}} - {{cliente.funcao}}',
         corpo: `
-          <h1>Olá {{colaborador.nomeCompleto}}</h1>
+          <h1>Olá {{cliente.nomeCompleto}}</h1>
           <p>Empresa: {{empresa.nomeCompleto}}</p>
           <p>SharePoint: {{empresa.linkSharepoint}}</p>
-          <p>Contato Principal: {{colaborador.principalContato}}</p>
-        `
+          <p>Contato Principal: {{cliente.principalContato}}</p>
+        `,
+        ativo: true,
+        vinculado_formulario: false
       };
 
       // Mock do template service para processar variáveis
@@ -570,13 +579,13 @@ describe('Testes de Integração - Disparo de E-mails', () => {
         .mockImplementation(async (tmpl, emp, colab, disparo) => {
           let assunto = tmpl.assunto
             .replace('{{empresa.nomeAbreviado}}', emp.nome_abreviado)
-            .replace('{{colaborador.funcao}}', colab.funcao);
+            .replace('{{cliente.funcao}}', colab.funcao);
 
           let corpo = tmpl.corpo
-            .replace('{{colaborador.nomeCompleto}}', colab.nome_completo)
+            .replace('{{cliente.nomeCompleto}}', colab.nome_completo)
             .replace('{{empresa.nomeCompleto}}', emp.nome_completo)
             .replace('{{empresa.linkSharepoint}}', emp.link_sharepoint)
-            .replace('{{colaborador.principalContato}}', colab.principal_contato ? 'Sim' : 'Não');
+            .replace('{{cliente.principalContato}}', colab.principal_contato ? 'Sim' : 'Não');
 
           return { assunto, corpo };
         });
@@ -584,7 +593,7 @@ describe('Testes de Integração - Disparo de E-mails', () => {
       const resultado = await clientBooksTemplateService.processarTemplate(
         template,
         empresa as any,
-        colaborador as any,
+        cliente as any,
         { mes: 3, ano: 2024, dataDisparo: new Date() }
       );
 

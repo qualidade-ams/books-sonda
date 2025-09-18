@@ -218,10 +218,10 @@ export const OperationValidators = {
     delete: (empresa: any): string[] => {
       const errors: string[] = [];
       
-      if (empresa.colaboradores && empresa.colaboradores.length > 0) {
-        const ativos = empresa.colaboradores.filter((c: any) => c.status === 'ativo');
+      if (empresa.clientes && empresa.clientes.length > 0) {
+        const ativos = empresa.clientes.filter((c: any) => c.status === 'ativo');
         if (ativos.length > 0) {
-          errors.push(`Empresa possui ${ativos.length} colaboradores ativos`);
+          errors.push(`Empresa possui ${ativos.length} clientes ativos`);
         }
       }
       
@@ -230,9 +230,9 @@ export const OperationValidators = {
   },
 
   /**
-   * Valida operação de colaborador
+   * Valida operação de cliente
    */
-  colaborador: {
+  cliente: {
     create: (data: any): string[] => {
       const errors: string[] = [];
       
@@ -327,9 +327,9 @@ export const OperationValidators = {
         errors.push('Empresa deve estar ativa para receber books');
       }
       
-      const colaboradoresAtivos = empresa.colaboradores?.filter((c: any) => c.status === 'ativo') || [];
-      if (colaboradoresAtivos.length === 0) {
-        errors.push('Empresa não possui colaboradores ativos');
+      const clientesAtivos = empresa.clientes?.filter((c: any) => c.status === 'ativo') || [];
+      if (clientesAtivos.length === 0) {
+        errors.push('Empresa não possui clientes ativos');
       }
       
       return errors;
@@ -344,8 +344,8 @@ export const OperationValidators = {
         errors.push('Data de agendamento deve ser no futuro');
       }
       
-      if (!data.colaboradorIds || data.colaboradorIds.length === 0) {
-        errors.push('Pelo menos um colaborador deve ser selecionado');
+      if (!data.clienteIds || data.clienteIds.length === 0) {
+        errors.push('Pelo menos um cliente deve ser selecionado');
       }
       
       return errors;

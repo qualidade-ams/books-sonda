@@ -305,15 +305,15 @@ describe('errorRecovery', () => {
       });
     });
 
-    describe('sanitizeColaboradorData', () => {
-      it('deve sanitizar dados de colaborador', () => {
+    describe('sanitizeClienteData', () => {
+      it('deve sanitizar dados de cliente', () => {
         const input = {
           nomeCompleto: '  João Silva  ',
           email: '  JOAO@TESTE.COM  ',
           funcao: '  Gerente  '
         };
 
-        const result = DataSanitizer.sanitizeColaboradorData(input);
+        const result = DataSanitizer.sanitizeClienteData(input);
 
         expect(result.nomeCompleto).toBe('João Silva');
         expect(result.email).toBe('joao@teste.com');
@@ -394,15 +394,15 @@ describe('errorRecovery', () => {
       });
     });
 
-    describe('validateColaboradorIntegrity', () => {
-      it('deve validar colaborador válido', async () => {
+    describe('validateClienteIntegrity', () => {
+      it('deve validar cliente válido', async () => {
         const validData = {
           nomeCompleto: 'João Silva',
           email: 'joao@teste.com',
           empresaId: '123e4567-e89b-12d3-a456-426614174000'
         };
 
-        const errors = await DataIntegrityValidator.validateColaboradorIntegrity(validData);
+        const errors = await DataIntegrityValidator.validateClienteIntegrity(validData);
 
         expect(errors).toHaveLength(0);
       });
@@ -412,7 +412,7 @@ describe('errorRecovery', () => {
           email: 'joao@teste.com'
         };
 
-        const errors = await DataIntegrityValidator.validateColaboradorIntegrity(invalidData);
+        const errors = await DataIntegrityValidator.validateClienteIntegrity(invalidData);
 
         expect(errors).toContain('Nome completo é obrigatório');
         expect(errors).toContain('Empresa é obrigatória');
@@ -425,7 +425,7 @@ describe('errorRecovery', () => {
           empresaId: '123e4567-e89b-12d3-a456-426614174000'
         };
 
-        const errors = await DataIntegrityValidator.validateColaboradorIntegrity(invalidData);
+        const errors = await DataIntegrityValidator.validateClienteIntegrity(invalidData);
 
         expect(errors).toContain('E-mail é inválido');
       });

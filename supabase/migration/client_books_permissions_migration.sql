@@ -8,7 +8,7 @@
 ------------------------------------------------------
 INSERT INTO screens (key, name, description, category, route) VALUES
 ('empresas_clientes', 'Cadastro de Empresas', 'Gerenciamento de empresas clientes', 'client_books', '/admin/empresas-clientes'),
-('colaboradores', 'Cadastro de Colaboradores', 'Gerenciamento de colaboradores', 'client_books', '/admin/colaboradores'),
+('clientes', 'Cadastro de Clientes', 'Gerenciamento de clientes', 'client_books', '/admin/clientes'),
 ('grupos_responsaveis', 'Grupos de Responsáveis', 'Gerenciamento de grupos de e-mail', 'client_books', '/admin/grupos-responsaveis'),
 ('controle_disparos', 'Controle de Disparos', 'Controle mensal de envio de books', 'client_books', '/admin/controle-disparos'),
 ('historico_books', 'Histórico de Books', 'Relatórios e histórico de envios', 'client_books', '/admin/historico-books')
@@ -27,7 +27,7 @@ SELECT ug.id, s.key, 'edit'
 FROM user_groups ug 
 CROSS JOIN screens s
 WHERE ug.is_default_admin = true 
-AND s.key IN ('empresas_clientes', 'colaboradores', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
+AND s.key IN ('empresas_clientes', 'clientes', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
 ON CONFLICT (group_id, screen_key) DO UPDATE SET 
     permission_level = 'edit';
 
@@ -36,7 +36,7 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET
 ------------------------------------------------------
 SELECT 'NOVAS TELAS REGISTRADAS' as status, key, name, description, category, route
 FROM screens 
-WHERE key IN ('empresas_clientes', 'colaboradores', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
+WHERE key IN ('empresas_clientes', 'clientes', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
 ORDER BY key;
 
 ------------------------------------------------------
@@ -46,5 +46,5 @@ SELECT 'PERMISSÕES CONFIGURADAS' as status, ug.name as grupo, s.key as tela, sp
 FROM screen_permissions sp
 JOIN user_groups ug ON sp.group_id = ug.id
 JOIN screens s ON sp.screen_key = s.key
-WHERE s.key IN ('empresas_clientes', 'colaboradores', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
+WHERE s.key IN ('empresas_clientes', 'clientes', 'grupos_responsaveis', 'controle_disparos', 'historico_books')
 ORDER BY ug.name, s.key;

@@ -354,9 +354,9 @@ export const DataSanitizer = {
   },
 
   /**
-   * Sanitiza dados de colaborador
+   * Sanitiza dados de cliente
    */
-  sanitizeColaboradorData: (data: any) => {
+  sanitizeClienteData: (data: any) => {
     return {
       ...data,
       nomeCompleto: data.nomeCompleto?.trim() || '',
@@ -412,9 +412,9 @@ export const DataIntegrityValidator = {
   },
 
   /**
-   * Valida integridade de colaborador
+   * Valida integridade de cliente
    */
-  validateColaboradorIntegrity: async (data: any): Promise<string[]> => {
+  validateClienteIntegrity: async (data: any): Promise<string[]> => {
     const errors: string[] = [];
     
     if (!data.nomeCompleto?.trim()) {

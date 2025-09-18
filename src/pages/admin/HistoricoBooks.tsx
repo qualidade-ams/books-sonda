@@ -50,7 +50,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useHistorico } from '@/hooks/useHistorico';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { useColaboradores } from '@/hooks/useColaboradores';
+import { useClientes } from '@/hooks/useClientes';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type {
   HistoricoDisparoCompleto,
@@ -101,7 +101,7 @@ const HistoricoBooks = () => {
     relatorioMensal,
     estatisticasPerformance,
     empresasSemBooks,
-    colaboradoresComFalhas,
+    clientesComFalhas,
     isLoading,
     isExportando,
     buscarHistorico,
@@ -111,7 +111,7 @@ const HistoricoBooks = () => {
   } = useHistorico(filtros);
 
   const { empresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] }) as { empresas: EmpresaClienteCompleta[] };
-  const { colaboradores } = useColaboradores({});
+  const { clientes } = useClientes({});
 
   // Dados filtrados para busca
   const historicoFiltrado = useMemo(() => {
@@ -120,8 +120,8 @@ const HistoricoBooks = () => {
     const termo = termoBusca.toLowerCase();
     return historico.filter(item => 
       item.empresas_clientes?.nome_completo?.toLowerCase().includes(termo) ||
-      item.colaboradores?.nome_completo?.toLowerCase().includes(termo) ||
-      item.colaboradores?.email?.toLowerCase().includes(termo) ||
+      item.clientes?.nome_completo?.toLowerCase().includes(termo) ||
+      item.clientes?.email?.toLowerCase().includes(termo) ||
       item.assunto?.toLowerCase().includes(termo)
     );
   }, [historico, termoBusca]);
@@ -135,7 +135,7 @@ const HistoricoBooks = () => {
     const cancelados = historicoFiltrado.filter(h => h.status === 'cancelado').length;
     
     const empresasUnicas = new Set(historicoFiltrado.map(h => h.empresa_id));
-    const colaboradoresUnicos = new Set(historicoFiltrado.map(h => h.colaborador_id));
+    const clientesUnicos = new Set(historicoFiltrado.map(h => h.cliente_id));
     
     return {
       total,
@@ -144,7 +144,7 @@ const HistoricoBooks = () => {
       agendados,
       cancelados,
       empresasUnicas: empresasUnicas.size,
-      colaboradoresUnicos: colaboradoresUnicos.size,
+      clientesUnicos: clientesUnicos.size,
       taxaSucesso: total > 0 ? Math.round((enviados / total) * 100) : 0
     };
   }, [historicoFiltrado]);
@@ -384,7 +384,7 @@ const HistoricoBooks = () => {
                 {statsHistorico.total}
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                {statsHistorico.empresasUnicas} empresas • {statsHistorico.colaboradoresUnicos} colaboradores
+                {statsHistorico.empresasUnicas} empresas • {statsHistorico.clientesUnicos} clientes
               </p>
             </CardContent>
           </Card>
@@ -453,7 +453,7 @@ const HistoricoBooks = () => {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Buscar por empresa, colaborador, e-mail ou assunto..."
+                      placeholder="Buscar por empresa, cliente, e-mail ou assunto..."
                       value={termoBusca}
                       onChange={(e) => setTermoBusca(e.target.value)}
                       className="pl-10"
@@ -488,7 +488,7 @@ const HistoricoBooks = () => {
                         <TableRow>
                           <TableHead>Data/Hora</TableHead>
                           <TableHead>Empresa</TableHead>
-                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Cliente</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Assunto</TableHead>
                           <TableHead>Ações</TableHead>
@@ -518,10 +518,10 @@ const HistoricoBooks = () => {
                             <TableCell>
                               <div>
                                 <div className="font-medium">
-                                  {item.colaboradores?.nome_completo}
+                                  {item.clientes?.nome_completo}
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                                  {item.colaboradores?.email}
+                                  {item.clientes?.email}
                                 </div>
                               </div>
                             </TableCell>
@@ -719,10 +719,10 @@ const HistoricoBooks = () => {
                     
                     <div className="p-4 border rounded-lg">
                       <div className="text-2xl font-bold text-orange-600">
-                        {estatisticasPerformance.colaboradoresAtendidos}
+                        {estatisticasPerformance.clientesAtendidos}
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Colaboradores Atendidos
+                        Clientes Atendidos
                       </p>
                     </div>
                   </div>
@@ -780,26 +780,26 @@ const HistoricoBooks = () => {
                 </CardContent>
               </Card>
 
-              {/* Colaboradores com Falhas */}
+              {/* Clientes com Falhas */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-orange-600 flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Colaboradores com Falhas
+                    Clientes com Falhas
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {colaboradoresComFalhas && colaboradoresComFalhas.length > 0 ? (
+                  {clientesComFalhas && clientesComFalhas.length > 0 ? (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {colaboradoresComFalhas.map((item) => (
+                      {clientesComFalhas.map((item) => (
                         <div
-                          key={item.colaborador.id}
+                          key={item.cliente.id}
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div>
-                            <div className="font-medium">{item.colaborador.nome_completo}</div>
+                            <div className="font-medium">{item.cliente.nome_completo}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {item.colaborador.email} • {item.empresa.nome_completo}
+                              {item.cliente.email} • {item.empresa.nome_completo}
                             </div>
                             {item.ultimaFalha && (
                               <div className="text-xs text-gray-500">
@@ -817,7 +817,7 @@ const HistoricoBooks = () => {
                     <div className="text-center py-4">
                       <CheckCircle className="h-6 w-6 mx-auto text-green-600" />
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Nenhum colaborador com falhas recentes
+                        Nenhum cliente com falhas recentes
                       </p>
                     </div>
                   )}
@@ -927,7 +927,7 @@ const HistoricoBooks = () => {
                     onCheckedChange={(checked) => handleFiltroChange('incluirInativos', checked)}
                   />
                   <Label htmlFor="incluir-inativos" className="text-sm">
-                    Incluir empresas e colaboradores inativos
+                    Incluir empresas e clientes inativos
                   </Label>
                 </div>
                 
@@ -1064,9 +1064,9 @@ const HistoricoBooks = () => {
                     <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       Cliente
                     </Label>
-                    <p className="font-medium">{itemSelecionado.colaboradores?.nome_completo}</p>
+                    <p className="font-medium">{itemSelecionado.clientes?.nome_completo}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {itemSelecionado.colaboradores?.email}
+                      {itemSelecionado.clientes?.email}
                     </p>
                   </div>
                   

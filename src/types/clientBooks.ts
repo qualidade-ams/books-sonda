@@ -1,28 +1,13 @@
 import type { Database } from '@/integrations/supabase/types';
 
 // Tipos base das tabelas
-export type EmpresaCliente = Database['public']['Tables']['empresas_clientes']['Row'] & {
-  book_personalizado?: boolean;
-  anexo?: boolean;
-  vigencia_inicial?: string;
-  vigencia_final?: string;
-};
-export type EmpresaClienteInsert = Database['public']['Tables']['empresas_clientes']['Insert'] & {
-  book_personalizado?: boolean;
-  anexo?: boolean;
-  vigencia_inicial?: string;
-  vigencia_final?: string;
-};
-export type EmpresaClienteUpdate = Database['public']['Tables']['empresas_clientes']['Update'] & {
-  book_personalizado?: boolean;
-  anexo?: boolean;
-  vigencia_inicial?: string;
-  vigencia_final?: string;
-};
+export type EmpresaCliente = Database['public']['Tables']['empresas_clientes']['Row'];
+export type EmpresaClienteInsert = Database['public']['Tables']['empresas_clientes']['Insert'];
+export type EmpresaClienteUpdate = Database['public']['Tables']['empresas_clientes']['Update'];
 
-export type Colaborador = Database['public']['Tables']['colaboradores']['Row'];
-export type ColaboradorInsert = Database['public']['Tables']['colaboradores']['Insert'];
-export type ColaboradorUpdate = Database['public']['Tables']['colaboradores']['Update'];
+export type Cliente = Database['public']['Tables']['clientes']['Row'];
+export type ClienteInsert = Database['public']['Tables']['clientes']['Insert'];
+export type ClienteUpdate = Database['public']['Tables']['clientes']['Update'];
 
 export type GrupoResponsavel = Database['public']['Tables']['grupos_responsaveis']['Row'];
 export type GrupoResponsavelInsert = Database['public']['Tables']['grupos_responsaveis']['Insert'];
@@ -44,12 +29,12 @@ export type ControleMensalUpdate = Database['public']['Tables']['controle_mensal
 
 // Enums
 export type StatusEmpresa = 'ativo' | 'inativo' | 'suspenso';
-export type StatusColaborador = 'ativo' | 'inativo';
+export type StatusCliente = 'ativo' | 'inativo';
 export type TemplatePadrao = 'portugues' | 'ingles';
 export type Produto = 'CE_PLUS' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
-export type TipoBook = 'nao_tem_book' | 'qualidade' | 'outros';
+export type TipoBook = 'nao_tem_book' | 'outros' | 'qualidade';
 
 // Interfaces para formulários
 export interface EmpresaFormData {
@@ -62,20 +47,16 @@ export interface EmpresaFormData {
   emailGestor?: string;
   produtos: Produto[];
   grupos: string[];
-  bookPersonalizado?: boolean;
-  anexo?: boolean;
-  vigenciaInicial?: string;
-  vigenciaFinal?: string;
   temAms?: boolean;
   tipoBook?: TipoBook;
 }
 
-export interface ColaboradorFormData {
+export interface ClienteFormData {
   nomeCompleto: string;
   email: string;
   funcao?: string;
   empresaId: string;
-  status: StatusColaborador;
+  status: StatusCliente;
   descricaoStatus?: string;
   principalContato: boolean;
 }
@@ -94,7 +75,6 @@ export interface GrupoEmailFormData {
 // Interfaces estendidas com relacionamentos
 export interface EmpresaClienteCompleta extends EmpresaCliente {
   produtos?: EmpresaProduto[];
-  colaboradores?: Colaborador[];
   grupos?: {
     grupo_id: string;
     grupos_responsaveis?: GrupoResponsavel;
@@ -105,7 +85,7 @@ export interface GrupoResponsavelCompleto extends GrupoResponsavel {
   emails: GrupoEmail[];
 }
 
-export interface ColaboradorCompleto extends Colaborador {
+export interface ClienteCompleto extends Cliente {
   empresa: EmpresaCliente;
 }
 
@@ -116,9 +96,9 @@ export interface EmpresaFiltros {
   busca?: string;
 }
 
-export interface ColaboradorFiltros {
+export interface ClienteFiltros {
   empresaId?: string;
-  status?: StatusColaborador[];
+  status?: StatusCliente[];
   busca?: string;
 }
 
@@ -140,7 +120,7 @@ export const STATUS_EMPRESA_OPTIONS: SelectOption[] = [
   { value: 'suspenso', label: 'Suspenso' }
 ];
 
-export const STATUS_COLABORADOR_OPTIONS: SelectOption[] = [
+export const STATUS_CLIENTE_OPTIONS: SelectOption[] = [
   { value: 'ativo', label: 'Ativo' },
   { value: 'inativo', label: 'Inativo' }
 ];
@@ -166,8 +146,8 @@ export const STATUS_CONTROLE_MENSAL_OPTIONS: SelectOption[] = [
 
 export const TIPO_BOOK_OPTIONS: SelectOption[] = [
   { value: 'nao_tem_book', label: 'Não tem Book' },
-  { value: 'qualidade', label: 'Qualidade' },
-  { value: 'outros', label: 'Outros' }
+  { value: 'outros', label: 'Outros' },
+  { value: 'qualidade', label: 'Qualidade' }
 ];
 
 // Interfaces para sistema de disparos
@@ -180,7 +160,7 @@ export interface DisparoResult {
 
 export interface DisparoDetalhe {
   empresaId: string;
-  colaboradorId: string;
+  clienteId: string;
   status: StatusDisparo;
   erro?: string;
   emailsEnviados: string[];
@@ -192,13 +172,13 @@ export interface StatusMensal {
   status: StatusControleMensal;
   dataProcessamento?: Date;
   observacoes?: string;
-  colaboradoresAtivos: number;
+  clientesAtivos: number;
   emailsEnviados: number;
 }
 
 export interface AgendamentoDisparo {
   empresaId: string;
-  colaboradorIds: string[];
+  clienteIds: string[];
   dataAgendamento: Date;
   templateId?: string;
   observacoes?: string;
@@ -206,7 +186,7 @@ export interface AgendamentoDisparo {
 
 export interface HistoricoDisparoCompleto extends HistoricoDisparo {
   empresas_clientes?: EmpresaCliente;
-  colaboradores?: Colaborador;
+  clientes?: Cliente;
 }
 
 export interface ControleMensalCompleto extends ControleMensal {
@@ -218,7 +198,7 @@ export interface HistoricoFiltros {
   mes?: number;
   ano?: number;
   empresaId?: string;
-  colaboradorId?: string;
+  clienteId?: string;
   status?: StatusDisparo[];
   dataInicio?: Date;
   dataFim?: Date;
@@ -235,8 +215,8 @@ export interface ControleMensalFiltros {
 export interface RelatorioMetricas {
   totalEmpresas: number;
   empresasAtivas: number;
-  totalColaboradores: number;
-  colaboradoresAtivos: number;
+  totalClientes: number;
+  clientesAtivos: number;
   emailsEnviadosMes: number;
   emailsFalharamMes: number;
   taxaSucessoMes: number;
@@ -256,7 +236,7 @@ export interface FiltrosAvancados extends HistoricoFiltros {
   apenasComFalhas?: boolean;
   apenasComSucesso?: boolean;
   empresasIds?: string[];
-  colaboradoresIds?: string[];
+  clientesIds?: string[];
 }
 
 export interface ExportacaoConfig {

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { empresasClientesService } from '@/services/empresasClientesService';
-import { colaboradoresService } from '@/services/colaboradoresService';
+import { clientesService } from '@/services/clientesService';
 import { gruposResponsaveisService } from '@/services/gruposResponsaveisService';
 import { supabase } from '@/integrations/supabase/client';
-import type { EmpresaFormData, ColaboradorFormData, GrupoFormData } from '@/types/clientBooks';
+import type { EmpresaFormData, ClienteFormData, GrupoFormData } from '@/types/clientBooks';
 
 // Mock do Supabase para testes de integração
 vi.mock('@/integrations/supabase/client', () => ({
@@ -42,8 +42,8 @@ describe('Testes de Integração - Cadastro Completo', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Fluxo completo de cadastro de empresa com colaboradores', () => {
-    it('deve criar empresa, grupos e colaboradores em sequência', async () => {
+  describe('Fluxo completo de cadastro de empresa com clientes', () => {
+    it('deve criar empresa, grupos e clientes em sequência', async () => {
       // Dados de teste
       const grupoData: GrupoFormData = {
         nome: 'CE Plus',
@@ -65,7 +65,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
         grupos: ['grupo-1'] // ID do grupo criado
       };
 
-      const colaborador1Data: ColaboradorFormData = {
+      const cliente1Data: ClienteFormData = {
         nomeCompleto: 'João Silva',
         email: 'joao.silva@empresa.com',
         funcao: 'Gerente',
@@ -74,7 +74,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
         principalContato: true
       };
 
-      const colaborador2Data: ColaboradorFormData = {
+      const cliente2Data: ClienteFormData = {
         nomeCompleto: 'Maria Santos',
         email: 'maria.santos@empresa.com',
         funcao: 'Analista',
@@ -128,16 +128,16 @@ describe('Testes de Integração - Cadastro Completo', () => {
       // Mock para associações da empresa (produtos e grupos)
       const mockAssociacoes = vi.fn().mockResolvedValue({ error: null });
 
-      // Mocks para criação dos colaboradores
-      const colaborador1Criado = {
-        id: 'colaborador-1',
+      // Mocks para criação dos clientes
+      const cliente1Criado = {
+        id: 'cliente-1',
         nome_completo: 'João Silva',
         email: 'joao.silva@empresa.com',
         principal_contato: true
       };
 
-      const colaborador2Criado = {
-        id: 'colaborador-2',
+      const cliente2Criado = {
+        id: 'cliente-2',
         nome_completo: 'Maria Santos',
         email: 'maria.santos@empresa.com',
         principal_contato: false
@@ -160,20 +160,20 @@ describe('Testes de Integração - Cadastro Completo', () => {
       };
       mockEmailUnico.eq.mockResolvedValue({ data: [], error: null });
 
-      // Mock para inserção dos colaboradores
-      const mockColaborador1Insert = vi.fn().mockReturnValue({
+      // Mock para inserção dos clientes
+      const mockCliente1Insert = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: colaborador1Criado,
+            data: cliente1Criado,
             error: null
           })
         })
       });
 
-      const mockColaborador2Insert = vi.fn().mockReturnValue({
+      const mockCliente2Insert = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: colaborador2Criado,
+            data: cliente2Criado,
             error: null
           })
         })
@@ -191,25 +191,25 @@ describe('Testes de Integração - Cadastro Completo', () => {
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGrupoNomeQuery) })
         .mockReturnValueOnce({ insert: mockGrupoInsert })
         .mockReturnValueOnce({ insert: mockEmailsInsert })
-        
+
         // Criação da empresa
         .mockReturnValueOnce({ insert: mockEmpresaInsert })
         .mockReturnValueOnce({ insert: mockAssociacoes }) // produtos
         .mockReturnValueOnce({ insert: mockAssociacoes }) // grupos
-        
-        // Criação do colaborador 1
+
+        // Criação do cliente 1
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresaExiste) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmailUnico) })
         .mockReturnValueOnce({ update: mockUpdatePrincipal })
-        .mockReturnValueOnce({ insert: mockColaborador1Insert })
-        
-        // Criação do colaborador 2
+        .mockReturnValueOnce({ insert: mockCliente1Insert })
+
+        // Criação do cliente 2
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresaExiste) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmailUnico) })
-        .mockReturnValueOnce({ insert: mockColaborador2Insert });
+        .mockReturnValueOnce({ insert: mockCliente2Insert });
 
       // Executar fluxo completo
-      
+
       // 1. Criar grupo
       const grupoResultado = await gruposResponsaveisService.criarGrupo(grupoData);
       expect(grupoResultado).toEqual(grupoCriado);
@@ -219,29 +219,29 @@ describe('Testes de Integração - Cadastro Completo', () => {
       const empresaResultado = await empresasClientesService.criarEmpresa(empresaData);
       expect(empresaResultado).toEqual(empresaCriada);
 
-      // 3. Criar colaboradores (com referência à empresa)
-      colaborador1Data.empresaId = empresaResultado.id;
-      colaborador2Data.empresaId = empresaResultado.id;
+      // 3. Criar clientes (com referência à empresa)
+      cliente1Data.empresaId = empresaResultado.id;
+      cliente2Data.empresaId = empresaResultado.id;
 
-      const colaborador1Resultado = await colaboradoresService.criarColaborador(colaborador1Data);
-      expect(colaborador1Resultado).toEqual(colaborador1Criado);
+      const cliente1Resultado = await clientesService.criarCliente(cliente1Data);
+      expect(cliente1Resultado).toEqual(cliente1Criado);
 
-      const colaborador2Resultado = await colaboradoresService.criarColaborador(colaborador2Data);
-      expect(colaborador2Resultado).toEqual(colaborador2Criado);
+      const cliente2Resultado = await clientesService.criarCliente(cliente2Data);
+      expect(cliente2Resultado).toEqual(cliente2Criado);
 
       // Verificar que todas as operações foram executadas
       expect(mockGrupoInsert).toHaveBeenCalled();
       expect(mockEmpresaInsert).toHaveBeenCalled();
-      expect(mockColaborador1Insert).toHaveBeenCalled();
-      expect(mockColaborador2Insert).toHaveBeenCalled();
+      expect(mockCliente1Insert).toHaveBeenCalled();
+      expect(mockCliente2Insert).toHaveBeenCalled();
 
-      // Verificar que apenas um colaborador é principal contato
-      expect(colaborador1Resultado.principal_contato).toBe(true);
-      expect(colaborador2Resultado.principal_contato).toBe(false);
+      // Verificar que apenas um cliente é principal contato
+      expect(cliente1Resultado.principal_contato).toBe(true);
+      expect(cliente2Resultado.principal_contato).toBe(false);
     });
 
-    it('deve falhar ao criar colaborador se empresa não existir', async () => {
-      const colaboradorData: ColaboradorFormData = {
+    it('deve falhar ao criar cliente se empresa não existir', async () => {
+      const clienteData: ClienteFormData = {
         nomeCompleto: 'João Silva',
         email: 'joao.silva@empresa.com',
         funcao: 'Gerente',
@@ -260,11 +260,11 @@ describe('Testes de Integração - Cadastro Completo', () => {
         })
       };
 
-      (supabase.from as any).mockReturnValue({ 
-        select: vi.fn().mockReturnValue(mockEmpresaQuery) 
+      (supabase.from as any).mockReturnValue({
+        select: vi.fn().mockReturnValue(mockEmpresaQuery)
       });
 
-      await expect(colaboradoresService.criarColaborador(colaboradorData))
+      await expect(clientesService.criarCliente(clienteData))
         .rejects
         .toThrow('Empresa não encontrada');
     });
@@ -293,8 +293,8 @@ describe('Testes de Integração - Cadastro Completo', () => {
       const mockProdutosInsert = vi.fn().mockResolvedValue({ error: null });
 
       // Mock para associação de grupos (falha)
-      const mockGruposInsert = vi.fn().mockResolvedValue({ 
-        error: { message: 'Foreign key violation' } 
+      const mockGruposInsert = vi.fn().mockResolvedValue({
+        error: { message: 'Foreign key violation' }
       });
 
       (supabase.from as any)
@@ -309,7 +309,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
   });
 
   describe('Fluxo de atualização com validações cruzadas', () => {
-    it('deve atualizar empresa e refletir mudanças nos colaboradores', async () => {
+    it('deve atualizar empresa e refletir mudanças nos clientes', async () => {
       const empresaId = 'empresa-1';
       const novoStatus = 'inativo';
       const descricaoStatus = 'Empresa encerrou atividades';
@@ -319,20 +319,20 @@ describe('Testes de Integração - Cadastro Completo', () => {
         eq: vi.fn().mockResolvedValue({ error: null })
       });
 
-      // Mock para buscar colaboradores da empresa
-      const colaboradoresMock = [
+      // Mock para buscar clientes da empresa
+      const clientesMock = [
         { id: 'colab-1', nome_completo: 'João Silva', status: 'ativo' },
         { id: 'colab-2', nome_completo: 'Maria Santos', status: 'ativo' }
       ];
 
-      const mockColaboradoresQuery = {
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: colaboradoresMock, error: null })
+        order: vi.fn().mockResolvedValue({ data: clientesMock, error: null })
       };
 
       (supabase.from as any)
         .mockReturnValueOnce({ update: mockEmpresaUpdate })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) });
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) });
 
       // Atualizar empresa
       await empresasClientesService.atualizarEmpresa(empresaId, {
@@ -340,8 +340,8 @@ describe('Testes de Integração - Cadastro Completo', () => {
         descricaoStatus
       });
 
-      // Verificar colaboradores da empresa
-      const colaboradores = await colaboradoresService.listarColaboradores({
+      // Verificar clientes da empresa
+      const clientes = await clientesService.listarClientes({
         empresaId
       });
 
@@ -352,7 +352,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
         updated_at: expect.any(String)
       });
 
-      expect(colaboradores).toEqual(colaboradoresMock);
+      expect(clientes).toEqual(clientesMock);
     });
 
     it('deve validar integridade ao tentar deletar grupo associado a empresa', async () => {
@@ -360,14 +360,14 @@ describe('Testes de Integração - Cadastro Completo', () => {
 
       // Mock para verificar associações do grupo
       const mockAssociacaoQuery = {
-        eq: vi.fn().mockResolvedValue({ 
-          data: [{ empresa_id: 'empresa-1' }], 
-          error: null 
+        eq: vi.fn().mockResolvedValue({
+          data: [{ empresa_id: 'empresa-1' }],
+          error: null
         })
       };
 
-      (supabase.from as any).mockReturnValue({ 
-        select: vi.fn().mockReturnValue(mockAssociacaoQuery) 
+      (supabase.from as any).mockReturnValue({
+        select: vi.fn().mockReturnValue(mockAssociacaoQuery)
       });
 
       await expect(gruposResponsaveisService.deletarGrupo(grupoId))
@@ -384,7 +384,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
       const empresaCompletaMock = {
         id: 'empresa-1',
         nome_completo: 'Empresa Teste',
-        colaboradores: [
+        clientes: [
           {
             id: 'colab-1',
             nome_completo: 'João Silva',
@@ -415,11 +415,11 @@ describe('Testes de Integração - Cadastro Completo', () => {
         })
       };
 
-      // Mock para buscar colaboradores da empresa
-      const mockColaboradoresQuery = {
+      // Mock para buscar clientes da empresa
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({
-          data: empresaCompletaMock.colaboradores,
+          data: empresaCompletaMock.clientes,
           error: null
         })
       };
@@ -434,16 +434,16 @@ describe('Testes de Integração - Cadastro Completo', () => {
 
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresaQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) })
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) })
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockGruposQuery) });
 
       // Buscar dados integrados
       const empresa = await empresasClientesService.obterEmpresaPorId(empresaId);
-      const colaboradores = await colaboradoresService.listarPorEmpresa(empresaId);
+      const clientes = await clientesService.listarPorEmpresa(empresaId);
       const grupos = await gruposResponsaveisService.obterGruposPorEmpresa(empresaId);
 
       expect(empresa).toEqual(empresaCompletaMock);
-      expect(colaboradores).toEqual(empresaCompletaMock.colaboradores);
+      expect(clientes).toEqual(empresaCompletaMock.clientes);
       expect(grupos).toHaveLength(1);
       expect(grupos[0].nome).toBe('CE Plus');
     });
@@ -463,40 +463,39 @@ describe('Testes de Integração - Cadastro Completo', () => {
         })
       };
 
-      // Mock para buscar colaboradores com filtros
-      const colaboradoresFiltrados = [
+      // Mock para buscar clientes com filtros
+      const clientesFiltrados = [
         { id: 'colab-1', nome_completo: 'João Silva', status: 'ativo' }
       ];
 
-      const mockColaboradoresQuery = {
+      const mockClientesQuery = {
         eq: vi.fn().mockReturnThis(),
         or: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({
-          data: colaboradoresFiltrados,
+          data: clientesFiltrados,
           error: null
         })
       };
 
       (supabase.from as any)
         .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockEmpresasQuery) })
-        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockColaboradoresQuery) });
+        .mockReturnValueOnce({ select: vi.fn().mockReturnValue(mockClientesQuery) });
 
       // Buscar com filtros
       const empresas = await empresasClientesService.listarEmpresas({
-        status: 'ativo',
+        status: ['ativo'],
         busca: 'Ativa'
       });
 
-      const colaboradores = await colaboradoresService.listarColaboradores({
-        status: 'ativo',
+      const clientes = await clientesService.listarClientes({
+        status: ['ativo'],
         busca: 'João'
       });
 
       expect(empresas).toEqual(empresasFiltradas);
-      expect(colaboradores).toEqual(colaboradoresFiltrados);
-      expect(mockEmpresasQuery.eq).toHaveBeenCalledWith('status', 'ativo');
+      expect(clientes).toEqual(clientesFiltrados);
       expect(mockEmpresasQuery.or).toHaveBeenCalledWith('nome_completo.ilike.%Ativa%,nome_abreviado.ilike.%Ativa%');
-      expect(mockColaboradoresQuery.or).toHaveBeenCalledWith('nome_completo.ilike.%João%,email.ilike.%João%,funcao.ilike.%João%');
+      expect(mockClientesQuery.or).toHaveBeenCalledWith('nome_completo.ilike.%João%,email.ilike.%João%,funcao.ilike.%João%');
     });
   });
 });

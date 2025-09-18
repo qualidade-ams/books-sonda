@@ -4,13 +4,13 @@ import { describe, it, expect } from 'vitest';
 import {
   type EmpresaCliente,
   type EmpresaClienteInsert,
-  type Colaborador,
-  type ColaboradorInsert,
+  type Cliente,
+  type ClienteInsert,
   type GrupoResponsavel,
   type EmpresaFormData,
-  type ColaboradorFormData,
+  type ClienteFormData,
   EMPRESA_STATUS,
-  COLABORADOR_STATUS,
+  Cliente_STATUS,
   PRODUTOS,
   TEMPLATE_PADRAO
 } from '@/types/clientBooksTypes';
@@ -28,12 +28,16 @@ describe('Client Books Types', () => {
       data_status: '2024-01-01T00:00:00Z',
       descricao_status: null,
       email_gestor: null,
+      tem_ams: true,
+      tipo_book: 'qualidade',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z'
     };
 
     expect(empresa.nome_completo).toBe('Empresa Teste Ltda');
     expect(empresa.status).toBe('ativo');
+    expect(empresa.tem_ams).toBe(true);
+    expect(empresa.tipo_book).toBe('qualidade');
   });
 
   it('deve ter os tipos de inserção definidos corretamente', () => {
@@ -41,10 +45,14 @@ describe('Client Books Types', () => {
       nome_completo: 'Nova Empresa',
       nome_abreviado: 'Nova',
       template_padrao: 'portugues',
-      status: 'ativo'
+      status: 'ativo',
+      tem_ams: false,
+      tipo_book: 'nao_tem_book'
     };
 
     expect(empresaInsert.nome_completo).toBe('Nova Empresa');
+    expect(empresaInsert.tem_ams).toBe(false);
+    expect(empresaInsert.tipo_book).toBe('nao_tem_book');
   });
 
   it('deve ter as constantes definidas corretamente', () => {
@@ -52,8 +60,8 @@ describe('Client Books Types', () => {
     expect(EMPRESA_STATUS.INATIVO).toBe('inativo');
     expect(EMPRESA_STATUS.SUSPENSO).toBe('suspenso');
 
-    expect(COLABORADOR_STATUS.ATIVO).toBe('ativo');
-    expect(COLABORADOR_STATUS.INATIVO).toBe('inativo');
+    expect(Cliente_STATUS.ATIVO).toBe('ativo');
+    expect(Cliente_STATUS.INATIVO).toBe('inativo');
 
     expect(PRODUTOS.CE_PLUS).toBe('CE_PLUS');
     expect(PRODUTOS.FISCAL).toBe('FISCAL');
@@ -67,8 +75,8 @@ describe('Client Books Types', () => {
     const empresaForm: EmpresaFormData = {
       nomeCompleto: 'Empresa Form',
       nomeAbreviado: 'Form',
-      templatePadrao: 'PORTUGUES',
-      status: 'ATIVO',
+      templatePadrao: 'portugues',
+      status: 'ativo',
       produtos: ['CE_PLUS', 'FISCAL'],
       grupos: ['grupo-1', 'grupo-2']
     };
@@ -77,8 +85,8 @@ describe('Client Books Types', () => {
     expect(empresaForm.grupos).toHaveLength(2);
   });
 
-  it('deve ter o tipo Colaborador definido corretamente', () => {
-    const colaborador: Colaborador = {
+  it('deve ter o tipo Cliente definido corretamente', () => {
+    const cliente: Cliente = {
       id: 'colab-id',
       nome_completo: 'João Silva',
       email: 'joao@empresa.com',
@@ -92,21 +100,21 @@ describe('Client Books Types', () => {
       updated_at: '2024-01-01T00:00:00Z'
     };
 
-    expect(colaborador.email).toBe('joao@empresa.com');
-    expect(colaborador.principal_contato).toBe(true);
+    expect(cliente.email).toBe('joao@empresa.com');
+    expect(cliente.principal_contato).toBe(true);
   });
 
-  it('deve ter o tipo ColaboradorFormData definido corretamente', () => {
-    const colaboradorForm: ColaboradorFormData = {
+  it('deve ter o tipo ClienteFormData definido corretamente', () => {
+    const clienteForm: ClienteFormData = {
       nomeCompleto: 'Maria Santos',
       email: 'maria@empresa.com',
       empresaId: 'empresa-id',
-      status: 'ATIVO',
+      status: 'ativo',
       principalContato: false
     };
 
-    expect(colaboradorForm.nomeCompleto).toBe('Maria Santos');
-    expect(colaboradorForm.principalContato).toBe(false);
+    expect(clienteForm.nomeCompleto).toBe('Maria Santos');
+    expect(clienteForm.principalContato).toBe(false);
   });
 
   it('deve ter o tipo GrupoResponsavel definido corretamente', () => {

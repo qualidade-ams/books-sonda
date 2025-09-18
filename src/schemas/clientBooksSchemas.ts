@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { 
   StatusEmpresa, 
-  StatusColaborador, 
   TemplatePadrao, 
   Produto, 
   StatusDisparo,
@@ -38,8 +37,8 @@ const statusEmpresaSchema = z.enum(['ativo', 'inativo', 'suspenso'] as const, {
   errorMap: () => ({ message: 'Status deve ser ativo, inativo ou suspenso' })
 });
 
-// Schema para status de colaborador
-const statusColaboradorSchema = z.enum(['ativo', 'inativo'] as const, {
+// Schema para status de cliente
+const statusClienteSchema = z.enum(['ativo', 'inativo'] as const, {
   errorMap: () => ({ message: 'Status deve ser ativo ou inativo' })
 });
 
@@ -93,11 +92,8 @@ export const empresaFormSchema = z.object({
     .array(z.string().uuid('ID do grupo deve ser um UUID válido'))
     .optional()
     .default([]),
-  bookPersonalizado: z.boolean().optional().default(false),
-  anexo: z.boolean().optional().default(false),
-  vigenciaInicial: z.string().optional().or(z.literal('')),
-  vigenciaFinal: z.string().optional().or(z.literal('')),
-  temAms: z.boolean().optional().default(false),
+
+  temAms: z.boolean().default(false),
   tipoBook: tipoBookSchema.optional().default('nao_tem_book')
 }).refine((data) => {
   // Se status for inativo ou suspenso, descrição é obrigatória
@@ -108,21 +104,12 @@ export const empresaFormSchema = z.object({
 }, {
   message: 'Descrição é obrigatória quando status for inativo ou suspenso',
   path: ['descricaoStatus']
-}).refine((data) => {
-  // Validar vigências se fornecidas
-  if (data.vigenciaInicial && data.vigenciaFinal) {
-    return new Date(data.vigenciaFinal) >= new Date(data.vigenciaInicial);
-  }
-  return true;
-}, {
-  message: 'Vigência final deve ser posterior à vigência inicial',
-  path: ['vigenciaFinal']
 });
 
 /**
- * Schema para formulário de colaborador
+ * Schema para formulário de cliente
  */
-export const colaboradorFormSchema = z.object({
+export const clienteFormSchema = z.object({
   nomeCompleto: nomeSchema,
   email: emailSchema,
   funcao: z
@@ -134,7 +121,7 @@ export const colaboradorFormSchema = z.object({
     .string()
     .uuid('ID da empresa deve ser um UUID válido')
     .min(1, 'Empresa é obrigatória'),
-  status: statusColaboradorSchema,
+  status: statusClienteSchema,
   descricaoStatus: z
     .string()
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
@@ -202,11 +189,11 @@ export const empresaFiltrosSchema = z.object({
 });
 
 /**
- * Schema para filtros de colaborador
+ * Schema para filtros de cliente
  */
-export const colaboradorFiltrosSchema = z.object({
+export const clienteFiltrosSchema = z.object({
   empresaId: z.string().uuid('ID da empresa deve ser um UUID válido').optional(),
-  status: z.array(statusColaboradorSchema).optional(),
+  status: z.array(statusClienteSchema).optional(),
   busca: z.string().max(255, 'Busca deve ter no máximo 255 caracteres').optional()
 });
 
@@ -215,9 +202,9 @@ export const colaboradorFiltrosSchema = z.object({
  */
 export const agendamentoDisparoSchema = z.object({
   empresaId: z.string().uuid('ID da empresa deve ser um UUID válido'),
-  colaboradorIds: z
-    .array(z.string().uuid('ID do colaborador deve ser um UUID válido'))
-    .min(1, 'Pelo menos um colaborador deve ser selecionado'),
+  clienteIds: z
+    .array(z.string().uuid('ID do cliente deve ser um UUID válido'))
+    .min(1, 'Pelo menos um cliente deve ser selecionado'),
   dataAgendamento: z
     .date({
       required_error: 'Data de agendamento é obrigatória',
@@ -248,7 +235,7 @@ export const historicoFiltrosSchema = z.object({
     .max(2050, 'Ano deve ser menor que 2050')
     .optional(),
   empresaId: z.string().uuid('ID da empresa deve ser um UUID válido').optional(),
-  colaboradorId: z.string().uuid('ID do colaborador deve ser um UUID válido').optional(),
+  clienteId: z.string().uuid('ID do cliente deve ser um UUID válido').optional(),
   status: z.array(statusDisparoSchema).optional(),
   dataInicio: z.date().optional(),
   dataFim: z.date().optional()
@@ -300,11 +287,11 @@ export const alteracaoLoteSchema = z.object({
  * Tipos derivados dos schemas
  */
 export type EmpresaFormData = z.infer<typeof empresaFormSchema>;
-export type ColaboradorFormData = z.infer<typeof colaboradorFormSchema>;
+export type ClienteFormData = z.infer<typeof clienteFormSchema>;
 export type GrupoFormData = z.infer<typeof grupoFormSchema>;
 export type GrupoEmailFormData = z.infer<typeof grupoEmailFormSchema>;
 export type EmpresaFiltros = z.infer<typeof empresaFiltrosSchema>;
-export type ColaboradorFiltros = z.infer<typeof colaboradorFiltrosSchema>;
+export type ClienteFiltros = z.infer<typeof clienteFiltrosSchema>;
 export type AgendamentoDisparo = z.infer<typeof agendamentoDisparoSchema>;
 export type HistoricoFiltros = z.infer<typeof historicoFiltrosSchema>;
 export type ExcelImportData = z.infer<typeof excelImportSchema>;

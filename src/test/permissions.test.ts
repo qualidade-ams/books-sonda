@@ -14,7 +14,7 @@ vi.mock('@/integrations/supabase/client', () => ({
         in: vi.fn(() => ({
           data: [
             { key: 'empresas_clientes', name: 'Cadastro de Empresas' },
-            { key: 'colaboradores', name: 'Cadastro de Colaboradores' }
+            { key: 'clientes', name: 'Cadastro de Clientes' }
           ],
           error: null
         }))

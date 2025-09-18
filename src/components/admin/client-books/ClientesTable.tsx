@@ -32,26 +32,26 @@ import {
 } from 'lucide-react';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type { 
-  ColaboradorCompleto, 
-  ColaboradorFiltros, 
-  ColaboradorStatus,
+  ClienteCompleto, 
+  ClienteFiltros, 
+  ClienteStatus,
   EmpresaCliente 
 } from '@/types/clientBooksTypes';
-import { STATUS_COLABORADOR_OPTIONS } from '@/types/clientBooksTypes';
+import { STATUS_Cliente_OPTIONS } from '@/types/clientBooksTypes';
 
-interface ColaboradoresTableProps {
-  colaboradores: ColaboradorCompleto[];
+interface ClientesTableProps {
+  clientes: ClienteCompleto[];
   empresas?: EmpresaCliente[];
   loading: boolean;
-  filtros: ColaboradorFiltros;
-  onFiltrosChange: (filtros: ColaboradorFiltros) => void;
-  onEdit: (colaborador: ColaboradorCompleto) => void;
-  onDelete: (colaborador: ColaboradorCompleto) => void;
+  filtros: ClienteFiltros;
+  onFiltrosChange: (filtros: ClienteFiltros) => void;
+  onEdit: (cliente: ClienteCompleto) => void;
+  onDelete: (cliente: ClienteCompleto) => void;
   showEmpresaColumn?: boolean; // Para quando não estiver filtrado por empresa específica
 }
 
-const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
-  colaboradores,
+const ClientesTable: React.FC<ClientesTableProps> = ({
+  clientes,
   empresas = [],
   loading,
   filtros,
@@ -70,7 +70,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
     if (status === 'todos') {
       onFiltrosChange({ ...filtros, status: undefined });
     } else {
-      onFiltrosChange({ ...filtros, status: [status as ColaboradorStatus] });
+      onFiltrosChange({ ...filtros, status: [status as ClienteStatus] });
     }
   };
 
@@ -82,7 +82,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
     }
   };
 
-  const getStatusBadge = (status: ColaboradorStatus) => {
+  const getStatusBadge = (status: ClienteStatus) => {
     switch (status) {
       case 'ativo':
         return (
@@ -115,7 +115,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando colaboradores...</p>
+          <p className="text-gray-600">Carregando clientes...</p>
         </CardContent>
       </Card>
     );
@@ -127,7 +127,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <Users className="h-5 w-5" />
-            <span>Clientes ({colaboradores.length})</span>
+            <span>Clientes ({clientes.length})</span>
           </CardTitle>
           <Button
             variant="outline"
@@ -167,7 +167,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os status</SelectItem>
-                  {STATUS_COLABORADOR_OPTIONS.map((option) => (
+                  {STATUS_Cliente_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -202,7 +202,7 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
       </CardHeader>
 
       <CardContent>
-        {colaboradores.length === 0 ? (
+        {clientes.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -228,19 +228,19 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {colaboradores.map((colaborador) => (
-                <TableRow key={colaborador.id}>
+              {clientes.map((cliente) => (
+                <TableRow key={cliente.id}>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="font-medium flex items-center space-x-2">
-                        <span>{colaborador.nome_completo}</span>
-                        {colaborador.principal_contato && (
+                        <span>{cliente.nome_completo}</span>
+                        {cliente.principal_contato && (
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
                         )}
                       </div>
                       <div className="flex items-center space-x-1 text-sm text-gray-500">
                         <Mail className="h-3 w-3" />
-                        <span>{colaborador.email}</span>
+                        <span>{cliente.email}</span>
                       </div>
                     </div>
                   </TableCell>
@@ -251,10 +251,10 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
                         <Building2 className="h-4 w-4 text-gray-400" />
                         <div className="space-y-1">
                           <div className="font-medium text-sm">
-                            {colaborador.empresa.nome_completo}
+                            {cliente.empresa.nome_completo}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {colaborador.empresa.nome_abreviado}
+                            {cliente.empresa.nome_abreviado}
                           </div>
                         </div>
                       </div>
@@ -263,16 +263,16 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
 
                   <TableCell>
                     <span className="text-sm">
-                      {colaborador.funcao || '-'}
+                      {cliente.funcao || '-'}
                     </span>
                   </TableCell>
 
                   <TableCell>
-                    {getStatusBadge(colaborador.status as ColaboradorStatus)}
+                    {getStatusBadge(cliente.status as ClienteStatus)}
                   </TableCell>
 
                   <TableCell>
-                    {colaborador.principal_contato ? (
+                    {cliente.principal_contato ? (
                       <Badge variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-200">
                         <Star className="h-3 w-3 mr-1" />
                         Principal
@@ -283,31 +283,31 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
                   </TableCell>
 
                   <TableCell className="text-sm text-gray-500">
-                    {formatarData(colaborador.updated_at)}
+                    {formatarData(cliente.updated_at)}
                   </TableCell>
 
                   <TableCell>
                     <div className="flex space-x-2">
-                      <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
+                      <ProtectedAction screenKey="clientes" requiredLevel="edit">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onEdit(colaborador)}
-                          title="Editar colaborador"
+                          onClick={() => onEdit(cliente)}
+                          title="Editar cliente"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                       </ProtectedAction>
-                      <ProtectedAction screenKey="colaboradores" requiredLevel="edit">
+                      <ProtectedAction screenKey="clientes" requiredLevel="edit">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onDelete(colaborador)}
-                          disabled={colaborador.status === 'ativo'}
+                          onClick={() => onDelete(cliente)}
+                          disabled={cliente.status === 'ativo'}
                           title={
-                            colaborador.status === 'ativo'
-                              ? 'Inative o colaborador antes de excluir'
-                              : 'Excluir colaborador'
+                            cliente.status === 'ativo'
+                              ? 'Inative o cliente antes de excluir'
+                              : 'Excluir cliente'
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -325,4 +325,4 @@ const ColaboradoresTable: React.FC<ColaboradoresTableProps> = ({
   );
 };
 
-export default ColaboradoresTable;
+export default ClientesTable;

@@ -25,13 +25,13 @@ import {
 
 import { Save, X } from 'lucide-react';
 import type {
-  ColaboradorFormData,
+  ClienteFormData,
   EmpresaCliente,
 } from '@/types/clientBooksTypes';
-import { STATUS_COLABORADOR_OPTIONS } from '@/types/clientBooksTypes';
+import { STATUS_Cliente_OPTIONS } from '@/types/clientBooksTypes';
 
 // Schema de validação com Zod
-const colaboradorSchema = z.object({
+const clienteSchema = z.object({
   nomeCompleto: z
     .string()
     .min(2, 'Nome completo deve ter pelo menos 2 caracteres')
@@ -55,17 +55,17 @@ const colaboradorSchema = z.object({
   principalContato: z.boolean(),
 });
 
-interface ColaboradorFormProps {
-  initialData?: Partial<ColaboradorFormData>;
+interface ClienteFormProps {
+  initialData?: Partial<ClienteFormData>;
   empresas?: EmpresaCliente[];
-  onSubmit: (data: ColaboradorFormData) => Promise<void>;
+  onSubmit: (data: ClienteFormData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
   mode: 'create' | 'edit';
   empresaIdPredefinida?: string; // Para quando vier de uma página específica de empresa
 }
 
-const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
+const ClienteForm: React.FC<ClienteFormProps> = ({
   initialData,
   empresas = [],
   onSubmit,
@@ -76,8 +76,8 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<ColaboradorFormData>({
-    resolver: zodResolver(colaboradorSchema),
+  const form = useForm<ClienteFormData>({
+    resolver: zodResolver(clienteSchema),
     defaultValues: {
       nomeCompleto: '',
       email: '',
@@ -108,11 +108,11 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     }
   }, [initialData, form, empresaIdPredefinida]);
 
-  const handleSubmit = async (data: ColaboradorFormData) => {
+  const handleSubmit = async (data: ClienteFormData) => {
     setIsSubmitting(true);
     try {
       // Normalizar dados antes do envio
-      const normalizedData: ColaboradorFormData = {
+      const normalizedData: ClienteFormData = {
         ...data,
         nomeCompleto: data.nomeCompleto.trim(),
         email: data.email.toLowerCase().trim(),
@@ -122,7 +122,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
 
       await onSubmit(normalizedData);
     } catch (error) {
-      console.error('Erro ao salvar colaborador:', error);
+      console.error('Erro ao salvar cliente:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -189,7 +189,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                   />
                 </FormControl>
                 <FormDescription>
-                  Cargo ou função do colaborador na empresa
+                  Cargo ou função do cliente na empresa
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -213,7 +213,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {STATUS_COLABORADOR_OPTIONS.map((option) => (
+                    {STATUS_Cliente_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -277,7 +277,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
               <div className="space-y-1 leading-none">
                 <FormLabel>Principal Contato</FormLabel>
                 <FormDescription>
-                  Marque se este colaborador é o principal contato da empresa
+                  Marque se este cliente é o principal contato da empresa
                 </FormDescription>
               </div>
             </FormItem>
@@ -331,7 +331,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
               {isSubmitting
                 ? 'Salvando...'
                 : mode === 'create'
-                  ? 'Criar Colaborador'
+                  ? 'Criar Cliente'
                   : 'Salvar Alterações'}
             </span>
           </Button>
@@ -341,4 +341,4 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
   );
 };
 
-export default ColaboradorForm;
+export default ClienteForm;

@@ -158,4 +158,64 @@
   .dark .nav-title {
     @apply text-white font-medium;
   }
+
+  /* Estilos customizados para scrollbar da sidebar */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.5) rgba(30, 64, 175, 0.3);
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: rgba(30, 64, 175, 0.2);
+    border-radius: 3px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.6);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.8);
+  }
+
+  /* Prevenir overflow horizontal */
+  .sidebar-item {
+    min-width: 0;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Garantir que o botão toggle sempre fique visível */
+  .sidebar-toggle-btn {
+    position: fixed !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    background: rgb(37, 99, 235) !important;
+    border: 2px solid rgb(96, 165, 250) !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .sidebar-toggle-btn:hover {
+    background: rgb(29, 78, 216) !important;
+    border-color: rgb(147, 197, 253) !important;
+  }
+
+  /* Melhorar clicabilidade dos botões recuados */
+  .sidebar-child-item {
+    position: relative;
+    z-index: 1;
+  }
+
+  .sidebar-child-item button {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+  }
 }

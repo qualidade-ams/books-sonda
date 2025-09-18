@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
-import { EmpresaClienteCompleta, ColaboradorCompleto } from '@/types/clientBooksTypes';
+import { EmpresaClienteCompleta, ClienteCompleto } from '@/types/clientBooksTypes';
 
-// Função para exportar empresas/clientes para Excel
-export const exportClientesToExcel = (empresas: EmpresaClienteCompleta[]) => {
+// Função para exportar empresas para Excel
+export const exportEmpresasToExcel = (empresas: EmpresaClienteCompleta[]) => {
   // Preparar dados para exportação
   const dadosExportacao = empresas.map(empresa => ({
     'Nome Completo': empresa.nome_completo,
@@ -13,8 +13,8 @@ export const exportClientesToExcel = (empresas: EmpresaClienteCompleta[]) => {
     'Link SharePoint': empresa.link_sharepoint || '',
     'Template Padrão': empresa.template_padrao,
     'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',
-    'Quantidade Colaboradores': empresa.colaboradores?.length || 0,
-    'Colaboradores Ativos': empresa.colaboradores?.filter(c => c.status === 'ativo').length || 0,
+    'Quantidade Clientes': empresa.clientes?.length || 0,
+    'Clientes Ativos': empresa.clientes?.filter(c => c.status === 'ativo').length || 0,
     'Grupos Associados': empresa.grupos?.length || 0,
     'Data de Criação': new Date(empresa.created_at).toLocaleDateString('pt-BR'),
     'Última Atualização': new Date(empresa.updated_at).toLocaleDateString('pt-BR')
@@ -36,8 +36,8 @@ export const exportClientesToExcel = (empresas: EmpresaClienteCompleta[]) => {
     { wch: 40 }, // Link SharePoint
     { wch: 15 }, // Template Padrão
     { wch: 20 }, // Produtos
-    { wch: 15 }, // Quantidade Colaboradores
-    { wch: 15 }, // Colaboradores Ativos
+    { wch: 15 }, // Quantidade Clientes
+    { wch: 15 }, // Clientes Ativos
     { wch: 15 }, // Grupos Associados
     { wch: 15 }, // Data de Criação
     { wch: 18 }  // Última Atualização
@@ -45,29 +45,29 @@ export const exportClientesToExcel = (empresas: EmpresaClienteCompleta[]) => {
   ws['!cols'] = colWidths;
 
   // Adicionar worksheet ao workbook
-  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.utils.book_append_sheet(wb, ws, 'Empresas');
 
   // Gerar nome do arquivo com data atual
   const dataAtual = new Date().toISOString().split('T')[0];
-  const nomeArquivo = `clientes-${dataAtual}.xlsx`;
+  const nomeArquivo = `empresas-${dataAtual}.xlsx`;
 
   // Fazer download
   XLSX.writeFile(wb, nomeArquivo);
 };
 
-// Função para exportar colaboradores para Excel
-export const exportColaboradoresToExcel = (colaboradores: ColaboradorCompleto[]) => {
+// Função para exportar clientes para Excel
+export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
   // Preparar dados para exportação
-  const dadosExportacao = colaboradores.map(colaborador => ({
-    'Nome Completo': colaborador.nome_completo,
-    'E-mail': colaborador.email,
-    'Função': colaborador.funcao || '',
-    'Empresa': colaborador.empresa.nome_completo,
-    'Status': colaborador.status,
-    'Descrição Status': colaborador.descricao_status || '',
-    'Principal Contato': colaborador.principal_contato ? 'Sim' : 'Não',
-    'Data de Criação': new Date(colaborador.created_at).toLocaleDateString('pt-BR'),
-    'Última Atualização': new Date(colaborador.updated_at).toLocaleDateString('pt-BR')
+  const dadosExportacao = clientes.map(cliente => ({
+    'Nome Completo': cliente.nome_completo,
+    'E-mail': cliente.email,
+    'Função': cliente.funcao || '',
+    'Empresa': cliente.empresa.nome_completo,
+    'Status': cliente.status,
+    'Descrição Status': cliente.descricao_status || '',
+    'Principal Contato': cliente.principal_contato ? 'Sim' : 'Não',
+    'Data de Criação': new Date(cliente.created_at).toLocaleDateString('pt-BR'),
+    'Última Atualização': new Date(cliente.updated_at).toLocaleDateString('pt-BR')
   }));
 
   // Criar workbook
@@ -91,11 +91,11 @@ export const exportColaboradoresToExcel = (colaboradores: ColaboradorCompleto[])
   ws['!cols'] = colWidths;
 
   // Adicionar worksheet ao workbook
-  XLSX.utils.book_append_sheet(wb, ws, 'Colaboradores');
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
 
   // Gerar nome do arquivo com data atual
   const dataAtual = new Date().toISOString().split('T')[0];
-  const nomeArquivo = `colaboradores-${dataAtual}.xlsx`;
+  const nomeArquivo = `clientes-${dataAtual}.xlsx`;
 
   // Fazer download
   XLSX.writeFile(wb, nomeArquivo);
@@ -177,7 +177,7 @@ export const exportClientesToPDF = (empresas: EmpresaClienteCompleta[]) => {
         .status-ativo { color: #28a745; }
         .status-inativo { color: #dc3545; }
         .status-suspenso { color: #ffc107; }
-        .produtos-section, .colaboradores-section {
+        .produtos-section, .clientes-section {
           margin-top: 15px;
           padding: 10px;
           background: #f8f9fa;
@@ -188,7 +188,7 @@ export const exportClientesToPDF = (empresas: EmpresaClienteCompleta[]) => {
           margin-bottom: 8px;
           color: #333;
         }
-        .colaborador-item {
+        .cliente-item {
           background: white;
           padding: 8px;
           margin: 5px 0;
@@ -217,7 +217,7 @@ export const exportClientesToPDF = (empresas: EmpresaClienteCompleta[]) => {
       <div class="summary">
         <strong>Total de clientes: ${empresas.length}</strong><br>
         <strong>Clientes ativos: ${empresas.filter(e => e.status === 'ativo').length}</strong><br>
-        <strong>Total de colaboradores: ${empresas.reduce((total, e) => total + (e.colaboradores?.length || 0), 0)}</strong>
+        <strong>Total de clientes: ${empresas.reduce((total, e) => total + (e.clientes?.length || 0), 0)}</strong>
       </div>
 
       ${empresas.map(empresa => `
@@ -253,11 +253,11 @@ export const exportClientesToPDF = (empresas: EmpresaClienteCompleta[]) => {
             </div>
           ` : ''}
 
-          ${empresa.colaboradores && empresa.colaboradores.length > 0 ? `
-            <div class="colaboradores-section">
-              <div class="section-title">Colaboradores (${empresa.colaboradores.length}):</div>
-              ${empresa.colaboradores.map(colab => `
-                <div class="colaborador-item">
+          ${empresa.clientes && empresa.clientes.length > 0 ? `
+            <div class="clientes-section">
+              <div class="section-title">Clientes (${empresa.clientes.length}):</div>
+              ${empresa.clientes.map(colab => `
+                <div class="cliente-item">
                   <strong>${colab.nome_completo}</strong> - ${colab.email}<br>
                   <small>Função: ${colab.funcao || 'Não informada'} | Status: ${colab.status}${colab.principal_contato ? ' | Principal Contato' : ''}</small>
                 </div>
@@ -295,8 +295,8 @@ export interface EmpresaImportData {
   produtos: string; // Produtos separados por vírgula
 }
 
-// Interface para dados de importação de colaboradores
-export interface ColaboradorImportData {
+// Interface para dados de importação de clientes
+export interface ClienteImportData {
   nomeCompleto: string;
   email: string;
   funcao?: string;
@@ -400,8 +400,8 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
   });
 };
 
-// Função para processar arquivo Excel de importação de colaboradores
-export const processImportColaboradoresExcel = (file: File): Promise<ColaboradorImportData[]> => {
+// Função para processar arquivo Excel de importação de clientes
+export const processImportClientesExcel = (file: File): Promise<ClienteImportData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -455,7 +455,7 @@ export const processImportColaboradoresExcel = (file: File): Promise<Colaborador
         }
 
         // Processar cada linha
-        const colaboradores: ColaboradorImportData[] = rows
+        const clientes: ClienteImportData[] = rows
           .filter(row => row[nomeCompletoIndex] && row[emailIndex]) // Filtrar linhas com nome e email
           .map(row => ({
             nomeCompleto: String(row[nomeCompletoIndex]).trim(),
@@ -475,7 +475,7 @@ export const processImportColaboradoresExcel = (file: File): Promise<Colaborador
               : 'não'
           }));
 
-        resolve(colaboradores);
+        resolve(clientes);
       } catch (error) {
         reject(new Error(`Erro ao processar arquivo: ${error}`));
       }
@@ -557,8 +557,8 @@ export const downloadImportEmpresasTemplate = () => {
   XLSX.writeFile(wb, 'template-importacao-empresas.xlsx');
 };
 
-// Função para gerar template Excel para importação de colaboradores
-export const downloadImportColaboradoresTemplate = () => {
+// Função para gerar template Excel para importação de clientes
+export const downloadImportClientesTemplate = () => {
   const templateData = [
     {
       'Nome Completo': 'João Silva',
@@ -566,7 +566,7 @@ export const downloadImportColaboradoresTemplate = () => {
       'Função': 'Gerente',
       'Empresa': 'Exemplo Empresa LTDA',
       'Status': 'ativo',
-      'Descrição Status': 'Colaborador ativo (opcional)',
+      'Descrição Status': 'Cliente ativo (opcional)',
       'Principal Contato': 'Sim'
     },
     {
@@ -595,5 +595,5 @@ export const downloadImportColaboradoresTemplate = () => {
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Template');
-  XLSX.writeFile(wb, 'template-importacao-colaboradores.xlsx');
+  XLSX.writeFile(wb, 'template-importacao-clientes.xlsx');
 };

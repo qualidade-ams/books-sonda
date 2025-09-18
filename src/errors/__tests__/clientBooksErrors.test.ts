@@ -109,7 +109,7 @@ describe('clientBooksErrors', () => {
       expect(error.details).toEqual({ nome: 'Empresa Teste' });
     });
 
-    it('deve criar erro de colaboradores ativos', () => {
+    it('deve criar erro de clientes ativos', () => {
       const error = ClientBooksErrorFactory.empresaHasActiveCollaborators('123', 5);
 
       expect(error.code).toBe('EMPRESA_HAS_ACTIVE_COLLABORATORS');
@@ -117,26 +117,26 @@ describe('clientBooksErrors', () => {
       expect(error.details).toEqual({ empresaId: '123', activeCollaborators: 5 });
     });
 
-    it('deve criar erro de colaborador não encontrado', () => {
-      const error = ClientBooksErrorFactory.colaboradorNotFound('456');
+    it('deve criar erro de cliente não encontrado', () => {
+      const error = ClientBooksErrorFactory.clienteNotFound('456');
 
-      expect(error.code).toBe('COLABORADOR_NOT_FOUND');
+      expect(error.code).toBe('Cliente_NOT_FOUND');
       expect(error.message).toContain('456');
-      expect(error.details).toEqual({ colaboradorId: '456' });
+      expect(error.details).toEqual({ clienteId: '456' });
     });
 
     it('deve criar erro de email duplicado', () => {
-      const error = ClientBooksErrorFactory.colaboradorDuplicateEmail('test@test.com', '123');
+      const error = ClientBooksErrorFactory.clienteDuplicateEmail('test@test.com', '123');
 
-      expect(error.code).toBe('COLABORADOR_DUPLICATE_EMAIL');
+      expect(error.code).toBe('Cliente_DUPLICATE_EMAIL');
       expect(error.message).toContain('test@test.com');
       expect(error.details).toEqual({ email: 'test@test.com', empresaId: '123' });
     });
 
     it('deve criar erro de conflito de principal contato', () => {
-      const error = ClientBooksErrorFactory.colaboradorPrincipalContatoConflict('123', '456');
+      const error = ClientBooksErrorFactory.clientePrincipalContatoConflict('123', '456');
 
-      expect(error.code).toBe('COLABORADOR_PRINCIPAL_CONTATO_CONFLICT');
+      expect(error.code).toBe('Cliente_PRINCIPAL_CONTATO_CONFLICT');
       expect(error.details).toEqual({ 
         empresaId: '123', 
         existingPrincipalContatoId: '456' 

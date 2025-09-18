@@ -7,7 +7,7 @@ import {
   validarVariaveisClientBooks
 } from '@/utils/clientBooksVariableMapping';
 import { templateValidationService, type ValidationResult } from './templateValidationService';
-import type { EmpresaClienteCompleta, ColaboradorCompleto } from '@/types/clientBooks';
+import type { EmpresaClienteCompleta, ClienteCompleto } from '@/types/clientBooks';
 
 export interface ProcessedEmailTemplate {
   assunto: string;
@@ -32,14 +32,14 @@ export class ClientBooksTemplateService {
   async processarTemplate(
     template: EmailTemplate,
     empresa: EmpresaClienteCompleta,
-    colaborador: ColaboradorCompleto,
+    cliente: ClienteCompleto,
     dadosDisparo: { mes: number; ano: number; dataDisparo?: Date }
   ): Promise<ProcessedEmailTemplate> {
     try {
       // Preparar dados para o template
       const dadosTemplate: ClientBooksTemplateData = {
         empresa,
-        colaborador,
+        cliente,
         disparo: {
           mes: dadosDisparo.mes,
           ano: dadosDisparo.ano,
@@ -94,14 +94,14 @@ export class ClientBooksTemplateService {
   validarTemplate(
     template: EmailTemplate,
     empresa?: EmpresaClienteCompleta,
-    colaborador?: ColaboradorCompleto
+    cliente?: ClienteCompleto
   ): TemplateValidationResult {
     try {
       // Se temos dados reais, usar validação completa
-      if (empresa && colaborador) {
+      if (empresa && cliente) {
         const dadosTemplate: ClientBooksTemplateData = {
           empresa,
-          colaborador,
+          cliente,
           disparo: {
             mes: new Date().getMonth() + 1,
             ano: new Date().getFullYear(),
@@ -294,8 +294,8 @@ export class ClientBooksTemplateService {
           }
         ]
       } as EmpresaClienteCompleta,
-      colaborador: {
-        id: 'exemplo-colaborador-id',
+      cliente: {
+        id: 'exemplo-cliente-id',
         nome_completo: 'João Silva',
         email: 'joao.silva@exemplo.com',
         funcao: 'Gerente Fiscal',
@@ -319,7 +319,7 @@ export class ClientBooksTemplateService {
           created_at: dataAtual.toISOString(),
           updated_at: dataAtual.toISOString()
         }
-      } as ColaboradorCompleto,
+      } as ClienteCompleto,
       disparo: {
         mes: dataAtual.getMonth() + 1,
         ano: dataAtual.getFullYear(),
