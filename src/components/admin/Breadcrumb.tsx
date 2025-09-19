@@ -19,18 +19,19 @@ const Breadcrumb = () => {
     'grupos-responsaveis': 'Grupos Responsáveis',
     'controle-disparos': 'Controle de Disparos',
     'historico-books': 'Histórico de Books',
-    'configurar-permissoes-client-books': 'Configurar Permissões - Client Books'
+    'configurar-permissoes-client-books': 'Configurar Permissões - Client Books',
+    'disparos-personalizados': 'Disparos Personalizados'
   };
 
   return (
     <nav className="flex items-center space-x-1 text-sm text-gray-600">
-      <Link 
-        to="/admin/dashboard" 
+      <Link
+        to="/admin/dashboard"
         className="flex items-center hover:text-blue-600 transition-colors"
       >
         <Home className="h-4 w-4" />
       </Link>
-      
+
       {pathnames.map((name, index) => {
         const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`;
         const isLast = index === pathnames.length - 1;
@@ -42,8 +43,8 @@ const Breadcrumb = () => {
             {isLast ? (
               <span className="font-medium text-blue-600">{displayName}</span>
             ) : (
-              <Link 
-                to={routeTo} 
+              <Link
+                to={routeTo}
                 className="hover:text-blue-600 transition-colors"
               >
                 {displayName}

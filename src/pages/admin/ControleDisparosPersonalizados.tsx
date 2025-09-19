@@ -6,7 +6,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Sparkles
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 
 import { useToast } from '@/hooks/use-toast';
-import { useControleDisparos } from '@/hooks/useControleDisparos';
+import { useControleDisparosPersonalizados } from '@/hooks/useControleDisparosPersonalizados';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type {
@@ -46,7 +47,7 @@ import {
   STATUS_CONTROLE_MENSAL_OPTIONS
 } from '@/types/clientBooks';
 
-const ControleDisparos = () => {
+const ControleDisparosPersonalizados = () => {
   const { toast } = useToast();
 
   // Estados para controle de mês/ano
@@ -63,7 +64,9 @@ const ControleDisparos = () => {
   const [dataAgendamento, setDataAgendamento] = useState('');
   const [observacoesAgendamento, setObservacoesAgendamento] = useState('');
 
-
+  // Calcular mês de referência (mês anterior)
+  const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
+  const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
 
   // Hooks
   const {
@@ -77,7 +80,7 @@ const ControleDisparos = () => {
     reenviarFalhas,
     agendarDisparo,
     refetch
-  } = useControleDisparos(mesAtual, anoAtual);
+  } = useControleDisparosPersonalizados(mesAtual, anoAtual);
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
 
@@ -107,8 +110,6 @@ const ControleDisparos = () => {
     if (selecionadas.length === 0) return false;
     return empresasSelecionadasStatus.every(empresa => empresa.status === 'enviado');
   }, [empresasSelecionadasStatus]);
-
-
 
   // Estatísticas do mês
   const stats = useMemo(() => {
@@ -153,19 +154,18 @@ const ControleDisparos = () => {
   };
 
   // Handlers para ações
-
   const handleDispararSelecionados = async () => {
     if (selecionadas.length === 0) return;
     try {
       const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
-        title: 'Disparo concluído',
+        title: 'Disparo personalizado concluído',
         description: `${resultado.sucesso} empresas processadas com sucesso, ${resultado.falhas} falhas`,
       });
       setSelecionadas([]);
     } catch (error) {
       toast({
-        title: 'Erro no disparo selecionado',
+        title: 'Erro no disparo personalizado selecionado',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
@@ -177,20 +177,18 @@ const ControleDisparos = () => {
     try {
       const resultado = await reenviarSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
-        title: 'Reenvio concluído',
+        title: 'Reenvio personalizado concluído',
         description: `${resultado.sucesso} empresas reprocessadas com sucesso`,
       });
       setSelecionadas([]);
     } catch (error) {
       toast({
-        title: 'Erro no reenvio selecionado',
+        title: 'Erro no reenvio personalizado selecionado',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     }
   };
-
-
 
   const handleReenvioFalhas = async () => {
     setShowReenvioModal(true);
@@ -202,13 +200,13 @@ const ControleDisparos = () => {
       const resultado = await reenviarFalhas(mesAtual, anoAtual);
 
       toast({
-        title: "Reenvio concluído",
+        title: "Reenvio personalizado concluído",
         description: `${resultado.sucesso} empresas processadas com sucesso`,
       });
 
     } catch (error) {
       toast({
-        title: "Erro no reenvio",
+        title: "Erro no reenvio personalizado",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
@@ -243,13 +241,13 @@ const ControleDisparos = () => {
       setObservacoesAgendamento('');
 
       toast({
-        title: "Agendamento realizado",
+        title: "Agendamento personalizado realizado",
         description: "Disparo agendado com sucesso",
       });
 
     } catch (error) {
       toast({
-        title: "Erro no agendamento",
+        title: "Erro no agendamento personalizado",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
@@ -289,21 +287,17 @@ const ControleDisparos = () => {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
-  // Calcular mês de referência (mês anterior)
-  const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
-  const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Disparos
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              Disparos Personalizados
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Acompanhe e gerencie o envio mensal de books
+              Acompanhe e gerencie o envio de books mensais personalizados
             </p>
           </div>
           <div className="flex gap-2">
@@ -362,7 +356,7 @@ const ControleDisparos = () => {
             <div className="mt-4">
               <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                 <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${stats.percentualConcluido}%` }}
                 ></div>
               </div>
@@ -434,7 +428,7 @@ const ControleDisparos = () => {
         {/* Ações Principais */}
         <Card>
           <CardHeader>
-            <CardTitle>Ações de Disparo</CardTitle>
+            <CardTitle>Ações de Disparo Personalizado</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -443,7 +437,7 @@ const ControleDisparos = () => {
                   <Button
                     onClick={handleDispararSelecionados}
                     disabled={isDisparandoSelecionados || selecionadas.length === 0 || todasSelecionadasJaEnviadas}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
                     title={todasSelecionadasJaEnviadas ? 'Todas as empresas selecionadas já foram enviadas. Use o botão "Reenviar" para reprocessar.' : undefined}
                   >
                     <Send className="h-4 w-4" />
@@ -478,8 +472,6 @@ const ControleDisparos = () => {
                 </div>
               </div>
             </div>
-
-
           </CardContent>
         </Card>
 
@@ -487,7 +479,7 @@ const ControleDisparos = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              Status por Empresa
+              Status por Empresa Personalizada
               {statusMensal.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
@@ -504,9 +496,9 @@ const ControleDisparos = () => {
               </div>
             ) : statusMensal.length === 0 ? (
               <div className="text-center py-8">
-                <AlertCircle className="h-8 w-8 mx-auto text-gray-400" />
+                <Sparkles className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  Nenhuma empresa encontrada para este período
+                  Nenhuma empresa com book personalizado encontrada para este período
                 </p>
               </div>
             ) : (
@@ -524,7 +516,7 @@ const ControleDisparos = () => {
                       />
                       {getStatusIcon(status.status)}
                       <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                        <h3 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                           {status.empresa.nome_completo}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -571,15 +563,13 @@ const ControleDisparos = () => {
           </CardContent>
         </Card>
 
-
-
         {/* Modal de Confirmação de Reenvio */}
         <AlertDialog open={showReenvioModal} onOpenChange={setShowReenvioModal}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Reenvio de Falhas</AlertDialogTitle>
+              <AlertDialogTitle>Confirmar Reenvio de Falhas Personalizadas</AlertDialogTitle>
               <AlertDialogDescription>
-                Deseja reenviar os books para as {stats.falhas} empresas que falharam em {nomesMeses[mesAtual - 1]} de {anoAtual}?
+                Deseja reenviar os books personalizados para as {stats.falhas} empresas que falharam em {nomesMeses[mesAtual - 1]} de {anoAtual}?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -598,7 +588,7 @@ const ControleDisparos = () => {
         <Dialog open={showAgendamentoModal} onOpenChange={setShowAgendamentoModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Agendar Disparo</DialogTitle>
+              <DialogTitle>Agendar Disparo Personalizado</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -618,7 +608,7 @@ const ControleDisparos = () => {
                   id="observacoes-agendamento"
                   value={observacoesAgendamento}
                   onChange={(e) => setObservacoesAgendamento(e.target.value)}
-                  placeholder="Observações sobre o agendamento..."
+                  placeholder="Observações sobre o agendamento personalizado..."
                 />
               </div>
 
@@ -632,6 +622,7 @@ const ControleDisparos = () => {
                 <Button
                   onClick={confirmarAgendamento}
                   disabled={isAgendando || !dataAgendamento}
+                  className="bg-purple-600 hover:bg-purple-700"
                 >
                   {isAgendando ? 'Agendando...' : 'Confirmar Agendamento'}
                 </Button>
@@ -644,4 +635,4 @@ const ControleDisparos = () => {
   );
 };
 
-export default ControleDisparos;
+export default ControleDisparosPersonalizados;

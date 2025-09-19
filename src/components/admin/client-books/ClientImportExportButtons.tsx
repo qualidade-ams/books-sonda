@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { EmpresaClienteCompleta, ClienteCompleto, EmpresaFormData, ClienteFormData } from '@/types/clientBooksTypes';
 import { 
-  exportEmpresasToExcel, 
   exportClientesToExcel,
   exportClientesToPDF, 
   processImportEmpresasExcel, 
@@ -40,6 +39,7 @@ import {
   EmpresaImportData,
   ClienteImportData
 } from '@/utils/clientExportUtils';
+import { exportEmpresasToExcel } from '@/utils/empresasExportUtils';
 import { toast } from 'sonner';
 
 interface ClientImportExportButtonsProps {
@@ -69,9 +69,9 @@ export function ClientImportExportButtons({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportEmpresasExcel = () => {
+  const handleExportEmpresasExcel = async () => {
     try {
-      exportEmpresasToExcel(empresas);
+      await exportEmpresasToExcel(empresas);
       toast.success('Dados de empresas exportados para Excel com sucesso!');
     } catch (error) {
       toast.error('Erro ao exportar dados de empresas para Excel');

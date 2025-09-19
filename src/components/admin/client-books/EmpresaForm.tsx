@@ -23,17 +23,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { Save, X, AlertTriangle, Calendar } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { useToast } from '@/hooks/use-toast';
-import { useVigenciaValidation } from '@/hooks/useVigenciaMonitor';
 
 import type {
   EmpresaFormData,
   Produto,
   GrupoResponsavel,
-} from '@/types/clientBooksTypes';
-import type {
   TipoBook,
 } from '@/types/clientBooks';
 import {
@@ -42,7 +39,6 @@ import {
   TIPO_BOOK_OPTIONS,
 } from '@/types/clientBooks';
 import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Schema de validação com Zod
 const empresaSchema = z.object({
@@ -58,20 +54,7 @@ const empresaSchema = z.object({
     .string()
     .min(1, 'Link SharePoint é obrigatório')
     .url('Link deve ser uma URL válida'),
-  templatePadrao: z.string().min(1, 'Template é obrigatório').refine(
-    (value) => {
-      // Aceitar templates padrão
-      if (['portugues', 'ingles'].includes(value)) {
-        return true;
-      }
-      // Aceitar UUIDs (templates personalizados)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      return uuidRegex.test(value);
-    },
-    {
-      message: 'Template deve ser um template padrão (portugues/ingles) ou um UUID válido'
-    }
-  ),
+  templatePadrao: z.string().min(1, 'Template é obrigatório'),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   descricaoStatus: z
     .string()
@@ -91,6 +74,8 @@ const empresaSchema = z.object({
   }).optional(),
   vigenciaInicial: z.string().optional(),
   vigenciaFinal: z.string().optional(),
+  bookPersonalizado: z.boolean().optional(),
+  anexo: z.boolean().optional(),
 }).refine((data) => {
   // Validação condicional para descrição do status
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -133,7 +118,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
   const { toast } = useToast();
-  const { validarVigencias, calcularDiasRestantes } = useVigenciaValidation();
 
   const form = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
@@ -151,63 +135,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       tipoBook: 'nao_tem_book',
       vigenciaInicial: '',
       vigenciaFinal: '',
+      bookPersonalizado: false,
+      anexo: false,
       ...initialData,
     } as EmpresaFormData,
   });
 
   const watchStatus = form.watch('status');
-  const watchTipoBook = form.watch('tipoBook');
-  const watchVigenciaFinal = form.watch('vigenciaFinal');
-  const watchVigenciaInicial = form.watch('vigenciaInicial');
-
-  // Calcular status da vigência
-  const statusVigencia = React.useMemo(() => {
-    if (!watchVigenciaFinal) return null;
-    
-    // Usar a data atual no formato brasileiro (UTC-3)
-    const hoje = new Date();
-    const hojeStr = hoje.getFullYear() + '-' + 
-                   String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
-                   String(hoje.getDate()).padStart(2, '0');
-    
-    // Comparar as datas como strings para evitar problemas de fuso horário
-    if (watchVigenciaFinal < hojeStr) {
-      const dataFinal = new Date(watchVigenciaFinal);
-      const diffTime = hoje.getTime() - dataFinal.getTime();
-      const diasVencidos = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      return {
-        tipo: 'vencida' as const,
-        dias: diasVencidos,
-        mensagem: `Vigência vencida há ${diasVencidos} dia(s)`
-      };
-    } else if (watchVigenciaFinal === hojeStr) {
-      return {
-        tipo: 'vencendo' as const,
-        dias: 0,
-        mensagem: 'Vigência vence hoje (ainda ativa)'
-      };
-    } else {
-      const dataFinal = new Date(watchVigenciaFinal);
-      const diffTime = dataFinal.getTime() - hoje.getTime();
-      const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diasRestantes <= 30) {
-        return {
-          tipo: 'vencendo' as const,
-          dias: diasRestantes,
-          mensagem: `Vigência vence em ${diasRestantes} dia(s)`
-        };
-      } else {
-        return {
-          tipo: 'ok' as const,
-          dias: diasRestantes,
-          mensagem: `Vigência válida por ${diasRestantes} dia(s)`
-        };
-      }
-    }
-  }, [watchVigenciaFinal]);
-
+  const watchTipoBook = form.watch('tipoBook') as TipoBook;
 
   // Reset form quando initialData mudar
   useEffect(() => {
@@ -226,6 +161,8 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         tipoBook: 'nao_tem_book',
         vigenciaInicial: '',
         vigenciaFinal: '',
+        bookPersonalizado: false,
+        anexo: false,
         ...initialData,
       } as EmpresaFormData);
     }
@@ -247,7 +184,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         temAms: data.temAms || false,
         tipoBook: data.tipoBook || 'nao_tem_book',
         vigenciaInicial: data.vigenciaInicial || '',
-        vigenciaFinal: data.vigenciaFinal || ''
+        vigenciaFinal: data.vigenciaFinal || '',
+        bookPersonalizado: data.bookPersonalizado || false,
+        anexo: data.anexo || false
       };
 
       await onSubmit(normalizedData);
@@ -359,7 +298,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
-                    <SelectTrigger className={form.formState.errors.temAms ? 'border-red-500 focus:border-red-500' : ''}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                   </FormControl>
@@ -385,7 +324,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
-                    <SelectTrigger className={form.formState.errors.status ? 'border-red-500 focus:border-red-500' : ''}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione o status" />
                     </SelectTrigger>
                   </FormControl>
@@ -439,7 +378,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   disabled={isSubmitting || isLoading || templatesLoading}
                 >
                   <FormControl>
-                    <SelectTrigger className={form.formState.errors.templatePadrao ? 'border-red-500 focus:border-red-500' : ''}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione o template" />
                     </SelectTrigger>
                   </FormControl>
@@ -506,92 +445,51 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         </div>
 
         {/* Vigência do Contrato */}
-        <Card>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5" />
-              <h3 className="text-lg font-medium">Vigência do Contrato</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="vigenciaInicial"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vigência Inicial</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                        className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:border-red-500' : ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="vigenciaFinal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vigência Final</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                        className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:border-red-500' : ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Alertas de Vigência */}
-            {statusVigencia && (
-              <Alert variant={statusVigencia.tipo === 'vencida' ? 'destructive' : 'default'}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>{statusVigencia.mensagem}</strong>
-                  {statusVigencia.tipo === 'vencida' && watchStatus === 'ativo' && (
-                    <div className="mt-2 text-sm">
-                      ⚠️ Esta empresa será automaticamente inativada pelo sistema devido à vigência vencida.
-                    </div>
-                  )}
-                  {statusVigencia.tipo === 'vencendo' && (
-                    <div className="mt-2 text-sm">
-                      📅 Atenção: A vigência está próxima do vencimento.
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="vigenciaInicial"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vigência Inicial</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Data de início da vigência do contrato
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
             )}
+          />
 
-            {/* Validação de vigências */}
-            {watchVigenciaInicial && watchVigenciaFinal && (
-              (() => {
-                const validacao = validarVigencias(watchVigenciaInicial, watchVigenciaFinal);
-                if (!validacao.valido) {
-                  return (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        {validacao.erro}
-                      </AlertDescription>
-                    </Alert>
-                  );
-                }
-                return null;
-              })()
+          <FormField
+            control={form.control}
+            name="vigenciaFinal"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vigência Final</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                    disabled={isSubmitting || isLoading}
+                    className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:border-red-500' : ''}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Data de fim da vigência. Empresa será inativada automaticamente após esta data
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
             )}
-          </CardContent>
-        </Card>
+          />
+        </div>
 
         {/* Configurações Book */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -607,7 +505,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
-                    <SelectTrigger className={form.formState.errors.tipoBook ? 'border-red-500 focus:border-red-500' : ''}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                   </FormControl>
@@ -628,16 +526,63 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         {/* Opções do Book - só aparece quando Tipo de Book for "Qualidade" */}
         {watchTipoBook === 'qualidade' && (
           <Card>
-            <CardContent>
-              <FormItem>
-                <FormLabel>Opções do Book</FormLabel>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <FormLabel className="text-base font-semibold">Opções do Book</FormLabel>
 
-                <FormMessage />
-              </FormItem>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="bookPersonalizado"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                            disabled={isSubmitting || isLoading}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Book Personalizado
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Empresa possui template de book personalizado
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="anexo"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                            disabled={isSubmitting || isLoading}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Anexo
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Incluir anexos no envio do book
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
-
 
         {/* Produtos Contratados */}
         <Card>

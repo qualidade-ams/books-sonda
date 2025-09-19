@@ -193,6 +193,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           screenKey: 'controle_disparos'
         },
         {
+          icon: Send,
+          label: 'Disparos Personalizados',
+          path: '/admin/disparos-personalizados',
+          screenKey: 'controle_disparos'
+        },
+        {
           icon: BarChart3,
           label: 'Histórico de Books',
           path: '/admin/historico-books',
@@ -206,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       children: [
         {
           icon: Building2,
-          label: 'Empresas Clientes',
+          label: 'Cadastro de Empresas',
           path: '/admin/empresas-clientes',
           screenKey: 'empresas_clientes'
         },

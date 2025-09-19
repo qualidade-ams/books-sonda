@@ -22,10 +22,10 @@ books-snd/
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
 │   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
-│   │   │   │   ├── ClientImportExportButtons.tsx		   # Botões de importação e exportação para clientes
-│   │   │   │   ├── ColaboradoresTable.tsx				   # Tabela de listagem de colaboradores
-│   │   │   │   ├── ColaboradorForm.tsx					   # Formulário de cadastro/edição de colaboradores
-│   │   │   │   ├── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas com campos AMS, Tipo de Book e Link SharePoint
+│   │   │   │   ├── ClientImportExportButtons.tsx		   # Componente unificado de botões para importação e exportação de empresas e clientes com suporte a Excel e PDF
+│   │   │   │   ├── ClienteForm.tsx						   # Formulário de cadastro/edição de clientes
+│   │   │   │   ├── ClientesTable.tsx					   # Tabela de listagem de clientes
+│   │   │   │   ├── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas com campos AMS, Tipo de Book, Link SharePoint, vigência de contrato e opções específicas para books de qualidade (Book Personalizado e Anexo)
 │   │   │   │   ├── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes
 │   │   │   │   ├── GrupoForm.tsx						   # Formulário de cadastro/edição de grupos responsáveis
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de listagem de grupos responsáveis
@@ -75,7 +75,7 @@ books-snd/
 │   │   │   ├── PerformanceMonitor.tsx					   # Monitor de performance da aplicação
 │   │   │   ├── PermissionsFixer.tsx  					   # Configurador de permissões
 │   │   │   ├── SessionInfo.tsx  						   # Informações de expiração de sessão
-│   │   │   ├── Sidebar.tsx  							      # Menu lateral de navegação hierárquico com seções expansíveis (Qualidade, Comunicação [Disparos, Histórico de Books], Clientes [Empresas Clientes, Cadastro de Clientes], Configurações [Grupos Responsáveis, Template E-mails], Administração [Grupos de Usuários, Gerenciar Usuários, Atribuir Usuários, Logs de Auditoria]), suporte a colapso com botão toggle otimizado (posicionamento absoluto -right-3, z-index máximo 2147483647, design compacto 6x6 com cores azul Sonda, sombra e borda aprimoradas), tooltips otimizados com delayDuration de 300ms e z-index 50 para melhor visibilidade, controle de permissões por tela, detecção automática da seção ativa baseada na rota atual, persistência aprimorada do estado das seções expandidas no localStorage com tratamento de erros, scrollbar customizada elegante (6px, azul Sonda com transparência, bordas arredondadas), truncamento de texto para labels longas, otimizações de CSS para elementos flexíveis, controle de overflow aprimorado (sem scroll horizontal), e melhorias de responsividade para experiência visual profissional
+│   │   │   ├── Sidebar.tsx  							      # Menu lateral de navegação hierárquico com seções expansíveis (Qualidade, Comunicação [Disparos, Disparos Personalizados, Histórico de Books], Clientes [Empresas Clientes, Cadastro de Clientes], Configurações [Grupos Responsáveis, Template E-mails], Administração [Grupos de Usuários, Gerenciar Usuários, Atribuir Usuários, Logs de Auditoria]), suporte a colapso com botão toggle otimizado (posicionamento absoluto -right-3, z-index máximo 2147483647, design compacto 6x6 com cores azul Sonda, sombra e borda aprimoradas), tooltips otimizados com delayDuration de 300ms e z-index 50 para melhor visibilidade, controle de permissões por tela, detecção automática da seção ativa baseada na rota atual, persistência aprimorada do estado das seções expandidas no localStorage com tratamento de erros, scrollbar customizada elegante (6px, azul Sonda com transparência, bordas arredondadas), truncamento de texto para labels longas, otimizações de CSS para elementos flexíveis, controle de overflow aprimorado (sem scroll horizontal), e melhorias de responsividade para experiência visual profissional
 │   │   │   └── ThemeToggle.tsx  						   # Alternador de tema (claro/escuro)
 │   │   │			
 │   │   ├── auth/               						      # Componentes de autenticação
@@ -117,17 +117,19 @@ books-snd/
 │   │   ├── use-toast.ts                         		# Hook para sistema de notificações toast
 │   │   ├── useApprovalService.ts                		# Hook para serviços de aprovação
 │   │   ├── useAuth.tsx                          		# Hook de autenticação com Supabase
-│   │   ├── useBookTemplates.ts                  		# Hook especializado para templates de books personalizados (templates padrão removidos)
+│   │   ├── useBookTemplates.ts                  		# Hook para templates de books (inclui templates padrão do sistema: português e inglês, além de templates personalizados ativos)
 │   │   ├── useClientBooksPermissions.ts         		# Hook para permissões específicas do sistema de books
 │   │   ├── useClientBooksVariables.ts           		# Hook para variáveis do sistema de clientes e books
-│   │   ├── useColaboradores.ts                  		# Hook para gerenciamento de colaboradores
+│   │   ├── useClientes.ts                       		# Hook para gerenciamento de clientes (renomeado de useColaboradores)
 │   │   ├── useControleDisparos.ts               		# Hook para controle de disparos de books
+│   │   ├── useControleDisparosPersonalizados.ts		# Hook para controle de disparos personalizados
 │   │   ├── useEmailLogs.ts                      		# Hook para logs de email
 │   │   ├── useEmailTemplateMapping.ts           		# Hook para mapeamento de templates de email
 │   │   ├── useEmailTemplatePreview.ts           		# Hook para preview de templates
 │   │   ├── useEmailTemplates.ts                 		# Hook para gerenciamento de templates
 │   │   ├── useEmailVariableMapping.ts           		# Hook para mapeamento de variáveis de email
-│   │   ├── useEmpresas.ts                       		# Hook para gerenciamento de empresas clientes
+│   │   ├── useEmpresas.ts                       		# Hook para gerenciamento completo de empresas clientes com paginação, cache otimizado e invalidação cross-screen (CRUD completo, seleção múltipla, importação em lote, alteração de status em lote, cache dinâmico com filtros ativos, invalidação automática do controle de disparos padrão e personalizados, histórico de books, sincronização assíncrona de queries relacionadas, e hook auxiliar useEmpresa para busca por ID)
+│   │   ├── useEmpresasStats.ts                  		# Hook para estatísticas das empresas (independente de filtros)
 │   │   ├── useExcelImport.ts                    		# Hook para importação de arquivos Excel
 │   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
 │   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
@@ -162,10 +164,12 @@ books-snd/
 │   ├── pages/                  						      # Páginas da aplicação
 │   │   ├── admin/              						      # Páginas administrativas
 │   │   │   ├── AuditLogs.tsx           				   # Visualização de logs de auditoria
-│   │   │   ├── Colaboradores.tsx       				   # Gerenciamento de clientes
+│   │   │   ├── Clientes.tsx            				   # Gerenciamento de clientes (página "Cadastro de Clientes", renomeada de Colaboradores.tsx)
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
-│   │   │   ├── ControleDisparos.tsx    				   # Controle mensal de disparos (tela "Disparos" no sistema de permissões)
-│   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo
+│   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas e agendamento)
+│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento e controle inteligente de botões
+│   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
+│   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
 │   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
@@ -189,7 +193,7 @@ books-snd/
 │   ├── services/               						      # Serviços e lógica de negócio
 │   │   ├── __tests__/          						      # Testes dos serviços
 │   │   │   ├── booksDisparoService.test.ts          # Testes do serviço de controle de disparos de books
-│   │   │   ├── colaboradoresService.test.ts         # Testes do serviço de colaboradores
+│   │   │   ├── clientesService.test.ts              # Testes do serviço de clientes
 │   │   │   ├── empresasClientesService.test.ts      # Testes do serviço de empresas clientes
 │   │   │   ├── excelImportService.test.ts           # Testes do serviço de importação Excel
 │   │   │   ├── gruposResponsaveisService.test.ts    # Testes do serviço de grupos responsáveis
@@ -202,13 +206,13 @@ books-snd/
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books (filtra empresas com AMS ativo ou tipo book "qualidade")
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books (filtra empresas com AMS ativo E tipo book "qualidade" E book_personalizado=false - todos os critérios obrigatórios)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, colaboradores "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books)
 │   │   ├── clientBooksServices.ts       				# Serviços centralizados do sistema de books
 │   │   ├── clientBooksTemplateService.ts            # Serviço de templates para sistema de books
-│   │   ├── colaboradoresService.ts       				# CRUD de clientes (renomeado de colaboradores para clientes, mantém compatibilidade)
+│   │   ├── clientesService.ts       					# CRUD de clientes (renomeado de colaboradoresService para clientesService, mantém compatibilidade)
 │   │   ├── configurationAdminService.ts       		# Administração de configurações dinâmicas
 │   │   ├── configurationRepository.ts       			# Repository de configurações
 │   │   ├── configurationService.ts       				# Serviço principal de configuração
@@ -238,7 +242,9 @@ books-snd/
 │   │   ├── integration/        					      	# Testes de integração
 │   │   │   ├── cadastroCompleto.test.ts             # Teste de fluxo completo de cadastro
 │   │   │   ├── disparoEmails.test.ts                # Teste de disparo de emails
-│   │   │   └── importacaoExcel.test.ts              # Teste de importação de Excel
+│   │   │   ├── importacaoExcel.test.ts              # Teste de importação de Excel
+│   │   │   ├── mesReferenciaBooks.test.ts           # Teste de cálculo do mês de referência para disparos de books (validação do mês anterior ao disparo)
+│   │   │   └── vigenciaAutomatica.test.ts           # Teste de inativação automática de empresas por vigência expirada
 │   │   ├── clientBooksTypes.test.ts             		# Testes dos tipos do sistema de books
 │   │   ├── permissions.test.ts                  		# Testes do sistema de permissões
 │   │   └── setup.ts                             		# Configuração dos testes
@@ -266,9 +272,10 @@ books-snd/
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
-│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates
-│   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes
+│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo)
+│   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes (colaboradores)
 │   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
+│   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com integração Supabase e mapeamento assíncrono de templates) - usado pela tela EmpresasClientes.tsx
 │   │   ├── configurationDebug.ts      					# Debug de configurações
 │   │   ├── configurationLogger.ts     					# Logging estruturado
 │   │   ├── configurationMapper.ts     					# Mapeamento de configurações
@@ -303,6 +310,8 @@ books-snd/
 │       ├── client_books_management_migration.sql		# Migração principal do sistema de books
 │       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
 │       ├── client_books_rls_policies.sql          # Políticas RLS para sistema de books
+│       ├── correcao_trigger_vigencia.sql          # Correção do trigger de vigência de contratos
+│       ├── correcao_vigencia_vencimento.sql       # Correção da lógica de vencimento de vigência
 │       ├── email_logs_templates_migration.sql     # Migração para logs e templates de email
 │       ├── email_test_data_migration.sql          # Migração para dados de teste de email
 │       ├── empresa_campos_adicionais_migration.sql # Migração para campos adicionais da tabela empresas
@@ -310,16 +319,23 @@ books-snd/
 │       ├── jobs_queue_migration.sql               # Migração para fila de jobs
 │       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
+│       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
 │       └── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
 │				
 ├── .env.example                					      	# Exemplo de variáveis de ambiente
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
+├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
 ├── CORRECAO_BOTOES_SIDEBAR.md                      # Documentação das correções de clicabilidade e visibilidade dos botões da sidebar
-├── CORRECAO_FINAL_BOTOES.md                        # Documentação final das correções definitivas dos problemas de clicabilidade dos botões da sidebar (toggle e subitens)
-├── CORRECAO_POSICAO_BOTAO_TOGGLE.md                # Documentação da correção do posicionamento do botão toggle da sidebar (manter posição original relativa com z-index máximo)
-├── CORRECAO_ZINDEX_MAXIMO.md                       # Documentação da implementação de z-index máximo (2147483647) para garantir que o botão toggle da sidebar fique sempre acima de todos os elementos da interface
+├── CORRECAO_CACHE_DINAMICO_EMPRESAS.md             # Documentação da implementação de cache dinâmico com invalidação cross-screen para empresas (correção de filtros AMS e sincronização automática entre telas)
+├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
+├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
+├── CORRECAO_TEMPLATE_PADRAO_NAO_EXIBIDO.md          # Documentação da correção do campo "Template Padrão" que não exibia opções no formulário de empresa (adição de templates padrão "Português" e "Inglês" ao hook useBookTemplates)
+├── FUNCIONALIDADE_CONTROLE_BOTOES_DISPARO.md       # Documentação da funcionalidade de controle inteligente de botões de disparo (habilitação/desabilitação baseada no status das empresas selecionadas)
+├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
+├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
+├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIAS_RESPONSIVIDADE_SIDEBAR.md             # Documentação das melhorias de responsividade implementadas na sidebar
 ├── package.json               						   	# Dependências e scripts do projeto
@@ -327,6 +343,7 @@ books-snd/
 ├── postcss.config.js          						   	# Configuração do PostCSS
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
+├── test-pdf-export.js          					      	# Script de teste para verificar funcionalidade de exportação PDF com jspdf-autotable
 ├── tsconfig.app.json           					      	# Configuração TypeScript para aplicação
 ├── tsconfig.json              					   		# Configuração principal do TypeScript
 ├── tsconfig.node.json          					      	# Configuração TypeScript para Node.js

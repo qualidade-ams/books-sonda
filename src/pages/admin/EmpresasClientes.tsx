@@ -1,23 +1,22 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Plus, Filter, Upload, Download, FileSpreadsheet, RefreshCw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Plus, Filter, Upload, Download, FileSpreadsheet, RefreshCw, FileText, ChevronDown } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -39,19 +37,19 @@ import { useEmpresasStats } from '@/hooks/useEmpresasStats';
 import { EmpresaForm, EmpresasTable } from '@/components/admin/client-books';
 import { ExcelImportDialog } from '@/components/admin/excel';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { exportClientesToExcel } from '@/utils/clientExportUtils';
+import { exportEmpresasToExcel, exportEmpresasToPDF } from '@/utils/empresasExportUtils';
 import { toast } from 'sonner';
 import type {
   EmpresaFormData,
   EmpresaFiltros,
-  StatusEmpresa,
   Produto,
-  EmpresaClienteCompleta
-} from '@/types/clientBooksTypes';
+  EmpresaClienteCompleta,
+  StatusEmpresa
+} from '@/types/clientBooks';
 import {
   STATUS_EMPRESA_OPTIONS,
   PRODUTOS_OPTIONS
-} from '@/types/clientBooksTypes';
+} from '@/types/clientBooks';
 
 const EmpresasClientes = () => {
   // Estados para filtros
@@ -98,7 +96,7 @@ const EmpresasClientes = () => {
   const { grupos } = useGrupos();
 
   // Hook para estatísticas reais do banco (independente dos filtros)
-  const { data: statsReais, isLoading: isLoadingStats } = useEmpresasStats();
+  const { data: statsReais } = useEmpresasStats();
 
   // Hook para monitoramento automático de vigências - DESABILITADO
   // useVigenciaMonitor({
@@ -114,14 +112,33 @@ const EmpresasClientes = () => {
     // Não é necessário fazer nada específico aqui
   };
 
-  // Handler para exportar clientes para Excel
-  const handleExportClientesExcel = () => {
+  // Handler para exportar empresas para Excel
+  const handleExportEmpresasExcel = async () => {
     try {
-      exportClientesToExcel(empresasArray);
-      toast.success('Dados de clientes exportados para Excel com sucesso!');
+      if (empresasArray.length === 0) {
+        toast.warning('Nenhuma empresa encontrada para exportar');
+        return;
+      }
+      await exportEmpresasToExcel(empresasArray);
+      toast.success('Dados de empresas exportados para Excel com sucesso!');
     } catch (error) {
-      toast.error('Erro ao exportar dados de clientes para Excel');
+      toast.error('Erro ao exportar dados de empresas para Excel');
       console.error('Erro na exportação Excel:', error);
+    }
+  };
+
+  // Handler para exportar empresas para PDF
+  const handleExportEmpresasPDF = async () => {
+    try {
+      if (empresasArray.length === 0) {
+        toast.warning('Nenhuma empresa encontrada para exportar');
+        return;
+      }
+      await exportEmpresasToPDF(empresasArray);
+      toast.success('Relatório PDF gerado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao gerar relatório PDF');
+      console.error('Erro na exportação PDF:', error);
     }
   };
 
@@ -207,10 +224,12 @@ const EmpresasClientes = () => {
       emailGestor: empresa.email_gestor || '',
       produtos: empresa.produtos?.map(p => p.produto as Produto) || [],
       grupos: empresa.grupos?.map(g => g.grupo_id) || [],
-      bookPersonalizado: empresa.book_personalizado || false,
-      anexo: empresa.anexo || false,
+      temAms: empresa.tem_ams || false,
+      tipoBook: empresa.tipo_book as any || 'nao_tem_book',
       vigenciaInicial: empresa.vigencia_inicial || '',
       vigenciaFinal: empresa.vigencia_final || '',
+      bookPersonalizado: empresa.book_personalizado || false,
+      anexo: empresa.anexo || false,
     };
   };
 
@@ -229,16 +248,30 @@ const EmpresasClientes = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
-              <Button
-                variant="outline"
-                onClick={handleExportClientesExcel}
-                className="flex items-center gap-2 text-sm"
-                size="sm"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                <span className="hidden sm:inline">Clientes para Excel</span>
-                <span className="sm:hidden">Excel</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 text-sm"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Exportar</span>
+                    <span className="sm:hidden">Export</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportEmpresasExcel}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exportar Empresas para Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportEmpresasPDF}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Exportar para PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </ProtectedAction>
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
               <ExcelImportDialog
@@ -377,77 +410,77 @@ const EmpresasClientes = () => {
           <CardContent className="space-y-4">
             {/* Filtros Responsivos */}
             {mostrarFiltros && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t space-y-4">
-              {/* Busca */}
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Buscar empresa..."
-                  value={filtros.busca || ''}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFiltroChange('busca', e.target.value)}
-                  className="h-8 flex-1"
-                />
-              </div>
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t space-y-4">
+                {/* Busca */}
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={filtros.busca || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFiltroChange('busca', e.target.value)}
+                    className="h-8 flex-1"
+                  />
+                </div>
 
-              {/* Filtros em Grid Responsivo */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Status */}
-                <div className="space-y-2">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Status:</span>
-                  <div className="flex flex-wrap gap-3">
-                    {STATUS_EMPRESA_OPTIONS.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-1">
-                        <Checkbox
-                          id={`status-${option.value}`}
-                          checked={filtros.status?.includes(option.value as StatusEmpresa) || false}
-                          onCheckedChange={(checked) =>
-                            handleStatusFilterChange(option.value as StatusEmpresa, checked as boolean)
-                          }
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor={`status-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
+                {/* Filtros em Grid Responsivo */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Status */}
+                  <div className="space-y-2">
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Status:</span>
+                    <div className="flex flex-wrap gap-3">
+                      {STATUS_EMPRESA_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-1">
+                          <Checkbox
+                            id={`status-${option.value}`}
+                            checked={filtros.status?.includes(option.value as StatusEmpresa) || false}
+                            onCheckedChange={(checked) =>
+                              handleStatusFilterChange(option.value as StatusEmpresa, checked as boolean)
+                            }
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`status-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Produtos */}
+                  <div className="space-y-2">
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Produtos:</span>
+                    <div className="flex flex-wrap gap-3">
+                      {PRODUTOS_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-1">
+                          <Checkbox
+                            id={`produto-${option.value}`}
+                            checked={filtros.produtos?.includes(option.value as Produto) || false}
+                            onCheckedChange={(checked) =>
+                              handleProdutoFilterChange(option.value as Produto, checked as boolean)
+                            }
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`produto-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Produtos */}
-                <div className="space-y-2">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Produtos:</span>
-                  <div className="flex flex-wrap gap-3">
-                    {PRODUTOS_OPTIONS.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-1">
-                        <Checkbox
-                          id={`produto-${option.value}`}
-                          checked={filtros.produtos?.includes(option.value as Produto) || false}
-                          onCheckedChange={(checked) =>
-                            handleProdutoFilterChange(option.value as Produto, checked as boolean)
-                          }
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor={`produto-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
+                {/* Botão Limpar */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={limparFiltros}
+                    className="h-8 text-xs"
+                  >
+                    Limpar Filtros
+                  </Button>
                 </div>
               </div>
-
-              {/* Botão Limpar */}
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={limparFiltros}
-                  className="h-8 text-xs"
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            </div>
             )}
 
 
@@ -475,7 +508,7 @@ const EmpresasClientes = () => {
               onSubmit={handleCreate}
               onCancel={() => setShowCreateModal(false)}
               isLoading={isCreating}
-            />   
+            />
           </DialogContent>
         </Dialog>
 

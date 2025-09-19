@@ -30,9 +30,11 @@ export const useEmpresas = (
   const cacheKey = useMemo(() => {
     const baseKey = 'empresas';
     if (validatedParams) {
-      return PaginationUtils.generateCacheKey(baseKey, validatedParams, filtros);
+      const generatedKey = PaginationUtils.generateCacheKey(baseKey, validatedParams, filtros);
+      // Garantir que sempre retorne um array
+      return Array.isArray(generatedKey) ? generatedKey : [generatedKey];
     }
-    return [baseKey, filtros];
+    return [baseKey, filtros] as const;
   }, [filtros, validatedParams]);
 
   // Query para listar empresas com cache otimizado
@@ -67,7 +69,9 @@ export const useEmpresas = (
 
       // Cachear resultado se não for paginado E não há filtros ativos
       if (!validatedParams && !hasActiveFilters) {
-        await clientBooksCacheService.cacheTodasEmpresas(result.data || result);
+        // Verificar se é resultado paginado ou array direto
+        const dataToCache = 'data' in result ? result.data : result;
+        await clientBooksCacheService.cacheTodasEmpresas(dataToCache);
       }
 
       return result;
@@ -79,12 +83,12 @@ export const useEmpresas = (
   // Extrair dados baseado no tipo de resultado
   const empresas = useMemo(() => {
     if (!empresasResult) return [];
-    
+
     // Se é resultado paginado
     if ('data' in empresasResult && 'pagination' in empresasResult) {
       return empresasResult.data;
     }
-    
+
     // Se é array direto
     return empresasResult as EmpresaClienteCompleta[];
   }, [empresasResult]);
@@ -99,11 +103,16 @@ export const useEmpresas = (
   // Mutation para criar empresa com invalidação de cache otimizada
   const createMutation = useMutation({
     mutationFn: (data: EmpresaFormData) => empresasClientesService.criarEmpresa(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidar cache específico
       clientBooksCacheService.invalidateEmpresaCache('');
-      queryClient.invalidateQueries({ queryKey: ['empresas'] });
-      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+
+      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
       toast.success('Empresa criada com sucesso!');
     },
     onError: (error: any) => {
@@ -115,12 +124,25 @@ export const useEmpresas = (
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<EmpresaFormData> }) =>
       empresasClientesService.atualizarEmpresa(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: async (_, { id }) => {
       // Invalidar cache específico da empresa
       clientBooksCacheService.invalidateEmpresaCache(id);
-      queryClient.invalidateQueries({ queryKey: ['empresas'] });
-      queryClient.invalidateQueries({ queryKey: ['empresa', id] });
-      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+
+      // Invalidar e recarregar queries de empresas
+      await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresa', id] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+
+      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
+      // ✅ ADICIONADO: Invalidar cache de histórico de disparos
+      await queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+
+      // Forçar refetch para garantir dados atualizados
+      await queryClient.refetchQueries({ queryKey: cacheKey });
+
       toast.success('Empresa atualizada com sucesso!');
     },
     onError: (error: any) => {
@@ -131,12 +153,17 @@ export const useEmpresas = (
   // Mutation para deletar empresa com invalidação otimizada
   const deleteMutation = useMutation({
     mutationFn: (id: string) => empresasClientesService.deletarEmpresa(id),
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
       // Invalidar cache específico da empresa
       clientBooksCacheService.invalidateEmpresaCache(id);
-      queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas'] });
       queryClient.removeQueries({ queryKey: ['empresa', id] });
-      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+
+      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
       toast.success('Empresa deletada com sucesso!');
     },
     onError: (error: any) => {
@@ -148,10 +175,15 @@ export const useEmpresas = (
   const batchUpdateMutation = useMutation({
     mutationFn: ({ ids, status, descricao }: { ids: string[]; status: string; descricao: string }) =>
       empresasClientesService.alterarStatusLote(ids, status, descricao),
-    onSuccess: (_, { ids }) => {
+    onSuccess: async (_, { ids }) => {
       // Invalidar cache para todas as empresas afetadas
       ids.forEach(id => clientBooksCacheService.invalidateEmpresaCache(id));
-      queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+
+      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
       setSelectedEmpresas([]);
       toast.success('Status das empresas alterado com sucesso!');
     },
@@ -192,6 +224,11 @@ export const useEmpresas = (
       clientBooksCacheService.invalidateEmpresaCache('');
       await queryClient.invalidateQueries({ queryKey: ['empresas'] });
       await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
+
+      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
       await queryClient.refetchQueries({ queryKey: ['empresas'] });
       toast.success('Empresas importadas com sucesso!');
     },
@@ -210,7 +247,7 @@ export const useEmpresas = (
   }, [batchUpdateMutation]);
 
   const toggleEmpresaSelection = useCallback((empresaId: string) => {
-    setSelectedEmpresas(prev => 
+    setSelectedEmpresas(prev =>
       prev.includes(empresaId)
         ? prev.filter(id => id !== empresaId)
         : [...prev, empresaId]
@@ -240,7 +277,7 @@ export const useEmpresas = (
     empresas,
     selectedEmpresas,
     pagination: paginationInfo,
-    
+
     // Estados
     isLoading,
     error,
@@ -249,7 +286,7 @@ export const useEmpresas = (
     isDeleting: deleteMutation.isPending,
     isBatchUpdating: batchUpdateMutation.isPending,
     isImporting: importarEmpresasMutation.isPending,
-    
+
     // Ações
     criarEmpresa,
     atualizarEmpresa,
@@ -258,7 +295,7 @@ export const useEmpresas = (
     alterarStatusLote,
     refetch,
     forceRefresh,
-    
+
     // Seleção
     toggleEmpresaSelection,
     selectAllEmpresas,

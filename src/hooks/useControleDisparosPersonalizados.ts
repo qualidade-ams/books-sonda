@@ -6,20 +6,20 @@ import type {
   DisparoResult
 } from '@/types/clientBooks';
 
-export const useControleDisparos = (mes: number, ano: number) => {
+export const useControleDisparosPersonalizados = (mes: number, ano: number) => {
   const queryClient = useQueryClient();
 
-  // Query para buscar status mensal
+  // Query para buscar status mensal de empresas personalizadas
   const {
     data: statusMensal = [],
     isLoading,
     error,
     refetch
   } = useQuery({
-    queryKey: ['controle-disparos', mes, ano],
-    queryFn: () => booksDisparoService.obterStatusMensal(mes, ano),
-    staleTime: 1000 * 60 * 1, // ✅ REDUZIDO: 1 minuto (era 5 minutos)
-    refetchOnWindowFocus: true, // ✅ HABILITADO: Refetch ao focar na janela
+    queryKey: ['controle-disparos-personalizados', mes, ano],
+    queryFn: () => booksDisparoService.obterStatusMensalPersonalizados(mes, ano),
+    staleTime: 1000 * 60 * 1, // 1 minuto
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
   });
 
   // Mutation para disparo por empresas selecionadas
@@ -28,50 +28,50 @@ export const useControleDisparos = (mes: number, ano: number) => {
     isPending: isDisparandoSelecionados
   } = useMutation({
     mutationFn: ({ mes, ano, empresaIds, forceResend = false }: { mes: number; ano: number; empresaIds: string[]; forceResend?: boolean }) =>
-      booksDisparoService.dispararEmpresasSelecionadas(mes, ano, empresaIds, { forceResend }),
+      booksDisparoService.dispararEmpresasPersonalizadasSelecionadas(mes, ano, empresaIds, { forceResend }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
       queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
     },
     onError: (error) => {
-      console.error('Erro no disparo por seleção:', error);
+      console.error('Erro no disparo personalizado por seleção:', error);
     }
   });
 
-  // Mutation para disparo mensal
+  // Mutation para disparo mensal personalizado
   const {
-    mutateAsync: dispararBooksMensal,
+    mutateAsync: dispararBooksPersonalizados,
     isPending: isDisparando
   } = useMutation({
     mutationFn: ({ mes, ano }: { mes: number; ano: number }) =>
-      booksDisparoService.dispararBooksMensal(mes, ano),
+      booksDisparoService.dispararBooksPersonalizados(mes, ano),
     onSuccess: () => {
       // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
       queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
     },
     onError: (error) => {
-      console.error('Erro no disparo mensal:', error);
+      console.error('Erro no disparo personalizado mensal:', error);
     }
   });
 
-  // Mutation para reenvio de falhas
+  // Mutation para reenvio de falhas personalizadas
   const {
     mutateAsync: reenviarFalhas,
     isPending: isReenviando
   } = useMutation({
     mutationFn: ({ mes, ano }: { mes: number; ano: number }) =>
-      booksDisparoService.reenviarFalhas(mes, ano),
+      booksDisparoService.reenviarFalhasPersonalizadas(mes, ano),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
       queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
     },
     onError: (error) => {
-      console.error('Erro no reenvio de falhas:', error);
+      console.error('Erro no reenvio de falhas personalizadas:', error);
     }
   });
 
-  // Mutation para agendamento
+  // Mutation para agendamento (reutiliza o método existente)
   const {
     mutateAsync: agendarDisparo,
     isPending: isAgendando
@@ -79,17 +79,17 @@ export const useControleDisparos = (mes: number, ano: number) => {
     mutationFn: (agendamento: AgendamentoDisparo) =>
       booksDisparoService.agendarDisparo(agendamento),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+      queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
       queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
     },
     onError: (error) => {
-      console.error('Erro no agendamento:', error);
+      console.error('Erro no agendamento personalizado:', error);
     }
   });
 
   // Funções wrapper para facilitar o uso
-  const handleDispararBooksMensal = async (mes: number, ano: number): Promise<DisparoResult> => {
-    return await dispararBooksMensal({ mes, ano });
+  const handleDispararBooksPersonalizados = async (mes: number, ano: number): Promise<DisparoResult> => {
+    return await dispararBooksPersonalizados({ mes, ano });
   };
 
   const handleReenviarFalhas = async (mes: number, ano: number): Promise<DisparoResult> => {
@@ -123,7 +123,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     error,
     
     // Actions
-    dispararBooksMensal: handleDispararBooksMensal,
+    dispararBooksPersonalizados: handleDispararBooksPersonalizados,
     reenviarFalhas: handleReenviarFalhas,
     agendarDisparo: handleAgendarDisparo,
     dispararSelecionados: handleDispararSelecionados,

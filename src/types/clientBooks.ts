@@ -49,6 +49,10 @@ export interface EmpresaFormData {
   grupos: string[];
   temAms?: boolean;
   tipoBook?: TipoBook;
+  vigenciaInicial?: string;
+  vigenciaFinal?: string;
+  bookPersonalizado?: boolean;
+  anexo?: boolean;
 }
 
 export interface ClienteFormData {

@@ -19,7 +19,23 @@ export const useBookTemplates = () => {
   useEffect(() => {
     const options: BookTemplateOption[] = [];
 
-    // Adicionar apenas templates personalizados ativos para books
+    // Adicionar templates padrão do sistema primeiro
+    options.push(
+      {
+        value: 'portugues',
+        label: 'Template Book Português',
+        description: 'Template Book Mensal',
+        isDefault: true
+      },
+      {
+        value: 'ingles',
+        label: 'Template Book Inglês',
+        description: 'Template Book Mensal',
+        isDefault: true
+      }
+    );
+
+    // Adicionar templates personalizados ativos para books
     const bookTemplates = templates.filter(
       template =>
         template.ativo &&

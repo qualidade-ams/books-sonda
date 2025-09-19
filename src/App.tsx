@@ -19,6 +19,7 @@ import EmpresasClientes from "./pages/admin/EmpresasClientes";
 import Clientes from "./pages/admin/Clientes";
 import GruposResponsaveis from "./pages/admin/GruposResponsaveis";
 import ControleDisparos from "./pages/admin/ControleDisparos";
+import ControleDisparosPersonalizados from "./pages/admin/ControleDisparosPersonalizados";
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
 import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
 import AuditLogs from "./pages/admin/AuditLogs";
@@ -55,6 +56,7 @@ const App = () => (
                   <Route path="/admin/clientes" element={<ProtectedRoute screenKey="clientes"><Clientes /></ProtectedRoute>} />
                   <Route path="/admin/grupos-responsaveis" element={<ProtectedRoute screenKey="grupos_responsaveis"><GruposResponsaveis /></ProtectedRoute>} />
                   <Route path="/admin/controle-disparos" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparos /></ProtectedRoute>} />
+                  <Route path="/admin/disparos-personalizados" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparosPersonalizados /></ProtectedRoute>} />
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />

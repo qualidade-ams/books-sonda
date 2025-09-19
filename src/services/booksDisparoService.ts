@@ -27,7 +27,7 @@ class BooksDisparoService {
    */
   async dispararBooksMensal(mes: number, ano: number): Promise<DisparoResult> {
     try {
-      // Buscar empresas ativas que têm AMS ou são do tipo Qualidade
+      // Buscar empresas ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -36,7 +36,9 @@ class BooksDisparoService {
         `)
         .eq('status', 'ativo')
         .eq('clientes.status', 'ativo')
-        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
+        .eq('tem_ams', true)
+        .eq('tipo_book', 'qualidade')
+        .eq('book_personalizado', false);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -198,7 +200,7 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
-      // Buscar empresas selecionadas e ativas que têm AMS ou são do tipo Qualidade
+      // Buscar empresas selecionadas e ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -208,7 +210,9 @@ class BooksDisparoService {
         .in('id', empresaIds)
         .eq('status', 'ativo')
         .eq('clientes.status', 'ativo')
-        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
+        .eq('tem_ams', true)
+        .eq('tipo_book', 'qualidade')
+        .eq('book_personalizado', false);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -377,6 +381,533 @@ class BooksDisparoService {
   }
 
   /**
+   * Obtém status mensal de empresas com books personalizados
+   */
+  async obterStatusMensalPersonalizados(mes: number, ano: number): Promise<StatusMensal[]> {
+    try {
+      const { data: controles, error } = await supabase
+        .from('controle_mensal')
+        .select(`
+          *,
+          empresas_clientes(*)
+        `)
+        .eq('mes', mes)
+        .eq('ano', ano);
+
+      if (error) {
+        throw new Error(`Erro ao buscar status mensal: ${error.message}`);
+      }
+
+      // Buscar empresas que não têm controle mensal ainda (apenas com book personalizado)
+      const { data: todasEmpresas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select('*')
+        .eq('status', 'ativo')
+        .eq('book_personalizado', true);
+
+      if (empresasError) {
+        throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
+      }
+
+      const statusMensal: StatusMensal[] = [];
+
+      for (const empresa of todasEmpresas || []) {
+        const controle = controles?.find(c => c.empresa_id === empresa.id);
+        
+        // Contar clientes ativos
+        const { count: clientesAtivos } = await supabase
+          .from('clientes')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'ativo');
+
+        // Contar e-mails enviados no mês
+        const { count: emailsEnviados } = await supabase
+          .from('historico_disparos')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'enviado')
+          .gte('data_disparo', `${ano}-${mes.toString().padStart(2, '0')}-01`)
+          .lt('data_disparo', `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`);
+
+        statusMensal.push({
+          empresaId: empresa.id,
+          empresa: empresa,
+          status: controle?.status as StatusControleMensal || 'pendente',
+          dataProcessamento: controle?.data_processamento ? new Date(controle.data_processamento) : undefined,
+          observacoes: controle?.observacoes || undefined,
+          clientesAtivos: clientesAtivos || 0,
+          emailsEnviados: emailsEnviados || 0
+        });
+      }
+
+      return statusMensal;
+
+    } catch (error) {
+      throw new Error(`Erro ao obter status mensal personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Dispara books mensais para empresas com books personalizados
+   */
+  async dispararBooksPersonalizados(mes: number, ano: number): Promise<DisparoResult> {
+    try {
+      // Buscar empresas ativas com book personalizado
+      const { data: empresas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select(`
+          *,
+          clientes!inner(*)
+        `)
+        .eq('status', 'ativo')
+        .eq('clientes.status', 'ativo')
+        .eq('book_personalizado', true);
+
+      if (empresasError) {
+        throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
+      }
+
+      if (!empresas || empresas.length === 0) {
+        return {
+          sucesso: 0,
+          falhas: 0,
+          total: 0,
+          detalhes: []
+        };
+      }
+
+      const detalhes: DisparoDetalhe[] = [];
+      let sucessos = 0;
+      let falhas = 0;
+
+      // Processar cada empresa
+      for (const empresa of empresas) {
+        try {
+          // Verificar se já existe controle mensal para esta empresa
+          const { data: controleExistente } = await supabase
+            .from('controle_mensal')
+            .select('*')
+            .eq('mes', mes)
+            .eq('ano', ano)
+            .eq('empresa_id', empresa.id)
+            .single();
+
+          // Se já foi processado com sucesso, pular
+          if (controleExistente && controleExistente.status === 'enviado') {
+            continue;
+          }
+
+          // Buscar clientes ativos da empresa
+          const { data: clientes, error: clientesError } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('empresa_id', empresa.id)
+            .eq('status', 'ativo');
+
+          if (clientesError || !clientes || clientes.length === 0) {
+            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            continue;
+          }
+
+          // Buscar grupos de e-mail para CC
+          const { data: gruposEmpresas } = await supabase
+            .from('empresa_grupos')
+            .select(`
+              grupos_responsaveis(
+                grupo_emails(email, nome)
+              )
+            `)
+            .eq('empresa_id', empresa.id);
+
+          const emailsCC: string[] = [];
+          if (gruposEmpresas) {
+            gruposEmpresas.forEach(grupo => {
+              if (grupo.grupos_responsaveis?.grupo_emails) {
+                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                  emailsCC.push(email.email);
+                });
+              }
+            });
+          }
+
+          // Adicionar e-mail do gestor se existir
+          if (empresa.email_gestor) {
+            emailsCC.push(empresa.email_gestor);
+          }
+
+          // Processar cada cliente
+          let emailsEnviados = 0;
+          const clientesProcessados: string[] = [];
+
+          for (const cliente of clientes) {
+            try {
+              const resultadoDisparo = await this.enviarBookCliente(
+                empresa,
+                cliente,
+                emailsCC,
+                mes,
+                ano
+              );
+
+              if (resultadoDisparo.sucesso) {
+                emailsEnviados++;
+                clientesProcessados.push(cliente.id);
+              }
+
+              detalhes.push({
+                empresaId: empresa.id,
+                clienteId: cliente.id,
+                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
+                erro: resultadoDisparo.erro,
+                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
+              });
+
+            } catch (error) {
+              detalhes.push({
+                empresaId: empresa.id,
+                clienteId: cliente.id,
+                status: 'falhou',
+                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                emailsEnviados: []
+              });
+            }
+          }
+
+          // Atualizar controle mensal
+          if (emailsEnviados > 0) {
+            await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `${emailsEnviados} e-mails enviados (personalizado)`);
+            sucessos++;
+          } else {
+            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', 'Nenhum e-mail foi enviado com sucesso (personalizado)');
+            falhas++;
+          }
+
+        } catch (error) {
+          falhas++;
+          await this.registrarFalhaControle(
+            mes, 
+            ano, 
+            empresa.id, 
+            error instanceof Error ? error.message : 'Erro desconhecido'
+          );
+        }
+      }
+
+      return {
+        sucesso: sucessos,
+        falhas: falhas,
+        total: empresas.length,
+        detalhes
+      };
+
+    } catch (error) {
+      throw new Error(`Erro no disparo personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Dispara books para empresas personalizadas selecionadas
+   */
+  async dispararEmpresasPersonalizadasSelecionadas(
+    mes: number,
+    ano: number,
+    empresaIds: string[],
+    options?: { forceResend?: boolean }
+  ): Promise<DisparoResult> {
+    const forceResend = options?.forceResend === true;
+    try {
+      if (!empresaIds || empresaIds.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
+      // Buscar empresas selecionadas e ativas com book personalizado
+      const { data: empresas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select(`
+          *,
+          clientes!inner(*)
+        `)
+        .in('id', empresaIds)
+        .eq('status', 'ativo')
+        .eq('clientes.status', 'ativo')
+        .eq('book_personalizado', true);
+
+      if (empresasError) {
+        throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
+      }
+
+      if (!empresas || empresas.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
+      const detalhes: DisparoDetalhe[] = [];
+      let sucessos = 0;
+      let falhas = 0;
+
+      for (const empresa of empresas) {
+        try {
+          // Se não for reenvio forçado, pular já enviados
+          if (!forceResend) {
+            const { data: controleExistente } = await supabase
+              .from('controle_mensal')
+              .select('*')
+              .eq('mes', mes)
+              .eq('ano', ano)
+              .eq('empresa_id', empresa.id)
+              .single();
+            if (controleExistente && controleExistente.status === 'enviado') {
+              continue;
+            }
+          }
+
+          // Buscar clientes ativos
+          const { data: clientes, error: clientesError } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('empresa_id', empresa.id)
+            .eq('status', 'ativo');
+
+          if (clientesError || !clientes || clientes.length === 0) {
+            await this.registrarFalhaControle(mes, ano, empresa.id, 'Nenhum cliente ativo encontrado');
+            continue;
+          }
+
+          // Coletar e-mails em cópia
+          const { data: gruposEmpresas } = await supabase
+            .from('empresa_grupos')
+            .select(`
+              grupos_responsaveis(
+                grupo_emails(email, nome)
+              )
+            `)
+            .eq('empresa_id', empresa.id);
+
+          const emailsCC: string[] = [];
+          if (gruposEmpresas) {
+            gruposEmpresas.forEach(grupo => {
+              if (grupo.grupos_responsaveis?.grupo_emails) {
+                grupo.grupos_responsaveis.grupo_emails.forEach(email => emailsCC.push(email.email));
+              }
+            });
+          }
+          if (empresa.email_gestor) emailsCC.push(empresa.email_gestor);
+
+          let emailsEnviados = 0;
+          for (const cliente of clientes) {
+            try {
+              const resultadoDisparo = await this.enviarBookCliente(
+                empresa,
+                cliente,
+                emailsCC,
+                mes,
+                ano
+              );
+              if (resultadoDisparo.sucesso) emailsEnviados++;
+              detalhes.push({
+                empresaId: empresa.id,
+                clienteId: cliente.id,
+                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
+                erro: resultadoDisparo.erro,
+                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
+              });
+            } catch (error) {
+              detalhes.push({
+                empresaId: empresa.id,
+                clienteId: cliente.id,
+                status: 'falhou',
+                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                emailsEnviados: []
+              });
+            }
+          }
+
+          // Atualizar controle mensal com observação apropriada
+          if (emailsEnviados > 0) {
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'enviado',
+              forceResend ? `Reenvio manual personalizado: ${emailsEnviados} e-mails enviados` : `${emailsEnviados} e-mails enviados (personalizado)`
+            );
+            sucessos++;
+          } else {
+            await this.atualizarControleMensal(
+              mes,
+              ano,
+              empresa.id,
+              'falhou',
+              forceResend ? 'Reenvio manual personalizado: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso (personalizado)'
+            );
+            falhas++;
+          }
+        } catch (error) {
+          falhas++;
+          await this.registrarFalhaControle(
+            mes,
+            ano,
+            empresa.id,
+            error instanceof Error ? error.message : 'Erro desconhecido'
+          );
+        }
+      }
+
+      return { sucesso: sucessos, falhas, total: empresaIds.length, detalhes };
+    } catch (error) {
+      throw new Error(`Erro no disparo personalizado por seleção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Reenvia disparos personalizados que falharam
+   */
+  async reenviarFalhasPersonalizadas(mes: number, ano: number): Promise<DisparoResult> {
+    try {
+      // Buscar controles mensais com falha para empresas com book personalizado
+      const { data: controlesFalha, error } = await supabase
+        .from('controle_mensal')
+        .select(`
+          *,
+          empresas_clientes!inner(*)
+        `)
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .eq('status', 'falhou')
+        .eq('empresas_clientes.book_personalizado', true);
+
+      if (error) {
+        throw new Error(`Erro ao buscar falhas: ${error.message}`);
+      }
+
+      if (!controlesFalha || controlesFalha.length === 0) {
+        return {
+          sucesso: 0,
+          falhas: 0,
+          total: 0,
+          detalhes: []
+        };
+      }
+
+      const detalhes: DisparoDetalhe[] = [];
+      let sucessos = 0;
+      let falhas = 0;
+
+      for (const controle of controlesFalha) {
+        if (!controle.empresas_clientes) continue;
+
+        try {
+          // Buscar clientes ativos
+          const { data: clientes } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('empresa_id', controle.empresa_id)
+            .eq('status', 'ativo');
+
+          if (!clientes || clientes.length === 0) {
+            continue;
+          }
+
+          // Buscar e-mails CC
+          const { data: gruposEmpresas } = await supabase
+            .from('empresa_grupos')
+            .select(`
+              grupos_responsaveis(
+                grupo_emails(email, nome)
+              )
+            `)
+            .eq('empresa_id', controle.empresa_id);
+
+          const emailsCC: string[] = [];
+          if (gruposEmpresas) {
+            gruposEmpresas.forEach(grupo => {
+              if (grupo.grupos_responsaveis?.grupo_emails) {
+                grupo.grupos_responsaveis.grupo_emails.forEach(email => {
+                  emailsCC.push(email.email);
+                });
+              }
+            });
+          }
+
+          if (controle.empresas_clientes.email_gestor) {
+            emailsCC.push(controle.empresas_clientes.email_gestor);
+          }
+
+          let emailsEnviados = 0;
+
+          // Reenviar para cada cliente
+          for (const cliente of clientes) {
+            try {
+              const resultado = await this.enviarBookCliente(
+                controle.empresas_clientes,
+                cliente,
+                emailsCC,
+                mes,
+                ano
+              );
+
+              if (resultado.sucesso) {
+                emailsEnviados++;
+              }
+
+              detalhes.push({
+                empresaId: controle.empresa_id!,
+                clienteId: cliente.id,
+                status: resultado.sucesso ? 'enviado' : 'falhou',
+                erro: resultado.erro,
+                emailsEnviados: resultado.sucesso ? [cliente.email, ...emailsCC] : []
+              });
+
+            } catch (error) {
+              detalhes.push({
+                empresaId: controle.empresa_id!,
+                clienteId: cliente.id,
+                status: 'falhou',
+                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                emailsEnviados: []
+              });
+            }
+          }
+
+          // Atualizar status do controle
+          if (emailsEnviados > 0) {
+            await this.atualizarControleMensal(
+              mes, 
+              ano, 
+              controle.empresa_id!, 
+              'enviado', 
+              `Reenvio personalizado: ${emailsEnviados} e-mails enviados`
+            );
+            sucessos++;
+          } else {
+            await this.atualizarControleMensal(
+              mes, 
+              ano, 
+              controle.empresa_id!, 
+              'falhou', 
+              'Reenvio personalizado: Nenhum e-mail foi enviado com sucesso'
+            );
+            falhas++;
+          }
+
+        } catch (error) {
+          falhas++;
+        }
+      }
+
+      return {
+        sucesso: sucessos,
+        falhas: falhas,
+        total: controlesFalha.length,
+        detalhes
+      };
+
+    } catch (error) {
+      throw new Error(`Erro ao reenviar falhas personalizadas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
    * Obtém status mensal de todas as empresas
    */
   async obterStatusMensal(mes: number, ano: number): Promise<StatusMensal[]> {
@@ -394,12 +925,14 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar status mensal: ${error.message}`);
       }
 
-      // Buscar empresas que não têm controle mensal ainda (apenas com AMS ou tipo Qualidade)
+      // Buscar empresas que não têm controle mensal ainda (apenas com AMS E tipo Qualidade E sem book personalizado)
       const { data: todasEmpresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
         .eq('status', 'ativo')
-        .or('tem_ams.eq.true,tipo_book.eq.qualidade');
+        .eq('tem_ams', true)
+        .eq('tipo_book', 'qualidade')
+        .eq('book_personalizado', false);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);

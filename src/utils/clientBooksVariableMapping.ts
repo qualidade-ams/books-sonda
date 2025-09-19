@@ -33,10 +33,10 @@ export interface ClientBooksVariaveis {
   'cliente.status': string;
   'cliente.principalContato': string;
   
-  // Variáveis de disparo
+  // Variáveis de disparo (referem-se ao mês de referência - mês anterior ao disparo)
   'disparo.mes': string;
   'disparo.ano': string;
-  'disparo.mesNome': string;
+  'disparo.mesNome': string; // Nome do mês de referência (mês anterior)
   'disparo.dataDisparo': string;
   'disparo.dataDisparoFormatada': string;
   
@@ -138,6 +138,10 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
   const produtos = mapearProdutos(empresa.produtos || []);
   const dataAtual = new Date();
 
+  // Calcular mês de referência (mês anterior ao mês de disparo)
+  const mesReferencia = disparo.mes === 1 ? 12 : disparo.mes - 1;
+  const anoReferencia = disparo.mes === 1 ? disparo.ano - 1 : disparo.ano;
+
   return {
     // Variáveis de empresa
     'empresa.nomeCompleto': empresa.nome_completo || '',
@@ -156,10 +160,10 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     'cliente.status': mapearStatus(cliente.status || 'ativo'),
     'cliente.principalContato': cliente.principal_contato ? 'Sim' : 'Não',
     
-    // Variáveis de disparo
-    'disparo.mes': String(disparo.mes),
-    'disparo.ano': String(disparo.ano),
-    'disparo.mesNome': obterNomeMes(disparo.mes),
+    // Variáveis de disparo (mesNome agora retorna o mês de referência - mês anterior)
+    'disparo.mes': String(mesReferencia),
+    'disparo.ano': String(anoReferencia),
+    'disparo.mesNome': obterNomeMes(mesReferencia),
     'disparo.dataDisparo': formatarData(disparo.dataDisparo),
     'disparo.dataDisparoFormatada': formatarDataCompleta(disparo.dataDisparo),
     

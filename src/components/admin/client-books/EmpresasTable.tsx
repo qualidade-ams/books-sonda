@@ -14,7 +14,6 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Users,
   Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
