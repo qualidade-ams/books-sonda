@@ -166,8 +166,8 @@ books-snd/
 │   │   │   ├── AuditLogs.tsx           				   # Visualização de logs de auditoria
 │   │   │   ├── Clientes.tsx            				   # Gerenciamento de clientes (página "Cadastro de Clientes", renomeada de Colaboradores.tsx)
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
-│   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas e agendamento)
-│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento e controle inteligente de botões
+│   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas, agendamento e contadores inteligentes baseados no status das empresas selecionadas para otimizar a experiência do usuário)
+│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento e controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
@@ -333,6 +333,7 @@ books-snd/
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
 ├── CORRECAO_TEMPLATE_PADRAO_NAO_EXIBIDO.md          # Documentação da correção do campo "Template Padrão" que não exibia opções no formulário de empresa (adição de templates padrão "Português" e "Inglês" ao hook useBookTemplates)
 ├── FUNCIONALIDADE_CONTROLE_BOTOES_DISPARO.md       # Documentação da funcionalidade de controle inteligente de botões de disparo (habilitação/desabilitação baseada no status das empresas selecionadas)
+├── IMPLEMENTACAO_CONTADORES_INTELIGENTES.md        # Documentação da implementação de contadores inteligentes nos botões de disparo que separam empresas selecionadas por status (paraDisparar vs paraReenviar) nas telas de Disparos e Disparos Personalizados
 ├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)

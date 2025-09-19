@@ -111,6 +111,19 @@ const ControleDisparosPersonalizados = () => {
     return empresasSelecionadasStatus.every(empresa => empresa.status === 'enviado');
   }, [empresasSelecionadasStatus]);
 
+  // Contadores inteligentes baseados no status
+  const contadoresInteligentes = useMemo(() => {
+    const paraDisparar = empresasSelecionadasStatus.filter(empresa => 
+      empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou'
+    ).length;
+    
+    const paraReenviar = empresasSelecionadasStatus.filter(empresa => 
+      empresa.status === 'enviado'
+    ).length;
+
+    return { paraDisparar, paraReenviar };
+  }, [empresasSelecionadasStatus]);
+
   // Estatísticas do mês
   const stats = useMemo(() => {
     const total = statusMensal.length;
@@ -436,24 +449,24 @@ const ControleDisparosPersonalizados = () => {
                 <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                   <Button
                     onClick={handleDispararSelecionados}
-                    disabled={isDisparandoSelecionados || selecionadas.length === 0 || todasSelecionadasJaEnviadas}
+                    disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
                     className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
-                    title={todasSelecionadasJaEnviadas ? 'Todas as empresas selecionadas já foram enviadas. Use o botão "Reenviar" para reprocessar.' : undefined}
+                    title={contadoresInteligentes.paraDisparar === 0 ? 'Nenhuma empresa selecionada precisa ser disparada' : undefined}
                   >
                     <Send className="h-4 w-4" />
-                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${selecionadas.length})`}
+                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
                   </Button>
                 </ProtectedAction>
                 <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                   <Button
                     variant="outline"
                     onClick={handleReenviarSelecionados}
-                    disabled={selecionadas.length === 0}
+                    disabled={contadoresInteligentes.paraReenviar === 0}
                     className="flex items-center gap-2"
-                    title={todasSelecionadasJaEnviadas ? 'Use este botão para reenviar books já processados' : 'Reenviar empresas selecionadas (força novo processamento)'}
+                    title={contadoresInteligentes.paraReenviar === 0 ? 'Nenhuma empresa selecionada precisa ser reenviada' : 'Reenviar empresas já processadas (força novo processamento)'}
                   >
                     <RefreshCw className="h-4 w-4" />
-                    {`Reenviar Selecionados (${selecionadas.length})`}
+                    {`Reenviar Selecionados (${contadoresInteligentes.paraReenviar})`}
                   </Button>
                 </ProtectedAction>
 
