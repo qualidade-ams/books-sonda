@@ -22,6 +22,7 @@ import ControleDisparos from "./pages/admin/ControleDisparos";
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
 import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
 import AuditLogs from "./pages/admin/AuditLogs";
+import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -57,6 +58,7 @@ const App = () => (
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
+                  <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="dashboard"><MonitoramentoVigencias /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

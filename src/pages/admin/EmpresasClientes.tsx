@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Plus, Filter, Upload, Download, FileSpreadsheet } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Filter, Upload, Download, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
-import { useVigenciaMonitor } from '@/hooks/useVigenciaMonitor';
+import { useEmpresasStats } from '@/hooks/useEmpresasStats';
+
 import { EmpresaForm, EmpresasTable } from '@/components/admin/client-books';
 import { ExcelImportDialog } from '@/components/admin/excel';
 import ProtectedAction from '@/components/auth/ProtectedAction';
@@ -55,22 +56,20 @@ import {
 const EmpresasClientes = () => {
   // Estados para filtros
   const [filtros, setFiltros] = useState<EmpresaFiltros>({
-    status: ['ativo'], // Por padrão, mostrar apenas empresas ativas
+    status: ['ativo'] // Por padrão, mostrar apenas empresas ativas
   });
 
   // Estados para modais
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
+
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // Estados para empresa selecionada
   const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaClienteCompleta | null>(null);
 
-  // Estados para alteração em lote
-  const [batchStatus, setBatchStatus] = useState<StatusEmpresa>('ativo');
-  const [batchDescricao, setBatchDescricao] = useState('');
+
 
   // Hooks
   const {
@@ -80,28 +79,34 @@ const EmpresasClientes = () => {
     isCreating,
     isUpdating,
     isDeleting,
-    isBatchUpdating,
+
     criarEmpresa,
     atualizarEmpresa,
     deletarEmpresa,
-    alterarStatusLote,
+
     toggleEmpresaSelection,
     selectAllEmpresas,
     clearSelection,
+    forceRefresh,
   } = useEmpresas(filtros);
 
   // Garantir que empresas é sempre um array
   const empresasArray = Array.isArray(empresas) ? empresas : [];
 
+
+
   const { grupos } = useGrupos();
 
-  // Hook para monitoramento automático de vigências
-  useVigenciaMonitor({
-    intervaloMinutos: 60, // Verificar a cada 1 hora
-    diasAlerta: 30, // Alertar 30 dias antes do vencimento
-    inativarAutomaticamente: true,
-    executarAoIniciar: false // Não executar ao carregar a página para evitar sobrecarga
-  });
+  // Hook para estatísticas reais do banco (independente dos filtros)
+  const { data: statsReais, isLoading: isLoadingStats } = useEmpresasStats();
+
+  // Hook para monitoramento automático de vigências - DESABILITADO
+  // useVigenciaMonitor({
+  //   intervaloMinutos: 60, // Verificar a cada 1 hora
+  //   diasAlerta: 30, // Alertar 30 dias antes do vencimento
+  //   inativarAutomaticamente: true,
+  //   executarAoIniciar: false // Não executar ao carregar a página para evitar sobrecarga
+  // });
 
   // Handler para refresh após importação
   const handleImportComplete = () => {
@@ -120,15 +125,13 @@ const EmpresasClientes = () => {
     }
   };
 
-  // Estatísticas das empresas
-  const stats = useMemo(() => {
-    const total = empresasArray.length;
-    const ativas = empresasArray.filter(e => e.status === 'ativo').length;
-    const inativas = empresasArray.filter(e => e.status === 'inativo').length;
-    const suspensas = empresasArray.filter(e => e.status === 'suspenso').length;
-
-    return { total, ativas, inativas, suspensas };
-  }, [empresasArray]);
+  // Usar estatísticas reais do banco ou fallback para dados filtrados
+  const stats = statsReais || {
+    total: empresasArray.length,
+    ativas: empresasArray.filter(e => e.status === 'ativo').length,
+    inativas: empresasArray.filter(e => e.status === 'inativo').length,
+    suspensas: empresasArray.filter(e => e.status === 'suspenso').length,
+  };
 
   // Handlers para filtros
   const handleFiltroChange = (key: keyof EmpresaFiltros, value: any) => {
@@ -157,7 +160,7 @@ const EmpresasClientes = () => {
   };
 
   const limparFiltros = () => {
-    setFiltros({ status: ['ativo'] });
+    setFiltros({ status: ['ativo'] }); // Voltar ao padrão: apenas empresas ativas
   };
 
   // Handlers para ações
@@ -190,18 +193,7 @@ const EmpresasClientes = () => {
     setSelectedEmpresa(null);
   };
 
-  const handleBatchUpdate = () => {
-    if (selectedEmpresas.length === 0) return;
-    setShowBatchModal(true);
-  };
 
-  const confirmBatchUpdate = async () => {
-    if (selectedEmpresas.length === 0) return;
-    await alterarStatusLote(selectedEmpresas, batchStatus, batchDescricao);
-    setShowBatchModal(false);
-    setBatchStatus('ativo');
-    setBatchDescricao('');
-  };
 
   // Preparar dados iniciais para edição
   const getInitialDataForEdit = (empresa: EmpresaClienteCompleta): Partial<EmpresaFormData> => {
@@ -226,24 +218,26 @@ const EmpresasClientes = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
               Cadastro de Empresas
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               Gerencie empresas clientes e seus dados
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
               <Button
                 variant="outline"
                 onClick={handleExportClientesExcel}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm"
+                size="sm"
               >
                 <FileSpreadsheet className="h-4 w-4" />
-                Clientes para Excel
+                <span className="hidden sm:inline">Clientes para Excel</span>
+                <span className="sm:hidden">Excel</span>
               </Button>
             </ProtectedAction>
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
@@ -252,10 +246,12 @@ const EmpresasClientes = () => {
                 trigger={
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm"
+                    size="sm"
                   >
                     <Upload className="h-4 w-4" />
-                    Importar Excel
+                    <span className="hidden sm:inline">Importar Excel</span>
+                    <span className="sm:hidden">Importar</span>
                   </Button>
                 }
               />
@@ -263,61 +259,63 @@ const EmpresasClientes = () => {
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm"
+                size="sm"
               >
                 <Plus className="h-4 w-4" />
-                Nova Empresa
+                <span className="hidden sm:inline">Nova Empresa</span>
+                <span className="sm:hidden">Nova</span>
               </Button>
             </ProtectedAction>
           </div>
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Total
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.total}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-600">
+              <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
                 Ativas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-green-600">
                 {stats.ativas}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-600">
+              <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
                 Inativas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-red-600">
                 {stats.inativas}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-yellow-600">
+              <CardTitle className="text-xs lg:text-sm font-medium text-yellow-600">
                 Suspensas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-yellow-600">
                 {stats.suspensas}
               </div>
             </CardContent>
@@ -326,83 +324,77 @@ const EmpresasClientes = () => {
 
 
 
-        {/* Ações em Lote */}
-        {selectedEmpresas.length > 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {selectedEmpresas.length} empresa(s) selecionada(s)
-                  </Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={clearSelection}
-                  >
-                    Limpar Seleção
-                  </Button>
-                  <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
-                    <Button
-                      onClick={handleBatchUpdate}
-                      disabled={isBatchUpdating}
-                    >
-                      Alterar Status
-                    </Button>
-                  </ProtectedAction>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Tabela de Empresas */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Empresas Cadastradas</CardTitle>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas</CardTitle>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={forceRefresh}
+                  disabled={isLoading}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span>Atualizar</span>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center space-x-2"
                 >
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={selectAllEmpresas}
-                  disabled={empresasArray.length === 0}
-                >
-                  Selecionar Todas
-                </Button>
+                {selectedEmpresas.length === 0 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllEmpresas}
+                    disabled={empresasArray.length === 0}
+                    className="whitespace-nowrap"
+                  >
+                    Selecionar Todas
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSelection}
+                    className="whitespace-nowrap"
+                  >
+                    Limpar Seleção
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Filtros Compactos */}
+            {/* Filtros Responsivos */}
             {mostrarFiltros && (
-            <div className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t">
-              <div className="flex items-center gap-6 flex-1">
-                {/* Busca */}
-                <div className="flex items-center gap-2 flex-1 max-w-xs">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Buscar empresa..."
-                    value={filtros.busca || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFiltroChange('busca', e.target.value)}
-                    className="h-8"
-                  />
-                </div>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t space-y-4">
+              {/* Busca */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Buscar empresa..."
+                  value={filtros.busca || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFiltroChange('busca', e.target.value)}
+                  className="h-8 flex-1"
+                />
+              </div>
 
+              {/* Filtros em Grid Responsivo */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Status */}
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Status:</span>
-                  <div className="flex gap-3">
+                <div className="space-y-2">
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Status:</span>
+                  <div className="flex flex-wrap gap-3">
                     {STATUS_EMPRESA_OPTIONS.map((option) => (
                       <div key={option.value} className="flex items-center space-x-1">
                         <Checkbox
@@ -422,9 +414,9 @@ const EmpresasClientes = () => {
                 </div>
 
                 {/* Produtos */}
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Produtos:</span>
-                  <div className="flex gap-3">
+                <div className="space-y-2">
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Produtos:</span>
+                  <div className="flex flex-wrap gap-3">
                     {PRODUTOS_OPTIONS.map((option) => (
                       <div key={option.value} className="flex items-center space-x-1">
                         <Checkbox
@@ -445,14 +437,16 @@ const EmpresasClientes = () => {
               </div>
 
               {/* Botão Limpar */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={limparFiltros}
-                className="h-8 text-xs ml-4"
-              >
-                Limpar
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={limparFiltros}
+                  className="h-8 text-xs"
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
             </div>
             )}
 
@@ -530,65 +524,7 @@ const EmpresasClientes = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Modal de Alteração em Lote */}
-        <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Alterar Status em Lote</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="batch-status">Novo Status</Label>
-                <Select
-                  value={batchStatus}
-                  onValueChange={(value) => setBatchStatus(value as StatusEmpresa)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_EMPRESA_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              {(batchStatus === 'inativo' || batchStatus === 'suspenso') && (
-                <div>
-                  <Label htmlFor="batch-descricao">Descrição (obrigatória)</Label>
-                  <Textarea
-                    id="batch-descricao"
-                    value={batchDescricao}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBatchDescricao(e.target.value)}
-                    placeholder="Motivo da alteração de status..."
-                    required
-                  />
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowBatchModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={confirmBatchUpdate}
-                  disabled={
-                    isBatchUpdating ||
-                    ((batchStatus === 'inativo' || batchStatus === 'suspenso') && !batchDescricao.trim())
-                  }
-                >
-                  {isBatchUpdating ? 'Alterando...' : 'Confirmar'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
 
       </div>

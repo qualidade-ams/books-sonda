@@ -1,207 +1,287 @@
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+/**
+ * Serviço para gerenciamento de vigência de contratos
+ * Responsável por monitorar e inativar empresas com vigência vencida
+ */
 
-export interface EmpresaVigencia {
+import { supabase } from '@/integrations/supabase/client';
+import { supabaseAdmin } from '@/integrations/supabase/adminClient';
+
+export interface VigenciaStatus {
   id: string;
   nome_completo: string;
-  nome_abreviado: string;
-  vigencia_inicial: string | null;
-  vigencia_final: string | null;
+  vigencia_final: string;
   status: string;
+  dias_restantes: number;
+  status_vigencia: 'VENCIDA' | 'VENCE_BREVE' | 'OK';
 }
 
-export interface VigenciaResult {
-  empresasVencidas: EmpresaVigencia[];
-  empresasProximasVencimento: EmpresaVigencia[];
-  totalProcessadas: number;
-  totalInativadas: number;
+export interface VigenciaStats {
+  total_empresas: number;
+  empresas_ativas: number;
+  vigencias_vencidas: number;
+  vigencias_vencendo_30_dias: number;
+  empresas_inativadas_hoje: number;
 }
 
-/**
- * Verifica empresas com vigência vencida e próximas do vencimento
- */
-export async function verificarVigenciasEmpresas(diasAlerta: number = 30): Promise<VigenciaResult> {
-  try {
-    const hoje = new Date();
-    const dataAlerta = new Date();
-    dataAlerta.setDate(hoje.getDate() + diasAlerta);
-
-    // Tentar buscar empresas ativas - se as colunas não existirem, retornar resultado vazio
-    const { data: empresas, error } = await supabase
-      .from('empresas_clientes')
-      .select('id, nome_completo, nome_abreviado, status')
-      .eq('status', 'ativo');
-
-    if (error) {
-      console.error('Erro ao buscar empresas:', error);
-      throw new Error('Erro ao buscar empresas para verificação de vigência');
-    }
-
-    // Se não há empresas ou as colunas de vigência não existem ainda, retornar resultado vazio
-    if (!empresas || empresas.length === 0) {
-      return {
-        empresasVencidas: [],
-        empresasProximasVencimento: [],
-        totalProcessadas: 0,
-        totalInativadas: 0
-      };
-    }
-
-    // Tentar buscar com colunas de vigência - se falhar, significa que ainda não foram criadas
-    const { data: empresasComVigencia, error: errorVigencia } = await supabase
-      .from('empresas_clientes')
-      .select('id, nome_completo, nome_abreviado, vigencia_inicial, vigencia_final, status')
-      .eq('status', 'ativo')
-      .not('vigencia_final', 'is', null);
-
-    if (errorVigencia) {
-      console.warn('Colunas de vigência ainda não foram criadas. Execute a migração primeiro.');
-      return {
-        empresasVencidas: [],
-        empresasProximasVencimento: [],
-        totalProcessadas: empresas.length,
-        totalInativadas: 0
-      };
-    }
-
-    const empresasVencidas: EmpresaVigencia[] = [];
-    const empresasProximasVencimento: EmpresaVigencia[] = [];
-
-    if (empresasComVigencia) {
-      for (const empresa of empresasComVigencia) {
-        // Type guard para garantir que temos os campos necessários
-        if (!empresa || typeof empresa !== 'object') continue;
-        if (!('vigencia_final' in empresa) || !empresa.vigencia_final) continue;
-
-        const vigenciaFinal = new Date(empresa.vigencia_final);
-        
-        // Verificar se a vigência já venceu
-        if (vigenciaFinal < hoje) {
-          empresasVencidas.push(empresa as EmpresaVigencia);
-        }
-        // Verificar se está próxima do vencimento
-        else if (vigenciaFinal <= dataAlerta) {
-          empresasProximasVencimento.push(empresa as EmpresaVigencia);
-        }
-      }
-    }
-
-    return {
-      empresasVencidas,
-      empresasProximasVencimento,
-      totalProcessadas: empresasComVigencia?.length || 0,
-      totalInativadas: 0
-    };
-
-  } catch (error) {
-    console.error('Erro na verificação de vigências:', error);
-    // Retornar resultado vazio em caso de erro para não quebrar a aplicação
-    return {
-      empresasVencidas: [],
-      empresasProximasVencimento: [],
-      totalProcessadas: 0,
-      totalInativadas: 0
-    };
-  }
-}
-
-/**
- * Inativa automaticamente empresas com vigência vencida
- */
-export async function inativarEmpresasVencidas(empresasVencidas: EmpresaVigencia[]): Promise<number> {
-  if (empresasVencidas.length === 0) return 0;
-
-  try {
-    let totalInativadas = 0;
-    const descricaoInativacao = `Inativada automaticamente por vigência vencida em ${new Date().toLocaleDateString('pt-BR')}`;
-
-    for (const empresa of empresasVencidas) {
-      const { error } = await supabase
-        .from('empresas_clientes')
-        .update({
-          status: 'inativo',
-          descricao_status: descricaoInativacao,
-          data_status: new Date().toISOString()
-        })
-        .eq('id', empresa.id);
-
+class VigenciaService {
+  /**
+   * Executa a inativação automática de empresas com vigência vencida
+   */
+  async executarInativacaoAutomatica(): Promise<number> {
+    try {
+      const { data, error } = await supabaseAdmin.rpc('inativar_empresas_vencidas');
+      
       if (error) {
-        console.error(`Erro ao inativar empresa ${empresa.nome_completo}:`, error);
-        continue;
+        console.error('Erro ao executar inativação automática:', error);
+        throw error;
       }
 
-      totalInativadas++;
-      console.log(`Empresa ${empresa.nome_completo} inativada por vigência vencida`);
+      console.log(`Inativação automática executada: ${data} empresas inativadas`);
+      return data || 0;
+    } catch (error) {
+      console.error('Erro na inativação automática:', error);
+      throw error;
     }
-
-    return totalInativadas;
-
-  } catch (error) {
-    console.error('Erro ao inativar empresas vencidas:', error);
-    throw error;
   }
-}
 
-/**
- * Executa verificação completa de vigências e inativa empresas vencidas
- */
-export async function executarVerificacaoVigencia(
-  diasAlerta: number = 30,
-  inativarAutomaticamente: boolean = true
-): Promise<VigenciaResult> {
-  try {
-    console.log('Iniciando verificação de vigências...');
-    
-    const resultado = await verificarVigenciasEmpresas(diasAlerta);
-    
-    if (inativarAutomaticamente && resultado.empresasVencidas.length > 0) {
-      console.log(`Encontradas ${resultado.empresasVencidas.length} empresas com vigência vencida`);
+  /**
+   * Consulta empresas com status de vigência
+   */
+  async consultarStatusVigencias(): Promise<VigenciaStatus[]> {
+    try {
+      const { data, error } = await supabase
+        .from('empresas_clientes')
+        .select(`
+          id,
+          nome_completo,
+          vigencia_final,
+          status
+        `)
+        .not('vigencia_final', 'is', null)
+        .order('vigencia_final', { ascending: true });
+
+      if (error) throw error;
+
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      return (data || []).map(empresa => {
+        const vigenciaFinal = new Date(empresa.vigencia_final);
+        vigenciaFinal.setHours(0, 0, 0, 0);
+        
+        const diffTime = vigenciaFinal.getTime() - hoje.getTime();
+        const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let statusVigencia: 'VENCIDA' | 'VENCE_BREVE' | 'OK';
+        if (diasRestantes < 0) {
+          statusVigencia = 'VENCIDA';
+        } else if (diasRestantes <= 30) {
+          statusVigencia = 'VENCE_BREVE';
+        } else {
+          statusVigencia = 'OK';
+        }
+
+        return {
+          ...empresa,
+          dias_restantes: diasRestantes,
+          status_vigencia: statusVigencia
+        };
+      });
+    } catch (error) {
+      console.error('Erro ao consultar status de vigências:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém estatísticas de vigência
+   */
+  async obterEstatisticasVigencia(): Promise<VigenciaStats> {
+    try {
+      const { data: empresas, error } = await supabase
+        .from('empresas_clientes')
+        .select('id, status, vigencia_final, updated_at');
+
+      if (error) throw error;
+
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
       
-      const totalInativadas = await inativarEmpresasVencidas(resultado.empresasVencidas);
-      resultado.totalInativadas = totalInativadas;
+      const em30Dias = new Date(hoje);
+      em30Dias.setDate(em30Dias.getDate() + 30);
+
+      const stats = {
+        total_empresas: empresas?.length || 0,
+        empresas_ativas: 0,
+        vigencias_vencidas: 0,
+        vigencias_vencendo_30_dias: 0,
+        empresas_inativadas_hoje: 0
+      };
+
+      empresas?.forEach(empresa => {
+        if (empresa.status === 'ativo') {
+          stats.empresas_ativas++;
+        }
+
+        if (empresa.vigencia_final) {
+          const vigenciaFinal = new Date(empresa.vigencia_final);
+          vigenciaFinal.setHours(0, 0, 0, 0);
+
+          if (vigenciaFinal < hoje) {
+            stats.vigencias_vencidas++;
+          } else if (vigenciaFinal <= em30Dias) {
+            stats.vigencias_vencendo_30_dias++;
+          }
+        }
+
+        // Verificar se foi inativada hoje
+        if (empresa.status === 'inativo' && empresa.updated_at) {
+          const updatedAt = new Date(empresa.updated_at);
+          updatedAt.setHours(0, 0, 0, 0);
+          
+          if (updatedAt.getTime() === hoje.getTime()) {
+            stats.empresas_inativadas_hoje++;
+          }
+        }
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Erro ao obter estatísticas de vigência:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Força a verificação e inativação de uma empresa específica
+   */
+  async verificarEmpresaEspecifica(empresaId: string): Promise<boolean> {
+    try {
+      const { data: empresa, error } = await supabase
+        .from('empresas_clientes')
+        .select('id, nome_completo, vigencia_final, status')
+        .eq('id', empresaId)
+        .single();
+
+      if (error) throw error;
+
+      if (!empresa.vigencia_final) {
+        return false; // Empresa sem vigência definida
+      }
+
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
       
-      console.log(`${totalInativadas} empresas inativadas automaticamente`);
+      const vigenciaFinal = new Date(empresa.vigencia_final);
+      vigenciaFinal.setHours(0, 0, 0, 0);
+
+      if (vigenciaFinal < hoje && empresa.status === 'ativo') {
+        // Inativar empresa
+        const { error: updateError } = await supabase
+          .from('empresas_clientes')
+          .update({
+            status: 'inativo',
+            data_status: new Date().toISOString(),
+            descricao_status: `Inativado automaticamente por vigência vencida em ${empresa.vigencia_final}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', empresaId);
+
+        if (updateError) throw updateError;
+
+        console.log(`Empresa ${empresa.nome_completo} inativada por vigência vencida`);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao verificar empresa específica:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém logs de inativação automática
+   */
+  async obterLogsInativacao(limite: number = 50): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('logs_sistema')
+        .select('*')
+        .in('operacao', ['inativacao_automatica_vigencia', 'erro_inativacao_vigencia', 'vigencia_passado_definida'])
+        .order('data_operacao', { ascending: false })
+        .limit(limite);
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error('Erro ao obter logs de inativação:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Agenda verificação automática (para ser chamada por um job scheduler)
+   */
+  async agendarVerificacaoAutomatica(): Promise<void> {
+    try {
+      // Esta função seria chamada por um cron job ou scheduler
+      const empresasInativadas = await this.executarInativacaoAutomatica();
+      
+      if (empresasInativadas > 0) {
+        console.log(`Verificação automática concluída: ${empresasInativadas} empresas inativadas`);
+        
+        // Aqui você poderia enviar notificações para administradores
+        // await this.notificarAdministradores(empresasInativadas);
+      }
+    } catch (error) {
+      console.error('Erro na verificação automática agendada:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valida se as datas de vigência são consistentes
+   */
+  validarVigencias(vigenciaInicial?: string, vigenciaFinal?: string): { valido: boolean; erro?: string } {
+    if (!vigenciaInicial || !vigenciaFinal) {
+      return { valido: true }; // Campos opcionais
     }
 
-    if (resultado.empresasProximasVencimento.length > 0) {
-      console.log(`${resultado.empresasProximasVencimento.length} empresas próximas do vencimento`);
+    const dataInicial = new Date(vigenciaInicial);
+    const dataFinal = new Date(vigenciaFinal);
+
+    if (dataInicial > dataFinal) {
+      return {
+        valido: false,
+        erro: 'A vigência inicial não pode ser posterior à vigência final'
+      };
     }
 
-    return resultado;
+    return { valido: true };
+  }
 
-  } catch (error) {
-    console.error('Erro na execução da verificação de vigência:', error);
-    throw error;
+  /**
+   * Calcula dias restantes até o vencimento
+   * Considera vencido apenas no dia seguinte ao vencimento
+   */
+  calcularDiasRestantes(vigenciaFinal: string): number {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    // Garantir que a data final seja interpretada corretamente (sem problemas de fuso horário)
+    const dataFinal = new Date(vigenciaFinal + 'T00:00:00');
+    dataFinal.setHours(0, 0, 0, 0);
+    
+    const diffTime = dataFinal.getTime() - hoje.getTime();
+    const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Ajustar para considerar vencido apenas no dia seguinte
+    // Se hoje é o dia do vencimento, ainda não está vencido (diasRestantes = 0)
+    // Só considera vencido quando diasRestantes < 0 (dia seguinte)
+    return diasRestantes;
   }
 }
 
-/**
- * Verifica se uma empresa específica está com vigência vencida ou próxima do vencimento
- */
-export function verificarVigenciaEmpresa(
-  vigenciaFinal: string | null,
-  diasAlerta: number = 30
-): {
-  vencida: boolean;
-  proximaVencimento: boolean;
-  diasRestantes: number | null;
-} {
-  if (!vigenciaFinal) {
-    return {
-      vencida: false,
-      proximaVencimento: false,
-      diasRestantes: null
-    };
-  }
-
-  const hoje = new Date();
-  const vigencia = new Date(vigenciaFinal);
-  const diffTime = vigencia.getTime() - hoje.getTime();
-  const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return {
-    vencida: diasRestantes < 0,
-    proximaVencimento: diasRestantes >= 0 && diasRestantes <= diasAlerta,
-    diasRestantes
-  };
-}
+export const vigenciaService = new VigenciaService();

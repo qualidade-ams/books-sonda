@@ -45,17 +45,13 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
 }) => {
   const { getTemplateById, isDefaultTemplate } = useBookTemplates();
 
-  const getVigenciaIndicator = (empresa: EmpresaClienteCompleta) => {
-    // Funcionalidade de vigência removida temporariamente
-    // Os campos vigencia_inicial e vigencia_final não existem na tabela atual
-    return null;
-  };
+
 
   const getStatusBadge = (status: string) => {
     const variants = {
       ativo: 'default',
       inativo: 'destructive',
-      suspenso: 'secondary'
+      suspenso: 'outline' // Usar outline como base para customizar
     } as const;
 
     const labels = {
@@ -64,10 +60,20 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
       suspenso: 'Suspenso'
     };
 
+    // Classe customizada para suspenso (bege)
+    const customClass = status === 'suspenso'
+      ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
+      : '';
+
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'default'}>
-        {labels[status as keyof typeof labels] || status}
-      </Badge>
+      <div className="flex justify-center">
+        <Badge
+          variant={variants[status as keyof typeof variants] || 'default'}
+          className={`text-xs px-2 py-1 ${customClass}`}
+        >
+          {labels[status as keyof typeof labels] || status}
+        </Badge>
+      </div>
     );
   };
 
@@ -147,22 +153,19 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">
+            <TableHead className="w-12 text-center">
               <span className="sr-only">Seleção</span>
             </TableHead>
-            <TableHead>Nome</TableHead>
-            <TableHead>Nome Abreviado</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Vigência</TableHead>
-            <TableHead>Template</TableHead>
-            <TableHead>Produtos</TableHead>
-            <TableHead>Clientes</TableHead>
-            <TableHead>E-mail Gestor</TableHead>
-            <TableHead>Data Status</TableHead>
+            <TableHead className="min-w-[290px]">Nome</TableHead>
+            <TableHead className="min-w-[40px]">Status</TableHead>
+            <TableHead className="min-w-[80px]">Template</TableHead>
+            <TableHead className="min-w-[150px] hidden md:table-cell">Produtos</TableHead>
+            <TableHead className="min-w-[180px] hidden lg:table-cell">E-mail Gestor</TableHead>
+            <TableHead className="min-w-[80px] hidden xl:table-cell">Data Status</TableHead>
             <TableHead className="w-32">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -177,7 +180,9 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
               </TableCell>
               <TableCell className="font-medium">
                 <div className="flex flex-col">
-                  <span>{empresa.nome_completo}</span>
+                  <span className="truncate max-w-[290px]" title={empresa.nome_completo}>
+                    {empresa.nome_completo}
+                  </span>
                   {empresa.link_sharepoint && (
                     <a
                       href={empresa.link_sharepoint}
@@ -189,39 +194,45 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                       SharePoint
                     </a>
                   )}
-                </div>
-              </TableCell>
-              <TableCell>{empresa.nome_abreviado}</TableCell>
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  {getStatusBadge(empresa.status)}
-                  {empresa.descricao_status && (
-                    <span className="text-xs text-gray-500 max-w-32 truncate" title={empresa.descricao_status}>
-                      {empresa.descricao_status}
-                    </span>
+                  {/* Mostrar produtos em telas pequenas */}
+                  <div className="md:hidden mt-1">
+                    {getProdutosBadges(empresa.produtos || [])}
+                  </div>
+                  {/* Mostrar email em telas pequenas */}
+                  {empresa.email_gestor && (
+                    <div className="lg:hidden mt-1">
+                      <a
+                        href={`mailto:${empresa.email_gestor}`}
+                        className="text-blue-600 hover:text-blue-800 text-xs truncate max-w-[150px] block"
+                        title={empresa.email_gestor}
+                      >
+                        {empresa.email_gestor}
+                      </a>
+                    </div>
                   )}
                 </div>
               </TableCell>
               <TableCell>
-                {getVigenciaIndicator(empresa)}
+                <div className="flex">
+                  {getStatusBadge(empresa.status)}
+                  {/* Mostrar data do status em telas pequenas */}
+                  <span className="xl:hidden text-xs text-gray-400">
+                    {formatDate(empresa.data_status)}
+                  </span>
+                </div>
               </TableCell>
               <TableCell>
                 {getTemplateBadge(empresa.template_padrao)}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 {getProdutosBadges(empresa.produtos || [])}
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4 text-gray-500" />
-                  <span>-</span>
-                </div>
-              </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {empresa.email_gestor ? (
                   <a
                     href={`mailto:${empresa.email_gestor}`}
-                    className="text-blue-600 hover:text-blue-800 text-sm"
+                    className="text-blue-600 hover:text-blue-800 text-sm truncate max-w-[200px] block"
+                    title={empresa.email_gestor}
                   >
                     {empresa.email_gestor}
                   </a>
@@ -229,17 +240,18 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                   '-'
                 )}
               </TableCell>
-              <TableCell className="text-sm text-gray-500">
+              <TableCell className="hidden xl:table-cell text-sm text-gray-500">
                 {formatDate(empresa.data_status)}
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onEdit(empresa)}
                       className="h-8 w-8 p-0"
+                      title="Editar"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -250,6 +262,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                       size="sm"
                       onClick={() => onDelete(empresa)}
                       className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                      title="Excluir"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

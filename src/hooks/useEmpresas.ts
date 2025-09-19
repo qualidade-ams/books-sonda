@@ -44,8 +44,15 @@ export const useEmpresas = (
   } = useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
-      // Tentar buscar do cache primeiro
-      if (!validatedParams) {
+      // Verificar se há filtros ativos (sempre buscar do banco quando há filtros)
+      const hasActiveFilters = filtros && (
+        (filtros.busca && filtros.busca.trim()) ||
+        (filtros.produtos && filtros.produtos.length > 0) ||
+        (filtros.status && filtros.status.length > 0)
+      );
+
+      // Tentar buscar do cache primeiro APENAS se não há filtros e não há paginação
+      if (!validatedParams && !hasActiveFilters) {
         const cached = await clientBooksCacheService.getTodasEmpresas();
         if (cached) {
           return cached;
@@ -58,8 +65,8 @@ export const useEmpresas = (
         validatedParams
       );
 
-      // Cachear resultado se não for paginado
-      if (!validatedParams) {
+      // Cachear resultado se não for paginado E não há filtros ativos
+      if (!validatedParams && !hasActiveFilters) {
         await clientBooksCacheService.cacheTodasEmpresas(result.data || result);
       }
 
@@ -96,6 +103,7 @@ export const useEmpresas = (
       // Invalidar cache específico
       clientBooksCacheService.invalidateEmpresaCache('');
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
       toast.success('Empresa criada com sucesso!');
     },
     onError: (error: any) => {
@@ -112,6 +120,7 @@ export const useEmpresas = (
       clientBooksCacheService.invalidateEmpresaCache(id);
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       queryClient.invalidateQueries({ queryKey: ['empresa', id] });
+      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
       toast.success('Empresa atualizada com sucesso!');
     },
     onError: (error: any) => {
@@ -127,6 +136,7 @@ export const useEmpresas = (
       clientBooksCacheService.invalidateEmpresaCache(id);
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       queryClient.removeQueries({ queryKey: ['empresa', id] });
+      queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
       toast.success('Empresa deletada com sucesso!');
     },
     onError: (error: any) => {
@@ -181,6 +191,7 @@ export const useEmpresas = (
     onSuccess: async () => {
       clientBooksCacheService.invalidateEmpresaCache('');
       await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
       await queryClient.refetchQueries({ queryKey: ['empresas'] });
       toast.success('Empresas importadas com sucesso!');
     },
@@ -214,6 +225,16 @@ export const useEmpresas = (
     setSelectedEmpresas([]);
   }, []);
 
+  // Função para forçar refresh limpando cache
+  const forceRefresh = useCallback(async () => {
+    // Limpar cache de empresas
+    clientBooksCacheService.invalidateEmpresaCache('');
+    // Invalidar queries do React Query
+    queryClient.invalidateQueries({ queryKey: ['empresas'] });
+    // Refetch
+    await refetch();
+  }, [queryClient, refetch]);
+
   return {
     // Dados
     empresas,
@@ -236,6 +257,7 @@ export const useEmpresas = (
     importarEmpresas,
     alterarStatusLote,
     refetch,
+    forceRefresh,
     
     // Seleção
     toggleEmpresaSelection,

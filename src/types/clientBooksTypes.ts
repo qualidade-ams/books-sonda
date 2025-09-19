@@ -1,6 +1,7 @@
 // Tipos específicos para o Sistema de Gerenciamento de Clientes e Books
 
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import type { TipoBook } from './clientBooks';
 
 // Tipos base das tabelas
 export type EmpresaCliente = Tables<'empresas_clientes'>;
@@ -107,6 +108,8 @@ export interface EmpresaFormData {
   anexo?: boolean;
   vigenciaInicial?: string;
   vigenciaFinal?: string;
+  temAms?: boolean;
+  tipoBook?: TipoBook;
 }
 
 export interface ClienteFormData {

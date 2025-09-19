@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs')) {
+    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias')) {
       return 'administracao';
     }
     return null;
@@ -164,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/grupos-responsaveis') || path.includes('/email-config')) {
       return 'configuracoes';
     }
-    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs')) {
+    if (path.includes('/grupos') || path.includes('/usuarios') || path.includes('/audit-logs') || path.includes('/monitoramento-vigencias')) {
       return 'administracao';
     }
     return null;
@@ -263,6 +263,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Logs de Auditoria',
           path: '/admin/audit-logs',
           screenKey: 'audit-logs'
+        },
+        {
+          icon: BarChart3,
+          label: 'Monitoramento Vigências',
+          path: '/admin/monitoramento-vigencias',
+          screenKey: 'dashboard'
         }
       ]
     }

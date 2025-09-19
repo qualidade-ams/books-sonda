@@ -64,7 +64,11 @@ export class EmpresasClientesService {
       descricao_status: data.descricaoStatus || null,
       email_gestor: data.emailGestor || null,
       tem_ams: data.temAms || false,
-      tipo_book: data.tipoBook || 'nao_tem_book'
+      tipo_book: data.tipoBook || 'nao_tem_book',
+      book_personalizado: data.bookPersonalizado || false,
+      anexo: data.anexo || false,
+      vigencia_inicial: data.vigenciaInicial || null,
+      vigencia_final: data.vigenciaFinal || null
     };
 
     // Inserir empresa
@@ -124,10 +128,8 @@ export class EmpresasClientesService {
     // Aplicar filtros
     if (filtros?.status && filtros.status.length > 0) {
       query = query.in('status', filtros.status);
-    } else {
-      // Por padrão, mostrar apenas empresas ativas
-      query = query.eq('status', 'ativo');
     }
+    // Removido o filtro padrão - agora mostra todos os status quando não há filtro específico
 
     if (filtros?.busca) {
       const searchTerm = filtros.busca.trim();
@@ -197,10 +199,8 @@ export class EmpresasClientesService {
     // Aplicar filtros
     if (filtros?.status && filtros.status.length > 0) {
       query = query.in('status', filtros.status);
-    } else {
-      // Por padrão, mostrar apenas empresas ativas
-      query = query.eq('status', 'ativo');
     }
+    // Removido o filtro padrão - agora mostra todos os status quando não há filtro específico
 
     if (filtros?.busca) {
       const searchTerm = filtros.busca.trim();
@@ -309,6 +309,14 @@ export class EmpresasClientesService {
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
       if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
       if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;
+      
+      // Incluir campos de vigência
+      if (data.vigenciaInicial !== undefined) updateData.vigencia_inicial = data.vigenciaInicial || null;
+      if (data.vigenciaFinal !== undefined) updateData.vigencia_final = data.vigenciaFinal || null;
+      
+      // Incluir campos de book personalizado e anexo
+      if (data.bookPersonalizado !== undefined) updateData.book_personalizado = data.bookPersonalizado;
+      if (data.anexo !== undefined) updateData.anexo = data.anexo;
 
       // Se status mudou, atualizar data e descrição
       if (data.status) {

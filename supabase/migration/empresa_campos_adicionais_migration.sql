@@ -34,7 +34,7 @@ BEGIN
         updated_at = NOW()
     WHERE 
         vigencia_final IS NOT NULL 
-        AND vigencia_final < CURRENT_DATE 
+        AND vigencia_final < CURRENT_DATE - INTERVAL '1 day'
         AND status = 'ativo';
     
     GET DIAGNOSTICS empresas_inativadas = ROW_COUNT;
@@ -104,8 +104,8 @@ BEGIN
         END IF;
     END IF;
     
-    -- Se está definindo uma vigência final no passado e status é ativo, alertar
-    IF NEW.vigencia_final IS NOT NULL AND NEW.vigencia_final < CURRENT_DATE AND NEW.status = 'ativo' THEN
+    -- Se está definindo uma vigência final vencida (dia anterior) e status é ativo, alertar
+    IF NEW.vigencia_final IS NOT NULL AND NEW.vigencia_final < CURRENT_DATE - INTERVAL '1 day' AND NEW.status = 'ativo' THEN
         -- Permitir, mas registrar no log
         BEGIN
             INSERT INTO logs_sistema (

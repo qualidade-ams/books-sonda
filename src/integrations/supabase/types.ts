@@ -1038,6 +1038,10 @@ export type Database = {
           email_gestor: string | null
           tem_ams: boolean
           tipo_book: 'nao_tem_book' | 'outros' | 'qualidade'
+          book_personalizado: boolean
+          anexo: boolean
+          vigencia_inicial: string | null
+          vigencia_final: string | null
           created_at: string
           updated_at: string
         }
@@ -1052,7 +1056,11 @@ export type Database = {
           descricao_status?: string | null
           email_gestor?: string | null
           tem_ams?: boolean
-          tipo_book?: 'nao_tem_book' | 'outros' | 'qualidade' 
+          tipo_book?: 'nao_tem_book' | 'outros' | 'qualidade'
+          book_personalizado?: boolean
+          anexo?: boolean
+          vigencia_inicial?: string | null
+          vigencia_final?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1068,6 +1076,10 @@ export type Database = {
           email_gestor?: string | null
           tem_ams?: boolean
           tipo_book?: 'nao_tem_book' | 'outros' | 'qualidade'
+          book_personalizado?: boolean
+          anexo?: boolean
+          vigencia_inicial?: string | null
+          vigencia_final?: string | null
           created_at?: string
           updated_at?: string
         }
