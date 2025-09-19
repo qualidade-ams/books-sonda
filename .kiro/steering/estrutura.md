@@ -367,6 +367,7 @@ books-snd/
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
+├── TESTE_HISTORICO_DISPAROS.sql                       # Script SQL para teste e diagnóstico da tabela historico_disparos (verifica estrutura, dados, relacionamentos e identifica problemas na tabela de histórico de disparos de books)
 ├── tsconfig.app.json           					      	# Configuração TypeScript para aplicação
 ├── tsconfig.json              					   		# Configuração principal do TypeScript
 ├── tsconfig.node.json          					      	# Configuração TypeScript para Node.js

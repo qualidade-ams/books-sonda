@@ -71,7 +71,7 @@ const HistoricoBooks = () => {
   const currentDate = new Date();
   const [filtros, setFiltros] = useState<FiltrosAvancados>({
     // Não definir mês e ano por padrão para mostrar todos os registros
-    incluirInativos: false,
+    incluirInativos: true, // ✅ ALTERADO: Incluir inativos por padrão para mostrar todos os registros
     apenasComFalhas: false,
     apenasComSucesso: false
   });
@@ -164,7 +164,7 @@ const HistoricoBooks = () => {
   const handleLimparFiltros = () => {
     const filtrosLimpos: FiltrosAvancados = {
       // Não definir mês e ano por padrão para mostrar todos os registros
-      incluirInativos: false,
+      incluirInativos: true, // ✅ ALTERADO: Incluir inativos por padrão
       apenasComFalhas: false,
       apenasComSucesso: false
     };

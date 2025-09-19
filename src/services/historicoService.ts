@@ -48,16 +48,14 @@ export interface ExportacaoConfig {
 class HistoricoService {
   /**
    * Busca histórico detalhado de disparos com filtros avançados
+   * Versão alternativa que evita problemas de relacionamento múltiplo
    */
   async buscarHistoricoDetalhado(filtros: FiltrosAvancados): Promise<HistoricoDisparoCompleto[]> {
     try {
+      // 1. Buscar dados básicos do histórico
       let query = supabase
         .from('historico_disparos')
-        .select(`
-          *,
-          empresas_clientes(*),
-          clientes(*)
-        `);
+        .select('*');
 
       // Aplicar filtros básicos
       if (filtros.empresaId) {
@@ -109,25 +107,83 @@ class HistoricoService {
       // Ordenação
       query = query.order('data_disparo', { ascending: false });
 
-      const { data, error } = await query;
+      const { data: historico, error } = await query;
 
       if (error) {
-        throw new Error(`Erro ao buscar histórico detalhado: ${error.message}`);
+        console.error('Erro na consulta do histórico:', error);
+        throw new Error(`Erro ao buscar histórico: ${error.message}`);
       }
 
-      let historico = data || [];
+      if (!historico || historico.length === 0) {
+        console.log('📊 Nenhum registro encontrado no histórico');
+        return [];
+      }
 
-      // Filtrar por status de empresa/cliente se necessário
+      console.log(`📊 Histórico encontrado: ${historico.length} registros`);
+
+      // 2. Buscar empresas relacionadas
+      const empresaIds = [...new Set(historico.map(h => h.empresa_id).filter(Boolean))];
+      let empresas: any[] = [];
+      
+      if (empresaIds.length > 0) {
+        const { data: empresasData, error: empresasError } = await supabase
+          .from('empresas_clientes')
+          .select('*')
+          .in('id', empresaIds);
+
+        if (empresasError) {
+          console.error('Erro ao buscar empresas:', empresasError);
+        } else {
+          empresas = empresasData || [];
+        }
+      }
+
+      // 3. Buscar clientes relacionados
+      const clienteIds = [...new Set(historico.map(h => h.cliente_id).filter(Boolean))];
+      let clientes: any[] = [];
+      
+      if (clienteIds.length > 0) {
+        const { data: clientesData, error: clientesError } = await supabase
+          .from('clientes')
+          .select('*')
+          .in('id', clienteIds);
+
+        if (clientesError) {
+          console.error('Erro ao buscar clientes:', clientesError);
+        } else {
+          clientes = clientesData || [];
+        }
+      }
+
+      // 4. Combinar dados
+      const historicoCompleto = historico.map(item => {
+        const empresa = empresas.find(e => e.id === item.empresa_id);
+        const cliente = clientes.find(c => c.id === item.cliente_id);
+
+        return {
+          ...item,
+          empresas_clientes: empresa || null,
+          clientes: cliente || null
+        };
+      });
+
+      // 5. Aplicar filtros de status se necessário
+      let historicoFiltrado = historicoCompleto;
+      
       if (!filtros.incluirInativos) {
-        historico = historico.filter(item =>
-          item.empresas_clientes?.status === 'ativo' &&
-          item.clientes?.status === 'ativo'
-        );
+        historicoFiltrado = historicoCompleto.filter(item => {
+          const empresaAtiva = !item.empresas_clientes || item.empresas_clientes.status === 'ativo';
+          const clienteAtivo = !item.clientes || item.clientes.status === 'ativo';
+          
+          return empresaAtiva && clienteAtivo;
+        });
       }
 
-      return historico;
+      console.log(`✅ Histórico final: ${historicoFiltrado.length} registros após filtros`);
+      return historicoFiltrado;
 
     } catch (error) {
+      console.error('Erro na consulta do histórico:', error);
       throw new Error(`Erro ao buscar histórico detalhado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
