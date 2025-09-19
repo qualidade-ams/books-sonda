@@ -69,9 +69,7 @@ const empresaSchema = z.object({
     .min(1, 'Selecione pelo menos um produto'),
   grupos: z.array(z.string()).optional(),
   temAms: z.boolean().optional(),
-  tipoBook: z.enum(['nao_tem_book', 'outros', 'qualidade'], {
-    required_error: 'Tipo de Book é obrigatório'
-  }).optional(),
+  tipoBook: z.enum(['nao_tem_book', 'outros', 'qualidade']).optional(),
   vigenciaInicial: z.string().optional(),
   vigenciaFinal: z.string().optional(),
   bookPersonalizado: z.boolean().optional(),
@@ -96,6 +94,15 @@ const empresaSchema = z.object({
 }, {
   message: 'A vigência inicial não pode ser posterior à vigência final',
   path: ['vigenciaFinal'],
+}).refine((data) => {
+  // Validação condicional para Tipo de Book quando Tem AMS for true
+  if (data.temAms && !data.tipoBook) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Tipo de Book é obrigatório quando a empresa tem AMS',
+  path: ['tipoBook'],
 });
 
 interface EmpresaFormProps {
@@ -143,6 +150,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
   const watchStatus = form.watch('status');
   const watchTipoBook = form.watch('tipoBook') as TipoBook;
+  const watchTemAms = form.watch('temAms');
 
   // Reset form quando initialData mudar
   useEffect(() => {
@@ -460,9 +468,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:border-red-500' : ''}
                   />
                 </FormControl>
-                <FormDescription>
-                  Data de início da vigência do contrato
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -482,49 +487,48 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:border-red-500' : ''}
                   />
                 </FormControl>
-                <FormDescription>
-                  Data de fim da vigência. Empresa será inativada automaticamente após esta data
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        {/* Configurações Book */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="tipoBook"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipo de Book *</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={isSubmitting || isLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {TIPO_BOOK_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {/* Configurações Book - só aparece quando Tem AMS for Sim */}
+        {watchTemAms && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="tipoBook"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Book *</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSubmitting || isLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TIPO_BOOK_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
-        {/* Opções do Book - só aparece quando Tipo de Book for "Qualidade" */}
-        {watchTipoBook === 'qualidade' && (
+        {/* Opções do Book - só aparece quando Tem AMS for Sim E Tipo de Book for "Qualidade" */}
+        {watchTemAms && watchTipoBook === 'qualidade' && (
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">

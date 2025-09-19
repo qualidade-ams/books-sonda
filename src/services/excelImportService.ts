@@ -54,21 +54,21 @@ class ExcelImportService {
     try {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
-      
+
       // Pega a primeira planilha
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      
+
       // Converte para JSON
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length === 0) {
         throw new Error('Arquivo Excel está vazio');
       }
-      
+
       const headers = jsonData[0] as string[];
       const dataRows = jsonData.slice(1);
-      
+
       // Converte os dados para objetos, filtrando linhas vazias
       const data = dataRows
         .map((row: any[], index) => {
@@ -87,10 +87,10 @@ class ExcelImportService {
             return value && value.toString().trim().length > 0;
           });
         });
-      
+
       // Valida os dados
       const validationErrors = this.validateImportData(data);
-      
+
       return {
         headers,
         data,
@@ -107,16 +107,16 @@ class ExcelImportService {
    */
   private validateImportData(data: any[]): ImportError[] {
     const errors: ImportError[] = [];
-    
+
     data.forEach((row) => {
       try {
         empresaExcelSchema.parse(row);
-        
+
         // Validações adicionais
         if (row['Produtos']) {
           const produtos = row['Produtos'].split(',').map((p: string) => p.trim().toUpperCase());
           const produtosValidos = ['CE_PLUS', 'FISCAL', 'GALLERY'];
-          
+
           produtos.forEach((produto: string) => {
             if (!produtosValidos.includes(produto)) {
               errors.push({
@@ -143,7 +143,7 @@ class ExcelImportService {
         if (row['Vigência Inicial'] && row['Vigência Final']) {
           const inicial = new Date(row['Vigência Inicial']);
           const final = new Date(row['Vigência Final']);
-          
+
           if (isNaN(inicial.getTime())) {
             errors.push({
               row: row._rowIndex,
@@ -152,7 +152,7 @@ class ExcelImportService {
               data: row
             });
           }
-          
+
           if (isNaN(final.getTime())) {
             errors.push({
               row: row._rowIndex,
@@ -161,7 +161,7 @@ class ExcelImportService {
               data: row
             });
           }
-          
+
           if (!isNaN(inicial.getTime()) && !isNaN(final.getTime()) && inicial > final) {
             errors.push({
               row: row._rowIndex,
@@ -184,7 +184,7 @@ class ExcelImportService {
             });
           }
         });
-        
+
       } catch (error) {
         if (error instanceof z.ZodError) {
           error.errors.forEach(err => {
@@ -198,7 +198,7 @@ class ExcelImportService {
         }
       }
     });
-    
+
     return errors;
   }
 
@@ -214,7 +214,7 @@ class ExcelImportService {
       errors: [],
       successfulImports: []
     };
-    
+
     // Primeiro valida todos os dados
     const validationErrors = this.validateImportData(data);
     if (validationErrors.length > 0) {
@@ -222,16 +222,16 @@ class ExcelImportService {
       result.errorCount = validationErrors.length;
       return result;
     }
-    
+
     // Processa cada linha
     for (const row of data) {
       try {
         const empresaData = await this.transformRowToEmpresa(row);
         const empresa = await empresasClientesService.criarEmpresa(empresaData);
-        
+
         result.successfulImports.push(empresa);
         result.successCount++;
-        
+
       } catch (error) {
         result.errors.push({
           row: row._rowIndex,
@@ -241,7 +241,7 @@ class ExcelImportService {
         result.errorCount++;
       }
     }
-    
+
     result.success = result.errorCount === 0;
     return result;
   }
@@ -250,15 +250,15 @@ class ExcelImportService {
    * Transforma uma linha do Excel em dados de empresa
    */
   private async transformRowToEmpresa(row: any): Promise<any> {
-    const produtos = row['Produtos'] 
+    const produtos = row['Produtos']
       ? row['Produtos'].split(',').map((p: string) => p.trim().toUpperCase())
       : [];
-    
+
     // Buscar IDs dos grupos pelos nomes
     let grupoIds: string[] = [];
     if (row['Grupos']) {
       const nomeGrupos = row['Grupos'].split(',').map((g: string) => g.trim());
-      
+
       if (nomeGrupos.length > 0) {
         const { data: grupos, error } = await supabase
           .from('grupos_responsaveis')
@@ -269,11 +269,11 @@ class ExcelImportService {
           console.warn('Erro ao buscar grupos:', error);
         } else if (grupos) {
           grupoIds = grupos.map(g => g.id);
-          
+
           // Verificar se todos os grupos foram encontrados
           const gruposEncontrados = grupos.map(g => g.nome);
           const gruposNaoEncontrados = nomeGrupos.filter((nome: string) => !gruposEncontrados.includes(nome));
-          
+
           if (gruposNaoEncontrados.length > 0) {
             console.warn(`Grupos não encontrados: ${gruposNaoEncontrados.join(', ')}`);
           }
@@ -286,7 +286,7 @@ class ExcelImportService {
       if (!value) return false;
       return ['sim', 'SIM', 'Sim', 'true', 'TRUE', 'True', '1'].includes(value.toString().trim());
     };
-    
+
     return {
       nomeCompleto: row['Nome Completo'],
       nomeAbreviado: row['Nome Abreviado'],
@@ -313,7 +313,7 @@ class ExcelImportService {
     const templateData = [
       [
         'Nome Completo',
-        'Nome Abreviado', 
+        'Nome Abreviado',
         'Link SharePoint',
         'Template Padrão',
         'Status',
@@ -363,9 +363,9 @@ class ExcelImportService {
       ['• Book Personalizado: "sim" ou "não" (padrão: não)'],
       ['• Anexo: "sim" ou "não" (padrão: não)']
     ];
-    
+
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
-    
+
     // Definir larguras das colunas
     const colWidths = [
       { wch: 25 }, // Nome Completo
@@ -384,12 +384,12 @@ class ExcelImportService {
       { wch: 18 }, // Book Personalizado
       { wch: 10 }  // Anexo
     ];
-    
+
     worksheet['!cols'] = colWidths;
-    
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas');
-    
+
     // Gera o arquivo Excel
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -410,7 +410,7 @@ class ExcelImportService {
       ['Erros encontrados:'],
       ['Linha', 'Campo', 'Mensagem', 'Dados']
     ];
-    
+
     // Adiciona os erros
     result.errors.forEach(error => {
       reportData.push([
@@ -420,7 +420,7 @@ class ExcelImportService {
         JSON.stringify(error.data)
       ]);
     });
-    
+
     // Adiciona sucessos
     if (result.successfulImports.length > 0) {
       //reportData.push([''], ['Empresas importadas com sucesso:'], ['Nome', 'Status']);
@@ -428,11 +428,11 @@ class ExcelImportService {
         reportData.push([empresa.nome_completo, empresa.status]);
       });
     }
-    
+
     const worksheet = XLSX.utils.aoa_to_sheet(reportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório');
-    
+
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }

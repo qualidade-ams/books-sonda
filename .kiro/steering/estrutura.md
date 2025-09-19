@@ -276,7 +276,7 @@ books-snd/
 │   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo)
 │   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes (colaboradores)
 │   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
-│   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com integração Supabase e mapeamento assíncrono de templates) - usado pela tela EmpresasClientes.tsx
+│   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com design aprimorado - layout em cards, cores temáticas Sonda (#2563eb), caixa de resumo estatístico expandida com contadores de empresas ativas/inativas/suspensas, cabeçalho profissional, integração Supabase e mapeamento assíncrono de templates, correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes) - usado pela tela EmpresasClientes.tsx
 │   │   ├── configurationDebug.ts      					# Debug de configurações
 │   │   ├── configurationLogger.ts     					# Logging estruturado
 │   │   ├── configurationMapper.ts     					# Mapeamento de configurações
@@ -327,6 +327,7 @@ books-snd/
 ├── .env.example                					      	# Exemplo de variáveis de ambiente
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
+├── AJUSTE_COR_AZUL_PDF_PADRAO_SISTEMA.md            # Documentação do ajuste da cor azul padrão do sistema para exportação PDF (correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes da biblioteca)
 ├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
 ├── CORRECAO_ATUALIZACAO_AUTOMATICA_LISTA_EMPRESAS.md # Documentação da correção da atualização automática da lista de empresas após importação via Excel (implementação de invalidação de cache automática, callback onImportComplete otimizado, e eliminação da necessidade de refresh manual Ctrl+F5)
 ├── CORRECAO_BOTOES_SIDEBAR.md                      # Documentação das correções de clicabilidade e visibilidade dos botões da sidebar
@@ -340,21 +341,23 @@ books-snd/
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
 ├── CORRECAO_TEMPLATE_PADRAO_NAO_EXIBIDO.md          # Documentação da correção do campo "Template Padrão" que não exibia opções no formulário de empresa (adição de templates padrão "Português" e "Inglês" ao hook useBookTemplates)
 ├── FUNCIONALIDADE_CONTROLE_BOTOES_DISPARO.md       # Documentação da funcionalidade de controle inteligente de botões de disparo (habilitação/desabilitação baseada no status das empresas selecionadas)
+├── IMPLEMENTACAO_LOGICA_CONDICIONAL_TIPO_BOOK.md   # Documentação da implementação da lógica condicional para o campo "Tipo de Book" (exibição condicional baseada no campo "Tem AMS", validação contextual, interface dinâmica com hierarquia de dependências e experiência do usuário aprimorada)
 ├── IMPLEMENTACAO_CONTADORES_INTELIGENTES.md        # Documentação da implementação de contadores inteligentes nos botões de disparo que separam empresas selecionadas por status (paraDisparar vs paraReenviar) nas telas de Disparos e Disparos Personalizados
 ├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
 ├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
-├── PADRONIZACAO_BOTAO_IMPORTAR_EMPRESAS.md         # Documentação da padronização do botão de importação na tela "Cadastro de Empresas" com dropdown contendo opções "Baixar Template Excel" e "Importar do Excel", seguindo padrão visual estabelecido e implementação do componente EmpresaImportExportButtons
-├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── index.html                  					      	# Template HTML principal
+├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
+├── MELHORIA_LAYOUT_PDF_EMPRESAS_PADRAO_VISUAL.md   # Documentação da melhoria do layout PDF de exportação de empresas com design moderno e profissional (cabeçalho centralizado, caixa de resumo estatístico, layout de cards individuais, sistema de cores por status, barra lateral colorida, estrutura em duas colunas, tipografia hierárquica, paginação automática e elementos visuais consistentes seguindo padrão corporativo)
 ├── MELHORIAS_RESPONSIVIDADE_SIDEBAR.md             # Documentação das melhorias de responsividade implementadas na sidebar
 ├── MELHORIA_TEMPLATE_EXCEL_EMPRESAS_COMPLETO.md    # Documentação da melhoria do template Excel para importação de empresas com todos os 15 campos disponíveis, validações robustas e instruções integradas
+├── PADRONIZACAO_BOTAO_IMPORTAR_EMPRESAS.md         # Documentação da padronização do botão de importação na tela "Cadastro de Empresas" com dropdown contendo opções "Baixar Template Excel" e "Importar do Excel", seguindo padrão visual estabelecido e implementação do componente EmpresaImportExportButtons
 ├── package.json               						   	# Dependências e scripts do projeto
 ├── package-lock.json           					      	# Lock file das dependências
 ├── postcss.config.js          						   	# Configuração do PostCSS
+├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
-├── test-pdf-export.js          					      	# Script de teste para verificar funcionalidade de exportação PDF com jspdf-autotable
 ├── tsconfig.app.json           					      	# Configuração TypeScript para aplicação
 ├── tsconfig.json              					   		# Configuração principal do TypeScript
 ├── tsconfig.node.json          					      	# Configuração TypeScript para Node.js

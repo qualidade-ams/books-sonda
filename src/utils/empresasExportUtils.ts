@@ -78,10 +78,10 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
 
   // Criar workbook
   const wb = XLSX.utils.book_new();
-  
+
   // Criar worksheet com os dados
   const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-  
+
   // Ajustar largura das colunas
   const colWidths = [
     { wch: 30 }, // Nome Completo
@@ -102,115 +102,215 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 15 }, // Data de Criação
     { wch: 15 }  // Última Atualização
   ];
-  
+
   ws['!cols'] = colWidths;
-  
+
   // Adicionar worksheet ao workbook
   XLSX.utils.book_append_sheet(wb, ws, 'Empresas');
-  
+
   // Gerar nome do arquivo com data atual
   const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   const nomeArquivo = `empresas_${dataAtual}.xlsx`;
-  
+
   // Fazer download do arquivo
   XLSX.writeFile(wb, nomeArquivo);
 };
 
 /**
- * Exporta dados de empresas para PDF
+ * Exporta dados de empresas para PDF no padrão visual aprimorado
  */
 export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) => {
   if (!empresas || empresas.length === 0) {
     throw new Error('Nenhuma empresa encontrada para exportar');
   }
 
-  // Importar dinamicamente o plugin autotable
-  const { default: autoTable } = await import('jspdf-autotable');
-
   // Criar novo documento PDF
-  const doc = new jsPDF('landscape', 'mm', 'a4');
-  
+  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
   // Configurar fonte
   doc.setFont('helvetica');
-  
-  // Título do relatório
-  doc.setFontSize(16);
-  doc.text('Relatório de Empresas Clientes', 20, 20);
-  
-  // Data de geração
-  doc.setFontSize(10);
-  const dataAtual = new Date().toLocaleDateString('pt-BR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  doc.text(`Gerado em: ${dataAtual}`, 20, 30);
-  
-  // Preparar dados para a tabela
-  const colunas = [
-    'Nome Completo',
-    'Nome Abreviado', 
-    'Status',
-    'E-mail Gestor',
-    'Template Padrão',
-    'Tem AMS',
-    'Tipo de Book',
-    'Vigência Final'
-  ];
-  
-  const linhas = await Promise.all(
-    empresas.map(async (empresa) => [
-      empresa.nome_completo,
-      empresa.nome_abreviado,
-      empresa.status.toUpperCase(),
-      empresa.email_gestor || '-',
-      await mapearTemplatePadrao(empresa.template_padrao),
-      empresa.tem_ams ? 'Sim' : 'Não',
-      empresa.tipo_book,
-      empresa.vigencia_final || '-'
-    ])
-  );
-  
-  // Criar tabela
-  autoTable(doc, {
-    head: [colunas],
-    body: linhas,
-    startY: 40,
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-    },
-    headStyles: {
-      fillColor: [41, 128, 185], // Azul
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245] // Cinza claro
-    },
-    columnStyles: {
-      0: { cellWidth: 35 }, // Nome Completo
-      1: { cellWidth: 25 }, // Nome Abreviado
-      2: { cellWidth: 15 }, // Status
-      3: { cellWidth: 30 }, // E-mail Gestor
-      4: { cellWidth: 20 }, // Template Padrão
-      5: { cellWidth: 12 }, // Tem AMS
-      6: { cellWidth: 20 }, // Tipo de Book
-      7: { cellWidth: 20 }  // Vigência Final
+
+  // Cores do tema (usando a cor azul padrão do sistema)
+  const colors = {
+    primary: [37, 99, 235] as const,      // Azul Sonda (#2563eb) - cor padrão do sistema
+    secondary: [59, 130, 246] as const,   // Azul claro derivado
+    success: [46, 204, 113] as const,     // Verde
+    warning: [241, 196, 15] as const,     // Amarelo
+    danger: [231, 76, 60] as const,       // Vermelho
+    light: [236, 240, 241] as const,      // Cinza claro
+    dark: [52, 73, 94] as const,          // Cinza escuro
+    white: [255, 255, 255] as const       // Branco
+  };
+
+  // Função para desenhar cabeçalho
+  const drawHeader = () => {
+    // Fundo do cabeçalho
+    doc.setFillColor(...colors.primary);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+
+    // Título principal
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    const titulo = 'Gerenciamento de Empresas';
+    const tituloWidth = doc.getTextWidth(titulo);
+    doc.text(titulo, (pageWidth - tituloWidth) / 2, 20);
+
+    // Subtítulo com data
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    const subtitulo = `Relatório gerado em ${dataAtual}`;
+    const subtituloWidth = doc.getTextWidth(subtitulo);
+    doc.text(subtitulo, (pageWidth - subtituloWidth) / 2, 28);
+  };
+
+  // Função para desenhar caixa de resumo
+  const drawSummaryBox = (y: number) => {
+    const boxHeight = 30;
+    const boxY = y;
+
+    // Fundo da caixa de resumo
+    doc.setFillColor(...colors.light);
+    doc.rect(15, boxY, pageWidth - 30, boxHeight, 'F');
+
+    // Borda da caixa
+    doc.setDrawColor(...colors.primary);
+    doc.setLineWidth(0.5);
+    doc.rect(15, boxY, pageWidth - 30, boxHeight, 'S');
+
+    // Calcular estatísticas
+    const total = empresas.length;
+    const ativas = empresas.filter(e => e.status === 'ativo').length;
+    const inativas = empresas.filter(e => e.status === 'inativo').length;
+    const suspensas = empresas.filter(e => e.status === 'suspenso').length;
+
+    // Texto do resumo
+    doc.setTextColor(...colors.dark);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+
+    const resumoY = boxY + 8;
+    doc.text(`Total de empresas: ${total}`, 25, resumoY);
+    doc.text(`Empresas ativas: ${ativas}`, 25, resumoY + 6);
+    doc.text(`Empresas inativas: ${inativas}`, 25, resumoY + 12);
+    doc.text(`Empresas suspensas: ${suspensas}`, 25, resumoY + 18);
+
+    return boxY + boxHeight + 10;
+  };
+
+  // Função para desenhar card de empresa
+  const drawEmpresaCard = async (empresa: EmpresaClienteCompleta, y: number) => {
+    const cardHeight = 45;
+    const cardMargin = 15;
+    const cardWidth = pageWidth - (cardMargin * 2);
+
+    // Verificar se cabe na página
+    if (y + cardHeight > pageHeight - 20) {
+      doc.addPage();
+      drawHeader();
+      y = 45;
     }
-  });
-  
-  // Adicionar rodapé com total de empresas
-  const finalY = (doc as any).lastAutoTable?.finalY || 40;
-  doc.setFontSize(10);
-  doc.text(`Total de empresas: ${empresas.length}`, 20, finalY + 15);
-  
+
+    // Fundo do card
+    doc.setFillColor(...colors.white);
+    doc.rect(cardMargin, y, cardWidth, cardHeight, 'F');
+
+    // Borda do card
+    doc.setDrawColor(...colors.light);
+    doc.setLineWidth(0.3);
+    doc.rect(cardMargin, y, cardWidth, cardHeight, 'S');
+
+    // Barra lateral colorida baseada no status
+    let statusColor: readonly [number, number, number] = colors.success; // Verde para ativo
+    if (empresa.status === 'inativo') statusColor = colors.danger;
+    if (empresa.status === 'suspenso') statusColor = colors.warning;
+
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.rect(cardMargin, y, 4, cardHeight, 'F');
+
+    // Conteúdo do card
+    const contentX = cardMargin + 10;
+    let contentY = y + 8;
+
+    // Nome da empresa (título)
+    doc.setTextColor(...colors.dark);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(empresa.nome_completo.toUpperCase(), contentX, contentY);
+
+    // Nome abreviado
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(empresa.nome_abreviado, contentX, contentY + 5);
+
+    contentY += 12;
+
+    // Informações em duas colunas
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.dark);
+
+    // Coluna esquerda
+    doc.setFont('helvetica', 'bold');
+    doc.text('Status:', contentX, contentY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(empresa.status.toUpperCase(), contentX + 20, contentY);
+
+    doc.setTextColor(...colors.dark);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Template:', contentX, contentY + 5);
+    doc.setFont('helvetica', 'normal');
+    const templateText = await mapearTemplatePadrao(empresa.template_padrao);
+    doc.text(templateText, contentX + 25, contentY + 5);
+
+    // Coluna direita
+    const rightColumnX = contentX + 90;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Criado em:', rightColumnX, contentY);
+    doc.setFont('helvetica', 'normal');
+    const criadoEm = new Date(empresa.created_at).toLocaleDateString('pt-BR');
+    doc.text(criadoEm, rightColumnX + 25, contentY);
+
+    // E-mail do gestor
+    if (empresa.email_gestor) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('E-mail Gestor:', contentX, contentY + 10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(empresa.email_gestor, contentX + 30, contentY + 10);
+    }
+
+    // Produtos (se houver)
+    if (empresa.produtos && empresa.produtos.length > 0) {
+      const produtos = empresa.produtos.map(p => p.produto).join(', ');
+      doc.setFont('helvetica', 'bold');
+      doc.text('Produtos (2):', rightColumnX, contentY + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(produtos, rightColumnX + 25, contentY + 5);
+    }
+
+    return y + cardHeight + 5;
+  };
+
+  // Desenhar primeira página
+  drawHeader();
+  let currentY = 45;
+
+  // Desenhar caixa de resumo
+  currentY = drawSummaryBox(currentY);
+
+  // Desenhar cards das empresas
+  for (const empresa of empresas) {
+    currentY = await drawEmpresaCard(empresa, currentY);
+  }
+
   // Gerar nome do arquivo com data atual
   const dataArquivo = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-  const nomeArquivo = `relatorio_empresas_${dataArquivo}.pdf`;
-  
+  const nomeArquivo = `gerenciamento_empresas_${dataArquivo}.pdf`;
+
   // Fazer download do arquivo
   doc.save(nomeArquivo);
 };
