@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle, XCircle, Download, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -36,17 +35,17 @@ export function ImportResult({ result, onDownloadReport, onNewImport }: ImportRe
               <p className="text-sm font-medium text-muted-foreground">Total</p>
               <p className="text-3xl font-bold">{totalRows}</p>
             </div>
-            
+
             <div className="text-center">
               <p className="text-sm font-medium text-muted-foreground">Sucessos</p>
               <p className="text-3xl font-bold text-green-600">{successCount}</p>
             </div>
-            
+
             <div className="text-center">
               <p className="text-sm font-medium text-muted-foreground">Erros</p>
               <p className="text-3xl font-bold text-red-600">{errorCount}</p>
             </div>
-            
+
             <div className="text-center">
               <p className="text-sm font-medium text-muted-foreground">Status</p>
               <Badge variant={success ? "default" : "destructive"} className="text-sm">
@@ -80,12 +79,12 @@ export function ImportResult({ result, onDownloadReport, onNewImport }: ImportRe
                 <TableBody>
                   {successfulImports.map((empresa, index) => (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{empresa.nomeCompleto}</TableCell>
-                      <TableCell>{empresa.nomeAbreviado}</TableCell>
+                      <TableCell className="font-medium">{empresa.nome_completo}</TableCell>
+                      <TableCell>{empresa.nome_abreviado}</TableCell>
                       <TableCell>
                         <Badge variant="default">{empresa.status}</Badge>
                       </TableCell>
-                      <TableCell>{empresa.templatePadrao}</TableCell>
+                      <TableCell>{empresa.template_padrao}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -119,7 +118,7 @@ export function ImportResult({ result, onDownloadReport, onNewImport }: ImportRe
                           {error.field && ` - Campo: ${error.field}`}
                         </p>
                         <p className="text-sm text-red-600 mt-1">{error.message}</p>
-                        
+
                         {error.data && (
                           <div className="mt-2 text-xs text-red-500">
                             <p className="font-medium">Dados da linha:</p>
@@ -148,7 +147,7 @@ export function ImportResult({ result, onDownloadReport, onNewImport }: ImportRe
           <RotateCcw className="h-4 w-4" />
           Nova Importação
         </Button>
-        
+
         <Button
           onClick={onDownloadReport}
           className="flex items-center gap-2"

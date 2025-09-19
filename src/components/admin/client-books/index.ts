@@ -7,3 +7,6 @@ export { default as GrupoForm } from './GrupoForm';
 export { default as EmpresasTable } from './EmpresasTable';
 export { default as ClientesTable } from './ClientesTable';
 export { default as GruposTable } from './GruposTable';
+
+// Botões de Importação/Exportação
+export { EmpresaImportExportButtons } from './EmpresaImportExportButtons';

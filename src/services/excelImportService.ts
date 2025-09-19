@@ -2,17 +2,25 @@ import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import { EmpresaCliente } from '../types/clientBooks';
 import { empresasClientesService } from './empresasClientesService';
+import { supabase } from '../integrations/supabase/client';
 
 // Schema de validação para dados de empresa no Excel
 const empresaExcelSchema = z.object({
   'Nome Completo': z.string().min(1, 'Nome completo é obrigatório'),
   'Nome Abreviado': z.string().min(1, 'Nome abreviado é obrigatório'),
-  'Link SharePoint': z.string().optional(),
+  'Link SharePoint': z.string().min(1, 'Link SharePoint é obrigatório'),
   'Template Padrão': z.enum(['portugues', 'ingles']).default('portugues'),
   'Status': z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
-  'Email Gestor': z.string().email('Email inválido').optional(),
-  'Produtos': z.string().optional(), // String separada por vírgulas
+  'Descrição Status': z.string().optional(),
+  'Email Gestor': z.string().email('Email inválido').min(1, 'Email do gestor é obrigatório'),
+  'Produtos': z.string().min(1, 'Pelo menos um produto é obrigatório'), // String separada por vírgulas
   'Grupos': z.string().optional(), // String separada por vírgulas
+  'Tem AMS': z.string().optional(), // 'sim' ou 'não'
+  'Tipo Book': z.enum(['nao_tem_book', 'outros', 'qualidade']).default('nao_tem_book'),
+  'Vigência Inicial': z.string().optional(), // Data no formato YYYY-MM-DD
+  'Vigência Final': z.string().optional(), // Data no formato YYYY-MM-DD
+  'Book Personalizado': z.string().optional(), // 'sim' ou 'não'
+  'Anexo': z.string().optional(), // 'sim' ou 'não'
 });
 
 export interface ImportResult {
@@ -61,15 +69,24 @@ class ExcelImportService {
       const headers = jsonData[0] as string[];
       const dataRows = jsonData.slice(1);
       
-      // Converte os dados para objetos
-      const data = dataRows.map((row: any[], index) => {
-        const obj: any = {};
-        headers.forEach((header, headerIndex) => {
-          obj[header] = row[headerIndex] || '';
+      // Converte os dados para objetos, filtrando linhas vazias
+      const data = dataRows
+        .map((row: any[], index) => {
+          const obj: any = {};
+          headers.forEach((header, headerIndex) => {
+            obj[header] = row[headerIndex] || '';
+          });
+          obj._rowIndex = index + 2; // +2 porque começamos da linha 2 (header é linha 1)
+          return obj;
+        })
+        .filter((row) => {
+          // Filtrar linhas que tenham pelo menos um campo preenchido (exceto _rowIndex)
+          return Object.keys(row).some(key => {
+            if (key === '_rowIndex') return false;
+            const value = row[key];
+            return value && value.toString().trim().length > 0;
+          });
         });
-        obj._rowIndex = index + 2; // +2 porque começamos da linha 2 (header é linha 1)
-        return obj;
-      });
       
       // Valida os dados
       const validationErrors = this.validateImportData(data);
@@ -91,7 +108,7 @@ class ExcelImportService {
   private validateImportData(data: any[]): ImportError[] {
     const errors: ImportError[] = [];
     
-    data.forEach((row, index) => {
+    data.forEach((row) => {
       try {
         empresaExcelSchema.parse(row);
         
@@ -111,6 +128,62 @@ class ExcelImportService {
             }
           });
         }
+
+        // Validação de status e descrição
+        if ((row['Status'] === 'inativo' || row['Status'] === 'suspenso') && !row['Descrição Status']?.trim()) {
+          errors.push({
+            row: row._rowIndex,
+            field: 'Descrição Status',
+            message: 'Descrição do status é obrigatória para status Inativo ou Suspenso',
+            data: row
+          });
+        }
+
+        // Validação de vigências
+        if (row['Vigência Inicial'] && row['Vigência Final']) {
+          const inicial = new Date(row['Vigência Inicial']);
+          const final = new Date(row['Vigência Final']);
+          
+          if (isNaN(inicial.getTime())) {
+            errors.push({
+              row: row._rowIndex,
+              field: 'Vigência Inicial',
+              message: 'Data de vigência inicial inválida. Use o formato YYYY-MM-DD',
+              data: row
+            });
+          }
+          
+          if (isNaN(final.getTime())) {
+            errors.push({
+              row: row._rowIndex,
+              field: 'Vigência Final',
+              message: 'Data de vigência final inválida. Use o formato YYYY-MM-DD',
+              data: row
+            });
+          }
+          
+          if (!isNaN(inicial.getTime()) && !isNaN(final.getTime()) && inicial > final) {
+            errors.push({
+              row: row._rowIndex,
+              field: 'Vigência Final',
+              message: 'A vigência inicial não pode ser posterior à vigência final',
+              data: row
+            });
+          }
+        }
+
+        // Validação de campos booleanos
+        const camposBooleanos = ['Tem AMS', 'Book Personalizado', 'Anexo'];
+        camposBooleanos.forEach(campo => {
+          if (row[campo] && !['sim', 'não', 'SIM', 'NÃO', 'Sim', 'Não'].includes(row[campo])) {
+            errors.push({
+              row: row._rowIndex,
+              field: campo,
+              message: `${campo} deve ser "sim" ou "não"`,
+              data: row
+            });
+          }
+        });
         
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -153,7 +226,7 @@ class ExcelImportService {
     // Processa cada linha
     for (const row of data) {
       try {
-        const empresaData = this.transformRowToEmpresa(row);
+        const empresaData = await this.transformRowToEmpresa(row);
         const empresa = await empresasClientesService.criarEmpresa(empresaData);
         
         result.successfulImports.push(empresa);
@@ -176,14 +249,43 @@ class ExcelImportService {
   /**
    * Transforma uma linha do Excel em dados de empresa
    */
-  private transformRowToEmpresa(row: any): any {
+  private async transformRowToEmpresa(row: any): Promise<any> {
     const produtos = row['Produtos'] 
       ? row['Produtos'].split(',').map((p: string) => p.trim().toUpperCase())
       : [];
     
-    const grupos = row['Grupos']
-      ? row['Grupos'].split(',').map((g: string) => g.trim())
-      : [];
+    // Buscar IDs dos grupos pelos nomes
+    let grupoIds: string[] = [];
+    if (row['Grupos']) {
+      const nomeGrupos = row['Grupos'].split(',').map((g: string) => g.trim());
+      
+      if (nomeGrupos.length > 0) {
+        const { data: grupos, error } = await supabase
+          .from('grupos_responsaveis')
+          .select('id, nome')
+          .in('nome', nomeGrupos);
+
+        if (error) {
+          console.warn('Erro ao buscar grupos:', error);
+        } else if (grupos) {
+          grupoIds = grupos.map(g => g.id);
+          
+          // Verificar se todos os grupos foram encontrados
+          const gruposEncontrados = grupos.map(g => g.nome);
+          const gruposNaoEncontrados = nomeGrupos.filter((nome: string) => !gruposEncontrados.includes(nome));
+          
+          if (gruposNaoEncontrados.length > 0) {
+            console.warn(`Grupos não encontrados: ${gruposNaoEncontrados.join(', ')}`);
+          }
+        }
+      }
+    }
+
+    // Função auxiliar para converter string para boolean
+    const stringToBoolean = (value: string): boolean => {
+      if (!value) return false;
+      return ['sim', 'SIM', 'Sim', 'true', 'TRUE', 'True', '1'].includes(value.toString().trim());
+    };
     
     return {
       nomeCompleto: row['Nome Completo'],
@@ -191,9 +293,16 @@ class ExcelImportService {
       linkSharepoint: row['Link SharePoint'] || '',
       templatePadrao: row['Template Padrão'] || 'portugues',
       status: row['Status'] || 'ativo',
+      descricaoStatus: row['Descrição Status'] || '',
       emailGestor: row['Email Gestor'] || '',
       produtos,
-      grupos
+      grupos: grupoIds, // Agora são IDs, não nomes
+      temAms: stringToBoolean(row['Tem AMS']),
+      tipoBook: row['Tipo Book'] || 'nao_tem_book',
+      vigenciaInicial: row['Vigência Inicial'] || '',
+      vigenciaFinal: row['Vigência Final'] || '',
+      bookPersonalizado: stringToBoolean(row['Book Personalizado']),
+      anexo: stringToBoolean(row['Anexo'])
     };
   }
 
@@ -208,23 +317,76 @@ class ExcelImportService {
         'Link SharePoint',
         'Template Padrão',
         'Status',
+        'Descrição Status',
         'Email Gestor',
         'Produtos',
-        'Grupos'
+        'Grupos',
+        'Tem AMS',
+        'Tipo Book',
+        'Vigência Inicial',
+        'Vigência Final',
+        'Book Personalizado',
+        'Anexo'
       ],
       [
-        'Exemplo Empresa Ltda',
-        'Exemplo',
+        'EXEMPLO EMPRESA LTDA',
+        'EXEMPLO',
         'https://sharepoint.com/exemplo',
         'portugues',
         'ativo',
-        'gestor@exemplo.com',
+        '',
+        'gestor@sonda.com',
         'CE_PLUS,FISCAL',
-        'CE Plus,Todos'
-      ]
+        'CE Plus,Todos',
+        'sim',
+        'qualidade',
+        '2024-01-01',
+        '2024-12-31',
+        'não',
+        'sim'
+      ],
+      [],
+      ['INSTRUÇÕES:'],
+      ['• Nome Completo: Nome completo da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
+      ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
+      ['• Link SharePoint: URL do SharePoint da empresa (obrigatório)'],
+      ['• Template Padrão: "portugues" ou "ingles" (padrão: portugues)'],
+      ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
+      ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
+      ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],
+      ['• Produtos: Lista separada por vírgulas: CE_PLUS, FISCAL, GALLERY (obrigatório)'],
+      ['• Grupos: Lista de grupos responsáveis separados por vírgulas (opcional)'],
+      ['• Tem AMS: "sim" ou "não" (padrão: não)'],
+      ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (padrão: nao_tem_book)'],
+      ['• Vigência Inicial: Data no formato YYYY-MM-DD (opcional)'],
+      ['• Vigência Final: Data no formato YYYY-MM-DD (opcional)'],
+      ['• Book Personalizado: "sim" ou "não" (padrão: não)'],
+      ['• Anexo: "sim" ou "não" (padrão: não)']
     ];
     
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+    
+    // Definir larguras das colunas
+    const colWidths = [
+      { wch: 25 }, // Nome Completo
+      { wch: 15 }, // Nome Abreviado
+      { wch: 35 }, // Link SharePoint
+      { wch: 15 }, // Template Padrão
+      { wch: 10 }, // Status
+      { wch: 20 }, // Descrição Status
+      { wch: 25 }, // Email Gestor
+      { wch: 20 }, // Produtos
+      { wch: 20 }, // Grupos
+      { wch: 10 }, // Tem AMS
+      { wch: 15 }, // Tipo Book
+      { wch: 15 }, // Vigência Inicial
+      { wch: 15 }, // Vigência Final
+      { wch: 18 }, // Book Personalizado
+      { wch: 10 }  // Anexo
+    ];
+    
+    worksheet['!cols'] = colWidths;
+    
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas');
     
@@ -261,9 +423,9 @@ class ExcelImportService {
     
     // Adiciona sucessos
     if (result.successfulImports.length > 0) {
-      reportData.push([''], ['Empresas importadas com sucesso:'], ['Nome', 'Status']);
+      //reportData.push([''], ['Empresas importadas com sucesso:'], ['Nome', 'Status']);
       result.successfulImports.forEach(empresa => {
-        reportData.push([empresa.nomeCompleto, empresa.status]);
+        reportData.push([empresa.nome_completo, empresa.status]);
       });
     }
     

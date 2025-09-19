@@ -464,21 +464,29 @@ export class EmpresasClientesService {
   }
 
   private async verificarDuplicatas(nomeCompleto: string, nomeAbreviado: string): Promise<void> {
-    const { data: existingByName } = await supabase
+    const { data: existingByName, error: errorName } = await supabase
       .from('empresas_clientes')
       .select('id')
       .eq('nome_completo', nomeCompleto)
-      .single();
+      .maybeSingle();
+
+    if (errorName) {
+      throw ClientBooksErrorFactory.databaseError('verificar duplicata por nome', errorName);
+    }
 
     if (existingByName) {
       throw ClientBooksErrorFactory.empresaDuplicateName(nomeCompleto);
     }
 
-    const { data: existingByAbbrev } = await supabase
+    const { data: existingByAbbrev, error: errorAbbrev } = await supabase
       .from('empresas_clientes')
       .select('id')
       .eq('nome_abreviado', nomeAbreviado)
-      .single();
+      .maybeSingle();
+
+    if (errorAbbrev) {
+      throw ClientBooksErrorFactory.databaseError('verificar duplicata por nome abreviado', errorAbbrev);
+    }
 
     if (existingByAbbrev) {
       throw ClientBooksErrorFactory.empresaDuplicateName(nomeAbreviado);
@@ -487,12 +495,16 @@ export class EmpresasClientesService {
 
   private async verificarDuplicatasParaEdicao(empresaId: string, nomeCompleto?: string, nomeAbreviado?: string): Promise<void> {
     if (nomeCompleto) {
-      const { data: existingByName } = await supabase
+      const { data: existingByName, error: errorName } = await supabase
         .from('empresas_clientes')
         .select('id')
         .eq('nome_completo', nomeCompleto)
         .neq('id', empresaId)
-        .single();
+        .maybeSingle();
+
+      if (errorName) {
+        throw ClientBooksErrorFactory.databaseError('verificar duplicata por nome na edição', errorName);
+      }
 
       if (existingByName) {
         throw ClientBooksErrorFactory.empresaDuplicateName(nomeCompleto);
@@ -500,12 +512,16 @@ export class EmpresasClientesService {
     }
 
     if (nomeAbreviado) {
-      const { data: existingByAbbrev } = await supabase
+      const { data: existingByAbbrev, error: errorAbbrev } = await supabase
         .from('empresas_clientes')
         .select('id')
         .eq('nome_abreviado', nomeAbreviado)
         .neq('id', empresaId)
-        .single();
+        .maybeSingle();
+
+      if (errorAbbrev) {
+        throw ClientBooksErrorFactory.databaseError('verificar duplicata por nome abreviado na edição', errorAbbrev);
+      }
 
       if (existingByAbbrev) {
         throw ClientBooksErrorFactory.empresaDuplicateName(nomeAbreviado);

@@ -269,14 +269,14 @@ export class ClientBooksTemplateService {
     return {
       empresa: {
         id: 'exemplo-empresa-id',
-        nome_completo: 'Empresa Exemplo Ltda',
-        nome_abreviado: 'Empresa Exemplo',
+        nome_completo: 'EMPRESA EXEMPLO LTDA',
+        nome_abreviado: 'EMPRESA EXEMPLO',
         link_sharepoint: 'https://sharepoint.exemplo.com/pasta-cliente',
         template_padrao: 'portugues',
         status: 'ativo',
         data_status: dataAtual.toISOString(),
         descricao_status: null,
-        email_gestor: 'gestor@exemplo.com',
+        email_gestor: 'gestor@sonda.com',
         created_at: dataAtual.toISOString(),
         updated_at: dataAtual.toISOString(),
         produtos: [
@@ -308,8 +308,8 @@ export class ClientBooksTemplateService {
         updated_at: dataAtual.toISOString(),
         empresa: {
           id: 'exemplo-empresa-id',
-          nome_completo: 'Empresa Exemplo Ltda',
-          nome_abreviado: 'Empresa Exemplo',
+          nome_completo: 'EMPRESA EXEMPLO LTDA',
+          nome_abreviado: 'EMPRESA EXEMPLO',
           link_sharepoint: 'https://sharepoint.exemplo.com/pasta-cliente',
           template_padrao: 'portugues',
           status: 'ativo',

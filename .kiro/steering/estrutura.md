@@ -26,6 +26,7 @@ books-snd/
 │   │   │   │   ├── ClienteForm.tsx						   # Formulário de cadastro/edição de clientes
 │   │   │   │   ├── ClientesTable.tsx					   # Tabela de listagem de clientes
 │   │   │   │   ├── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas com campos AMS, Tipo de Book, Link SharePoint, vigência de contrato e opções específicas para books de qualidade (Book Personalizado e Anexo)
+│   │   │   │   ├── EmpresaImportExportButtons.tsx		   # Componente específico de botões para importação e exportação de empresas clientes com dropdown menus, suporte a Excel e PDF, modal avançado de importação com preview de dados e resultado detalhado, integração completa com hook useExcelImport, controle otimizado de estado do modal (fechamento automático quando não há dados para exibir), e botão "Nova Importação" na tela de resultado para facilitar importações sequenciais sem fechar o modal
 │   │   │   │   ├── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes
 │   │   │   │   ├── GrupoForm.tsx						   # Formulário de cadastro/edição de grupos responsáveis
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de listagem de grupos responsáveis
@@ -171,7 +172,7 @@ books-snd/
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
-│   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes
+│   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes com integração do componente EmpresaImportExportButtons para funcionalidades unificadas de importação e exportação, handler de importação otimizado com forceRefresh automático e notificação de sucesso
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
 │   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
 │   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos)
@@ -220,7 +221,7 @@ books-snd/
 │   │   ├── emailTemplateMappingService.ts       		# Mapeamento de templates de email
 │   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
-│   │   ├── excelImportService.ts       				# Importação e processamento de Excel
+│   │   ├── excelImportService.ts       				# Importação e processamento de Excel com schema expandido e validações robustas (inclui validação obrigatória para Link SharePoint, Email Gestor e Produtos, validação de status com descrição obrigatória para status Inativo/Suspenso, validação de vigências com formato de data e consistência temporal, validação de campos booleanos com valores aceitos "sim/não", além de campos opcionais para AMS, Tipo Book e configurações de book personalizado, template Excel aprimorado com 15 colunas incluindo campos de vigência, instruções detalhadas e larguras de coluna otimizadas, resolução automática de grupos responsáveis por nome convertendo para IDs durante a importação, e geração de relatórios de importação otimizados sem cabeçalhos desnecessários)
 │   │   ├── gruposResponsaveisService.ts       		# CRUD de grupos responsáveis
 │   │   ├── historicoService.ts       					# Consultas e relatórios de histórico
 │   │   ├── jobConfigurationService.ts       			# Configuração de jobs e tarefas agendadas
@@ -327,8 +328,12 @@ books-snd/
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
 ├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
+├── CORRECAO_ATUALIZACAO_AUTOMATICA_LISTA_EMPRESAS.md # Documentação da correção da atualização automática da lista de empresas após importação via Excel (implementação de invalidação de cache automática, callback onImportComplete otimizado, e eliminação da necessidade de refresh manual Ctrl+F5)
 ├── CORRECAO_BOTOES_SIDEBAR.md                      # Documentação das correções de clicabilidade e visibilidade dos botões da sidebar
+├── CORRECAO_CONTAGEM_LINHAS_BOTAO_CANCELAR.md      # Documentação da correção da contagem incorreta de linhas no Excel (filtro de linhas vazias) e correção do botão cancelar no dialog de importação que não fechava o modal
 ├── CORRECAO_EMAIL_CONSOLIDADO_FORMATACAO.md        # Documentação da correção da formatação de e-mails no sistema consolidado (correção do campo 'to' de string para array para consistência com campo 'cc')
+├── CORRECAO_ERROS_API_IMPORTACAO_406_400.md        # Documentação da correção dos erros de API 406 (Not Acceptable) e 400 (Bad Request) na importação de empresas (correção do uso de .single() vs .maybeSingle() na verificação de duplicatas e resolução automática de grupos responsáveis por nome para IDs)
+├── CORRECAO_IMPORTACAO_EMPRESAS_TRAVAMENTO.md      # Documentação da correção do travamento na importação de empresas (problema de timing no hook useExcelImport e solução com useEffect para gerenciar estados)
 ├── CORRECAO_CACHE_DINAMICO_EMPRESAS.md             # Documentação da implementação de cache dinâmico com invalidação cross-screen para empresas (correção de filtros AMS e sincronização automática entre telas)
 ├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
 ├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
@@ -339,9 +344,11 @@ books-snd/
 ├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
 ├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
+├── PADRONIZACAO_BOTAO_IMPORTAR_EMPRESAS.md         # Documentação da padronização do botão de importação na tela "Cadastro de Empresas" com dropdown contendo opções "Baixar Template Excel" e "Importar do Excel", seguindo padrão visual estabelecido e implementação do componente EmpresaImportExportButtons
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIAS_RESPONSIVIDADE_SIDEBAR.md             # Documentação das melhorias de responsividade implementadas na sidebar
+├── MELHORIA_TEMPLATE_EXCEL_EMPRESAS_COMPLETO.md    # Documentação da melhoria do template Excel para importação de empresas com todos os 15 campos disponíveis, validações robustas e instruções integradas
 ├── package.json               						   	# Dependências e scripts do projeto
 ├── package-lock.json           					      	# Lock file das dependências
 ├── postcss.config.js          						   	# Configuração do PostCSS

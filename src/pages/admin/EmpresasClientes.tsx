@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Filter, Upload, Download, FileSpreadsheet, RefreshCw, FileText, ChevronDown } from 'lucide-react';
+import { Plus, Filter, RefreshCw } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,10 +29,8 @@ import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useEmpresasStats } from '@/hooks/useEmpresasStats';
 
-import { EmpresaForm, EmpresasTable } from '@/components/admin/client-books';
-import { ExcelImportDialog } from '@/components/admin/excel';
+import { EmpresaForm, EmpresasTable, EmpresaImportExportButtons } from '@/components/admin/client-books';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { exportEmpresasToExcel, exportEmpresasToPDF } from '@/utils/empresasExportUtils';
 import { toast } from 'sonner';
 import type {
   EmpresaFormData,
@@ -107,40 +100,13 @@ const EmpresasClientes = () => {
   // });
 
   // Handler para refresh após importação
-  const handleImportComplete = () => {
-    // O hook useEmpresas já tem revalidação automática via React Query
-    // Não é necessário fazer nada específico aqui
+  const handleImportComplete = async () => {
+    // Forçar refresh da lista de empresas após importação
+    await forceRefresh();
+    toast.success('Lista de empresas atualizada!');
   };
 
-  // Handler para exportar empresas para Excel
-  const handleExportEmpresasExcel = async () => {
-    try {
-      if (empresasArray.length === 0) {
-        toast.warning('Nenhuma empresa encontrada para exportar');
-        return;
-      }
-      await exportEmpresasToExcel(empresasArray);
-      toast.success('Dados de empresas exportados para Excel com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao exportar dados de empresas para Excel');
-      console.error('Erro na exportação Excel:', error);
-    }
-  };
 
-  // Handler para exportar empresas para PDF
-  const handleExportEmpresasPDF = async () => {
-    try {
-      if (empresasArray.length === 0) {
-        toast.warning('Nenhuma empresa encontrada para exportar');
-        return;
-      }
-      await exportEmpresasToPDF(empresasArray);
-      toast.success('Relatório PDF gerado com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao gerar relatório PDF');
-      console.error('Erro na exportação PDF:', error);
-    }
-  };
 
   // Usar estatísticas reais do banco ou fallback para dados filtrados
   const stats = statsReais || {
@@ -248,45 +214,9 @@ const EmpresasClientes = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 text-sm"
-                    size="sm"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">Exportar</span>
-                    <span className="sm:hidden">Export</span>
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportEmpresasExcel}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Exportar Empresas para Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportEmpresasPDF}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Exportar para PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ProtectedAction>
-            <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
-              <ExcelImportDialog
+              <EmpresaImportExportButtons
+                empresas={empresasArray}
                 onImportComplete={handleImportComplete}
-                trigger={
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 text-sm"
-                    size="sm"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span className="hidden sm:inline">Importar Excel</span>
-                    <span className="sm:hidden">Importar</span>
-                  </Button>
-                }
               />
             </ProtectedAction>
             <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">

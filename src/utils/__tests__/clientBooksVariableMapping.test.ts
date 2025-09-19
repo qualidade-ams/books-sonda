@@ -14,9 +14,9 @@ describe('clientBooksVariableMapping', () => {
     it('deve mapear corretamente os dados de empresa', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
 
-      expect(variaveis['empresa.nomeCompleto']).toBe('Empresa Exemplo Ltda');
-      expect(variaveis['empresa.nomeAbreviado']).toBe('Empresa Exemplo');
-      expect(variaveis['empresa.emailGestor']).toBe('gestor@exemplo.com');
+      expect(variaveis['empresa.nomeCompleto']).toBe('EMPRESA EXEMPLO LTDA');
+      expect(variaveis['empresa.nomeAbreviado']).toBe('EMPRESA EXEMPLO');
+      expect(variaveis['empresa.emailGestor']).toBe('gestor@sonda.com');
       expect(variaveis['empresa.templatePadrao']).toBe('Português');
       expect(variaveis['empresa.status']).toBe('Ativo');
     });
@@ -55,7 +55,7 @@ describe('clientBooksVariableMapping', () => {
       
       const resultado = substituirVariaveisClientBooks(template, variaveis);
       
-      expect(resultado).toBe('Olá João Silva, da empresa Empresa Exemplo Ltda');
+      expect(resultado).toBe('Olá João Silva, da empresa EMPRESA EXEMPLO LTDA');
     });
 
     it('deve substituir múltiplas ocorrências da mesma variável', () => {
@@ -64,7 +64,7 @@ describe('clientBooksVariableMapping', () => {
       
       const resultado = substituirVariaveisClientBooks(template, variaveis);
       
-      expect(resultado).toBe('Empresa Exemplo Ltda - Empresa Exemplo Ltda');
+      expect(resultado).toBe('EMPRESA EXEMPLO LTDA - EMPRESA EXEMPLO LTDA');
     });
 
     it('deve manter variáveis não encontradas inalteradas', () => {

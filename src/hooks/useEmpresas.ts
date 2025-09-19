@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { empresasClientesService } from '@/services/empresasClientesService';
 import { clientBooksCacheService } from '@/services/clientBooksCache';
-import { PaginationUtils, type PaginationParams, type PaginationResult } from '@/utils/paginationUtils';
+import { PaginationUtils, type PaginationParams } from '@/utils/paginationUtils';
 import type {
   EmpresaClienteCompleta,
   EmpresaFormData,
@@ -230,7 +230,7 @@ export const useEmpresas = (
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
 
       await queryClient.refetchQueries({ queryKey: ['empresas'] });
-      toast.success('Empresas importadas com sucesso!');
+      //toast.success('Empresas importadas com sucesso!');
     },
     onError: (error) => {
       console.error('Erro ao importar empresas:', error);

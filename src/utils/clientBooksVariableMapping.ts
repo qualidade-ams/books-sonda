@@ -285,14 +285,14 @@ export const gerarDadosExemplo = (): ClientBooksTemplateData => {
   return {
     empresa: {
       id: 'exemplo-empresa-id',
-      nome_completo: 'Empresa Exemplo Ltda',
-      nome_abreviado: 'Empresa Exemplo',
+      nome_completo: 'EMPRESA EXEMPLO LTDA',
+      nome_abreviado: 'EMPRESA EXEMPLO',
       link_sharepoint: 'https://sharepoint.exemplo.com/pasta-cliente',
       template_padrao: 'portugues',
       status: 'ativo',
       data_status: dataAtual.toISOString(),
       descricao_status: null,
-      email_gestor: 'gestor@exemplo.com',
+      email_gestor: 'gestor@sonda.com',
       tem_ams: true,
       tipo_book: 'qualidade',
       created_at: dataAtual.toISOString(),
@@ -316,8 +316,8 @@ export const gerarDadosExemplo = (): ClientBooksTemplateData => {
       updated_at: dataAtual.toISOString(),
       empresa: {
         id: 'exemplo-empresa-id',
-        nome_completo: 'Empresa Exemplo Ltda',
-        nome_abreviado: 'Empresa Exemplo',
+        nome_completo: 'EMPRESA EXEMPLO LTDA',
+        nome_abreviado: 'EMPRESA EXEMPLO',
         link_sharepoint: null,
         template_padrao: 'portugues',
         status: 'ativo',
