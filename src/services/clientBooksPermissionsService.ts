@@ -45,6 +45,13 @@ export class ClientBooksPermissionsService {
           description: 'Relatórios e histórico de envios',
           category: 'client_books',
           route: '/admin/historico-books'
+        },
+        {
+          key: 'monitoramento_vigencias',
+          name: 'Monitoramento de Vigências',
+          description: 'Monitoramento e controle de vigências de contratos',
+          category: 'admin',
+          route: '/admin/monitoramento-vigencias'
         }
       ];
 
@@ -93,13 +100,14 @@ export class ClientBooksPermissionsService {
 
       const adminGroupId = adminGroups[0].id;
 
-      // 2. Telas do sistema de client books
+      // 2. Telas do sistema de client books e administração
       const clientBooksScreens = [
         'empresas_clientes',
         'clientes', 
         'grupos_responsaveis',
         'controle_disparos',
-        'historico_books'
+        'historico_books',
+        'monitoramento_vigencias'
       ];
 
       // 3. Configurar permissões de edição para administradores
@@ -143,7 +151,8 @@ export class ClientBooksPermissionsService {
           'clientes',
           'grupos_responsaveis', 
           'controle_disparos',
-          'historico_books'
+          'historico_books',
+          'monitoramento_vigencias'
         ]);
 
       if (screensError) {
@@ -163,7 +172,8 @@ export class ClientBooksPermissionsService {
           'clientes',
           'grupos_responsaveis',
           'controle_disparos', 
-          'historico_books'
+          'historico_books',
+          'monitoramento_vigencias'
         ]);
 
       if (permissionsError) {

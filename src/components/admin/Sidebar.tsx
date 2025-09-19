@@ -274,7 +274,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           icon: BarChart3,
           label: 'Monitoramento Vigências',
           path: '/admin/monitoramento-vigencias',
-          screenKey: 'dashboard'
+          screenKey: 'monitoramento_vigencias'
         }
       ]
     }

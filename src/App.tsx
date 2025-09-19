@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import GlobalErrorBoundary from "@/components/errors/GlobalErrorBoundary";
 import PermissionErrorBoundary from "@/components/errors/PermissionErrorBoundary";
+import { AutoSchedulerInitializer } from "@/components/admin/AutoSchedulerInitializer";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import EmailConfig from "./pages/admin/EmailConfig";
@@ -22,6 +23,7 @@ import ControleDisparos from "./pages/admin/ControleDisparos";
 import ControleDisparosPersonalizados from "./pages/admin/ControleDisparosPersonalizados";
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
 import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
+import ConfigurarPermissoesVigencias from "./pages/admin/ConfigurarPermissoesVigencias";
 import AuditLogs from "./pages/admin/AuditLogs";
 import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
 import NotFound from "./pages/NotFound";
@@ -39,6 +41,7 @@ const App = () => (
         <PermissionsProvider>
           <PermissionErrorBoundary>
             <TooltipProvider>
+              <AutoSchedulerInitializer />
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -59,8 +62,9 @@ const App = () => (
                   <Route path="/admin/disparos-personalizados" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparosPersonalizados /></ProtectedRoute>} />
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />
+                  <Route path="/admin/configurar-permissoes-vigencias" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesVigencias /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
-                  <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="dashboard"><MonitoramentoVigencias /></ProtectedRoute>} />
+                  <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="monitoramento_vigencias"><MonitoramentoVigencias /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

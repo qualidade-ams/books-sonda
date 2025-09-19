@@ -103,7 +103,7 @@ export const useEmpresas = (
   // Mutation para criar empresa com invalidação de cache otimizada
   const createMutation = useMutation({
     mutationFn: (data: EmpresaFormData) => empresasClientesService.criarEmpresa(data),
-    onSuccess: async () => {
+    onSuccess: async (_, data) => {
       // Invalidar cache específico
       clientBooksCacheService.invalidateEmpresaCache('');
       await queryClient.invalidateQueries({ queryKey: ['empresas'] });
@@ -113,7 +113,40 @@ export const useEmpresas = (
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
 
-      toast.success('Empresa criada com sucesso!');
+      // ✅ NOVO: Verificar vigência automaticamente se foi definida uma vigência final
+      if (data.vigenciaFinal) {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const vigenciaFinal = new Date(data.vigenciaFinal);
+        vigenciaFinal.setHours(0, 0, 0, 0);
+        
+        // Se a vigência final é anterior a hoje, executar verificação automática
+        if (vigenciaFinal < hoje) {
+          try {
+            // Importar o serviço de vigência dinamicamente para evitar dependência circular
+            const { vigenciaService } = await import('@/services/vigenciaService');
+            const empresasInativadas = await vigenciaService.executarVerificacaoManual();
+            
+            if (empresasInativadas > 0) {
+              toast.success(`Empresa criada! ${empresasInativadas} empresa(s) com vigência vencida foram automaticamente inativadas.`);
+              
+              // Recarregar dados após inativação automática
+              await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+            } else {
+              toast.success('Empresa criada com sucesso!');
+            }
+          } catch (error) {
+            console.error('Erro na verificação automática de vigência:', error);
+            toast.success('Empresa criada com sucesso!');
+            toast.warning('Não foi possível executar verificação automática de vigência. Verifique manualmente na tela de Monitoramento.');
+          }
+        } else {
+          toast.success('Empresa criada com sucesso!');
+        }
+      } else {
+        toast.success('Empresa criada com sucesso!');
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || 'Erro ao criar empresa');
@@ -124,7 +157,7 @@ export const useEmpresas = (
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<EmpresaFormData> }) =>
       empresasClientesService.atualizarEmpresa(id, data),
-    onSuccess: async (_, { id }) => {
+    onSuccess: async (_, { id, data }) => {
       // Invalidar cache específico da empresa
       clientBooksCacheService.invalidateEmpresaCache(id);
 
@@ -140,10 +173,44 @@ export const useEmpresas = (
       // ✅ ADICIONADO: Invalidar cache de histórico de disparos
       await queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
 
+      // ✅ NOVO: Verificar vigência automaticamente se foi definida uma vigência final
+      if (data.vigenciaFinal) {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const vigenciaFinal = new Date(data.vigenciaFinal);
+        vigenciaFinal.setHours(0, 0, 0, 0);
+        
+        // Se a vigência final é anterior a hoje, executar verificação automática
+        if (vigenciaFinal < hoje) {
+          try {
+            // Importar o serviço de vigência dinamicamente para evitar dependência circular
+            const { vigenciaService } = await import('@/services/vigenciaService');
+            const empresasInativadas = await vigenciaService.executarVerificacaoManual();
+            
+            if (empresasInativadas > 0) {
+              toast.success(`Empresa atualizada! ${empresasInativadas} empresa(s) com vigência vencida foram automaticamente inativadas.`);
+              
+              // Recarregar dados após inativação automática
+              await queryClient.invalidateQueries({ queryKey: ['empresas'] });
+              await queryClient.refetchQueries({ queryKey: cacheKey });
+            } else {
+              toast.success('Empresa atualizada com sucesso!');
+            }
+          } catch (error) {
+            console.error('Erro na verificação automática de vigência:', error);
+            toast.success('Empresa atualizada com sucesso!');
+            toast.warning('Não foi possível executar verificação automática de vigência. Verifique manualmente na tela de Monitoramento.');
+          }
+        } else {
+          toast.success('Empresa atualizada com sucesso!');
+        }
+      } else {
+        toast.success('Empresa atualizada com sucesso!');
+      }
+
       // Forçar refetch para garantir dados atualizados
       await queryClient.refetchQueries({ queryKey: cacheKey });
-
-      toast.success('Empresa atualizada com sucesso!');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Erro ao atualizar empresa');

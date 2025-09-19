@@ -153,6 +153,28 @@ class VigenciaService {
   }
 
   /**
+   * Executa verificação manual de todas as empresas com vigência vencida
+   * Útil para executar imediatamente após definir uma vigência
+   */
+  async executarVerificacaoManual(): Promise<number> {
+    try {
+      console.log('🔍 Executando verificação manual de vigências...');
+      const empresasInativadas = await this.executarInativacaoAutomatica();
+      
+      if (empresasInativadas > 0) {
+        console.log(`✅ Verificação manual concluída: ${empresasInativadas} empresa(s) inativada(s)`);
+      } else {
+        console.log('ℹ️ Verificação manual concluída: nenhuma empresa precisou ser inativada');
+      }
+      
+      return empresasInativadas;
+    } catch (error) {
+      console.error('❌ Erro na verificação manual:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Força a verificação e inativação de uma empresa específica
    */
   async verificarEmpresaEspecifica(empresaId: string): Promise<boolean> {

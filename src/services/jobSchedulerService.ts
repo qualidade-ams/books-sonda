@@ -354,10 +354,11 @@ class JobSchedulerService {
 // Instância singleton
 export const jobSchedulerService = new JobSchedulerService();
 
-// Auto-iniciar o scheduler em produção
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+// Auto-iniciar o scheduler em produção e desenvolvimento
+if (typeof window !== 'undefined') {
   // Aguardar um pouco antes de iniciar para garantir que a aplicação carregou
   setTimeout(() => {
+    console.log('🚀 Iniciando job scheduler automaticamente...');
     jobSchedulerService.start();
-  }, 5000);
+  }, 3000); // Reduzido para 3 segundos
 }

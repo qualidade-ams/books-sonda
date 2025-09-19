@@ -70,14 +70,18 @@ books-snd/
 │   │   │   │   ├── GrupoFormModal.tsx					   # Modal de formulário de grupo responsável
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de grupos responsáveis
 │   │   │   │   └── ImportExportButtons.tsx				   # Botões de importação e exportação para grupos responsáveis
+│   │   │   ├── AutoSchedulerInitializer.tsx			   # Componente para inicialização automática do job scheduler (garante que o scheduler seja iniciado quando a aplicação carrega)
 │   │   │   ├── Breadcrumb.tsx  						      # Navegação em migalhas de pão com suporte às rotas do sistema de client books
 │   │   │   ├── DialogTesteEmail.tsx 					   # Modal de teste de envio de email
+│   │   │   ├── index.ts								      # Exportações centralizadas dos componentes admin
+│   │   │   ├── JobSchedulerManager.tsx					# Gerenciador de jobs e tarefas agendadas do sistema
 │   │   │   ├── LayoutAdmin.tsx							   # Layout principal da área administrativa
 │   │   │   ├── PerformanceMonitor.tsx					   # Monitor de performance da aplicação
 │   │   │   ├── PermissionsFixer.tsx  					   # Configurador de permissões
 │   │   │   ├── SessionInfo.tsx  						   # Informações de expiração de sessão
 │   │   │   ├── Sidebar.tsx  							      # Menu lateral de navegação hierárquico com seções expansíveis (Qualidade, Comunicação [Disparos, Disparos Personalizados, Histórico de Books], Clientes [Empresas Clientes, Cadastro de Clientes], Configurações [Grupos Responsáveis, Template E-mails], Administração [Grupos de Usuários, Gerenciar Usuários, Atribuir Usuários, Logs de Auditoria]), suporte a colapso com botão toggle otimizado (posicionamento absoluto -right-3, z-index máximo 2147483647, design compacto 6x6 com cores azul Sonda, sombra e borda aprimoradas), tooltips otimizados com delayDuration de 300ms e z-index 50 para melhor visibilidade, controle de permissões por tela, detecção automática da seção ativa baseada na rota atual, persistência aprimorada do estado das seções expandidas no localStorage com tratamento de erros, scrollbar customizada elegante (6px, azul Sonda com transparência, bordas arredondadas), truncamento de texto para labels longas, otimizações de CSS para elementos flexíveis, controle de overflow aprimorado (sem scroll horizontal), e melhorias de responsividade para experiência visual profissional
-│   │   │   └── ThemeToggle.tsx  						   # Alternador de tema (claro/escuro)
+│   │   │   ├── ThemeToggle.tsx  						   # Alternador de tema (claro/escuro)
+│   │   │   └── VigenciaMonitor.tsx						   # Monitor de vigência de contratos das empresas clientes
 │   │   │			
 │   │   ├── auth/               						      # Componentes de autenticação
 │   │   │   └── index.ts								      # Exportações centralizadas dos componentes de auth
@@ -129,7 +133,7 @@ books-snd/
 │   │   ├── useEmailTemplatePreview.ts           		# Hook para preview de templates
 │   │   ├── useEmailTemplates.ts                 		# Hook para gerenciamento de templates
 │   │   ├── useEmailVariableMapping.ts           		# Hook para mapeamento de variáveis de email
-│   │   ├── useEmpresas.ts                       		# Hook para gerenciamento completo de empresas clientes com paginação, cache otimizado e invalidação cross-screen (CRUD completo, seleção múltipla, importação em lote, alteração de status em lote, cache dinâmico com filtros ativos, invalidação automática do controle de disparos padrão e personalizados, histórico de books, sincronização assíncrona de queries relacionadas, e hook auxiliar useEmpresa para busca por ID)
+│   │   ├── useEmpresas.ts                       		# Hook para gerenciamento completo de empresas clientes com paginação, cache otimizado e invalidação cross-screen (CRUD completo, seleção múltipla, importação em lote, alteração de status em lote, cache dinâmico com filtros ativos, invalidação automática do controle de disparos padrão e personalizados, histórico de books, sincronização assíncrona de queries relacionadas, verificação automática de vigência na atualização de empresas com inativação automática de contratos vencidos, e hook auxiliar useEmpresa para busca por ID)
 │   │   ├── useEmpresasStats.ts                  		# Hook para estatísticas das empresas (independente de filtros)
 │   │   ├── useExcelImport.ts                    		# Hook para importação de arquivos Excel
 │   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
@@ -167,6 +171,7 @@ books-snd/
 │   │   │   ├── AuditLogs.tsx           				   # Visualização de logs de auditoria
 │   │   │   ├── Clientes.tsx            				   # Gerenciamento de clientes (página "Cadastro de Clientes", renomeada de Colaboradores.tsx)
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
+│   │   │   ├── ConfigurarPermissoesVigencias.tsx     # Configuração de permissões para tela de Monitoramento de Vigências (registra a tela no sistema de permissões, configura permissão de edição para administradores, inclui verificação de configuração e instruções detalhadas)
 │   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas, agendamento e contadores inteligentes baseados no status das empresas selecionadas para otimizar a experiência do usuário)
 │   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento e controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
@@ -210,7 +215,7 @@ books-snd/
 │   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, tratamento robusto de erros com registro detalhado de falhas e sucessos)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
-│   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, colaboradores "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books)
+│   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, clientes "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books, monitoramento_vigencias "Monitoramento de Vigências")
 │   │   ├── clientBooksServices.ts       				# Serviços centralizados do sistema de books
 │   │   ├── clientBooksTemplateService.ts            # Serviço de templates para sistema de books
 │   │   ├── clientesService.ts       					# CRUD de clientes (renomeado de colaboradoresService para clientesService, mantém compatibilidade)
@@ -307,12 +312,13 @@ books-snd/
 │   ├── .temp/                  					      	# Arquivos temporários do Supabase
 │   │   └── cli-latest                              # CLI do Supabase
 │   └── migration/              					      	# Scripts de migração do banco
+│       ├── add_monitoramento_vigencias_screen.sql  # Migração otimizada para adicionar tela de Monitoramento de Vigências ao sistema de permissões (sem campos de timestamp automáticos created_at/updated_at)
 │       ├── add_user_registration_screen.sql       # Migração para tela de registro de usuários
 │       ├── client_books_management_migration.sql		# Migração principal do sistema de books
 │       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
 │       ├── client_books_rls_policies.sql          # Políticas RLS para sistema de books
 │       ├── correcao_trigger_vigencia.sql          # Correção do trigger de vigência de contratos
-│       ├── correcao_vigencia_vencimento.sql       # Correção da lógica de vencimento de vigência
+│       ├── correcao_vigencia_vencimento.sql       # Correção da lógica de vigência vencida (considera vencido apenas no dia seguinte ao vencimento)
 │       ├── email_logs_templates_migration.sql     # Migração para logs e templates de email
 │       ├── email_test_data_migration.sql          # Migração para dados de teste de email
 │       ├── empresa_campos_adicionais_migration.sql # Migração para campos adicionais da tabela empresas
@@ -339,6 +345,9 @@ books-snd/
 ├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
 ├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
+├── CORRECAO_PERMISSOES_MONITORAMENTO_VIGENCIAS.md   # Documentação da correção das permissões da tela de Monitoramento de Vigências (registro da tela no sistema de permissões, configuração de permissões para administradores, script SQL de migração otimizado sem campos de timestamp automáticos, página de configuração via interface web, e instruções completas para resolução do problema de visibilidade na lista de permissões)
+├── CORRECAO_SISTEMA_VIGENCIA_AUTOMATICA.md          # Documentação da correção do sistema de vigência automática (job scheduler não inicializava automaticamente, implementação de inicialização garantida, componente AutoSchedulerInitializer, verificação manual aprimorada e múltiplas camadas de garantia de funcionamento)
+├── CORRECAO_VIGENCIA_AUTOMATICA_AO_SALVAR.md        # Documentação da correção da vigência automática ao salvar empresa (verificação imediata quando vigência final é definida para data anterior ao dia atual, inativação automática no momento do salvamento sem esperar job scheduler, implementação no hook useEmpresas com importação dinâmica do vigenciaService, tratamento robusto de erros e feedback específico ao usuário)
 ├── CORRECAO_TEMPLATE_PADRAO_NAO_EXIBIDO.md          # Documentação da correção do campo "Template Padrão" que não exibia opções no formulário de empresa (adição de templates padrão "Português" e "Inglês" ao hook useBookTemplates)
 ├── FUNCIONALIDADE_CONTROLE_BOTOES_DISPARO.md       # Documentação da funcionalidade de controle inteligente de botões de disparo (habilitação/desabilitação baseada no status das empresas selecionadas)
 ├── IMPLEMENTACAO_LOGICA_CONDICIONAL_TIPO_BOOK.md   # Documentação da implementação da lógica condicional para o campo "Tipo de Book" (exibição condicional baseada no campo "Tem AMS", validação contextual, interface dinâmica com hierarquia de dependências e experiência do usuário aprimorada)
