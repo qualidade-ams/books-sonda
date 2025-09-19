@@ -319,17 +319,7 @@ const ControleDisparos = () => {
               Acompanhe e gerencie o envio mensal de books
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
-          </div>
+
         </div>
 
         {/* Seletor de Mês/Ano */}

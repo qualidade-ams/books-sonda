@@ -365,16 +365,7 @@ const EmpresasClientes = () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={forceRefresh}
-                  disabled={isLoading}
-                  className="flex items-center justify-center space-x-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span>Atualizar</span>
-                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"

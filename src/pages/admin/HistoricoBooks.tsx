@@ -70,8 +70,7 @@ const HistoricoBooks = () => {
   // Estados para filtros
   const currentDate = new Date();
   const [filtros, setFiltros] = useState<FiltrosAvancados>({
-    mes: currentDate.getMonth() + 1,
-    ano: currentDate.getFullYear(),
+    // Não definir mês e ano por padrão para mostrar todos os registros
     incluirInativos: false,
     apenasComFalhas: false,
     apenasComSucesso: false
@@ -164,8 +163,7 @@ const HistoricoBooks = () => {
 
   const handleLimparFiltros = () => {
     const filtrosLimpos: FiltrosAvancados = {
-      mes: currentDate.getMonth() + 1,
-      ano: currentDate.getFullYear(),
+      // Não definir mês e ano por padrão para mostrar todos os registros
       incluirInativos: false,
       apenasComFalhas: false,
       apenasComSucesso: false

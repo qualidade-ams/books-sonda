@@ -113,34 +113,49 @@ class BooksDisparoService {
             emailsCC.push(empresa.email_gestor);
           }
 
-          // Processar cada cliente
-          let emailsEnviados = 0;
-          const clientesProcessados: string[] = [];
+          // Processar empresa com e-mail consolidado
+          try {
+            const resultadoDisparo = await this.enviarBookEmpresa(
+              empresa,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
 
-          for (const cliente of clientes) {
-            try {
-              const resultadoDisparo = await this.enviarBookCliente(
-                empresa,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-
-              if (resultadoDisparo.sucesso) {
-                emailsEnviados++;
-                clientesProcessados.push(cliente.id);
-              }
-
-              detalhes.push({
-                empresaId: empresa.id,
-                clienteId: cliente.id,
-                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
-                erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
+            if (resultadoDisparo.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
               });
 
-            } catch (error) {
+              await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `E-mail consolidado enviado para ${clientes.length} clientes`);
+              sucessos++;
+            } else {
+              // Registrar falha para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'falhou',
+                  erro: resultadoDisparo.erro,
+                  emailsEnviados: []
+                });
+              });
+
+              await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Falha no envio consolidado: ${resultadoDisparo.erro}`);
+              falhas++;
+            }
+
+          } catch (error) {
+            // Registrar erro para todos os clientes da empresa
+            clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
@@ -148,15 +163,9 @@ class BooksDisparoService {
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
               });
-            }
-          }
+            });
 
-          // Atualizar controle mensal
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `${emailsEnviados} e-mails enviados`);
-            sucessos++;
-          } else {
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', 'Nenhum e-mail foi enviado com sucesso');
+            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
             falhas++;
           }
 
@@ -274,55 +283,80 @@ class BooksDisparoService {
           }
           if (empresa.email_gestor) emailsCC.push(empresa.email_gestor);
 
-          let emailsEnviados = 0;
-          for (const cliente of clientes) {
-            try {
-              const resultadoDisparo = await this.enviarBookCliente(
-                empresa,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-              if (resultadoDisparo.sucesso) emailsEnviados++;
-              detalhes.push({
-                empresaId: empresa.id,
-                clienteId: cliente.id,
-                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
-                erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
-              });
-            } catch (error) {
-              detalhes.push({
-                empresaId: empresa.id,
-                clienteId: cliente.id,
-                status: 'falhou',
-                erro: error instanceof Error ? error.message : 'Erro desconhecido',
-                emailsEnviados: []
-              });
-            }
-          }
+          // Processar empresa com e-mail consolidado
+          try {
+            const resultadoDisparo = await this.enviarBookEmpresa(
+              empresa,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
 
-          // Atualizar controle mensal com observação apropriada
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(
-              mes,
-              ano,
-              empresa.id,
-              'enviado',
-              forceResend ? `Reenvio manual: ${emailsEnviados} e-mails enviados` : `${emailsEnviados} e-mails enviados`
-            );
-            sucessos++;
-          } else {
-            await this.atualizarControleMensal(
-              mes,
-              ano,
-              empresa.id,
-              'falhou',
-              forceResend ? 'Reenvio manual: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso'
-            );
+            if (resultadoDisparo.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
+              });
+
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'enviado',
+                forceResend ? `Reenvio manual: E-mail consolidado para ${clientes.length} clientes` : `E-mail consolidado enviado para ${clientes.length} clientes`
+              );
+              sucessos++;
+            } else {
+              // Registrar falha para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'falhou',
+                  erro: resultadoDisparo.erro,
+                  emailsEnviados: []
+                });
+              });
+
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'falhou',
+                forceResend ? 'Reenvio manual: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso'
+              );
             falhas++;
           }
+
+        } catch (error) {
+          // Registrar erro para todos os clientes da empresa
+          clientes.forEach(cliente => {
+            detalhes.push({
+              empresaId: empresa.id,
+              clienteId: cliente.id,
+              status: 'falhou',
+              erro: error instanceof Error ? error.message : 'Erro desconhecido',
+              emailsEnviados: []
+            });
+          });
+
+          await this.atualizarControleMensal(
+            mes,
+            ano,
+            empresa.id,
+            'falhou',
+            forceResend ? `Reenvio manual: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}` : `Erro no processamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
+          falhas++;
+        }
+
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -536,34 +570,49 @@ class BooksDisparoService {
             emailsCC.push(empresa.email_gestor);
           }
 
-          // Processar cada cliente
-          let emailsEnviados = 0;
-          const clientesProcessados: string[] = [];
+          // Processar empresa com e-mail consolidado
+          try {
+            const resultadoDisparo = await this.enviarBookEmpresa(
+              empresa,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
 
-          for (const cliente of clientes) {
-            try {
-              const resultadoDisparo = await this.enviarBookCliente(
-                empresa,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-
-              if (resultadoDisparo.sucesso) {
-                emailsEnviados++;
-                clientesProcessados.push(cliente.id);
-              }
-
-              detalhes.push({
-                empresaId: empresa.id,
-                clienteId: cliente.id,
-                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
-                erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
+            if (resultadoDisparo.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
               });
 
-            } catch (error) {
+              await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`);
+              sucessos++;
+            } else {
+              // Registrar falha para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'falhou',
+                  erro: resultadoDisparo.erro,
+                  emailsEnviados: []
+                });
+              });
+
+              await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`);
+              falhas++;
+            }
+
+          } catch (error) {
+            // Registrar erro para todos os clientes da empresa
+            clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
@@ -571,15 +620,9 @@ class BooksDisparoService {
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
               });
-            }
-          }
+            });
 
-          // Atualizar controle mensal
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'enviado', `${emailsEnviados} e-mails enviados (personalizado)`);
-            sucessos++;
-          } else {
-            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', 'Nenhum e-mail foi enviado com sucesso (personalizado)');
+            await this.atualizarControleMensal(mes, ano, empresa.id, 'falhou', `Erro no processamento (personalizado): ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
             falhas++;
           }
 
@@ -693,55 +736,80 @@ class BooksDisparoService {
           }
           if (empresa.email_gestor) emailsCC.push(empresa.email_gestor);
 
-          let emailsEnviados = 0;
-          for (const cliente of clientes) {
-            try {
-              const resultadoDisparo = await this.enviarBookCliente(
-                empresa,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-              if (resultadoDisparo.sucesso) emailsEnviados++;
-              detalhes.push({
-                empresaId: empresa.id,
-                clienteId: cliente.id,
-                status: resultadoDisparo.sucesso ? 'enviado' : 'falhou',
-                erro: resultadoDisparo.erro,
-                emailsEnviados: resultadoDisparo.sucesso ? [cliente.email, ...emailsCC] : []
+          // Processar empresa com e-mail consolidado
+          try {
+            const resultadoDisparo = await this.enviarBookEmpresa(
+              empresa,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
+
+            if (resultadoDisparo.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: empresa.id,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
               });
-            } catch (error) {
+
+              await this.atualizarControleMensal(
+                mes,
+                ano,
+                empresa.id,
+                'enviado',
+                forceResend ? `Reenvio manual personalizado: E-mail consolidado para ${clientes.length} clientes` : `E-mail consolidado enviado para ${clientes.length} clientes (personalizado)`
+              );
+            sucessos++;
+          } else {
+            // Registrar falha para todos os clientes da empresa
+            clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
-                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                erro: resultadoDisparo.erro,
                 emailsEnviados: []
               });
-            }
-          }
+            });
 
-          // Atualizar controle mensal com observação apropriada
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(
-              mes,
-              ano,
-              empresa.id,
-              'enviado',
-              forceResend ? `Reenvio manual personalizado: ${emailsEnviados} e-mails enviados` : `${emailsEnviados} e-mails enviados (personalizado)`
-            );
-            sucessos++;
-          } else {
             await this.atualizarControleMensal(
               mes,
               ano,
               empresa.id,
               'falhou',
-              forceResend ? 'Reenvio manual personalizado: Nenhum e-mail foi enviado com sucesso' : 'Nenhum e-mail foi enviado com sucesso (personalizado)'
+              forceResend ? `Reenvio manual personalizado: Falha no envio consolidado - ${resultadoDisparo.erro}` : `Falha no envio consolidado (personalizado): ${resultadoDisparo.erro}`
             );
             falhas++;
           }
+
+        } catch (error) {
+          // Registrar erro para todos os clientes da empresa
+          clientes.forEach(cliente => {
+            detalhes.push({
+              empresaId: empresa.id,
+              clienteId: cliente.id,
+              status: 'falhou',
+              erro: error instanceof Error ? error.message : 'Erro desconhecido',
+              emailsEnviados: []
+            });
+          });
+
+          await this.atualizarControleMensal(
+            mes,
+            ano,
+            empresa.id,
+            'falhou',
+            forceResend ? `Reenvio manual personalizado: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}` : `Erro no processamento (personalizado): ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
+          falhas++;
+        }
+
         } catch (error) {
           falhas++;
           await this.registrarFalhaControle(
@@ -833,32 +901,61 @@ class BooksDisparoService {
             emailsCC.push(controle.empresas_clientes.email_gestor);
           }
 
-          let emailsEnviados = 0;
+          // Reenviar com e-mail consolidado
+          try {
+            const resultado = await this.enviarBookEmpresa(
+              controle.empresas_clientes,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
 
-          // Reenviar para cada cliente
-          for (const cliente of clientes) {
-            try {
-              const resultado = await this.enviarBookCliente(
-                controle.empresas_clientes,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-
-              if (resultado.sucesso) {
-                emailsEnviados++;
-              }
-
-              detalhes.push({
-                empresaId: controle.empresa_id!,
-                clienteId: cliente.id,
-                status: resultado.sucesso ? 'enviado' : 'falhou',
-                erro: resultado.erro,
-                emailsEnviados: resultado.sucesso ? [cliente.email, ...emailsCC] : []
+            if (resultado.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: controle.empresa_id!,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
               });
 
-            } catch (error) {
+              await this.atualizarControleMensal(
+                mes, 
+                ano, 
+                controle.empresa_id!, 
+                'enviado', 
+                `Reenvio personalizado: E-mail consolidado para ${clientes.length} clientes`
+              );
+              sucessos++;
+            } else {
+              // Registrar falha para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: controle.empresa_id!,
+                  clienteId: cliente.id,
+                  status: 'falhou',
+                  erro: resultado.erro,
+                  emailsEnviados: []
+                });
+              });
+
+              await this.atualizarControleMensal(
+                mes, 
+                ano, 
+                controle.empresa_id!, 
+                'falhou', 
+                `Reenvio personalizado: Falha no envio consolidado - ${resultado.erro}`
+              );
+              falhas++;
+            }
+
+          } catch (error) {
+            // Registrar erro interno para todos os clientes da empresa
+            clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: controle.empresa_id!,
                 clienteId: cliente.id,
@@ -866,31 +963,37 @@ class BooksDisparoService {
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
               });
-            }
-          }
+            });
 
-          // Atualizar status do controle
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(
-              mes, 
-              ano, 
-              controle.empresa_id!, 
-              'enviado', 
-              `Reenvio personalizado: ${emailsEnviados} e-mails enviados`
-            );
-            sucessos++;
-          } else {
             await this.atualizarControleMensal(
               mes, 
               ano, 
               controle.empresa_id!, 
               'falhou', 
-              'Reenvio personalizado: Nenhum e-mail foi enviado com sucesso'
+              `Reenvio personalizado: Erro interno - ${error instanceof Error ? error.message : 'Erro desconhecido'}`
             );
             falhas++;
           }
 
         } catch (error) {
+          // Registrar erro para todos os clientes da empresa
+          clientes.forEach(cliente => {
+            detalhes.push({
+              empresaId: controle.empresa_id!,
+              clienteId: cliente.id,
+              status: 'falhou',
+              erro: error instanceof Error ? error.message : 'Erro desconhecido',
+              emailsEnviados: []
+            });
+          });
+
+          await this.atualizarControleMensal(
+            mes, 
+            ano, 
+            controle.empresa_id!, 
+            'falhou', 
+            `Reenvio personalizado: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
           falhas++;
         }
       }
@@ -1050,32 +1153,54 @@ class BooksDisparoService {
             emailsCC.push(controle.empresas_clientes.email_gestor);
           }
 
-          let emailsEnviados = 0;
+          // Reenviar com e-mail consolidado
+          try {
+            const resultado = await this.enviarBookEmpresa(
+              controle.empresas_clientes,
+              clientes,
+              emailsCC,
+              mes,
+              ano
+            );
 
-          // Reenviar para cada cliente
-          for (const cliente of clientes) {
-            try {
-              const resultado = await this.enviarBookCliente(
-                controle.empresas_clientes,
-                cliente,
-                emailsCC,
-                mes,
-                ano
-              );
-
-              if (resultado.sucesso) {
-                emailsEnviados++;
-              }
-
-              detalhes.push({
-                empresaId: controle.empresa_id!,
-                clienteId: cliente.id,
-                status: resultado.sucesso ? 'enviado' : 'falhou',
-                erro: resultado.erro,
-                emailsEnviados: resultado.sucesso ? [cliente.email, ...emailsCC] : []
+            if (resultado.sucesso) {
+              // Registrar sucesso para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: controle.empresa_id!,
+                  clienteId: cliente.id,
+                  status: 'enviado',
+                  erro: undefined,
+                  emailsEnviados: [cliente.email, ...emailsCC]
+                });
               });
 
-            } catch (error) {
+              sucessos++;
+            } else {
+              // Registrar falha para todos os clientes da empresa
+              clientes.forEach(cliente => {
+                detalhes.push({
+                  empresaId: controle.empresa_id!,
+                  clienteId: cliente.id,
+                  status: 'falhou',
+                  erro: resultado.erro,
+                  emailsEnviados: []
+                });
+              });
+
+              await this.atualizarControleMensal(
+                mes, 
+                ano, 
+                controle.empresa_id!, 
+                'falhou', 
+                `Reenvio: Falha no envio consolidado - ${resultado.erro}`
+              );
+              falhas++;
+            }
+
+          } catch (error) {
+            // Registrar erro interno para todos os clientes da empresa
+            clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: controle.empresa_id!,
                 clienteId: cliente.id,
@@ -1083,31 +1208,45 @@ class BooksDisparoService {
                 erro: error instanceof Error ? error.message : 'Erro desconhecido',
                 emailsEnviados: []
               });
-            }
-          }
+            });
 
-          // Atualizar status do controle
-          if (emailsEnviados > 0) {
-            await this.atualizarControleMensal(
-              mes, 
-              ano, 
-              controle.empresa_id!, 
-              'enviado', 
-              `Reenvio: ${emailsEnviados} e-mails enviados`
-            );
-            sucessos++;
-          } else {
             await this.atualizarControleMensal(
               mes, 
               ano, 
               controle.empresa_id!, 
               'falhou', 
-              'Reenvio: Nenhum e-mail foi enviado com sucesso'
+              `Reenvio: Erro interno - ${error instanceof Error ? error.message : 'Erro desconhecido'}`
             );
             falhas++;
           }
 
         } catch (error) {
+          // Registrar erro do loop principal para todos os clientes da empresa
+          const { data: clientes } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('empresa_id', controle.empresa_id)
+            .eq('status', 'ativo');
+
+          if (clientes) {
+            clientes.forEach(cliente => {
+              detalhes.push({
+                empresaId: controle.empresa_id!,
+                clienteId: cliente.id,
+                status: 'falhou',
+                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                emailsEnviados: []
+              });
+            });
+          }
+
+          await this.atualizarControleMensal(
+            mes, 
+            ano, 
+            controle.empresa_id!, 
+            'falhou', 
+            `Reenvio: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
           falhas++;
         }
       }
@@ -1227,6 +1366,115 @@ class BooksDisparoService {
 
   // ...
 
+  private async enviarBookEmpresa(
+    empresa: EmpresaCliente,
+    clientes: Cliente[],
+    emailsCC: string[],
+    mes: number,
+    ano: number
+  ): Promise<{ sucesso: boolean; erro?: string; clientesProcessados: string[] }> {
+    try {
+      if (clientes.length === 0) {
+        return {
+          sucesso: false,
+          erro: 'Nenhum cliente ativo encontrado para a empresa',
+          clientesProcessados: []
+        };
+      }
+
+      // Debug: verificar template_padrao da empresa
+      const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+      console.log(`🏢 Empresa: ${empresa.nome_completo}`);
+      console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
+      console.log(`📧 Enviando para ${clientes.length} clientes em um único e-mail`);
+      
+      // Buscar template apropriado para books
+      const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
+      
+      if (!template) {
+        return {
+          sucesso: false,
+          erro: 'Template de e-mail não encontrado para books',
+          clientesProcessados: []
+        };
+      }
+
+      // Usar o primeiro cliente como referência para o template (todos da mesma empresa)
+      const clienteReferencia = clientes[0];
+
+      // Validar template antes do processamento
+      const validacao = clientBooksTemplateService.validarTemplate(template, empresa as any, clienteReferencia as any);
+      
+      if (!validacao.valido) {
+        console.warn('Template possui variáveis não encontradas:', validacao.variaveisNaoEncontradas);
+        // Continuar mesmo com avisos, mas registrar no log
+      }
+
+      // Processar template com dados reais
+      const templateProcessado = await clientBooksTemplateService.processarTemplate(
+        template,
+        empresa as any,
+        clienteReferencia as any,
+        { mes, ano, dataDisparo: new Date() }
+      );
+
+      // Coletar todos os e-mails dos clientes para o campo "Para"
+      const emailsClientes = clientes.map(cliente => cliente.email).filter(email => email);
+      
+      if (emailsClientes.length === 0) {
+        return {
+          sucesso: false,
+          erro: 'Nenhum cliente possui e-mail válido',
+          clientesProcessados: []
+        };
+      }
+
+      // Enviar e-mail consolidado usando o emailService
+      const resultadoEnvio = await this.enviarEmailConsolidado(
+        emailsClientes,
+        emailsCC,
+        templateProcessado.assunto,
+        templateProcessado.corpo,
+        empresa,
+        clientes
+      );
+
+      if (resultadoEnvio.sucesso) {
+        // Registrar no histórico - um registro por empresa com múltiplos clientes
+        const historicoData: HistoricoDisparoInsert = {
+          empresa_id: empresa.id,
+          cliente_id: clienteReferencia.id, // Cliente de referência
+          template_id: template.id,
+          status: 'enviado',
+          data_disparo: new Date().toISOString(),
+          assunto: templateProcessado.assunto,
+          emails_cc: emailsCC,
+          erro_detalhes: `E-mail consolidado enviado para ${emailsClientes.length} clientes: ${emailsClientes.join(', ')}`
+        };
+
+        await supabase.from('historico_disparos').insert(historicoData);
+
+        return {
+          sucesso: true,
+          clientesProcessados: clientes.map(c => c.id)
+        };
+      } else {
+        return {
+          sucesso: false,
+          erro: resultadoEnvio.erro,
+          clientesProcessados: []
+        };
+      }
+
+    } catch (error) {
+      return {
+        sucesso: false,
+        erro: error instanceof Error ? error.message : 'Erro desconhecido',
+        clientesProcessados: []
+      };
+    }
+  }
+
   private async enviarBookCliente(
     empresa: EmpresaCliente,
     cliente: Cliente,
@@ -1297,6 +1545,52 @@ class BooksDisparoService {
       return {
         sucesso: false,
         erro: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  }
+
+  private async enviarEmailConsolidado(
+    destinatarios: string[],
+    emailsCC: string[],
+    assunto: string,
+    corpo: string,
+    empresa: EmpresaCliente,
+    clientes: Cliente[]
+  ): Promise<{ sucesso: boolean; erro?: string }> {
+    try {
+      // Preparar dados para o emailService - múltiplos destinatários
+      const emailData = {
+        to: destinatarios, // Array de destinatários (igual ao cc)
+        cc: emailsCC.length > 0 ? emailsCC : undefined,
+        subject: assunto,
+        html: corpo,
+        // Adicionar metadados para rastreamento
+        metadata: {
+          empresaId: empresa.id,
+          clienteIds: clientes.map(c => c.id),
+          tipo: 'book_mensal_consolidado',
+          nomeEmpresa: empresa.nome_completo,
+          totalClientes: clientes.length,
+          emailsDestino: destinatarios
+        }
+      };
+
+      // Usar método direto de envio para evitar reprocessamento de template
+      const resultado = await emailService.sendDirectEmail(emailData);
+
+      if (resultado.success) {
+        return { sucesso: true };
+      } else {
+        return {
+          sucesso: false,
+          erro: resultado.error || 'Falha no envio do e-mail consolidado'
+        };
+      }
+
+    } catch (error) {
+      return {
+        sucesso: false,
+        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado'
       };
     }
   }

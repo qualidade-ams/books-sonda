@@ -174,7 +174,7 @@ books-snd/
 │   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
 │   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
-│   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books
+│   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos)
 │   │   │   ├── UserConfig.tsx          			   	# Configurações do usuário
 │   │   │   ├── UserGroupAssignment.tsx 			   	# Atribuição de usuários a grupos
 │   │   │   └── UserManagement.tsx						   # Gerenciamento de usuários do sistema
@@ -206,7 +206,7 @@ books-snd/
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books (filtra empresas com AMS ativo E tipo book "qualidade" E book_personalizado=false - todos os critérios obrigatórios)
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, tratamento robusto de erros com registro detalhado de falhas e sucessos)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, colaboradores "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books)
@@ -328,13 +328,16 @@ books-snd/
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
 ├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
 ├── CORRECAO_BOTOES_SIDEBAR.md                      # Documentação das correções de clicabilidade e visibilidade dos botões da sidebar
+├── CORRECAO_EMAIL_CONSOLIDADO_FORMATACAO.md        # Documentação da correção da formatação de e-mails no sistema consolidado (correção do campo 'to' de string para array para consistência com campo 'cc')
 ├── CORRECAO_CACHE_DINAMICO_EMPRESAS.md             # Documentação da implementação de cache dinâmico com invalidação cross-screen para empresas (correção de filtros AMS e sincronização automática entre telas)
 ├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
+├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
 ├── CORRECAO_TEMPLATE_PADRAO_NAO_EXIBIDO.md          # Documentação da correção do campo "Template Padrão" que não exibia opções no formulário de empresa (adição de templates padrão "Português" e "Inglês" ao hook useBookTemplates)
 ├── FUNCIONALIDADE_CONTROLE_BOTOES_DISPARO.md       # Documentação da funcionalidade de controle inteligente de botões de disparo (habilitação/desabilitação baseada no status das empresas selecionadas)
 ├── IMPLEMENTACAO_CONTADORES_INTELIGENTES.md        # Documentação da implementação de contadores inteligentes nos botões de disparo que separam empresas selecionadas por status (paraDisparar vs paraReenviar) nas telas de Disparos e Disparos Personalizados
 ├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
+├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── index.html                  					      	# Template HTML principal
