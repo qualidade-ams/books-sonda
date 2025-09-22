@@ -119,6 +119,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     const getTemplateDisplayName = (label: string) => {
       if (label.toLowerCase().includes('português') || label.toLowerCase().includes('portugues')) return 'PT-BR';
       if (label.toLowerCase().includes('inglês') || label.toLowerCase().includes('ingles')) return 'EN';
+      if (label.toLowerCase().includes('samarco')) return 'SAMARCO';
       return label; // Para outros templates, manter o nome original
     };
 
