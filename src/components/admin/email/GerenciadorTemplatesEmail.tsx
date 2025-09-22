@@ -35,7 +35,7 @@ import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import FormularioNovoTemplate from './FormularioNovoTemplate';
 import EditorTemplateCompleto from './EditorTemplateCompleto';
 import TestEmailDialog from '../DialogTesteEmail';
-import EmailTemplateErrorFallback from './EmailTemplateErrorFallback';
+
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type { EmailTemplate } from '@/types/approval';
 

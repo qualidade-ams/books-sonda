@@ -212,7 +212,7 @@ books-snd/
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, tratamento robusto de erros com registro detalhado de falhas e sucessos)
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, interface EmailData corrigida com campo 'to' como array de destinatários para melhor compatibilidade com emailService, método direto de envio para evitar reprocessamento de template, parâmetro destinatario corrigido para string[] em enviarEmailComTemplate para consistência com sistema consolidado, tratamento robusto de erros com registro detalhado de falhas e sucessos)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, clientes "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books, monitoramento_vigencias "Monitoramento de Vigências")
@@ -222,7 +222,7 @@ books-snd/
 │   │   ├── configurationAdminService.ts       		# Administração de configurações dinâmicas
 │   │   ├── configurationRepository.ts       			# Repository de configurações
 │   │   ├── configurationService.ts       				# Serviço principal de configuração
-│   │   ├── emailService.ts            					# Serviço base de envio de emails
+│   │   ├── emailService.ts            					# Serviço base de envio de emails com interface EmailData corrigida (campo 'to' aceita string ou array de e-mails para compatibilidade com envios consolidados, suporte flexível a destinatários únicos ou múltiplos, processamento automático de arrays para Power Automate com join por vírgula e formatação com colchetes angulares aprimorada, validação robusta de e-mails vazios ou inválidos, logs de debug detalhados para troubleshooting, correção de tipos TypeScript para função logEmail, remoção de variável não utilizada 'mensagem', tratamento robusto de logs de erro com formatação consistente de e-mails, e métodos sendDirectEmail e sendEmailWithMapping para diferentes cenários de envio)
 │   │   ├── emailTemplateMappingService.ts       		# Mapeamento de templates de email
 │   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
@@ -273,12 +273,12 @@ books-snd/
 │   │				
 │   ├── utils/                  						      # Funções utilitárias
 │   │   ├── __tests__/          						      # Testes das funções utilitárias
-│   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo) e correção de sintaxe
+│   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo), testes de variáveis de sistema do mês atual e correção de sintaxe
 │   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
-│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, correção de sintaxe na função de mapeamento de variáveis
+│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, variáveis de sistema para mês atual (sistema.mesNomeAtual e sistema.mesNomeAtualEn), correção de sintaxe na função de mapeamento de variáveis
 │   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes (colaboradores)
 │   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
 │   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com design aprimorado - layout em cards, cores temáticas Sonda (#2563eb), caixa de resumo estatístico expandida com contadores de empresas ativas/inativas/suspensas, cabeçalho profissional, integração Supabase e mapeamento assíncrono de templates, correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes) - usado pela tela EmpresasClientes.tsx
@@ -293,6 +293,7 @@ books-snd/
 │   │   ├── exportUtils.ts            				   	# Utilitários gerais para exportação de dados
 │   │   ├── fallbackManager.ts         					# Gerenciamento de fallbacks
 │   │   ├── formatters.ts             				   	# Formatação de valores
+│   │   ├── historicoAlternativo.ts    					# Consulta alternativa do histórico sem joins complexos (evita problemas de relacionamento)
 │   │   ├── paginationUtils.ts         					# Utilitários de paginação
 │   │   ├── performance-optimizations.ts			   	# Otimizações de performance
 │   │   ├── permissionUtils.ts         					# Utilitários de permissões (legacy)
@@ -334,6 +335,7 @@ books-snd/
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
 ├── AJUSTE_COR_AZUL_PDF_PADRAO_SISTEMA.md            # Documentação do ajuste da cor azul padrão do sistema para exportação PDF (correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes da biblioteca)
+├── CORRECAO_LOGS_EMAIL_FORMATACAO_CONSISTENTE.md    # Documentação da correção de formatação consistente nos logs de e-mail (padronização da formatação de e-mails nos logs de erro e sucesso do emailService)
 ├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
 ├── CORRECAO_ATUALIZACAO_AUTOMATICA_LISTA_EMPRESAS.md # Documentação da correção da atualização automática da lista de empresas após importação via Excel (implementação de invalidação de cache automática, callback onImportComplete otimizado, e eliminação da necessidade de refresh manual Ctrl+F5)
 ├── CORRECAO_BOTOES_SIDEBAR.md                      # Documentação das correções de clicabilidade e visibilidade dos botões da sidebar
@@ -345,6 +347,10 @@ books-snd/
 ├── CORRECAO_DUPLICACAO_TEMPLATES.md                # Documentação da correção da duplicação de templates no select "Template Padrão" do formulário de empresa (implementação de deduplicação por nome nos hooks useEmailTemplates e useBookTemplates, uso de Set para controle de nomes únicos, logs de debug para monitoramento, múltiplas camadas de proteção contra duplicação e estratégias de prevenção futura)
 ├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
 ├── CORRECAO_FORMATACAO_EMAILS_CONSOLIDADOS.md      # Documentação da correção da formatação de e-mails consolidados (correção do campo 'to' de string para array para consistência com campo 'cc' e formatação correta com colchetes angulares)
+├── CORRECAO_INTERFACE_EMAIL_ARRAY_DESTINATARIOS.md  # Documentação da correção da interface EmailData para suportar array de destinatários (correção do campo 'to' de string para array, melhorando compatibilidade com emailService e sistema de envio consolidado)
+├── CORRECAO_ERROS_TYPESCRIPT_EMAILSERVICE.md        # Documentação da correção de erros TypeScript no emailService (correção de tipos para função logEmail, remoção de variável não utilizada, remoção de imports desnecessários e reversão do parâmetro destinatario para string no booksDisparoService)
+├── CORRECAO_PARAMETRO_DESTINATARIO_ARRAY.md        # Documentação da reversão do parâmetro destinatario do método enviarEmailComTemplate de string[] para string no booksDisparoService (correção de incompatibilidade com emailService e manutenção da arquitetura de e-mail consolidado)
+├── CORRECAO_INTERFACE_EMAIL_DATA.md                # Documentação da correção da interface EmailData para compatibilidade de tipos (correção do erro TypeScript no campo 'to' de array para string com vírgulas, mantendo compatibilidade com interface EmailData do emailService e funcionalidade de e-mail consolidado)
 ├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
 ├── CORRECAO_PERMISSOES_MONITORAMENTO_VIGENCIAS.md   # Documentação da correção das permissões da tela de Monitoramento de Vigências (registro da tela no sistema de permissões, configuração de permissões para administradores, script SQL de migração otimizado sem campos de timestamp automáticos, página de configuração via interface web, e instruções completas para resolução do problema de visibilidade na lista de permissões)
@@ -358,6 +364,7 @@ books-snd/
 ├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
 ├── IMPLEMENTACAO_EMPRESAS_COM_BOOKS_RELATORIO.md        # Documentação da implementação de empresas com books no relatório mensal (nova seção verde para empresas que receberam books com sucesso, separação clara entre empresas com e sem books, interface atualizada com contadores e badges visuais, método buscarTodasEmpresasRelatorio() no historicoService, e atualização da interface RelatorioMetricas)
+├── IMPLEMENTACAO_VARIAVEIS_MES_ATUAL.md            # Documentação da implementação das variáveis de mês atual para templates (sistema.mesNomeAtual e sistema.mesNomeAtualEn para referenciar o mês atual em português e inglês, diferenciando das variáveis de disparo que referenciam o mês anterior, com testes abrangentes e exemplos de uso em templates bilíngues)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
 ├── MELHORIA_LAYOUT_PDF_EMPRESAS_PADRAO_VISUAL.md   # Documentação da melhoria do layout PDF de exportação de empresas com design moderno e profissional (cabeçalho centralizado, caixa de resumo estatístico, layout de cards individuais, sistema de cores por status, barra lateral colorida, estrutura em duas colunas, tipografia hierárquica, paginação automática e elementos visuais consistentes seguindo padrão corporativo)

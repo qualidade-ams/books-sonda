@@ -45,6 +45,8 @@ export interface ClientBooksVariaveis {
   'sistema.dataAtual': string;
   'sistema.anoAtual': string;
   'sistema.mesAtual': string;
+  'sistema.mesNomeAtual': string; // Nome do mês atual em português
+  'sistema.mesNomeAtualEn': string; // Nome do mês atual em inglês
 }
 
 /**
@@ -185,6 +187,8 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     'sistema.dataAtual': formatarData(dataAtual),
     'sistema.anoAtual': String(dataAtual.getFullYear()),
     'sistema.mesAtual': String(dataAtual.getMonth() + 1),
+    'sistema.mesNomeAtual': obterNomeMes(dataAtual.getMonth() + 1),
+    'sistema.mesNomeAtualEn': obterNomeMesIngles(dataAtual.getMonth() + 1),
   };
 };
 
@@ -261,7 +265,9 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
     'Sistema': [
       'sistema.dataAtual',
       'sistema.anoAtual',
-      'sistema.mesAtual'
+      'sistema.mesAtual',
+      'sistema.mesNomeAtual',
+      'sistema.mesNomeAtualEn'
     ]
   };
 };

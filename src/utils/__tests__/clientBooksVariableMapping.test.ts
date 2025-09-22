@@ -80,6 +80,29 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['disparo.ano']).toBe('2024');
     });
 
+    it('deve mapear corretamente as variáveis de mês atual do sistema', () => {
+      const variaveis = mapearVariaveisClientBooks(dadosExemplo);
+      const mesAtual = new Date().getMonth() + 1;
+
+      // Verificar se as variáveis de sistema estão definidas
+      expect(variaveis['sistema.mesAtual']).toBe(String(mesAtual));
+      expect(variaveis['sistema.mesNomeAtual']).toBeDefined();
+      expect(variaveis['sistema.mesNomeAtualEn']).toBeDefined();
+
+      // Verificar se os nomes dos meses estão corretos para o mês atual
+      const nomesMesesPt = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      const nomesMesesEn = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+
+      expect(variaveis['sistema.mesNomeAtual']).toBe(nomesMesesPt[mesAtual - 1]);
+      expect(variaveis['sistema.mesNomeAtualEn']).toBe(nomesMesesEn[mesAtual - 1]);
+    });
+
     it('deve mapear produtos corretamente', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
 
@@ -174,6 +197,16 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['Dados do Cliente']).toContain('cliente.nomeCompleto');
       expect(variaveis['Dados do Cliente']).toContain('cliente.email');
       expect(variaveis['Dados do Cliente']).toContain('cliente.funcao');
+    });
+
+    it('deve incluir variáveis de sistema incluindo nomes de mês atual', () => {
+      const variaveis = obterVariaveisClientBooksDisponiveis();
+      
+      expect(variaveis['Sistema']).toContain('sistema.dataAtual');
+      expect(variaveis['Sistema']).toContain('sistema.anoAtual');
+      expect(variaveis['Sistema']).toContain('sistema.mesAtual');
+      expect(variaveis['Sistema']).toContain('sistema.mesNomeAtual');
+      expect(variaveis['Sistema']).toContain('sistema.mesNomeAtualEn');
     });
   });
 
