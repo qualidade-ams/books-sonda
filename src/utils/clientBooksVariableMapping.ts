@@ -36,7 +36,8 @@ export interface ClientBooksVariaveis {
   // Variáveis de disparo (referem-se ao mês de referência - mês anterior ao disparo)
   'disparo.mes': string;
   'disparo.ano': string;
-  'disparo.mesNome': string; // Nome do mês de referência (mês anterior)
+  'disparo.mesNome': string; // Nome do mês de referência (mês anterior) em português
+  'disparo.mesNomeEn': string; // Nome do mês de referência (mês anterior) em inglês
   'disparo.dataDisparo': string;
   'disparo.dataDisparoFormatada': string;
   
@@ -96,7 +97,7 @@ const mapearTemplatePadrao = (template: string): string => {
 };
 
 /**
- * Obtém nome do mês por número
+ * Obtém nome do mês por número (em português)
  */
 const obterNomeMes = (mes: number): string => {
   const meses = [
@@ -105,6 +106,18 @@ const obterNomeMes = (mes: number): string => {
   ];
 
   return meses[mes - 1] || `Mês ${mes}`;
+};
+
+/**
+ * Obtém nome do mês por número (em inglês)
+ */
+const obterNomeMesIngles = (mes: number): string => {
+  const meses = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  return meses[mes - 1] || `Month ${mes}`;
 };
 
 /**
@@ -164,6 +177,7 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     'disparo.mes': String(mesReferencia),
     'disparo.ano': String(anoReferencia),
     'disparo.mesNome': obterNomeMes(mesReferencia),
+    'disparo.mesNomeEn': obterNomeMesIngles(mesReferencia),
     'disparo.dataDisparo': formatarData(disparo.dataDisparo),
     'disparo.dataDisparoFormatada': formatarDataCompleta(disparo.dataDisparo),
     
@@ -240,6 +254,7 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
       'disparo.mes',
       'disparo.ano',
       'disparo.mesNome',
+      'disparo.mesNomeEn',
       'disparo.dataDisparo',
       'disparo.dataDisparoFormatada'
     ],

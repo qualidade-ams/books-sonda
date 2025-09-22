@@ -49,10 +49,23 @@ export const useEmailTemplates = () => {
       });
 
       const mappedTemplates = validTemplates.map(mapSupabaseToEmailTemplate);
-      setTemplates(mappedTemplates);
+
+      // ✅ CORREÇÃO: Remover duplicatas por nome
+      const uniqueTemplates = mappedTemplates.filter((template, index, self) =>
+        index === self.findIndex(t => t.nome === template.nome)
+      );
+
+      console.log('📧 Templates antes da deduplicação:', mappedTemplates.length);
+      console.log('📧 Templates após deduplicação:', uniqueTemplates.length);
+
+      if (mappedTemplates.length !== uniqueTemplates.length) {
+        console.warn('⚠️ Templates duplicados removidos:', mappedTemplates.length - uniqueTemplates.length);
+      }
+
+      setTemplates(uniqueTemplates);
 
       // Atualizar templates antigos que não têm formulário definido
-      const templatesParaAtualizar = (data || []).filter(template => 
+      const templatesParaAtualizar = (data || []).filter(template =>
         !template.formulario && template.nome
       );
 
@@ -60,7 +73,7 @@ export const useEmailTemplates = () => {
         for (const template of templatesParaAtualizar) {
           await supabase
             .from('email_templates')
-            .update({ 
+            .update({
               formulario: 'book',
               vinculado_formulario: true,
               tipo: 'book'

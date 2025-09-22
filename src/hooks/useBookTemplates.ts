@@ -19,22 +19,6 @@ export const useBookTemplates = () => {
   useEffect(() => {
     const options: BookTemplateOption[] = [];
 
-    // Adicionar templates padrão do sistema primeiro
-    options.push(
-      {
-        value: 'portugues',
-        label: 'Template Book Português',
-        description: 'Template Book Mensal',
-        isDefault: true
-      },
-      {
-        value: 'ingles',
-        label: 'Template Book Inglês',
-        description: 'Template Book Mensal',
-        isDefault: true
-      }
-    );
-
     // Adicionar templates personalizados ativos para books
     const bookTemplates = templates.filter(
       template =>
@@ -42,15 +26,57 @@ export const useBookTemplates = () => {
         template.formulario === 'book'
     );
 
+    // ✅ DEBUG: Log para identificar duplicação
+    console.log('📧 Templates encontrados:', templates);
+    console.log('📧 Templates filtrados para books:', bookTemplates);
+
+    // ✅ CORREÇÃO: Priorizar templates personalizados sobre padrão
+    const templateNames = new Set<string>();
+    const customTemplateNames = new Set<string>();
+    
+    // Primeiro, identificar quais templates personalizados existem
     bookTemplates.forEach(template => {
-      options.push({
-        value: template.id,
-        label: template.nome,
-        description: template.descricao || 'Template personalizado',
-        isDefault: false
-      });
+      customTemplateNames.add(template.nome);
     });
 
+    // Adicionar templates padrão APENAS se não existir template personalizado com o mesmo nome
+    if (!customTemplateNames.has('Template Book Português')) {
+      options.push({
+        value: 'portugues',
+        label: 'Template Book Português',
+        description: 'Template Book Mensal',
+        isDefault: true
+      });
+      templateNames.add('Template Book Português');
+    }
+
+    if (!customTemplateNames.has('Template Book Inglês')) {
+      options.push({
+        value: 'ingles',
+        label: 'Template Book Inglês',
+        description: 'Template Book Mensal',
+        isDefault: true
+      });
+      templateNames.add('Template Book Inglês');
+    }
+
+    // Adicionar templates personalizados (sempre têm prioridade)
+    bookTemplates.forEach(template => {
+      if (!templateNames.has(template.nome)) {
+        templateNames.add(template.nome);
+        options.push({
+          value: template.id,
+          label: template.nome,
+          description: template.descricao || 'Template personalizado',
+          isDefault: false
+        });
+      } else {
+        console.warn(`⚠️ Template duplicado ignorado: ${template.nome}`);
+      }
+    });
+
+    console.log('📧 Templates personalizados encontrados:', Array.from(customTemplateNames));
+    console.log('📧 Opções finais de templates:', options);
     setBookTemplateOptions(options);
   }, [templates]);
 

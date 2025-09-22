@@ -36,7 +36,48 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['disparo.mes']).toBeDefined();
       expect(variaveis['disparo.ano']).toBeDefined();
       expect(variaveis['disparo.mesNome']).toBeDefined();
+      expect(variaveis['disparo.mesNomeEn']).toBeDefined();
       expect(variaveis['disparo.dataDisparo']).toBeDefined();
+    });
+
+    it('deve mapear nomes de mês em português e inglês corretamente', () => {
+      // Criar dados de teste com mês específico (Janeiro)
+      const dadosJaneiro = {
+        ...dadosExemplo,
+        disparo: {
+          mes: 1, // Janeiro
+          ano: 2024,
+          dataDisparo: new Date(2024, 0, 15) // 15 de Janeiro
+        }
+      };
+
+      const variaveis = mapearVariaveisClientBooks(dadosJaneiro);
+
+      // Para disparo em Janeiro, o mês de referência é Dezembro do ano anterior
+      expect(variaveis['disparo.mesNome']).toBe('Dezembro');
+      expect(variaveis['disparo.mesNomeEn']).toBe('December');
+      expect(variaveis['disparo.mes']).toBe('12');
+      expect(variaveis['disparo.ano']).toBe('2023');
+    });
+
+    it('deve mapear nomes de mês para mês não-Janeiro corretamente', () => {
+      // Criar dados de teste com mês específico (Março)
+      const dadosMarco = {
+        ...dadosExemplo,
+        disparo: {
+          mes: 3, // Março
+          ano: 2024,
+          dataDisparo: new Date(2024, 2, 15) // 15 de Março
+        }
+      };
+
+      const variaveis = mapearVariaveisClientBooks(dadosMarco);
+
+      // Para disparo em Março, o mês de referência é Fevereiro
+      expect(variaveis['disparo.mesNome']).toBe('Fevereiro');
+      expect(variaveis['disparo.mesNomeEn']).toBe('February');
+      expect(variaveis['disparo.mes']).toBe('2');
+      expect(variaveis['disparo.ano']).toBe('2024');
     });
 
     it('deve mapear produtos corretamente', () => {

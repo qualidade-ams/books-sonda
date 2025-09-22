@@ -37,7 +37,7 @@ books-snd/
 │   │   │   │   └── EmailTemplateErrorFallback.tsx		# Erro ao encontrar template
 │   │   │   │   └── FormularioConfiguracaoWebhook.tsx	# Tela configuração Webhook
 │   │   │   │   └── FormularioNovoTemplate.tsx			# Tela criação novo template
-│   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Listagem de templates
+│   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Gerenciador completo de templates de email (listagem, criação, edição, exclusão, ativação/desativação, teste de envio e controle de permissões)
 │   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes de email
 │   │   │   │   └── PreviewEmail.tsx					   # Preview Template HTML
 │   │   │   │   └── PreviewEmailClientBooks.tsx		   # Preview específico para templates do sistema de books
@@ -122,7 +122,7 @@ books-snd/
 │   │   ├── use-toast.ts                         		# Hook para sistema de notificações toast
 │   │   ├── useApprovalService.ts                		# Hook para serviços de aprovação
 │   │   ├── useAuth.tsx                          		# Hook de autenticação com Supabase
-│   │   ├── useBookTemplates.ts                  		# Hook para templates de books (inclui templates padrão do sistema: português e inglês, além de templates personalizados ativos)
+│   │   ├── useBookTemplates.ts                  		# Hook para templates de books com sistema de priorização inteligente (prioriza templates personalizados sobre padrão, adiciona templates padrão "Português" e "Inglês" apenas se não existir template personalizado com o mesmo nome, implementa Set duplo para controle de duplicação e identificação de templates personalizados, logs de debug aprimorados para monitoramento, filtragem específica para formulário 'book' e prevenção completa de duplicação por nome)
 │   │   ├── useClientBooksPermissions.ts         		# Hook para permissões específicas do sistema de books
 │   │   ├── useClientBooksVariables.ts           		# Hook para variáveis do sistema de clientes e books
 │   │   ├── useClientes.ts                       		# Hook para gerenciamento de clientes (renomeado de useColaboradores)
@@ -273,12 +273,12 @@ books-snd/
 │   │				
 │   ├── utils/                  						      # Funções utilitárias
 │   │   ├── __tests__/          						      # Testes das funções utilitárias
-│   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis
+│   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo) e correção de sintaxe
 │   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
-│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo)
+│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, correção de sintaxe na função de mapeamento de variáveis
 │   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes (colaboradores)
 │   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
 │   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com design aprimorado - layout em cards, cores temáticas Sonda (#2563eb), caixa de resumo estatístico expandida com contadores de empresas ativas/inativas/suspensas, cabeçalho profissional, integração Supabase e mapeamento assíncrono de templates, correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes) - usado pela tela EmpresasClientes.tsx
@@ -342,6 +342,7 @@ books-snd/
 ├── CORRECAO_ERROS_API_IMPORTACAO_406_400.md        # Documentação da correção dos erros de API 406 (Not Acceptable) e 400 (Bad Request) na importação de empresas (correção do uso de .single() vs .maybeSingle() na verificação de duplicatas e resolução automática de grupos responsáveis por nome para IDs)
 ├── CORRECAO_IMPORTACAO_EMPRESAS_TRAVAMENTO.md      # Documentação da correção do travamento na importação de empresas (problema de timing no hook useExcelImport e solução com useEffect para gerenciar estados)
 ├── CORRECAO_CACHE_DINAMICO_EMPRESAS.md             # Documentação da implementação de cache dinâmico com invalidação cross-screen para empresas (correção de filtros AMS e sincronização automática entre telas)
+├── CORRECAO_DUPLICACAO_TEMPLATES.md                # Documentação da correção da duplicação de templates no select "Template Padrão" do formulário de empresa (implementação de deduplicação por nome nos hooks useEmailTemplates e useBookTemplates, uso de Set para controle de nomes únicos, logs de debug para monitoramento, múltiplas camadas de proteção contra duplicação e estratégias de prevenção futura)
 ├── CORRECAO_CAMPOS_FORMULARIO_EMPRESA.md           # Documentação da correção dos campos "Tem AMS" e "Tipo de Book" que não carregavam no formulário de edição de empresas
 ├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"

@@ -110,21 +110,21 @@ const EmailTemplateManager: React.FC = () => {
                 Novo Template
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="create-template-description">
-            <DialogHeader>
-              <DialogTitle>Criar Novo Template</DialogTitle>
-              <p id="create-template-description" className="text-sm text-gray-600">
-                Crie um novo template de e-mail personalizado para um formulário e modalidade específicos.
-              </p>
-            </DialogHeader>
-            <FormularioNovoTemplate
-              onSuccess={() => {
-                setIsCreateDialogOpen(false);
-                refreshTemplates();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="create-template-description">
+              <DialogHeader>
+                <DialogTitle>Criar Novo Template</DialogTitle>
+                <p id="create-template-description" className="text-sm text-gray-600">
+                  Crie um novo template de e-mail personalizado para um formulário e modalidade específicos.
+                </p>
+              </DialogHeader>
+              <FormularioNovoTemplate
+                onSuccess={() => {
+                  setIsCreateDialogOpen(false);
+                  refreshTemplates();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         </ProtectedAction>
       </div>
 
@@ -275,7 +275,7 @@ const EmailTemplateManager: React.FC = () => {
 
       {/* Dialog para editar template */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="edit-template-description">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto" aria-describedby="edit-template-description">
           <DialogHeader>
             <DialogTitle>Editar Template</DialogTitle>
             <p id="edit-template-description" className="text-sm text-gray-600">
