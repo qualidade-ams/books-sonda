@@ -126,7 +126,7 @@ books-snd/
 │   │   ├── useClientBooksPermissions.ts         		# Hook para permissões específicas do sistema de books
 │   │   ├── useClientBooksVariables.ts           		# Hook para variáveis do sistema de clientes e books
 │   │   ├── useClientes.ts                       		# Hook para gerenciamento de clientes (renomeado de useColaboradores)
-│   │   ├── useControleDisparos.ts               		# Hook para controle de disparos de books
+│   │   ├── useControleDisparos.ts               		# Hook para controle de disparos de books com invalidação otimizada de cache (função centralizada invalidateAllCaches que limpa todos os caches relacionados: controle-disparos, historico-disparos, relatorio-mensal, estatisticas-performance, empresas-sem-books e clientes-com-falhas, garantindo sincronização completa após operações de disparo, reenvio e agendamento)
 │   │   ├── useControleDisparosPersonalizados.ts		# Hook para controle de disparos personalizados
 │   │   ├── useEmailLogs.ts                      		# Hook para logs de email
 │   │   ├── useEmailTemplateMapping.ts           		# Hook para mapeamento de templates de email
@@ -138,7 +138,7 @@ books-snd/
 │   │   ├── useExcelImport.ts                    		# Hook para importação de arquivos Excel
 │   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
 │   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
-│   │   ├── useHistorico.ts                      		# Hook para histórico de books
+│   │   ├── useHistorico.ts                      		# Hook para histórico de books com cache otimizado (staleTime reduzido para 30s, refetch automático a cada 1 minuto, refetch ao focar na janela habilitado para dados sempre atualizados)
 │   │   ├── useJobScheduler.ts                   		# Hook para agendamento de jobs
 │   │   ├── usePagination.ts                     		# Hook para paginação otimizada
 │   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
@@ -180,7 +180,7 @@ books-snd/
 │   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes com integração do componente EmpresaImportExportButtons para funcionalidades unificadas de importação e exportação, handler de importação otimizado com forceRefresh automático e notificação de sucesso
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
 │   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
-│   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos)
+│   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books com interface aprimorada (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos, seção dedicada para empresas com books enviados com badge verde e scroll otimizado, melhorias na exibição de empresas sem books com informações mais detalhadas incluindo nome abreviado, controle de altura máxima com scroll para listas extensas)
 │   │   │   ├── UserConfig.tsx          			   	# Configurações do usuário
 │   │   │   ├── UserGroupAssignment.tsx 			   	# Atribuição de usuários a grupos
 │   │   │   └── UserManagement.tsx						   # Gerenciamento de usuários do sistema
@@ -228,7 +228,7 @@ books-snd/
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
 │   │   ├── excelImportService.ts       				# Importação e processamento de Excel com schema expandido e validações robustas (inclui validação obrigatória para Link SharePoint, Email Gestor e Produtos, validação de status com descrição obrigatória para status Inativo/Suspenso, validação de vigências com formato de data e consistência temporal, validação de campos booleanos com valores aceitos "sim/não", além de campos opcionais para AMS, Tipo Book e configurações de book personalizado, template Excel aprimorado com 15 colunas incluindo campos de vigência, instruções detalhadas e larguras de coluna otimizadas, resolução automática de grupos responsáveis por nome convertendo para IDs durante a importação, e geração de relatórios de importação otimizados sem cabeçalhos desnecessários)
 │   │   ├── gruposResponsaveisService.ts       		# CRUD de grupos responsáveis
-│   │   ├── historicoService.ts       					# Consultas e relatórios de histórico
+│   │   ├── historicoService.ts       					# Consultas e relatórios de histórico com funcionalidade de busca de empresas para relatórios mensais (separação entre empresas com e sem books baseada no histórico de disparos)
 │   │   ├── jobConfigurationService.ts       			# Configuração de jobs e tarefas agendadas
 │   │   ├── jobSchedulerService.ts       				# Agendamento e execução de jobs automáticos
 │   │   ├── performanceOptimizationService.ts        # Serviço de otimização de performance
@@ -259,7 +259,7 @@ books-snd/
 │   │   ├── api.ts                               		# Tipos para APIs
 │   │   ├── approval.ts                          		# Tipos para sistema de aprovação
 │   │   ├── audit.ts                             		# Tipos para auditoria
-│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros)
+│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros) e interface RelatorioMetricas com separação de empresas com e sem books
 │   │   ├── clientBooksTypes.ts                  		# Tipos específicos do sistema de books
 │   │   ├── configuration.ts                     		# Tipos para configurações
 │   │   ├── constants.ts                         		# Constantes tipadas
@@ -355,6 +355,7 @@ books-snd/
 ├── IMPLEMENTACAO_DISPAROS_PERSONALIZADOS.md        # Documentação da implementação do sistema de disparos personalizados para empresas com book personalizado (filtro book_personalizado=true, interface com tema roxo/purple, funcionalidades específicas de disparo, reenvio e agendamento)
 ├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
+├── IMPLEMENTACAO_EMPRESAS_COM_BOOKS_RELATORIO.md        # Documentação da implementação de empresas com books no relatório mensal (nova seção verde para empresas que receberam books com sucesso, separação clara entre empresas com e sem books, interface atualizada com contadores e badges visuais, método buscarTodasEmpresasRelatorio() no historicoService, e atualização da interface RelatorioMetricas)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
 ├── MELHORIA_LAYOUT_PDF_EMPRESAS_PADRAO_VISUAL.md   # Documentação da melhoria do layout PDF de exportação de empresas com design moderno e profissional (cabeçalho centralizado, caixa de resumo estatístico, layout de cards individuais, sistema de cores por status, barra lateral colorida, estrutura em duas colunas, tipografia hierárquica, paginação automática e elementos visuais consistentes seguindo padrão corporativo)

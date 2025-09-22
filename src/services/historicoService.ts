@@ -20,6 +20,7 @@ export interface RelatorioMetricas {
   emailsFalharamMes: number;
   taxaSucessoMes: number;
   empresasSemBooks: EmpresaCliente[];
+  empresasComBooks: EmpresaCliente[];
 }
 
 export interface RelatorioDetalhado {
@@ -271,8 +272,8 @@ class HistoricoService {
         ? ((emailsEnviadosMes || 0) / totalEmailsMes) * 100
         : 0;
 
-      // Identificar empresas sem books no mês
-      const empresasSemBooks = await this.identificarEmpresasSemBooks(mes, ano);
+      // Buscar empresas com e sem books no mês
+      const { empresasComBooks, empresasSemBooks } = await this.buscarTodasEmpresasRelatorio(mes, ano);
 
       return {
         totalEmpresas: totalEmpresas || 0,
@@ -282,7 +283,8 @@ class HistoricoService {
         emailsEnviadosMes: emailsEnviadosMes || 0,
         emailsFalharamMes: emailsFalharamMes || 0,
         taxaSucessoMes: Math.round(taxaSucessoMes * 100) / 100,
-        empresasSemBooks
+        empresasSemBooks,
+        empresasComBooks
       };
 
     } catch (error) {
@@ -337,6 +339,63 @@ class HistoricoService {
 
     } catch (error) {
       throw new Error(`Erro ao identificar empresas sem books: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Busca todas as empresas (com e sem books) para o relatório mensal
+   */
+  async buscarTodasEmpresasRelatorio(mes: number, ano: number): Promise<{
+    empresasComBooks: EmpresaCliente[];
+    empresasSemBooks: EmpresaCliente[];
+  }> {
+    try {
+      // Buscar todas as empresas ativas
+      const { data: empresasAtivas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select('*')
+        .eq('status', 'ativo');
+
+      if (empresasError) {
+        throw new Error(`Erro ao buscar empresas ativas: ${empresasError.message}`);
+      }
+
+      if (!empresasAtivas || empresasAtivas.length === 0) {
+        return { empresasComBooks: [], empresasSemBooks: [] };
+      }
+
+      // Buscar empresas que tiveram disparos no mês
+      const dataInicio = new Date(ano, mes - 1, 1);
+      const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+
+      const { data: empresasComDisparos, error: disparosError } = await supabase
+        .from('historico_disparos')
+        .select('empresa_id')
+        .eq('status', 'enviado')
+        .gte('data_disparo', dataInicio.toISOString())
+        .lte('data_disparo', dataFim.toISOString());
+
+      if (disparosError) {
+        throw new Error(`Erro ao buscar disparos: ${disparosError.message}`);
+      }
+
+      // Separar empresas com e sem books
+      const empresasComDisparosIds = new Set(
+        (empresasComDisparos || []).map(d => d.empresa_id)
+      );
+
+      const empresasComBooks = empresasAtivas.filter(
+        empresa => empresasComDisparosIds.has(empresa.id)
+      );
+
+      const empresasSemBooks = empresasAtivas.filter(
+        empresa => !empresasComDisparosIds.has(empresa.id)
+      );
+
+      return { empresasComBooks, empresasSemBooks };
+
+    } catch (error) {
+      throw new Error(`Erro ao buscar empresas para relatório: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 

@@ -225,6 +225,7 @@ export interface RelatorioMetricas {
   emailsFalharamMes: number;
   taxaSucessoMes: number;
   empresasSemBooks: EmpresaCliente[];
+  empresasComBooks: EmpresaCliente[];
 }
 
 export interface RelatorioDetalhado {

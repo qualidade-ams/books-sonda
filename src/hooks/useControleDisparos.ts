@@ -22,6 +22,16 @@ export const useControleDisparos = (mes: number, ano: number) => {
     refetchOnWindowFocus: true, // ✅ HABILITADO: Refetch ao focar na janela
   });
 
+  // Função para invalidar todos os caches relacionados
+  const invalidateAllCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
+    queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+    queryClient.invalidateQueries({ queryKey: ['relatorio-mensal'] });
+    queryClient.invalidateQueries({ queryKey: ['estatisticas-performance'] });
+    queryClient.invalidateQueries({ queryKey: ['empresas-sem-books'] });
+    queryClient.invalidateQueries({ queryKey: ['clientes-com-falhas'] });
+  };
+
   // Mutation para disparo por empresas selecionadas
   const {
     mutateAsync: dispararSelecionados,
@@ -30,8 +40,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     mutationFn: ({ mes, ano, empresaIds, forceResend = false }: { mes: number; ano: number; empresaIds: string[]; forceResend?: boolean }) =>
       booksDisparoService.dispararEmpresasSelecionadas(mes, ano, empresaIds, { forceResend }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
-      queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+      invalidateAllCaches();
     },
     onError: (error) => {
       console.error('Erro no disparo por seleção:', error);
@@ -46,9 +55,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     mutationFn: ({ mes, ano }: { mes: number; ano: number }) =>
       booksDisparoService.dispararBooksMensal(mes, ano),
     onSuccess: () => {
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
-      queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+      invalidateAllCaches();
     },
     onError: (error) => {
       console.error('Erro no disparo mensal:', error);
@@ -63,8 +70,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     mutationFn: ({ mes, ano }: { mes: number; ano: number }) =>
       booksDisparoService.reenviarFalhas(mes, ano),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
-      queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+      invalidateAllCaches();
     },
     onError: (error) => {
       console.error('Erro no reenvio de falhas:', error);
@@ -79,8 +85,7 @@ export const useControleDisparos = (mes: number, ano: number) => {
     mutationFn: (agendamento: AgendamentoDisparo) =>
       booksDisparoService.agendarDisparo(agendamento),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
-      queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+      invalidateAllCaches();
     },
     onError: (error) => {
       console.error('Erro no agendamento:', error);

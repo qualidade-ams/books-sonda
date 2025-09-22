@@ -20,8 +20,9 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
   } = useQuery({
     queryKey: ['historico-disparos', filtros],
     queryFn: () => historicoService.buscarHistoricoDetalhado(filtros),
-    staleTime: 1000 * 60 * 2, // 2 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 30, // ✅ REDUZIDO: 30 segundos (era 2 minutos)
+    refetchOnWindowFocus: true, // ✅ HABILITADO: Refetch ao focar na janela
+    refetchInterval: 1000 * 60, // ✅ NOVO: Refetch automático a cada 1 minuto
     enabled: true
   });
 
@@ -34,8 +35,9 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
   } = useQuery({
     queryKey: ['relatorio-mensal', filtros.mes, filtros.ano],
     queryFn: () => historicoService.gerarRelatorioMensal(filtros.mes!, filtros.ano!),
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 30, // ✅ REDUZIDO: 30 segundos (era 5 minutos)
+    refetchOnWindowFocus: true, // ✅ HABILITADO: Refetch ao focar na janela
+    refetchInterval: 1000 * 60, // ✅ NOVO: Refetch automático a cada 1 minuto
     enabled: !!(filtros.mes && filtros.ano)
   });
 
@@ -153,6 +155,15 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     return await buscarHistoricoEmpresa({ empresaId, meses });
   };
 
+  // Função para invalidar cache de histórico (pode ser chamada de outros hooks)
+  const invalidateHistoricoCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+    queryClient.invalidateQueries({ queryKey: ['relatorio-mensal'] });
+    queryClient.invalidateQueries({ queryKey: ['estatisticas-performance'] });
+    queryClient.invalidateQueries({ queryKey: ['empresas-sem-books'] });
+    queryClient.invalidateQueries({ queryKey: ['clientes-com-falhas'] });
+  };
+
   // Função para atualizar todos os dados
   const refetch = () => {
     refetchHistorico();
@@ -201,6 +212,7 @@ export const useHistorico = (filtros: FiltrosAvancados) => {
     gerarRelatorio: handleGerarRelatorio,
     exportarDados: handleExportarDados,
     buscarHistoricoEmpresa: handleBuscarHistoricoEmpresa,
+    invalidateHistoricoCache,
     refetch,
   };
 };

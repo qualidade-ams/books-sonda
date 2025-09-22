@@ -64,9 +64,7 @@ const ControleDisparosPersonalizados = () => {
   const [dataAgendamento, setDataAgendamento] = useState('');
   const [observacoesAgendamento, setObservacoesAgendamento] = useState('');
 
-  // Calcular mês de referência (mês anterior)
-  const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
-  const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
+
 
   // Hooks
   const {
@@ -78,8 +76,7 @@ const ControleDisparosPersonalizados = () => {
     dispararSelecionados,
     reenviarSelecionados,
     reenviarFalhas,
-    agendarDisparo,
-    refetch
+    agendarDisparo
   } = useControleDisparosPersonalizados(mesAtual, anoAtual);
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
@@ -95,7 +92,7 @@ const ControleDisparosPersonalizados = () => {
     setSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  // Verificar se todas as empresas selecionadas já foram enviadas
+  // Status das empresas selecionadas
   const empresasSelecionadasStatus = useMemo(() => {
     return selecionadas.map(id => {
       const status = statusMensal.find(s => s.empresaId === id);
@@ -106,18 +103,13 @@ const ControleDisparosPersonalizados = () => {
     });
   }, [selecionadas, statusMensal]);
 
-  const todasSelecionadasJaEnviadas = useMemo(() => {
-    if (selecionadas.length === 0) return false;
-    return empresasSelecionadasStatus.every(empresa => empresa.status === 'enviado');
-  }, [empresasSelecionadasStatus]);
-
   // Contadores inteligentes baseados no status
   const contadoresInteligentes = useMemo(() => {
-    const paraDisparar = empresasSelecionadasStatus.filter(empresa => 
+    const paraDisparar = empresasSelecionadasStatus.filter(empresa =>
       empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou'
     ).length;
-    
-    const paraReenviar = empresasSelecionadasStatus.filter(empresa => 
+
+    const paraReenviar = empresasSelecionadasStatus.filter(empresa =>
       empresa.status === 'enviado'
     ).length;
 
@@ -339,7 +331,7 @@ const ControleDisparosPersonalizados = () => {
                   {nomesMeses[mesAtual - 1]} {anoAtual}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  (Referência {nomesMeses[mesReferencia - 1]} {anoReferencia})
+                  (Mês de envio)
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {stats.percentualConcluido}% concluído

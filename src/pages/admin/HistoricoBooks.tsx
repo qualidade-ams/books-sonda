@@ -623,6 +623,38 @@ const HistoricoBooks = () => {
                       </Card>
                     </div>
 
+                    {/* Empresas com Books */}
+                    {relatorioMensal.metricas.empresasComBooks && relatorioMensal.metricas.empresasComBooks.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-green-600 flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5" />
+                            Empresas com Books Enviados ({relatorioMensal.metricas.empresasComBooks.length})
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {relatorioMensal.metricas.empresasComBooks.map((empresa) => (
+                              <div
+                                key={empresa.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div>
+                                  <div className="font-medium">{empresa.nome_completo}</div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {empresa.nome_abreviado} • Status: {empresa.status}
+                                  </div>
+                                </div>
+                                <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  Books Enviados
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Empresas sem Books */}
                     {relatorioMensal.metricas.empresasSemBooks.length > 0 && (
                       <Card>
@@ -633,7 +665,7 @@ const HistoricoBooks = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-2">
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
                             {relatorioMensal.metricas.empresasSemBooks.map((empresa) => (
                               <div
                                 key={empresa.id}
@@ -642,7 +674,7 @@ const HistoricoBooks = () => {
                                 <div>
                                   <div className="font-medium">{empresa.nome_completo}</div>
                                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    Status: {empresa.status}
+                                    {empresa.nome_abreviado} • Status: {empresa.status}
                                   </div>
                                 </div>
                                 <Badge variant="destructive">
@@ -875,14 +907,14 @@ const HistoricoBooks = () => {
               <div>
                 <Label htmlFor="empresa-filtro">Empresa</Label>
                 <Select
-                  value={filtros.empresaId || ''}
-                  onValueChange={(value) => handleFiltroChange('empresaId', value || undefined)}
+                  value={filtros.empresaId || 'todas'}
+                  onValueChange={(value) => handleFiltroChange('empresaId', value === 'todas' ? undefined : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todas as empresas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as empresas</SelectItem>
+                    <SelectItem value="todas">Todas as empresas</SelectItem>
                     {empresas.map((empresa) => (
                       <SelectItem key={empresa.id} value={empresa.id}>
                         {empresa.nome_completo}
@@ -1060,12 +1092,25 @@ const HistoricoBooks = () => {
                   
                   <div>
                     <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Cliente
+                      Cliente(s)
                     </Label>
-                    <p className="font-medium">{itemSelecionado.clientes?.nome_completo}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {itemSelecionado.clientes?.email}
-                    </p>
+                    {/* Verificar se é e-mail consolidado baseado nos detalhes do erro */}
+                    {itemSelecionado.erro_detalhes && itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? (
+                      <div className="space-y-1">
+                        <p className="font-medium text-blue-600">E-mail Consolidado</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {/* Extrair informações dos detalhes do erro */}
+                          {itemSelecionado.erro_detalhes.match(/enviado para (\d+) clientes?:/)?.[1] || 'Múltiplos'} cliente(s)
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-medium">{itemSelecionado.clientes?.nome_completo}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {itemSelecionado.clientes?.email}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div>
@@ -1115,11 +1160,19 @@ const HistoricoBooks = () => {
 
                 {itemSelecionado.erro_detalhes && (
                   <div>
-                    <Label className="text-sm font-medium text-red-600">
-                      Detalhes do Erro
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? 'Detalhes do Envio' : 'Detalhes do Erro'}
                     </Label>
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <p className="text-sm text-red-800 dark:text-red-200">
+                    <div className={`p-3 border rounded-lg ${
+                      itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    }`}>
+                      <p className={`text-sm ${
+                        itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
+                          ? 'text-blue-800 dark:text-blue-200'
+                          : 'text-red-800 dark:text-red-200'
+                      }`}>
                         {itemSelecionado.erro_detalhes}
                       </p>
                     </div>
