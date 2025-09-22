@@ -1563,10 +1563,10 @@ class BooksDisparoService {
     clientes: Cliente[]
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
-      // Preparar dados para o emailService - usar primeiro destinatário como principal
+      // Preparar dados para o emailService - todos os destinatários no campo "to"
       const emailData = {
-        to: destinatarios[0], // Primeiro destinatário como principal
-        cc: [...(destinatarios.slice(1)), ...(emailsCC.length > 0 ? emailsCC : [])], // Demais destinatários + CC
+        to: destinatarios, // ✅ CORREÇÃO: Array de destinatários no campo "to"
+        cc: emailsCC.length > 0 ? emailsCC : [], // ✅ CORREÇÃO: Apenas CC no campo "cc"
         subject: assunto,
         html: corpo,
         // Adicionar metadados para rastreamento
