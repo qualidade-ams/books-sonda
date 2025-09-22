@@ -1568,20 +1568,11 @@ class BooksDisparoService {
         to: destinatarios, // ✅ CORREÇÃO: Array de destinatários no campo "to"
         cc: emailsCC.length > 0 ? emailsCC : [], // ✅ CORREÇÃO: Apenas CC no campo "cc"
         subject: assunto,
-        html: corpo,
-        // Adicionar metadados para rastreamento
-        metadata: {
-          empresaId: empresa.id,
-          clienteIds: clientes.map(c => c.id),
-          tipo: 'book_mensal_consolidado',
-          nomeEmpresa: empresa.nome_completo,
-          totalClientes: clientes.length,
-          emailsDestino: destinatarios
-        }
+        html: corpo
       };
 
-      // Usar método direto de envio para evitar reprocessamento de template
-      const resultado = await emailService.sendDirectEmail(emailData);
+      // Enviar e-mail usando o método padrão
+      const resultado = await emailService.sendEmail(emailData);
 
       if (resultado.success) {
         return { sucesso: true };
@@ -1609,24 +1600,16 @@ class BooksDisparoService {
     cliente: Cliente
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
-      // Preparar dados para o emailService - usar método direto para evitar conflito de templates
+      // Preparar dados para o emailService
       const emailData = {
         to: destinatario,
         cc: emailsCC.length > 0 ? emailsCC : undefined,
         subject: assunto,
-        html: corpo,
-        // Adicionar metadados para rastreamento
-        metadata: {
-          empresaId: empresa.id,
-          clienteId: cliente.id,
-          tipo: 'book_mensal',
-          nomeEmpresa: empresa.nome_completo,
-          nomeCliente: cliente.nome_completo
-        }
+        html: corpo
       };
 
-      // Usar método direto de envio para evitar reprocessamento de template
-      const resultado = await emailService.sendDirectEmail(emailData);
+      // Enviar e-mail usando o método padrão
+      const resultado = await emailService.sendEmail(emailData);
 
       if (resultado.success) {
         return { sucesso: true };

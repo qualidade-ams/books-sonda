@@ -1,6 +1,6 @@
 
 export interface EmailData {
-  to: string;
+  to: string | string[];  // ✅ CORREÇÃO: Aceita string ou array de e-mails
   cc?: string | string[];  // Aceita um único e-mail ou array de e-mails
   subject: string;
   html: string;
@@ -243,62 +243,7 @@ export const emailService = {
     }
   },
 
-  // Método direto para envio sem reprocessamento de template
-  async sendDirectEmail(emailData: EmailData): Promise<EmailResponse> {
-    try {
-      console.log('Enviando e-mail direto via Power Automate:', {
-        to: emailData.to,
-        cc: emailData.cc,
-        subject: emailData.subject
-      });
 
-      // Buscar URL do webhook configurado
-      const webhookUrl = await getWebhookUrl();
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          nome: emailData.subject,
-          email: emailData.to,
-          email_cc: emailData.cc || '',
-          mensagem: emailData.html // Enviar HTML já processado
-        })
-      });
-
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
-      }
-
-      // Registrar log de sucesso
-      await logEmail(emailData.to, emailData.subject, 'enviado');
-
-      console.log('E-mail enviado com sucesso via Power Automate (método direto)');
-
-      return {
-        success: true,
-        message: 'E-mail enviado com sucesso via Power Automate (método direto)'
-      };
-    } catch (error) {
-      console.error('Erro ao enviar e-mail direto via Power Automate:', error);
-
-      // Registrar log de erro
-      await logEmail(
-        emailData.to,
-        emailData.subject,
-        'erro',
-        error instanceof Error ? error.message : 'Erro desconhecido'
-      );
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido no envio direto via Power Automate'
-      };
-    }
-  },
 
   async sendTestEmail(to: string, template: { assunto: string; corpo: string }, dadosPersonalizados?: any): Promise<EmailResponse> {
     // Dados de teste padrão
