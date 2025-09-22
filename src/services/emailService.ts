@@ -215,12 +215,12 @@ export const emailService = {
       if (!response.ok) {
         throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
       }
-
       // Registrar log de sucesso
-      await logEmail(emailData.to, emailData.subject, 'enviado');
-
-      console.log('E-mail enviado com sucesso via Power Automate');
-
+      await logEmail(
+        Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
+        emailData.subject,
+        'enviado'
+      );
       return {
         success: true,
         message: 'E-mail enviado com sucesso via Power Automate'
@@ -230,7 +230,7 @@ export const emailService = {
 
       // Registrar log de erro
       await logEmail(
-        emailData.to,
+        Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
         emailData.subject,
         'erro',
         error instanceof Error ? error.message : 'Erro desconhecido'
