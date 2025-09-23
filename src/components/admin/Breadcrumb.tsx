@@ -20,7 +20,8 @@ const Breadcrumb = () => {
     'controle-disparos': 'Controle de Disparos',
     'historico-books': 'Histórico de Books',
     'configurar-permissoes-client-books': 'Configurar Permissões - Client Books',
-    'disparos-personalizados': 'Disparos Personalizados'
+    'disparos-personalizados': 'Disparos Personalizados',
+    'monitoramento-vigencias': 'Monitoramento de Vigências'
   };
 
   return (
