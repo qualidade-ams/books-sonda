@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { EmpresaClienteCompleta, ClienteCompleto } from '@/types/clientBooksTypes';
+import jsPDF from 'jspdf';
 
 // Função para exportar empresas para Excel
 export const exportEmpresasToExcel = (empresas: EmpresaClienteCompleta[]) => {
@@ -22,10 +23,10 @@ export const exportEmpresasToExcel = (empresas: EmpresaClienteCompleta[]) => {
 
   // Criar workbook
   const wb = XLSX.utils.book_new();
-  
+
   // Criar worksheet com os dados
   const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-  
+
   // Ajustar largura das colunas
   const colWidths = [
     { wch: 30 }, // Nome Completo
@@ -72,10 +73,10 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
 
   // Criar workbook
   const wb = XLSX.utils.book_new();
-  
+
   // Criar worksheet com os dados
   const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-  
+
   // Ajustar largura das colunas
   const colWidths = [
     { wch: 30 }, // Nome Completo
@@ -101,186 +102,229 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
   XLSX.writeFile(wb, nomeArquivo);
 };
 
-// Função para exportar clientes para PDF
-export const exportClientesToPDF = (empresas: EmpresaClienteCompleta[]) => {
-  const dataAtual = new Date().toLocaleDateString('pt-BR');
-  
-  // Criar HTML para impressão/PDF
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Gerenciamento de Clientes - ${dataAtual}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 20px;
-          color: #333;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #007bff;
-          padding-bottom: 10px;
-        }
-        .header h1 {
-          color: #007bff;
-          margin: 0;
-        }
-        .header p {
-          margin: 5px 0 0 0;
-          color: #666;
-        }
-        .empresa {
-          margin-bottom: 25px;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 15px;
-          page-break-inside: avoid;
-        }
-        .empresa-header {
-          border-bottom: 1px solid #eee;
-          padding-bottom: 10px;
-          margin-bottom: 10px;
-        }
-        .empresa-nome {
-          font-size: 18px;
-          font-weight: bold;
-          color: #007bff;
-          margin: 0;
-        }
-        .empresa-abreviado {
-          color: #666;
-          margin: 5px 0 0 0;
-          font-style: italic;
-        }
-        .empresa-info {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 10px;
-        }
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 5px 0;
-          border-bottom: 1px dotted #ddd;
-        }
-        .info-label {
-          font-weight: bold;
-          color: #555;
-        }
-        .info-value {
-          color: #333;
-        }
-        .status-ativo { color: #28a745; }
-        .status-inativo { color: #dc3545; }
-        .status-suspenso { color: #ffc107; }
-        .produtos-section, .clientes-section {
-          margin-top: 15px;
-          padding: 10px;
-          background: #f8f9fa;
-          border-radius: 4px;
-        }
-        .section-title {
-          font-weight: bold;
-          margin-bottom: 8px;
-          color: #333;
-        }
-        .cliente-item {
-          background: white;
-          padding: 8px;
-          margin: 5px 0;
-          border-radius: 4px;
-          border-left: 3px solid #007bff;
-        }
-        .summary {
-          background: #f0f8ff;
-          padding: 15px;
-          border-radius: 8px;
-          margin-bottom: 20px;
-          text-align: center;
-        }
-        @media print {
-          body { margin: 0; }
-          .empresa { page-break-inside: avoid; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>Gerenciamento de Clientes</h1>
-        <p>Relatório gerado em ${dataAtual}</p>
-      </div>
-      
-      <div class="summary">
-        <strong>Total de clientes: ${empresas.length}</strong><br>
-        <strong>Clientes ativos: ${empresas.filter(e => e.status === 'ativo').length}</strong><br>
-        <strong>Total de clientes: ${empresas.reduce((total, e) => total + (e.clientes?.length || 0), 0)}</strong>
-      </div>
-
-      ${empresas.map(empresa => `
-        <div class="empresa">
-          <div class="empresa-header">
-            <h2 class="empresa-nome">${empresa.nome_completo}</h2>
-            <p class="empresa-abreviado">${empresa.nome_abreviado}</p>
-          </div>
-          
-          <div class="empresa-info">
-            <div class="info-item">
-              <span class="info-label">Status:</span>
-              <span class="info-value status-${empresa.status}">${empresa.status.toUpperCase()}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Template:</span>
-              <span class="info-value">${empresa.template_padrao}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">E-mail Gestor:</span>
-              <span class="info-value">${empresa.email_gestor || 'Não informado'}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Criado em:</span>
-              <span class="info-value">${new Date(empresa.created_at).toLocaleDateString('pt-BR')}</span>
-            </div>
-          </div>
-
-          ${empresa.produtos && empresa.produtos.length > 0 ? `
-            <div class="produtos-section">
-              <div class="section-title">Produtos (${empresa.produtos.length}):</div>
-              ${empresa.produtos.map(produto => `<span style="background: #e9ecef; padding: 2px 8px; border-radius: 12px; margin: 2px; display: inline-block;">${produto.produto}</span>`).join('')}
-            </div>
-          ` : ''}
-
-          ${empresa.clientes && empresa.clientes.length > 0 ? `
-            <div class="clientes-section">
-              <div class="section-title">Clientes (${empresa.clientes.length}):</div>
-              ${empresa.clientes.map(colab => `
-                <div class="cliente-item">
-                  <strong>${colab.nome_completo}</strong> - ${colab.email}<br>
-                  <small>Função: ${colab.funcao || 'Não informada'} | Status: ${colab.status}${colab.principal_contato ? ' | Principal Contato' : ''}</small>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-      `).join('')}
-    </body>
-    </html>
-  `;
-
-  // Abrir nova janela para impressão/PDF
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Aguardar carregamento e abrir diálogo de impressão
-    printWindow.onload = () => {
-      printWindow.print();
-    };
+// Função para exportar clientes para PDF seguindo exatamente o padrão visual das empresas
+export const exportClientesToPDF = async (
+  clientes: ClienteCompleto[],
+  empresas: EmpresaClienteCompleta[]
+) => {
+  if (!clientes || clientes.length === 0) {
+    throw new Error('Nenhum cliente encontrado para exportar');
   }
+
+  if (!empresas || empresas.length === 0) {
+    throw new Error('Nenhuma empresa encontrada para exportar');
+  }
+
+  // Mapear clientes com suas empresas
+  const todosClientes: Array<ClienteCompleto & { empresa: EmpresaClienteCompleta }> = [];
+  clientes.forEach(cliente => {
+    const empresa = empresas.find(e => e.id === cliente.empresa_id);
+    if (empresa) {
+      todosClientes.push({
+        ...cliente,
+        empresa: empresa
+      });
+    }
+  });
+
+  if (todosClientes.length === 0) {
+    throw new Error('Nenhum cliente com empresa associada encontrado para exportar');
+  }
+
+  // Criar novo documento PDF
+  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Configurar fonte
+  doc.setFont('helvetica');
+
+  // Cores do tema (usando a cor azul padrão do sistema - igual às empresas)
+  const colors = {
+    primary: [37, 99, 235] as const,      // Azul Sonda (#2563eb) - cor padrão do sistema
+    secondary: [59, 130, 246] as const,   // Azul claro derivado
+    success: [46, 204, 113] as const,     // Verde
+    warning: [241, 196, 15] as const,     // Amarelo
+    danger: [231, 76, 60] as const,       // Vermelho
+    light: [236, 240, 241] as const,      // Cinza claro
+    dark: [52, 73, 94] as const,          // Cinza escuro
+    white: [255, 255, 255] as const       // Branco
+  };
+
+  // Função para desenhar cabeçalho
+  const drawHeader = () => {
+    // Fundo do cabeçalho
+    doc.setFillColor(...colors.primary);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+
+    // Título principal
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    const titulo = 'Gerenciamento de Clientes';
+    const tituloWidth = doc.getTextWidth(titulo);
+    doc.text(titulo, (pageWidth - tituloWidth) / 2, 20);
+
+    // Subtítulo com data
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    const subtitulo = `Relatório gerado em ${dataAtual}`;
+    const subtituloWidth = doc.getTextWidth(subtitulo);
+    doc.text(subtitulo, (pageWidth - subtituloWidth) / 2, 28);
+  };
+
+  // Função para desenhar caixa de resumo
+  const drawSummaryBox = (y: number) => {
+    const boxHeight = 30;
+    const boxY = y;
+
+    // Fundo da caixa de resumo
+    doc.setFillColor(...colors.light);
+    doc.rect(15, boxY, pageWidth - 30, boxHeight, 'F');
+
+    // Borda da caixa
+    doc.setDrawColor(...colors.primary);
+    doc.setLineWidth(0.5);
+    doc.rect(15, boxY, pageWidth - 30, boxHeight, 'S');
+
+    // Calcular estatísticas dos clientes
+    const totalClientes = todosClientes.length;
+    const clientesAtivos = todosClientes.filter(c => c.status === 'ativo').length;
+    const clientesInativos = todosClientes.filter(c => c.status === 'inativo').length;
+    const clientesSuspensos = todosClientes.filter(c => c.status === 'suspenso').length;
+
+    // Texto do resumo
+    doc.setTextColor(...colors.dark);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+
+    const resumoY = boxY + 8;
+    doc.text(`Total de clientes: ${totalClientes}`, 25, resumoY);
+    doc.text(`Clientes ativos: ${clientesAtivos}`, 25, resumoY + 6);
+    doc.text(`Clientes inativos: ${clientesInativos}`, 25, resumoY + 12);
+    doc.text(`Clientes suspensos: ${clientesSuspensos}`, 25, resumoY + 18);
+
+    return boxY + boxHeight + 10;
+  };
+
+  // Função para desenhar card de cliente seguindo o padrão das empresas
+  const drawClienteCard = (cliente: ClienteCompleto & { empresa: EmpresaClienteCompleta }, y: number) => {
+    const cardHeight = 45;
+    const cardMargin = 15;
+    const cardWidth = pageWidth - (cardMargin * 2);
+
+    // Verificar se cabe na página
+    if (y + cardHeight > pageHeight - 20) {
+      doc.addPage();
+      drawHeader();
+      y = 45;
+    }
+
+    // Fundo do card
+    doc.setFillColor(...colors.white);
+    doc.rect(cardMargin, y, cardWidth, cardHeight, 'F');
+
+    // Borda do card
+    doc.setDrawColor(...colors.light);
+    doc.setLineWidth(0.3);
+    doc.rect(cardMargin, y, cardWidth, cardHeight, 'S');
+
+    // Barra lateral colorida baseada no status do cliente
+    let statusColor: readonly [number, number, number] = colors.success; // Verde para ativo
+    if (cliente.status === 'inativo') statusColor = colors.danger;
+    if (cliente.status === 'suspenso') statusColor = colors.warning;
+
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.rect(cardMargin, y, 4, cardHeight, 'F');
+
+    // Conteúdo do card
+    const contentX = cardMargin + 10;
+    let contentY = y + 8;
+
+    // Nome do cliente (título principal)
+    doc.setTextColor(...colors.dark);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(cliente.nome_completo.toUpperCase(), contentX, contentY);
+
+    // Empresa do cliente (subtítulo)
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(cliente.empresa.nome_abreviado, contentX, contentY + 5);
+
+    contentY += 12;
+
+    // Informações em duas colunas (seguindo padrão das empresas)
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.dark);
+
+    // Coluna esquerda
+    doc.setFont('helvetica', 'bold');
+    doc.text('Status:', contentX, contentY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(cliente.status.toUpperCase(), contentX + 20, contentY);
+
+    doc.setTextColor(...colors.dark);
+    doc.setFont('helvetica', 'bold');
+    doc.text('E-mail:', contentX, contentY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(cliente.email, contentX + 20, contentY + 5);
+
+    // Coluna direita
+    const rightColumnX = contentX + 90;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Criado em:', rightColumnX, contentY);
+    doc.setFont('helvetica', 'normal');
+    const criadoEm = new Date(cliente.created_at).toLocaleDateString('pt-BR');
+    doc.text(criadoEm, rightColumnX + 25, contentY);
+
+    // Função do cliente
+    if (cliente.funcao) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Função:', rightColumnX, contentY + 5);
+      doc.setFont('helvetica', 'normal');
+      // Truncar função se for muito longa
+      const funcao = cliente.funcao.length > 20
+        ? cliente.funcao.substring(0, 20) + '...'
+        : cliente.funcao;
+      doc.text(funcao, rightColumnX + 20, contentY + 5);
+    }
+
+    // Principal contato (se aplicável)
+    if (cliente.principal_contato) {
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text('PRINCIPAL CONTATO', contentX, contentY + 15);
+    }
+
+    return y + cardHeight + 5;
+  };
+
+  // Desenhar primeira página
+  drawHeader();
+  let currentY = 45;
+
+  // Desenhar caixa de resumo
+  currentY = drawSummaryBox(currentY);
+
+  // Ordenar clientes por nome
+  todosClientes.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
+
+  // Desenhar cards dos clientes
+  for (const cliente of todosClientes) {
+    currentY = drawClienteCard(cliente, currentY);
+  }
+
+  // Gerar nome do arquivo com data atual
+  const dataArquivo = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+  const nomeArquivo = `gerenciamento_clientes_${dataArquivo}.pdf`;
+
+  // Fazer download do arquivo
+  doc.save(nomeArquivo);
 };
 
 // Interface para dados de importação de empresas
@@ -310,46 +354,46 @@ export interface ClienteImportData {
 export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        
+
         // Pegar a primeira planilha
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        
+
         // Converter para JSON
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-        
+
         // Processar dados (assumindo que a primeira linha são os cabeçalhos)
         const headers = jsonData[0] as string[];
         const rows = jsonData.slice(1);
-        
+
         // Mapear colunas esperadas
-        const nomeCompletoIndex = headers.findIndex(h => 
+        const nomeCompletoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('nome completo')
         );
-        const nomeAbreviadoIndex = headers.findIndex(h => 
+        const nomeAbreviadoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('nome abreviado')
         );
-        const statusIndex = headers.findIndex(h => 
+        const statusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('status') && !h.toLowerCase().includes('descrição')
         );
-        const descricaoStatusIndex = headers.findIndex(h => 
+        const descricaoStatusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('descrição') && h.toLowerCase().includes('status')
         );
-        const emailGestorIndex = headers.findIndex(h => 
+        const emailGestorIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('email') && h.toLowerCase().includes('gestor')
         );
-        const linkSharepointIndex = headers.findIndex(h => 
+        const linkSharepointIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('sharepoint')
         );
-        const templatePadraoIndex = headers.findIndex(h => 
+        const templatePadraoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('template')
         );
-        const produtosIndex = headers.findIndex(h => 
+        const produtosIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('produto')
         );
 
@@ -366,23 +410,23 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
           .map(row => ({
             nomeCompleto: String(row[nomeCompletoIndex]).trim(),
             nomeAbreviado: String(row[nomeAbreviadoIndex]).trim(),
-            status: statusIndex !== -1 && row[statusIndex] 
-              ? String(row[statusIndex]).trim().toLowerCase() 
+            status: statusIndex !== -1 && row[statusIndex]
+              ? String(row[statusIndex]).trim().toLowerCase()
               : 'ativo',
-            descricaoStatus: descricaoStatusIndex !== -1 && row[descricaoStatusIndex] 
-              ? String(row[descricaoStatusIndex]).trim() 
+            descricaoStatus: descricaoStatusIndex !== -1 && row[descricaoStatusIndex]
+              ? String(row[descricaoStatusIndex]).trim()
               : undefined,
-            emailGestor: emailGestorIndex !== -1 && row[emailGestorIndex] 
-              ? String(row[emailGestorIndex]).trim() 
+            emailGestor: emailGestorIndex !== -1 && row[emailGestorIndex]
+              ? String(row[emailGestorIndex]).trim()
               : undefined,
-            linkSharepoint: linkSharepointIndex !== -1 && row[linkSharepointIndex] 
-              ? String(row[linkSharepointIndex]).trim() 
+            linkSharepoint: linkSharepointIndex !== -1 && row[linkSharepointIndex]
+              ? String(row[linkSharepointIndex]).trim()
               : undefined,
-            templatePadrao: templatePadraoIndex !== -1 && row[templatePadraoIndex] 
-              ? String(row[templatePadraoIndex]).trim() 
+            templatePadrao: templatePadraoIndex !== -1 && row[templatePadraoIndex]
+              ? String(row[templatePadraoIndex]).trim()
               : 'portugues',
-            produtos: produtosIndex !== -1 && row[produtosIndex] 
-              ? String(row[produtosIndex]).trim() 
+            produtos: produtosIndex !== -1 && row[produtosIndex]
+              ? String(row[produtosIndex]).trim()
               : ''
           }));
 
@@ -404,43 +448,43 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
 export const processImportClientesExcel = (file: File): Promise<ClienteImportData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        
+
         // Pegar a primeira planilha
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        
+
         // Converter para JSON
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-        
+
         // Processar dados (assumindo que a primeira linha são os cabeçalhos)
         const headers = jsonData[0] as string[];
         const rows = jsonData.slice(1);
-        
+
         // Mapear colunas esperadas
-        const nomeCompletoIndex = headers.findIndex(h => 
+        const nomeCompletoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('nome')
         );
-        const emailIndex = headers.findIndex(h => 
-          h && h.toLowerCase().includes('email') && !h.toLowerCase().includes('gestor')
+        const emailIndex = headers.findIndex(h =>
+          h && (h.toLowerCase().includes('email') || h.toLowerCase().includes('e-mail')) && !h.toLowerCase().includes('gestor')
         );
-        const funcaoIndex = headers.findIndex(h => 
+        const funcaoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('função') || h.toLowerCase().includes('funcao')
         );
-        const empresaIndex = headers.findIndex(h => 
+        const empresaIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('empresa')
         );
-        const statusIndex = headers.findIndex(h => 
+        const statusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('status') && !h.toLowerCase().includes('descrição')
         );
-        const descricaoStatusIndex = headers.findIndex(h => 
+        const descricaoStatusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('descrição') && h.toLowerCase().includes('status')
         );
-        const principalContatoIndex = headers.findIndex(h => 
+        const principalContatoIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('principal') && h.toLowerCase().includes('contato')
         );
 
@@ -460,18 +504,18 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
           .map(row => ({
             nomeCompleto: String(row[nomeCompletoIndex]).trim(),
             email: String(row[emailIndex]).trim(),
-            funcao: funcaoIndex !== -1 && row[funcaoIndex] 
-              ? String(row[funcaoIndex]).trim() 
+            funcao: funcaoIndex !== -1 && row[funcaoIndex]
+              ? String(row[funcaoIndex]).trim()
               : undefined,
             empresaNome: String(row[empresaIndex]).trim(),
-            status: statusIndex !== -1 && row[statusIndex] 
-              ? String(row[statusIndex]).trim().toLowerCase() 
+            status: statusIndex !== -1 && row[statusIndex]
+              ? String(row[statusIndex]).trim().toLowerCase()
               : 'ativo',
-            descricaoStatus: descricaoStatusIndex !== -1 && row[descricaoStatusIndex] 
-              ? String(row[descricaoStatusIndex]).trim() 
+            descricaoStatus: descricaoStatusIndex !== -1 && row[descricaoStatusIndex]
+              ? String(row[descricaoStatusIndex]).trim()
               : undefined,
-            principalContato: principalContatoIndex !== -1 && row[principalContatoIndex] 
-              ? String(row[principalContatoIndex]).trim().toLowerCase() 
+            principalContato: principalContatoIndex !== -1 && row[principalContatoIndex]
+              ? String(row[principalContatoIndex]).trim().toLowerCase()
               : 'não'
           }));
 
@@ -540,7 +584,7 @@ export const downloadImportEmpresasTemplate = () => {
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(templateData);
-  
+
   // Ajustar largura das colunas
   ws['!cols'] = [
     { wch: 30 }, // Nome Completo
@@ -582,7 +626,7 @@ export const downloadImportClientesTemplate = () => {
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(templateData);
-  
+
   // Ajustar largura das colunas
   ws['!cols'] = [
     { wch: 25 }, // Nome Completo

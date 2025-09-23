@@ -87,15 +87,6 @@ const TemplateVariables = () => {
           </div>
         ))}
       </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-        <h5 className="font-medium text-amber-800 mb-2">📋 Descrição das Variáveis</h5>
-        <div className="text-sm text-amber-700 space-y-1">
-          <p><strong>Valores Mensais:</strong> Calculados automaticamente dividindo valores totais pelo tempo de contrato</p>
-          <p><strong>Escopo:</strong> Múltiplos escopos são separados por vírgula + quebra de linha</p>
-          <p><strong>Valores Monetários:</strong> Formatados automaticamente em Real (R$)</p>
-        </div>
-      </div>
     </div>
   );
 };

@@ -112,9 +112,14 @@ export default function GruposResponsaveis() {
             isImporting={isImporting}
           />
           <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-            <Button onClick={handleCreateGrupo}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Grupo
+            <Button 
+              onClick={handleCreateGrupo}
+              className="flex items-center gap-2 text-sm"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Grupo</span>
+              <span className="sm:hidden">Novo</span>
             </Button>
           </ProtectedAction>
         </div>

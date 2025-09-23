@@ -25,7 +25,13 @@ import { ClientImportExportButtons } from '@/components/admin/client-books/Clien
 import { useClientes } from '@/hooks/useClientes';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import type { ClienteCompleto, ClienteFormData, ClienteFiltros, ClienteStatus } from '@/types/clientBooksTypes';
+import type { 
+  ClienteCompleto, 
+  ClienteFormData, 
+  ClienteFiltros, 
+  ClienteStatus,
+  EmpresaClienteCompleta 
+} from '@/types/clientBooksTypes';
 
 const Clientes: React.FC = () => {
   // Estados para modais
@@ -50,8 +56,10 @@ const Clientes: React.FC = () => {
 
   const { empresas, isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo', 'inativo', 'suspenso'] });
 
-  // Garantir que empresas é sempre um array válido
-  const empresasArray = Array.isArray(empresas) ? empresas : [];
+  // Garantir que empresas é sempre um array válido e converter para o tipo correto
+  const empresasArray = Array.isArray(empresas) 
+    ? empresas as unknown as EmpresaClienteCompleta[]
+    : [];
 
   // Handlers para ações
   const handleNovoCliente = () => {
@@ -100,15 +108,26 @@ const Clientes: React.FC = () => {
   // Handler para importação de clientes em lote
   const handleImportClientes = async (clientes: ClienteFormData[]) => {
     const resultados = [];
+    const erros = [];
+    
     for (const cliente of clientes) {
       try {
         const resultado = await criarCliente(cliente);
         resultados.push(resultado);
       } catch (error) {
         console.error('Erro ao importar cliente:', cliente.nomeCompleto, error);
-        throw error;
+        erros.push({
+          cliente: cliente.nomeCompleto,
+          erro: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
       }
     }
+    
+    // Se houver erros, incluir na resposta mas não interromper o processo
+    if (erros.length > 0) {
+      console.warn('Erros na importação de clientes:', erros);
+    }
+    
     return resultados;
   };
 
@@ -182,11 +201,13 @@ const Clientes: React.FC = () => {
             <ProtectedAction screenKey="clientes" requiredLevel="edit">
               <Button
                 onClick={handleNovoCliente}
-                className="flex items-center space-x-2"
+                className="flex items-center gap-2 text-sm"
+                size="sm"
                 disabled={isLoadingEmpresas}
               >
                 <Plus className="h-4 w-4" />
-                <span>Novo Cliente</span>
+                <span className="hidden sm:inline">Novo Cliente</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </ProtectedAction>
           </div>

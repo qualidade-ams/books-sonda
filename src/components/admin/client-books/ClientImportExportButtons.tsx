@@ -69,15 +69,6 @@ export function ClientImportExportButtons({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportEmpresasExcel = async () => {
-    try {
-      await exportEmpresasToExcel(empresas);
-      toast.success('Dados de empresas exportados para Excel com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao exportar dados de empresas para Excel');
-      console.error('Erro na exportação Excel:', error);
-    }
-  };
 
   const handleExportClientesExcel = () => {
     try {
@@ -89,9 +80,13 @@ export function ClientImportExportButtons({
     }
   };
 
-  const handleExportClientesPDF = () => {
+  const handleExportClientesPDF = async () => {
     try {
-      exportClientesToPDF(empresas);
+      if (!clientes || clientes.length === 0) {
+        toast.error('Nenhum cliente encontrado para exportar');
+        return;
+      }
+      await exportClientesToPDF(clientes, empresas);
       toast.success('Relatório PDF de clientes gerado com sucesso!');
     } catch (error) {
       toast.error('Erro ao gerar relatório PDF de clientes');
@@ -287,14 +282,22 @@ export function ClientImportExportButtons({
     setImportProgress(70);
 
     // Importar clientes válidos
+    let clientesImportadosComSucesso = 0;
     if (clientesParaImportar.length > 0) {
-      await onImportClientes(clientesParaImportar);
-      setImportProgress(100);
+      try {
+        const resultados = await onImportClientes(clientesParaImportar);
+        clientesImportadosComSucesso = resultados.length;
+        setImportProgress(100);
+      } catch (error) {
+        // Se houver erro na importação, adicionar aos erros
+        erros.push(`Erro durante a importação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        setImportProgress(100);
+      }
     }
 
     // Mostrar resultados
     setImportResults({
-      success: clientesParaImportar.length,
+      success: clientesImportadosComSucesso,
       errors: erros,
       total: importData.length
     });
@@ -334,14 +337,10 @@ export function ClientImportExportButtons({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExportEmpresasExcel}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Exportar Empresas para Excel
-            </DropdownMenuItem>
             {showClientes && (
               <DropdownMenuItem onClick={handleExportClientesExcel}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar Clientes para Excel
+                Exportar para Excel
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleExportClientesPDF}>

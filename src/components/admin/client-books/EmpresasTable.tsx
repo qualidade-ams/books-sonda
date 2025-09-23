@@ -85,6 +85,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
       GALLERY: 'Gallery'
     };
 
+    
     return (
       <div className="flex flex-wrap gap-1">
         {produtos.map((produto, index) => (
@@ -247,7 +248,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                 <div className="flex items-center gap-1">
                   <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => onEdit(empresa)}
                       className="h-8 w-8 p-0"
@@ -258,7 +259,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                   </ProtectedAction>
                   <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => onDelete(empresa)}
                       className="h-8 w-8 p-0 text-red-600 hover:text-red-800"

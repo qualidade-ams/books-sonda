@@ -122,10 +122,7 @@ export function GruposTable({
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Grupos de Responsáveis ({grupos.length})
-            </CardTitle>
+            <CardTitle className="text-lg lg:text-xl">Grupos de Responsáveis ({grupos.length})</CardTitle>
             {onSearchChange && (
               <Button
                 variant="outline"
@@ -166,7 +163,6 @@ export function GruposTable({
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>E-mails</TableHead>
-                  <TableHead>Criado em</TableHead>
                   <TableHead className="w-[100px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -177,7 +173,7 @@ export function GruposTable({
                       {grupo.nome}
                     </TableCell>
                     <TableCell>
-                      <div className="max-w-[200px] truncate">
+                      <div className="max-w-[350px] truncate">
                         {grupo.descricao || (
                           <span className="text-gray-400 italic">Sem descrição</span>
                         )}
@@ -186,44 +182,48 @@ export function GruposTable({
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-gray-400" />
-                        <Badge variant="secondary">
+                        <Badge variant="outline">
                           {grupo.emails?.length || 0} e-mail{(grupo.emails?.length || 0) !== 1 ? 's' : ''}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(grupo.created_at)}
-                    </TableCell>
+
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onView(grupo)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-                            <DropdownMenuItem onClick={() => onEdit(grupo)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          </ProtectedAction>
-                          <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteClick(grupo)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Deletar
-                            </DropdownMenuItem>
-                          </ProtectedAction>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex space-x-2">
+                        <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="view">
+                          <Button                       
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onView(grupo)}
+                          className='h-8 w-8 p-0'
+                          title="Editar cliente"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
+                      <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onEdit(grupo)}
+                          className='h-8 w-8 p-0'
+                          title="Editar cliente"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
+                      <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteClick(grupo)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title="Excluir cliente"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
+                    </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { UserPlus, Save, RefreshCw, User } from 'lucide-react';
+import { UserPlus, Save, RefreshCw, User, Edit, Plus } from 'lucide-react';
 import { userManagementService, type UserData, type CreateUserData } from '@/services/userManagementService';
 
 
@@ -395,9 +395,13 @@ const UserManagement = () => {
           <ProtectedAction screenKey="cadastro-usuarios" requiredLevel="edit">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Cadastrar Usuário
+                <Button 
+                  className="flex items-center gap-2"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Cadastrar Usuário</span>
+                  <span className="sm:hidden">Novo</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -692,15 +696,12 @@ const UserManagement = () => {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle>Usuários Cadastrados ({filteredUsers.length})</CardTitle>
-                <CardDescription>
-                  Lista de todos os usuários do sistema
-                </CardDescription>
+                <CardTitle className="text-lg lg:text-xl">Usuários Cadastrados ({filteredUsers.length})</CardTitle>
               </div>
             </div>
 
             {/* Filtros dentro do card */}
-            <div className="flex gap-4 mt-4 pt-4 border-t">
+            <div className="flex gap-4 mt-4 pt-4">
               <div className="flex-1">
                 <Input
                   placeholder="Buscar por nome, email ou grupo..."
@@ -742,7 +743,7 @@ const UserManagement = () => {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         {user.group_name ? (
-                          <Badge variant="secondary">{user.group_name}</Badge>
+                          <Badge variant="outline">{user.group_name}</Badge>
                         ) : (
                           <span className="text-gray-500">Sem grupo</span>
                         )}
@@ -765,8 +766,11 @@ const UserManagement = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => openEditDialog(user)}
+                              className="h-8 w-8 p-0"
+                              title='Editar'
                             >
-                              Editar
+                              
+                              <Edit className="h-4 w-4" />
                             </Button>
                           </ProtectedAction>
                         </div>

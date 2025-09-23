@@ -273,16 +273,41 @@ export class ClientesService {
    */
   async deletarCliente(id: string): Promise<void> {
     try {
-      // Verificar se cliente tem histórico de disparos
-      const { data: historico } = await supabase
+      // Buscar dados do cliente para verificar o e-mail
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('email')
+        .eq('id', id)
+        .single();
+
+      if (!cliente) {
+        throw new ClienteError('Cliente não encontrado', 'NOT_FOUND');
+      }
+
+      // Verificar se cliente tem histórico de disparos direto
+      const { data: historicoDirecto } = await supabase
         .from('historico_disparos')
         .select('id')
         .eq('cliente_id', id)
         .limit(1);
 
-      if (historico && historico.length > 0) {
+      if (historicoDirecto && historicoDirecto.length > 0) {
         throw new ClienteError(
           'Não é possível deletar cliente com histórico de disparos',
+          'HAS_DISPATCH_HISTORY'
+        );
+      }
+
+      // Verificar se cliente aparece em disparos consolidados (no campo erro_detalhes)
+      const { data: historicoConsolidado } = await supabase
+        .from('historico_disparos')
+        .select('id, erro_detalhes')
+        .ilike('erro_detalhes', `%${cliente.email}%`)
+        .limit(1);
+
+      if (historicoConsolidado && historicoConsolidado.length > 0) {
+        throw new ClienteError(
+          'Não é possível deletar cliente com histórico de disparos (disparo consolidado)',
           'HAS_DISPATCH_HISTORY'
         );
       }

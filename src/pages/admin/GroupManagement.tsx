@@ -160,9 +160,14 @@ const GroupManagement = () => {
             <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Grupos</h1>
             <p className="text-gray-600">Gerencie grupos de usuários e suas permissões</p>
           </div>
-          <Button onClick={handleCreateGroup} className="flex items-center space-x-2">
+          <Button 
+            onClick={handleCreateGroup} 
+            className="flex items-center gap-2 text-sm"
+            size="sm"
+          >
             <Plus className="h-4 w-4" />
-            <span>Criar Novo Grupo</span>
+            <span className="hidden sm:inline">Novo Grupo</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
 

@@ -89,6 +89,7 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
                   size="sm"
                   variant="outline"
                   onClick={() => onConfigurePermissions(group)}
+                  className="h-8 w-8 p-0"
                   title="Configurar permissões"
                 >
                   <Settings className="h-4 w-4" />
@@ -97,6 +98,7 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
                   size="sm"
                   variant="outline"
                   onClick={() => onEdit(group)}
+                  className="h-8 w-8 p-0"
                   title="Editar grupo"
                 >
                   <Edit className="h-4 w-4" />
@@ -106,6 +108,7 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
                   variant="outline"
                   onClick={() => onDelete(group)}
                   disabled={group.is_default_admin}
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                   title={group.is_default_admin ? "Grupo administrador não pode ser excluído" : "Excluir grupo"}
                 >
                   <Trash2 className="h-4 w-4" />

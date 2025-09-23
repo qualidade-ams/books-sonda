@@ -137,29 +137,6 @@ const VariaveisTemplateExtendido = ({
           )}
         </div>
       )}
-
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-        <h5 className="font-medium text-amber-800 mb-2">📋 Descrição das Variáveis</h5>
-        <div className="text-sm text-amber-700 space-y-1">
-          {mostrarVariaveisBooks && (
-            <>
-              <p><strong>Sistema de Books:</strong> Variáveis relacionadas a empresas clientes, clientes e disparos mensais</p>
-              <p><strong>Dados da Empresa:</strong> Informações cadastrais da empresa cliente (nome, produtos, status, etc.)</p>
-              <p><strong>Dados do Cliente:</strong> Informações do destinatário do e-mail (nome, função, contato principal)</p>
-              <p><strong>Dados do Disparo:</strong> Informações sobre o envio atual (mês, ano, data de disparo)</p>
-            </>
-          )}
-          {mostrarVariaveisFormulario && (
-            <>
-              <p><strong>Sistema de Formulários:</strong> Variáveis do sistema Comply para propostas comerciais</p>
-              <p><strong>Valores Mensais:</strong> Calculados automaticamente dividindo valores totais pelo tempo de contrato</p>
-              <p><strong>Escopo:</strong> Múltiplos escopos são separados por vírgula + quebra de linha</p>
-            </>
-          )}
-          <p><strong>Valores Monetários:</strong> Formatados automaticamente em Real (R$)</p>
-          <p><strong>Uso:</strong> Clique no ícone de cópia para copiar a variável para a área de transferência</p>
-        </div>
-      </div>
     </div>
   );
 };

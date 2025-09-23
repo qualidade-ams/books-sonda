@@ -337,7 +337,7 @@ class ExcelImportService {
         '',
         'gestor@sonda.com',
         'CE_PLUS,FISCAL',
-        'CE Plus,Todos',
+        'CE Plus,Outros',
         'sim',
         'qualidade',
         '2024-01-01',

@@ -86,7 +86,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     switch (status) {
       case 'ativo':
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+          <Badge variant="default" className="bg-blue-600 text-white border-blue-600">
             <CheckCircle className="h-3 w-3 mr-1" />
             Ativo
           </Badge>
@@ -125,10 +125,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5" />
-            <span>Clientes ({clientes.length})</span>
-          </CardTitle>
+          <CardTitle className="text-lg lg:text-xl">Clientes ({clientes.length})</CardTitle>
           <Button
             variant="outline"
             size="sm"
@@ -235,7 +232,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       <div className="font-medium flex items-center space-x-2">
                         <span>{cliente.nome_completo}</span>
                         {cliente.principal_contato && (
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                          <Star className="h-4 w-4 text-blue-600 fill-current" />
                         )}
                       </div>
                       <div className="flex items-center space-x-1 text-sm text-gray-500">
@@ -273,7 +270,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
 
                   <TableCell>
                     {cliente.principal_contato ? (
-                      <Badge variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                      <Badge variant="default" className="bg-white text-blue-600 border-blue-600">
                         <Star className="h-3 w-3 mr-1" />
                         Principal
                       </Badge>
@@ -293,6 +290,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           size="sm"
                           variant="outline"
                           onClick={() => onEdit(cliente)}
+                          className='h-8 w-8 p-0'
                           title="Editar cliente"
                         >
                           <Edit className="h-4 w-4" />
@@ -303,12 +301,8 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           size="sm"
                           variant="outline"
                           onClick={() => onDelete(cliente)}
-                          disabled={cliente.status === 'ativo'}
-                          title={
-                            cliente.status === 'ativo'
-                              ? 'Inative o cliente antes de excluir'
-                              : 'Excluir cliente'
-                          }
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title="Excluir cliente"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

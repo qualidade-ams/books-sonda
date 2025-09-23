@@ -33,13 +33,13 @@ describe('ExcelImportService', () => {
       const mockFile = {
         arrayBuffer: vi.fn().mockResolvedValue(mockArrayBuffer)
       } as any;
-      
+
       const mockWorkbook = {
         SheetNames: ['Sheet1'],
         Sheets: {
-          Sheet1: {}
+          Sheet1: {} as any
         }
-      };
+      } as XLSX.WorkBook;
       const mockJsonData = [
         ['Nome Completo', 'Nome Abreviado', 'Template Padrão', 'Status'],
         ['Empresa Teste', 'Teste', 'portugues', 'ativo']
@@ -64,13 +64,13 @@ describe('ExcelImportService', () => {
       const mockFile = {
         arrayBuffer: vi.fn().mockResolvedValue(mockArrayBuffer)
       } as any;
-      
+
       const mockWorkbook = {
         SheetNames: ['Sheet1'],
         Sheets: {
-          Sheet1: {}
+          Sheet1: {} as any
         }
-      };
+      } as XLSX.WorkBook;
 
       vi.mocked(XLSX.read).mockReturnValue(mockWorkbook);
       vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue([]);
@@ -83,8 +83,11 @@ describe('ExcelImportService', () => {
   describe('generateTemplate', () => {
     it('deve gerar um template Excel', () => {
       // Arrange
-      const mockWorksheet = {};
-      const mockWorkbook = {};
+      const mockWorksheet = {} as any;
+      const mockWorkbook = {
+        Sheets: {},
+        SheetNames: ['Template']
+      } as XLSX.WorkBook;
       const mockBuffer = new ArrayBuffer(8);
 
       vi.mocked(XLSX.utils.aoa_to_sheet).mockReturnValue(mockWorksheet);
@@ -114,7 +117,7 @@ describe('ExcelImportService', () => {
         'Status': 'ativo',
         'Email Gestor': 'gestor@teste.com',
         'Produtos': 'CE_PLUS,FISCAL',
-        'Grupos': 'CE Plus,Todos'
+        'Grupos': 'CE Plus,Outros'
       };
 
       // Act

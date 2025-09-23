@@ -293,7 +293,8 @@ const EmpresasClientes = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas</CardTitle>
+              <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas ({empresas.length})</CardTitle>
+
               <div className="flex flex-col sm:flex-row gap-2">
 
                 <Button
