@@ -35,7 +35,7 @@ books-snd/
 │   ├── components/             						      # Componentes reutilizáveis
 │   │   ├── admin/              						      # Componentes de administração
 │   │   │   ├── anexos/         						      # Componentes do sistema de anexos para disparos personalizados
-│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso e lista de arquivos selecionados
+│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso, lista de arquivos selecionados e integração com hook useAnexos para gerenciamento centralizado de estado
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
 │   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
@@ -157,7 +157,7 @@ books-snd/
 │   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
 │   │   ├── useHistorico.ts                      		# Hook para histórico de books com cache otimizado (staleTime reduzido para 30s, refetch automático a cada 1 minuto, refetch ao focar na janela habilitado para dados sempre atualizados)
 │   │   ├── useAnexoCleanupJob.ts                		# Hook para gerenciamento do job de limpeza automática de anexos (controle de execução, estatísticas, limpeza manual, monitoramento de estado)
-│   │   ├── useAnexos.ts                         		# Hook para gerenciamento completo de anexos em disparos personalizados (upload múltiplo com validação de tipos e tamanhos, controle de limite de 25MB por empresa, progresso de upload por arquivo, cache local de anexos por empresa, validações de segurança, remoção individual e em lote, summary de uso e estados reativos para interface)
+│   │   ├── useAnexos.ts                         		# Hook para gerenciamento completo de anexos em disparos personalizados (upload múltiplo com validação de tipos e tamanhos, controle de limite de 25MB por empresa, progresso de upload por arquivo, cache local de anexos por empresa, validações de segurança, remoção individual e em lote, summary de uso, estados reativos para interface e integração com serviços de compressão e cache)
 │   │   ├── useJobScheduler.ts                   		# Hook para agendamento de jobs
 │   │   ├── usePagination.ts                     		# Hook para paginação otimizada
 │   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
@@ -180,7 +180,7 @@ books-snd/
 │   │   └── supabase/									      # Integração com Supabase
 │   │       ├── adminClient.ts                       # Cliente Supabase para operações administrativas
 │   │       ├── client.ts								      # Cliente principal do Supabase
-│   │       └── types.ts									      # Tipos gerados automaticamente do banco de dados (atualizado com suporte a anexos na tabela historico_disparos: campos anexo_id e anexo_processado para integração com sistema de anexos em disparos personalizados)
+│   │       └── types.ts									      # Tipos gerados automaticamente do banco de dados (atualizado com suporte completo ao sistema de anexos: tabela anexos_temporarios para armazenamento de arquivos temporários com campos de controle de status, URLs, tokens de acesso e relacionamento com empresas_clientes, além de campos anexo_id e anexo_processado na tabela historico_disparos para integração com sistema de anexos em disparos personalizados)
 │   │				
 │   ├── lib/                    						      # Utilitários e bibliotecas
 │   │   └── utils.ts										      # Utilitários gerais (clsx, tailwind-merge, etc.)
@@ -303,9 +303,12 @@ books-snd/
 │   │				
 │   ├── utils/                  						      # Funções utilitárias
 │   │   ├── __tests__/          						      # Testes das funções utilitárias
+│   │   │   ├── anexoCache.test.ts                   # Testes do sistema de cache de anexos (TTL, invalidação, estatísticas e performance)
+│   │   │   ├── anexoCompression.test.ts             # Testes da compressão automática de anexos (algoritmos, tipos de arquivo, estatísticas de redução)
 │   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo), testes de variáveis de sistema do mês atual e correção de sintaxe
 │   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
+│   │   ├── anexoCache.ts              					# Sistema de cache local para anexos com TTL configurável (cache em memória por empresa, invalidação automática, utilitários de limpeza, estatísticas de uso e integração com sistema de anexos para otimização de performance)
 │   │   ├── anexoCompression.ts        					# Utilitários para compressão automática de anexos (compressão inteligente baseada no tamanho e tipo do arquivo, suporte a PDFs, imagens e documentos Office, processamento em paralelo com limite de concorrência, estatísticas de redução de tamanho e otimização de performance para uploads)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books

@@ -7,28 +7,9 @@ import { Progress } from '../../ui/progress';
 import { Badge } from '../../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/tooltip';
 import { cn } from '../../../lib/utils';
-import { comprimirArquivos, deveComprimir } from '@/utils/anexoCompression';
-import { anexoCache, cacheUtils } from '@/utils/anexoCache';
+import { useAnexos, type AnexoData } from '@/hooks/useAnexos';
 
-export interface AnexoData {
-  id: string;
-  nome: string;
-  tipo: string;
-  tamanho: number;
-  url: string;
-  status: 'pendente' | 'enviando' | 'processado' | 'erro';
-  empresaId: string;
-  token?: string;
-  dataUpload?: string;
-  dataExpiracao?: string;
-}
-
-export interface AnexosSummary {
-  totalArquivos: number;
-  tamanhoTotal: number;
-  tamanhoLimite: number;
-  podeAdicionar: boolean;
-}
+// Tipos importados do hook useAnexos
 
 interface AnexoUploadProps {
   empresaId: string;
@@ -94,7 +75,7 @@ const validarAssinaturaArquivo = async (arquivo: File): Promise<boolean> => {
       };
 
       // Verificar se o arquivo corresponde a algum magic number válido
-      const isValid = Object.values(magicNumbers).some(signatures => 
+      const isValid = Object.values(magicNumbers).some(signatures =>
         signatures.some(signature => hex.startsWith(signature))
       );
 
@@ -113,42 +94,39 @@ export function AnexoUpload({
   maxFiles = MAX_FILES_DEFAULT,
   className
 }: AnexoUploadProps) {
-  const [anexos, setAnexos] = useState<AnexoData[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [isUploading, setIsUploading] = useState(false);
-  const [isCompressing, setIsCompressing] = useState(false);
+  // Usar o hook useAnexos para integração real com o serviço
+  const {
+    uploadAnexos,
+    removerAnexo,
+    obterAnexosPorEmpresa,
+    obterSummary,
+    validarArquivo,
+    validarLimiteTotal,
+    isUploading,
+    uploadProgress,
+    error
+  } = useAnexos();
+
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [compressionStats, setCompressionStats] = useState<string>('');
 
-  // Carregar anexos do cache ao montar o componente
+  // Obter anexos atuais da empresa
+  const anexos = obterAnexosPorEmpresa(empresaId);
+  const resumo = obterSummary(empresaId);
+
+  // Notificar mudanças nos anexos
   useEffect(() => {
-    const cached = anexoCache.getAnexosEmpresa(empresaId);
-    if (cached && cached.length > 0) {
-      setAnexos(cached);
-      onAnexosChange(cached);
-    }
-  }, [empresaId, onAnexosChange]);
+    onAnexosChange(anexos);
+  }, [anexos, onAnexosChange]);
 
-  // Calcular resumo atual
-  const resumo: AnexosSummary = {
-    totalArquivos: anexos.length,
-    tamanhoTotal: anexos.reduce((total, anexo) => total + anexo.tamanho, 0),
-    tamanhoLimite: maxTotalSize,
-    podeAdicionar: anexos.length < maxFiles && anexos.reduce((total, anexo) => total + anexo.tamanho, 0) < maxTotalSize
-  };
-
-  // Validar arquivo individual
-  const validarArquivo = async (arquivo: File): Promise<string[]> => {
+  // Validar arquivo individual (wrapper para o hook)
+  const validarArquivoLocal = async (arquivo: File): Promise<string[]> => {
     const erros: string[] = [];
 
-    // Validar tamanho
-    if (arquivo.size > TAMANHO_MAXIMO_ARQUIVO) {
-      erros.push(`Arquivo "${arquivo.name}" excede o tamanho máximo de 10MB`);
-    }
-
-    // Validar tipo MIME
-    if (!TIPOS_PERMITIDOS.includes(arquivo.type)) {
-      erros.push(`Tipo de arquivo "${arquivo.type}" não permitido para "${arquivo.name}"`);
+    // Usar validação do hook
+    const validacao = validarArquivo(arquivo);
+    if (!validacao.valido && validacao.erro) {
+      erros.push(validacao.erro);
     }
 
     // Validar extensão
@@ -170,59 +148,30 @@ export function AnexoUpload({
     return erros;
   };
 
-  // Validar limite total
-  const validarLimiteTotal = (novosArquivos: File[]): string[] => {
+  // Validar limite total (wrapper para o hook)
+  const validarLimiteTotalLocal = async (novosArquivos: File[]): Promise<string[]> => {
     const erros: string[] = [];
-    const tamanhoAtual = resumo.tamanhoTotal;
-    const tamanhoNovos = novosArquivos.reduce((total, arquivo) => total + arquivo.size, 0);
     const totalArquivos = resumo.totalArquivos + novosArquivos.length;
 
     if (totalArquivos > maxFiles) {
       erros.push(`Máximo de ${maxFiles} arquivos permitidos por empresa`);
     }
 
-    if ((tamanhoAtual + tamanhoNovos) > maxTotalSize) {
+    const limiteOk = await validarLimiteTotal(empresaId, novosArquivos);
+    if (!limiteOk) {
       erros.push(`Limite total de ${formatarTamanho(maxTotalSize)} por empresa seria excedido`);
     }
 
     return erros;
   };
 
-  // Simular upload (será substituído pela integração real com o serviço)
-  const simularUpload = async (arquivo: File): Promise<AnexoData> => {
-    const id = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Simular progresso de upload
-    for (let progress = 0; progress <= 100; progress += 10) {
-      setUploadProgress(prev => ({ ...prev, [id]: progress }));
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    // Remover progresso após conclusão
-    setUploadProgress(prev => {
-      const { [id]: _, ...rest } = prev;
-      return rest;
-    });
-
-    return {
-      id,
-      nome: arquivo.name,
-      tipo: arquivo.type,
-      tamanho: arquivo.size,
-      url: URL.createObjectURL(arquivo), // URL temporária para preview
-      status: 'pendente',
-      empresaId,
-      dataUpload: new Date().toISOString(),
-      dataExpiracao: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
-    };
-  };
-
   // Callback para drop de arquivos
   const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: any[]) => {
     setValidationErrors([]);
-    
+    setCompressionStats('');
+
     if (rejectedFiles.length > 0) {
-      const erros = rejectedFiles.map(({ file, errors }) => 
+      const erros = rejectedFiles.map(({ file, errors }) =>
         `${file.name}: ${errors.map((e: any) => e.message).join(', ')}`
       );
       setValidationErrors(erros);
@@ -232,10 +181,8 @@ export function AnexoUpload({
     if (acceptedFiles.length === 0) return;
 
     try {
-      setIsUploading(true);
-
       // Validar limite total primeiro
-      const errosLimite = validarLimiteTotal(acceptedFiles);
+      const errosLimite = await validarLimiteTotalLocal(acceptedFiles);
       if (errosLimite.length > 0) {
         setValidationErrors(errosLimite);
         return;
@@ -244,7 +191,7 @@ export function AnexoUpload({
       // Validar cada arquivo individualmente
       const errosValidacao: string[] = [];
       for (const arquivo of acceptedFiles) {
-        const errosArquivo = await validarArquivo(arquivo);
+        const errosArquivo = await validarArquivoLocal(arquivo);
         errosValidacao.push(...errosArquivo);
       }
 
@@ -253,59 +200,18 @@ export function AnexoUpload({
         return;
       }
 
-      // Verificar se algum arquivo precisa de compressão
-      const arquivosParaComprimir = acceptedFiles.filter(arquivo => deveComprimir(arquivo));
-      
-      let arquivosFinais = acceptedFiles;
-      
-      if (arquivosParaComprimir.length > 0) {
-        setIsCompressing(true);
-        try {
-          const compressionResults = await comprimirArquivos(acceptedFiles);
-          arquivosFinais = compressionResults.map(r => r.arquivo);
-          
-          // Mostrar estatísticas de compressão
-          const arquivosComprimidos = compressionResults.filter(r => r.foiComprimido);
-          if (arquivosComprimidos.length > 0) {
-            const reducaoMedia = arquivosComprimidos.reduce((sum, r) => sum + r.percentualReducao, 0) / arquivosComprimidos.length;
-            setCompressionStats(`${arquivosComprimidos.length} arquivo(s) otimizado(s) - ${reducaoMedia.toFixed(1)}% menor`);
-          }
-        } catch (error) {
-          console.warn('Erro na compressão, usando arquivos originais:', error);
-        } finally {
-          setIsCompressing(false);
-        }
-      }
+      // Fazer upload usando o serviço real
+      console.log(`🚀 Iniciando upload de ${acceptedFiles.length} arquivo(s) para empresa ${empresaId}`);
 
-      // Fazer upload dos arquivos válidos
-      const novosAnexos: AnexoData[] = [];
-      for (let i = 0; i < arquivosFinais.length; i++) {
-        const arquivo = arquivosFinais[i];
-        try {
-          const anexo = await simularUpload(arquivo);
-          novosAnexos.push(anexo);
-        } catch (error) {
-          console.error('Erro no upload:', error);
-          setValidationErrors(prev => [...prev, `Erro ao fazer upload de "${arquivo.name}"`]);
-        }
-      }
+      const novosAnexos = await uploadAnexos(empresaId, acceptedFiles);
 
-      // Atualizar lista de anexos
-      const anexosAtualizados = [...anexos, ...novosAnexos];
-      setAnexos(anexosAtualizados);
-      onAnexosChange(anexosAtualizados);
-      
-      // Atualizar cache
-      anexoCache.setAnexosEmpresa(empresaId, anexosAtualizados);
+      console.log(`✅ Upload concluído: ${novosAnexos.length} arquivo(s) salvos no banco de dados`);
 
     } catch (error) {
       console.error('Erro no processo de upload:', error);
-      setValidationErrors(['Erro interno no processo de upload']);
-    } finally {
-      setIsUploading(false);
-      setIsCompressing(false);
+      setValidationErrors([`Erro no upload: ${(error as Error).message}`]);
     }
-  }, [anexos, empresaId, maxFiles, maxTotalSize, onAnexosChange]);
+  }, [empresaId, maxFiles, maxTotalSize, uploadAnexos, validarArquivoLocal, validarLimiteTotalLocal]);
 
   // Configurar dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -318,18 +224,20 @@ export function AnexoUpload({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
     },
     maxFiles: maxFiles - resumo.totalArquivos,
-    disabled: disabled || isUploading || isCompressing || !resumo.podeAdicionar,
+    disabled: disabled || isUploading || !resumo.podeAdicionar,
     multiple: true
   });
 
-  // Remover anexo
-  const removerAnexo = (anexoId: string) => {
-    const anexosAtualizados = anexos.filter(anexo => anexo.id !== anexoId);
-    setAnexos(anexosAtualizados);
-    onAnexosChange(anexosAtualizados);
-    
-    // Atualizar cache
-    anexoCache.setAnexosEmpresa(empresaId, anexosAtualizados);
+  // Remover anexo usando o serviço real
+  const handleRemoverAnexo = async (anexoId: string) => {
+    try {
+      console.log(`🗑️ Removendo anexo ${anexoId} do banco de dados`);
+      await removerAnexo(anexoId);
+      console.log(`✅ Anexo ${anexoId} removido com sucesso`);
+    } catch (error) {
+      console.error('Erro ao remover anexo:', error);
+      setValidationErrors([`Erro ao remover anexo: ${(error as Error).message}`]);
+    }
   };
 
   // Obter status visual do anexo
@@ -362,8 +270,8 @@ export function AnexoUpload({
             <span>Tamanho total: {formatarTamanho(resumo.tamanhoTotal)}</span>
             <span>Limite: {formatarTamanho(resumo.tamanhoLimite)}</span>
           </div>
-          <Progress 
-            value={(resumo.tamanhoTotal / resumo.tamanhoLimite) * 100} 
+          <Progress
+            value={(resumo.tamanhoTotal / resumo.tamanhoLimite) * 100}
             className="mt-2"
           />
         </div>
@@ -381,27 +289,25 @@ export function AnexoUpload({
           )}
         >
           <input {...getInputProps()} />
-          
+
           <div className="flex flex-col items-center space-y-2">
             <Upload className={cn(
               "h-8 w-8",
               isDragActive ? "text-primary" : "text-muted-foreground"
             )} />
-            
+
             <div>
               <p className="font-medium">
                 {isDragActive
                   ? "Solte os arquivos aqui"
-                  : isCompressing
-                  ? "Otimizando arquivos..."
                   : isUploading
-                  ? "Fazendo upload..."
-                  : !resumo.podeAdicionar
-                  ? "Limite atingido"
-                  : "Arraste arquivos ou clique para selecionar"
+                    ? "Salvando no banco de dados..."
+                    : !resumo.podeAdicionar
+                      ? "Limite atingido"
+                      : "Arraste arquivos ou clique para selecionar"
                 }
               </p>
-              
+
               <p className="text-sm text-muted-foreground">
                 Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB cada)
                 <br />
@@ -413,7 +319,7 @@ export function AnexoUpload({
             </div>
           </div>
 
-          {!disabled && !isUploading && !isCompressing && resumo.podeAdicionar && (
+          {!disabled && !isUploading && resumo.podeAdicionar && (
             <Button
               type="button"
               variant="outline"
@@ -424,10 +330,10 @@ export function AnexoUpload({
             </Button>
           )}
 
-          {isCompressing && (
+          {isUploading && (
             <div className="mt-4 flex items-center justify-center space-x-2 text-blue-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Otimizando arquivos...</span>
+              <span className="text-sm">Salvando no banco de dados...</span>
             </div>
           )}
         </div>
@@ -444,6 +350,17 @@ export function AnexoUpload({
                 <li key={index}>• {erro}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Erro do Hook */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <span className="font-medium text-destructive">Erro no Sistema</span>
+            </div>
+            <p className="text-sm text-destructive">{error.message}</p>
           </div>
         )}
 
@@ -475,7 +392,7 @@ export function AnexoUpload({
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <span className="text-lg">{obterIconeArquivo(anexo.tipo)}</span>
-                      
+
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{anexo.nome}</p>
                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -486,7 +403,7 @@ export function AnexoUpload({
                             <span>{status.label}</span>
                           </div>
                         </div>
-                        
+
                         {progress !== undefined && (
                           <Progress value={progress} className="mt-1 h-1" />
                         )}
@@ -497,7 +414,7 @@ export function AnexoUpload({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => removerAnexo(anexo.id)}
+                      onClick={() => handleRemoverAnexo(anexo.id)}
                       disabled={anexo.status === 'enviando'}
                       className="ml-2"
                     >
