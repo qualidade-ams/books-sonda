@@ -16,10 +16,14 @@ import type {
   HistoricoFiltros,
   ControleMensalFiltros,
   HistoricoDisparoCompleto,
-  ControleMensalCompleto
+  ControleMensalCompleto,
+  AnexoWebhookData,
+  AnexosSummaryWebhook,
+  DisparoComAnexos
 } from '@/types/clientBooks';
 import { emailService } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
+import { anexoService } from './anexoService';
 
 class BooksDisparoService {
   /**
@@ -1393,6 +1397,22 @@ class BooksDisparoService {
       console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
       console.log(`📧 Enviando para ${clientes.length} clientes em um único e-mail`);
 
+      // Verificar se empresa tem anexos habilitados
+      const temAnexos = empresa.anexo === true;
+      console.log(`📎 Empresa tem anexos habilitados: ${temAnexos}`);
+
+      // Buscar anexos da empresa se habilitado
+      let anexosWebhook: AnexoWebhookData[] = [];
+      if (temAnexos) {
+        try {
+          anexosWebhook = await this.buscarAnexosEmpresa(empresa.id);
+          console.log(`📎 Anexos encontrados: ${anexosWebhook.length}`);
+        } catch (error) {
+          console.error('Erro ao buscar anexos:', error);
+          // Continuar sem anexos em caso de erro
+        }
+      }
+
       // Buscar template apropriado para books
       const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
 
@@ -1434,17 +1454,39 @@ class BooksDisparoService {
         };
       }
 
-      // Enviar e-mail consolidado usando o emailService
-      const resultadoEnvio = await this.enviarEmailConsolidado(
+      // Enviar e-mail consolidado usando o emailService (com anexos se houver)
+      const resultadoEnvio = await this.enviarEmailConsolidadoComAnexos(
         emailsClientes,
         emailsCC,
         templateProcessado.assunto,
         templateProcessado.corpo,
         empresa,
-        clientes
+        clientes,
+        anexosWebhook
       );
 
       if (resultadoEnvio.sucesso) {
+        // Preparar informações sobre anexos para o histórico
+        let anexoId: string | undefined;
+        let anexoProcessado = false;
+        let detalhesAnexos = '';
+        
+        if (anexosWebhook.length > 0) {
+          // Buscar o primeiro anexo para referência no histórico
+          try {
+            const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+            const anexosPendentes = anexos.filter(a => a.status === 'enviando' || a.status === 'processado');
+            
+            if (anexosPendentes.length > 0) {
+              anexoId = anexosPendentes[0].id;
+              anexoProcessado = anexosPendentes.every(a => a.status === 'processado');
+              detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (${Math.round(anexosWebhook.reduce((total, a) => total + a.tamanho, 0) / 1024)} KB)`;
+            }
+          } catch (error) {
+            console.error('Erro ao verificar anexos para histórico:', error);
+          }
+        }
+
         // Registrar no histórico - um registro por empresa com múltiplos clientes
         const historicoData: HistoricoDisparoInsert = {
           empresa_id: empresa.id,
@@ -1454,16 +1496,22 @@ class BooksDisparoService {
           data_disparo: new Date().toISOString(),
           assunto: templateProcessado.assunto,
           emails_cc: emailsCC,
-          erro_detalhes: `E-mail consolidado enviado para ${emailsClientes.length} clientes: ${emailsClientes.join(', ')}`
+          erro_detalhes: `E-mail consolidado enviado para ${emailsClientes.length} clientes: ${emailsClientes.join(', ')}${detalhesAnexos}`,
+          anexo_id: anexoId,
+          anexo_processado: anexoProcessado
         };
 
         await supabase.from('historico_disparos').insert(historicoData);
+
+        console.log(`✅ Histórico registrado - Empresa: ${empresa.nome_completo}, Clientes: ${emailsClientes.length}, Anexos: ${anexosWebhook.length}`);
 
         return {
           sucesso: true,
           clientesProcessados: clientes.map(c => c.id)
         };
       } else {
+        console.log(`❌ Falha no envio - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
+        
         return {
           sucesso: false,
           erro: resultadoEnvio.erro,
@@ -1554,6 +1602,155 @@ class BooksDisparoService {
     }
   }
 
+  /**
+   * Envia e-mail consolidado com suporte a anexos
+   */
+  private async enviarEmailConsolidadoComAnexos(
+    destinatarios: string[],
+    emailsCC: string[],
+    assunto: string,
+    corpo: string,
+    empresa: EmpresaCliente,
+    clientes: Cliente[],
+    anexosWebhook: AnexoWebhookData[]
+  ): Promise<{ sucesso: boolean; erro?: string }> {
+    try {
+      console.log(`📧 Preparando e-mail consolidado para ${destinatarios.length} destinatários`);
+      console.log(`📎 Anexos incluídos: ${anexosWebhook.length}`);
+
+      // Preparar dados básicos para o emailService
+      const emailData: any = {
+        to: destinatarios,
+        cc: emailsCC.length > 0 ? emailsCC : [],
+        subject: assunto,
+        html: corpo
+      };
+
+      // Incluir dados dos anexos no payload se houver
+      if (anexosWebhook.length > 0) {
+        const dadosAnexos = this.prepararDadosAnexosWebhook(anexosWebhook);
+        if (dadosAnexos) {
+          emailData.anexos = dadosAnexos;
+          console.log(`📎 Dados de anexos adicionados ao payload: ${dadosAnexos.totalArquivos} arquivos, ${dadosAnexos.tamanhoTotal} bytes`);
+        }
+      }
+
+      // Enviar e-mail usando o emailService
+      console.log(`📤 Enviando e-mail via webhook...`);
+      const resultado = await emailService.sendEmail(emailData);
+
+      if (resultado.success) {
+        console.log(`✅ E-mail enviado com sucesso`);
+
+        // Se há anexos, atualizar status para indicar que foram enviados ao Power Automate
+        if (anexosWebhook.length > 0) {
+          try {
+            // Buscar anexos da empresa que estão sendo enviados
+            const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+            const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+            
+            // Registrar que os anexos foram enviados ao Power Automate
+            await this.registrarEventoAnexos(
+              empresa.id,
+              anexosEnviando.map(a => a.id),
+              'enviados_ao_power_automate',
+              `${anexosEnviando.length} anexos enviados ao Power Automate via webhook`
+            );
+
+            // Nota: O status será atualizado para 'processado' quando recebermos 
+            // confirmação do Power Automate via callback
+            console.log(`📎 ${anexosEnviando.length} anexos enviados ao Power Automate, aguardando confirmação`);
+            
+          } catch (error) {
+            console.error('Erro ao registrar envio de anexos:', error);
+            // Não falhar o disparo por erro nos anexos pós-envio
+          }
+        }
+
+        return { sucesso: true };
+      } else {
+        console.log(`❌ Falha no envio do e-mail: ${resultado.error}`);
+
+        // Se há anexos e falhou o envio, marcar como erro
+        if (anexosWebhook.length > 0) {
+          try {
+            // Buscar anexos da empresa e marcar como erro
+            const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+            const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+            
+            // Atualizar status com detalhes do erro
+            await Promise.all(
+              anexosEnviando.map(anexo => 
+                this.atualizarStatusAnexoComLog(
+                  anexo.id, 
+                  'erro', 
+                  `Falha no envio do e-mail: ${resultado.error}`
+                )
+              )
+            );
+            
+            // Registrar evento de erro
+            await this.registrarEventoAnexos(
+              empresa.id,
+              anexosEnviando.map(a => a.id),
+              'erro_envio_email',
+              `Falha no envio do e-mail impediu processamento dos anexos: ${resultado.error}`
+            );
+            
+            console.log(`📎 ${anexosEnviando.length} anexos marcados como erro devido a falha no envio`);
+          } catch (error) {
+            console.error('Erro ao atualizar status dos anexos para erro:', error);
+          }
+        }
+
+        return {
+          sucesso: false,
+          erro: resultado.error || 'Falha no envio do e-mail consolidado'
+        };
+      }
+
+    } catch (error) {
+      console.error('Erro no envio consolidado com anexos:', error);
+
+      // Se há anexos e houve erro, marcar como erro com detalhes
+      if (anexosWebhook.length > 0) {
+        try {
+          const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+          const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+          
+          const erroDetalhes = error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado';
+          
+          // Atualizar status com detalhes do erro
+          await Promise.all(
+            anexosEnviando.map(anexo => 
+              this.atualizarStatusAnexoComLog(anexo.id, 'erro', erroDetalhes)
+            )
+          );
+          
+          // Registrar evento de erro geral
+          await this.registrarEventoAnexos(
+            empresa.id,
+            anexosEnviando.map(a => a.id),
+            'erro_geral_disparo',
+            `Erro geral no processo de disparo: ${erroDetalhes}`
+          );
+          
+          console.log(`📎 ${anexosEnviando.length} anexos marcados como erro devido a falha geral`);
+        } catch (anexoError) {
+          console.error('Erro ao atualizar status dos anexos para erro:', anexoError);
+        }
+      }
+
+      return {
+        sucesso: false,
+        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado'
+      };
+    }
+  }
+
+  /**
+   * Método legado mantido para compatibilidade
+   */
   private async enviarEmailConsolidado(
     destinatarios: string[],
     emailsCC: string[],
@@ -1562,33 +1759,16 @@ class BooksDisparoService {
     empresa: EmpresaCliente,
     clientes: Cliente[]
   ): Promise<{ sucesso: boolean; erro?: string }> {
-    try {
-      // Preparar dados para o emailService - todos os destinatários no campo "to"
-      const emailData = {
-        to: destinatarios, // ✅ CORREÇÃO: Array de destinatários no campo "to"
-        cc: emailsCC.length > 0 ? emailsCC : [], // ✅ CORREÇÃO: Apenas CC no campo "cc"
-        subject: assunto,
-        html: corpo
-      };
-
-      // Enviar e-mail usando o método padrão
-      const resultado = await emailService.sendEmail(emailData);
-
-      if (resultado.success) {
-        return { sucesso: true };
-      } else {
-        return {
-          sucesso: false,
-          erro: resultado.error || 'Falha no envio do e-mail consolidado'
-        };
-      }
-
-    } catch (error) {
-      return {
-        sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado'
-      };
-    }
+    // Chamar o novo método sem anexos
+    return this.enviarEmailConsolidadoComAnexos(
+      destinatarios,
+      emailsCC,
+      assunto,
+      corpo,
+      empresa,
+      clientes,
+      []
+    );
   }
 
   private async enviarEmailComTemplate(
@@ -1662,6 +1842,462 @@ class BooksDisparoService {
     erro: string
   ): Promise<void> {
     await this.atualizarControleMensal(mes, ano, empresaId, 'falhou', erro);
+  }
+
+  /**
+   * Registra histórico de disparo com suporte a anexos
+   */
+  async registrarHistoricoComAnexo(
+    empresaId: string,
+    clienteId: string,
+    templateId: string,
+    status: StatusDisparo,
+    anexoId?: string,
+    dadosAdicionais?: {
+      assunto?: string;
+      emailsCC?: string[];
+      erroDetalhes?: string;
+      dataDisparo?: string;
+    }
+  ): Promise<void> {
+    try {
+      const historicoData: HistoricoDisparoInsert = {
+        empresa_id: empresaId,
+        cliente_id: clienteId,
+        template_id: templateId,
+        status,
+        anexo_id: anexoId || null,
+        anexo_processado: false,
+        data_disparo: dadosAdicionais?.dataDisparo || new Date().toISOString(),
+        assunto: dadosAdicionais?.assunto || null,
+        emails_cc: dadosAdicionais?.emailsCC || null,
+        erro_detalhes: dadosAdicionais?.erroDetalhes || null
+      };
+
+      const { error } = await supabase
+        .from('historico_disparos')
+        .insert(historicoData);
+
+      if (error) {
+        console.error('Erro ao registrar histórico com anexo:', error);
+        throw error;
+      }
+
+      console.log(`✅ Histórico registrado com anexo: ${anexoId ? 'com anexo' : 'sem anexo'}`);
+    } catch (error) {
+      console.error('Erro ao registrar histórico com anexo:', error);
+      throw new Error(`Erro ao registrar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Atualiza status de processamento do anexo no histórico
+   */
+  async atualizarStatusAnexoHistorico(
+    historicoId: string,
+    anexoProcessado: boolean,
+    erroDetalhes?: string
+  ): Promise<void> {
+    try {
+      const updateData: any = {
+        anexo_processado: anexoProcessado
+      };
+
+      if (erroDetalhes) {
+        updateData.erro_detalhes = erroDetalhes;
+      }
+
+      const { error } = await supabase
+        .from('historico_disparos')
+        .update(updateData)
+        .eq('id', historicoId);
+
+      if (error) {
+        console.error('Erro ao atualizar status do anexo no histórico:', error);
+        throw error;
+      }
+
+      console.log(`✅ Status do anexo atualizado no histórico: ${anexoProcessado ? 'processado' : 'erro'}`);
+    } catch (error) {
+      console.error('Erro ao atualizar status do anexo:', error);
+      throw new Error(`Erro ao atualizar status do anexo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Busca anexos da empresa e gera tokens de acesso para webhook
+   */
+  private async buscarAnexosEmpresa(empresaId: string): Promise<AnexoWebhookData[]> {
+    try {
+      console.log(`🔍 Buscando anexos para empresa: ${empresaId}`);
+      
+      // Buscar anexos pendentes da empresa
+      const anexos = await anexoService.obterAnexosEmpresa(empresaId);
+      const anexosPendentes = anexos.filter(anexo => anexo.status === 'pendente');
+
+      if (anexosPendentes.length === 0) {
+        console.log(`📎 Nenhum anexo pendente encontrado para empresa: ${empresaId}`);
+        return [];
+      }
+
+      console.log(`📎 Encontrados ${anexosPendentes.length} anexos pendentes para empresa: ${empresaId}`);
+
+      // Gerar tokens de acesso para cada anexo
+      const anexosComToken: AnexoWebhookData[] = [];
+      const anexosProcessados: string[] = [];
+      
+      for (const anexo of anexosPendentes) {
+        try {
+          // Atualizar status para "enviando" com timestamp
+          await this.atualizarStatusAnexoComLog(anexo.id, 'enviando', `Iniciando processo de disparo para empresa ${empresaId}`);
+
+          // Gerar token de acesso
+          const token = await anexoService.gerarTokenAcessoPublico(anexo.id);
+
+          anexosComToken.push({
+            url: anexo.url,
+            nome: anexo.nome,
+            tipo: anexo.tipo,
+            tamanho: anexo.tamanho,
+            token: token
+          });
+
+          anexosProcessados.push(anexo.id);
+          console.log(`🔑 Token gerado para anexo: ${anexo.nome} (${anexo.id})`);
+        } catch (error) {
+          console.error(`❌ Erro ao processar anexo ${anexo.id}:`, error);
+          // Marcar anexo como erro com detalhes
+          await this.atualizarStatusAnexoComLog(
+            anexo.id, 
+            'erro', 
+            `Erro ao gerar token: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
+        }
+      }
+
+      // Registrar no histórico que anexos foram preparados para disparo
+      if (anexosProcessados.length > 0) {
+        await this.registrarEventoAnexos(
+          empresaId,
+          anexosProcessados,
+          'preparados_para_disparo',
+          `${anexosProcessados.length} anexos preparados para webhook`
+        );
+      }
+
+      console.log(`✅ ${anexosComToken.length} anexos preparados para webhook`);
+      return anexosComToken;
+    } catch (error) {
+      console.error('Erro ao buscar anexos da empresa:', error);
+      throw new Error(`Erro ao buscar anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Prepara dados de anexos para incluir no payload do webhook
+   */
+  private prepararDadosAnexosWebhook(anexos: AnexoWebhookData[]): AnexosSummaryWebhook | undefined {
+    if (!anexos || anexos.length === 0) {
+      return undefined;
+    }
+
+    const tamanhoTotal = anexos.reduce((total, anexo) => total + anexo.tamanho, 0);
+
+    return {
+      totalArquivos: anexos.length,
+      tamanhoTotal,
+      arquivos: anexos
+    };
+  }
+
+  /**
+   * Atualiza status do anexo com log detalhado
+   */
+  private async atualizarStatusAnexoComLog(
+    anexoId: string,
+    novoStatus: 'pendente' | 'enviando' | 'processado' | 'erro',
+    detalhes?: string
+  ): Promise<void> {
+    try {
+      // Atualizar status no anexoService
+      await anexoService.atualizarStatusAnexo(anexoId, novoStatus);
+
+      // Registrar log detalhado
+      console.log(`📎 Anexo ${anexoId}: ${novoStatus.toUpperCase()}${detalhes ? ` - ${detalhes}` : ''}`);
+
+      // Se for erro, salvar detalhes no banco
+      if (novoStatus === 'erro' && detalhes) {
+        const { error } = await supabase
+          .from('anexos_temporarios')
+          .update({ erro_detalhes: detalhes })
+          .eq('id', anexoId);
+
+        if (error) {
+          console.error(`Erro ao salvar detalhes do erro para anexo ${anexoId}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error(`Erro ao atualizar status do anexo ${anexoId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Registra evento relacionado aos anexos para auditoria
+   */
+  private async registrarEventoAnexos(
+    empresaId: string,
+    anexoIds: string[],
+    evento: string,
+    detalhes: string
+  ): Promise<void> {
+    try {
+      // Registrar evento no log de auditoria (se disponível)
+      console.log(`📋 Evento de anexos - Empresa: ${empresaId}, Evento: ${evento}, Anexos: ${anexoIds.join(', ')}, Detalhes: ${detalhes}`);
+
+      // Aqui poderia ser integrado com um sistema de auditoria mais robusto
+      // Por enquanto, apenas log no console
+    } catch (error) {
+      console.error('Erro ao registrar evento de anexos:', error);
+      // Não falhar o processo principal por erro de log
+    }
+  }
+
+  /**
+   * Processa confirmação de recebimento do anexo pelo Power Automate
+   */
+  async processarConfirmacaoAnexo(
+    empresaId: string,
+    anexoIds: string[],
+    sucesso: boolean,
+    erroDetalhes?: string
+  ): Promise<void> {
+    try {
+      console.log(`📨 Processando confirmação de anexos para empresa: ${empresaId}`);
+      console.log(`📎 Anexos: ${anexoIds.join(', ')}`);
+      console.log(`✅ Sucesso: ${sucesso}`);
+
+      const anexosProcessados: string[] = [];
+      const anexosComErro: string[] = [];
+
+      for (const anexoId of anexoIds) {
+        try {
+          if (sucesso) {
+            // Marcar anexo como processado com log
+            await this.atualizarStatusAnexoComLog(
+              anexoId, 
+              'processado', 
+              'Confirmação de processamento recebida do Power Automate'
+            );
+            
+            // Atualizar histórico
+            const { error: historicoError } = await supabase
+              .from('historico_disparos')
+              .update({ 
+                anexo_processado: true,
+                erro_detalhes: null // Limpar erros anteriores
+              })
+              .eq('anexo_id', anexoId);
+
+            if (historicoError) {
+              console.error(`Erro ao atualizar histórico para anexo ${anexoId}:`, historicoError);
+            }
+
+            anexosProcessados.push(anexoId);
+            console.log(`✅ Anexo ${anexoId} marcado como processado`);
+          } else {
+            // Marcar anexo como erro com detalhes
+            await this.atualizarStatusAnexoComLog(
+              anexoId, 
+              'erro', 
+              erroDetalhes || 'Erro no processamento pelo Power Automate'
+            );
+            
+            // Atualizar histórico com erro
+            const { error: historicoError } = await supabase
+              .from('historico_disparos')
+              .update({ 
+                anexo_processado: false,
+                erro_detalhes: erroDetalhes || 'Erro no processamento pelo Power Automate'
+              })
+              .eq('anexo_id', anexoId);
+
+            if (historicoError) {
+              console.error(`Erro ao atualizar histórico para anexo ${anexoId}:`, historicoError);
+            }
+
+            anexosComErro.push(anexoId);
+            console.log(`❌ Anexo ${anexoId} marcado como erro: ${erroDetalhes}`);
+          }
+        } catch (error) {
+          console.error(`Erro ao processar confirmação do anexo ${anexoId}:`, error);
+          anexosComErro.push(anexoId);
+        }
+      }
+
+      // Registrar eventos de auditoria
+      if (anexosProcessados.length > 0) {
+        await this.registrarEventoAnexos(
+          empresaId,
+          anexosProcessados,
+          'processados_com_sucesso',
+          `${anexosProcessados.length} anexos processados com sucesso pelo Power Automate`
+        );
+
+        // Mover anexos processados para storage permanente
+        try {
+          await anexoService.moverParaPermanente(anexosProcessados);
+          console.log(`📁 ${anexosProcessados.length} anexos movidos para storage permanente`);
+          
+          await this.registrarEventoAnexos(
+            empresaId,
+            anexosProcessados,
+            'movidos_para_permanente',
+            `${anexosProcessados.length} anexos movidos para storage permanente`
+          );
+        } catch (error) {
+          console.error('Erro ao mover anexos para storage permanente:', error);
+          // Não falhar o processo por causa disso, mas registrar o erro
+          await this.registrarEventoAnexos(
+            empresaId,
+            anexosProcessados,
+            'erro_mover_permanente',
+            `Erro ao mover anexos para storage permanente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
+        }
+      }
+
+      if (anexosComErro.length > 0) {
+        await this.registrarEventoAnexos(
+          empresaId,
+          anexosComErro,
+          'processamento_com_erro',
+          `${anexosComErro.length} anexos falharam no processamento: ${erroDetalhes || 'Erro não especificado'}`
+        );
+      }
+
+    } catch (error) {
+      console.error('Erro ao processar confirmação de anexo:', error);
+      throw new Error(`Erro ao processar confirmação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Obtém status detalhado dos anexos de uma empresa
+   */
+  async obterStatusAnexosEmpresa(empresaId: string): Promise<{
+    total: number;
+    pendentes: number;
+    enviando: number;
+    processados: number;
+    comErro: number;
+    detalhes: Array<{
+      id: string;
+      nome: string;
+      status: string;
+      dataUpload: string;
+      dataProcessamento?: string;
+      erroDetalhes?: string;
+    }>;
+  }> {
+    try {
+      const anexos = await anexoService.obterAnexosEmpresa(empresaId);
+
+      const status = {
+        total: anexos.length,
+        pendentes: anexos.filter(a => a.status === 'pendente').length,
+        enviando: anexos.filter(a => a.status === 'enviando').length,
+        processados: anexos.filter(a => a.status === 'processado').length,
+        comErro: anexos.filter(a => a.status === 'erro').length,
+        detalhes: anexos.map(anexo => ({
+          id: anexo.id,
+          nome: anexo.nome,
+          status: anexo.status,
+          dataUpload: anexo.dataUpload || '',
+          dataProcessamento: anexo.dataExpiracao,
+          erroDetalhes: undefined // Será buscado do banco se necessário
+        }))
+      };
+
+      return status;
+    } catch (error) {
+      console.error('Erro ao obter status dos anexos:', error);
+      throw new Error(`Erro ao obter status dos anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Limpa anexos órfãos (sem referência no histórico)
+   */
+  async limparAnexosOrfaos(empresaId?: string): Promise<number> {
+    try {
+      console.log(`🧹 Iniciando limpeza de anexos órfãos${empresaId ? ` para empresa ${empresaId}` : ''}`);
+
+      // Buscar anexos que não têm referência no histórico
+      let query = supabase
+        .from('anexos_temporarios')
+        .select(`
+          id,
+          empresa_id,
+          nome_original,
+          status,
+          data_upload
+        `);
+
+      if (empresaId) {
+        query = query.eq('empresa_id', empresaId);
+      }
+
+      const { data: anexos, error: anexosError } = await query;
+
+      if (anexosError) {
+        throw new Error(`Erro ao buscar anexos: ${anexosError.message}`);
+      }
+
+      if (!anexos || anexos.length === 0) {
+        console.log('🧹 Nenhum anexo encontrado para limpeza');
+        return 0;
+      }
+
+      let anexosOrfaos = 0;
+
+      for (const anexo of anexos) {
+        // Verificar se existe referência no histórico
+        const { data: historico, error: historicoError } = await supabase
+          .from('historico_disparos')
+          .select('id')
+          .eq('anexo_id', anexo.id)
+          .limit(1);
+
+        if (historicoError) {
+          console.error(`Erro ao verificar histórico para anexo ${anexo.id}:`, historicoError);
+          continue;
+        }
+
+        // Se não tem referência no histórico e está há mais de 1 hora sem processamento
+        const dataUpload = new Date(anexo.data_upload);
+        const agora = new Date();
+        const diferencaHoras = (agora.getTime() - dataUpload.getTime()) / (1000 * 60 * 60);
+
+        if (!historico || historico.length === 0) {
+          if (diferencaHoras > 1) {
+            try {
+              await anexoService.removerAnexo(anexo.id);
+              anexosOrfaos++;
+              console.log(`🗑️ Anexo órfão removido: ${anexo.nome_original} (${anexo.id})`);
+            } catch (error) {
+              console.error(`Erro ao remover anexo órfão ${anexo.id}:`, error);
+            }
+          }
+        }
+      }
+
+      console.log(`🧹 Limpeza concluída: ${anexosOrfaos} anexos órfãos removidos`);
+      return anexosOrfaos;
+    } catch (error) {
+      console.error('Erro na limpeza de anexos órfãos:', error);
+      throw new Error(`Erro na limpeza: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   }
 }
 

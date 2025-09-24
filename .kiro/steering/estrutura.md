@@ -2,6 +2,21 @@
    Add Rules to this file or a short description and have Kiro refine them for you:   
 -------------------------------------------------------------------------------------> 
 books-snd/
+├── .kiro/                      						      # Configurações do Kiro AI
+│   ├── hooks/                  						      # Hooks automáticos do Kiro
+│   ├── specs/                  						      # Especificações de funcionalidades
+│   │   └── anexos-disparos-personalizados/            # Especificação do sistema de anexos para disparos personalizados
+│   │       ├── design.md                               # Documento de design da funcionalidade
+│   │       └── tasks.md                                # Plano de implementação com tarefas
+│   └── steering/               						      # Regras e diretrizes do projeto
+│       ├── estrutura.md        						      # Estrutura e organização do projeto
+│       ├── padrao.md           						      # Padrões e convenções
+│       ├── product.md          						      # Visão geral do produto
+│       ├── structure.md        						      # Estrutura de diretórios e arquivos
+│       └── tech.md             						      # Stack tecnológico
+├── docs/                       						      # Documentação técnica
+│   ├── ANEXOS_INFRASTRUCTURE.md					      # Documentação da infraestrutura de anexos para disparos personalizados (buckets, políticas RLS, funções SQL, configuração e troubleshooting)
+│   └── POWER_AUTOMATE_ANEXOS_CONFIG.md				      # Guia completo de configuração do Power Automate para processamento de anexos no sistema de disparos personalizados (estrutura de payload, fluxos de download, tratamento de erros, validações de segurança, monitoramento e troubleshooting)
 ├── public/                     						      # Arquivos estáticos
 │   ├── favicon.ico             						      # Ícone da aplicação
 │   ├── robots.txt              						      # Arquivo de configuração para crawlers
@@ -19,6 +34,8 @@ books-snd/
 ├── src/                        						      # Código-fonte principal
 │   ├── components/             						      # Componentes reutilizáveis
 │   │   ├── admin/              						      # Componentes de administração
+│   │   │   ├── anexos/         						      # Componentes do sistema de anexos para disparos personalizados
+│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso e lista de arquivos selecionados
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
 │   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
@@ -139,6 +156,8 @@ books-snd/
 │   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
 │   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
 │   │   ├── useHistorico.ts                      		# Hook para histórico de books com cache otimizado (staleTime reduzido para 30s, refetch automático a cada 1 minuto, refetch ao focar na janela habilitado para dados sempre atualizados)
+│   │   ├── useAnexoCleanupJob.ts                		# Hook para gerenciamento do job de limpeza automática de anexos (controle de execução, estatísticas, limpeza manual, monitoramento de estado)
+│   │   ├── useAnexos.ts                         		# Hook para gerenciamento completo de anexos em disparos personalizados (upload múltiplo com validação de tipos e tamanhos, controle de limite de 25MB por empresa, progresso de upload por arquivo, cache local de anexos por empresa, validações de segurança, remoção individual e em lote, summary de uso e estados reativos para interface)
 │   │   ├── useJobScheduler.ts                   		# Hook para agendamento de jobs
 │   │   ├── usePagination.ts                     		# Hook para paginação otimizada
 │   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
@@ -161,7 +180,7 @@ books-snd/
 │   │   └── supabase/									      # Integração com Supabase
 │   │       ├── adminClient.ts                       # Cliente Supabase para operações administrativas
 │   │       ├── client.ts								      # Cliente principal do Supabase
-│   │       └── types.ts									      # Tipos gerados automaticamente do banco de dados
+│   │       └── types.ts									      # Tipos gerados automaticamente do banco de dados (atualizado com suporte a anexos na tabela historico_disparos: campos anexo_id e anexo_processado para integração com sistema de anexos em disparos personalizados)
 │   │				
 │   ├── lib/                    						      # Utilitários e bibliotecas
 │   │   └── utils.ts										      # Utilitários gerais (clsx, tailwind-merge, etc.)
@@ -173,7 +192,7 @@ books-snd/
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
 │   │   │   ├── ConfigurarPermissoesVigencias.tsx     # Configuração de permissões para tela de Monitoramento de Vigências (registra a tela no sistema de permissões, configura permissão de edição para administradores, inclui verificação de configuração e instruções detalhadas)
 │   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas, agendamento e contadores inteligentes baseados no status das empresas selecionadas para otimizar a experiência do usuário)
-│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento e controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas
+│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento, controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas, e integração com sistema de anexos (ícones Paperclip e FileText para indicação visual de arquivos anexados)
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
@@ -198,6 +217,8 @@ books-snd/
 │   │				
 │   ├── services/               						      # Serviços e lógica de negócio
 │   │   ├── __tests__/          						      # Testes dos serviços
+│   │   │   ├── anexoMetricsService.test.ts          # Testes do serviço de métricas de anexos (estatísticas, alertas, dashboard e monitoramento)
+│   │   │   ├── anexoService.test.ts                 # Testes do serviço de gerenciamento de anexos (validação de tipos, tamanhos, upload e tokens de acesso)
 │   │   │   ├── booksDisparoService.test.ts          # Testes do serviço de controle de disparos de books
 │   │   │   ├── clientesService.test.ts              # Testes do serviço de clientes
 │   │   │   ├── empresasClientesService.test.ts      # Testes do serviço de empresas clientes
@@ -210,9 +231,14 @@ books-snd/
 │   │   ├── configuration/      						      # Serviços de configuração
 │   │   │   └── index.ts									      # Exportações da infraestrutura de configuração
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
+│   │   ├── anexoAuditService.ts       					# Serviço de auditoria específico para sistema de anexos (logs detalhados de operações de upload, validação, processamento, tokens, downloads, limpeza automática, métricas de storage e performance, análise de gargalos, identificação de picos de uso, relatórios de taxa de sucesso/falha, cache de métricas com timeout configurável, e interface completa para troubleshooting e monitoramento do sistema de anexos)
+│   │   ├── anexoCleanupJobService.ts  					# Serviço de limpeza automática de anexos expirados (job scheduler para remoção de arquivos temporários, estatísticas de execução, logs de auditoria, execução manual e automática a cada 24 horas)
+│   │   ├── anexoMetricsService.ts     					# Serviço de métricas e monitoramento do sistema de anexos (estatísticas de upload, taxa de sucesso/falha, tempo de processamento, uso de storage por empresa, alertas de performance, métricas de dashboard, análise de tendências diárias, verificação automática de limites de storage e geração de relatórios de uso)
+│   │   ├── anexoService.ts            					# Serviço completo de gerenciamento de anexos para disparos personalizados (upload, validação, armazenamento temporário/permanente, controle de limite de 25MB por empresa, geração de tokens JWT, integração com Supabase Storage, limpeza automática de arquivos expirados)
+│   │   ├── anexoTokenService.ts       					# Serviço de autenticação e segurança para anexos (geração e validação de tokens JWT, URLs seguras para download, controle de acesso baseado em empresa, renovação e revogação de tokens, validação de expiração)
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, interface EmailData corrigida com campo 'to' como array de destinatários para melhor compatibilidade com emailService, método direto de envio para evitar reprocessamento de template, parâmetro destinatario corrigido para string[] em enviarEmailComTemplate para consistência com sistema consolidado, tratamento robusto de erros com registro detalhado de falhas e sucessos)
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, interface EmailData corrigida com campo 'to' como array de destinatários para melhor compatibilidade com emailService, método direto de envio para evitar reprocessamento de template, parâmetro destinatario corrigido para string[] em enviarEmailComTemplate para consistência com sistema consolidado, tratamento robusto de erros com registro detalhado de falhas e sucessos, integração completa com sistema de anexos para disparos personalizados incluindo tipos AnexoWebhookData, AnexosSummaryWebhook e DisparoComAnexos para processamento de arquivos anexados)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, clientes "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books, monitoramento_vigencias "Monitoramento de Vigências")
@@ -245,7 +271,11 @@ books-snd/
 │   │   └── login.css 									      # Estilos específicos da página de login
 │   │				
 │   ├── test/                   					      	# Arquivos de teste
+│   │   ├── e2e/                					      	# Testes end-to-end (E2E)
+│   │   │   ├── anexosFluxoUsuarioFinal.test.ts      # Teste E2E do fluxo completo de usuário final com sistema de anexos (navegação, seleção de empresa, upload de múltiplos arquivos, execução de disparo personalizado e verificação de processamento no Power Automate)
+│   │   │   └── anexosLimitesValidacoes.test.ts      # Teste E2E de limites e validações do sistema de anexos (upload de arquivos que excedem 25MB total, tipos não permitidos, mais de 10 arquivos por empresa)
 │   │   ├── integration/        					      	# Testes de integração
+│   │   │   ├── anexosFluxoCompleto.test.ts          # Teste de fluxo completo do sistema de anexos (upload múltiplo, validação de limite de 25MB, disparo personalizado com anexos, processamento e movimentação para storage permanente)
 │   │   │   ├── cadastroCompleto.test.ts             # Teste de fluxo completo de cadastro
 │   │   │   ├── disparoEmails.test.ts                # Teste de disparo de emails
 │   │   │   ├── importacaoExcel.test.ts              # Teste de importação de Excel
@@ -259,7 +289,7 @@ books-snd/
 │   │   ├── api.ts                               		# Tipos para APIs
 │   │   ├── approval.ts                          		# Tipos para sistema de aprovação
 │   │   ├── audit.ts                             		# Tipos para auditoria
-│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros) e interface RelatorioMetricas com separação de empresas com e sem books
+│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros), interface RelatorioMetricas com separação de empresas com e sem books, tipos completos do sistema de anexos (AnexoTemporario, AnexoWebhookData, AnexosSummaryWebhook, DisparoComAnexos) para integração com disparos personalizados e processamento de arquivos anexados
 │   │   ├── clientBooksTypes.ts                  		# Tipos específicos do sistema de books
 │   │   ├── configuration.ts                     		# Tipos para configurações
 │   │   ├── constants.ts                         		# Constantes tipadas
@@ -276,6 +306,7 @@ books-snd/
 │   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo), testes de variáveis de sistema do mês atual e correção de sintaxe
 │   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
+│   │   ├── anexoCompression.ts        					# Utilitários para compressão automática de anexos (compressão inteligente baseada no tamanho e tipo do arquivo, suporte a PDFs, imagens e documentos Office, processamento em paralelo com limite de concorrência, estatísticas de redução de tamanho e otimização de performance para uploads)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
 │   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, variáveis de sistema para mês atual (sistema.mesNomeAtual e sistema.mesNomeAtualEn), correção de sintaxe na função de mapeamento de variáveis
@@ -315,6 +346,9 @@ books-snd/
 │   └── migration/              					      	# Scripts de migração do banco
 │       ├── add_monitoramento_vigencias_screen.sql  # Migração otimizada para adicionar tela de Monitoramento de Vigências ao sistema de permissões (sem campos de timestamp automáticos created_at/updated_at)
 │       ├── add_user_registration_screen.sql       # Migração para tela de registro de usuários
+│       ├── anexos_infrastructure_migration.sql    # Migração para infraestrutura de anexos do sistema de disparos personalizados (tabela anexos_temporarios, extensão do historico_disparos, índices otimizados, funções de limpeza automática e validação de limite de 25MB por empresa)
+│       ├── anexos_rls_policies.sql                # Políticas RLS para sistema de anexos com controle de acesso baseado em permissões de grupo (corrigido para usar user_group_assignments e screen_permissions em vez de user_permissions diretas)
+│       ├── anexos_temporarios_migration.sql       # Migração para criar tabela anexos_temporarios do sistema de anexos para disparos personalizados (estrutura completa da tabela, índices otimizados, triggers de atualização automática, funções de limpeza de registros expirados, validação de limite de 25MB por empresa com DROP FUNCTION seguro, logs condicionais para logs_sistema, e comentários detalhados)
 │       ├── client_books_management_migration.sql		# Migração principal do sistema de books
 │       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
 │       ├── client_books_rls_policies.sql          # Políticas RLS para sistema de books
@@ -324,6 +358,7 @@ books-snd/
 │       ├── email_test_data_migration.sql          # Migração para dados de teste de email
 │       ├── empresa_campos_adicionais_migration.sql # Migração para campos adicionais da tabela empresas
 │       ├── grups_and_profile_migration.sql        # Migração de grupos e perfis de usuário
+│       ├── historico_disparos_anexos_extension.sql # Migração para estender tabela historico_disparos com suporte a anexos (adiciona colunas anexo_id e anexo_processado, triggers de sincronização de status, funções para consulta de histórico com anexos, estatísticas de anexos por período, log de migração otimizado e comentários detalhados)
 │       ├── jobs_queue_migration.sql               # Migração para fila de jobs
 │       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
@@ -351,6 +386,8 @@ books-snd/
 ├── CORRECAO_ERROS_TYPESCRIPT_EMAILSERVICE.md        # Documentação da correção de erros TypeScript no emailService (correção de tipos para função logEmail, remoção de variável não utilizada, remoção de imports desnecessários e reversão do parâmetro destinatario para string no booksDisparoService)
 ├── CORRECAO_PARAMETRO_DESTINATARIO_ARRAY.md        # Documentação da reversão do parâmetro destinatario do método enviarEmailComTemplate de string[] para string no booksDisparoService (correção de incompatibilidade com emailService e manutenção da arquitetura de e-mail consolidado)
 ├── CORRECAO_INTERFACE_EMAIL_DATA.md                # Documentação da correção da interface EmailData para compatibilidade de tipos (correção do erro TypeScript no campo 'to' de array para string com vírgulas, mantendo compatibilidade com interface EmailData do emailService e funcionalidade de e-mail consolidado)
+├── CORRECAO_LOGS_AUDITORIA_ANEXOS.md               # Documentação da correção dos logs de auditoria no sistema de anexos (correção das migrações para usar permission_audit_logs em vez de logs_sistema, estrutura adequada para auditoria de operações de limpeza e alterações de schema)
+├── CORRECAO_POLITICAS_RLS_ANEXOS.md                # Documentação da correção das políticas RLS para sistema de anexos (controle de acesso baseado em permissões de grupo, correção para usar user_group_assignments e screen_permissions)
 ├── CORRECAO_HISTORICO_BOOKS_FILTROS.md             # Documentação da correção dos filtros padrão da tela de histórico de books (remoção de filtros de mês/ano para mostrar todos os registros por padrão)
 ├── CORRECAO_OPCOES_BOOK_PERSONALIZADO.md           # Documentação da correção das opções "Book Personalizado" e "Anexo" que não apareciam quando Tipo de Book era "Qualidade"
 ├── CORRECAO_PERMISSOES_MONITORAMENTO_VIGENCIAS.md   # Documentação da correção das permissões da tela de Monitoramento de Vigências (registro da tela no sistema de permissões, configuração de permissões para administradores, script SQL de migração otimizado sem campos de timestamp automáticos, página de configuração via interface web, e instruções completas para resolução do problema de visibilidade na lista de permissões)
@@ -364,6 +401,7 @@ books-snd/
 ├── IMPLEMENTACAO_EMAIL_CONSOLIDADO_STATUS.md       # Documentação do status da implementação de e-mail consolidado por empresa (envio único por empresa com todos os clientes no campo "Para", problemas encontrados e próximos passos necessários)
 ├── IMPLEMENTACAO_MES_REFERENCIA_BOOKS.md           # Documentação da implementação do sistema de mês de referência para books (books enviados em um mês referenciam dados do mês anterior, com interface atualizada e sistema de variáveis ajustado)
 ├── IMPLEMENTACAO_EMPRESAS_COM_BOOKS_RELATORIO.md        # Documentação da implementação de empresas com books no relatório mensal (nova seção verde para empresas que receberam books com sucesso, separação clara entre empresas com e sem books, interface atualizada com contadores e badges visuais, método buscarTodasEmpresasRelatorio() no historicoService, e atualização da interface RelatorioMetricas)
+├── IMPLEMENTACAO_EXTENSAO_HISTORICO_ANEXOS.md       # Documentação da implementação da extensão da tabela historico_disparos para suporte a anexos (adição de colunas anexo_id e anexo_processado, relacionamento com anexos_temporarios, funções SQL otimizadas, sincronização automática de status, consultas com JOIN, estatísticas de uso, integração com serviços existentes e testes completos)
 ├── IMPLEMENTACAO_VARIAVEIS_MES_ATUAL.md            # Documentação da implementação das variáveis de mês atual para templates (sistema.mesNomeAtual e sistema.mesNomeAtualEn para referenciar o mês atual em português e inglês, diferenciando das variáveis de disparo que referenciam o mês anterior, com testes abrangentes e exemplos de uso em templates bilíngues)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)

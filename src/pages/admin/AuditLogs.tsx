@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Filter, RefreshCw, Search, User, Clock, Database } from 'lucide-react';
+import { Filter, RefreshCw, User, Clock, Database } from 'lucide-react';
 import { auditService } from '@/services/auditService';
 import type { AuditLogWithUser, AuditLogFilters, AuditLogSummary } from '@/types/audit';
 import { format } from 'date-fns';

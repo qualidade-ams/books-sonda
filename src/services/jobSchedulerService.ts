@@ -4,6 +4,7 @@
  */
 
 import { vigenciaService } from './vigenciaService';
+import { anexoCleanupJobService } from './anexoCleanupJobService';
 
 export interface JobConfig {
   id: string;
@@ -56,6 +57,17 @@ class JobSchedulerService {
       id: 'log-cleanup',
       name: 'Limpeza de Logs',
       description: 'Remove logs antigos do sistema',
+      interval: 24 * 60 * 60 * 1000, // 24 horas
+      enabled: true,
+      runCount: 0,
+      errorCount: 0
+    });
+
+    // Job de limpeza de anexos - executa diariamente
+    this.registerJob({
+      id: 'anexo-cleanup',
+      name: 'Limpeza de Anexos',
+      description: 'Remove anexos temporários expirados',
       interval: 24 * 60 * 60 * 1000, // 24 horas
       enabled: true,
       runCount: 0,
@@ -127,6 +139,9 @@ class JobSchedulerService {
           break;
         case 'log-cleanup':
           jobResult = await this.executeLogCleanup();
+          break;
+        case 'anexo-cleanup':
+          jobResult = await this.executeAnexoCleanup();
           break;
         default:
           throw new Error(`Executor não implementado para job: ${jobId}`);
@@ -205,6 +220,26 @@ class JobSchedulerService {
       };
     } catch (error) {
       console.error('Erro na limpeza de logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executa limpeza de anexos expirados
+   */
+  private async executeAnexoCleanup(): Promise<any> {
+    try {
+      const result = await anexoCleanupJobService.executeManualCleanup();
+      
+      return {
+        arquivosRemovidos: result.arquivosRemovidos,
+        erros: result.erros,
+        tempoExecucao: result.tempoExecucao,
+        timestamp: result.dataExecucao,
+        message: `Limpeza de anexos concluída: ${result.arquivosRemovidos} arquivos removidos`
+      };
+    } catch (error) {
+      console.error('Erro na limpeza de anexos:', error);
       throw error;
     }
   }

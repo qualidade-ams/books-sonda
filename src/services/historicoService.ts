@@ -190,6 +190,74 @@ class HistoricoService {
   }
 
   /**
+   * Busca histórico com informações de anexos usando a função SQL otimizada
+   */
+  async buscarHistoricoComAnexos(
+    empresaId?: string,
+    mesReferencia?: Date,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .rpc('buscar_historico_com_anexos', {
+          p_empresa_id: empresaId || null,
+          p_mes_referencia: mesReferencia?.toISOString().slice(0, 10) || null,
+          p_limit: limit,
+          p_offset: offset
+        });
+
+      if (error) {
+        console.error('Erro ao buscar histórico com anexos:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Erro na consulta do histórico com anexos:', error);
+      throw new Error(`Erro ao buscar histórico com anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Busca estatísticas de anexos por período
+   */
+  async buscarEstatisticasAnexos(dataInicio: Date, dataFim: Date): Promise<{
+    totalAnexos: number;
+    anexosProcessados: number;
+    anexosComErro: number;
+    anexosPendentes: number;
+    tamanhoTotalMb: number;
+    empresasComAnexos: number;
+  }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('estatisticas_anexos_periodo', {
+          p_data_inicio: dataInicio.toISOString().slice(0, 10),
+          p_data_fim: dataFim.toISOString().slice(0, 10)
+        });
+
+      if (error) {
+        console.error('Erro ao buscar estatísticas de anexos:', error);
+        throw error;
+      }
+
+      const resultado = data?.[0];
+      return {
+        totalAnexos: resultado?.total_anexos || 0,
+        anexosProcessados: resultado?.anexos_processados || 0,
+        anexosComErro: resultado?.anexos_com_erro || 0,
+        anexosPendentes: resultado?.anexos_pendentes || 0,
+        tamanhoTotalMb: resultado?.tamanho_total_mb || 0,
+        empresasComAnexos: resultado?.empresas_com_anexos || 0
+      };
+    } catch (error) {
+      console.error('Erro na consulta de estatísticas de anexos:', error);
+      throw new Error(`Erro ao buscar estatísticas de anexos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
    * Gera relatório completo para um mês específico
    */
   async gerarRelatorioMensal(mes: number, ano: number): Promise<RelatorioDetalhado> {

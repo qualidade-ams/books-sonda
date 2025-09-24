@@ -27,6 +27,29 @@ export type ControleMensal = Database['public']['Tables']['controle_mensal']['Ro
 export type ControleMensalInsert = Database['public']['Tables']['controle_mensal']['Insert'];
 export type ControleMensalUpdate = Database['public']['Tables']['controle_mensal']['Update'];
 
+// Tipos para sistema de anexos
+export type AnexoTemporario = {
+  id: string;
+  empresa_id: string;
+  nome_original: string;
+  nome_arquivo: string;
+  tipo_mime: string;
+  tamanho_bytes: number;
+  url_temporaria: string;
+  url_permanente?: string;
+  status: 'pendente' | 'enviando' | 'processado' | 'erro';
+  token_acesso: string;
+  data_upload: string;
+  data_expiracao: string;
+  data_processamento?: string;
+  erro_detalhes?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AnexoTemporarioInsert = Omit<AnexoTemporario, 'id' | 'created_at' | 'updated_at' | 'data_upload' | 'data_expiracao'>;
+export type AnexoTemporarioUpdate = Partial<Omit<AnexoTemporario, 'id' | 'created_at' | 'updated_at'>>;
+
 // Enums
 export type StatusEmpresa = 'ativo' | 'inativo' | 'suspenso';
 export type StatusCliente = 'ativo' | 'inativo';
@@ -35,6 +58,7 @@ export type Produto = 'CE_PLUS' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
 export type TipoBook = 'nao_tem_book' | 'outros' | 'qualidade';
+export type StatusAnexo = 'pendente' | 'enviando' | 'processado' | 'erro';
 
 // Interfaces para formulários
 export interface EmpresaFormData {
@@ -74,6 +98,40 @@ export interface GrupoFormData {
 export interface GrupoEmailFormData {
   email: string;
   nome?: string;
+}
+
+// Interfaces para sistema de anexos
+export interface AnexoData {
+  id: string;
+  nome: string;
+  tipo: string;
+  tamanho: number;
+  url: string;
+  status: StatusAnexo;
+  empresaId: string;
+  dataUpload: Date;
+  dataExpiracao: Date;
+}
+
+export interface AnexoWebhookData {
+  url: string;
+  nome: string;
+  tipo: string;
+  tamanho: number;
+  token: string;
+}
+
+export interface AnexosSummary {
+  totalArquivos: number;
+  tamanhoTotal: number;
+  tamanhoLimite: number;
+  podeAdicionar: boolean;
+}
+
+export interface AnexosSummaryWebhook {
+  totalArquivos: number;
+  tamanhoTotal: number;
+  arquivos: AnexoWebhookData[];
 }
 
 // Interfaces estendidas com relacionamentos
@@ -188,9 +246,29 @@ export interface AgendamentoDisparo {
   observacoes?: string;
 }
 
+export interface DisparoComAnexos {
+  empresaId: string;
+  clientes: Cliente[];
+  emailsCC: string[];
+  anexos?: AnexoWebhookData[];
+}
+
 export interface HistoricoDisparoCompleto extends HistoricoDisparo {
   empresas_clientes?: EmpresaCliente;
   clientes?: Cliente;
+  anexo?: AnexoTemporario;
+}
+
+export interface HistoricoDisparoComAnexo extends HistoricoDisparo {
+  anexo?: {
+    id: string;
+    nome_original: string;
+    tamanho_bytes: number;
+    status: StatusAnexo;
+    url_temporaria?: string;
+    data_upload: string;
+    data_expiracao: string;
+  };
 }
 
 export interface ControleMensalCompleto extends ControleMensal {

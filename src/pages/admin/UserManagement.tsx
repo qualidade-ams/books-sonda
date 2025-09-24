@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { UserPlus, Save, RefreshCw, User, Edit, Plus } from 'lucide-react';
+import { Save, RefreshCw, User, Edit, Plus } from 'lucide-react';
 import { userManagementService, type UserData, type CreateUserData } from '@/services/userManagementService';
 
 
@@ -209,36 +209,7 @@ const UserManagement = () => {
     }
   };
 
-  // Desativar usuário (usando Supabase Auth)
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const result = await userManagementService.updateUserStatus(userId, !currentStatus);
 
-      if (result.success) {
-        toast({
-          title: "Status atualizado",
-          description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
-        });
-        loadUsers(); // Recarregar lista
-      } else {
-        throw new Error(result.error || 'Erro ao atualizar status');
-      }
-    } catch (error: any) {
-      let errorMessage = 'Ocorreu um erro ao atualizar o status do usuário.';
-
-      if (error?.message?.includes('não tem permissões')) {
-        errorMessage = 'Você não tem permissões para atualizar usuários.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      toast({
-        title: "Erro ao atualizar status",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
 
   // Abrir modal de edição
   const openEditDialog = (user: UserData) => {

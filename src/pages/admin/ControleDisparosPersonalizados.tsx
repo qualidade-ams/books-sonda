@@ -7,7 +7,9 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Sparkles
+  Sparkles,
+  Paperclip,
+  FileText
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -38,7 +40,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useControleDisparosPersonalizados } from '@/hooks/useControleDisparosPersonalizados';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useAnexos } from '@/hooks/useAnexos';
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { AnexoUpload } from '@/components/admin/anexos/AnexoUpload';
 import type {
   AgendamentoDisparo,
   StatusControleMensal
@@ -64,6 +68,10 @@ const ControleDisparosPersonalizados = () => {
   const [dataAgendamento, setDataAgendamento] = useState('');
   const [observacoesAgendamento, setObservacoesAgendamento] = useState('');
 
+  // Estados para anexos
+  const [showAnexoModal, setShowAnexoModal] = useState(false);
+  const [empresaAnexoSelecionada, setEmpresaAnexoSelecionada] = useState<string>('');
+
 
 
   // Hooks
@@ -80,6 +88,13 @@ const ControleDisparosPersonalizados = () => {
   } = useControleDisparosPersonalizados(mesAtual, anoAtual);
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
+
+  // Hook para gerenciamento de anexos
+  const {
+    obterAnexosPorEmpresa,
+    obterSummary,
+    isUploading: isUploadingAnexos
+  } = useAnexos();
 
   // Seleção de empresas
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
@@ -103,18 +118,28 @@ const ControleDisparosPersonalizados = () => {
     });
   }, [selecionadas, statusMensal]);
 
-  // Contadores inteligentes baseados no status
+  // Contadores inteligentes baseados no status e anexos
   const contadoresInteligentes = useMemo(() => {
-    const paraDisparar = empresasSelecionadasStatus.filter(empresa =>
-      empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou'
-    ).length;
+    const paraDisparar = empresasSelecionadasStatus.filter(empresa => {
+      const status = empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou';
+      
+      // Verificar se empresa tem anexo obrigatório
+      const empresaData = statusMensal.find(s => s.empresaId === empresa.empresaId)?.empresa;
+      if (empresaData?.anexo) {
+        const anexos = obterAnexosPorEmpresa(empresa.empresaId);
+        const temAnexosValidos = anexos.length > 0 && anexos.every(a => a.status !== 'erro');
+        return status && temAnexosValidos;
+      }
+      
+      return status;
+    }).length;
 
     const paraReenviar = empresasSelecionadasStatus.filter(empresa =>
       empresa.status === 'enviado'
     ).length;
 
     return { paraDisparar, paraReenviar };
-  }, [empresasSelecionadasStatus]);
+  }, [empresasSelecionadasStatus, statusMensal, obterAnexosPorEmpresa]);
 
   // Estatísticas do mês
   const stats = useMemo(() => {
@@ -161,6 +186,37 @@ const ControleDisparosPersonalizados = () => {
   // Handlers para ações
   const handleDispararSelecionados = async () => {
     if (selecionadas.length === 0) return;
+
+    // Validar anexos obrigatórios antes do disparo
+    const empresasComAnexoObrigatorio = selecionadas.filter(empresaId => {
+      const empresaData = statusMensal.find(s => s.empresaId === empresaId)?.empresa;
+      return empresaData?.anexo === true;
+    });
+
+    for (const empresaId of empresasComAnexoObrigatorio) {
+      const anexos = obterAnexosPorEmpresa(empresaId);
+      const empresaData = statusMensal.find(s => s.empresaId === empresaId)?.empresa;
+      
+      if (anexos.length === 0) {
+        toast({
+          title: 'Anexos obrigatórios',
+          description: `A empresa "${empresaData?.nome_completo}" requer anexos para o disparo`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const anexosComErro = anexos.filter(a => a.status === 'erro');
+      if (anexosComErro.length > 0) {
+        toast({
+          title: 'Anexos com erro',
+          description: `A empresa "${empresaData?.nome_completo}" possui anexos com erro`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     try {
       const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
@@ -257,6 +313,64 @@ const ControleDisparosPersonalizados = () => {
         variant: "destructive",
       });
     }
+  };
+
+  // Handler para abrir modal de anexos
+  const handleAbrirAnexos = (empresaId: string) => {
+    setEmpresaAnexoSelecionada(empresaId);
+    setShowAnexoModal(true);
+  };
+
+  // Handler para mudança de anexos
+  const handleAnexosChange = (anexos: any[]) => {
+    // Os anexos são gerenciados pelo hook useAnexos
+    // Este callback é chamado quando há mudanças na lista de anexos
+  };
+
+  // Função para obter indicador de anexos
+  const obterIndicadorAnexos = (empresaId: string, temAnexo: boolean) => {
+    if (!temAnexo) return null;
+
+    const anexos = obterAnexosPorEmpresa(empresaId);
+    const summary = obterSummary(empresaId);
+
+    if (anexos.length === 0) {
+      return (
+        <div className="flex items-center gap-1 text-yellow-600">
+          <Paperclip className="h-3 w-3" />
+          <span className="text-xs">Sem anexos</span>
+        </div>
+      );
+    }
+
+    const anexosComErro = anexos.filter(a => a.status === 'erro').length;
+    const anexosPendentes = anexos.filter(a => a.status === 'pendente').length;
+    const anexosProcessados = anexos.filter(a => a.status === 'processado').length;
+
+    if (anexosComErro > 0) {
+      return (
+        <div className="flex items-center gap-1 text-red-600">
+          <Paperclip className="h-3 w-3" />
+          <span className="text-xs">{anexosComErro} erro(s)</span>
+        </div>
+      );
+    }
+
+    if (anexosPendentes > 0) {
+      return (
+        <div className="flex items-center gap-1 text-blue-600">
+          <Paperclip className="h-3 w-3" />
+          <span className="text-xs">{anexos.length} arquivo(s)</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1 text-green-600">
+        <Paperclip className="h-3 w-3" />
+        <span className="text-xs">{anexos.length} arquivo(s)</span>
+      </div>
+    );
   };
 
   // Função para obter ícone do status
@@ -431,9 +545,15 @@ const ControleDisparosPersonalizados = () => {
                 <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                   <Button
                     onClick={handleDispararSelecionados}
-                    disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
+                    disabled={isDisparandoSelecionados || isUploadingAnexos || contadoresInteligentes.paraDisparar === 0}
                     className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
-                    title={contadoresInteligentes.paraDisparar === 0 ? 'Nenhuma empresa selecionada precisa ser disparada' : undefined}
+                    title={
+                      isUploadingAnexos 
+                        ? 'Aguarde o upload dos anexos' 
+                        : contadoresInteligentes.paraDisparar === 0 
+                        ? 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios' 
+                        : undefined
+                    }
                   >
                     <Send className="h-4 w-4" />
                     {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
@@ -443,9 +563,15 @@ const ControleDisparosPersonalizados = () => {
                   <Button
                     variant="outline"
                     onClick={handleReenviarSelecionados}
-                    disabled={contadoresInteligentes.paraReenviar === 0}
+                    disabled={isUploadingAnexos || contadoresInteligentes.paraReenviar === 0}
                     className="flex items-center gap-2"
-                    title={contadoresInteligentes.paraReenviar === 0 ? 'Nenhuma empresa selecionada precisa ser reenviada' : 'Reenviar empresas já processadas (força novo processamento)'}
+                    title={
+                      isUploadingAnexos 
+                        ? 'Aguarde o upload dos anexos' 
+                        : contadoresInteligentes.paraReenviar === 0 
+                        ? 'Nenhuma empresa selecionada precisa ser reenviada' 
+                        : 'Reenviar empresas já processadas (força novo processamento)'
+                    }
                   >
                     <RefreshCw className="h-4 w-4" />
                     {`Reenviar Selecionados (${contadoresInteligentes.paraReenviar})`}
@@ -457,8 +583,9 @@ const ControleDisparosPersonalizados = () => {
                     <Button
                       variant="outline"
                       onClick={handleReenvioFalhas}
-                      disabled={isReenviando || stats.falhas === 0}
+                      disabled={isReenviando || isUploadingAnexos || stats.falhas === 0}
                       className="flex items-center gap-2"
+                      title={isUploadingAnexos ? 'Aguarde o upload dos anexos' : undefined}
                     >
                       <RefreshCw className="h-4 w-4" />
                       {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
@@ -513,11 +640,15 @@ const ControleDisparosPersonalizados = () => {
                       <div>
                         <h3 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                           {status.empresa.nome_completo}
+                          {status.empresa.anexo && (
+                            <Paperclip className="h-4 w-4 text-purple-600" title="Empresa com anexos" />
+                          )}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {status.clientesAtivos} clientes ativos
                           {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} e-mails enviados`}
                         </p>
+                        {status.empresa.anexo && obterIndicadorAnexos(status.empresaId, status.empresa.anexo)}
                         {status.observacoes && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                             {status.observacoes}
@@ -530,6 +661,21 @@ const ControleDisparosPersonalizados = () => {
                       <Badge className={getStatusColor(status.status)}>
                         {STATUS_CONTROLE_MENSAL_OPTIONS.find(opt => opt.value === status.status)?.label}
                       </Badge>
+
+                      {status.empresa.anexo && (
+                        <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAbrirAnexos(status.empresaId)}
+                            disabled={isUploadingAnexos}
+                            className="flex items-center gap-1"
+                          >
+                            <FileText className="h-3 w-3" />
+                            Anexos
+                          </Button>
+                        </ProtectedAction>
+                      )}
 
                       {status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
@@ -622,6 +768,46 @@ const ControleDisparosPersonalizados = () => {
                   {isAgendando ? 'Agendando...' : 'Confirmar Agendamento'}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Anexos */}
+        <Dialog open={showAnexoModal} onOpenChange={setShowAnexoModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                Gerenciar Anexos
+                {empresaAnexoSelecionada && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    - {statusMensal.find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_completo}
+                  </span>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {empresaAnexoSelecionada && (
+              <div className="mt-4">
+                <AnexoUpload
+                  empresaId={empresaAnexoSelecionada}
+                  onAnexosChange={handleAnexosChange}
+                  disabled={isUploadingAnexos}
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAnexoModal(false);
+                  setEmpresaAnexoSelecionada('');
+                }}
+              >
+                Fechar
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

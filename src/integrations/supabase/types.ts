@@ -1268,6 +1268,8 @@ export type Database = {
           erro_detalhes: string | null
           assunto: string | null
           emails_cc: string[] | null
+          anexo_id: string | null
+          anexo_processado: boolean
           created_at: string
         }
         Insert: {
@@ -1281,6 +1283,8 @@ export type Database = {
           erro_detalhes?: string | null
           assunto?: string | null
           emails_cc?: string[] | null
+          anexo_id?: string | null
+          anexo_processado?: boolean
           created_at?: string
         }
         Update: {
@@ -1294,6 +1298,8 @@ export type Database = {
           erro_detalhes?: string | null
           assunto?: string | null
           emails_cc?: string[] | null
+          anexo_id?: string | null
+          anexo_processado?: boolean
           created_at?: string
         }
         Relationships: [
@@ -1309,6 +1315,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_disparos_anexo_id_fkey"
+            columns: ["anexo_id"]
+            isOneToOne: false
+            referencedRelation: "anexos_temporarios"
             referencedColumns: ["id"]
           }
         ]
