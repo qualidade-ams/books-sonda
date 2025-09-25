@@ -34,7 +34,14 @@ const SessionInfo: React.FC = () => {
   const isExpired = timeUntilExpiry <= 0;
 
   const formatTime = (date: Date) => {
-    return date.toLocaleString('pt-BR');
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(date);
   };
 
   return (

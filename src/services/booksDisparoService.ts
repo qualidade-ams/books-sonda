@@ -782,6 +782,51 @@ class BooksDisparoService {
                 });
               });
 
+              // ✅ CORREÇÃO: Registrar falha no histórico de disparos personalizados
+              try {
+                // Buscar template para o histórico
+                const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+                const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
+                
+                if (template && clientes.length > 0) {
+                  // Preparar informações sobre anexos para o histórico
+                  let anexoId: string | undefined;
+                  let detalhesAnexos = '';
+                  
+                  try {
+                    const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+                    const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+                    
+                    if (anexosEnviando.length > 0) {
+                      anexoId = anexosEnviando[0].id;
+                      detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (falha no envio personalizado)`;
+                    }
+                  } catch (anexoError) {
+                    console.error('Erro ao verificar anexos para histórico de falha personalizada:', anexoError);
+                  }
+
+                  // Registrar falha no histórico
+                  const historicoFalhaData: HistoricoDisparoInsert = {
+                    empresa_id: empresa.id,
+                    cliente_id: clientes[0].id, // Cliente de referência
+                    template_id: template.id,
+                    status: 'falhou',
+                    data_disparo: new Date().toISOString(),
+                    assunto: 'Falha no disparo personalizado',
+                    emails_cc: emailsCC,
+                    erro_detalhes: `Falha no envio personalizado para ${clientes.length} clientes: ${resultadoDisparo.erro}${detalhesAnexos}`,
+                    anexo_id: anexoId,
+                    anexo_processado: false
+                  };
+
+                  await supabase.from('historico_disparos').insert(historicoFalhaData);
+                  
+                  console.log(`📝 Falha personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoDisparo.erro}`);
+                }
+              } catch (historicoError) {
+                console.error('Erro ao registrar falha personalizada no histórico:', historicoError);
+              }
+
               await this.atualizarControleMensal(
                 mes,
                 ano,
@@ -793,23 +838,70 @@ class BooksDisparoService {
             }
 
           } catch (error) {
+            const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
+            
             // Registrar erro para todos os clientes da empresa
             clientes.forEach(cliente => {
               detalhes.push({
                 empresaId: empresa.id,
                 clienteId: cliente.id,
                 status: 'falhou',
-                erro: error instanceof Error ? error.message : 'Erro desconhecido',
+                erro: erroMensagem,
                 emailsEnviados: []
               });
             });
+
+            // ✅ CORREÇÃO: Registrar exceção no histórico de disparos personalizados
+            try {
+              // Buscar template para o histórico
+              const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+              const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
+              
+              if (template && clientes.length > 0) {
+                // Preparar informações sobre anexos para o histórico
+                let anexoId: string | undefined;
+                let detalhesAnexos = '';
+                
+                try {
+                  const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+                  const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+                  
+                  if (anexosEnviando.length > 0) {
+                    anexoId = anexosEnviando[0].id;
+                    detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (exceção no processamento personalizado)`;
+                  }
+                } catch (anexoError) {
+                  console.error('Erro ao verificar anexos para histórico de exceção personalizada:', anexoError);
+                }
+
+                // Registrar exceção no histórico
+                const historicoExcecaoData: HistoricoDisparoInsert = {
+                  empresa_id: empresa.id,
+                  cliente_id: clientes[0].id, // Cliente de referência
+                  template_id: template.id,
+                  status: 'falhou',
+                  data_disparo: new Date().toISOString(),
+                  assunto: 'Exceção no disparo personalizado',
+                  emails_cc: emailsCC,
+                  erro_detalhes: `Exceção no processamento personalizado para ${clientes.length} clientes: ${erroMensagem}${detalhesAnexos}`,
+                  anexo_id: anexoId,
+                  anexo_processado: false
+                };
+
+                await supabase.from('historico_disparos').insert(historicoExcecaoData);
+                
+                console.log(`📝 Exceção personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+              }
+            } catch (historicoError) {
+              console.error('Erro ao registrar exceção personalizada no histórico:', historicoError);
+            }
 
             await this.atualizarControleMensal(
               mes,
               ano,
               empresa.id,
               'falhou',
-              forceResend ? `Reenvio manual personalizado: Erro no processamento - ${error instanceof Error ? error.message : 'Erro desconhecido'}` : `Erro no processamento (personalizado): ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+              forceResend ? `Reenvio manual personalizado: Erro no processamento - ${erroMensagem}` : `Erro no processamento (personalizado): ${erroMensagem}`
             );
             falhas++;
           }
@@ -1395,18 +1487,14 @@ class BooksDisparoService {
       const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
       console.log(`🏢 Empresa: ${empresa.nome_completo}`);
       console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
-      console.log(`📧 Enviando para ${clientes.length} clientes em um único e-mail`);
-
       // Verificar se empresa tem anexos habilitados
       const temAnexos = empresa.anexo === true;
-      console.log(`📎 Empresa tem anexos habilitados: ${temAnexos}`);
 
       // Buscar anexos da empresa se habilitado
       let anexosWebhook: AnexoWebhookData[] = [];
       if (temAnexos) {
         try {
           anexosWebhook = await this.buscarAnexosEmpresa(empresa.id);
-          console.log(`📎 Anexos encontrados: ${anexosWebhook.length}`);
         } catch (error) {
           console.error('Erro ao buscar anexos:', error);
           // Continuar sem anexos em caso de erro
@@ -1512,6 +1600,47 @@ class BooksDisparoService {
       } else {
         console.log(`❌ Falha no envio - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
         
+        // ✅ CORREÇÃO: Registrar falha no histórico de disparos
+        try {
+          // Preparar informações sobre anexos para o histórico (mesmo em caso de falha)
+          let anexoId: string | undefined;
+          let detalhesAnexos = '';
+          
+          if (anexosWebhook.length > 0) {
+            try {
+              const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+              const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+              
+              if (anexosEnviando.length > 0) {
+                anexoId = anexosEnviando[0].id;
+                detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (falha no envio)`;
+              }
+            } catch (error) {
+              console.error('Erro ao verificar anexos para histórico de falha:', error);
+            }
+          }
+
+          // Registrar falha no histórico - um registro por empresa
+          const historicoFalhaData: HistoricoDisparoInsert = {
+            empresa_id: empresa.id,
+            cliente_id: clienteReferencia.id, // Cliente de referência
+            template_id: template.id,
+            status: 'falhou',
+            data_disparo: new Date().toISOString(),
+            assunto: templateProcessado.assunto,
+            emails_cc: emailsCC,
+            erro_detalhes: `Falha no envio consolidado para ${emailsClientes.length} clientes: ${resultadoEnvio.erro}${detalhesAnexos}`,
+            anexo_id: anexoId,
+            anexo_processado: false
+          };
+
+          await supabase.from('historico_disparos').insert(historicoFalhaData);
+          
+          console.log(`📝 Falha registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
+        } catch (historicoError) {
+          console.error('Erro ao registrar falha no histórico:', historicoError);
+        }
+        
         return {
           sucesso: false,
           erro: resultadoEnvio.erro,
@@ -1520,9 +1649,71 @@ class BooksDisparoService {
       }
 
     } catch (error) {
+      const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.log(`💥 Exceção no processamento - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+      
+      // ✅ CORREÇÃO: Registrar exceção no histórico de disparos
+      try {
+        // Buscar template e cliente de referência para o histórico
+        let templateId: string | null = null;
+        let clienteReferenciaId: string | null = null;
+        
+        try {
+          const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
+          const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
+          templateId = template?.id || null;
+        } catch (templateError) {
+          console.error('Erro ao buscar template para histórico de exceção:', templateError);
+        }
+        
+        if (clientes.length > 0) {
+          clienteReferenciaId = clientes[0].id;
+        }
+
+        if (templateId && clienteReferenciaId) {
+          // Preparar informações sobre anexos para o histórico (mesmo em caso de exceção)
+          let anexoId: string | undefined;
+          let detalhesAnexos = '';
+          
+          if (anexosWebhook.length > 0) {
+            try {
+              const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
+              const anexosEnviando = anexos.filter(a => a.status === 'enviando');
+              
+              if (anexosEnviando.length > 0) {
+                anexoId = anexosEnviando[0].id;
+                detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (exceção no processamento)`;
+              }
+            } catch (anexoError) {
+              console.error('Erro ao verificar anexos para histórico de exceção:', anexoError);
+            }
+          }
+
+          // Registrar exceção no histórico
+          const historicoExcecaoData: HistoricoDisparoInsert = {
+            empresa_id: empresa.id,
+            cliente_id: clienteReferenciaId,
+            template_id: templateId,
+            status: 'falhou',
+            data_disparo: new Date().toISOString(),
+            assunto: 'Erro no processamento',
+            emails_cc: emailsCC,
+            erro_detalhes: `Exceção no processamento para ${clientes.length} clientes: ${erroMensagem}${detalhesAnexos}`,
+            anexo_id: anexoId,
+            anexo_processado: false
+          };
+
+          await supabase.from('historico_disparos').insert(historicoExcecaoData);
+          
+          console.log(`📝 Exceção registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
+        }
+      } catch (historicoError) {
+        console.error('Erro ao registrar exceção no histórico:', historicoError);
+      }
+      
       return {
         sucesso: false,
-        erro: error instanceof Error ? error.message : 'Erro desconhecido',
+        erro: erroMensagem,
         clientesProcessados: []
       };
     }
@@ -1642,27 +1833,53 @@ class BooksDisparoService {
       if (resultado.success) {
         console.log(`✅ E-mail enviado com sucesso`);
 
-        // Se há anexos, atualizar status para indicar que foram enviados ao Power Automate
+        // Se há anexos, atualizar status para processado após envio bem-sucedido
         if (anexosWebhook.length > 0) {
           try {
             // Buscar anexos da empresa que estão sendo enviados
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
             const anexosEnviando = anexos.filter(a => a.status === 'enviando');
             
-            // Registrar que os anexos foram enviados ao Power Automate
+            // Atualizar status para 'processado' imediatamente após envio bem-sucedido
+            await Promise.all(
+              anexosEnviando.map(anexo => 
+                this.atualizarStatusAnexoComLog(
+                  anexo.id, 
+                  'processado', 
+                  `Anexo enviado com sucesso via Power Automate em ${new Date().toLocaleString()}`
+                )
+              )
+            );
+
+            // Atualizar histórico de disparos para marcar anexos como processados
+            await Promise.all(
+              anexosEnviando.map(async (anexo) => {
+                const { error: historicoError } = await supabase
+                  .from('historico_disparos')
+                  .update({ 
+                    anexo_processado: true,
+                    erro_detalhes: null // Limpar erros anteriores
+                  })
+                  .eq('anexo_id', anexo.id);
+
+                if (historicoError) {
+                  console.error(`Erro ao atualizar histórico para anexo ${anexo.id}:`, historicoError);
+                }
+              })
+            );
+            
+            // Registrar que os anexos foram processados com sucesso
             await this.registrarEventoAnexos(
               empresa.id,
               anexosEnviando.map(a => a.id),
-              'enviados_ao_power_automate',
-              `${anexosEnviando.length} anexos enviados ao Power Automate via webhook`
+              'processados_com_sucesso',
+              `${anexosEnviando.length} anexos processados com sucesso via Power Automate`
             );
 
-            // Nota: O status será atualizado para 'processado' quando recebermos 
-            // confirmação do Power Automate via callback
-            console.log(`📎 ${anexosEnviando.length} anexos enviados ao Power Automate, aguardando confirmação`);
+            console.log(`✅ ${anexosEnviando.length} anexos marcados como processados após envio bem-sucedido`);
             
           } catch (error) {
-            console.error('Erro ao registrar envio de anexos:', error);
+            console.error('Erro ao atualizar status dos anexos para processado:', error);
             // Não falhar o disparo por erro nos anexos pós-envio
           }
         }
@@ -1997,17 +2214,31 @@ class BooksDisparoService {
    * Prepara dados de anexos para incluir no payload do webhook
    */
   private prepararDadosAnexosWebhook(anexos: AnexoWebhookData[]): AnexosSummaryWebhook | undefined {
+    console.log(`🔧 Preparando dados de anexos para webhook:`, {
+      anexosRecebidos: anexos?.length || 0,
+      anexos: anexos?.map(a => ({ nome: a.nome, tamanho: a.tamanho })) || []
+    });
+
     if (!anexos || anexos.length === 0) {
+      console.log(`⚠️ Nenhum anexo para preparar - retornando undefined`);
       return undefined;
     }
 
     const tamanhoTotal = anexos.reduce((total, anexo) => total + anexo.tamanho, 0);
 
-    return {
+    const dadosPreparados = {
       totalArquivos: anexos.length,
       tamanhoTotal,
       arquivos: anexos
     };
+
+    console.log(`✅ Dados de anexos preparados:`, {
+      totalArquivos: dadosPreparados.totalArquivos,
+      tamanhoTotal: dadosPreparados.tamanhoTotal,
+      tamanhoMB: (dadosPreparados.tamanhoTotal / 1024 / 1024).toFixed(2)
+    });
+
+    return dadosPreparados;
   }
 
   /**

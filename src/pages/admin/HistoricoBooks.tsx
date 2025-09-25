@@ -48,6 +48,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateTime } from '@/utils/formatters';
 import { useHistorico } from '@/hooks/useHistorico';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useClientes } from '@/hooks/useClientes';
@@ -497,9 +498,9 @@ const HistoricoBooks = () => {
                           <TableRow key={item.id}>
                             <TableCell>
                               {item.data_disparo 
-                                ? new Date(item.data_disparo).toLocaleString('pt-BR')
+                                ? formatDateTime(item.data_disparo)
                                 : item.data_agendamento
-                                ? `Agendado: ${new Date(item.data_agendamento).toLocaleString('pt-BR')}`
+                                ? `Agendado: ${formatDateTime(item.data_agendamento)}`
                                 : '-'
                               }
                             </TableCell>
@@ -833,7 +834,7 @@ const HistoricoBooks = () => {
                             </div>
                             {item.ultimaFalha && (
                               <div className="text-xs text-gray-500">
-                                Última falha: {item.ultimaFalha.toLocaleDateString()}
+                                Última falha: {formatDateTime(item.ultimaFalha.toISOString())}
                               </div>
                             )}
                           </div>
@@ -1131,9 +1132,9 @@ const HistoricoBooks = () => {
                     </Label>
                     <p>
                       {itemSelecionado.data_disparo 
-                        ? new Date(itemSelecionado.data_disparo).toLocaleString('pt-BR')
+                        ? formatDateTime(itemSelecionado.data_disparo)
                         : itemSelecionado.data_agendamento
-                        ? `Agendado: ${new Date(itemSelecionado.data_agendamento).toLocaleString('pt-BR')}`
+                        ? `Agendado: ${formatDateTime(itemSelecionado.data_agendamento)}`
                         : '-'
                       }
                     </p>

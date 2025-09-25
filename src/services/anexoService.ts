@@ -367,53 +367,79 @@ class AnexoService {
    * Remove um anexo específico
    */
   async removerAnexo(anexoId: string, motivo: 'usuario' | 'expiracao' | 'limpeza' | 'erro' = 'usuario'): Promise<void> {
+    const startTime = Date.now();
+    
     try {
+      console.log(`🗑️ Iniciando remoção do anexo: ${anexoId} (motivo: ${motivo})`);
+      
       // Buscar dados do anexo
       const { data: anexo, error: fetchError } = await supabase
         .from('anexos_temporarios')
-        .select('nome_arquivo, empresa_id, nome_original')
+        .select('nome_arquivo, empresa_id, nome_original, tamanho_bytes, status')
         .eq('id', anexoId)
         .single();
 
       if (fetchError) {
-        console.error('Erro ao buscar anexo:', fetchError);
+        console.error('❌ Erro ao buscar anexo para remoção:', fetchError);
         await anexoAuditService.logDatabaseErro('buscar_anexo_remocao', fetchError as Error, { anexoId });
+        
+        if (fetchError.code === 'PGRST116') {
+          console.log(`ℹ️ Anexo ${anexoId} não encontrado no banco - pode já ter sido removido`);
+          return; // Anexo já foi removido, não é erro
+        }
+        
         throw new Error('Anexo não encontrado');
       }
 
+      console.log(`📄 Anexo encontrado: ${anexo.nome_original} (${anexo.tamanho_bytes} bytes, status: ${anexo.status})`);
+
       // Remover arquivo do storage
+      console.log(`🗂️ Removendo arquivo do storage: ${anexo.nome_arquivo}`);
       const { error: storageError } = await supabase.storage
         .from('anexos-temporarios')
         .remove([anexo.nome_arquivo]);
 
       if (storageError) {
-        console.error('Erro ao remover arquivo do storage:', storageError);
+        console.error('⚠️ Erro ao remover arquivo do storage (continuando):', storageError);
         await anexoAuditService.logStorageErro('remover_arquivo', storageError as Error, {
           anexoId,
           nomeArquivo: anexo.nome_arquivo
         });
+        // Não falhar por erro de storage - continuar com remoção do banco
+      } else {
+        console.log(`✅ Arquivo removido do storage com sucesso`);
       }
 
       // Remover registro do banco
+      console.log(`🗄️ Removendo registro do banco de dados`);
       const { error: dbError } = await supabase
         .from('anexos_temporarios')
         .delete()
         .eq('id', anexoId);
 
       if (dbError) {
-        console.error('Erro ao remover anexo do banco:', dbError);
+        console.error('❌ Erro ao remover anexo do banco:', dbError);
         await anexoAuditService.logDatabaseErro('remover_anexo_banco', dbError as Error, { anexoId });
-        throw new Error('Erro ao remover anexo');
+        throw new Error('Erro ao remover anexo do banco de dados');
       }
+
+      console.log(`✅ Registro removido do banco com sucesso`);
+
+      // Invalidar cache
+      console.log(`🔄 Invalidando caches para anexo ${anexoId} e empresa ${anexo.empresa_id}`);
+      anexoCache.invalidateAnexo(anexoId);
+      anexoCache.invalidateEmpresa(anexo.empresa_id);
+
+      const totalTime = Date.now() - startTime;
 
       // Log remoção bem-sucedida
       await anexoAuditService.logAnexoRemovido(anexoId, anexo.empresa_id, anexo.nome_original, motivo);
       
-      // Invalidar cache
-      anexoCache.invalidateAnexo(anexoId);
-      anexoCache.invalidateEmpresa(anexo.empresa_id);
+      console.log(`🎉 Anexo ${anexoId} removido com sucesso em ${totalTime}ms`);
+      
     } catch (error) {
-      console.error('Erro ao remover anexo:', error);
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ Erro ao remover anexo ${anexoId} após ${totalTime}ms:`, error);
       throw error;
     }
   }

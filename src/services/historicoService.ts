@@ -746,7 +746,14 @@ class HistoricoService {
       // Preparar dados baseado no formato
       if (config.incluirDetalhes) {
         dados = historico.map(item => ({
-          'Data Disparo': item.data_disparo ? new Date(item.data_disparo).toLocaleString('pt-BR') : '',
+          'Data Disparo': item.data_disparo ? new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }).format(new Date(item.data_disparo)) : '',
           'Empresa': item.empresas_clientes?.nome_completo || '',
           'Cliente': item.clientes?.nome_completo || '',
           'Email': item.clientes?.email || '',

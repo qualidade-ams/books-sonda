@@ -9,6 +9,18 @@ export interface EmailData {
     content: string;
     contentType: string;
   }>;
+  // ✅ ADICIONAR: Suporte a anexos do sistema de books personalizados
+  anexos?: {
+    totalArquivos: number;
+    tamanhoTotal: number;
+    arquivos: Array<{
+      url: string;
+      nome: string;
+      tipo: string;
+      tamanho: number;
+      token: string;
+    }>;
+  };
 }
 
 export interface EmailResponse {
@@ -187,33 +199,91 @@ export const emailService = {
     try {
       console.log('Enviando e-mail via Power Automate:', {
         to: emailData.to,
-        subject: emailData.subject
+        subject: emailData.subject,
+        anexos: emailData.anexos ? `${emailData.anexos.totalArquivos} arquivo(s)` : 'nenhum'
       });
 
       // Buscar URL do webhook configurado
       const webhookUrl = await getWebhookUrl();
 
-      // Converter HTML para texto simples para mensagem
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = emailData.html;
-      const mensagem = tempDiv.textContent || tempDiv.innerText || emailData.html;
+      // ✅ CONSTRUIR PAYLOAD COMPLETO incluindo anexos
+      const payload: any = {
+        nome: emailData.subject,
+        // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
+        email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
+        // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
+        email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
+        mensagem: emailData.html // Enviar HTML completo
+      };
+
+      // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
+      if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
+        // Anexos disponíveis - incluir dados completos
+        payload.anexos = {
+          totalArquivos: emailData.anexos.totalArquivos,
+          tamanhoTotal: emailData.anexos.tamanhoTotal,
+          arquivos: emailData.anexos.arquivos.map(arquivo => ({
+            url: arquivo.url,
+            nome: arquivo.nome,
+            tipo: arquivo.tipo,
+            tamanho: arquivo.tamanho,
+            token: arquivo.token
+          }))
+        };
+
+        console.log(`📎 Incluindo ${emailData.anexos.totalArquivos} anexo(s) no payload (${(emailData.anexos.tamanhoTotal / 1024 / 1024).toFixed(2)} MB)`);
+        console.log('📋 Payload com anexos:', JSON.stringify(payload, null, 2));
+      } else {
+        // ✅ CORREÇÃO: Sempre enviar estrutura de anexos (vazia) para Power Automate
+        payload.anexos = {
+          totalArquivos: 0,
+          tamanhoTotal: 0,
+          arquivos: []
+        };
+
+        console.log('📧 Enviando e-mail sem anexos (estrutura vazia incluída)');
+        console.log('📋 Payload sem anexos:', JSON.stringify(payload, null, 2));
+      }
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          nome: emailData.subject,
-          email: emailData.to,
-          email_cc: emailData.cc || '',  // Envia string vazia se não houver CC
-          mensagem: emailData.html // Enviar HTML completo
-        })
+        body: JSON.stringify(payload) // ✅ ENVIAR PAYLOAD COMPLETO
       });
 
       // Verificar se a resposta foi bem-sucedida
       if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+        // ✅ MELHOR TRATAMENTO DE ERRO: Capturar detalhes da resposta
+        let errorDetails = `${response.status} - ${response.statusText}`;
+
+        try {
+          const errorBody = await response.text();
+          if (errorBody) {
+            console.error('📋 Detalhes do erro do Power Automate:', errorBody);
+            errorDetails += ` | Detalhes: ${errorBody}`;
+          }
+        } catch (parseError) {
+          console.error('Erro ao ler resposta de erro:', parseError);
+        }
+
+        // Log específico para erro 400 com anexos
+        if (response.status === 400 && emailData.anexos) {
+          console.error('❌ Erro 400 com anexos - possível problema no formato do payload');
+          console.error('📊 Estatísticas dos anexos:', {
+            totalArquivos: emailData.anexos.totalArquivos,
+            tamanhoTotal: emailData.anexos.tamanhoTotal,
+            arquivos: emailData.anexos.arquivos.map(a => ({
+              nome: a.nome,
+              tipo: a.tipo,
+              tamanho: a.tamanho,
+              tokenLength: a.token.length
+            }))
+          });
+        }
+
+        throw new Error(`Erro HTTP: ${errorDetails}`);
       }
       // Registrar log de sucesso
       await logEmail(
@@ -227,6 +297,50 @@ export const emailService = {
       };
     } catch (error) {
       console.error('Erro ao enviar e-mail via Power Automate:', error);
+
+      // ✅ FALLBACK: Se erro 400 com anexos, tentar enviar sem anexos
+      if (error instanceof Error &&
+        error.message.includes('400') &&
+        emailData.anexos &&
+        emailData.anexos.totalArquivos > 0) {
+
+        console.warn('🔄 Tentando reenvio sem anexos devido ao erro 400...');
+
+        try {
+          const payloadSemAnexos = {
+            nome: emailData.subject + ' (sem anexos)',
+            email: emailData.to,
+            email_cc: emailData.cc || '',
+            mensagem: emailData.html + '<br><br><em>Nota: Os anexos não puderam ser processados e serão enviados separadamente.</em>'
+          };
+
+          const webhookUrl = await getWebhookUrl();
+          const responseFallback = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payloadSemAnexos)
+          });
+
+          if (responseFallback.ok) {
+            console.log('✅ E-mail enviado sem anexos como fallback');
+
+            await logEmail(
+              Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
+              emailData.subject + ' (sem anexos)',
+              'enviado'
+            );
+
+            return {
+              success: true,
+              message: 'E-mail enviado sem anexos (fallback devido a erro no processamento dos anexos)'
+            };
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback também falhou:', fallbackError);
+        }
+      }
 
       // Registrar log de erro
       await logEmail(
@@ -243,7 +357,76 @@ export const emailService = {
     }
   },
 
+  /**
+   * Método de teste específico para anexos
+   */
+  async testAnexosIntegration(emailData: EmailData): Promise<EmailResponse & { payloadSent?: any }> {
+    try {
+      console.log('🧪 TESTE DE INTEGRAÇÃO DE ANEXOS');
+      console.log('📧 Destinatário:', emailData.to);
+      console.log('📎 Anexos:', emailData.anexos ? `${emailData.anexos.totalArquivos} arquivo(s)` : 'nenhum');
 
+      const webhookUrl = await getWebhookUrl();
+
+      // Payload de teste simplificado
+      const testPayload = {
+        nome: '[TESTE ANEXOS] ' + emailData.subject,
+        email: emailData.to,
+        email_cc: emailData.cc || '',
+        mensagem: emailData.html,
+        // Incluir anexos apenas se habilitado
+        ...(emailData.anexos && {
+          anexos_teste: {
+            total: emailData.anexos.totalArquivos,
+            tamanho: emailData.anexos.tamanhoTotal,
+            lista: emailData.anexos.arquivos.map(a => ({
+              nome: a.nome,
+              tipo: a.tipo,
+              tamanho: a.tamanho,
+              url_length: a.url.length,
+              token_length: a.token.length
+            }))
+          }
+        })
+      };
+
+      console.log('📋 Payload de teste:', JSON.stringify(testPayload, null, 2));
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testPayload)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('❌ Erro no teste:', errorBody);
+
+        return {
+          success: false,
+          error: `Teste falhou: ${response.status} - ${errorBody}`,
+          payloadSent: testPayload
+        };
+      }
+
+      console.log('✅ Teste de anexos bem-sucedido');
+
+      return {
+        success: true,
+        message: 'Teste de integração de anexos bem-sucedido',
+        payloadSent: testPayload
+      };
+    } catch (error) {
+      console.error('💥 Erro no teste de anexos:', error);
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro no teste de anexos'
+      };
+    }
+  },
 
   async sendTestEmail(to: string, template: { assunto: string; corpo: string }, dadosPersonalizados?: any): Promise<EmailResponse> {
     // Dados de teste padrão

@@ -98,6 +98,8 @@ export function AnexoUpload({
   const {
     uploadAnexos,
     removerAnexo,
+    recarregarAnexosEmpresa,
+    sincronizarCacheComEstado,
     obterAnexosPorEmpresa,
     obterSummary,
     validarArquivo,
@@ -113,6 +115,60 @@ export function AnexoUpload({
   // Obter anexos atuais da empresa
   const anexos = obterAnexosPorEmpresa(empresaId);
   const resumo = obterSummary(empresaId);
+
+  // Verificação automática de status ao abrir a tela
+  useEffect(() => {
+    const verificarStatusAnexos = async () => {
+      if (!empresaId) return;
+      
+      console.log(`🔍 Verificando status real dos anexos para empresa ${empresaId}`);
+      
+      try {
+        // Forçar recarregamento dos anexos diretamente do banco
+        await recarregarAnexosEmpresa(empresaId);
+        console.log(`✅ Status dos anexos verificado e atualizado para empresa ${empresaId}`);
+      } catch (error) {
+        console.error(`❌ Erro ao verificar status dos anexos:`, error);
+      }
+    };
+
+    // Verificar status quando o componente é montado ou empresa muda
+    verificarStatusAnexos();
+
+    // Verificação periódica a cada 15 segundos para manter dados atualizados
+    const interval = setInterval(verificarStatusAnexos, 15000);
+
+    // Cleanup do interval
+    return () => clearInterval(interval);
+  }, [empresaId, recarregarAnexosEmpresa]);
+
+  // Verificação adicional quando há anexos pendentes por muito tempo
+  useEffect(() => {
+    const verificarAnexosPendentes = async () => {
+      if (!empresaId || anexos.length === 0) return;
+
+      // Verificar se há anexos pendentes há mais de 1 minuto
+      const anexosPendentesAntigos = anexos.filter(anexo => {
+        if (anexo.status !== 'pendente') return false;
+        
+        const dataUpload = anexo.dataUpload ? new Date(anexo.dataUpload) : new Date();
+        const agora = new Date();
+        const diferencaMinutos = (agora.getTime() - dataUpload.getTime()) / (1000 * 60);
+        
+        return diferencaMinutos > 1; // Mais de 1 minuto pendente
+      });
+
+      if (anexosPendentesAntigos.length > 0) {
+        console.log(`⚠️ Encontrados ${anexosPendentesAntigos.length} anexos pendentes há mais de 1 minuto, forçando atualização`);
+        await recarregarAnexosEmpresa(empresaId);
+      }
+    };
+
+    // Verificar anexos pendentes a cada 30 segundos
+    const interval = setInterval(verificarAnexosPendentes, 30000);
+    
+    return () => clearInterval(interval);
+  }, [anexos, empresaId, recarregarAnexosEmpresa]);
 
   // Notificar mudanças nos anexos
   useEffect(() => {
@@ -202,16 +258,29 @@ export function AnexoUpload({
 
       // Fazer upload usando o serviço real
       console.log(`🚀 Iniciando upload de ${acceptedFiles.length} arquivo(s) para empresa ${empresaId}`);
+      console.log(`📊 Arquivos selecionados:`, acceptedFiles.map(f => ({ nome: f.name, tamanho: f.size, tipo: f.type })));
 
       const novosAnexos = await uploadAnexos(empresaId, acceptedFiles);
 
       console.log(`✅ Upload concluído: ${novosAnexos.length} arquivo(s) salvos no banco de dados`);
+      console.log(`📋 Anexos salvos:`, novosAnexos.map(a => ({ id: a.id, nome: a.nome, status: a.status })));
+      
+      // SEMPRE forçar recarregamento após upload para garantir sincronização
+      console.log(`🔄 Forçando recarregamento de anexos para empresa ${empresaId}`);
+      await recarregarAnexosEmpresa(empresaId);
+      
+      // Forçar sincronização adicional após um breve delay
+      setTimeout(async () => {
+        console.log(`🔄 Sincronização adicional para empresa ${empresaId}`);
+        await recarregarAnexosEmpresa(empresaId);
+        sincronizarCacheComEstado(empresaId);
+      }, 1500);
 
     } catch (error) {
       console.error('Erro no processo de upload:', error);
       setValidationErrors([`Erro no upload: ${(error as Error).message}`]);
     }
-  }, [empresaId, maxFiles, maxTotalSize, uploadAnexos, validarArquivoLocal, validarLimiteTotalLocal]);
+  }, [empresaId, maxFiles, maxTotalSize, uploadAnexos, validarArquivoLocal, validarLimiteTotalLocal, obterAnexosPorEmpresa]);
 
   // Configurar dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -228,12 +297,23 @@ export function AnexoUpload({
     multiple: true
   });
 
-  // Remover anexo usando o serviço real
+  // Remover anexo usando o serviço real com recarregamento forçado
   const handleRemoverAnexo = async (anexoId: string) => {
     try {
       console.log(`🗑️ Removendo anexo ${anexoId} do banco de dados`);
       await removerAnexo(anexoId);
       console.log(`✅ Anexo ${anexoId} removido com sucesso`);
+      
+      // SEMPRE forçar recarregamento após remoção para garantir sincronização
+      console.log(`🔄 Forçando recarregamento após remoção para empresa ${empresaId}`);
+      await recarregarAnexosEmpresa(empresaId);
+      
+      // Sincronização adicional após delay
+      setTimeout(async () => {
+        console.log(`🔄 Sincronização adicional após remoção para empresa ${empresaId}`);
+        sincronizarCacheComEstado(empresaId);
+      }, 1000);
+      
     } catch (error) {
       console.error('Erro ao remover anexo:', error);
       setValidationErrors([`Erro ao remover anexo: ${(error as Error).message}`]);
@@ -261,9 +341,23 @@ export function AnexoUpload({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Anexar Arquivos</span>
-          <Badge variant="secondary">
-            {resumo.totalArquivos}/{maxFiles} arquivos
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                console.log(`🔄 Atualizando status dos anexos manualmente para empresa ${empresaId}`);
+                await recarregarAnexosEmpresa(empresaId);
+              }}
+              className="text-xs"
+              title="Atualizar status dos anexos"
+            >
+              🔄
+            </Button>
+            <Badge variant="secondary">
+              {resumo.totalArquivos}/{maxFiles} arquivos
+            </Badge>
+          </div>
         </CardTitle>
         <div className="text-sm text-muted-foreground">
           <div className="flex justify-between items-center">
@@ -375,7 +469,7 @@ export function AnexoUpload({
           </div>
         )}
 
-        {/* Lista de Arquivos Selecionados */}
+        {/* Lista de Arquivos Selecionados (excluindo arquivos com status "enviando" e "processado") */}
         {anexos.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-medium">Arquivos Selecionados</h4>

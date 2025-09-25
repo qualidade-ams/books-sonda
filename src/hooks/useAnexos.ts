@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { anexoService, type AnexoData as ServiceAnexoData } from '@/services/anexoService';
 import { anexoCache, cacheUtils } from '@/utils/anexoCache';
 import { comprimirArquivos } from '@/utils/anexoCompression';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type AnexoData = ServiceAnexoData;
@@ -19,6 +20,8 @@ interface UseAnexosReturn {
   uploadAnexo: (empresaId: string, arquivo: File) => Promise<AnexoData>;
   removerAnexo: (anexoId: string) => Promise<void>;
   removerTodosAnexos: (empresaId: string) => Promise<void>;
+  recarregarAnexosEmpresa: (empresaId: string) => Promise<AnexoData[]>;
+  sincronizarCacheComEstado: (empresaId: string) => void;
   
   // Consultas
   obterAnexosPorEmpresa: (empresaId: string) => AnexoData[];
@@ -61,6 +64,12 @@ export const useAnexos = (): UseAnexosReturn => {
     return cleanup;
   }, []);
 
+  // Carregar dados do cache na inicialização (apenas uma vez)
+  useEffect(() => {
+    // Este efeito roda apenas uma vez na montagem do componente
+    // para carregar dados existentes do cache sem causar loops
+  }, []);
+
   // Função para atualizar progresso de upload
   const atualizarProgresso = useCallback((arquivoId: string, progresso: number) => {
     setUploadProgress(prev => ({
@@ -97,21 +106,31 @@ export const useAnexos = (): UseAnexosReturn => {
     return { valido: true };
   }, []);
 
-  // Obter anexos por empresa
+  // Obter anexos por empresa (filtrando arquivos com status "enviando" e "processado")
   const obterAnexosPorEmpresa = useCallback((empresaId: string): AnexoData[] => {
-    // Tentar cache primeiro
-    const cached = anexoCache.getAnexosEmpresa(empresaId);
-    if (cached) {
-      return cached;
+    // Verificar estado local primeiro (mais atualizado)
+    const localData = anexosPorEmpresa[empresaId];
+    if (localData && localData.length > 0) {
+      // Filtrar arquivos com status "enviando" e "processado" - eles não devem aparecer na interface
+      // Mostrar apenas: "pendente" e "erro"
+      return localData.filter(anexo => anexo.status !== 'enviando' && anexo.status !== 'processado');
     }
     
-    // Fallback para estado local
-    return anexosPorEmpresa[empresaId] || [];
+    // Tentar cache global
+    const cached = anexoCache.getAnexosEmpresa(empresaId);
+    if (cached && cached.length > 0) {
+      // Filtrar arquivos com status "enviando" e "processado" também do cache
+      return cached.filter(anexo => anexo.status !== 'enviando' && anexo.status !== 'processado');
+    }
+    
+    // Retornar array vazio se não encontrar nada
+    return [];
   }, [anexosPorEmpresa]);
 
-  // Calcular tamanho atual dos anexos de uma empresa
+  // Calcular tamanho atual dos anexos de uma empresa (excluindo arquivos "enviando")
   const calcularTamanhoAtual = useCallback((empresaId: string): number => {
     const anexos = obterAnexosPorEmpresa(empresaId);
+    // Os anexos já vêm filtrados (sem status "enviando") da função obterAnexosPorEmpresa
     return anexos.reduce((total, anexo) => total + anexo.tamanho, 0);
   }, [obterAnexosPorEmpresa]);
 
@@ -150,7 +169,7 @@ export const useAnexos = (): UseAnexosReturn => {
     }
   }, [calcularTamanhoAtual]);
 
-  // Upload de múltiplos anexos
+  // Upload de múltiplos anexos com controle de concorrência
   const uploadAnexos = useCallback(async (empresaId: string, arquivos: File[]): Promise<AnexoData[]> => {
     try {
       setError(null);
@@ -177,49 +196,67 @@ export const useAnexos = (): UseAnexosReturn => {
 
       const resultados: AnexoData[] = [];
 
-      // Upload de cada arquivo com controle de progresso
-      for (let i = 0; i < arquivosFinais.length; i++) {
-        const arquivo = arquivosFinais[i];
-        const compressionResult = compressionResults[i];
-        const arquivoId = `${empresaId}-${arquivo.name}-${Date.now()}`;
-        uploadsAtivos.current.add(arquivoId);
+      // Limitar concorrência para evitar travamentos (máximo 3 uploads simultâneos)
+      const LIMITE_CONCORRENCIA = 3;
+      const batches: File[][] = [];
+      
+      for (let i = 0; i < arquivosFinais.length; i += LIMITE_CONCORRENCIA) {
+        batches.push(arquivosFinais.slice(i, i + LIMITE_CONCORRENCIA));
+      }
+
+      // Processar em batches para evitar sobrecarga
+      for (const batch of batches) {
+        const promessasBatch = batch.map(async (arquivo, index) => {
+          const compressionResult = compressionResults[arquivosFinais.indexOf(arquivo)];
+          const arquivoId = `${empresaId}-${arquivo.name}-${Date.now()}-${index}`;
+          uploadsAtivos.current.add(arquivoId);
+          
+          try {
+            atualizarProgresso(arquivoId, 0);
+            
+            // Simular progresso durante upload (mais suave)
+            const progressInterval = setInterval(() => {
+              setUploadProgress(prev => {
+                const atual = prev[arquivoId] || 0;
+                if (atual < 85) {
+                  return { ...prev, [arquivoId]: atual + 15 };
+                }
+                return prev;
+              });
+            }, 200);
+
+            const anexo = await anexoService.uploadAnexo(empresaId, arquivo);
+            
+            clearInterval(progressInterval);
+            atualizarProgresso(arquivoId, 100);
+            
+            // Limpar progresso após um tempo
+            setTimeout(() => limparProgresso(arquivoId), 1500);
+            
+            return anexo;
+            
+          } catch (error) {
+            console.error(`Erro no upload do arquivo ${arquivo.name}:`, error);
+            limparProgresso(arquivoId);
+            throw error;
+          } finally {
+            uploadsAtivos.current.delete(arquivoId);
+          }
+        });
+
+        // Aguardar conclusão do batch atual antes de prosseguir
+        const resultadosBatch = await Promise.all(promessasBatch);
+        resultados.push(...resultadosBatch);
         
-        try {
-          atualizarProgresso(arquivoId, 0);
-          
-          // Simular progresso durante upload
-          const progressInterval = setInterval(() => {
-            setUploadProgress(prev => {
-              const atual = prev[arquivoId] || 0;
-              if (atual < 90) {
-                return { ...prev, [arquivoId]: atual + 10 };
-              }
-              return prev;
-            });
-          }, 100);
-
-          const anexo = await anexoService.uploadAnexo(empresaId, arquivo);
-          
-          clearInterval(progressInterval);
-          atualizarProgresso(arquivoId, 100);
-          
-          resultados.push(anexo);
-          
-          // Atualizar cache local
-          setAnexosPorEmpresa(prev => ({
+        // Atualizar cache local incrementalmente
+        setAnexosPorEmpresa(prev => {
+          const anexosAtuais = prev[empresaId] || [];
+          const novosAnexos = [...anexosAtuais, ...resultadosBatch];
+          return {
             ...prev,
-            [empresaId]: [...(prev[empresaId] || []), anexo]
-          }));
-
-          setTimeout(() => limparProgresso(arquivoId), 1000);
-          
-        } catch (error) {
-          console.error(`Erro no upload do arquivo ${arquivo.name}:`, error);
-          limparProgresso(arquivoId);
-          throw error;
-        } finally {
-          uploadsAtivos.current.delete(arquivoId);
-        }
+            [empresaId]: novosAnexos
+          };
+        });
       }
 
       // Mostrar estatísticas de compressão se houve otimização
@@ -233,6 +270,24 @@ export const useAnexos = (): UseAnexosReturn => {
       } else {
         toast.success(`${resultados.length} arquivo(s) enviado(s) com sucesso`);
       }
+
+      // SEMPRE forçar limpeza e atualização do cache após upload
+      console.log(`🧹 Limpando cache para empresa ${empresaId} após upload`);
+      anexoCache.invalidateEmpresa(empresaId);
+      
+      // Buscar dados frescos do banco de dados
+      const anexosFinais = await anexoService.obterAnexosEmpresa(empresaId);
+      
+      // Atualizar estado local com dados frescos
+      setAnexosPorEmpresa(prev => ({
+        ...prev,
+        [empresaId]: anexosFinais
+      }));
+      
+      // Atualizar cache com dados frescos
+      anexoCache.setAnexosEmpresa(empresaId, anexosFinais);
+      
+      console.log(`✅ Cache atualizado: ${anexosFinais.length} anexos para empresa ${empresaId}`);
 
       return resultados;
 
@@ -252,23 +307,60 @@ export const useAnexos = (): UseAnexosReturn => {
     return resultados[0];
   }, [uploadAnexos]);
 
-  // Remover anexo específico
+  // Remover anexo específico com limpeza forçada de cache
   const removerAnexo = useCallback(async (anexoId: string): Promise<void> => {
     try {
       setError(null);
       
+      // Primeiro, identificar qual empresa possui este anexo
+      let empresaDoAnexo: string | null = null;
+      Object.entries(anexosPorEmpresa).forEach(([empresaId, anexos]) => {
+        if (anexos.some(anexo => anexo.id === anexoId)) {
+          empresaDoAnexo = empresaId;
+        }
+      });
+      
       await anexoService.removerAnexo(anexoId);
       
-      // Atualizar cache local - remover de todas as empresas
-      setAnexosPorEmpresa(prev => {
-        const novo = { ...prev };
-        Object.keys(novo).forEach(empresaId => {
-          novo[empresaId] = novo[empresaId].filter(anexo => anexo.id !== anexoId);
-          // Atualizar cache também
-          anexoCache.setAnexosEmpresa(empresaId, novo[empresaId]);
+      // SEMPRE forçar recarregamento dos anexos da empresa específica
+      if (empresaDoAnexo) {
+        console.log(`🧹 Limpando cache após remoção para empresa: ${empresaDoAnexo}`);
+        
+        // Limpar cache completamente para esta empresa
+        anexoCache.invalidateEmpresa(empresaDoAnexo);
+        
+        // Buscar dados atualizados diretamente do banco (sem cache)
+        const anexosAtualizados = await anexoService.obterAnexosEmpresa(empresaDoAnexo);
+        
+        // Atualizar estado local com dados frescos
+        setAnexosPorEmpresa(prev => ({
+          ...prev,
+          [empresaDoAnexo!]: anexosAtualizados
+        }));
+        
+        // Atualizar cache com dados frescos
+        anexoCache.setAnexosEmpresa(empresaDoAnexo, anexosAtualizados);
+        
+        console.log(`✅ Anexos recarregados: ${anexosAtualizados.length} arquivos restantes`);
+      } else {
+        // Fallback: limpar cache de todas as empresas e recarregar
+        console.log(`🧹 Limpando cache global após remoção de anexo ${anexoId}`);
+        
+        setAnexosPorEmpresa(prev => {
+          const novo = { ...prev };
+          Object.keys(novo).forEach(empresaId => {
+            const anexosAnteriores = novo[empresaId].length;
+            novo[empresaId] = novo[empresaId].filter(anexo => anexo.id !== anexoId);
+            
+            if (anexosAnteriores !== novo[empresaId].length) {
+              // Limpar cache e atualizar
+              anexoCache.invalidateEmpresa(empresaId);
+              anexoCache.setAnexosEmpresa(empresaId, novo[empresaId]);
+            }
+          });
+          return novo;
         });
-        return novo;
-      });
+      }
 
       toast.success('Anexo removido com sucesso');
       
@@ -278,7 +370,7 @@ export const useAnexos = (): UseAnexosReturn => {
       toast.error(`Erro ao remover anexo: ${(error as Error).message}`);
       throw error;
     }
-  }, []);
+  }, [anexosPorEmpresa]);
 
   // Remover todos os anexos de uma empresa
   const removerTodosAnexos = useCallback(async (empresaId: string): Promise<void> => {
@@ -305,12 +397,83 @@ export const useAnexos = (): UseAnexosReturn => {
     }
   }, []);
 
+  // Sincronizar cache com estado local (função auxiliar)
+  const sincronizarCacheComEstado = useCallback((empresaId: string) => {
+    const cached = anexoCache.getAnexosEmpresa(empresaId);
+    if (cached && cached.length > 0) {
+      setAnexosPorEmpresa(prev => {
+        // Só atualizar se realmente mudou
+        const current = prev[empresaId] || [];
+        if (JSON.stringify(current.map(a => a.id).sort()) !== JSON.stringify(cached.map(a => a.id).sort())) {
+          return {
+            ...prev,
+            [empresaId]: cached
+          };
+        }
+        return prev;
+      });
+    }
+  }, []);
+
+  // Recarregar anexos de uma empresa com limpeza forçada de cache
+  const recarregarAnexosEmpresa = useCallback(async (empresaId: string): Promise<AnexoData[]> => {
+    try {
+      console.log(`🔄 Recarregando anexos para empresa: ${empresaId}`);
+      
+      // SEMPRE limpar cache primeiro para garantir dados frescos
+      anexoCache.invalidateEmpresa(empresaId);
+      
+      // Buscar diretamente do serviço (sem usar cache)
+      const { data, error } = await supabase
+        .from('anexos_temporarios')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .order('data_upload', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar anexos da empresa:', error);
+        throw new Error('Erro ao buscar anexos da empresa');
+      }
+
+      const anexos = data.map(anexo => ({
+        id: anexo.id,
+        nome: anexo.nome_original,
+        tipo: anexo.tipo_mime,
+        tamanho: anexo.tamanho_bytes,
+        url: anexo.url_temporaria,
+        status: anexo.status as AnexoData['status'],
+        empresaId: anexo.empresa_id,
+        token: anexo.token_acesso,
+        dataUpload: anexo.data_upload,
+        dataExpiracao: anexo.data_expiracao
+      }));
+      
+      // Atualizar estado local com dados frescos
+      setAnexosPorEmpresa(prev => ({
+        ...prev,
+        [empresaId]: anexos
+      }));
+      
+      // Atualizar cache com dados frescos
+      anexoCache.setAnexosEmpresa(empresaId, anexos);
+      
+      console.log(`✅ Anexos recarregados: ${anexos.length} arquivos (${anexos.filter(a => a.status !== 'enviando').length} visíveis)`);
+      return anexos;
+    } catch (error) {
+      console.error('Erro ao recarregar anexos:', error);
+      setError(error as Error);
+      return [];
+    }
+  }, []);
+
   return {
     // Operações principais
     uploadAnexos,
     uploadAnexo,
     removerAnexo,
     removerTodosAnexos,
+    recarregarAnexosEmpresa,
+    sincronizarCacheComEstado,
     
     // Consultas
     obterAnexosPorEmpresa,

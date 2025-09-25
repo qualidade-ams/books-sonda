@@ -16,7 +16,8 @@ books-snd/
 │       └── tech.md             						      # Stack tecnológico
 ├── docs/                       						      # Documentação técnica
 │   ├── ANEXOS_INFRASTRUCTURE.md					      # Documentação da infraestrutura de anexos para disparos personalizados (buckets, políticas RLS, funções SQL, configuração e troubleshooting)
-│   └── POWER_AUTOMATE_ANEXOS_CONFIG.md				      # Guia completo de configuração do Power Automate para processamento de anexos no sistema de disparos personalizados (estrutura de payload, fluxos de download, tratamento de erros, validações de segurança, monitoramento e troubleshooting)
+│   ├── POWER_AUTOMATE_ANEXOS_CONFIG.md				      # Guia completo de configuração do Power Automate para processamento de anexos no sistema de disparos personalizados (estrutura de payload, fluxos de download, tratamento de erros, validações de segurança, monitoramento e troubleshooting)
+│   └── TESTES_E2E_ANEXOS.md						      # Documentação dos testes end-to-end para sistema de anexos (cenários de teste, validações e troubleshooting)
 ├── public/                     						      # Arquivos estáticos
 │   ├── favicon.ico             						      # Ícone da aplicação
 │   ├── robots.txt              						      # Arquivo de configuração para crawlers
@@ -35,7 +36,7 @@ books-snd/
 │   ├── components/             						      # Componentes reutilizáveis
 │   │   ├── admin/              						      # Componentes de administração
 │   │   │   ├── anexos/         						      # Componentes do sistema de anexos para disparos personalizados
-│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso, lista de arquivos selecionados e integração com hook useAnexos para gerenciamento centralizado de estado
+│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso, lista de arquivos selecionados, integração com hook useAnexos para gerenciamento centralizado de estado (incluindo recarregamento de anexos por empresa e sincronização manual de cache), verificação automática de status dos anexos ao montar o componente ou trocar de empresa (garante sincronização imediata com o banco de dados), verificação periódica automática otimizada a cada 15 segundos para manter dados sempre atualizados, sistema inteligente de detecção de anexos pendentes há mais de 1 minuto com forçamento de atualização automática a cada 30 segundos para resolver problemas de sincronização, e sistema avançado de debug com logs detalhados de upload (arquivos selecionados, anexos salvos no banco, verificação pós-upload com timeout para monitoramento de sincronização e troubleshooting de problemas de interface)
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
 │   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
@@ -87,6 +88,7 @@ books-snd/
 │   │   │   │   ├── GrupoFormModal.tsx					   # Modal de formulário de grupo responsável
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de grupos responsáveis
 │   │   │   │   └── ImportExportButtons.tsx				   # Botões de importação e exportação para grupos responsáveis
+│   │   │   ├── AnexoCleanupManager.tsx					# Gerenciador de limpeza automática de anexos expirados (interface para controle manual e monitoramento do job de limpeza)
 │   │   │   ├── AutoSchedulerInitializer.tsx			   # Componente para inicialização automática do job scheduler (garante que o scheduler seja iniciado quando a aplicação carrega)
 │   │   │   ├── Breadcrumb.tsx  						      # Navegação em migalhas de pão com suporte às rotas do sistema de client books
 │   │   │   ├── DialogTesteEmail.tsx 					   # Modal de teste de envio de email
@@ -101,19 +103,22 @@ books-snd/
 │   │   │   └── VigenciaMonitor.tsx						   # Monitor de vigência de contratos das empresas clientes
 │   │   │			
 │   │   ├── auth/               						      # Componentes de autenticação
-│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de auth
-│   │   │   └── PermissionFeedback.tsx					   # Feedback quando usuário não tem permissão
-│   │   │   └── ProtectedAction.tsx						   # Componente que renderiza filhos condicionalmente com base nas permissões
-│   │   │   └── ProtectedRoute.tsx						   # Proteção de rotas baseada em permissões
+│   │   │   ├── index.ts								      # Exportações centralizadas dos componentes de auth
+│   │   │   ├── PermissionFeedback.tsx					   # Feedback quando usuário não tem permissão
+│   │   │   ├── ProtectedAction.tsx						   # Componente que renderiza filhos condicionalmente com base nas permissões
+│   │   │   ├── ProtectedRoute.tsx						   # Proteção de rotas baseada em permissões
 │   │   │   └── SessionTimeoutModal.tsx					# Modal de expiração da sessão
+│   │   ├── debug/              						      # Componentes de debug e desenvolvimento
+│   │   │   ├── AnexosDebug.tsx							   # Componente de debug para sistema de anexos (visualização de estado, métricas e troubleshooting)
+│   │   │   └── AnexosStatus.tsx						   # Componente de status em tempo real para anexos por empresa (exibe arquivos carregados, tamanhos, limites, status de upload, resumo de uso e informações de debug para monitoramento do sistema de anexos)
 │   │   ├── errors/             						      # Componentes de tratamento de erro
-│   │   │   └── GlobalErrorBoundary.tsx					# Captura todos os erros não tratados na aplicação
-│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de erro
-│   │   │   └── LoadingFallback.tsx						   # Fallback de carregamento com estados de erro e retry
+│   │   │   ├── GlobalErrorBoundary.tsx					# Captura todos os erros não tratados na aplicação
+│   │   │   ├── index.ts								      # Exportações centralizadas dos componentes de erro
+│   │   │   ├── LoadingFallback.tsx						   # Fallback de carregamento com estados de erro e retry
 │   │   │   └── PermissionErrorBoundary.tsx				# Boundary específico para erros de permissão
 │   │   ├── notifications/      						      # Componentes de notificação
-│   │   │   └── index.ts								      # Exportações centralizadas dos componentes de notificação
-│   │   │   └── ProgressIndicator.tsx					   # Indicador de progresso para operações longas
+│   │   │   ├── index.ts								      # Exportações centralizadas dos componentes de notificação
+│   │   │   ├── ProgressIndicator.tsx					   # Indicador de progresso para operações longas
 │   │   │   └── RealTimeNotifications.tsx				   # Notificações em tempo real via Supabase
 │   │   └── ui/                 						      # Componentes de interface genéricos (shadcn/ui)
 │   │       └── [52 componentes UI]                     # Componentes base da biblioteca shadcn/ui incluindo componentes customizados como confirm-dialog, field-speech-button, lazy-loading, pagination-optimized e stepper
@@ -156,8 +161,11 @@ books-snd/
 │   │   ├── useGrupos.ts                         		# Hook para grupos do sistema de permissões
 │   │   ├── useGruposResponsaveis.ts             		# Hook para grupos responsáveis do sistema de books
 │   │   ├── useHistorico.ts                      		# Hook para histórico de books com cache otimizado (staleTime reduzido para 30s, refetch automático a cada 1 minuto, refetch ao focar na janela habilitado para dados sempre atualizados)
+│   │   ├── useAnexoAudit.ts                     		# Hook para auditoria de anexos (logs de operações, métricas de uso e troubleshooting)
 │   │   ├── useAnexoCleanupJob.ts                		# Hook para gerenciamento do job de limpeza automática de anexos (controle de execução, estatísticas, limpeza manual, monitoramento de estado)
-│   │   ├── useAnexos.ts                         		# Hook para gerenciamento completo de anexos em disparos personalizados (upload múltiplo com validação de tipos e tamanhos, controle de limite de 25MB por empresa, progresso de upload por arquivo, cache local de anexos por empresa, validações de segurança, remoção individual e em lote, summary de uso, estados reativos para interface e integração com serviços de compressão e cache)
+│   │   ├── useAnexoMetrics.ts                   		# Hook para métricas e monitoramento do sistema de anexos (estatísticas de performance, uso de storage e alertas)
+│   │   ├── useAnexoMonitoring.ts                		# Hook para monitoramento em tempo real do sistema de anexos (jobs, performance e alertas)
+│   │   ├── useAnexos.ts                         		# Hook para gerenciamento completo de anexos em disparos personalizados (upload múltiplo com validação de tipos e tamanhos, controle de limite de 25MB por empresa, progresso de upload por arquivo, cache local otimizado com priorização de dados locais sobre cache global para melhor performance, validações de segurança, remoção individual e em lote com limpeza forçada de cache e sincronização garantida, recarregamento de anexos por empresa sempre com dados frescos do banco via integração direta com Supabase client, função sincronizarCacheComEstado para sincronização manual entre cache e estado local, filtragem automática de arquivos com status "enviando" e "processado" para exibir apenas anexos pendentes e com erro na interface (melhora UX ocultando arquivos já processados), invalidação automática de cache por empresa após remoção com fallback global, summary de uso, estados reativos para interface e integração com serviços de compressão e cache)
 │   │   ├── useJobScheduler.ts                   		# Hook para agendamento de jobs
 │   │   ├── usePagination.ts                     		# Hook para paginação otimizada
 │   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
@@ -192,7 +200,7 @@ books-snd/
 │   │   │   ├── ConfigurarPermissoesClientBooks.tsx   # Configuração de permissões para sistema de books
 │   │   │   ├── ConfigurarPermissoesVigencias.tsx     # Configuração de permissões para tela de Monitoramento de Vigências (registra a tela no sistema de permissões, configura permissão de edição para administradores, inclui verificação de configuração e instruções detalhadas)
 │   │   │   ├── ControleDisparos.tsx    				   # Controle de disparos selecionados e reenvios (tela "Disparos" no sistema de permissões, com funcionalidades de disparo por seleção, reenvio de falhas, agendamento e contadores inteligentes baseados no status das empresas selecionadas para otimizar a experiência do usuário)
-│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento, controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas, e integração com sistema de anexos (ícones Paperclip e FileText para indicação visual de arquivos anexados)
+│   │   │   ├── ControleDisparosPersonalizados.tsx    # Controle de disparos personalizados para empresas com book personalizado (filtra apenas empresas com book_personalizado=true), interface com tema roxo/purple, funcionalidades de disparo selecionado, reenvio de falhas, agendamento, controle inteligente de botões baseado em contadores específicos (paraDisparar/paraReenviar) que consideram o status real das empresas selecionadas, integração com sistema de anexos (ícones Paperclip e FileText para indicação visual de arquivos anexados) e modal de anexos com componente AnexoUpload para upload de múltiplos arquivos
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
@@ -234,11 +242,13 @@ books-snd/
 │   │   ├── anexoAuditService.ts       					# Serviço de auditoria específico para sistema de anexos (logs detalhados de operações de upload, validação, processamento, tokens, downloads, limpeza automática, métricas de storage e performance, análise de gargalos, identificação de picos de uso, relatórios de taxa de sucesso/falha, cache de métricas com timeout configurável, e interface completa para troubleshooting e monitoramento do sistema de anexos)
 │   │   ├── anexoCleanupJobService.ts  					# Serviço de limpeza automática de anexos expirados (job scheduler para remoção de arquivos temporários, estatísticas de execução, logs de auditoria, execução manual e automática a cada 24 horas)
 │   │   ├── anexoMetricsService.ts     					# Serviço de métricas e monitoramento do sistema de anexos (estatísticas de upload, taxa de sucesso/falha, tempo de processamento, uso de storage por empresa, alertas de performance, métricas de dashboard, análise de tendências diárias, verificação automática de limites de storage e geração de relatórios de uso)
+│   │   ├── anexoMonitoringJobService.ts				# Serviço de monitoramento de jobs do sistema de anexos (execução de jobs de limpeza, métricas de performance e alertas automáticos)
 │   │   ├── anexoService.ts            					# Serviço completo de gerenciamento de anexos para disparos personalizados (upload, validação, armazenamento temporário/permanente, controle de limite de 25MB por empresa, geração de tokens JWT, integração com Supabase Storage, limpeza automática de arquivos expirados)
-│   │   ├── anexoTokenService.ts       					# Serviço de autenticação e segurança para anexos (geração e validação de tokens JWT, URLs seguras para download, controle de acesso baseado em empresa, renovação e revogação de tokens, validação de expiração)
+│   │   ├── anexoStorageService.ts     					# Serviço de gerenciamento de storage para anexos (operações de bucket, movimentação de arquivos, controle de espaço e otimização de armazenamento)
+│   │   ├── anexoTokenService.ts       					# Serviço de autenticação e segurança para anexos com sistema de tokens ultra-compactos (geração de tokens JWT otimizados e tokens compactos alternativos para resolver limitações de tamanho do campo token_acesso, validação robusta de tokens, URLs seguras para download, controle de acesso baseado em empresa, renovação e revogação de tokens, validação de expiração, e implementação de hash customizado para tokens compactos com IDs parciais para máxima eficiência de armazenamento)
 │   │   ├── auditLogger.ts            				   	# Logger de auditoria
 │   │   ├── auditService.ts            					# Serviço de auditoria do sistema
-│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, interface EmailData corrigida com campo 'to' como array de destinatários para melhor compatibilidade com emailService, método direto de envio para evitar reprocessamento de template, parâmetro destinatario corrigido para string[] em enviarEmailComTemplate para consistência com sistema consolidado, tratamento robusto de erros com registro detalhado de falhas e sucessos, integração completa com sistema de anexos para disparos personalizados incluindo tipos AnexoWebhookData, AnexosSummaryWebhook e DisparoComAnexos para processamento de arquivos anexados)
+│   │   ├── booksDisparoService.ts       				# Controle de disparos automáticos de books com envio consolidado por empresa (filtra empresas com AMS ativo E tipo book "qualidade", suporte a disparos padrão e personalizados, implementa envio de e-mail único por empresa contendo todos os clientes tanto para disparos iniciais quanto para reenvios, interface EmailData corrigida com campo 'to' como array de destinatários para melhor compatibilidade com emailService, método direto de envio para evitar reprocessamento de template, parâmetro destinatario corrigido para string[] em enviarEmailComTemplate para consistência com sistema consolidado, tratamento robusto de erros com registro detalhado de falhas e sucessos no histórico de disparos incluindo informações de anexos, integração completa com sistema de anexos para disparos personalizados incluindo tipos AnexoWebhookData, AnexosSummaryWebhook e DisparoComAnexos para processamento de arquivos anexados, atualização automática e imediata do status dos anexos para "processado" após envio bem-sucedido ao Power Automate sem aguardar callback, registro automático de falhas no histórico com detalhes de erro e status de anexos para auditoria completa, e correção específica para registro de falhas em disparos personalizados com busca de template, verificação de anexos e registro detalhado no histórico incluindo informações de arquivos anexados e status de processamento)
 │   │   ├── cacheManager.ts            					# Gerenciador de cache avançado
 │   │   ├── clientBooksCache.ts            				# Cache específico para o sistema de Client Books com estratégias otimizadas
 │   │   ├── clientBooksPermissionsService.ts         # Serviço de permissões específicas do sistema de books (registra telas: empresas_clientes, clientes "Cadastro de Clientes", grupos_responsaveis, controle_disparos "Disparos", historico_books, monitoramento_vigencias "Monitoramento de Vigências")
@@ -248,7 +258,7 @@ books-snd/
 │   │   ├── configurationAdminService.ts       		# Administração de configurações dinâmicas
 │   │   ├── configurationRepository.ts       			# Repository de configurações
 │   │   ├── configurationService.ts       				# Serviço principal de configuração
-│   │   ├── emailService.ts            					# Serviço base de envio de emails com interface EmailData corrigida (campo 'to' aceita string ou array de e-mails para compatibilidade com envios consolidados e sistema de books personalizado, suporte flexível a destinatários únicos ou múltiplos, processamento automático de arrays para Power Automate com join por vírgula e formatação com colchetes angulares aprimorada, validação robusta de e-mails vazios ou inválidos, logs de debug detalhados para troubleshooting, correção de tipos TypeScript para função logEmail, remoção de variável não utilizada 'mensagem', tratamento robusto de logs de erro com formatação consistente de e-mails, e método sendEmailWithMapping para mapeamento automático de templates)
+│   │   ├── emailService.ts            					# Serviço completo de envio de emails via Power Automate com interface EmailData expandida (campo 'to' aceita string ou array de e-mails para compatibilidade com envios consolidados, suporte completo a anexos do sistema de books personalizados com estrutura de dados para totalArquivos, tamanhoTotal e array de arquivos com URLs, nomes, tipos, tamanhos e tokens de acesso, processamento automático de arrays para Power Automate com garantia de formato array para campos email e email_cc, SEMPRE inclui campo anexos no payload mesmo quando vazio para compatibilidade com Power Automate, validação robusta de e-mails, logs de debug detalhados, tratamento avançado de erros HTTP com captura de detalhes da resposta incluindo logs específicos para erro 400 com anexos e estatísticas detalhadas de arquivos para troubleshooting, fallback automático para envio sem anexos em caso de erro 400, método sendEmailWithMapping para mapeamento automático de templates com substituição de variáveis incluindo mês por extenso, método testAnexosIntegration para testes específicos de anexos, sendTestEmail com dados de teste padrão e sendTestEmailWithMapping para testes com sistema de mapeamento)
 │   │   ├── emailTemplateMappingService.ts       		# Mapeamento de templates de email
 │   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
@@ -310,6 +320,7 @@ books-snd/
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── anexoCache.ts              					# Sistema de cache local para anexos com TTL configurável (cache em memória por empresa, invalidação automática, utilitários de limpeza, estatísticas de uso e integração com sistema de anexos para otimização de performance)
 │   │   ├── anexoCompression.ts        					# Utilitários para compressão automática de anexos (compressão inteligente baseada no tamanho e tipo do arquivo, suporte a PDFs, imagens e documentos Office, processamento em paralelo com limite de concorrência, estatísticas de redução de tamanho e otimização de performance para uploads)
+│   │   ├── anexoInfrastructureUtils.ts					# Utilitários para infraestrutura de anexos (configuração de buckets, validações de storage e operações de manutenção)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
 │   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, variáveis de sistema para mês atual (sistema.mesNomeAtual e sistema.mesNomeAtualEn), correção de sintaxe na função de mapeamento de variáveis
@@ -326,7 +337,7 @@ books-snd/
 │   │   ├── errorRecovery.ts           				   	# Estratégias de recuperação de erros
 │   │   ├── exportUtils.ts            				   	# Utilitários gerais para exportação de dados
 │   │   ├── fallbackManager.ts         					# Gerenciamento de fallbacks
-│   │   ├── formatters.ts             				   	# Formatação de valores
+│   │   ├── formatters.ts             				   	# Formatação de valores (datas, números) com timezone Brasil e precisão de segundos
 │   │   ├── historicoAlternativo.ts    					# Consulta alternativa do histórico sem joins complexos (evita problemas de relacionamento)
 │   │   ├── paginationUtils.ts         					# Utilitários de paginação
 │   │   ├── performance-optimizations.ts			   	# Otimizações de performance
@@ -351,6 +362,7 @@ books-snd/
 │       ├── add_user_registration_screen.sql       # Migração para tela de registro de usuários
 │       ├── anexos_infrastructure_migration.sql    # Migração para infraestrutura de anexos do sistema de disparos personalizados (tabela anexos_temporarios, extensão do historico_disparos, índices otimizados, funções de limpeza automática e validação de limite de 25MB por empresa)
 │       ├── anexos_rls_policies.sql                # Políticas RLS para sistema de anexos com controle de acesso baseado em permissões de grupo (corrigido para usar user_group_assignments e screen_permissions em vez de user_permissions diretas)
+│       ├── anexos_storage_setup.sql               # Migração para configuração do Supabase Storage para sistema de anexos (buckets, políticas de acesso e configurações de segurança)
 │       ├── anexos_temporarios_migration.sql       # Migração para criar tabela anexos_temporarios do sistema de anexos para disparos personalizados (estrutura completa da tabela, índices otimizados, triggers de atualização automática, funções de limpeza de registros expirados, validação de limite de 25MB por empresa com DROP FUNCTION seguro, logs condicionais para logs_sistema, e comentários detalhados)
 │       ├── client_books_management_migration.sql		# Migração principal do sistema de books
 │       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
@@ -367,11 +379,28 @@ books-snd/
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
 │       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
-│       └── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
+│       ├── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
+│       └── fix_token_acesso_size.sql              # Migração para corrigir o tamanho do campo token_acesso de VARCHAR(255) para TEXT (tokens JWT podem exceder 255 caracteres)
 │				
 ├── .env.example                					      	# Exemplo de variáveis de ambiente
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
+├── CORRECAO_ANEXOS_STATUS_ENVIANDO_CACHE.md            # Documentação da correção do sistema de anexos para filtrar arquivos com status "enviando" e "processado" da interface (focando apenas em arquivos que precisam de gerenciamento), implementação de cache inteligente com invalidação automática, controle de concorrência para uploads múltiplos, sincronização robusta após operações e melhorias na experiência do usuário
+├── CORRECAO_FILTRO_ARQUIVOS_PROCESSADOS.md            # Documentação da correção do filtro para ocultar arquivos processados da interface de anexos (modificação do hook useAnexos para filtrar arquivos com status "processado" além de "enviando", mantendo visíveis apenas arquivos "pendente" e "erro" que precisam de ação do usuário, interface mais limpa e focada, melhor experiência do usuário com lógica consistente)
+├── CORRECAO_LOGS_AUDITORIA_ANEXOS.md                  # Documentação da correção dos logs de auditoria no sistema de anexos (correção das migrações para usar permission_audit_logs em vez de logs_sistema)
+├── CORRECAO_LOGS_EMAIL_FORMATACAO_CONSISTENTE.md      # Documentação da correção de formatação consistente nos logs de e-mail (padronização da formatação de e-mails nos logs de erro e sucesso do emailService)
+├── CORRECAO_PAYLOAD_POWER_AUTOMATE_ARRAYS.md          # Documentação da correção do payload do Power Automate para suporte a arrays (correção da formatação de campos email e email_cc como arrays, estrutura de anexos padronizada e compatibilidade com webhook)
+├── CORRECAO_POLITICAS_RLS_ANEXOS.md                   # Documentação da correção das políticas RLS para sistema de anexos (controle de acesso baseado em permissões de grupo)
+├── CORRECAO_SINCRONIZACAO_ANEXOS_INTERFACE.md         # Documentação da correção de problemas de sincronização entre interface e sistema de anexos (troubleshooting de cache, estado local vs banco de dados, componentes de debug e ferramentas de diagnóstico)
+├── CORRECAO_STATUS_ANEXOS_APOS_ENVIO.md               # Documentação da correção do status de anexos após envio bem-sucedido (atualização imediata do status para "processado" sem depender de callback externo do Power Automate, melhor feedback ao usuário e consistência de dados)
+├── CORRECAO_VERIFICACAO_STATUS_ANEXOS_ABERTURA_TELA.md # Documentação da correção da verificação automática de status de anexos na abertura da tela (verificação automática do banco de dados ao abrir modal, sincronização periódica a cada 15 segundos, detecção inteligente de anexos pendentes antigos, botão manual de atualização, múltiplas camadas de verificação para garantir dados sempre atualizados e eliminação de cache desatualizado)
+├── debug_anexos_sincronizacao.sql                     # Script SQL para debug e diagnóstico de sincronização do sistema de anexos (verificação de estado, estatísticas por empresa, detecção de inconsistências entre cache e banco)
+├── debug_anexos.sql                                   # Script SQL para debug e troubleshooting do sistema de anexos
+├── debug_payload_anexos.json                          # Arquivo de debug para troubleshooting de payload de anexos no Power Automate (documenta erro 400, formato atual do payload, possíveis causas e soluções para problemas de integração com anexos)
+├── IMPLEMENTACAO_EXTENSAO_HISTORICO_ANEXOS.md         # Documentação da implementação da extensão da tabela historico_disparos para suporte a anexos (adição de colunas anexo_id e anexo_processado)
+├── IMPLEMENTACAO_SERVICO_DISPARO_ANEXOS.md            # Documentação da implementação do serviço de disparo com anexos (integração completa entre sistema de anexos e disparos personalizados)
+├── OTIMIZACOES_PERFORMANCE_ANEXOS_FINALIZACAO.md      # Documentação das otimizações finais de performance do sistema de anexos (cache, compressão e monitoramento)
+├── test_anexos_integration.ts                         # Testes de integração para sistema de anexos
 ├── AJUSTE_COR_AZUL_PDF_PADRAO_SISTEMA.md            # Documentação do ajuste da cor azul padrão do sistema para exportação PDF (correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes da biblioteca)
 ├── CORRECAO_LOGS_EMAIL_FORMATACAO_CONSISTENTE.md    # Documentação da correção de formatação consistente nos logs de e-mail (padronização da formatação de e-mails nos logs de erro e sucesso do emailService)
 ├── ALTERACAO_FILTRO_DISPAROS_AND.md                # Documentação da alteração do filtro de disparos de OR para AND (empresas aparecem apenas se tem_ams=true E tipo_book='qualidade')
@@ -418,6 +447,8 @@ books-snd/
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
+├── test_anexos_integration.ts                         # Testes de integração para sistema de anexos
+├── teste_loop_anexos.md                               # Documentação de testes de loop e performance do sistema de anexos (análise de comportamento em cenários de alta carga e uso intensivo)
 ├── TESTE_HISTORICO_DISPAROS.sql                       # Script SQL para teste e diagnóstico da tabela historico_disparos (verifica estrutura, dados, relacionamentos e identifica problemas na tabela de histórico de disparos de books)
 ├── tsconfig.app.json           					      	# Configuração TypeScript para aplicação
 ├── tsconfig.json              					   		# Configuração principal do TypeScript

@@ -1,9 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TokenPayload {
-  anexoId: string;
-  empresaId: string;
-  nomeArquivo: string;
+  anexoId: string;    // Mapeado de 'aid' no token compacto
+  empresaId: string;  // Mapeado de 'eid' no token compacto
+  nomeArquivo: string; // Mapeado de 'nf' no token compacto
   exp: number; // Timestamp de expiração
   iat: number; // Timestamp de criação
 }
@@ -54,31 +54,15 @@ class AnexoTokenService {
   }
 
   /**
-   * Gera um token JWT para acesso ao anexo
+   * Gera um token JWT para acesso ao anexo (versão compacta)
    */
   generateToken(anexoId: string, empresaId: string, nomeArquivo: string): string {
     try {
       const now = Math.floor(Date.now() / 1000);
       const exp = now + (this.EXPIRATION_HOURS * 60 * 60); // 24 horas
 
-      const header = {
-        alg: 'HS256',
-        typ: 'JWT'
-      };
-
-      const payload: TokenPayload = {
-        anexoId,
-        empresaId,
-        nomeArquivo,
-        exp,
-        iat: now
-      };
-
-      const encodedHeader = this.base64UrlEncode(JSON.stringify(header));
-      const encodedPayload = this.base64UrlEncode(JSON.stringify(payload));
-      const signature = this.createSignature(encodedHeader, encodedPayload);
-
-      return `${encodedHeader}.${encodedPayload}.${signature}`;
+      // ✅ CORREÇÃO: Usar token ultra-compacto se necessário
+      return this.generateCompactToken(anexoId, empresaId, exp);
     } catch (error) {
       console.error('Erro ao gerar token:', error);
       throw new Error('Erro ao gerar token de acesso');
@@ -86,34 +70,136 @@ class AnexoTokenService {
   }
 
   /**
-   * Valida um token JWT
+   * Gera token ultra-compacto (sem JWT, apenas hash + dados essenciais)
+   */
+  private generateCompactToken(anexoId: string, empresaId: string, exp: number): string {
+    try {
+      // Usar apenas os primeiros 8 caracteres dos UUIDs para economizar espaço
+      const shortAnexoId = anexoId.replace(/-/g, '').substring(0, 8);
+      const shortEmpresaId = empresaId.replace(/-/g, '').substring(0, 8);
+      
+      // Payload ultra-compacto
+      const compactData = `${shortAnexoId}:${shortEmpresaId}:${exp}`;
+      
+      // Criar hash simples
+      let hash = 0;
+      const fullData = `${compactData}:${this.SECRET_KEY}`;
+      for (let i = 0; i < fullData.length; i++) {
+        const char = fullData.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      
+      const signature = Math.abs(hash).toString(36); // Base36 para ser mais compacto
+      const token = `${this.base64UrlEncode(compactData)}.${signature}`;
+      
+      console.log(`🔑 Token compacto gerado: ${token.length} caracteres`);
+      
+      return token;
+    } catch (error) {
+      console.error('Erro ao gerar token compacto:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valida token compacto
+   */
+  private validateCompactToken(token: string): TokenValidationResult {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 2) {
+        return { valid: false, error: 'Token compacto inválido: formato incorreto' };
+      }
+
+      const [encodedData, signature] = parts;
+      const data = this.base64UrlDecode(encodedData);
+      
+      // Verificar assinatura
+      let hash = 0;
+      const fullData = `${data}:${this.SECRET_KEY}`;
+      for (let i = 0; i < fullData.length; i++) {
+        const char = fullData.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      
+      const expectedSignature = Math.abs(hash).toString(36);
+      if (signature !== expectedSignature) {
+        return { valid: false, error: 'Token compacto inválido: assinatura incorreta' };
+      }
+
+      // Decodificar dados
+      const [shortAnexoId, shortEmpresaId, expStr] = data.split(':');
+      const exp = parseInt(expStr, 10);
+
+      // Verificar expiração
+      const now = Math.floor(Date.now() / 1000);
+      if (exp < now) {
+        return { valid: false, error: 'Token compacto expirado' };
+      }
+
+      // Buscar anexo completo pelo ID parcial
+      return { 
+        valid: true, 
+        payload: {
+          anexoId: shortAnexoId, // ID parcial, será resolvido na validação
+          empresaId: shortEmpresaId, // ID parcial, será resolvido na validação
+          nomeArquivo: '', // Não incluído no token compacto
+          exp,
+          iat: exp - (this.EXPIRATION_HOURS * 60 * 60)
+        }
+      };
+    } catch (error) {
+      return { valid: false, error: 'Erro ao validar token compacto' };
+    }
+  }
+
+  /**
+   * Valida um token (suporta JWT e formato compacto)
    */
   validateToken(token: string): TokenValidationResult {
     try {
       const parts = token.split('.');
-      if (parts.length !== 3) {
-        return { valid: false, error: 'Token inválido: formato incorreto' };
+      
+      // Token compacto (2 partes)
+      if (parts.length === 2) {
+        return this.validateCompactToken(token);
       }
+      
+      // Token JWT tradicional (3 partes)
+      if (parts.length === 3) {
+        const [encodedHeader, encodedPayload, signature] = parts;
 
-      const [encodedHeader, encodedPayload, signature] = parts;
+        // Verificar assinatura
+        const expectedSignature = this.createSignature(encodedHeader, encodedPayload);
+        if (signature !== expectedSignature) {
+          return { valid: false, error: 'Token inválido: assinatura incorreta' };
+        }
 
-      // Verificar assinatura
-      const expectedSignature = this.createSignature(encodedHeader, encodedPayload);
-      if (signature !== expectedSignature) {
-        return { valid: false, error: 'Token inválido: assinatura incorreta' };
+        // Decodificar payload
+        const payloadJson = this.base64UrlDecode(encodedPayload);
+        const payloadRaw = JSON.parse(payloadJson);
+
+        // ✅ CORREÇÃO: Converter payload compacto para formato esperado
+        const payload: TokenPayload = {
+          anexoId: payloadRaw.aid || payloadRaw.anexoId,     // Suporta ambos os formatos
+          empresaId: payloadRaw.eid || payloadRaw.empresaId, // Suporta ambos os formatos
+          nomeArquivo: payloadRaw.nf || payloadRaw.nomeArquivo, // Suporta ambos os formatos
+          exp: payloadRaw.exp,
+          iat: payloadRaw.iat
+        };
+
+        // Verificar expiração
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp < now) {
+          return { valid: false, error: 'Token expirado' };
+        }
+
+        return { valid: true, payload };
       }
-
-      // Decodificar payload
-      const payloadJson = this.base64UrlDecode(encodedPayload);
-      const payload: TokenPayload = JSON.parse(payloadJson);
-
-      // Verificar expiração
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp < now) {
-        return { valid: false, error: 'Token expirado' };
-      }
-
-      return { valid: true, payload };
+      
+      return { valid: false, error: 'Token inválido: formato não reconhecido' };
     } catch (error) {
       console.error('Erro ao validar token:', error);
       return { valid: false, error: 'Token inválido: erro de processamento' };

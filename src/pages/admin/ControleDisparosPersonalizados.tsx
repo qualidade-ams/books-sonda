@@ -122,7 +122,7 @@ const ControleDisparosPersonalizados = () => {
   const contadoresInteligentes = useMemo(() => {
     const paraDisparar = empresasSelecionadasStatus.filter(empresa => {
       const status = empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou';
-      
+
       // Verificar se empresa tem anexo obrigatório
       const empresaData = statusMensal.find(s => s.empresaId === empresa.empresaId)?.empresa;
       if (empresaData?.anexo) {
@@ -130,7 +130,7 @@ const ControleDisparosPersonalizados = () => {
         const temAnexosValidos = anexos.length > 0 && anexos.every(a => a.status !== 'erro');
         return status && temAnexosValidos;
       }
-      
+
       return status;
     }).length;
 
@@ -196,7 +196,7 @@ const ControleDisparosPersonalizados = () => {
     for (const empresaId of empresasComAnexoObrigatorio) {
       const anexos = obterAnexosPorEmpresa(empresaId);
       const empresaData = statusMensal.find(s => s.empresaId === empresaId)?.empresa;
-      
+
       if (anexos.length === 0) {
         toast({
           title: 'Anexos obrigatórios',
@@ -548,11 +548,11 @@ const ControleDisparosPersonalizados = () => {
                     disabled={isDisparandoSelecionados || isUploadingAnexos || contadoresInteligentes.paraDisparar === 0}
                     className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
                     title={
-                      isUploadingAnexos 
-                        ? 'Aguarde o upload dos anexos' 
-                        : contadoresInteligentes.paraDisparar === 0 
-                        ? 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios' 
-                        : undefined
+                      isUploadingAnexos
+                        ? 'Aguarde o upload dos anexos'
+                        : contadoresInteligentes.paraDisparar === 0
+                          ? 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios'
+                          : undefined
                     }
                   >
                     <Send className="h-4 w-4" />
@@ -566,11 +566,11 @@ const ControleDisparosPersonalizados = () => {
                     disabled={isUploadingAnexos || contadoresInteligentes.paraReenviar === 0}
                     className="flex items-center gap-2"
                     title={
-                      isUploadingAnexos 
-                        ? 'Aguarde o upload dos anexos' 
-                        : contadoresInteligentes.paraReenviar === 0 
-                        ? 'Nenhuma empresa selecionada precisa ser reenviada' 
-                        : 'Reenviar empresas já processadas (força novo processamento)'
+                      isUploadingAnexos
+                        ? 'Aguarde o upload dos anexos'
+                        : contadoresInteligentes.paraReenviar === 0
+                          ? 'Nenhuma empresa selecionada precisa ser reenviada'
+                          : 'Reenviar empresas já processadas (força novo processamento)'
                     }
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -591,6 +591,8 @@ const ControleDisparosPersonalizados = () => {
                       {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
                     </Button>
                   </ProtectedAction>
+
+
                 </div>
               </div>
             </div>
@@ -641,7 +643,9 @@ const ControleDisparosPersonalizados = () => {
                         <h3 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                           {status.empresa.nome_completo}
                           {status.empresa.anexo && (
-                            <Paperclip className="h-4 w-4 text-purple-600" title="Empresa com anexos" />
+                            <span title="Empresa com anexos">
+                              <Paperclip className="h-4 w-4 text-purple-600" />
+                            </span>
                           )}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -786,9 +790,9 @@ const ControleDisparosPersonalizados = () => {
                 )}
               </DialogTitle>
             </DialogHeader>
-            
+
             {empresaAnexoSelecionada && (
-              <div className="mt-4">
+              <div className="mt-4 space-y-4">
                 <AnexoUpload
                   empresaId={empresaAnexoSelecionada}
                   onAnexosChange={handleAnexosChange}
