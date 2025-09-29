@@ -395,11 +395,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                       <SelectItem key={option.value} value={option.value}>
                         <div className="flex flex-col">
                           <span>{option.label}</span>
-                          {option.description && (
-                            <span className="text-xs text-muted-foreground">
-                              {option.description}
-                            </span>
-                          )}
+
                         </div>
                       </SelectItem>
                     ))}

@@ -4,10 +4,13 @@
 books-snd/
 ├── .kiro/                      						      # Configurações do Kiro AI
 │   ├── hooks/                  						      # Hooks automáticos do Kiro
+│   │   └── update-structure-file.kiro.hook             # Hook para atualização automática do arquivo de estrutura
 │   ├── specs/                  						      # Especificações de funcionalidades
-│   │   └── anexos-disparos-personalizados/            # Especificação do sistema de anexos para disparos personalizados
-│   │       ├── design.md                               # Documento de design da funcionalidade
-│   │       └── tasks.md                                # Plano de implementação com tarefas
+│   │   ├── anexos-disparos-personalizados/            # Especificação do sistema de anexos para disparos personalizados
+│   │   │   ├── design.md                               # Documento de design da funcionalidade
+│   │   │   └── tasks.md                                # Plano de implementação com tarefas
+│   │   ├── api-error-handling-dom-fixes/              # Especificação para correções de tratamento de erros de API e DOM
+│   │   └── client-books-management/                   # Especificação do sistema de gerenciamento de client books
 │   └── steering/               						      # Regras e diretrizes do projeto
 │       ├── estrutura.md        						      # Estrutura e organização do projeto
 │       ├── padrao.md           						      # Padrões e convenções
@@ -36,7 +39,18 @@ books-snd/
 │   ├── components/             						      # Componentes reutilizáveis
 │   │   ├── admin/              						      # Componentes de administração
 │   │   │   ├── anexos/         						      # Componentes do sistema de anexos para disparos personalizados
-│   │   │   │   └── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso, lista de arquivos selecionados, integração com hook useAnexos para gerenciamento centralizado de estado (incluindo recarregamento de anexos por empresa e sincronização manual de cache), verificação automática de status dos anexos ao montar o componente ou trocar de empresa (garante sincronização imediata com o banco de dados), verificação periódica automática otimizada a cada 15 segundos para manter dados sempre atualizados, sistema inteligente de detecção de anexos pendentes há mais de 1 minuto com forçamento de atualização automática a cada 30 segundos para resolver problemas de sincronização, e sistema avançado de debug com logs detalhados de upload (arquivos selecionados, anexos salvos no banco, verificação pós-upload com timeout para monitoramento de sincronização e troubleshooting de problemas de interface)
+│   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de anexos
+│   │   │   │   ├── AnexoAlertsMonitor.tsx				   # Monitor de alertas em tempo real para sistema de anexos (exibe alertas críticos, de alta prioridade e médios, controle de monitoramento ativo/pausado, limpeza de alertas, resolução individual de alertas, resumo de alertas por severidade, histórico de alertas resolvidos, interface responsiva com scroll otimizado e indicadores visuais por tipo de alerta)
+│   │   │   │   ├── AnexoAuditDashboard.tsx				   # Dashboard de auditoria para sistema de anexos (visualização de logs, métricas de operações e análise de performance)
+│   │   │   │   ├── AnexoDashboard.tsx					   # Dashboard principal do sistema de anexos (métricas gerais, estatísticas de uso e monitoramento)
+│   │   │   │   ├── AnexoMonitoringConfig.tsx			   # Configuração de monitoramento para sistema de anexos (configurações de alertas, limites e thresholds)
+│   │   │   │   ├── AnexoPerformanceMonitor.tsx			   # Monitor de performance específico para anexos (tempo de upload, taxa de sucesso, gargalos)
+│   │   │   │   ├── AnexoPerformanceReport.tsx			   # Relatório de performance do sistema de anexos (análise detalhada de métricas e tendências)
+│   │   │   │   ├── AnexoUpload.tsx						   # Componente de upload de múltiplos arquivos com drag-and-drop, validação de tipos e tamanhos, controle de limite de 25MB por empresa, indicador de progresso, lista de arquivos selecionados, integração com hook useAnexos para gerenciamento centralizado de estado (incluindo recarregamento de anexos por empresa e sincronização manual de cache), verificação automática de status dos anexos ao montar o componente ou trocar de empresa (garante sincronização imediata com o banco de dados), verificação periódica automática otimizada a cada 15 segundos para manter dados sempre atualizados, sistema inteligente de detecção de anexos pendentes há mais de 1 minuto com forçamento de atualização automática a cada 30 segundos para resolver problemas de sincronização, e sistema avançado de debug com logs detalhados de upload (arquivos selecionados, anexos salvos no banco, verificação pós-upload com timeout para monitoramento de sincronização e troubleshooting de problemas de interface)
+│   │   │   │   ├── AnexoUploadExample.tsx				   # Exemplo de uso do componente AnexoUpload (demonstração e testes)
+│   │   │   │   ├── index.ts							      # Exportações centralizadas dos componentes de anexos
+│   │   │   │   ├── InfrastructureChecker.tsx			   # Verificador de infraestrutura do sistema de anexos (validação de buckets, políticas RLS e configurações)
+│   │   │   │   └── README.md							      # Documentação dos componentes de anexos
 │   │   │   ├── client-books/   						      # Componentes do sistema de clientes e books
 │   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de books
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
@@ -55,7 +69,7 @@ books-snd/
 │   │   │   │   └── EmailTemplateErrorFallback.tsx		# Erro ao encontrar template
 │   │   │   │   └── FormularioConfiguracaoWebhook.tsx	# Tela configuração Webhook
 │   │   │   │   └── FormularioNovoTemplate.tsx			# Tela criação novo template
-│   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Gerenciador completo de templates de email (listagem, criação, edição, exclusão, ativação/desativação, teste de envio e controle de permissões)
+│   │   │   │   └── GerenciadorTemplatesEmail.tsx		# Gerenciador completo de templates de email (listagem, criação, edição, exclusão, ativação/desativação, teste de envio, controle de permissões e exibição de ID para importação com funcionalidade de cópia para clipboard)
 │   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes de email
 │   │   │   │   └── PreviewEmail.tsx					   # Preview Template HTML
 │   │   │   │   └── PreviewEmailClientBooks.tsx		   # Preview específico para templates do sistema de books
@@ -262,7 +276,7 @@ books-snd/
 │   │   ├── emailTemplateMappingService.ts       		# Mapeamento de templates de email
 │   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
-│   │   ├── excelImportService.ts       				# Importação e processamento de Excel com schema expandido e validações robustas (inclui validação obrigatória para Link SharePoint, Email Gestor e Produtos, validação de status com descrição obrigatória para status Inativo/Suspenso, validação de vigências com formato de data e consistência temporal, validação de campos booleanos com valores aceitos "sim/não", além de campos opcionais para AMS, Tipo Book e configurações de book personalizado, template Excel aprimorado com 15 colunas incluindo campos de vigência, instruções detalhadas e larguras de coluna otimizadas, resolução automática de grupos responsáveis por nome convertendo para IDs durante a importação, e geração de relatórios de importação otimizados sem cabeçalhos desnecessários)
+│   │   ├── excelImportService.ts       				# Importação e processamento de Excel com schema expandido e validações robustas (inclui validação obrigatória para Link SharePoint, Email Gestor e Produtos, validação de status com descrição obrigatória para status Inativo/Suspenso, validação de vigências com formato de data e consistência temporal, validação de campos booleanos com valores aceitos "sim/não", além de campos opcionais para AMS, Tipo Book e configurações de book personalizado, template Excel aprimorado com 15 colunas incluindo campos de vigência, instruções detalhadas e larguras de coluna otimizadas, resolução automática de grupos responsáveis por nome convertendo para IDs durante a importação, mapeamento inteligente de templates padrão com suporte a nomes em português/inglês e busca automática de templates personalizados por nome exato, e geração de relatórios de importação otimizados sem cabeçalhos desnecessários)
 │   │   ├── gruposResponsaveisService.ts       		# CRUD de grupos responsáveis
 │   │   ├── historicoService.ts       					# Consultas e relatórios de histórico com funcionalidade de busca de empresas para relatórios mensais (separação entre empresas com e sem books baseada no histórico de disparos)
 │   │   ├── jobConfigurationService.ts       			# Configuração de jobs e tarefas agendadas
@@ -435,6 +449,7 @@ books-snd/
 ├── IMPLEMENTACAO_EMPRESAS_COM_BOOKS_RELATORIO.md        # Documentação da implementação de empresas com books no relatório mensal (nova seção verde para empresas que receberam books com sucesso, separação clara entre empresas com e sem books, interface atualizada com contadores e badges visuais, método buscarTodasEmpresasRelatorio() no historicoService, e atualização da interface RelatorioMetricas)
 ├── IMPLEMENTACAO_EXTENSAO_HISTORICO_ANEXOS.md       # Documentação da implementação da extensão da tabela historico_disparos para suporte a anexos (adição de colunas anexo_id e anexo_processado, relacionamento com anexos_temporarios, funções SQL otimizadas, sincronização automática de status, consultas com JOIN, estatísticas de uso, integração com serviços existentes e testes completos)
 ├── IMPLEMENTACAO_VARIAVEIS_MES_ATUAL.md            # Documentação da implementação das variáveis de mês atual para templates (sistema.mesNomeAtual e sistema.mesNomeAtualEn para referenciar o mês atual em português e inglês, diferenciando das variáveis de disparo que referenciam o mês anterior, com testes abrangentes e exemplos de uso em templates bilíngues)
+├── IMPLEMENTACAO_EXIBICAO_ID_TEMPLATES.md         # Documentação da implementação da exibição de IDs de templates na interface de gerenciamento de templates de e-mail (funcionalidade para facilitar importação Excel de empresas com templates personalizados, botão de cópia com feedback visual, seção de ajuda integrada, compatibilidade com templates padrão e personalizados, e instruções claras de uso)
 ├── index.html                  					      	# Template HTML principal
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
 ├── MELHORIA_LAYOUT_PDF_EMPRESAS_PADRAO_VISUAL.md   # Documentação da melhoria do layout PDF de exportação de empresas com design moderno e profissional (cabeçalho centralizado, caixa de resumo estatístico, layout de cards individuais, sistema de cores por status, barra lateral colorida, estrutura em duas colunas, tipografia hierárquica, paginação automática e elementos visuais consistentes seguindo padrão corporativo)

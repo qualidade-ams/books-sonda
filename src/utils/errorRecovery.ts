@@ -401,7 +401,7 @@ export const DataIntegrityValidator = {
     }
     
     if (data.emailGestor && !isValidEmail(data.emailGestor)) {
-      errors.push('E-mail do gestor é inválido');
+      errors.push('E-mail do customer success é inválido');
     }
     
     if (!data.produtos || data.produtos.length === 0) {

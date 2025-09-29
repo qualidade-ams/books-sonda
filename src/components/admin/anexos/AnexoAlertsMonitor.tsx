@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   AlertTriangle, 
@@ -11,8 +11,7 @@ import {
   X,
   Bell,
   BellOff,
-  Trash2,
-  RefreshCw
+  Trash2
 } from 'lucide-react';
 import { useAnexoAlerts } from '@/hooks/useAnexoMetrics';
 import { AnexoAlert } from '@/services/anexoMetricsService';

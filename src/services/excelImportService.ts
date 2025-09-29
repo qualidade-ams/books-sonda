@@ -12,7 +12,7 @@ const empresaExcelSchema = z.object({
   'Template Padrão': z.enum(['portugues', 'ingles']).default('portugues'),
   'Status': z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
   'Descrição Status': z.string().optional(),
-  'Email Gestor': z.string().email('Email inválido').min(1, 'Email do gestor é obrigatório'),
+  'Email Gestor': z.string().email('Email inválido').min(1, 'Email do customer success é obrigatório'),
   'Produtos': z.string().min(1, 'Pelo menos um produto é obrigatório'), // String separada por vírgulas
   'Grupos': z.string().optional(), // String separada por vírgulas
   'Tem AMS': z.string().optional(), // 'sim' ou 'não'
@@ -350,7 +350,7 @@ class ExcelImportService {
       ['• Nome Completo: Nome completo da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
       ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
       ['• Link SharePoint: URL do SharePoint da empresa (obrigatório)'],
-      ['• Template Padrão: "portugues" ou "ingles" (padrão: portugues)'],
+      ['• Template Padrão: Utilizar o ID para Importação respectivo template localizado na tela de Templates'],
       ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
       ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
       ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],

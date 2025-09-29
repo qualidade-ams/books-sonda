@@ -11,7 +11,8 @@ import {
   Mail,
   FileText,
   Settings,
-  Send
+  Send,
+  Copy
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,6 +38,7 @@ import EditorTemplateCompleto from './EditorTemplateCompleto';
 import TestEmailDialog from '../DialogTesteEmail';
 
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { useToast } from '@/hooks/use-toast';
 import type { EmailTemplate } from '@/types/approval';
 
 const EmailTemplateManager: React.FC = () => {
@@ -48,6 +50,7 @@ const EmailTemplateManager: React.FC = () => {
     refreshTemplates
   } = useEmailTemplates();
 
+  const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -79,6 +82,22 @@ const EmailTemplateManager: React.FC = () => {
     setIsCreateDialogOpen(true);
   };
 
+  const handleCopyId = async (templateId: string, templateName: string) => {
+    try {
+      await navigator.clipboard.writeText(templateId);
+      toast({
+        title: "ID copiado!",
+        description: `ID do template "${templateName}" copiado para a área de transferência.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o ID. Tente selecionar e copiar manualmente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -99,7 +118,9 @@ const EmailTemplateManager: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300">Templates de E-mail</h2>
-          <p className="text-gray-600"></p>
+          <p className="text-gray-600">
+            Gerencie templates de e-mail. Use o ID do template na importação Excel de empresas.
+          </p>
         </div>
 
         <ProtectedAction screenKey="email-config" requiredLevel="edit">
@@ -187,6 +208,26 @@ const EmailTemplateManager: React.FC = () => {
 
                     <div className="text-sm text-gray-500">
                       <p><strong>Assunto:</strong> {template.assunto}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span><strong>ID para Importação:</strong></span>
+                        <div className="flex items-center gap-1">
+                          <code
+                            className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs font-mono select-all"
+                            title="ID do template para usar na importação Excel"
+                          >
+                            {template.id}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleCopyId(template.id, template.nome)}
+                            title="Copiar ID"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
                       <p className="mt-1">
                         <strong>Criado em:</strong> {' '}
                         {template.created_at ?
