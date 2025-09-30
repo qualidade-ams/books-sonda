@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon, Calculator, HelpCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Calculator, HelpCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -386,44 +382,17 @@ export function RequerimentoForm({
                   control={form.control}
                   name="data_envio"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Data de Envio do Orçamento *</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(new Date(field.value), "dd/MM/yyyy", { locale: ptBR })
-                              ) : (
-                                <span>Selecione uma data</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) => {
-                              if (date) {
-                                field.onChange(date.toISOString().split('T')[0]);
-                              } else {
-                                field.onChange('');
-                              }
-                            }}
-                            defaultMonth={new Date()}
-                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          disabled={isLoading}
+                          max={new Date().toISOString().split('T')[0]} // Não permite datas futuras
+                          min="1900-01-01"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -434,47 +403,20 @@ export function RequerimentoForm({
                   control={form.control}
                   name="data_aprovacao"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Data de Aprovação do Orçamento</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(new Date(field.value), "dd/MM/yyyy", { locale: ptBR })
-                              ) : (
-                                <span>Selecione uma data (opcional)</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) => {
-                              if (date) {
-                                field.onChange(date.toISOString().split('T')[0]);
-                              } else {
-                                field.onChange('');
-                              }
-                            }}
-                            defaultMonth={new Date()}
-                            disabled={(date) => {
-                              const dataEnvio = form.getValues('data_envio');
-                              return date < new Date(dataEnvio) || date > new Date() || date < new Date("1900-01-01");
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          disabled={isLoading}
+                          max={new Date().toISOString().split('T')[0]} // Não permite datas futuras
+                          min={form.getValues('data_envio') || "1900-01-01"} // Não permite data anterior à data de envio
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Campo opcional. Deve ser igual ou posterior à data de envio.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

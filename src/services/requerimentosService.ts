@@ -47,7 +47,7 @@ export class RequerimentosService {
       modulo: data.modulo,
       descricao: data.descricao.trim(),
       data_envio: data.data_envio,
-      data_aprovacao: data.data_aprovacao,
+      data_aprovacao: data.data_aprovacao?.trim() || null,
       horas_funcional: horasFuncionalDecimal,
       horas_tecnico: horasTecnicoDecimal,
       linguagem: data.linguagem,
@@ -228,7 +228,7 @@ export class RequerimentosService {
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
-    if (data.data_aprovacao) updateData.data_aprovacao = data.data_aprovacao;
+    if (data.data_aprovacao !== undefined) updateData.data_aprovacao = data.data_aprovacao?.trim() || null;
     if (data.horas_funcional !== undefined) {
       updateData.horas_funcional = typeof data.horas_funcional === 'string' 
         ? converterParaHorasDecimal(data.horas_funcional)
@@ -463,11 +463,8 @@ export class RequerimentosService {
       }
     }
 
-    if (!isUpdate || data.data_aprovacao !== undefined) {
-      if (!data.data_aprovacao) {
-        errors.push('Data de aprovação é obrigatória');
-      }
-    }
+    // Data de aprovação é opcional - não validar se obrigatória
+    // Apenas validar se fornecida e se é válida em relação à data de envio
 
     if (!isUpdate || data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
       const horasFuncional = Number(data.horas_funcional || 0);
