@@ -23,7 +23,9 @@ import {
   Award,
   MessageSquare,
   Settings,
-  Shield
+  Shield,
+  FileText,
+  DollarSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,6 +55,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   // Função para determinar qual seção deve estar expandida baseada na rota atual
   const getCurrentSection = () => {
     const path = location.pathname;
+    if (path.includes('/requerimentos')) {
+      return 'requerimentos';
+    }
     if (path.includes('/controle-disparos') || path.includes('/historico-books')) {
       return 'comunicacao';
     }
@@ -80,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     }
     
     // Estado padrão: todas as seções expandidas
-    return ['comunicacao', 'clientes', 'configuracoes', 'administracao'];
+    return ['requerimentos', 'comunicacao', 'clientes', 'configuracoes', 'administracao'];
   });
 
   const handleLogout = async () => {
@@ -155,6 +160,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   // Função auxiliar para determinar a seção baseada no path
   const getCurrentSectionForPath = (path: string) => {
+    if (path.includes('/requerimentos')) {
+      return 'requerimentos';
+    }
     if (path.includes('/controle-disparos') || path.includes('/historico-books')) {
       return 'comunicacao';
     }
@@ -181,6 +189,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       icon: Award,
       label: 'Qualidade',
       children: []
+    },
+    {
+      icon: FileText,
+      label: 'Requerimentos',
+      children: [
+        {
+          icon: FileText,
+          label: 'Lançar Requerimentos',
+          path: '/admin/lancar-requerimentos',
+          screenKey: 'lancar_requerimentos'
+        },
+        {
+          icon: DollarSign,
+          label: 'Faturar Requerimentos',
+          path: '/admin/faturar-requerimentos',
+          screenKey: 'faturar_requerimentos'
+        }
+      ]
     },
     {
       icon: MessageSquare,

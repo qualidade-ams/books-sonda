@@ -35,8 +35,8 @@ export function AnexoAuditDashboard({ className }: AnexoAuditDashboardProps) {
   
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('');
-  const [filtroOperacao, setFiltroOperacao] = useState<string>('');
-  const [filtroResultado, setFiltroResultado] = useState<string>('');
+  const [filtroOperacao, setFiltroOperacao] = useState<string>('__all_operations__');
+  const [filtroResultado, setFiltroResultado] = useState<string>('__all_statuses__');
   const [periodoHoras, setPeriodoHoras] = useState<number>(24);
 
   useEffect(() => {
@@ -71,8 +71,8 @@ export function AnexoAuditDashboard({ className }: AnexoAuditDashboardProps) {
   const aplicarFiltros = () => {
     return auditLogs.filter(log => {
       if (filtroEmpresa && !log.details.empresaId?.includes(filtroEmpresa)) return false;
-      if (filtroOperacao && log.operation !== filtroOperacao) return false;
-      if (filtroResultado && log.result !== filtroResultado) return false;
+      if (filtroOperacao && filtroOperacao !== '__all_operations__' && log.operation !== filtroOperacao) return false;
+      if (filtroResultado && filtroResultado !== '__all_statuses__' && log.result !== filtroResultado) return false;
       return true;
     });
   };
@@ -405,7 +405,7 @@ export function AnexoAuditDashboard({ className }: AnexoAuditDashboardProps) {
                       <SelectValue placeholder="Todas as operações" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="__all_operations__">Todas</SelectItem>
                       <SelectItem value="anexo_upload_concluido">Upload Concluído</SelectItem>
                       <SelectItem value="anexo_upload_falhou">Upload Falhou</SelectItem>
                       <SelectItem value="anexo_removido">Anexo Removido</SelectItem>
@@ -420,7 +420,7 @@ export function AnexoAuditDashboard({ className }: AnexoAuditDashboardProps) {
                       <SelectValue placeholder="Todos os resultados" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="__all_statuses__">Todos</SelectItem>
                       <SelectItem value="success">Sucesso</SelectItem>
                       <SelectItem value="warning">Aviso</SelectItem>
                       <SelectItem value="failure">Falha</SelectItem>

@@ -26,6 +26,8 @@ import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesC
 import ConfigurarPermissoesVigencias from "./pages/admin/ConfigurarPermissoesVigencias";
 import AuditLogs from "./pages/admin/AuditLogs";
 import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
+import LancarRequerimentos from "./pages/admin/LancarRequerimentos";
+import FaturarRequerimentos from "./pages/admin/FaturarRequerimentos";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -65,6 +67,8 @@ const App = () => (
                   <Route path="/admin/configurar-permissoes-vigencias" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesVigencias /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
                   <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="monitoramento_vigencias"><MonitoramentoVigencias /></ProtectedRoute>} />
+                  <Route path="/admin/lancar-requerimentos" element={<ProtectedRoute screenKey="lancar_requerimentos"><LancarRequerimentos /></ProtectedRoute>} />
+                  <Route path="/admin/faturar-requerimentos" element={<ProtectedRoute screenKey="faturar_requerimentos"><FaturarRequerimentos /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

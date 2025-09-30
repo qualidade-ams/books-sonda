@@ -10,7 +10,11 @@ books-snd/
 │   │   │   ├── design.md                               # Documento de design da funcionalidade
 │   │   │   └── tasks.md                                # Plano de implementação com tarefas
 │   │   ├── api-error-handling-dom-fixes/              # Especificação para correções de tratamento de erros de API e DOM
-│   │   └── client-books-management/                   # Especificação do sistema de gerenciamento de client books
+│   │   ├── client-books-management/                   # Especificação do sistema de gerenciamento de client books
+│   │   └── sistema-requerimentos/                     # Especificação do sistema de requerimentos de especificações funcionais
+│   │       ├── requirements.md                        # Documento de requisitos funcionais do sistema de requerimentos
+│   │       ├── design.md                              # Documento de design e arquitetura do sistema de requerimentos
+│   │       └── tasks.md                               # Plano de implementação com tarefas do sistema de requerimentos
 │   └── steering/               						      # Regras e diretrizes do projeto
 │       ├── estrutura.md        						      # Estrutura e organização do projeto
 │       ├── padrao.md           						      # Padrões e convenções
@@ -102,6 +106,16 @@ books-snd/
 │   │   │   │   ├── GrupoFormModal.tsx					   # Modal de formulário de grupo responsável
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de grupos responsáveis
 │   │   │   │   └── ImportExportButtons.tsx				   # Botões de importação e exportação para grupos responsáveis
+│   │   │   ├── requerimentos/  						      # Componentes do sistema de requerimentos de especificações funcionais
+│   │   │   │   ├── __tests__/          				   # Testes dos componentes do sistema de requerimentos
+│   │   │   │   │   ├── RequerimentoCard.test.tsx		   # Testes do componente de card de requerimentos (renderização, interações, estados de loading, validação de dados, funcionalidades de envio para faturamento, layout horizontal em grid de 12 colunas com exibição direta de valores numéricos nas colunas de horas, validação de badges por tipo de cobrança, botões de ação com ícones, verificação de status de envio para faturamento e compatibilidade com novo layout compacto sem prefixos F:/T:/Total)
+│   │   │   │   │   └── RequerimentoForm.test.tsx		   # Testes do formulário de requerimentos
+│   │   │   │   ├── HelpSystem.tsx					   # Sistema completo de ajuda contextual para requerimentos (componentes de tooltip otimizado, ícones de ajuda com variantes, campos de formulário com ajuda integrada, seções expansíveis, guia completo de requerimentos, modal de ajuda contextual, indicador de progresso com passos, validação em tempo real com feedback visual, suporte a temas claro/escuro e acessibilidade aprimorada)
+│   │   │   │   ├── index.ts							      # Exportações centralizadas dos componentes de requerimentos (RequerimentoForm, RequerimentoCard, LoadingStates e HelpSystem)
+│   │   │   │   ├── LoadingStates.tsx				   # Componentes de skeleton loading para sistema de requerimentos (LoadingSpinner para indicadores de carregamento, StatsCardSkeleton para cards de estatísticas, RequerimentoCardSkeleton para cards de requerimentos com layout horizontal alinhado incluindo checkbox de seleção 5%, PageLoadingSkeleton para página completa, FiltersSkeleton para seção de filtros, otimizados para layout em grid de 12 colunas com larguras ajustadas 16%/24%/8%/8%/7%/7%/6%/9%/10% e responsividade)
+
+│   │   │   │   ├── RequerimentoCard.tsx				   # Componente de linha horizontal para exibição de requerimentos com layout em grid de 12 colunas alinhado com cabeçalho da lista, design baseado no tipo de cobrança com sistema de cores específico e ícones, distribuição otimizada das colunas compatível com checkbox de seleção (Tipo+Chamado 18%, Cliente 26%, Módulo 8%, Linguagem 8%, Horas Func. 7%, Horas Téc. 7%, Total 6%, Data Envio 10%, Ações 10%), exibição direta de valores numéricos nas colunas de horas sem prefixos, badges de tipo de cobrança compactos, botões de ação apenas com ícones (Edit, Trash2, Send), modal de confirmação para envio ao faturamento, estados de loading e disabled, hover effects, truncamento de texto para campos longos, integração com hook useRequerimentos e useAccessibility, e compatibilidade com sistema de permissões e seleção múltipla
+│   │   │   │   └── RequerimentoForm.tsx				   # Formulário completo de cadastro/edição de requerimentos com validação Zod, campos obrigatórios (cliente, módulo, linguagem, tipo de cobrança, chamado, descrição, horas funcional/técnico), cálculo automático de horas total, validações de formato para campo chamado, limitação de caracteres para descrição e observação, integração com React Hook Form e função utilitária requerValorHora para verificação de tipos de cobrança que requerem valor/hora
 │   │   │   ├── AnexoCleanupManager.tsx					# Gerenciador de limpeza automática de anexos expirados (interface para controle manual e monitoramento do job de limpeza)
 │   │   │   ├── AutoSchedulerInitializer.tsx			   # Componente para inicialização automática do job scheduler (garante que o scheduler seja iniciado quando a aplicação carrega)
 │   │   │   ├── Breadcrumb.tsx  						      # Navegação em migalhas de pão com suporte às rotas do sistema de client books
@@ -185,6 +199,8 @@ books-snd/
 │   │   ├── usePermissionFallbacks.tsx           		# Hook para fallbacks de permissões
 │   │   ├── usePermissions.ts                    		# Hook principal do sistema de permissões
 │   │   ├── useRealTimeNotifications.ts          		# Hook para notificações em tempo real
+│   │   ├── useRequerimentos.ts                  		# Hook completo para gerenciamento do sistema de requerimentos (CRUD de requerimentos, busca de clientes, envio para faturamento, estatísticas, cache otimizado com React Query, invalidação automática de cache, mutations para operações de criação/edição/exclusão, queries para listagem e filtros, integração com sistema de permissões e tratamento de erros específicos)
+│   │   ├── useResponsive.ts                     		# Hook completo para responsividade (breakpoints Tailwind, viewport, grid responsivo adaptativo com 1 coluna no mobile, 2 no tablet e 4 no desktop, formulários, tabelas, navegação, cards, modais, orientação, dispositivos touch, movimento reduzido, utilitários de breakpoint e sistema unificado de responsividade para toda a aplicação)
 │   │   ├── useSessionPersistence.ts             		# Hook para persistência de sessão
 │   │   ├── useSessionTimeout.ts                 		# Hook para timeout de sessão
 │   │   ├── useSidebar.ts                        		# Hook para controle da sidebar
@@ -222,6 +238,8 @@ books-snd/
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
 │   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
 │   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books com interface aprimorada (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos, seção dedicada para empresas com books enviados com badge verde e scroll otimizado, melhorias na exibição de empresas sem books com informações mais detalhadas incluindo nome abreviado, controle de altura máxima com scroll para listas extensas)
+│   │   │   ├── LancarRequerimentos.tsx 				   # Página completa para lançamento de requerimentos de especificações funcionais (formulário de criação/edição, lista de requerimentos não enviados, filtros avançados por módulo/linguagem/tipo de cobrança/mês/datas com tratamento especial para valores "todos", seleção múltipla com ações em lote, estatísticas em tempo real com layout de grid fixo, envio para faturamento individual e em lote, integração com sistema de permissões, interface responsiva com layout horizontal em linha, cabeçalho de lista com checkbox de seleção geral e larguras percentuais otimizadas (5% checkbox, 16% chamado, 24% cliente, 8% módulo, 8% linguagem, 7% horas func., 7% horas téc., 6% total, 9% data envio, 10% ações), alinhamento perfeito entre cabeçalho e dados)
+│   │   │   ├── FaturarRequerimentos.tsx 			   # Página completa para faturamento de requerimentos de especificações funcionais (visualização de requerimentos enviados para faturamento agrupados por tipo de cobrança, estatísticas do período, filtros por mês/ano/tipo, geração de relatórios HTML para email, modal de configuração de destinatários, preview de email, disparo de faturamento via Power Automate, integração com sistema de permissões e interface responsiva com grid de cards RequerimentoCard em layout 4 colunas para melhor visualização e consistência com sistema de lançamento)
 │   │   │   ├── UserConfig.tsx          			   	# Configurações do usuário
 │   │   │   ├── UserGroupAssignment.tsx 			   	# Atribuição de usuários a grupos
 │   │   │   └── UserManagement.tsx						   # Gerenciamento de usuários do sistema
@@ -235,7 +253,8 @@ books-snd/
 │   ├── schemas/                						      # Schemas de validação Zod
 │   │   ├── __tests__/          						      # Testes dos schemas
 │   │   │   └── clientBooksSchemas.test.ts			   # Testes dos schemas do sistema de books
-│   │   └── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books (inclui tipoBookSchema para validação dos tipos: nao_tem_book, qualidade, outros)
+│   │   ├── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books (inclui tipoBookSchema para validação dos tipos: nao_tem_book, qualidade, outros)
+│   │   └── requerimentosSchemas.ts					   # Schemas de validação Zod para o sistema de requerimentos (validação de formulários de requerimento, filtros, faturamento, campos obrigatórios, constraints de negócio, validações condicionais e tipos inferidos, validação de horas como números inteiros de 0 a 9999)
 │   │				
 │   ├── services/               						      # Serviços e lógica de negócio
 │   │   ├── __tests__/          						      # Testes dos serviços
@@ -249,6 +268,7 @@ books-snd/
 │   │   │   ├── historicoService.test.ts             # Testes do serviço de histórico
 │   │   │   ├── jobSchedulerService.test.ts          # Testes do serviço de agendamento de jobs
 │   │   │   ├── realTimeNotificationService.test.ts  # Testes do serviço de notificações em tempo real
+│   │   │   ├── requerimentosService.test.ts         # Testes do serviço de requerimentos de especificações funcionais (CRUD, validações, faturamento, estatísticas e integração com sistema de permissões)
 │   │   │   └── templateValidationService.test.ts    # Testes do serviço de validação de templates
 │   │   ├── configuration/      						      # Serviços de configuração
 │   │   │   └── index.ts									      # Exportações da infraestrutura de configuração
@@ -277,6 +297,7 @@ books-snd/
 │   │   ├── empresasClientesService.ts       			# CRUD de empresas clientes
 │   │   ├── errorRecoveryService.ts       				# Estratégias de recuperação de erros
 │   │   ├── excelImportService.ts       				# Importação e processamento de Excel com schema expandido e validações robustas (inclui validação obrigatória para Link SharePoint, Email Gestor e Produtos, validação de status com descrição obrigatória para status Inativo/Suspenso, validação de vigências com formato de data e consistência temporal, validação de campos booleanos com valores aceitos "sim/não", além de campos opcionais para AMS, Tipo Book e configurações de book personalizado, template Excel aprimorado com 15 colunas incluindo campos de vigência, instruções detalhadas e larguras de coluna otimizadas, resolução automática de grupos responsáveis por nome convertendo para IDs durante a importação, mapeamento inteligente de templates padrão com suporte a nomes em português/inglês e busca automática de templates personalizados por nome exato, e geração de relatórios de importação otimizados sem cabeçalhos desnecessários)
+│   │   ├── faturamentoService.ts       				# Serviço completo de faturamento para sistema de requerimentos (geração de relatórios de faturamento por mês/ano, agrupamento por tipo de cobrança, cálculo de estatísticas e totais, criação de templates HTML responsivos para emails, disparo de faturamento via Power Automate, controle de status de requerimentos faturados, logs de auditoria de operações de faturamento e integração com sistema de permissões)
 │   │   ├── gruposResponsaveisService.ts       		# CRUD de grupos responsáveis
 │   │   ├── historicoService.ts       					# Consultas e relatórios de histórico com funcionalidade de busca de empresas para relatórios mensais (separação entre empresas com e sem books baseada no histórico de disparos)
 │   │   ├── jobConfigurationService.ts       			# Configuração de jobs e tarefas agendadas
@@ -284,6 +305,7 @@ books-snd/
 │   │   ├── performanceOptimizationService.ts        # Serviço de otimização de performance
 │   │   ├── permissionsService.ts       			   	# Gerenciamento de permissões
 │   │   ├── realTimeNotificationService.ts       		# Notificações em tempo real via Supabase subscriptions
+│   │   ├── requerimentosService.ts       				# Serviço completo para gerenciamento de requerimentos de especificações funcionais (CRUD de requerimentos com suporte completo a campos de valor/hora para tipos de cobrança específicos incluindo atualização de valor_hora_funcional e valor_hora_tecnico, busca de clientes, envio para faturamento, consultas por status e mês, validações de negócio, geração de relatórios de faturamento e integração com sistema de permissões)
 │   │   ├── screenService.ts            			      # Gerenciamento de telas do sistema
 │   │   ├── templateValidationService.ts             # Validação de templates
 │   │   ├── testDataService.ts            				# Gerenciamento de dados de teste
@@ -304,6 +326,7 @@ books-snd/
 │   │   │   ├── disparoEmails.test.ts                # Teste de disparo de emails
 │   │   │   ├── importacaoExcel.test.ts              # Teste de importação de Excel
 │   │   │   ├── mesReferenciaBooks.test.ts           # Teste de cálculo do mês de referência para disparos de books (validação do mês anterior ao disparo)
+│   │   │   ├── requerimentosFluxoCompleto.test.ts   # Teste de integração completo do sistema de requerimentos (fluxo lançar → enviar → faturar, validação de integração com Supabase, sistema de permissões, envio de email, estrutura de dados, constraints de negócio, relacionamentos entre tabelas, cenários de erro e recuperação)
 │   │   │   └── vigenciaAutomatica.test.ts           # Teste de inativação automática de empresas por vigência expirada
 │   │   ├── clientBooksTypes.test.ts             		# Testes dos tipos do sistema de books
 │   │   ├── permissions.test.ts                  		# Testes do sistema de permissões
@@ -323,6 +346,7 @@ books-snd/
 │   │   ├── formTypes.ts                         		# Tipos gerais de formulários
 │   │   ├── index.ts                             		# Exportações centralizadas de tipos
 │   │   ├── permissions.ts                       		# Tipos do sistema de permissões
+│   │   ├── requerimentos.ts                     		# Tipos e interfaces para o Sistema de Requerimentos (interface Requerimento, tipos ModuloType/LinguagemType/TipoCobrancaType/StatusRequerimento, constantes para opções de select, interfaces RequerimentoFormData com data_aprovacao opcional/FaturamentoData/EmailFaturamento, tipos para clientes e estatísticas, interface de filtros)
 │   │   └── userSettings.ts                      		# Tipos para configurações do usuário
 │   │				
 │   ├── utils/                  						      # Funções utilitárias
@@ -357,6 +381,8 @@ books-snd/
 │   │   ├── performance-optimizations.ts			   	# Otimizações de performance
 │   │   ├── permissionUtils.ts         					# Utilitários de permissões (legacy)
 │   │   ├── permissionsUtils.ts        					# Utilitários de permissões (novo)
+│   │   ├── requerimentosColors.ts       				# Sistema completo de cores para tipos de cobrança do sistema de requerimentos (8 tipos: Banco de Horas/azul, Cobro Interno/verde, Contrato/cinza, Faturado/laranja, Hora Extra/vermelho, Sobreaviso/roxo, Reprovado/slate, Bolsão Enel/amarelo), funções utilitárias para classes CSS de cards, badges, botões e inputs com estados hover e focus, mapeamento de ícones emoji por tipo, cores hexadecimais para gráficos, validação de tipos, contraste de texto automático e constantes para reutilização em componentes
+│   │   ├── requerimentosPerformance.ts       			# Utilitários de performance para o sistema de requerimentos (hooks para debounce de busca, memoização de filtros e estatísticas, lazy loading de componentes com correção do React.createElement para fallback, otimização de re-renders, formatação de números com cache, paginação virtual, intersection observer, configurações de queries otimizadas e scroll otimizado)
 │   │   ├── retryUtils.ts             				   	# Lógica de retry com backoff
 │   │   ├── templateMappingValidation.ts				   # Validação de mapeamento de templates
 │   │   └── validation.ts             				   	# Validações para configuração dinâmica
@@ -393,16 +419,36 @@ books-snd/
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
 │       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
+│       ├── README_SISTEMA_REQUERIMENTOS.md        # Documentação completa do sistema de requerimentos (guia de instalação, estrutura de arquivos, instruções de migração e exemplos de uso)
+│       ├── run_sistema_requerimentos_migration.sql # Script de execução completa das migrações do sistema de requerimentos (executa todas as migrações em sequência: estrutura, permissões, RLS e validações)
+│       ├── sistema_requerimentos_migration.sql    # Migração principal do sistema de requerimentos (criação da tabela requerimentos com todos os campos, constraints, índices e triggers necessários para gerenciamento de especificações funcionais de chamados técnicos, incluindo validações de negócio, campos calculados e verificação automática da estrutura criada)
+│       ├── sistema_requerimentos_permissions_migration.sql # Migração de permissões do sistema de requerimentos (registro das telas "Lançar Requerimentos" e "Faturar Requerimentos" no sistema de permissões, configuração automática de permissões de edição para grupo administrador padrão, verificação de integridade das configurações e exibição de status das telas e permissões registradas)
+│       ├── sistema_requerimentos_rls_policies.sql # Migração de políticas RLS do sistema de requerimentos (controle de acesso baseado em permissões de grupo, políticas de segurança para operações CRUD na tabela requerimentos)
+│       ├── sistema_requerimentos_validation_test.sql # Script de validação e testes do sistema de requerimentos (testes de integridade, validação de constraints, simulação de operações CRUD e verificação de permissões)
 │       ├── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
+│       ├── add_valor_hora_requerimentos.sql      # Migração para adicionar campos de valor/hora na tabela requerimentos (valor_hora_funcional, valor_hora_tecnico, valor_total_funcional, valor_total_tecnico, valor_total_geral com cálculo automático via trigger para tipos de cobrança específicos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel, incluindo função de estatísticas de valores por tipo de cobrança e índices otimizados)
 │       └── fix_token_acesso_size.sql              # Migração para corrigir o tamanho do campo token_acesso de VARCHAR(255) para TEXT (tokens JWT podem exceder 255 caracteres)
 │				
 ├── .env.example                					      	# Exemplo de variáveis de ambiente
 ├── .env.local                  					      	# Variáveis de ambiente locais
 ├── .gitignore                 						   	# Arquivos ignorados pelo Git
+├── AJUSTES_FORMULARIO_REQUERIMENTOS_DATAS_HORAS.md     # Documentação dos ajustes implementados no formulário de requerimentos (data de aprovação opcional em branco por padrão, horas funcionais e técnicas como números inteiros suportando valores >100h, validações robustas com Zod, melhorias na experiência do usuário, conformidade com requisitos de negócio, atualização de tipos TypeScript e testes)
 ├── CORRECAO_ANEXOS_STATUS_ENVIANDO_CACHE.md            # Documentação da correção do sistema de anexos para filtrar arquivos com status "enviando" e "processado" da interface (focando apenas em arquivos que precisam de gerenciamento), implementação de cache inteligente com invalidação automática, controle de concorrência para uploads múltiplos, sincronização robusta após operações e melhorias na experiência do usuário
+├── CORRECAO_ALINHAMENTO_COLUNAS_REQUERIMENTOS.md       # Documentação da correção do alinhamento de colunas entre cabeçalho e dados na tela "Lançar Requerimentos" (ajuste de padding do grid interno para px-3, remoção de padding horizontal do container, garantia de alinhamento perfeito entre cabeçalho e linhas de dados, preservação de funcionalidades e responsividade)
+├── CORRECAO_CHECKBOX_FORA_COLUNA_CHAMADO.md            # Documentação da correção do posicionamento do checkbox de seleção de requerimentos (criação de coluna específica para checkbox 5%, reestruturação das larguras das colunas, adição de checkbox "Selecionar Todos" no cabeçalho, eliminação da sobreposição com coluna "Chamado", melhorias na experiência do usuário e funcionalidade de seleção em massa)
+├── CORRECAO_FINAL_LAYOUT_LISTA_REQUERIMENTOS.md        # Documentação da correção final do layout da lista de requerimentos (correção de erro de sintaxe w-[6%]3%], migração de grid para lista linear com space-y-0, larguras consistentes entre cabeçalho e dados 18%/26%/8%/8%/7%/7%/6%/10%/10%, alinhamento perfeito pixel-perfect, skeleton consistente e layout profissional similar à tela "Faturar Requerimentos")
+├── CORRECAO_SINTAXE_CSS_LARGURAS_COLUNAS.md            # Documentação da correção de sintaxe CSS nas larguras das colunas do cabeçalho da lista de requerimentos (correção do erro w-[6%]3%] para w-[6%], padronização das larguras das colunas Data Envio e Ações de 8.33% para 10%, distribuição final otimizada 18%/26%/8%/8%/7%/7%/6%/10%/10%, sintaxe CSS válida e alinhamento perfeito)
+├── CORRECAO_COMPONENTES_SKELETON_REQUERIMENTOS.md      # Documentação da correção dos componentes skeleton para sistema de requerimentos (criação do arquivo LoadingStates.tsx com StatsCardSkeleton, RequerimentoCardSkeleton, PageLoadingSkeleton e FiltersSkeleton, layout consistente com componentes reais, correção de importações e integração com sistema de UI)
+├── CORRECAO_FINAL_ALINHAMENTO_FLEX_REQUERIMENTOS.md    # Documentação da correção final do alinhamento no sistema de requerimentos através da migração de CSS Grid para Flexbox com larguras percentuais fixas (solução definitiva para sobreposição de dados, alinhamento pixel-perfect entre cabeçalho e linhas, mapeamento exato de larguras 16.67%/25%/8.33% por coluna, melhorias de responsividade com min-w-0 e truncamento inteligente, validação completa com todos os testes passando)
+├── CORRECAO_IMPORTACAO_DIRETA_SKELETON.md              # Documentação da correção da importação direta dos componentes skeleton (solução para erro de módulo não reconhecido, separação de importações entre componentes principais e skeleton, importação explícita do LoadingStates.tsx, melhor organização e compatibilidade com TypeScript/IDE)
+├── CORRECAO_LARGURAS_CUSTOMIZADAS_REQUERIMENTOS.md     # Documentação da correção final com larguras customizadas para alinhamento perfeito no sistema de requerimentos (remoção do gap-2, implementação de padding customizado por coluna, larguras otimizadas 18%/26%/8%/8%/7%/7%/6%/10%/10%, tipografia ajustada para text-xs, espaçamento inteligente com pr-1/pr-2, solução definitiva para eliminação completa de sobreposição e desalinhamento)
+├── CORRECAO_RADIX_SELECT_ITEM_VALUE_VAZIO.md           # Documentação da correção do erro crítico do Radix UI Select.Item com valores vazios (value="") que impedia o funcionamento dos componentes Select, implementação de valores especiais únicos com prefixo __ para opções "todos/todas", tratamento na lógica de filtros, prevenção de erros futuros e estabelecimento de padrões para novos selects
+├── CORRECAO_TIPOS_FILTROS_REQUERIMENTOS.md             # Documentação da correção dos tipos da interface FiltrosRequerimentos (adição das propriedades busca, modulo e linguagem que estavam faltando, correção do hook useEstatisticasRequerimentos, eliminação de erros TypeScript e garantia de tipagem forte para todos os filtros do sistema de requerimentos)
+├── IMPLEMENTACAO_CARDS_FATURAR_REQUERIMENTOS.md        # Documentação da implementação de cards na página "Faturar Requerimentos" (substituição do formato de tabela por grid de 4 colunas usando RequerimentoCard, layout responsivo, reutilização de código, consistência visual com página de lançamento, organização por tipo de cobrança mantida, melhor densidade de informações e experiência do usuário aprimorada)
 ├── CORRECAO_FILTRO_ARQUIVOS_PROCESSADOS.md            # Documentação da correção do filtro para ocultar arquivos processados da interface de anexos (modificação do hook useAnexos para filtrar arquivos com status "processado" além de "enviando", mantendo visíveis apenas arquivos "pendente" e "erro" que precisam de ação do usuário, interface mais limpa e focada, melhor experiência do usuário com lógica consistente)
 ├── CORRECAO_LOGS_AUDITORIA_ANEXOS.md                  # Documentação da correção dos logs de auditoria no sistema de anexos (correção das migrações para usar permission_audit_logs em vez de logs_sistema)
 ├── CORRECAO_LOGS_EMAIL_FORMATACAO_CONSISTENTE.md      # Documentação da correção de formatação consistente nos logs de e-mail (padronização da formatação de e-mails nos logs de erro e sucesso do emailService)
+├── CORRECAO_SINTAXE_MIGRACAO_REQUERIMENTOS.md         # Documentação da correção de sintaxe na migração do sistema de requerimentos (correção de erro de sintaxe no trigger, remoção de logs de auditoria desnecessários e otimização da verificação de estrutura criada)
 ├── CORRECAO_PAYLOAD_POWER_AUTOMATE_ARRAYS.md          # Documentação da correção do payload do Power Automate para suporte a arrays (correção da formatação de campos email e email_cc como arrays, estrutura de anexos padronizada e compatibilidade com webhook)
 ├── CORRECAO_POLITICAS_RLS_ANEXOS.md                   # Documentação da correção das políticas RLS para sistema de anexos (controle de acesso baseado em permissões de grupo)
 ├── CORRECAO_SINCRONIZACAO_ANEXOS_INTERFACE.md         # Documentação da correção de problemas de sincronização entre interface e sistema de anexos (troubleshooting de cache, estado local vs banco de dados, componentes de debug e ferramentas de diagnóstico)
@@ -450,18 +496,59 @@ books-snd/
 ├── IMPLEMENTACAO_EXTENSAO_HISTORICO_ANEXOS.md       # Documentação da implementação da extensão da tabela historico_disparos para suporte a anexos (adição de colunas anexo_id e anexo_processado, relacionamento com anexos_temporarios, funções SQL otimizadas, sincronização automática de status, consultas com JOIN, estatísticas de uso, integração com serviços existentes e testes completos)
 ├── IMPLEMENTACAO_VARIAVEIS_MES_ATUAL.md            # Documentação da implementação das variáveis de mês atual para templates (sistema.mesNomeAtual e sistema.mesNomeAtualEn para referenciar o mês atual em português e inglês, diferenciando das variáveis de disparo que referenciam o mês anterior, com testes abrangentes e exemplos de uso em templates bilíngues)
 ├── IMPLEMENTACAO_EXIBICAO_ID_TEMPLATES.md         # Documentação da implementação da exibição de IDs de templates na interface de gerenciamento de templates de e-mail (funcionalidade para facilitar importação Excel de empresas com templates personalizados, botão de cópia com feedback visual, seção de ajuda integrada, compatibilidade com templates padrão e personalizados, e instruções claras de uso)
-├── index.html                  					      	# Template HTML principal
+├── IMPLEMENTACAO_CAMPOS_VALOR_HORA_FORMULARIO.md       # Documentação da implementação dos campos de valor/hora no formulário de requerimentos (seção condicional "Valores por Hora" para tipos de cobrança específicos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel, campos valor_hora_funcional e valor_hora_tecnico com validação monetária R$ 0,00 a R$ 99.999,99, cálculo automático de valor total estimado em tempo real, integração com schema Zod, formatação brasileira de moeda, UX aprimorada com símbolo R$ integrado, tooltips explicativos, sincronização completa com backend e triggers do banco de dados)
+├── IMPLEMENTACAO_CHECKBOX_CABECALHO_REQUERIMENTOS.md    # Documentação da implementação do checkbox de seleção geral no cabeçalho da lista de requerimentos (funcionalidade de selecionar/desselecionar todos os itens, redistribuição otimizada das larguras das colunas para acomodar checkbox 5%, estado inteligente baseado na seleção atual, integração com ações em lote existentes, acessibilidade aprimorada e melhoria significativa da experiência do usuário para operações em massa)
+├── IMPLEMENTACAO_LAYOUT_4_COLUNAS_REQUERIMENTOS.md
+├── IMPLEMENTACAO_LAYOUT_LINHA_REQUERIMENTOS.md         # Documentação da implementação do layout em linha horizontal para requerimentos (transformação do RequerimentoCard de formato de cards para layout horizontal em grid de 12 colunas, seguindo padrão da tela "Faturar Requerimentos", cabeçalho de lista com identificação das colunas, botões de ação apenas com ícones, densidade otimizada de informações, consistência visual entre telas, atualização completa dos testes unitários e manutenção de todas as funcionalidades existentes)     # Documentação da implementação do layout em 4 colunas para cards de requerimentos (grid responsivo expandido até 4 colunas no desktop, layout vertical ultra-compacto do RequerimentoCard, tipografia reduzida, densidade otimizada para visualização de 4x mais cards simultaneamente, breakpoints inteligentes mobile/tablet/desktop, otimizações de espaço com padding compacto, botões reduzidos, seção de horas inline F:/T:/Total, responsividade completa e compatibilidade com todos os testes unitários)
+├── index.html                  					      	# Template HTML principal da aplicação com meta tags Open Graph atualizadas para "Controle Qualidade"
+├── MELHORIA_LAYOUT_HORIZONTAL_REQUERIMENTO_CARD.md    # Documentação da melhoria do layout horizontal do componente RequerimentoCard (implementação de grid responsivo em duas colunas para melhor aproveitamento do espaço, compactação de elementos com line-clamp-2 para descrição e observação, otimizações de responsividade com breakpoints, seção de horas inline com flex-wrap, footer de ações responsivo, melhorias de espaçamento e compatibilidade completa com testes, acessibilidade e temas)
+├── OTIMIZACAO_LAYOUT_MULTIPLAS_COLUNAS_REQUERIMENTOS.md # Documentação da otimização do layout para múltiplas colunas no sistema de requerimentos (implementação de grid responsivo expandido até 5 colunas em telas grandes, layout ultra-compacto vertical do RequerimentoCard, tipografia reduzida, altura consistente de cards, breakpoints inteligentes, melhorias de UX com truncamento e densidade otimizada para visualização de mais cards simultaneamente)
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
 ├── MELHORIA_LAYOUT_PDF_EMPRESAS_PADRAO_VISUAL.md   # Documentação da melhoria do layout PDF de exportação de empresas com design moderno e profissional (cabeçalho centralizado, caixa de resumo estatístico, layout de cards individuais, sistema de cores por status, barra lateral colorida, estrutura em duas colunas, tipografia hierárquica, paginação automática e elementos visuais consistentes seguindo padrão corporativo)
 ├── MELHORIAS_RESPONSIVIDADE_SIDEBAR.md             # Documentação das melhorias de responsividade implementadas na sidebar
 ├── MELHORIA_TEMPLATE_EXCEL_EMPRESAS_COMPLETO.md    # Documentação da melhoria do template Excel para importação de empresas com todos os 15 campos disponíveis, validações robustas e instruções integradas
 ├── PADRONIZACAO_BOTAO_IMPORTAR_EMPRESAS.md         # Documentação da padronização do botão de importação na tela "Cadastro de Empresas" com dropdown contendo opções "Baixar Template Excel" e "Importar do Excel", seguindo padrão visual estabelecido e implementação do componente EmpresaImportExportButtons
+├── supabase/                   					      	# Configurações do banco de dados
+│   ├── .temp/                  					      	# Arquivos temporários do Supabase
+│   │   └── cli-latest                              # CLI do Supabase
+│   └── migration/              					      	# Scripts de migração do banco
+│       ├── add_monitoramento_vigencias_screen.sql  # Migração otimizada para adicionar tela de Monitoramento de Vigências ao sistema de permissões (sem campos de timestamp automáticos created_at/updated_at)
+│       ├── add_user_registration_screen.sql       # Migração para tela de registro de usuários
+│       ├── add_valor_hora_requerimentos.sql      # Migração para adicionar campos de valor/hora na tabela requerimentos (valor_hora_funcional, valor_hora_tecnico, valor_total_funcional, valor_total_tecnico, valor_total_geral com cálculo automático via trigger para tipos de cobrança específicos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel, incluindo função de estatísticas de valores por tipo de cobrança, índices otimizados e logging via permission_audit_logs)
+│       ├── anexos_infrastructure_migration.sql    # Migração para infraestrutura de anexos do sistema de disparos personalizados (tabela anexos_temporarios, extensão do historico_disparos, índices otimizados, funções de limpeza automática e validação de limite de 25MB por empresa)
+│       ├── anexos_rls_policies.sql                # Políticas RLS para sistema de anexos com controle de acesso baseado em permissões de grupo (corrigido para usar user_group_assignments e screen_permissions em vez de user_permissions diretas)
+│       ├── anexos_storage_setup.sql               # Migração para configuração do Supabase Storage para sistema de anexos (buckets, políticas de acesso e configurações de segurança)
+│       ├── anexos_temporarios_migration.sql       # Migração para criar tabela anexos_temporarios do sistema de anexos para disparos personalizados (estrutura completa da tabela, índices otimizados, triggers de atualização automática, funções de limpeza de registros expirados, validação de limite de 25MB por empresa com DROP FUNCTION seguro, logs condicionais para logs_sistema, e comentários detalhados)
+│       ├── client_books_management_migration.sql		# Migração principal do sistema de books
+│       ├── client_books_permissions_migration.sql		# Migração de permissões para telas do sistema
+│       ├── client_books_rls_policies.sql          # Políticas RLS para sistema de books
+│       ├── correcao_trigger_vigencia.sql          # Correção do trigger de vigência de contratos
+│       ├── correcao_vigencia_vencimento.sql       # Correção da lógica de vigência vencida (considera vencido apenas no dia seguinte ao vencimento)
+│       ├── email_logs_templates_migration.sql     # Migração para logs e templates de email
+│       ├── email_test_data_migration.sql          # Migração para dados de teste de email
+│       ├── empresa_campos_adicionais_migration.sql # Migração para campos adicionais da tabela empresas
+│       ├── fix_token_acesso_size.sql              # Migração para corrigir o tamanho do campo token_acesso de VARCHAR(255) para TEXT (tokens JWT podem exceder 255 caracteres)
+│       ├── grups_and_profile_migration.sql        # Migração de grupos e perfis de usuário
+│       ├── historico_disparos_anexos_extension.sql # Migração para estender tabela historico_disparos com suporte a anexos (adiciona colunas anexo_id e anexo_processado, triggers de sincronização de status, funções para consulta de histórico com anexos, estatísticas de anexos por período, log de migração otimizado e comentários detalhados)
+│       ├── jobs_queue_migration.sql               # Migração para fila de jobs
+│       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
+│       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
+│       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
+│       ├── run_sistema_requerimentos_migration.sql # Script de execução completa das migrações do sistema de requerimentos (executa todas as migrações em sequência: estrutura, permissões, RLS e validações)
+│       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
+│       ├── sistema_requerimentos_migration.sql    # Migração principal do sistema de requerimentos (criação da tabela requerimentos com todos os campos, constraints, índices e triggers necessários para gerenciamento de especificações funcionais de chamados técnicos, incluindo validações de negócio, campos calculados e verificação automática da estrutura criada)
+│       ├── sistema_requerimentos_permissions_migration.sql # Migração de permissões do sistema de requerimentos (registro das telas "Lançar Requerimentos" e "Faturar Requerimentos" no sistema de permissões, configuração automática de permissões de edição para grupo administrador padrão, verificação de integridade das configurações e exibição de status das telas e permissões registradas)
+│       ├── sistema_requerimentos_rls_policies.sql # Migração de políticas RLS do sistema de requerimentos (controle de acesso baseado em permissões de grupo, políticas de segurança para operações CRUD na tabela requerimentos)
+│       ├── sistema_requerimentos_validation_test.sql # Script de validação e testes do sistema de requerimentos (testes de integridade, validação de constraints, simulação de operações CRUD e verificação de permissões)
+│       └── update_template_padrao_constraint.sql  # Migração para permitir templates personalizados no campo template_padrao
+│				
 ├── package.json               						   	# Dependências e scripts do projeto
 ├── package-lock.json           					      	# Lock file das dependências
 ├── postcss.config.js          						   	# Configuração do PostCSS
 ├── SEPARACAO_COMPLETA_DISPAROS.md                  # Documentação da separação completa entre disparos padrão e personalizados (exclusão de empresas com book_personalizado=true dos disparos padrão)
 ├── setup-permissions.js        					      	# Script de configuração de permissões
 ├── tailwind.config.ts         						   	# Configuração do Tailwind CSS
+├── test_alteracoes_requerimentos.js                  # Script de teste para validar alterações no sistema de requerimentos (testa data de aprovação opcional, horas como números inteiros, suporte a valores >100h, cálculo automático de horas total e validações de datas)
 ├── test_anexos_integration.ts                         # Testes de integração para sistema de anexos
 ├── teste_loop_anexos.md                               # Documentação de testes de loop e performance do sistema de anexos (análise de comportamento em cenários de alta carga e uso intensivo)
 ├── TESTE_HISTORICO_DISPAROS.sql                       # Script SQL para teste e diagnóstico da tabela historico_disparos (verifica estrutura, dados, relacionamentos e identifica problemas na tabela de histórico de disparos de books)
