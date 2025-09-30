@@ -119,7 +119,7 @@ export default function FaturarRequerimentos() {
       }
 
       grupos[tipo].requerimentos.push(req);
-      grupos[tipo].totalHoras += req.horas_total;
+      grupos[tipo].totalHoras += Number(req.horas_total);
       grupos[tipo].quantidade += 1;
     });
 
@@ -137,7 +137,7 @@ export default function FaturarRequerimentos() {
 
     return {
       totalRequerimentos: dadosFaturamento.requerimentos.length,
-      totalHoras: dadosFaturamento.requerimentos.reduce((acc, req) => acc + req.horas_total, 0),
+      totalHoras: dadosFaturamento.requerimentos.reduce((acc, req) => acc + Number(req.horas_total), 0),
       tiposAtivos: Object.keys(requerimentosAgrupados).length
     };
   }, [dadosFaturamento, requerimentosAgrupados]);
@@ -547,13 +547,13 @@ export default function FaturarRequerimentos() {
                                 {req.linguagem}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                                {formatarHoras(req.horas_funcional)}
+                                {formatarHoras(Number(req.horas_funcional))}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                {formatarHoras(req.horas_tecnico)}
+                                {formatarHoras(Number(req.horas_tecnico))}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                                {formatarHoras(req.horas_total)}
+                                {formatarHoras(Number(req.horas_total))}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {formatarData(req.data_envio)}

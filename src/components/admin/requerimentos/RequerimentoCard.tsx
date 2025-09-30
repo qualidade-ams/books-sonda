@@ -26,6 +26,7 @@ import { Requerimento } from '@/types/requerimentos';
 import { getBadgeClasses, getCobrancaIcon } from '@/utils/requerimentosColors';
 import { useEnviarParaFaturamento } from '@/hooks/useRequerimentos';
 import { useAccessibility } from '@/hooks/useAccessibility';
+import { formatarHorasParaExibicao } from '@/utils/horasUtils';
 
 interface RequerimentoCardProps {
   requerimento: Requerimento;
@@ -106,6 +107,11 @@ const RequerimentoCardComponent = function RequerimentoCard({
               <div className="font-medium truncate text-xs">{requerimento.chamado}</div>
               <Badge className={`${badgeClasses} text-xs px-1 py-0 mt-1`}>
                 {requerimento.tipo_cobranca}
+                {requerimento.tipo_cobranca === 'Banco de Horas' && requerimento.tem_ticket && (
+                  <span className="ml-1" title={`${requerimento.quantidade_tickets} tickets`}>
+                    🎫
+                  </span>
+                )}
               </Badge>
             </div>
           </div>
@@ -128,17 +134,23 @@ const RequerimentoCardComponent = function RequerimentoCard({
 
           {/* Horas Func. - 7% */}
           <div className="w-[7%] text-center pr-1">
-            <div className="text-xs">{requerimento.horas_funcional}</div>
+            <div className="text-xs">
+              {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')}
+            </div>
           </div>
 
           {/* Horas Téc. - 7% */}
           <div className="w-[7%] text-center pr-1">
-            <div className="text-xs">{requerimento.horas_tecnico}</div>
+            <div className="text-xs">
+              {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
+            </div>
           </div>
 
           {/* Total - 6% */}
           <div className="w-[6%] text-center font-medium pr-1">
-            <div className="text-xs">{requerimento.horas_total}</div>
+            <div className="text-xs">
+              {formatarHorasParaExibicao(requerimento.horas_total?.toString() || '0', 'HHMM')}
+            </div>
           </div>
 
           {/* Data Envio - 9% */}

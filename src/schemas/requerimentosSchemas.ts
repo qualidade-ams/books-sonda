@@ -1,12 +1,4 @@
 import { z } from 'zod';
-import { 
-  ModuloType, 
-  LinguagemType, 
-  TipoCobrancaType,
-  MODULO_OPTIONS,
-  LINGUAGEM_OPTIONS,
-  TIPO_COBRANCA_OPTIONS
-} from '@/types/requerimentos';
 
 // Schema para validação do chamado (letras, números e hífen)
 const chamadoSchema = z
@@ -17,7 +9,7 @@ const chamadoSchema = z
 
 // Schema para validação de módulo
 const moduloSchema = z
-  .enum(['Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
+  .enum(['CE Plus', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
     errorMap: () => ({ message: 'Selecione um módulo válido' })
   });
 
@@ -30,6 +22,7 @@ const linguagemSchema = z
 // Schema para validação de tipo de cobrança
 const tipoCobrancaSchema = z
   .enum([
+    'Selecione',
     'Banco de Horas', 
     'Cobro Interno', 
     'Contrato', 
@@ -42,24 +35,54 @@ const tipoCobrancaSchema = z
     errorMap: () => ({ message: 'Selecione um tipo de cobrança válido' })
   });
 
-// Schema para validação de horas (números inteiros, permite valores acima de 100)
+// Schema para validação de horas (suporta formato HH:MM e números inteiros)
 const horasSchema = z
-  .number({
-    required_error: 'Horas são obrigatórias',
-    invalid_type_error: 'Horas devem ser um número'
-  })
-  .int('Horas devem ser um número inteiro')
-  .min(0, 'Horas não podem ser negativas')
-  .max(9999, 'Horas não podem exceder 9999');
+  .union([
+    // Aceita números (compatibilidade com formato antigo)
+    z.number({
+      invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
+    }).min(0, 'Horas não podem ser negativas').max(9999, 'Horas não podem exceder 9999'),
+    
+    // Aceita strings no formato HH:MM
+    z.string().refine((val) => {
+      if (!val || val.trim() === '') return true; // Vazio é válido (será 0)
+      
+      const valor = val.trim();
+      
+      // Formato HH:MM
+      if (valor.includes(':')) {
+        const regex = /^\d{1,4}:[0-5]?\d$/;
+        if (!regex.test(valor)) return false;
+        
+        const [horasStr, minutosStr] = valor.split(':');
+        const horas = parseInt(horasStr);
+        const minutos = parseInt(minutosStr);
+        
+        return horas >= 0 && horas <= 9999 && minutos >= 0 && minutos < 60;
+      }
+      
+      // Formato número inteiro
+      const numero = parseInt(valor);
+      return !isNaN(numero) && numero >= 0 && numero <= 9999;
+    }, {
+      message: 'Formato inválido. Use HH:MM (ex: 111:30) ou número inteiro (ex: 120)'
+    })
+  ], {
+    invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
+  });
 
-// Schema para validação de mês (1-12)
+// Schema para validação de mês/ano (formato MM/YYYY)
 const mesCobrancaSchema = z
-  .number({
+  .string({
     required_error: 'Mês de cobrança é obrigatório',
-    invalid_type_error: 'Mês deve ser um número'
+    invalid_type_error: 'Mês/ano deve ser uma string no formato MM/YYYY'
   })
-  .min(1, 'Mês deve ser entre 1 e 12')
-  .max(12, 'Mês deve ser entre 1 e 12');
+  .regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Formato deve ser MM/YYYY (ex: 09/2025)')
+  .refine((val) => {
+    const [mes, ano] = val.split('/').map(Number);
+    const anoAtual = new Date().getFullYear();
+    return ano >= anoAtual - 5 && ano <= anoAtual + 10;
+  }, 'Ano deve estar entre 5 anos atrás e 10 anos à frente');
 
 // Schema para validação de data
 const dataSchema = z
@@ -114,7 +137,17 @@ export const requerimentoFormSchema = z.object({
   observacao: observacaoSchema,
   // Campos de valor/hora (condicionais)
   valor_hora_funcional: valorHoraSchema,
-  valor_hora_tecnico: valorHoraSchema
+  valor_hora_tecnico: valorHoraSchema,
+  // Campos de ticket (para Banco de Horas)
+  tem_ticket: z.boolean().optional(),
+  quantidade_tickets: z
+    .number({
+      invalid_type_error: 'Quantidade deve ser um número inteiro'
+    })
+    .int('Quantidade deve ser um número inteiro')
+    .min(1, 'Quantidade deve ser maior que zero')
+    .max(9999, 'Quantidade não pode exceder 9999')
+    .optional()
 }).refine((data) => {
   // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
   if (data.data_aprovacao && data.data_aprovacao !== '') {
@@ -131,12 +164,20 @@ export const requerimentoFormSchema = z.object({
   const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
   
   if (tiposComValorHora.includes(data.tipo_cobranca)) {
+    // Converter horas para número para comparação
+    const horasFuncionalNum = typeof data.horas_funcional === 'string' 
+      ? parseFloat(data.horas_funcional) || 0 
+      : data.horas_funcional || 0;
+    const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
+      ? parseFloat(data.horas_tecnico) || 0 
+      : data.horas_tecnico || 0;
+    
     // Se tem horas funcionais, deve ter valor/hora funcional
-    if (data.horas_funcional > 0 && (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)) {
+    if (horasFuncionalNum > 0 && (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)) {
       return false;
     }
     // Se tem horas técnicas, deve ter valor/hora técnico
-    if (data.horas_tecnico > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
+    if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
       return false;
     }
   }
@@ -144,6 +185,24 @@ export const requerimentoFormSchema = z.object({
 }, {
   message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
   path: ['valor_hora_funcional']
+}).refine((data) => {
+  // Validação customizada: campos de ticket para Banco de Horas
+  if (data.tipo_cobranca === 'Banco de Horas' && data.tem_ticket === true) {
+    // Se tem_ticket é true, quantidade_tickets deve ser informada
+    if (!data.quantidade_tickets || data.quantidade_tickets <= 0) {
+      return false;
+    }
+  }
+  
+  // Se tem_ticket é false ou undefined, quantidade_tickets deve ser undefined/null
+  if (data.tem_ticket !== true && data.quantidade_tickets) {
+    return false;
+  }
+  
+  return true;
+}, {
+  message: 'Quando "Ticket" está marcado, é obrigatório informar a quantidade de tickets',
+  path: ['quantidade_tickets']
 });
 
 // Schema para validação de filtros
@@ -212,7 +271,7 @@ export const validarEmail = (email: string): boolean => {
   return z.string().email().safeParse(email).success;
 };
 
-export const validarHoras = (horas: number): boolean => {
+export const validarHoras = (horas: number | string): boolean => {
   return horasSchema.safeParse(horas).success;
 };
 

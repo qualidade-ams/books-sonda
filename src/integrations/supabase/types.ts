@@ -800,6 +800,87 @@ export type Database = {
         }
         Relationships: []
       }
+      requerimentos: {
+        Row: {
+          id: string
+          chamado: string
+          cliente_id: string
+          modulo: string
+          descricao: string
+          data_envio: string
+          data_aprovacao: string | null
+          horas_funcional: number
+          horas_tecnico: number
+          horas_total: number
+          linguagem: string
+          tipo_cobranca: string
+          mes_cobranca: string
+          observacao: string | null
+          valor_hora_funcional: number | null
+          valor_hora_tecnico: number | null
+          valor_total_funcional: number | null
+          valor_total_tecnico: number | null
+          valor_total_geral: number | null
+          status: string
+          enviado_faturamento: boolean
+          data_envio_faturamento: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          chamado: string
+          cliente_id: string
+          modulo: string
+          descricao: string
+          data_envio: string
+          data_aprovacao?: string | null
+          horas_funcional: number
+          horas_tecnico: number
+          linguagem: string
+          tipo_cobranca: string
+          mes_cobranca: string
+          observacao?: string | null
+          valor_hora_funcional?: number | null
+          valor_hora_tecnico?: number | null
+          status?: string
+          enviado_faturamento?: boolean
+          data_envio_faturamento?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          chamado?: string
+          cliente_id?: string
+          modulo?: string
+          descricao?: string
+          data_envio?: string
+          data_aprovacao?: string | null
+          horas_funcional?: number
+          horas_tecnico?: number
+          linguagem?: string
+          tipo_cobranca?: string
+          mes_cobranca?: number
+          observacao?: string | null
+          valor_hora_funcional?: number | null
+          valor_hora_tecnico?: number | null
+          status?: string
+          enviado_faturamento?: boolean
+          data_envio_faturamento?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requerimentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       user_group_assignments: {
         Row: {
           assigned_at: string | null

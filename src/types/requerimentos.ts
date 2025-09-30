@@ -9,12 +9,12 @@ export interface Requerimento {
   descricao: string;
   data_envio: string;
   data_aprovacao?: string; // Opcional
-  horas_funcional: number;
-  horas_tecnico: number;
-  horas_total: number;
+  horas_funcional: number | string; // Suporta formato HH:MM
+  horas_tecnico: number | string; // Suporta formato HH:MM
+  horas_total: number | string;
   linguagem: LinguagemType;
   tipo_cobranca: TipoCobrancaType;
-  mes_cobranca: number;
+  mes_cobranca: string; // Formato MM/YYYY
   observacao?: string;
   // Campos de valor/hora (para tipos específicos)
   valor_hora_funcional?: number;
@@ -22,6 +22,9 @@ export interface Requerimento {
   valor_total_funcional?: number;
   valor_total_tecnico?: number;
   valor_total_geral?: number;
+  // Campos de ticket (para Banco de Horas)
+  tem_ticket?: boolean;
+  quantidade_tickets?: number;
   status: StatusRequerimento;
   enviado_faturamento: boolean;
   data_envio_faturamento?: string;
@@ -30,13 +33,14 @@ export interface Requerimento {
 }
 
 // Tipos para opções de select
-export type ModuloType = 'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
+export type ModuloType = 'CE Plus' |'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
-export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
+export type TipoCobrancaType = 'Selecione' | 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
 // Constantes para opções de select
 export const MODULO_OPTIONS: { value: ModuloType; label: string }[] = [
+  { value: 'CE Plus', label: 'CE Plus' },
   { value: 'Comply', label: 'Comply' },
   { value: 'Comply e-DOCS', label: 'Comply e-DOCS' },
   { value: 'pw.SATI', label: 'pw.SATI' },
@@ -53,6 +57,7 @@ export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
 ];
 
 export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[] = [
+  { value: 'Selecione', label: 'Selecione' },
   { value: 'Banco de Horas', label: 'Banco de Horas' },
   { value: 'Cobro Interno', label: 'Cobro Interno' },
   { value: 'Contrato', label: 'Contrato' },
@@ -76,6 +81,11 @@ export const requerValorHora = (tipoCobranca: TipoCobrancaType): boolean => {
   return TIPOS_COM_VALOR_HORA.includes(tipoCobranca);
 };
 
+// Função utilitária para verificar se tipo permite tickets
+export const permiteTickets = (tipoCobranca: TipoCobrancaType): boolean => {
+  return tipoCobranca === 'Banco de Horas';
+};
+
 // Interface para dados do formulário
 export interface RequerimentoFormData {
   chamado: string;
@@ -84,15 +94,18 @@ export interface RequerimentoFormData {
   descricao: string;
   data_envio: string;
   data_aprovacao?: string; // Opcional
-  horas_funcional: number;
-  horas_tecnico: number;
+  horas_funcional: number | string; // Suporta formato HH:MM
+  horas_tecnico: number | string; // Suporta formato HH:MM
   linguagem: LinguagemType;
   tipo_cobranca: TipoCobrancaType;
-  mes_cobranca: number;
+  mes_cobranca: string; // Formato MM/YYYY
   observacao?: string;
   // Campos de valor/hora (condicionais)
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
+  // Campos de ticket (para Banco de Horas)
+  tem_ticket?: boolean;
+  quantidade_tickets?: number;
 }
 
 // Interface para dados de faturamento
@@ -117,7 +130,7 @@ export interface EmailFaturamento {
 // Interface para cliente (empresas_clientes)
 export interface ClienteRequerimento {
   id: string;
-  nome_completo: string;
+  nome_abreviado: string;
 }
 
 // Interface para estatísticas
@@ -142,7 +155,7 @@ export interface FiltrosRequerimentos {
   linguagem?: LinguagemType;
   status?: StatusRequerimento;
   tipo_cobranca?: TipoCobrancaType;
-  mes_cobranca?: number;
+  mes_cobranca?: string; // Formato MM/YYYY
   cliente_id?: string;
   data_inicio?: string;
   data_fim?: string;

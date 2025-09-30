@@ -9,6 +9,13 @@ import {
   TipoCobrancaType,
   StatusRequerimento
 } from '@/types/requerimentos';
+import { 
+  converterParaHorasDecimal, 
+  converterDeHorasDecimal,
+  somarHoras,
+  formatarHorasParaExibicao 
+} from '@/utils/horasUtils';
+import { converterParaBanco, converterDoBanco } from '@/utils/mesCobrancaUtils';
 
 /**
  * Serviço para gerenciamento de requerimentos
@@ -25,7 +32,15 @@ export class RequerimentosService {
     // Verificar se cliente existe
     await this.verificarClienteExiste(data.cliente_id);
 
-    // Preparar dados para inserção
+    // Preparar dados para inserção (converter horas para decimal se necessário)
+    const horasFuncionalDecimal = typeof data.horas_funcional === 'string' 
+      ? converterParaHorasDecimal(data.horas_funcional)
+      : data.horas_funcional;
+    
+    const horasTecnicoDecimal = typeof data.horas_tecnico === 'string'
+      ? converterParaHorasDecimal(data.horas_tecnico)
+      : data.horas_tecnico;
+
     const requerimentoData = {
       chamado: data.chamado.trim(),
       cliente_id: data.cliente_id,
@@ -33,8 +48,8 @@ export class RequerimentosService {
       descricao: data.descricao.trim(),
       data_envio: data.data_envio,
       data_aprovacao: data.data_aprovacao,
-      horas_funcional: data.horas_funcional,
-      horas_tecnico: data.horas_tecnico,
+      horas_funcional: horasFuncionalDecimal,
+      horas_tecnico: horasTecnicoDecimal,
       linguagem: data.linguagem,
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca,
@@ -42,6 +57,9 @@ export class RequerimentosService {
       // Campos de valor/hora (incluir apenas se fornecidos)
       valor_hora_funcional: data.valor_hora_funcional || null,
       valor_hora_tecnico: data.valor_hora_tecnico || null,
+      // Campos de ticket (para Banco de Horas)
+      tem_ticket: data.tem_ticket || false,
+      quantidade_tickets: data.quantidade_tickets || null,
       status: 'lancado' as StatusRequerimento,
       enviado_faturamento: false
     };
@@ -53,7 +71,7 @@ export class RequerimentosService {
         *,
         cliente:empresas_clientes(
           id,
-          nome_completo
+          nome_abreviado
         )
       `)
       .single();
@@ -75,7 +93,7 @@ export class RequerimentosService {
         *,
         cliente:empresas_clientes(
           id,
-          nome_completo
+          nome_abreviado
         )
       `);
 
@@ -127,12 +145,12 @@ export class RequerimentosService {
    */
   async buscarRequerimentosPorStatusEMes(
     status: StatusRequerimento,
-    mes?: number
+    mesCobranca?: string
   ): Promise<Requerimento[]> {
     const filtros: FiltrosRequerimentos = { status };
     
-    if (mes) {
-      filtros.mes_cobranca = mes;
+    if (mesCobranca) {
+      filtros.mes_cobranca = mesCobranca;
     }
 
     return this.listarRequerimentos(filtros);
@@ -141,10 +159,15 @@ export class RequerimentosService {
   /**
    * Buscar requerimentos enviados para faturamento no mês atual
    */
-  async buscarRequerimentosParaFaturamento(mes?: number): Promise<Requerimento[]> {
-    const mesAtual = mes || new Date().getMonth() + 1;
+  async buscarRequerimentosParaFaturamento(mesCobranca?: string): Promise<Requerimento[]> {
+    const mesCobrancaAtual = mesCobranca || (() => {
+      const hoje = new Date();
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      return `${mes}/${ano}`;
+    })();
     
-    return this.buscarRequerimentosPorStatusEMes('enviado_faturamento', mesAtual);
+    return this.buscarRequerimentosPorStatusEMes('enviado_faturamento', mesCobrancaAtual);
   }
 
   /**
@@ -161,7 +184,7 @@ export class RequerimentosService {
         *,
         cliente:empresas_clientes(
           id,
-          nome_completo
+          nome_abreviado
         )
       `)
       .eq('id', id)
@@ -206,8 +229,16 @@ export class RequerimentosService {
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
     if (data.data_aprovacao) updateData.data_aprovacao = data.data_aprovacao;
-    if (data.horas_funcional !== undefined) updateData.horas_funcional = data.horas_funcional;
-    if (data.horas_tecnico !== undefined) updateData.horas_tecnico = data.horas_tecnico;
+    if (data.horas_funcional !== undefined) {
+      updateData.horas_funcional = typeof data.horas_funcional === 'string' 
+        ? converterParaHorasDecimal(data.horas_funcional)
+        : data.horas_funcional;
+    }
+    if (data.horas_tecnico !== undefined) {
+      updateData.horas_tecnico = typeof data.horas_tecnico === 'string'
+        ? converterParaHorasDecimal(data.horas_tecnico)
+        : data.horas_tecnico;
+    }
     if (data.linguagem) updateData.linguagem = data.linguagem;
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
     if (data.mes_cobranca) updateData.mes_cobranca = data.mes_cobranca;
@@ -215,6 +246,9 @@ export class RequerimentosService {
     // Campos de valor/hora
     if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
     if (data.valor_hora_tecnico !== undefined) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    // Campos de ticket
+    if (data.tem_ticket !== undefined) updateData.tem_ticket = data.tem_ticket || false;
+    if (data.quantidade_tickets !== undefined) updateData.quantidade_tickets = data.quantidade_tickets || null;
 
     const { error } = await supabase
       .from('requerimentos')
@@ -274,6 +308,11 @@ export class RequerimentosService {
       throw new Error('Requerimento já foi enviado para faturamento');
     }
 
+    // Verificar se tipo de cobrança é válido para faturamento
+    if (requerimento.tipo_cobranca === 'Selecione') {
+      throw new Error('É necessário selecionar um tipo de cobrança válido antes de enviar para faturamento');
+    }
+
     // Atualizar status
     const { error } = await supabase
       .from('requerimentos')
@@ -296,9 +335,9 @@ export class RequerimentosService {
   async buscarClientes(): Promise<ClienteRequerimento[]> {
     const { data, error } = await supabase
       .from('empresas_clientes')
-      .select('id, nome_completo')
+      .select('id, nome_abreviado')
       .eq('status', 'ativo')
-      .order('nome_completo');
+      .order('nome_abreviado');
 
     if (error) {
       throw new Error(`Erro ao buscar clientes: ${error.message}`);
@@ -310,8 +349,8 @@ export class RequerimentosService {
   /**
    * Gerar dados para faturamento agrupados por tipo de cobrança
    */
-  async gerarDadosFaturamento(mes?: number): Promise<FaturamentoData> {
-    const requerimentos = await this.buscarRequerimentosParaFaturamento(mes);
+  async gerarDadosFaturamento(mesCobranca?: string): Promise<FaturamentoData> {
+    const requerimentos = await this.buscarRequerimentosParaFaturamento(mesCobranca);
 
     // Agrupar por tipo de cobrança
     const totais: FaturamentoData['totais'] = {} as any;
@@ -332,7 +371,7 @@ export class RequerimentosService {
     // Calcular totais
     requerimentos.forEach(req => {
       totais[req.tipo_cobranca].quantidade += 1;
-      totais[req.tipo_cobranca].horas_total += req.horas_total;
+      totais[req.tipo_cobranca].horas_total += Number(req.horas_total || 0);
     });
 
     return {
@@ -372,10 +411,10 @@ export class RequerimentosService {
 
     // Calcular estatísticas
     requerimentos.forEach(req => {
-      stats.total_horas += req.horas_total;
+      stats.total_horas += Number(req.horas_total || 0);
       stats.requerimentos_por_status[req.status] += 1;
       stats.requerimentos_por_tipo_cobranca[req.tipo_cobranca] += 1;
-      stats.horas_por_tipo_cobranca[req.tipo_cobranca] += req.horas_total;
+      stats.horas_por_tipo_cobranca[req.tipo_cobranca] += Number(req.horas_total || 0);
     });
 
     return stats;
@@ -431,13 +470,16 @@ export class RequerimentosService {
     }
 
     if (!isUpdate || data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
-      if (data.horas_funcional === undefined || data.horas_funcional < 0) {
+      const horasFuncional = Number(data.horas_funcional || 0);
+      const horasTecnico = Number(data.horas_tecnico || 0);
+      
+      if (data.horas_funcional === undefined || horasFuncional < 0) {
         errors.push('Horas funcionais são obrigatórias e devem ser >= 0');
       }
-      if (data.horas_tecnico === undefined || data.horas_tecnico < 0) {
+      if (data.horas_tecnico === undefined || horasTecnico < 0) {
         errors.push('Horas técnicas são obrigatórias e devem ser >= 0');
       }
-      if ((data.horas_funcional || 0) + (data.horas_tecnico || 0) === 0) {
+      if (horasFuncional + horasTecnico === 0) {
         errors.push('Deve haver pelo menos uma hora (funcional ou técnica)');
       }
     }
@@ -455,8 +497,8 @@ export class RequerimentosService {
     }
 
     if (!isUpdate || data.mes_cobranca !== undefined) {
-      if (!data.mes_cobranca || data.mes_cobranca < 1 || data.mes_cobranca > 12) {
-        errors.push('Mês de cobrança é obrigatório e deve estar entre 1 e 12');
+      if (!data.mes_cobranca || !data.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
+        errors.push('Mês de cobrança é obrigatório e deve estar no formato MM/YYYY');
       }
     }
 
@@ -500,18 +542,33 @@ export class RequerimentosService {
    * Formatar requerimento com dados do cliente
    */
   private formatarRequerimento(data: any): Requerimento {
+    // Converter horas decimais de volta para formato HH:MM para exibição
+    const horasFuncional = typeof data.horas_funcional === 'number' 
+      ? converterDeHorasDecimal(data.horas_funcional)
+      : data.horas_funcional;
+    
+    const horasTecnico = typeof data.horas_tecnico === 'number'
+      ? converterDeHorasDecimal(data.horas_tecnico)
+      : data.horas_tecnico;
+
+    // Calcular total das horas
+    const horasTotal = somarHoras(
+      horasFuncional?.toString() || '0',
+      horasTecnico?.toString() || '0'
+    );
+
     return {
       id: data.id,
       chamado: data.chamado,
       cliente_id: data.cliente_id,
-      cliente_nome: data.cliente?.nome_completo,
+      cliente_nome: data.cliente?.nome_abreviado,
       modulo: data.modulo,
       descricao: data.descricao,
       data_envio: data.data_envio,
       data_aprovacao: data.data_aprovacao,
-      horas_funcional: data.horas_funcional,
-      horas_tecnico: data.horas_tecnico,
-      horas_total: data.horas_total,
+      horas_funcional: horasFuncional,
+      horas_tecnico: horasTecnico,
+      horas_total: horasTotal,
       linguagem: data.linguagem,
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca,
@@ -520,7 +577,13 @@ export class RequerimentosService {
       enviado_faturamento: data.enviado_faturamento,
       data_envio_faturamento: data.data_envio_faturamento,
       created_at: data.created_at,
-      updated_at: data.updated_at
+      updated_at: data.updated_at,
+      // Campos de valor/hora
+      valor_hora_funcional: data.valor_hora_funcional,
+      valor_hora_tecnico: data.valor_hora_tecnico,
+      valor_total_funcional: data.valor_total_funcional,
+      valor_total_tecnico: data.valor_total_tecnico,
+      valor_total_geral: data.valor_total_geral
     };
   }
 }

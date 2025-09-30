@@ -1,15 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 import { emailService, EmailData } from './emailService';
-import type { 
-  Requerimento, 
-  TipoCobrancaType, 
-  FaturamentoData, 
-  EmailFaturamento 
+import type {
+  Requerimento,
+  TipoCobrancaType,
+  FaturamentoData,
+  EmailFaturamento
 } from '@/types/requerimentos';
 
 export interface RelatorioFaturamento {
   periodo: string;
-  mes_cobranca: number;
+  mes_cobranca: string; // Formato MM/YYYY
   ano_cobranca: number;
   requerimentos_por_tipo: {
     [key in TipoCobrancaType]: {
@@ -42,7 +42,7 @@ export class FaturamentoService {
    * Busca requerimentos enviados para faturamento por mês
    */
   async buscarRequerimentosParaFaturamento(
-    mes: number, 
+    mes: number,
     ano: number = new Date().getFullYear()
   ): Promise<Requerimento[]> {
     try {
@@ -53,7 +53,7 @@ export class FaturamentoService {
           empresas_clientes!inner(nome_completo)
         `)
         .eq('status', 'enviado_faturamento')
-        .eq('mes_cobranca', mes)
+        .eq('mes_cobranca', `${String(mes).padStart(2, '0')}/${ano}`)
         .gte('created_at', `${ano}-01-01`)
         .lt('created_at', `${ano + 1}-01-01`)
         .order('tipo_cobranca')
@@ -63,11 +63,20 @@ export class FaturamentoService {
         throw new Error(`Erro ao buscar requerimentos para faturamento: ${error.message}`);
       }
 
-      // Mapear dados com nome do cliente
+      // Mapear dados com nome do cliente e fazer cast de tipos
       return (data || []).map(item => ({
         ...item,
-        cliente_nome: item.empresas_clientes?.nome_completo
-      }));
+        cliente_nome: item.empresas_clientes?.nome_completo,
+        // Cast dos tipos específicos para compatibilidade com interface Requerimento
+        modulo: item.modulo as any,
+        linguagem: item.linguagem as any,
+        tipo_cobranca: item.tipo_cobranca as any,
+        status: item.status as any,
+        // Garantir que horas_total seja sempre number
+        horas_total: typeof item.horas_total === 'string' ? parseFloat(item.horas_total) : item.horas_total,
+        horas_funcional: typeof item.horas_funcional === 'string' ? parseFloat(item.horas_funcional) : item.horas_funcional,
+        horas_tecnico: typeof item.horas_tecnico === 'string' ? parseFloat(item.horas_tecnico) : item.horas_tecnico
+      })) as Requerimento[];
     } catch (error) {
       console.error('Erro no faturamentoService.buscarRequerimentosParaFaturamento:', error);
       throw error;
@@ -92,7 +101,7 @@ export class FaturamentoService {
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
       grupos[tipo].quantidade += 1;
-      grupos[tipo].horas_total += req.horas_total;
+      grupos[tipo].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
       grupos[tipo].requerimentos.push(req);
     });
 
@@ -121,16 +130,17 @@ export class FaturamentoService {
     // Calcular totais por tipo
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
+      const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
       totais.tipos_cobranca[tipo].quantidade += 1;
-      totais.tipos_cobranca[tipo].horas += req.horas_total;
-      totais.total_horas += req.horas_total;
+      totais.tipos_cobranca[tipo].horas += horas;
+      totais.total_horas += horas;
     });
 
     // Calcular percentuais
     Object.keys(totais.tipos_cobranca).forEach(tipo => {
       const tipoKey = tipo as TipoCobrancaType;
       if (totais.total_horas > 0) {
-        totais.tipos_cobranca[tipoKey].percentual = 
+        totais.tipos_cobranca[tipoKey].percentual =
           (totais.tipos_cobranca[tipoKey].horas / totais.total_horas) * 100;
       }
     });
@@ -142,7 +152,7 @@ export class FaturamentoService {
    * Gera relatório completo de faturamento
    */
   async gerarRelatorioFaturamento(
-    mes: number, 
+    mes: number,
     ano: number = new Date().getFullYear()
   ): Promise<RelatorioFaturamento> {
     try {
@@ -157,7 +167,7 @@ export class FaturamentoService {
 
       return {
         periodo: `${nomesMeses[mes - 1]} de ${ano}`,
-        mes_cobranca: mes,
+        mes_cobranca: `${String(mes).padStart(2, '0')}/${ano}`,
         ano_cobranca: ano,
         requerimentos_por_tipo,
         totais_gerais: {
@@ -392,9 +402,9 @@ export class FaturamentoService {
                     <td>${req.cliente_nome || 'N/A'}</td>
                     <td>${req.modulo}</td>
                     <td>${req.linguagem}</td>
-                    <td class="horas">${req.horas_funcional.toFixed(1)}</td>
-                    <td class="horas">${req.horas_tecnico.toFixed(1)}</td>
-                    <td class="horas">${req.horas_total.toFixed(1)}</td>
+                    <td class="horas">${(typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional).toFixed(1)}</td>
+                    <td class="horas">${(typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico).toFixed(1)}</td>
+                    <td class="horas">${(typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total).toFixed(1)}</td>
                     <td class="data">${new Date(req.data_envio).toLocaleDateString('pt-BR')}</td>
                 </tr>
                 `).join('')}
@@ -526,8 +536,8 @@ export class FaturamentoService {
         .from('requerimentos')
         .select('tipo_cobranca, horas_total')
         .eq('status', 'enviado_faturamento')
-        .gte('mes_cobranca', mesInicio)
-        .lte('mes_cobranca', mesFim)
+        .gte('mes_cobranca', `${String(mesInicio).padStart(2, '0')}/${anoInicio}`)
+        .lte('mes_cobranca', `${String(mesFim).padStart(2, '0')}/${anoFim}`)
         .gte('created_at', `${anoInicio}-01-01`)
         .lt('created_at', `${anoFim + 1}-01-01`);
 
@@ -535,7 +545,14 @@ export class FaturamentoService {
         throw new Error(`Erro ao buscar estatísticas: ${error.message}`);
       }
 
-      return this.calcularTotaisPorCategoria(data || []);
+      // Converter dados parciais para formato compatível com calcularTotaisPorCategoria
+      const requerimentosParciais = (data || []).map(item => ({
+        ...item,
+        tipo_cobranca: item.tipo_cobranca as any,
+        horas_total: typeof item.horas_total === 'string' ? parseFloat(item.horas_total) : item.horas_total
+      })) as Requerimento[];
+
+      return this.calcularTotaisPorCategoria(requerimentosParciais);
     } catch (error) {
       console.error('Erro ao buscar estatísticas de faturamento:', error);
       throw error;

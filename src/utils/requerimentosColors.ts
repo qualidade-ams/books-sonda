@@ -12,6 +12,14 @@ export interface CobrancaColors {
 
 // Sistema de cores para tipos de cobrança
 export const COBRANCA_COLORS: Record<TipoCobrancaType, CobrancaColors> = {
+  'Selecione': {
+    bg: 'bg-gray-25',
+    border: 'border-gray-100',
+    text: 'text-gray-400',
+    badge: 'bg-gray-300',
+    hover: 'hover:bg-gray-50',
+    ring: 'ring-gray-100'
+  },
   'Banco de Horas': {
     bg: 'bg-blue-50',
     border: 'border-blue-200',
@@ -115,6 +123,7 @@ export const getInputFocusClasses = (tipoCobranca: TipoCobrancaType): string => 
 // Função para obter cor hexadecimal (para gráficos)
 export const getHexColor = (tipoCobranca: TipoCobrancaType): string => {
   const colorMap: Record<TipoCobrancaType, string> = {
+    'Selecione': '#9CA3AF',         // gray-400
     'Banco de Horas': '#3B82F6',    // blue-500
     'Cobro Interno': '#10B981',     // green-500
     'Contrato': '#6B7280',          // gray-500

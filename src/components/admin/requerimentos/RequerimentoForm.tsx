@@ -24,7 +24,8 @@ import {
   MODULO_OPTIONS,
   LINGUAGEM_OPTIONS,
   TIPO_COBRANCA_OPTIONS,
-  requerValorHora
+  requerValorHora,
+  permiteTickets
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,9 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import { FormFieldHelp, OptimizedTooltip, ValidationFeedback } from './HelpSystem';
 import { LoadingSpinner } from '@/components/admin/requerimentos/LoadingStates';
+import { InputHoras } from '@/components/ui/input-horas';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import { somarHoras, formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 
 interface RequerimentoFormProps {
   requerimento?: Requerimento;
@@ -57,17 +61,25 @@ export function RequerimentoForm({
       cliente_id: requerimento?.cliente_id || '',
       modulo: requerimento?.modulo || 'Comply',
       descricao: requerimento?.descricao || '',
-      data_envio: requerimento?.data_envio || format(new Date(), 'yyyy-MM-dd'),
+      data_envio: requerimento?.data_envio || '',
       data_aprovacao: requerimento?.data_aprovacao || '', // Deixar em branco por padrão
       horas_funcional: requerimento?.horas_funcional || 0,
       horas_tecnico: requerimento?.horas_tecnico || 0,
       linguagem: requerimento?.linguagem || 'Funcional',
-      tipo_cobranca: requerimento?.tipo_cobranca || 'Faturado',
-      mes_cobranca: requerimento?.mes_cobranca || new Date().getMonth() + 1,
+      tipo_cobranca: requerimento?.tipo_cobranca || 'Selecione',
+      mes_cobranca: requerimento?.mes_cobranca || (() => {
+        const hoje = new Date();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const ano = hoje.getFullYear();
+        return `${mes}/${ano}`;
+      })(),
       observacao: requerimento?.observacao || '',
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
-      valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined
+      valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
+      // Campos de ticket
+      tem_ticket: requerimento?.tem_ticket || false,
+      quantidade_tickets: requerimento?.quantidade_tickets || undefined
     }
   });
 
@@ -77,20 +89,27 @@ export function RequerimentoForm({
   const tipoCobranca = form.watch('tipo_cobranca');
   const valorHoraFuncional = form.watch('valor_hora_funcional');
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
+  const temTicket = form.watch('tem_ticket');
 
   // Verificar se o tipo de cobrança requer campos de valor/hora
   const mostrarCamposValor = useMemo(() => {
-    return requerValorHora(tipoCobranca);
+    return tipoCobranca !== 'Selecione' && requerValorHora(tipoCobranca);
   }, [tipoCobranca]);
 
-  // Cálculo automático das horas totais
+  // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
-    const funcional = Number(horasFuncional) || 0;
-    const tecnico = Number(horasTecnico) || 0;
-    return funcional + tecnico;
+    try {
+      const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
+      const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
+
+      const totalFormatado = somarHoras(funcionalStr, tecnicoStr);
+      return totalFormatado;
+    } catch (error) {
+      return '0:00';
+    }
   }, [horasFuncional, horasTecnico]);
 
-  // Cálculos automáticos de valores
+  // Cálculos automáticos de valores (suporta formato HH:MM)
   const valoresCalculados = useMemo(() => {
     if (!mostrarCamposValor) {
       return {
@@ -100,41 +119,40 @@ export function RequerimentoForm({
       };
     }
 
-    const hFunc = Number(horasFuncional) || 0;
-    const hTec = Number(horasTecnico) || 0;
-    const vFunc = Number(valorHoraFuncional) || 0;
-    const vTec = Number(valorHoraTecnico) || 0;
+    try {
+      // Converter horas para decimal para cálculos monetários
+      const funcionalStr = typeof horasFuncional === 'string' ? horasFuncional : (horasFuncional?.toString() || '0');
+      const tecnicoStr = typeof horasTecnico === 'string' ? horasTecnico : (horasTecnico?.toString() || '0');
 
-    const valorTotalFuncional = hFunc * vFunc;
-    const valorTotalTecnico = hTec * vTec;
-    const valorTotalGeral = valorTotalFuncional + valorTotalTecnico;
+      const hFunc = converterParaHorasDecimal(funcionalStr);
+      const hTec = converterParaHorasDecimal(tecnicoStr);
+      const vFunc = Number(valorHoraFuncional) || 0;
+      const vTec = Number(valorHoraTecnico) || 0;
 
-    return {
-      valorTotalFuncional,
-      valorTotalTecnico,
-      valorTotalGeral
-    };
+      const valorTotalFuncional = hFunc * vFunc;
+      const valorTotalTecnico = hTec * vTec;
+      const valorTotalGeral = valorTotalFuncional + valorTotalTecnico;
+
+      return {
+        valorTotalFuncional,
+        valorTotalTecnico,
+        valorTotalGeral
+      };
+    } catch (error) {
+      return {
+        valorTotalFuncional: 0,
+        valorTotalTecnico: 0,
+        valorTotalGeral: 0
+      };
+    }
   }, [horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico, mostrarCamposValor]);
 
-  // Opções de mês para select
-  const mesesOptions = [
-    { value: 1, label: 'Janeiro' },
-    { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Março' },
-    { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' },
-    { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' },
-    { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' },
-    { value: 12, label: 'Dezembro' }
-  ];
+
 
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
     const cores = {
+      'Selecione': 'bg-gray-50 text-gray-500 border-gray-200',
       'Banco de Horas': 'bg-blue-100 text-blue-800 border-blue-300',
       'Cobro Interno': 'bg-green-100 text-green-800 border-green-300',
       'Contrato': 'bg-gray-100 text-gray-800 border-gray-300',
@@ -219,12 +237,11 @@ export function RequerimentoForm({
                       label="Chamado"
                       required
                       helpText="Código único do chamado técnico. Use apenas letras, números e hífen."
-                      description="Formato: letras, números e hífen (ex: RF-6017993)"
                       error={form.formState.errors.chamado?.message}
                     >
                       <Input
                         {...field}
-                        placeholder="Ex: RF-6017993"
+                        placeholder="Ex: RF-6017993, Projeto, Treinamento, entre outros"
                         className="uppercase"
                         aria-describedby="chamado-help"
                         disabled={isLoading}
@@ -269,7 +286,7 @@ export function RequerimentoForm({
                           ) : (
                             clientes.map((cliente) => (
                               <SelectItem key={cliente.id} value={cliente.id}>
-                                {cliente.nome_completo}
+                                {cliente.nome_abreviado}
                               </SelectItem>
                             ))
                           )}
@@ -370,7 +387,7 @@ export function RequerimentoForm({
                   name="data_envio"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Data de Envio *</FormLabel>
+                      <FormLabel>Data de Envio do Orçamento *</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -394,7 +411,14 @@ export function RequerimentoForm({
                           <Calendar
                             mode="single"
                             selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(date.toISOString().split('T')[0]);
+                              } else {
+                                field.onChange('');
+                              }
+                            }}
+                            defaultMonth={new Date()}
                             disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                             initialFocus
                           />
@@ -411,7 +435,7 @@ export function RequerimentoForm({
                   name="data_aprovacao"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Data de Aprovação</FormLabel>
+                      <FormLabel>Data de Aprovação do Orçamento</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -435,7 +459,14 @@ export function RequerimentoForm({
                           <Calendar
                             mode="single"
                             selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(date.toISOString().split('T')[0]);
+                              } else {
+                                field.onChange('');
+                              }
+                            }}
+                            defaultMonth={new Date()}
                             disabled={(date) => {
                               const dataEnvio = form.getValues('data_envio');
                               return date < new Date(dataEnvio) || date > new Date() || date < new Date("1900-01-01");
@@ -444,9 +475,6 @@ export function RequerimentoForm({
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>
-                        Data opcional. Se informada, deve ser igual ou posterior à data de envio.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -472,19 +500,15 @@ export function RequerimentoForm({
                     <FormItem>
                       <FormLabel>Horas Funcionais *</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="9999"
-                          placeholder="0"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        <InputHoras
+                          value={field.value}
+                          onChange={(valorString, horasDecimal) => {
+                            field.onChange(valorString);
+                          }}
+                          placeholder="Ex: 111:30 ou 120"
+                          disabled={isLoading}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Número inteiro de horas (ex: 120)
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -498,19 +522,15 @@ export function RequerimentoForm({
                     <FormItem>
                       <FormLabel>Horas Técnicas *</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="9999"
-                          placeholder="0"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        <InputHoras
+                          value={field.value}
+                          onChange={(valorString) => {
+                            field.onChange(valorString);
+                          }}
+                          placeholder="Ex: 80:45 ou 80"
+                          disabled={isLoading}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Número inteiro de horas (ex: 80)
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -521,7 +541,7 @@ export function RequerimentoForm({
                   <Label>Horas Total</Label>
                   <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                     <span className="font-semibold text-lg">
-                      {horasTotal}h
+                      {formatarHorasParaExibicao(horasTotal, 'completo')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -530,107 +550,6 @@ export function RequerimentoForm({
                 </div>
               </div>
             </div>
-
-            {/* Seção: Valores (condicional) */}
-            {tipoCobranca && ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipoCobranca) && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    💰 Valores por Hora
-                    <OptimizedTooltip content="Campos obrigatórios para tipos de cobrança com valor monetário">
-                      <HelpCircle className="h-4 w-4 text-blue-500" />
-                    </OptimizedTooltip>
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Valor Hora Funcional */}
-                    <FormField
-                      control={form.control}
-                      name="valor_hora_funcional"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor/Hora Funcional *</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                R$
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99999.99"
-                                placeholder="0,00"
-                                className="pl-8"
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormDescription>
-                            Valor em reais por hora funcional
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Valor Hora Técnico */}
-                    <FormField
-                      control={form.control}
-                      name="valor_hora_tecnico"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor/Hora Técnico *</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                R$
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99999.99"
-                                placeholder="0,00"
-                                className="pl-8"
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormDescription>
-                            Valor em reais por hora técnica
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Valor Total Estimado */}
-                    <div className="space-y-2">
-                      <Label>Valor Total Estimado</Label>
-                      <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
-                        <span className="font-semibold text-lg text-green-600">
-                          R$ {(() => {
-                            const valorFuncional = (form.watch('valor_hora_funcional') || 0) * horasFuncional;
-                            const valorTecnico = (form.watch('valor_hora_tecnico') || 0) * horasTecnico;
-                            const total = valorFuncional + valorTecnico;
-                            return total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                          })()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Calculado automaticamente
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
 
             {/* Seção: Cobrança */}
             <div className="space-y-4">
@@ -676,29 +595,187 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Mês de Cobrança *</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(parseInt(value))}
-                        defaultValue={field.value?.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o mês" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {mesesOptions.map((mes) => (
-                            <SelectItem key={mes.value} value={mes.value.toString()}>
-                              {mes.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <MonthYearPicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecione mês e ano"
+                          format="MM/YYYY"
+                          allowFuture={true}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
+
+            <Separator />
+
+            {/* Seção: Valores (condicional) */}
+            {tipoCobranca && ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipoCobranca) && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    💰 Valores por Hora
+                    <OptimizedTooltip content="Campos obrigatórios para tipos de cobrança com valor monetário">
+                      <HelpCircle className="h-4 w-4 text-blue-500" />
+                    </OptimizedTooltip>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Valor Hora Funcional */}
+                    <FormField
+                      control={form.control}
+                      name="valor_hora_funcional"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor/Hora Funcional *</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                R$
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="99999.99"
+                                placeholder="0,00"
+                                className="pl-8"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Valor Hora Técnico */}
+                    <FormField
+                      control={form.control}
+                      name="valor_hora_tecnico"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor/Hora Técnico *</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                R$
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="99999.99"
+                                placeholder="0,00"
+                                className="pl-8"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Valor Total Estimado */}
+                    <div className="space-y-2">
+                      <Label>Valor Total Estimado</Label>
+                      <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
+                        <span className="font-semibold text-lg text-green-600">
+                          R$ {valoresCalculados.valorTotalGeral.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Calculado automaticamente
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Seção: Tickets (condicional para Banco de Horas) */}
+            {tipoCobranca === 'Banco de Horas' && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    🎫 Controle de Tickets
+                    <OptimizedTooltip content="Campos específicos para controle de tickets no Banco de Horas">
+                      <HelpCircle className="h-4 w-4 text-blue-500" />
+                    </OptimizedTooltip>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Checkbox Tem Ticket */}
+                    <FormField
+                      control={form.control}
+                      name="tem_ticket"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value || false}
+                              onChange={(e) => {
+                                field.onChange(e.target.checked);
+                                // Limpar quantidade_tickets quando desmarcar
+                                if (!e.target.checked) {
+                                  form.setValue('quantidade_tickets', undefined);
+                                }
+                              }}
+                              className="mt-1"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Ticket
+                            </FormLabel>
+                            <FormDescription>
+                              Marque se este requerimento possui tickets
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Quantidade de Tickets (condicional) */}
+                    {temTicket && (
+                      <FormField
+                        control={form.control}
+                        name="quantidade_tickets"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantidade de Tickets *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="9999"
+                                placeholder="Digite a quantidade"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 

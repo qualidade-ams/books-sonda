@@ -145,7 +145,7 @@ const LancarRequerimentos = () => {
   // Estatísticas dos requerimentos filtrados
   const statsRequerimentos = useMemo(() => {
     const total = requerimentosFiltrados.length;
-    const totalHoras = requerimentosFiltrados.reduce((acc, req) => acc + req.horas_total, 0);
+    const totalHoras = requerimentosFiltrados.reduce((acc, req) => acc + Number(req.horas_total || 0), 0);
 
     // Agrupar por tipo de cobrança
     const porTipo = requerimentosFiltrados.reduce((acc, req) => {
@@ -153,7 +153,7 @@ const LancarRequerimentos = () => {
         acc[req.tipo_cobranca] = { quantidade: 0, horas: 0 };
       }
       acc[req.tipo_cobranca].quantidade++;
-      acc[req.tipo_cobranca].horas += req.horas_total;
+      acc[req.tipo_cobranca].horas += Number(req.horas_total || 0);
       return acc;
     }, {} as Record<string, { quantidade: number; horas: number }>);
 
