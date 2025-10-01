@@ -389,7 +389,6 @@ export function RequerimentoForm({
                           type="date"
                           {...field}
                           disabled={isLoading}
-                          max={new Date().toISOString().split('T')[0]} // Não permite datas futuras
                           min="1900-01-01"
                         />
                       </FormControl>
@@ -410,7 +409,6 @@ export function RequerimentoForm({
                           type="date"
                           {...field}
                           disabled={isLoading}
-                          max={new Date().toISOString().split('T')[0]} // Não permite datas futuras
                           min={form.getValues('data_envio') || "1900-01-01"} // Não permite data anterior à data de envio
                         />
                       </FormControl>
@@ -536,7 +534,7 @@ export function RequerimentoForm({
                   name="mes_cobranca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mês de Cobrança *</FormLabel>
+                      <FormLabel>Mês/Ano de Cobrança *</FormLabel>
                       <FormControl>
                         <MonthYearPicker
                           value={field.value}

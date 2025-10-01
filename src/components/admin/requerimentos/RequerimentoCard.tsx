@@ -26,7 +26,8 @@ import { Requerimento } from '@/types/requerimentos';
 import { getBadgeClasses, getCobrancaIcon } from '@/utils/requerimentosColors';
 import { useEnviarParaFaturamento } from '@/hooks/useRequerimentos';
 import { useAccessibility } from '@/hooks/useAccessibility';
-import { formatarHorasParaExibicao } from '@/utils/horasUtils';
+import { formatarHorasParaExibicao, somarHoras, converterParaHorasDecimal } from '@/utils/horasUtils';
+import { requerValorHora } from '@/types/requerimentos';
 
 interface RequerimentoCardProps {
   requerimento: Requerimento;
@@ -75,9 +76,100 @@ const RequerimentoCardComponent = function RequerimentoCard({
     }
   };
 
+  // Calcular horas total corretamente
+  const calcularHorasTotal = () => {
+    try {
+      // Garantir que os valores sejam válidos
+      const horasFuncional = requerimento.horas_funcional?.toString() || '0';
+      const horasTecnico = requerimento.horas_tecnico?.toString() || '0';
+      
+      // Validar se os valores não são null, undefined ou NaN
+      if (!horasFuncional || horasFuncional === 'null' || horasFuncional === 'undefined') {
+        console.warn('Horas funcional inválida:', requerimento.horas_funcional);
+        return '0';
+      }
+      
+      if (!horasTecnico || horasTecnico === 'null' || horasTecnico === 'undefined') {
+        console.warn('Horas técnico inválida:', requerimento.horas_tecnico);
+        return '0';
+      }
+      
+      const resultado = somarHoras(horasFuncional, horasTecnico);
+      
+      // Verificar se o resultado é válido
+      if (!resultado || resultado === 'NaN' || resultado.includes('NaN')) {
+        console.warn('Resultado de soma inválido:', { horasFuncional, horasTecnico, resultado });
+        return '0';
+      }
+      
+      return resultado;
+    } catch (error) {
+      console.error('Erro ao calcular horas total:', error, {
+        horas_funcional: requerimento.horas_funcional,
+        horas_tecnico: requerimento.horas_tecnico
+      });
+      return '0';
+    }
+  };
+
+  // Calcular valor total estimado
+  const calcularValorTotal = () => {
+    try {
+      if (!requerValorHora(requerimento.tipo_cobranca)) {
+        return null;
+      }
+
+      const horasFuncionalStr = requerimento.horas_funcional?.toString() || '0';
+      const horasTecnicoStr = requerimento.horas_tecnico?.toString() || '0';
+      
+      // Validar se os valores não são inválidos
+      if (horasFuncionalStr === 'null' || horasFuncionalStr === 'undefined' || horasFuncionalStr === 'NaN') {
+        console.warn('Horas funcional inválida para cálculo de valor:', requerimento.horas_funcional);
+        return null;
+      }
+      
+      if (horasTecnicoStr === 'null' || horasTecnicoStr === 'undefined' || horasTecnicoStr === 'NaN') {
+        console.warn('Horas técnico inválida para cálculo de valor:', requerimento.horas_tecnico);
+        return null;
+      }
+
+      const horasFuncionalDecimal = converterParaHorasDecimal(horasFuncionalStr);
+      const horasTecnicoDecimal = converterParaHorasDecimal(horasTecnicoStr);
+      
+      // Verificar se as conversões resultaram em números válidos
+      if (isNaN(horasFuncionalDecimal) || isNaN(horasTecnicoDecimal)) {
+        console.warn('Conversão de horas resultou em NaN:', { horasFuncionalStr, horasTecnicoStr });
+        return null;
+      }
+      
+      const valorFuncional = (requerimento.valor_hora_funcional || 0) * horasFuncionalDecimal;
+      const valorTecnico = (requerimento.valor_hora_tecnico || 0) * horasTecnicoDecimal;
+      
+      const total = valorFuncional + valorTecnico;
+      
+      // Verificar se o total é válido
+      if (isNaN(total)) {
+        console.warn('Cálculo de valor total resultou em NaN:', { valorFuncional, valorTecnico });
+        return null;
+      }
+      
+      return total;
+    } catch (error) {
+      console.error('Erro ao calcular valor total:', error, {
+        horas_funcional: requerimento.horas_funcional,
+        horas_tecnico: requerimento.horas_tecnico,
+        valor_hora_funcional: requerimento.valor_hora_funcional,
+        valor_hora_tecnico: requerimento.valor_hora_tecnico
+      });
+      return null;
+    }
+  };
+
   // Classes CSS baseadas no tipo de cobrança
   const badgeClasses = getBadgeClasses(requerimento.tipo_cobranca);
   const icon = getCobrancaIcon(requerimento.tipo_cobranca);
+  const horasTotal = calcularHorasTotal();
+  const valorTotal = calcularValorTotal();
 
   return (
     <TooltipProvider>
@@ -89,8 +181,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
       >
         {/* Layout horizontal em flex - alinhado com cabeçalho */}
         <div className="flex items-center text-sm px-3">
-          {/* Checkbox - 5% */}
-          <div className="w-[5%] text-center pr-1">
+          {/* Checkbox - 4% */}
+          <div className="w-[4%] text-center pr-1">
             {onToggleSelection && (
               <Checkbox
                 checked={isSelected}
@@ -100,8 +192,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             )}
           </div>
 
-          {/* Tipo + Chamado - 16% */}
-          <div className="w-[16%] flex items-center gap-1 min-w-0 pr-2">
+          {/* Tipo + Chamado - 12% */}
+          <div className="w-[12%] flex items-center gap-1 min-w-0 pr-1">
             <span className="text-base flex-shrink-0">{icon}</span>
             <div className="min-w-0 flex-1">
               <div className="font-medium truncate text-xs">{requerimento.chamado}</div>
@@ -116,46 +208,74 @@ const RequerimentoCardComponent = function RequerimentoCard({
             </div>
           </div>
 
-          {/* Cliente - 24% */}
-          <div className="w-[24%] min-w-0 pr-2">
+          {/* Cliente - 16% */}
+          <div className="w-[16%] min-w-0 pr-1">
             <div className="truncate font-medium text-xs">{requerimento.cliente_nome}</div>
             <div className="text-xs text-gray-500 truncate">{requerimento.descricao}</div>
           </div>
 
-          {/* Módulo - 8% */}
-          <div className="w-[8%] text-center min-w-0 pr-1">
+          {/* Módulo - 6% */}
+          <div className="w-[6%] text-center min-w-0 pr-1">
             <div className="truncate text-xs">{requerimento.modulo}</div>
           </div>
 
-          {/* Linguagem - 8% */}
-          <div className="w-[8%] text-center min-w-0 pr-1">
+          {/* Linguagem - 6% */}
+          <div className="w-[6%] text-center min-w-0 pr-1">
             <div className="truncate text-xs">{requerimento.linguagem}</div>
           </div>
 
-          {/* Horas Func. - 7% */}
-          <div className="w-[7%] text-center pr-1">
+          {/* Horas Func. - 5% */}
+          <div className="w-[5%] text-center pr-1">
             <div className="text-xs">
               {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')}
             </div>
           </div>
 
-          {/* Horas Téc. - 7% */}
-          <div className="w-[7%] text-center pr-1">
+          {/* Horas Téc. - 5% */}
+          <div className="w-[5%] text-center pr-1">
             <div className="text-xs">
               {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
             </div>
           </div>
 
-          {/* Total - 6% */}
-          <div className="w-[6%] text-center font-medium pr-1">
-            <div className="text-xs">
-              {formatarHorasParaExibicao(requerimento.horas_total?.toString() || '0', 'HHMM')}
+          {/* Total - 5% */}
+          <div className="w-[5%] text-center font-medium pr-1">
+            <div className="text-xs font-bold">
+              {formatarHorasParaExibicao(horasTotal, 'HHMM')}
             </div>
           </div>
 
-          {/* Data Envio - 9% */}
-          <div className="w-[9%] text-center pr-1">
+          {/* Data Envio - 7% */}
+          <div className="w-[7%] text-center pr-1">
             <div className="text-xs">{formatDate(requerimento.data_envio)}</div>
+          </div>
+
+          {/* Data Aprovação - 7% */}
+          <div className="w-[7%] text-center pr-1">
+            <div className="text-xs">
+              {requerimento.data_aprovacao ? formatDate(requerimento.data_aprovacao) : '-'}
+            </div>
+          </div>
+
+          {/* Valor Total - 8% */}
+          <div className="w-[8%] text-center pr-1">
+            <div className="text-xs">
+              {valorTotal !== null ? (
+                <span className="font-medium text-green-600">
+                  R$ {valorTotal.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </span>
+              ) : (
+                '-'
+              )}
+            </div>
+          </div>
+
+          {/* Mês/Ano - 8% */}
+          <div className="w-[8%] text-center pr-1">
+            <div className="text-xs font-bold">{requerimento.mes_cobranca}</div>
           </div>
 
           {/* Ações - 10% */}

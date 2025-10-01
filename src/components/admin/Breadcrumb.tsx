@@ -21,7 +21,9 @@ const Breadcrumb = () => {
     'historico-books': 'Histórico de Books',
     'configurar-permissoes-client-books': 'Configurar Permissões - Client Books',
     'disparos-personalizados': 'Disparos Personalizados',
-    'monitoramento-vigencias': 'Monitoramento de Vigências'
+    'monitoramento-vigencias': 'Monitoramento de Vigências',
+    'lancar-requerimentos': 'Lançar Requerimentos',
+    'faturar-requerimentos': 'Faturar Requerimentos'
   };
 
   return (

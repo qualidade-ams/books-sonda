@@ -74,11 +74,11 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
             <TableCell>{group.description || '-'}</TableCell>
             <TableCell>
               {group.is_default_admin ? (
-                <Badge variant="default">
+                <Badge variant="default" className="text-blue-600 border-blue-600 bg-blue-50">
                   Administrador
                 </Badge>
               ) : (
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-blue-600 border-blue-600 bg-blue-50">
                   Personalizado
                 </Badge>
               )}

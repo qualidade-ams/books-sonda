@@ -25,6 +25,8 @@ export interface Requerimento {
   // Campos de ticket (para Banco de Horas)
   tem_ticket?: boolean;
   quantidade_tickets?: number;
+  // Campos de anexo
+  anexos?: any[];
   status: StatusRequerimento;
   enviado_faturamento: boolean;
   data_envio_faturamento?: string;
@@ -36,6 +38,7 @@ export interface Requerimento {
 export type ModuloType = 'CE Plus' |'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
 export type TipoCobrancaType = 'Selecione' | 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
+export type TipoCobrancaFaturamentoType = Exclude<TipoCobrancaType, 'Selecione'>; // Tipo para faturamento sem 'Selecione'
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
 // Constantes para opções de select
@@ -151,10 +154,10 @@ export interface EstatisticasRequerimentos {
 // Interface para filtros
 export interface FiltrosRequerimentos {
   busca?: string;
-  modulo?: ModuloType;
-  linguagem?: LinguagemType;
+  modulo?: ModuloType | ModuloType[]; // Suporte a múltipla seleção
+  linguagem?: LinguagemType | LinguagemType[]; // Suporte a múltipla seleção
   status?: StatusRequerimento;
-  tipo_cobranca?: TipoCobrancaType;
+  tipo_cobranca?: TipoCobrancaType | TipoCobrancaType[]; // Suporte a múltipla seleção
   mes_cobranca?: string; // Formato MM/YYYY
   cliente_id?: string;
   data_inicio?: string;

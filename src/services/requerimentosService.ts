@@ -330,6 +330,50 @@ export class RequerimentosService {
   }
 
   /**
+   * Rejeitar requerimento (voltar para status lançado)
+   */
+  async rejeitarRequerimento(id: string): Promise<void> {
+    if (!id?.trim()) {
+      throw new Error('ID é obrigatório');
+    }
+
+    // Verificar se requerimento existe
+    const requerimento = await this.obterRequerimentoPorId(id);
+    if (!requerimento) {
+      throw new Error('Requerimento não encontrado');
+    }
+
+    // Verificar se está no status correto para rejeição
+    if (requerimento.status !== 'enviado_faturamento') {
+      throw new Error('Apenas requerimentos enviados para faturamento podem ser rejeitados');
+    }
+
+    console.log('Rejeitando requerimento:', {
+      id,
+      chamado: requerimento.chamado,
+      mes_cobranca: requerimento.mes_cobranca,
+      status_atual: requerimento.status
+    });
+
+    // Voltar para status lançado
+    const { error } = await supabase
+      .from('requerimentos')
+      .update({
+        status: 'lancado',
+        enviado_faturamento: false,
+        data_envio_faturamento: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Erro ao rejeitar requerimento: ${error.message}`);
+    }
+
+    console.log('Requerimento rejeitado com sucesso:', id);
+  }
+
+  /**
    * Buscar clientes da tabela empresas_clientes
    */
   async buscarClientes(): Promise<ClienteRequerimento[]> {

@@ -219,7 +219,7 @@ const GruposTable: React.FC<GruposTableProps> = ({
                   </TableCell>
 
                   <TableCell>
-                    <Badge variant="outline" className="flex items-center space-x-1">
+                    <Badge variant="outline" className="flex items-center space-x-1 text-blue-600 border-blue-600">
                       <Users className="h-3 w-3" />
                       <span>{grupo.emails.length}</span>
                     </Badge>

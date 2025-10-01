@@ -3,6 +3,7 @@ import { emailService, EmailData } from './emailService';
 import type {
   Requerimento,
   TipoCobrancaType,
+  TipoCobrancaFaturamentoType,
   FaturamentoData,
   EmailFaturamento
 } from '@/types/requerimentos';
@@ -12,7 +13,7 @@ export interface RelatorioFaturamento {
   mes_cobranca: string; // Formato MM/YYYY
   ano_cobranca: number;
   requerimentos_por_tipo: {
-    [key in TipoCobrancaType]: {
+    [key in TipoCobrancaFaturamentoType]: {
       quantidade: number;
       horas_total: number;
       requerimentos: Requerimento[];
@@ -29,7 +30,7 @@ export interface EstatisticasFaturamento {
   total_horas: number;
   valor_estimado?: number;
   tipos_cobranca: {
-    [key in TipoCobrancaType]: {
+    [key in TipoCobrancaFaturamentoType]: {
       quantidade: number;
       horas: number;
       percentual: number;
@@ -100,9 +101,16 @@ export class FaturamentoService {
 
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
-      grupos[tipo].quantidade += 1;
-      grupos[tipo].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
-      grupos[tipo].requerimentos.push(req);
+      // Pular requerimentos com tipo 'Selecione' (não deveria existir no banco, mas por segurança)
+      if (tipo === 'Selecione') {
+        console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
+        return;
+      }
+      
+      const tipoFaturamento = tipo as TipoCobrancaFaturamentoType;
+      grupos[tipoFaturamento].quantidade += 1;
+      grupos[tipoFaturamento].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+      grupos[tipoFaturamento].requerimentos.push(req);
     });
 
     return grupos;
@@ -127,18 +135,24 @@ export class FaturamentoService {
       }
     };
 
-    // Calcular totais por tipo
+    // Calcular totais por tipo (filtrar 'Selecione' se existir)
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
+      // Pular requerimentos com tipo 'Selecione' (não deveria existir no banco, mas por segurança)
+      if (tipo === 'Selecione') {
+        console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
+        return;
+      }
+      
       const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
-      totais.tipos_cobranca[tipo].quantidade += 1;
-      totais.tipos_cobranca[tipo].horas += horas;
+      totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].quantidade += 1;
+      totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].horas += horas;
       totais.total_horas += horas;
     });
 
     // Calcular percentuais
     Object.keys(totais.tipos_cobranca).forEach(tipo => {
-      const tipoKey = tipo as TipoCobrancaType;
+      const tipoKey = tipo as TipoCobrancaFaturamentoType;
       if (totais.total_horas > 0) {
         totais.tipos_cobranca[tipoKey].percentual =
           (totais.tipos_cobranca[tipoKey].horas / totais.total_horas) * 100;
@@ -188,7 +202,7 @@ export class FaturamentoService {
     const tiposComRequerimentos = Object.entries(relatorio.requerimentos_por_tipo)
       .filter(([_, dados]) => dados.quantidade > 0);
 
-    const corPorTipo: { [key in TipoCobrancaType]: string } = {
+    const corPorTipo: { [key in TipoCobrancaFaturamentoType]: string } = {
       'Banco de Horas': '#3B82F6',
       'Cobro Interno': '#10B981',
       'Contrato': '#6B7280',
@@ -375,7 +389,7 @@ export class FaturamentoService {
     </div>
     ` : tiposComRequerimentos.map(([tipo, dados]) => `
     <div class="tipo-section">
-        <div class="tipo-header" style="background-color: ${corPorTipo[tipo as TipoCobrancaType]};">
+        <div class="tipo-header" style="background-color: ${corPorTipo[tipo as TipoCobrancaFaturamentoType]};">
             <span>${tipo}</span>
             <div class="tipo-stats">
                 ${dados.quantidade} requerimento${dados.quantidade !== 1 ? 's' : ''} • 

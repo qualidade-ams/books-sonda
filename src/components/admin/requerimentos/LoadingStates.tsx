@@ -55,49 +55,64 @@ export function RequerimentoCardSkeleton() {
     <div className="py-2 px-3 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2">
         {/* Checkbox */}
-        <div className="w-[5%] text-center pr-1">
+        <div className="w-[4%] text-center pr-1">
           <Skeleton className="h-4 w-4 mx-auto rounded" />
         </div>
         
         {/* Chamado */}
-        <div className="w-[16%] pr-2">
+        <div className="w-[12%] pr-1">
           <Skeleton className="h-4 w-20 mb-1" />
           <Skeleton className="h-3 w-16" />
         </div>
         
         {/* Cliente */}
-        <div className="w-[24%] pr-2">
-          <Skeleton className="h-4 w-32 mb-1" />
-          <Skeleton className="h-3 w-24" />
+        <div className="w-[16%] pr-1">
+          <Skeleton className="h-4 w-24 mb-1" />
+          <Skeleton className="h-3 w-20" />
         </div>
         
         {/* Módulo */}
-        <div className="w-[8%] text-center pr-1">
-          <Skeleton className="h-3 w-12 mx-auto" />
+        <div className="w-[6%] text-center pr-1">
+          <Skeleton className="h-3 w-10 mx-auto" />
         </div>
         
         {/* Linguagem */}
+        <div className="w-[6%] text-center pr-1">
+          <Skeleton className="h-3 w-10 mx-auto" />
+        </div>
+        
+        {/* Horas Func. */}
+        <div className="w-[5%] text-center pr-1">
+          <Skeleton className="h-3 w-8 mx-auto" />
+        </div>
+        
+        {/* Horas Téc. */}
+        <div className="w-[5%] text-center pr-1">
+          <Skeleton className="h-3 w-8 mx-auto" />
+        </div>
+        
+        {/* Total */}
+        <div className="w-[5%] text-center pr-1">
+          <Skeleton className="h-3 w-8 mx-auto" />
+        </div>
+        
+        {/* Data Envio */}
+        <div className="w-[7%] text-center pr-1">
+          <Skeleton className="h-3 w-14 mx-auto" />
+        </div>
+        
+        {/* Data Aprovação */}
+        <div className="w-[7%] text-center pr-1">
+          <Skeleton className="h-3 w-14 mx-auto" />
+        </div>
+        
+        {/* Mês/Ano */}
         <div className="w-[8%] text-center pr-1">
           <Skeleton className="h-3 w-12 mx-auto" />
         </div>
         
-        {/* Horas Func. */}
-        <div className="w-[7%] text-center pr-1">
-          <Skeleton className="h-3 w-6 mx-auto" />
-        </div>
-        
-        {/* Horas Téc. */}
-        <div className="w-[7%] text-center pr-1">
-          <Skeleton className="h-3 w-6 mx-auto" />
-        </div>
-        
-        {/* Total */}
-        <div className="w-[6%] text-center pr-1">
-          <Skeleton className="h-3 w-6 mx-auto" />
-        </div>
-        
-        {/* Data Envio */}
-        <div className="w-[9%] text-center pr-1">
+        {/* Valor Total */}
+        <div className="w-[8%] text-center pr-1">
           <Skeleton className="h-3 w-16 mx-auto" />
         </div>
         

@@ -51,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
-  
+
   // Função para determinar qual seção deve estar expandida baseada na rota atual
   const getCurrentSection = () => {
     const path = location.pathname;
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     } catch (error) {
       console.warn('Erro ao carregar estado da sidebar:', error);
     }
-    
+
     // Estado padrão: todas as seções expandidas
     return ['requerimentos', 'comunicacao', 'clientes', 'configuracoes', 'administracao'];
   });
@@ -92,19 +92,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     try {
       console.log('Sidebar: Iniciando logout...');
       await signOut();
-      
+
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
       });
-      
+
       // Aguardar um pouco para garantir que o estado seja atualizado
       setTimeout(() => {
         console.log('Sidebar: Redirecionando para /login');
         // Usar window.location para forçar o redirecionamento
         window.location.href = '/';
       }, 500);
-      
+
     } catch (error) {
       console.error('Sidebar: Erro no logout:', error);
       toast({
@@ -117,19 +117,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   const toggleSection = (sectionKey: string) => {
     if (isCollapsed) return; // Não permitir toggle quando colapsado
-    
+
     setExpandedSections(prev => {
-      const newState = prev.includes(sectionKey) 
+      const newState = prev.includes(sectionKey)
         ? prev.filter(key => key !== sectionKey)
         : [...prev, sectionKey];
-      
+
       // Salvar no localStorage
       try {
         localStorage.setItem('sidebar-expanded-sections', JSON.stringify(newState));
       } catch (error) {
         console.warn('Erro ao salvar estado da sidebar:', error);
       }
-      
+
       return newState;
     });
   };
@@ -138,22 +138,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const handleNavigation = (path: string) => {
     // Determinar qual seção deve estar expandida para esta rota
     const targetSection = getCurrentSectionForPath(path);
-    
+
     if (targetSection) {
       setExpandedSections(prev => {
         const newState = prev.includes(targetSection) ? prev : [...prev, targetSection];
-        
+
         // Salvar no localStorage
         try {
           localStorage.setItem('sidebar-expanded-sections', JSON.stringify(newState));
         } catch (error) {
           console.warn('Erro ao salvar estado da sidebar:', error);
         }
-        
+
         return newState;
       });
     }
-    
+
     // Navegar após garantir que a seção esteja expandida
     navigate(path);
   };
@@ -313,7 +313,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       if (item.screenKey) {
         return hasPermission(item.screenKey, 'view');
       }
-      
+
       // Se tem filhos, filtrar os filhos
       if (item.children) {
         const filteredChildren = filterMenuItems(item.children);
@@ -324,7 +324,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         }
         return false;
       }
-      
+
       // Itens sem screenKey nem filhos (como separadores)
       return true;
     });
@@ -339,14 +339,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       setExpandedSections(prev => {
         if (!prev.includes(currentSection)) {
           const newState = [...prev, currentSection];
-          
+
           // Salvar no localStorage
           try {
             localStorage.setItem('sidebar-expanded-sections', JSON.stringify(newState));
           } catch (error) {
             console.warn('Erro ao salvar estado da sidebar:', error);
           }
-          
+
           return newState;
         }
         return prev;
@@ -356,7 +356,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   return (
     <div className={cn(
-      "bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10 overflow-hidden",
+      "bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10",
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Header com Logo */}
@@ -400,7 +400,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             .replace(/[\u0300-\u036f]/g, '') // Remove acentos
             .replace(/\s+/g, '-');
           const isExpanded = expandedSections.includes(sectionKey);
-          
+
           // Se é um item simples (sem filhos)
           if (!item.children || item.children.length === 0) {
             const isActive = item.path && location.pathname === item.path;
@@ -445,7 +445,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 variant="ghost"
                 className={cn(
                   "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0",
-                  isCollapsed ? "justify-center px-2" : "justify-between px-3"
+                  isCollapsed ? "justify-center px-4" : "justify-between px-3"
                 )}
                 onClick={() => toggleSection(sectionKey)}
               >

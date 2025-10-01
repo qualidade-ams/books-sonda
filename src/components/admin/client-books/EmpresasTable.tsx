@@ -89,7 +89,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     return (
       <div className="flex flex-wrap gap-1">
         {produtos.map((produto, index) => (
-          <Badge key={index} variant="outline" className="text-xs">
+          <Badge key={index} variant="outline" className="text-xs text-blue-600 border-blue-600">
             {produtoLabels[produto.produto as keyof typeof produtoLabels] || produto.produto}
           </Badge>
         ))}

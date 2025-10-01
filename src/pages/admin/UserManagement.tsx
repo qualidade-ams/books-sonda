@@ -714,7 +714,7 @@ const UserManagement = () => {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         {user.group_name ? (
-                          <Badge variant="outline">{user.group_name}</Badge>
+                          <Badge variant="outline" className="text-blue-600 border-blue-600">{user.group_name}</Badge>
                         ) : (
                           <span className="text-gray-500">Sem grupo</span>
                         )}

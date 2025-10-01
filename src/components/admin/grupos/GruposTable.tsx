@@ -27,11 +27,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Mail, 
+import {
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Mail,
   Users,
   Eye,
   Filter,
@@ -53,10 +53,10 @@ interface GruposTableProps {
   onSearchChange?: (term: string) => void;
 }
 
-export function GruposTable({ 
-  grupos, 
-  onEdit, 
-  onDelete, 
+export function GruposTable({
+  grupos,
+  onEdit,
+  onDelete,
   onView,
   isLoading = false,
   isDeleting = false,
@@ -181,8 +181,8 @@ export function GruposTable({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <Badge variant="outline">
+                        <Mail className="h-4 w-4 text-blue-600" />
+                        <Badge variant="outline" className="text-blue-600 border-blue-600">
                           {grupo.emails?.length || 0} e-mail{(grupo.emails?.length || 0) !== 1 ? 's' : ''}
                         </Badge>
                       </div>
@@ -191,39 +191,39 @@ export function GruposTable({
                     <TableCell>
                       <div className="flex space-x-2">
                         <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="view">
-                          <Button                       
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onView(grupo)}
-                          className='h-8 w-8 p-0'
-                          title="Editar cliente"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </ProtectedAction>
-                      <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEdit(grupo)}
-                          className='h-8 w-8 p-0'
-                          title="Editar cliente"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </ProtectedAction>
-                      <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteClick(grupo)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                          title="Excluir cliente"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </ProtectedAction>
-                    </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onView(grupo)}
+                            className='h-8 w-8 p-0'
+                            title="Editar cliente"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                        <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onEdit(grupo)}
+                            className='h-8 w-8 p-0'
+                            title="Editar cliente"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                        <ProtectedAction screenKey="grupos_responsaveis" requiredLevel="edit">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteClick(grupo)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            title="Excluir cliente"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

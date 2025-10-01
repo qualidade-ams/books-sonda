@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect, MultiSelectOption } from '@/components/ui/multi-select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 import {
   Dialog,
   DialogContent,
@@ -85,6 +88,24 @@ const LancarRequerimentos = () => {
     data_fim: undefined
   });
 
+  // Opções para multi-select
+  const moduloOptions: MultiSelectOption[] = MODULO_OPTIONS.map(opt => ({
+    value: opt.value,
+    label: opt.label
+  }));
+
+  const linguagemOptions: MultiSelectOption[] = LINGUAGEM_OPTIONS.map(opt => ({
+    value: opt.value,
+    label: opt.label
+  }));
+
+  const tipoCobrancaOptions: MultiSelectOption[] = TIPO_COBRANCA_OPTIONS
+    .filter(opt => opt.value !== 'Selecione') // Filtrar 'Selecione'
+    .map(opt => ({
+      value: opt.value,
+      label: opt.label
+    }));
+
   // Hooks
   const {
     data: requerimentos = [],
@@ -115,10 +136,22 @@ const LancarRequerimentos = () => {
         if (!matchBusca) return false;
       }
 
-      // Filtros específicos
-      if (filtros.modulo && req.modulo !== filtros.modulo) return false;
-      if (filtros.linguagem && req.linguagem !== filtros.linguagem) return false;
-      if (filtros.tipo_cobranca && req.tipo_cobranca !== filtros.tipo_cobranca) return false;
+      // Filtros específicos (suporte a múltipla seleção)
+      if (filtros.modulo) {
+        const modulos = Array.isArray(filtros.modulo) ? filtros.modulo : [filtros.modulo];
+        if (!modulos.includes(req.modulo)) return false;
+      }
+      
+      if (filtros.linguagem) {
+        const linguagens = Array.isArray(filtros.linguagem) ? filtros.linguagem : [filtros.linguagem];
+        if (!linguagens.includes(req.linguagem)) return false;
+      }
+      
+      if (filtros.tipo_cobranca) {
+        const tipos = Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : [filtros.tipo_cobranca];
+        if (!tipos.includes(req.tipo_cobranca)) return false;
+      }
+      
       if (filtros.mes_cobranca && req.mes_cobranca !== filtros.mes_cobranca) return false;
 
       // Filtros de data
@@ -145,21 +178,33 @@ const LancarRequerimentos = () => {
   // Estatísticas dos requerimentos filtrados
   const statsRequerimentos = useMemo(() => {
     const total = requerimentosFiltrados.length;
-    const totalHoras = requerimentosFiltrados.reduce((acc, req) => acc + Number(req.horas_total || 0), 0);
+    
+    // Somar horas corretamente usando somarHoras
+    let totalHorasString = '0:00';
+    requerimentosFiltrados.forEach(req => {
+      if (req.horas_total) {
+        totalHorasString = somarHoras(totalHorasString, req.horas_total.toString());
+      }
+    });
 
     // Agrupar por tipo de cobrança
     const porTipo = requerimentosFiltrados.reduce((acc, req) => {
       if (!acc[req.tipo_cobranca]) {
-        acc[req.tipo_cobranca] = { quantidade: 0, horas: 0 };
+        acc[req.tipo_cobranca] = { quantidade: 0, horas: '0:00' };
       }
       acc[req.tipo_cobranca].quantidade++;
-      acc[req.tipo_cobranca].horas += Number(req.horas_total || 0);
+      if (req.horas_total) {
+        acc[req.tipo_cobranca].horas = somarHoras(
+          acc[req.tipo_cobranca].horas, 
+          req.horas_total.toString()
+        );
+      }
       return acc;
-    }, {} as Record<string, { quantidade: number; horas: number }>);
+    }, {} as Record<string, { quantidade: number; horas: string }>);
 
     return {
       total,
-      totalHoras,
+      totalHoras: totalHorasString,
       porTipo
     };
   }, [requerimentosFiltrados]);
@@ -302,21 +347,11 @@ const LancarRequerimentos = () => {
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
               Lançar Requerimentos
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Gerencie especificações funcionais de chamados técnicos
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
             <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
               <Button
                 onClick={() => setShowCreateModal(true)}
@@ -361,7 +396,7 @@ const LancarRequerimentos = () => {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                    {statsRequerimentos.totalHoras.toFixed(1)}h
+                    {formatarHorasParaExibicao(statsRequerimentos.totalHoras, 'completo')}
                   </div>
                 </CardContent>
               </Card>
@@ -393,49 +428,40 @@ const LancarRequerimentos = () => {
           )}
         </div>
 
-        {/* Ações em lote */}
+        {/* Ações Principais */}
+        <div className="flex flex-wrap gap-4 items-center justify-end">
+          <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
+            <Button
+              onClick={handleEnviarSelecionados}
+              disabled={enviarMultiplos.isPending || selectedRequerimentos.length === 0}
+              className="flex items-center gap-2"
+              title={selectedRequerimentos.length === 0 ? 'Nenhum requerimento selecionado' : undefined}
+            >
+              <Send className="h-4 w-4" />
+              {enviarMultiplos.isPending ? 'Enviando...' : `Enviar para Faturamento (${selectedRequerimentos.length})`}
+            </Button>
+          </ProtectedAction>
+        </div>
+
+        {/* Feedback de seleção */}
         {selectedRequerimentos.length > 0 && (
-          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-            <CardContent className="pt-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    {selectedRequerimentos.length} selecionado(s)
-                  </Badge>
-                  <span className="text-sm text-blue-700 dark:text-blue-300">
-                    Ações em lote disponíveis
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSelection}
-                  >
-                    Limpar Seleção
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleEnviarSelecionados}
-                    disabled={enviarMultiplos.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {enviarMultiplos.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Enviar para Faturamento
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                {selectedRequerimentos.length} selecionado(s)
+              </Badge>
+              <span className="text-sm text-blue-700 dark:text-blue-300">
+                Requerimentos selecionados para envio
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearSelection}
+            >
+              Limpar Seleção
+            </Button>
+          </div>
         )}
 
         {/* Lista de Requerimentos */}
@@ -519,111 +545,59 @@ const LancarRequerimentos = () => {
                 </div>
 
                 {/* Filtros em Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Módulo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Módulo - Múltipla Seleção */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Módulo</Label>
-                    <Select
-                      value={filtros.modulo || '__all_modules__'}
-                      onValueChange={(value) => handleFiltroChange('modulo', value)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Todos os módulos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all_modules__">Todos os módulos</SelectItem>
-                        {MODULO_OPTIONS.map((modulo) => (
-                          <SelectItem key={modulo.value} value={modulo.value}>
-                            {modulo.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="h-10">
+                      <MultiSelect
+                        options={moduloOptions}
+                        value={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
+                        onChange={(values) => handleFiltroChange('modulo', values.length > 0 ? values : undefined)}
+                        placeholder="Todos os módulos"
+                        maxDisplay={2}
+                      />
+                    </div>
                   </div>
 
-                  {/* Linguagem */}
+                  {/* Linguagem - Múltipla Seleção */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Linguagem</Label>
-                    <Select
-                      value={filtros.linguagem || '__all_languages__'}
-                      onValueChange={(value) => handleFiltroChange('linguagem', value)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Todas as linguagens" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all_languages__">Todas as linguagens</SelectItem>
-                        {LINGUAGEM_OPTIONS.map((linguagem) => (
-                          <SelectItem key={linguagem.value} value={linguagem.value}>
-                            {linguagem.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="h-10">
+                      <MultiSelect
+                        options={linguagemOptions}
+                        value={Array.isArray(filtros.linguagem) ? filtros.linguagem : filtros.linguagem ? [filtros.linguagem] : []}
+                        onChange={(values) => handleFiltroChange('linguagem', values.length > 0 ? values : undefined)}
+                        placeholder="Todas as linguagens"
+                        maxDisplay={2}
+                      />
+                    </div>
                   </div>
 
-                  {/* Tipo de Cobrança */}
+                  {/* Tipo de Cobrança - Múltipla Seleção */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Tipo de Cobrança</Label>
-                    <Select
-                      value={filtros.tipo_cobranca || '__all_types__'}
-                      onValueChange={(value) => handleFiltroChange('tipo_cobranca', value)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Todos os tipos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all_types__">Todos os tipos</SelectItem>
-                        {TIPO_COBRANCA_OPTIONS.map((tipo) => (
-                          <SelectItem key={tipo.value} value={tipo.value}>
-                            {tipo.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="h-10">
+                      <MultiSelect
+                        options={tipoCobrancaOptions}
+                        value={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
+                        onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
+                        placeholder="Todos os tipos"
+                        maxDisplay={2}
+                      />
+                    </div>
                   </div>
 
-                  {/* Mês de Cobrança */}
+                  {/* Mês/Ano de Cobrança - Seletor de Mês/Ano */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Mês de Cobrança</Label>
-                    <Select
-                      value={filtros.mes_cobranca?.toString() || '__all_months__'}
-                      onValueChange={(value) => handleFiltroChange('mes_cobranca', value ? parseInt(value) : undefined)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Todos os meses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all_months__">Todos os meses</SelectItem>
-                        {mesesOptions.map((mes) => (
-                          <SelectItem key={mes.value} value={mes.value.toString()}>
-                            {mes.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Data Início */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Data Início</Label>
-                    <Input
-                      type="date"
-                      value={filtros.data_inicio || ''}
-                      onChange={(e) => handleFiltroChange('data_inicio', e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-
-                  {/* Data Fim */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Data Fim</Label>
-                    <Input
-                      type="date"
-                      value={filtros.data_fim || ''}
-                      onChange={(e) => handleFiltroChange('data_fim', e.target.value)}
-                      className="h-8"
-                    />
+                    <Label className="text-sm font-medium">Mês/Ano de Cobrança</Label>
+                    <div className="h-10">
+                      <MonthYearPicker
+                        value={filtros.mes_cobranca}
+                        onChange={(value) => handleFiltroChange('mes_cobranca', value)}
+                        placeholder="Todos os meses"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -645,7 +619,7 @@ const LancarRequerimentos = () => {
             {!isLoading && requerimentosFiltrados.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border">
                 <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  <div className="w-[5%] text-center pr-1">
+                  <div className="w-[4%] text-center pr-1">
                     <Checkbox
                       checked={selectedRequerimentos.length === requerimentosFiltrados.length && requerimentosFiltrados.length > 0}
                       onCheckedChange={(checked) => {
@@ -658,14 +632,17 @@ const LancarRequerimentos = () => {
                       aria-label="Selecionar todos os requerimentos"
                     />
                   </div>
-                  <div className="w-[16%] pr-2">Chamado</div>
-                  <div className="w-[24%] pr-2">Cliente</div>
-                  <div className="w-[8%] text-center pr-1">Módulo</div>
-                  <div className="w-[8%] text-center pr-1">Linguagem</div>
-                  <div className="w-[7%] text-center pr-1">Horas Func.</div>
-                  <div className="w-[7%] text-center pr-1">Horas Téc.</div>
-                  <div className="w-[6%] text-center pr-1">Total</div>
-                  <div className="w-[9%] text-center pr-1">Data Envio</div>
+                  <div className="w-[12%] pr-1">Chamado</div>
+                  <div className="w-[16%] pr-1">Cliente</div>
+                  <div className="w-[6%] text-center pr-1">Módulo</div>
+                  <div className="w-[6%] text-center pr-1">Linguagem</div>
+                  <div className="w-[5%] text-center pr-1">H.Func</div>
+                  <div className="w-[5%] text-center pr-1">H.Téc</div>
+                  <div className="w-[5%] text-center pr-1">Total</div>
+                  <div className="w-[7%] text-center pr-1">Data Envio</div>
+                  <div className="w-[7%] text-center pr-1">Data Aprov.</div> 
+                  <div className="w-[8%] text-center pr-1">Valor Total</div>
+                  <div className="w-[8%] text-center pr-1">Mês/Ano</div>
                   <div className="w-[10%] text-center">Ações</div>
                 </div>
               </div>

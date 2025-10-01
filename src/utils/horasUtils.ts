@@ -17,7 +17,7 @@ export interface HorasConvertidas {
  * @returns Número total de minutos
  */
 export function converterHorasParaMinutos(horasString: string): number {
-  if (!horasString || horasString.trim() === '') {
+  if (!horasString || horasString.trim() === '' || horasString === 'null' || horasString === 'undefined' || horasString === 'NaN') {
     return 0;
   }
 
@@ -26,19 +26,33 @@ export function converterHorasParaMinutos(horasString: string): number {
   // Se contém ":", trata como HH:MM
   if (valor.includes(':')) {
     const [horasStr, minutosStr] = valor.split(':');
-    const horas = parseInt(horasStr) || 0;
-    const minutos = parseInt(minutosStr) || 0;
+    const horas = parseInt(horasStr);
+    const minutos = parseInt(minutosStr);
+    
+    // Verificar se as conversões são válidas
+    if (isNaN(horas) || isNaN(minutos)) {
+      console.warn('Conversão de HH:MM resultou em NaN:', { horasStr, minutosStr, horas, minutos });
+      return 0;
+    }
     
     // Validação básica
     if (minutos >= 60) {
-      throw new Error('Minutos devem ser menores que 60');
+      console.warn('Minutos >= 60, corrigindo:', { horas, minutos });
+      const horasAdicionais = Math.floor(minutos / 60);
+      const minutosRestantes = minutos % 60;
+      return ((horas + horasAdicionais) * 60) + minutosRestantes;
     }
     
     return (horas * 60) + minutos;
   }
 
   // Se não contém ":", trata como número inteiro de horas
-  const horasInteiras = parseInt(valor) || 0;
+  const horasInteiras = parseInt(valor);
+  if (isNaN(horasInteiras)) {
+    console.warn('Conversão de horas inteiras resultou em NaN:', valor);
+    return 0;
+  }
+  
   return horasInteiras * 60;
 }
 
@@ -172,11 +186,48 @@ export function analisarHoras(horasString: string): HorasConvertidas {
  * @returns String no formato HH:MM com o total
  */
 export function somarHoras(horas1: string, horas2: string): string {
-  const minutos1 = converterHorasParaMinutos(horas1);
-  const minutos2 = converterHorasParaMinutos(horas2);
-  const totalMinutos = minutos1 + minutos2;
-  
-  return converterMinutosParaHoras(totalMinutos);
+  try {
+    // Validar entradas
+    if (!horas1 || horas1 === 'null' || horas1 === 'undefined' || horas1 === 'NaN') {
+      console.warn('Horas1 inválida na soma:', horas1);
+      horas1 = '0';
+    }
+    
+    if (!horas2 || horas2 === 'null' || horas2 === 'undefined' || horas2 === 'NaN') {
+      console.warn('Horas2 inválida na soma:', horas2);
+      horas2 = '0';
+    }
+    
+    const minutos1 = converterHorasParaMinutos(horas1);
+    const minutos2 = converterHorasParaMinutos(horas2);
+    
+    // Verificar se as conversões resultaram em números válidos
+    if (isNaN(minutos1) || isNaN(minutos2)) {
+      console.warn('Conversão para minutos resultou em NaN:', { horas1, horas2, minutos1, minutos2 });
+      return '0:00';
+    }
+    
+    const totalMinutos = minutos1 + minutos2;
+    
+    // Verificar se o total é válido
+    if (isNaN(totalMinutos)) {
+      console.warn('Total de minutos é NaN:', { minutos1, minutos2, totalMinutos });
+      return '0:00';
+    }
+    
+    const resultado = converterMinutosParaHoras(totalMinutos);
+    
+    // Verificar se o resultado é válido
+    if (!resultado || resultado.includes('NaN')) {
+      console.warn('Resultado da conversão é inválido:', resultado);
+      return '0:00';
+    }
+    
+    return resultado;
+  } catch (error) {
+    console.error('Erro na função somarHoras:', error, { horas1, horas2 });
+    return '0:00';
+  }
 }
 
 /**

@@ -20,7 +20,7 @@ export const REQUERIMENTOS_QUERY_KEYS = {
   details: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'detail'] as const,
   detail: (id: string) => [...REQUERIMENTOS_QUERY_KEYS.details(), id] as const,
   naoEnviados: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'nao-enviados'] as const,
-  faturamento: (mes?: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes] as const,
+  faturamento: (mes?: number, ano?: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes, ano] as const,
   clientes: () => ['clientes-requerimentos'] as const,
   estatisticas: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'estatisticas', filtros] as const
 };
@@ -52,10 +52,15 @@ export function useRequerimentosNaoEnviados() {
 /**
  * Hook para buscar requerimentos para faturamento
  */
-export function useRequerimentosFaturamento(mes?: number) {
+export function useRequerimentosFaturamento(mes?: number, ano?: number) {
+  // Converter mês e ano para formato MM/YYYY se fornecidos
+  const mesCobranca = mes && ano ? `${String(mes).padStart(2, '0')}/${ano}` : undefined;
+  
+  console.log('useRequerimentosFaturamento - Parâmetros:', { mes, ano, mesCobranca });
+  
   return useQuery({
-    queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes),
-    queryFn: () => requerimentosService.gerarDadosFaturamento(mes),
+    queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes, ano),
+    queryFn: () => requerimentosService.gerarDadosFaturamento(mesCobranca),
     staleTime: 1000 * 60 * 5, // 5 minutos
     gcTime: 1000 * 60 * 10, // 10 minutos
   });
@@ -252,6 +257,36 @@ export function useEnviarMultiplosParaFaturamento() {
 }
 
 /**
+ * Hook para rejeitar requerimento (voltar para lançado)
+ */
+export function useRejeitarRequerimento() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => requerimentosService.rejeitarRequerimento(id),
+    onSuccess: (_, id) => {
+      // Invalidar todas as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
+
+      // Adicionar de volta ao cache de não enviados
+      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.naoEnviados() });
+
+      // Invalidar cache de faturamento
+      queryClient.invalidateQueries({ 
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      });
+
+      toast.success('Requerimento rejeitado com sucesso!');
+    },
+    onError: (error: unknown) => {
+      console.error('Erro ao rejeitar requerimento:', error);
+      const message = getRequerimentoErrorMessage(error);
+      toast.error(`Erro ao rejeitar requerimento: ${message}`);
+    }
+  });
+}
+
+/**
  * Hook para invalidar cache de requerimentos
  */
 export function useInvalidateRequerimentos() {
@@ -270,8 +305,8 @@ export function useInvalidateRequerimentos() {
     invalidateNaoEnviados: () => {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.naoEnviados() });
     },
-    invalidateFaturamento: (mes?: number) => {
-      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes) });
+    invalidateFaturamento: (mes?: number, ano?: number) => {
+      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.faturamento(mes, ano) });
     },
     invalidateClientes: () => {
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.clientes() });
@@ -303,6 +338,7 @@ export function useRequerimentosManager() {
     deleteRequerimento: useDeleteRequerimento(),
     enviarParaFaturamento: useEnviarParaFaturamento(),
     enviarMultiplosParaFaturamento: useEnviarMultiplosParaFaturamento(),
+    rejeitarRequerimento: useRejeitarRequerimento(),
     
     // Cache management
     invalidate

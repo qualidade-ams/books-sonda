@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { 
-  Send, 
-  Mail, 
-  FileText, 
-  Calendar, 
-  Clock, 
-  DollarSign, 
+import {
+  Send,
+  Mail,
+  FileText,
+  Calendar,
+  Clock,
+  DollarSign,
   TrendingUp,
   Filter,
   RefreshCw,
@@ -57,8 +57,8 @@ import {
   requerValorHora
 } from '@/types/requerimentos';
 
-import { 
-  getCobrancaColors, 
+import {
+  getCobrancaColors,
   getCobrancaIcon
 } from '@/utils/requerimentosColors';
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
@@ -89,29 +89,29 @@ export default function FaturarRequerimentos() {
   const [anoAtual] = useState(new Date().getFullYear());
   const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
   const [anoSelecionado, setAnoSelecionado] = useState(anoAtual);
-  
+
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [previewAberto, setPreviewAberto] = useState(false);
-  
+
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
-  
+
   const [filtroTipo, setFiltroTipo] = useState<TipoCobrancaType[]>([]);
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
-  
+
   // Estados para rejeição
   const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
   const [confirmacaoRejeicaoAberta, setConfirmacaoRejeicaoAberta] = useState(false);
 
   // Hooks
-  const { 
-    data: dadosFaturamento, 
-    isLoading, 
-    error, 
-    refetch 
+  const {
+    data: dadosFaturamento,
+    isLoading,
+    error,
+    refetch
   } = useRequerimentosFaturamento(mesSelecionado, anoSelecionado);
 
   const rejeitarRequerimento = useRejeitarRequerimento();
@@ -124,7 +124,7 @@ export default function FaturarRequerimentos() {
 
     dadosFaturamento.requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
-      
+
       if (!grupos[tipo]) {
         grupos[tipo] = {
           tipo,
@@ -161,15 +161,15 @@ export default function FaturarRequerimentos() {
     // Somar horas corretamente usando somarHoras
     let totalHorasString = '0:00';
     let valorTotalFaturavel = 0;
-    
+
     // Tipos de cobrança que têm valor monetário
     const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
-    
+
     dadosFaturamento.requerimentos.forEach(req => {
       if (req.horas_total) {
         totalHorasString = somarHoras(totalHorasString, req.horas_total.toString());
       }
-      
+
       // Somar valores dos tipos de cobrança monetários
       if (tiposComValor.includes(req.tipo_cobranca) && req.valor_total_geral) {
         valorTotalFaturavel += req.valor_total_geral;
@@ -188,8 +188,8 @@ export default function FaturarRequerimentos() {
     if (filtroTipo.length === 0) {
       return Object.values(requerimentosAgrupados);
     }
-    
-    return Object.values(requerimentosAgrupados).filter(grupo => 
+
+    return Object.values(requerimentosAgrupados).filter(grupo =>
       filtroTipo.includes(grupo.tipo)
     );
   }, [requerimentosAgrupados, filtroTipo]);
@@ -249,14 +249,14 @@ export default function FaturarRequerimentos() {
   // Validação silenciosa para habilitar/desabilitar botões
   const isFormularioValido = (): boolean => {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
-    
+
     if (emailsValidos.length === 0) {
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
-    
+
     if (emailsInvalidos.length > 0) {
       return false;
     }
@@ -271,7 +271,7 @@ export default function FaturarRequerimentos() {
   // Validação com mensagens de erro para ações do usuário
   const validarFormularioEmail = (): boolean => {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
-    
+
     if (emailsValidos.length === 0) {
       toast.error('É necessário informar pelo menos um destinatário');
       return false;
@@ -279,7 +279,7 @@ export default function FaturarRequerimentos() {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
-    
+
     if (emailsInvalidos.length > 0) {
       toast.error(`E-mails inválidos: ${emailsInvalidos.join(', ')}`);
       return false;
@@ -297,10 +297,10 @@ export default function FaturarRequerimentos() {
     if (!validarFormularioEmail()) return;
 
     setEnviandoEmail(true);
-    
+
     try {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
-      
+
       const emailFaturamento: EmailFaturamento = {
         destinatarios: emailsValidos,
         assunto: assuntoEmail,
@@ -313,7 +313,7 @@ export default function FaturarRequerimentos() {
         toast.success(resultado.message || 'Faturamento disparado com sucesso!');
         setModalEmailAberto(false);
         setConfirmacaoAberta(false);
-        
+
         // Limpar formulário
         setDestinatarios(['']);
         setAssuntoEmail('');
@@ -343,7 +343,7 @@ export default function FaturarRequerimentos() {
     if (typeof horas === 'string') {
       return formatarHorasParaExibicao(horas, 'completo');
     }
-    
+
     // Se for number (decimal), converter para HH:MM primeiro
     if (typeof horas === 'number') {
       const totalMinutos = Math.round(horas * 60);
@@ -352,7 +352,7 @@ export default function FaturarRequerimentos() {
       const horasFormatadas = `${horasInt}:${minutosInt.toString().padStart(2, '0')}`;
       return formatarHorasParaExibicao(horasFormatadas, 'completo');
     }
-    
+
     return '0:00';
   };
 
@@ -398,16 +398,16 @@ export default function FaturarRequerimentos() {
 
           <div className="flex flex-col sm:flex-row gap-2">
             <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-            <Button
-              onClick={handleAbrirModalEmail}
-              disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
-              className="flex items-center gap-2"
-              title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
-            >
-              <Send className="h-4 w-4" />
-              Disparar Faturamento
-            </Button>
-          </ProtectedAction>
+              <Button
+                onClick={handleAbrirModalEmail}
+                disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
+                className="flex items-center gap-2"
+                title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
+              >
+                <Send className="h-4 w-4" />
+                Disparar Faturamento
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 
@@ -448,10 +448,10 @@ export default function FaturarRequerimentos() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="mes">Mês</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
                   <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -464,10 +464,10 @@ export default function FaturarRequerimentos() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="ano">Ano</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
                   <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -480,17 +480,19 @@ export default function FaturarRequerimentos() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="tipo">Tipos de Cobrança</Label>
-                  <MultiSelect
-                    options={tipoCobrancaOptions}
-                    value={filtroTipo}
-                    onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
-                    placeholder="Selecione os tipos..."
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
+                  <div className="h-10">
+                    <MultiSelect
+                      options={tipoCobrancaOptions}
+                      value={filtroTipo}
+                      onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
+                      placeholder="Selecione os tipos..."
+                    />
+                  </div>
                 </div>
               </div>
-              
+
               {/* Botões de ação rápida */}
               <div className="flex items-center gap-2 mt-4 pt-4 border-t">
                 <Button
@@ -644,7 +646,7 @@ export default function FaturarRequerimentos() {
             {gruposFiltrados.map(grupo => {
               const colors = getCobrancaColors(grupo.tipo);
               const icon = getCobrancaIcon(grupo.tipo);
-              
+
               return (
                 <Card key={grupo.tipo} className={`${colors.border} border-l-4`}>
                   <CardHeader className={`${colors.bg} ${colors.text}`}>
@@ -904,7 +906,7 @@ export default function FaturarRequerimentos() {
                 <p><strong>Para:</strong> {destinatarios.filter(e => e.trim()).join(', ')}</p>
                 <p><strong>Assunto:</strong> {assuntoEmail}</p>
               </div>
-              <div 
+              <div
                 className="p-4 max-h-[60vh] overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: corpoEmail }}
               />
