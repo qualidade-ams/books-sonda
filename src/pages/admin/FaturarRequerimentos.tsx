@@ -10,7 +10,11 @@ import {
   Filter,
   RefreshCw,
   Eye,
-  Plus
+  Plus,
+  X,
+  AlertTriangle,
+  Paperclip,
+  Calculator
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -20,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect, MultiSelectOption } from '@/components/ui/multi-select';
 import {
   Dialog,
   DialogContent,
@@ -41,27 +46,30 @@ import {
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { toast } from 'sonner';
 
-import { useRequerimentosFaturamento } from '@/hooks/useRequerimentos';
+import { useRequerimentosFaturamento, useRejeitarRequerimento } from '@/hooks/useRequerimentos';
 import { faturamentoService } from '@/services/faturamentoService';
 
 import {
   Requerimento,
   TipoCobrancaType,
   EmailFaturamento,
-  TIPO_COBRANCA_OPTIONS
+  TIPO_COBRANCA_OPTIONS,
+  requerValorHora
 } from '@/types/requerimentos';
 
 import { 
   getCobrancaColors, 
   getCobrancaIcon
 } from '@/utils/requerimentosColors';
+import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 
 // Interface para dados agrupados por tipo de cobrança
 interface RequerimentosAgrupados {
   [key: string]: {
     tipo: TipoCobrancaType;
     requerimentos: Requerimento[];
-    totalHoras: number;
+    totalHoras: string; // Mudado para string (formato HH:MM)
+    totalValor: number; // Total em valor monetário
     quantidade: number;
   };
 }
@@ -69,9 +77,10 @@ interface RequerimentosAgrupados {
 // Interface para estatísticas do período
 interface EstatisticasPeriodo {
   totalRequerimentos: number;
-  totalHoras: number;
+  totalHoras: string; // Mudado para string (formato HH:MM)
   tiposAtivos: number;
   valorEstimado?: number;
+  valorTotalFaturavel: number; // Soma dos tipos com valor monetário
 }
 
 export default function FaturarRequerimentos() {
@@ -85,12 +94,17 @@ export default function FaturarRequerimentos() {
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [previewAberto, setPreviewAberto] = useState(false);
   
-  const [destinatarios, setDestinatarios] = useState<string[]>(['']);
+  const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   
-  const [filtroTipo, setFiltroTipo] = useState<TipoCobrancaType | 'todos'>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<TipoCobrancaType[]>([]);
+  const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
+  
+  // Estados para rejeição
+  const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
+  const [confirmacaoRejeicaoAberta, setConfirmacaoRejeicaoAberta] = useState(false);
 
   // Hooks
   const { 
@@ -98,7 +112,9 @@ export default function FaturarRequerimentos() {
     isLoading, 
     error, 
     refetch 
-  } = useRequerimentosFaturamento(mesSelecionado);
+  } = useRequerimentosFaturamento(mesSelecionado, anoSelecionado);
+
+  const rejeitarRequerimento = useRejeitarRequerimento();
 
   // Dados processados
   const requerimentosAgrupados = useMemo((): RequerimentosAgrupados => {
@@ -113,13 +129,19 @@ export default function FaturarRequerimentos() {
         grupos[tipo] = {
           tipo,
           requerimentos: [],
-          totalHoras: 0,
+          totalHoras: '0:00',
+          totalValor: 0,
           quantidade: 0
         };
       }
 
       grupos[tipo].requerimentos.push(req);
-      grupos[tipo].totalHoras += Number(req.horas_total);
+      if (req.horas_total) {
+        grupos[tipo].totalHoras = somarHoras(grupos[tipo].totalHoras, req.horas_total.toString());
+      }
+      if (req.valor_total_geral) {
+        grupos[tipo].totalValor += req.valor_total_geral;
+      }
       grupos[tipo].quantidade += 1;
     });
 
@@ -130,25 +152,46 @@ export default function FaturarRequerimentos() {
     if (!dadosFaturamento?.requerimentos) {
       return {
         totalRequerimentos: 0,
-        totalHoras: 0,
-        tiposAtivos: 0
+        totalHoras: '0:00',
+        tiposAtivos: 0,
+        valorTotalFaturavel: 0
       };
     }
 
+    // Somar horas corretamente usando somarHoras
+    let totalHorasString = '0:00';
+    let valorTotalFaturavel = 0;
+    
+    // Tipos de cobrança que têm valor monetário
+    const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    
+    dadosFaturamento.requerimentos.forEach(req => {
+      if (req.horas_total) {
+        totalHorasString = somarHoras(totalHorasString, req.horas_total.toString());
+      }
+      
+      // Somar valores dos tipos de cobrança monetários
+      if (tiposComValor.includes(req.tipo_cobranca) && req.valor_total_geral) {
+        valorTotalFaturavel += req.valor_total_geral;
+      }
+    });
+
     return {
       totalRequerimentos: dadosFaturamento.requerimentos.length,
-      totalHoras: dadosFaturamento.requerimentos.reduce((acc, req) => acc + Number(req.horas_total), 0),
-      tiposAtivos: Object.keys(requerimentosAgrupados).length
+      totalHoras: totalHorasString,
+      tiposAtivos: Object.keys(requerimentosAgrupados).length,
+      valorTotalFaturavel
     };
   }, [dadosFaturamento, requerimentosAgrupados]);
 
   const gruposFiltrados = useMemo(() => {
-    if (filtroTipo === 'todos') {
+    if (filtroTipo.length === 0) {
       return Object.values(requerimentosAgrupados);
     }
     
-    const grupo = requerimentosAgrupados[filtroTipo];
-    return grupo ? [grupo] : [];
+    return Object.values(requerimentosAgrupados).filter(grupo => 
+      filtroTipo.includes(grupo.tipo)
+    );
   }, [requerimentosAgrupados, filtroTipo]);
 
   // Funções
@@ -156,6 +199,14 @@ export default function FaturarRequerimentos() {
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
+
+  // Opções para o MultiSelect de tipos de cobrança
+  const tipoCobrancaOptions: MultiSelectOption[] = TIPO_COBRANCA_OPTIONS
+    .filter(option => option.value !== 'Selecione')
+    .map(option => ({
+      value: option.value,
+      label: option.label
+    }));
 
   const handleAbrirModalEmail = async () => {
     if (estatisticasPeriodo.totalRequerimentos === 0) {
@@ -171,7 +222,7 @@ export default function FaturarRequerimentos() {
       // Configurar dados padrão do email
       setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
       setCorpoEmail(htmlTemplate);
-      setDestinatarios(['']);
+      setDestinatarios(['']); // Inicializar com um campo vazio para o usuário preencher
       setModalEmailAberto(true);
     } catch (error) {
       console.error('Erro ao preparar email:', error);
@@ -195,6 +246,29 @@ export default function FaturarRequerimentos() {
     setDestinatarios(novosDestinatarios);
   };
 
+  // Validação silenciosa para habilitar/desabilitar botões
+  const isFormularioValido = (): boolean => {
+    const emailsValidos = destinatarios.filter(email => email.trim() !== '');
+    
+    if (emailsValidos.length === 0) {
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
+    
+    if (emailsInvalidos.length > 0) {
+      return false;
+    }
+
+    if (!assuntoEmail.trim()) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Validação com mensagens de erro para ações do usuário
   const validarFormularioEmail = (): boolean => {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
     
@@ -264,8 +338,40 @@ export default function FaturarRequerimentos() {
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
-  const formatarHoras = (horas: number): string => {
-    return horas.toFixed(1);
+  const formatarHoras = (horas: string | number): string => {
+    // Se for string (formato HH:MM), usar formatarHorasParaExibicao
+    if (typeof horas === 'string') {
+      return formatarHorasParaExibicao(horas, 'completo');
+    }
+    
+    // Se for number (decimal), converter para HH:MM primeiro
+    if (typeof horas === 'number') {
+      const totalMinutos = Math.round(horas * 60);
+      const horasInt = Math.floor(totalMinutos / 60);
+      const minutosInt = totalMinutos % 60;
+      const horasFormatadas = `${horasInt}:${minutosInt.toString().padStart(2, '0')}`;
+      return formatarHorasParaExibicao(horasFormatadas, 'completo');
+    }
+    
+    return '0:00';
+  };
+
+  const handleAbrirConfirmacaoRejeicao = (requerimento: Requerimento) => {
+    setRequerimentoParaRejeitar(requerimento);
+    setConfirmacaoRejeicaoAberta(true);
+  };
+
+  const handleConfirmarRejeicao = async () => {
+    if (!requerimentoParaRejeitar) return;
+
+    try {
+      await rejeitarRequerimento.mutateAsync(requerimentoParaRejeitar.id);
+      setConfirmacaoRejeicaoAberta(false);
+      setRequerimentoParaRejeitar(null);
+      refetch(); // Atualizar a lista
+    } catch (error) {
+      console.error('Erro ao rejeitar requerimento:', error);
+    }
   };
 
   return (
@@ -274,8 +380,7 @@ export default function FaturarRequerimentos() {
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <DollarSign className="h-6 w-6 text-green-600" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
               Faturar Requerimentos
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -284,95 +389,133 @@ export default function FaturarRequerimentos() {
           </div>
 
           <div className="flex items-center gap-2">
+            {filtroTipo.length > 0 && (
+              <Badge variant="outline" className="text-sm">
+                Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
+              onClick={handleAbrirModalEmail}
+              disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
+              className="flex items-center gap-2"
+              title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Atualizar
+              <Send className="h-4 w-4" />
+              Disparar Faturamento
             </Button>
+          </ProtectedAction>
           </div>
         </div>
 
+        {/* Ações Principais */}
+        <div className="flex flex-wrap gap-4 items-center justify-end">
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+            className="flex items-center justify-center space-x-2"
+            aria-expanded={filtrosExpandidos}
+            aria-controls="filters-section"
+          >
+            <Filter className="h-4 w-4" />
+            <span>Filtros</span>
+            {filtroTipo.length > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {filtroTipo.length}
+              </Badge>
+            )}
+          </Button>
+        </div>
+
         {/* Filtros */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filtros
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label htmlFor="mes">Mês</Label>
-                <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nomesMeses.map((nome, index) => (
-                      <SelectItem key={index + 1} value={(index + 1).toString()}>
-                        {nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {filtrosExpandidos && (
+          <Card id="filters-section">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filtros de Período e Tipo
+                {filtroTipo.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''} selecionado{filtroTipo.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="mes">Mês</Label>
+                  <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nomesMeses.map((nome, index) => (
+                        <SelectItem key={index + 1} value={(index + 1).toString()}>
+                          {nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="ano">Ano</Label>
-                <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
-                      <SelectItem key={ano} value={ano.toString()}>
-                        {ano}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label htmlFor="ano">Ano</Label>
+                  <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
+                        <SelectItem key={ano} value={ano.toString()}>
+                          {ano}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="tipo">Tipo de Cobrança</Label>
-                <Select value={filtroTipo} onValueChange={(value) => setFiltroTipo(value as TipoCobrancaType | 'todos')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os tipos</SelectItem>
-                    {TIPO_COBRANCA_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div>
+                  <Label htmlFor="tipo">Tipos de Cobrança</Label>
+                  <MultiSelect
+                    options={tipoCobrancaOptions}
+                    value={filtroTipo}
+                    onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
+                    placeholder="Selecione os tipos..."
+                  />
+                </div>
               </div>
-
-              <div className="flex items-end">
-                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-                  <Button
-                    onClick={handleAbrirModalEmail}
-                    disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
-                    className="w-full"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Disparar Faturamento
-                  </Button>
-                </ProtectedAction>
+              
+              {/* Botões de ação rápida */}
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiltroTipo([])}
+                  disabled={filtroTipo.length === 0}
+                >
+                  Limpar Filtros
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
+                  disabled={filtroTipo.length === tipoCobrancaOptions.length}
+                >
+                  Selecionar Todos
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -397,7 +540,7 @@ export default function FaturarRequerimentos() {
                     Total de Horas
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatarHoras(estatisticasPeriodo.totalHoras)}
+                    {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')}
                   </p>
                 </div>
                 <Clock className="h-8 w-8 text-green-600" />
@@ -433,6 +576,28 @@ export default function FaturarRequerimentos() {
                   </p>
                 </div>
                 <Calendar className="h-8 w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Valor Total Faturável
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    R$ {estatisticasPeriodo.valorTotalFaturavel.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Faturado + Hora Extra + Sobreaviso + Bolsão Enel
+                  </p>
+                </div>
+                <Calculator className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -488,13 +653,21 @@ export default function FaturarRequerimentos() {
                         <span className="text-2xl">{icon}</span>
                         {grupo.tipo}
                       </CardTitle>
-                      <div className="flex items-center gap-4 text-sm">
-                        <Badge variant="secondary" className="bg-white/20">
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <Badge variant="secondary" className="bg-white/90 text-gray-800 border border-white/50 font-medium">
                           {grupo.quantidade} requerimento{grupo.quantidade !== 1 ? 's' : ''}
                         </Badge>
-                        <Badge variant="secondary" className="bg-white/20">
-                          {formatarHoras(grupo.totalHoras)} horas
+                        <Badge variant="secondary" className="bg-white/90 text-gray-800 border border-white/50 font-medium">
+                          {formatarHorasParaExibicao(grupo.totalHoras, 'completo')}
                         </Badge>
+                        {requerValorHora(grupo.tipo) && grupo.totalValor > 0 && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 border border-green-200 font-medium">
+                            R$ {grupo.totalValor.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -527,6 +700,15 @@ export default function FaturarRequerimentos() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Data Envio
                             </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Anexos
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Valor Total
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Ações
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -547,16 +729,52 @@ export default function FaturarRequerimentos() {
                                 {req.linguagem}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                                {formatarHoras(Number(req.horas_funcional))}
+                                {formatarHoras(req.horas_funcional)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                {formatarHoras(Number(req.horas_tecnico))}
+                                {formatarHoras(req.horas_tecnico)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                                {formatarHoras(Number(req.horas_total))}
+                                {formatarHoras(req.horas_total)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {formatarData(req.data_envio)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                {req.anexos && req.anexos.length > 0 ? (
+                                  <div className="flex items-center justify-center">
+                                    <Paperclip className="h-4 w-4 text-blue-600 mr-1" />
+                                    <span className="text-blue-600 font-medium">{req.anexos.length}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                {req.valor_total_geral ? (
+                                  <span className="font-medium text-green-600">
+                                    R$ {req.valor_total_geral.toLocaleString('pt-BR', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAbrirConfirmacaoRejeicao(req)}
+                                    disabled={rejeitarRequerimento.isPending}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Rejeitar
+                                  </Button>
+                                </ProtectedAction>
                               </td>
                             </tr>
                           ))}
@@ -666,7 +884,7 @@ export default function FaturarRequerimentos() {
               </Button>
               <Button
                 onClick={() => setConfirmacaoAberta(true)}
-                disabled={!validarFormularioEmail()}
+                disabled={!isFormularioValido()}
               >
                 <Send className="h-4 w-4 mr-2" />
                 Enviar
@@ -712,7 +930,7 @@ export default function FaturarRequerimentos() {
                 <br />
                 <strong>Total de requerimentos:</strong> {estatisticasPeriodo.totalRequerimentos}
                 <br />
-                <strong>Total de horas:</strong> {formatarHoras(estatisticasPeriodo.totalHoras)}
+                <strong>Total de horas:</strong> {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -732,6 +950,53 @@ export default function FaturarRequerimentos() {
                   <>
                     <Send className="h-4 w-4 mr-2" />
                     Confirmar Envio
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmação de Rejeição */}
+        <AlertDialog open={confirmacaoRejeicaoAberta} onOpenChange={setConfirmacaoRejeicaoAberta}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                Confirmar Rejeição de Requerimento
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja rejeitar este requerimento?
+                <br /><br />
+                <strong>Chamado:</strong> {requerimentoParaRejeitar?.chamado}
+                <br />
+                <strong>Cliente:</strong> {requerimentoParaRejeitar?.cliente_nome || 'N/A'}
+                <br />
+                <strong>Horas Total:</strong> {requerimentoParaRejeitar ? formatarHorasParaExibicao(requerimentoParaRejeitar.horas_total?.toString() || '0', 'completo') : '0:00'}
+                <br /><br />
+                <span className="text-amber-600">
+                  ⚠️ O requerimento voltará para a tela "Lançar Requerimentos" e precisará ser enviado novamente para faturamento.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={rejeitarRequerimento.isPending}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmarRejeicao}
+                disabled={rejeitarRequerimento.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {rejeitarRequerimento.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Rejeitando...
+                  </>
+                ) : (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    Confirmar Rejeição
                   </>
                 )}
               </AlertDialogAction>
