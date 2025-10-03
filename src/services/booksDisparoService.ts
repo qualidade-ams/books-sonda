@@ -479,7 +479,13 @@ class BooksDisparoService {
         });
       }
 
-      return statusMensal;
+      // Ordenar por nome da empresa em ordem alfabética
+      return statusMensal.sort((a, b) =>
+        a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
+          sensitivity: 'base',
+          ignorePunctuation: true
+        })
+      );
 
     } catch (error) {
       throw new Error(`Erro ao obter status mensal personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -787,16 +793,16 @@ class BooksDisparoService {
                 // Buscar template para o histórico
                 const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
                 const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
-                
+
                 if (template && clientes.length > 0) {
                   // Preparar informações sobre anexos para o histórico
                   let anexoId: string | undefined;
                   let detalhesAnexos = '';
-                  
+
                   try {
                     const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
                     const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-                    
+
                     if (anexosEnviando.length > 0) {
                       anexoId = anexosEnviando[0].id;
                       detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (falha no envio personalizado)`;
@@ -820,7 +826,7 @@ class BooksDisparoService {
                   };
 
                   await supabase.from('historico_disparos').insert(historicoFalhaData);
-                  
+
                   console.log(`📝 Falha personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoDisparo.erro}`);
                 }
               } catch (historicoError) {
@@ -839,7 +845,7 @@ class BooksDisparoService {
 
           } catch (error) {
             const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
-            
+
             // Registrar erro para todos os clientes da empresa
             clientes.forEach(cliente => {
               detalhes.push({
@@ -856,16 +862,16 @@ class BooksDisparoService {
               // Buscar template para o histórico
               const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
               const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
-              
+
               if (template && clientes.length > 0) {
                 // Preparar informações sobre anexos para o histórico
                 let anexoId: string | undefined;
                 let detalhesAnexos = '';
-                
+
                 try {
                   const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
                   const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-                  
+
                   if (anexosEnviando.length > 0) {
                     anexoId = anexosEnviando[0].id;
                     detalhesAnexos = ` | Anexos: ${anexosEnviando.length} arquivo(s) (exceção no processamento personalizado)`;
@@ -889,7 +895,7 @@ class BooksDisparoService {
                 };
 
                 await supabase.from('historico_disparos').insert(historicoExcecaoData);
-                
+
                 console.log(`📝 Exceção personalizada registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
               }
             } catch (historicoError) {
@@ -1174,7 +1180,13 @@ class BooksDisparoService {
         });
       }
 
-      return statusMensal;
+      // Ordenar por nome da empresa em ordem alfabética
+      return statusMensal.sort((a, b) =>
+        a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
+          sensitivity: 'base',
+          ignorePunctuation: true
+        })
+      );
 
     } catch (error) {
       throw new Error(`Erro ao obter status mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -1558,13 +1570,13 @@ class BooksDisparoService {
         let anexoId: string | undefined;
         let anexoProcessado = false;
         let detalhesAnexos = '';
-        
+
         if (anexosWebhook.length > 0) {
           // Buscar o primeiro anexo para referência no histórico
           try {
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
             const anexosPendentes = anexos.filter(a => a.status === 'enviando' || a.status === 'processado');
-            
+
             if (anexosPendentes.length > 0) {
               anexoId = anexosPendentes[0].id;
               anexoProcessado = anexosPendentes.every(a => a.status === 'processado');
@@ -1599,18 +1611,18 @@ class BooksDisparoService {
         };
       } else {
         console.log(`❌ Falha no envio - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
-        
+
         // ✅ CORREÇÃO: Registrar falha no histórico de disparos
         try {
           // Preparar informações sobre anexos para o histórico (mesmo em caso de falha)
           let anexoId: string | undefined;
           let detalhesAnexos = '';
-          
+
           if (anexosWebhook.length > 0) {
             try {
               const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
               const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-              
+
               if (anexosEnviando.length > 0) {
                 anexoId = anexosEnviando[0].id;
                 detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (falha no envio)`;
@@ -1635,12 +1647,12 @@ class BooksDisparoService {
           };
 
           await supabase.from('historico_disparos').insert(historicoFalhaData);
-          
+
           console.log(`📝 Falha registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${resultadoEnvio.erro}`);
         } catch (historicoError) {
           console.error('Erro ao registrar falha no histórico:', historicoError);
         }
-        
+
         return {
           sucesso: false,
           erro: resultadoEnvio.erro,
@@ -1651,13 +1663,13 @@ class BooksDisparoService {
     } catch (error) {
       const erroMensagem = error instanceof Error ? error.message : 'Erro desconhecido';
       console.log(`💥 Exceção no processamento - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
-      
+
       // ✅ CORREÇÃO: Registrar exceção no histórico de disparos
       try {
         // Buscar template e cliente de referência para o histórico
         let templateId: string | null = null;
         let clienteReferenciaId: string | null = null;
-        
+
         try {
           const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
           const template = await clientBooksTemplateService.buscarTemplateBooks(templatePadrao);
@@ -1665,7 +1677,7 @@ class BooksDisparoService {
         } catch (templateError) {
           console.error('Erro ao buscar template para histórico de exceção:', templateError);
         }
-        
+
         if (clientes.length > 0) {
           clienteReferenciaId = clientes[0].id;
         }
@@ -1674,12 +1686,12 @@ class BooksDisparoService {
           // Preparar informações sobre anexos para o histórico (mesmo em caso de exceção)
           let anexoId: string | undefined;
           let detalhesAnexos = '';
-          
+
           if (anexosWebhook.length > 0) {
             try {
               const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
               const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-              
+
               if (anexosEnviando.length > 0) {
                 anexoId = anexosEnviando[0].id;
                 detalhesAnexos = ` | Anexos: ${anexosWebhook.length} arquivo(s) (exceção no processamento)`;
@@ -1704,13 +1716,13 @@ class BooksDisparoService {
           };
 
           await supabase.from('historico_disparos').insert(historicoExcecaoData);
-          
+
           console.log(`📝 Exceção registrada no histórico - Empresa: ${empresa.nome_completo}, Erro: ${erroMensagem}`);
         }
       } catch (historicoError) {
         console.error('Erro ao registrar exceção no histórico:', historicoError);
       }
-      
+
       return {
         sucesso: false,
         erro: erroMensagem,
@@ -1839,13 +1851,13 @@ class BooksDisparoService {
             // Buscar anexos da empresa que estão sendo enviados
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
             const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-            
+
             // Atualizar status para 'processado' imediatamente após envio bem-sucedido
             await Promise.all(
-              anexosEnviando.map(anexo => 
+              anexosEnviando.map(anexo =>
                 this.atualizarStatusAnexoComLog(
-                  anexo.id, 
-                  'processado', 
+                  anexo.id,
+                  'processado',
                   `Anexo enviado com sucesso via Power Automate em ${new Date().toLocaleString()}`
                 )
               )
@@ -1856,7 +1868,7 @@ class BooksDisparoService {
               anexosEnviando.map(async (anexo) => {
                 const { error: historicoError } = await supabase
                   .from('historico_disparos')
-                  .update({ 
+                  .update({
                     anexo_processado: true,
                     erro_detalhes: null // Limpar erros anteriores
                   })
@@ -1867,7 +1879,7 @@ class BooksDisparoService {
                 }
               })
             );
-            
+
             // Registrar que os anexos foram processados com sucesso
             await this.registrarEventoAnexos(
               empresa.id,
@@ -1877,7 +1889,7 @@ class BooksDisparoService {
             );
 
             console.log(`✅ ${anexosEnviando.length} anexos marcados como processados após envio bem-sucedido`);
-            
+
           } catch (error) {
             console.error('Erro ao atualizar status dos anexos para processado:', error);
             // Não falhar o disparo por erro nos anexos pós-envio
@@ -1894,18 +1906,18 @@ class BooksDisparoService {
             // Buscar anexos da empresa e marcar como erro
             const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
             const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-            
+
             // Atualizar status com detalhes do erro
             await Promise.all(
-              anexosEnviando.map(anexo => 
+              anexosEnviando.map(anexo =>
                 this.atualizarStatusAnexoComLog(
-                  anexo.id, 
-                  'erro', 
+                  anexo.id,
+                  'erro',
                   `Falha no envio do e-mail: ${resultado.error}`
                 )
               )
             );
-            
+
             // Registrar evento de erro
             await this.registrarEventoAnexos(
               empresa.id,
@@ -1913,7 +1925,7 @@ class BooksDisparoService {
               'erro_envio_email',
               `Falha no envio do e-mail impediu processamento dos anexos: ${resultado.error}`
             );
-            
+
             console.log(`📎 ${anexosEnviando.length} anexos marcados como erro devido a falha no envio`);
           } catch (error) {
             console.error('Erro ao atualizar status dos anexos para erro:', error);
@@ -1934,16 +1946,16 @@ class BooksDisparoService {
         try {
           const anexos = await anexoService.obterAnexosEmpresa(empresa.id);
           const anexosEnviando = anexos.filter(a => a.status === 'enviando');
-          
+
           const erroDetalhes = error instanceof Error ? error.message : 'Erro desconhecido no envio consolidado';
-          
+
           // Atualizar status com detalhes do erro
           await Promise.all(
-            anexosEnviando.map(anexo => 
+            anexosEnviando.map(anexo =>
               this.atualizarStatusAnexoComLog(anexo.id, 'erro', erroDetalhes)
             )
           );
-          
+
           // Registrar evento de erro geral
           await this.registrarEventoAnexos(
             empresa.id,
@@ -1951,7 +1963,7 @@ class BooksDisparoService {
             'erro_geral_disparo',
             `Erro geral no processo de disparo: ${erroDetalhes}`
           );
-          
+
           console.log(`📎 ${anexosEnviando.length} anexos marcados como erro devido a falha geral`);
         } catch (anexoError) {
           console.error('Erro ao atualizar status dos anexos para erro:', anexoError);
@@ -2147,7 +2159,7 @@ class BooksDisparoService {
   private async buscarAnexosEmpresa(empresaId: string): Promise<AnexoWebhookData[]> {
     try {
       console.log(`🔍 Buscando anexos para empresa: ${empresaId}`);
-      
+
       // Buscar anexos pendentes da empresa
       const anexos = await anexoService.obterAnexosEmpresa(empresaId);
       const anexosPendentes = anexos.filter(anexo => anexo.status === 'pendente');
@@ -2162,7 +2174,7 @@ class BooksDisparoService {
       // Gerar tokens de acesso para cada anexo
       const anexosComToken: AnexoWebhookData[] = [];
       const anexosProcessados: string[] = [];
-      
+
       for (const anexo of anexosPendentes) {
         try {
           // Atualizar status para "enviando" com timestamp
@@ -2185,8 +2197,8 @@ class BooksDisparoService {
           console.error(`❌ Erro ao processar anexo ${anexo.id}:`, error);
           // Marcar anexo como erro com detalhes
           await this.atualizarStatusAnexoComLog(
-            anexo.id, 
-            'erro', 
+            anexo.id,
+            'erro',
             `Erro ao gerar token: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
           );
         }
@@ -2316,15 +2328,15 @@ class BooksDisparoService {
           if (sucesso) {
             // Marcar anexo como processado com log
             await this.atualizarStatusAnexoComLog(
-              anexoId, 
-              'processado', 
+              anexoId,
+              'processado',
               'Confirmação de processamento recebida do Power Automate'
             );
-            
+
             // Atualizar histórico
             const { error: historicoError } = await supabase
               .from('historico_disparos')
-              .update({ 
+              .update({
                 anexo_processado: true,
                 erro_detalhes: null // Limpar erros anteriores
               })
@@ -2339,15 +2351,15 @@ class BooksDisparoService {
           } else {
             // Marcar anexo como erro com detalhes
             await this.atualizarStatusAnexoComLog(
-              anexoId, 
-              'erro', 
+              anexoId,
+              'erro',
               erroDetalhes || 'Erro no processamento pelo Power Automate'
             );
-            
+
             // Atualizar histórico com erro
             const { error: historicoError } = await supabase
               .from('historico_disparos')
-              .update({ 
+              .update({
                 anexo_processado: false,
                 erro_detalhes: erroDetalhes || 'Erro no processamento pelo Power Automate'
               })
@@ -2379,7 +2391,7 @@ class BooksDisparoService {
         try {
           await anexoService.moverParaPermanente(anexosProcessados);
           console.log(`📁 ${anexosProcessados.length} anexos movidos para storage permanente`);
-          
+
           await this.registrarEventoAnexos(
             empresaId,
             anexosProcessados,
