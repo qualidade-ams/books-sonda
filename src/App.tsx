@@ -9,6 +9,7 @@ import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import GlobalErrorBoundary from "@/components/errors/GlobalErrorBoundary";
 import PermissionErrorBoundary from "@/components/errors/PermissionErrorBoundary";
 import { AutoSchedulerInitializer } from "@/components/admin/AutoSchedulerInitializer";
+import { CacheInitializer } from "@/components/admin/CacheInitializer";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import EmailConfig from "./pages/admin/EmailConfig";
@@ -43,6 +44,7 @@ const App = () => (
         <PermissionsProvider>
           <PermissionErrorBoundary>
             <TooltipProvider>
+              <CacheInitializer />
               <AutoSchedulerInitializer />
               <Toaster />
               <Sonner />
