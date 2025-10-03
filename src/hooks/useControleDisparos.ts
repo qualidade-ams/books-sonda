@@ -9,7 +9,7 @@ import type {
 export const useControleDisparos = (mes: number, ano: number) => {
   const queryClient = useQueryClient();
 
-  // Query para buscar status mensal
+  // Query para buscar status mensal com cache otimizado
   const {
     data: statusMensal = [],
     isLoading,
@@ -18,8 +18,12 @@ export const useControleDisparos = (mes: number, ano: number) => {
   } = useQuery({
     queryKey: ['controle-disparos', mes, ano],
     queryFn: () => booksDisparoService.obterStatusMensal(mes, ano),
-    staleTime: 1000 * 60 * 1, // ✅ REDUZIDO: 1 minuto (era 5 minutos)
-    refetchOnWindowFocus: true, // ✅ HABILITADO: Refetch ao focar na janela
+    staleTime: 1000 * 30, // 30 segundos - dados frescos por mais tempo
+    cacheTime: 1000 * 60 * 5, // 5 minutos no cache
+    refetchOnWindowFocus: false, // Evita refetch desnecessário ao focar
+    refetchOnMount: 'always', // Sempre busca dados frescos ao montar
+    retry: 2, // Máximo 2 tentativas em caso de erro
+    retryDelay: 1000, // 1 segundo entre tentativas
   });
 
   // Função para invalidar todos os caches relacionados

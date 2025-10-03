@@ -423,63 +423,103 @@ class BooksDisparoService {
    */
   async obterStatusMensalPersonalizados(mes: number, ano: number): Promise<StatusMensal[]> {
     try {
-      const { data: controles, error } = await supabase
-        .from('controle_mensal')
+      // Consulta otimizada única com JOINs para evitar N+1 queries
+      const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
+      const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
+
+      // Buscar empresas com contagens agregadas em uma única consulta
+      const { data: empresasData, error: empresasError } = await supabase
+        .from('empresas_clientes')
         .select(`
           *,
-          empresas_clientes(*)
+          controle_mensal!left(
+            status,
+            data_processamento,
+            observacoes
+          ),
+          clientes!left(id),
+          historico_disparos!left(id)
         `)
-        .eq('mes', mes)
-        .eq('ano', ano);
-
-      if (error) {
-        throw new Error(`Erro ao buscar status mensal: ${error.message}`);
-      }
-
-      // Buscar empresas que não têm controle mensal ainda (apenas com book personalizado)
-      const { data: todasEmpresas, error: empresasError } = await supabase
-        .from('empresas_clientes')
-        .select('*')
         .eq('status', 'ativo')
-        .eq('book_personalizado', true);
+        .eq('book_personalizado', true)
+        .eq('controle_mensal.mes', mes)
+        .eq('controle_mensal.ano', ano)
+        .eq('clientes.status', 'ativo')
+        .eq('historico_disparos.status', 'enviado')
+        .gte('historico_disparos.data_disparo', dataInicio)
+        .lt('historico_disparos.data_disparo', dataFim)
+        .order('nome_completo');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
-      const statusMensal: StatusMensal[] = [];
+      // Processar resultados agrupando por empresa
+      const empresasMap = new Map<string, any>();
 
-      for (const empresa of todasEmpresas || []) {
-        const controle = controles?.find(c => c.empresa_id === empresa.id);
+      for (const row of empresasData || []) {
+        const empresaId = row.id;
 
-        // Contar clientes ativos
-        const { count: clientesAtivos } = await supabase
-          .from('clientes')
-          .select('*', { count: 'exact', head: true })
-          .eq('empresa_id', empresa.id)
-          .eq('status', 'ativo');
+        if (!empresasMap.has(empresaId)) {
+          empresasMap.set(empresaId, {
+            empresa: {
+              id: row.id,
+              nome_completo: row.nome_completo,
+              nome_abreviado: row.nome_abreviado,
+              status: row.status,
+              tem_ams: row.tem_ams,
+              tipo_book: row.tipo_book,
+              book_personalizado: row.book_personalizado,
+              anexo: row.anexo,
+              template_padrao: row.template_padrao,
+              link_sharepoint: row.link_sharepoint,
+              email_gestor: row.email_gestor,
+              data_status: row.data_status,
+              descricao_status: row.descricao_status,
+              vigencia_inicial: row.vigencia_inicial,
+              vigencia_final: row.vigencia_final,
+              created_at: row.created_at,
+              updated_at: row.updated_at
+            },
+            controle: row.controle_mensal?.[0] || null,
+            clientesAtivos: new Set(),
+            emailsEnviados: new Set()
+          });
+        }
 
-        // Contar e-mails enviados no mês
-        const { count: emailsEnviados } = await supabase
-          .from('historico_disparos')
-          .select('*', { count: 'exact', head: true })
-          .eq('empresa_id', empresa.id)
-          .eq('status', 'enviado')
-          .gte('data_disparo', `${ano}-${mes.toString().padStart(2, '0')}-01`)
-          .lt('data_disparo', `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`);
+        const empresaData = empresasMap.get(empresaId);
 
-        statusMensal.push({
-          empresaId: empresa.id,
-          empresa: empresa,
-          status: controle?.status as StatusControleMensal || 'pendente',
-          dataProcessamento: controle?.data_processamento ? new Date(controle.data_processamento) : undefined,
-          observacoes: controle?.observacoes || undefined,
-          clientesAtivos: clientesAtivos || 0,
-          emailsEnviados: emailsEnviados || 0
-        });
+        // Contar clientes únicos
+        if (row.clientes?.length > 0) {
+          row.clientes.forEach((cliente: any) => {
+            if (cliente.id) {
+              empresaData.clientesAtivos.add(cliente.id);
+            }
+          });
+        }
+
+        // Contar emails únicos
+        if (row.historico_disparos?.length > 0) {
+          row.historico_disparos.forEach((historico: any) => {
+            if (historico.id) {
+              empresaData.emailsEnviados.add(historico.id);
+            }
+          });
+        }
       }
 
-      // Ordenar por nome da empresa em ordem alfabética
+      // Converter para formato final
+      const statusMensal: StatusMensal[] = Array.from(empresasMap.values()).map(empresaData => ({
+        empresaId: empresaData.empresa.id,
+        empresa: empresaData.empresa,
+        status: empresaData.controle?.status as StatusControleMensal || 'pendente',
+        dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+        observacoes: empresaData.controle?.observacoes || undefined,
+        clientesAtivos: empresaData.clientesAtivos.size,
+        emailsEnviados: empresaData.emailsEnviados.size
+      }));
+
+      // Ordenação já aplicada na consulta SQL, mas garantindo localmente
       return statusMensal.sort((a, b) =>
         a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
           sensitivity: 'base',
@@ -1122,65 +1162,105 @@ class BooksDisparoService {
    */
   async obterStatusMensal(mes: number, ano: number): Promise<StatusMensal[]> {
     try {
-      const { data: controles, error } = await supabase
-        .from('controle_mensal')
+      // Consulta otimizada única com JOINs para evitar N+1 queries
+      const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
+      const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
+
+      // Buscar empresas com contagens agregadas em uma única consulta
+      const { data: empresasData, error: empresasError } = await supabase
+        .from('empresas_clientes')
         .select(`
           *,
-          empresas_clientes(*)
+          controle_mensal!left(
+            status,
+            data_processamento,
+            observacoes
+          ),
+          clientes!left(id),
+          historico_disparos!left(id)
         `)
-        .eq('mes', mes)
-        .eq('ano', ano);
-
-      if (error) {
-        throw new Error(`Erro ao buscar status mensal: ${error.message}`);
-      }
-
-      // Buscar empresas que não têm controle mensal ainda (apenas com AMS E tipo Qualidade E sem book personalizado)
-      const { data: todasEmpresas, error: empresasError } = await supabase
-        .from('empresas_clientes')
-        .select('*')
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
-        .eq('book_personalizado', false);
+        .eq('book_personalizado', false)
+        .eq('controle_mensal.mes', mes)
+        .eq('controle_mensal.ano', ano)
+        .eq('clientes.status', 'ativo')
+        .eq('historico_disparos.status', 'enviado')
+        .gte('historico_disparos.data_disparo', dataInicio)
+        .lt('historico_disparos.data_disparo', dataFim)
+        .order('nome_completo');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
-      const statusMensal: StatusMensal[] = [];
+      // Processar resultados agrupando por empresa
+      const empresasMap = new Map<string, any>();
 
-      for (const empresa of todasEmpresas || []) {
-        const controle = controles?.find(c => c.empresa_id === empresa.id);
+      for (const row of empresasData || []) {
+        const empresaId = row.id;
 
-        // Contar clientes ativos
-        const { count: clientesAtivos } = await supabase
-          .from('clientes')
-          .select('*', { count: 'exact', head: true })
-          .eq('empresa_id', empresa.id)
-          .eq('status', 'ativo');
+        if (!empresasMap.has(empresaId)) {
+          empresasMap.set(empresaId, {
+            empresa: {
+              id: row.id,
+              nome_completo: row.nome_completo,
+              nome_abreviado: row.nome_abreviado,
+              status: row.status,
+              tem_ams: row.tem_ams,
+              tipo_book: row.tipo_book,
+              book_personalizado: row.book_personalizado,
+              anexo: row.anexo,
+              template_padrao: row.template_padrao,
+              link_sharepoint: row.link_sharepoint,
+              email_gestor: row.email_gestor,
+              data_status: row.data_status,
+              descricao_status: row.descricao_status,
+              vigencia_inicial: row.vigencia_inicial,
+              vigencia_final: row.vigencia_final,
+              created_at: row.created_at,
+              updated_at: row.updated_at
+            },
+            controle: row.controle_mensal?.[0] || null,
+            clientesAtivos: new Set(),
+            emailsEnviados: new Set()
+          });
+        }
 
-        // Contar e-mails enviados no mês
-        const { count: emailsEnviados } = await supabase
-          .from('historico_disparos')
-          .select('*', { count: 'exact', head: true })
-          .eq('empresa_id', empresa.id)
-          .eq('status', 'enviado')
-          .gte('data_disparo', `${ano}-${mes.toString().padStart(2, '0')}-01`)
-          .lt('data_disparo', `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`);
+        const empresaData = empresasMap.get(empresaId);
 
-        statusMensal.push({
-          empresaId: empresa.id,
-          empresa: empresa,
-          status: controle?.status as StatusControleMensal || 'pendente',
-          dataProcessamento: controle?.data_processamento ? new Date(controle.data_processamento) : undefined,
-          observacoes: controle?.observacoes || undefined,
-          clientesAtivos: clientesAtivos || 0,
-          emailsEnviados: emailsEnviados || 0
-        });
+        // Contar clientes únicos
+        if (row.clientes?.length > 0) {
+          row.clientes.forEach((cliente: any) => {
+            if (cliente.id) {
+              empresaData.clientesAtivos.add(cliente.id);
+            }
+          });
+        }
+
+        // Contar emails únicos
+        if (row.historico_disparos?.length > 0) {
+          row.historico_disparos.forEach((historico: any) => {
+            if (historico.id) {
+              empresaData.emailsEnviados.add(historico.id);
+            }
+          });
+        }
       }
 
-      // Ordenar por nome da empresa em ordem alfabética
+      // Converter para formato final
+      const statusMensal: StatusMensal[] = Array.from(empresasMap.values()).map(empresaData => ({
+        empresaId: empresaData.empresa.id,
+        empresa: empresaData.empresa,
+        status: empresaData.controle?.status as StatusControleMensal || 'pendente',
+        dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+        observacoes: empresaData.controle?.observacoes || undefined,
+        clientesAtivos: empresaData.clientesAtivos.size,
+        emailsEnviados: empresaData.emailsEnviados.size
+      }));
+
+      // Ordenação já aplicada na consulta SQL, mas garantindo localmente
       return statusMensal.sort((a, b) =>
         a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
           sensitivity: 'base',
@@ -1381,13 +1461,10 @@ class BooksDisparoService {
    */
   async buscarHistorico(filtros: HistoricoFiltros): Promise<HistoricoDisparoCompleto[]> {
     try {
+      // Primeiro, buscar apenas os dados do histórico
       let query = supabase
         .from('historico_disparos')
-        .select(`
-          *,
-          empresas_clientes(*),
-          clientes(*)
-        `);
+        .select('*');
 
       // Aplicar filtros
       if (filtros.empresaId) {
@@ -1420,13 +1497,40 @@ class BooksDisparoService {
 
       query = query.order('created_at', { ascending: false });
 
-      const { data, error } = await query;
+      const { data: historicoData, error } = await query;
 
       if (error) {
         throw new Error(`Erro ao buscar histórico: ${error.message}`);
       }
 
-      return data || [];
+      if (!historicoData || historicoData.length === 0) {
+        return [];
+      }
+
+      // Buscar dados relacionados separadamente
+      const empresaIds = [...new Set(historicoData.map(h => h.empresa_id).filter(Boolean))];
+      const clienteIds = [...new Set(historicoData.map(h => h.cliente_id).filter(Boolean))];
+
+      // Buscar empresas
+      const { data: empresas } = await supabase
+        .from('empresas_clientes')
+        .select('*')
+        .in('id', empresaIds);
+
+      // Buscar clientes
+      const { data: clientes } = await supabase
+        .from('clientes')
+        .select('*')
+        .in('id', clienteIds);
+
+      // Combinar os dados
+      const resultado: HistoricoDisparoCompleto[] = historicoData.map(historico => ({
+        ...historico,
+        empresas_clientes: empresas?.find(e => e.id === historico.empresa_id),
+        clientes: clientes?.find(c => c.id === historico.cliente_id)
+      }));
+
+      return resultado;
 
     } catch (error) {
       throw new Error(`Erro ao buscar histórico: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -1486,6 +1590,9 @@ class BooksDisparoService {
     mes: number,
     ano: number
   ): Promise<{ sucesso: boolean; erro?: string; clientesProcessados: string[] }> {
+    // Declarar anexosWebhook no escopo da função para estar disponível em todos os blocos
+    let anexosWebhook: AnexoWebhookData[] = [];
+
     try {
       if (clientes.length === 0) {
         return {
@@ -1499,11 +1606,11 @@ class BooksDisparoService {
       const templatePadrao = (empresa as any).template_padrao as ('portugues' | 'ingles') ?? 'portugues';
       console.log(`🏢 Empresa: ${empresa.nome_completo}`);
       console.log(`🌐 Template padrão configurado: ${templatePadrao}`);
+
       // Verificar se empresa tem anexos habilitados
       const temAnexos = empresa.anexo === true;
 
       // Buscar anexos da empresa se habilitado
-      let anexosWebhook: AnexoWebhookData[] = [];
       if (temAnexos) {
         try {
           anexosWebhook = await this.buscarAnexosEmpresa(empresa.id);

@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useControleDisparos } from '@/hooks/useControleDisparos';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
 import type {
   AgendamentoDisparo,
   StatusControleMensal
@@ -306,6 +307,77 @@ const ControleDisparos = () => {
   const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
 
+  // Loading skeleton durante carregamento inicial
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Disparos
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Acompanhe e gerencie o envio mensal de books
+              </p>
+            </div>
+          </div>
+
+          {/* Seletor de Mês/Ano */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Período de Controle
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  onClick={handleMesAnterior}
+                  disabled={isLoading}
+                >
+                  ← Anterior
+                </Button>
+
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {nomesMeses[mesAtual - 1]} {anoAtual}
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    (Referência {nomesMeses[mesReferencia - 1]} {anoReferencia})
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Carregando...
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={handleProximoMes}
+                  disabled={isLoading}
+                >
+                  Próximo →
+                </Button>
+              </div>
+
+              {/* Barra de Progresso */}
+              <div className="mt-4">
+                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                  <div className="bg-blue-600 h-2 rounded-full animate-pulse w-1/3"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <DisparosLoadingSkeleton />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -500,12 +572,7 @@ const ControleDisparos = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                <p className="text-gray-600 dark:text-gray-400 mt-2">Carregando...</p>
-              </div>
-            ) : statusMensal.length === 0 ? (
+            {statusMensal.length === 0 ? (
               <div className="text-center py-8">
                 <AlertCircle className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">

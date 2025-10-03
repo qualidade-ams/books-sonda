@@ -43,6 +43,7 @@ import { useEmpresas } from '@/hooks/useEmpresas';
 import { useAnexos } from '@/hooks/useAnexos';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { AnexoUpload } from '@/components/admin/anexos/AnexoUpload';
+import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
 import type {
   AgendamentoDisparo,
   StatusControleMensal
