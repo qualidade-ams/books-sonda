@@ -65,7 +65,7 @@ const empresaSchema = z.object({
     .min(1, 'E-mail do Customer Success é obrigatório')
     .email('E-mail deve ser válido'),
   produtos: z
-    .array(z.enum(['CE_PLUS', 'FISCAL', 'GALLERY']))
+    .array(z.enum(['COMEX', 'FISCAL', 'GALLERY']))
     .min(1, 'Selecione pelo menos um produto'),
   grupos: z.array(z.string()).optional(),
   temAms: z.boolean().optional(),

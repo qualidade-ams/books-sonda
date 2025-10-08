@@ -283,7 +283,7 @@ export class ClientBooksTemplateService {
           { 
             id: 'exemplo-produto-1',
             empresa_id: 'exemplo-empresa-id',
-            produto: 'CE_PLUS',
+            produto: 'COMEX',
             created_at: dataAtual.toISOString()
           },
           { 

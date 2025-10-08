@@ -115,7 +115,7 @@ class ExcelImportService {
         // Validações adicionais
         if (row['Produtos']) {
           const produtos = row['Produtos'].split(',').map((p: string) => p.trim().toUpperCase());
-          const produtosValidos = ['CE_PLUS', 'FISCAL', 'GALLERY'];
+          const produtosValidos = ['COMEX', 'FISCAL', 'GALLERY'];
 
           produtos.forEach((produto: string) => {
             if (!produtosValidos.includes(produto)) {
@@ -336,8 +336,8 @@ class ExcelImportService {
         'ativo',
         '',
         'gestor@sonda.com',
-        'CE_PLUS,FISCAL',
-        'CE Plus,Outros',
+        'COMEX,FISCAL',
+        'Comex,Outros',
         'sim',
         'qualidade',
         '2024-01-01',
@@ -354,7 +354,7 @@ class ExcelImportService {
       ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
       ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
       ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],
-      ['• Produtos: Lista separada por vírgulas: CE_PLUS, FISCAL, GALLERY (obrigatório)'],
+      ['• Produtos: Lista separada por vírgulas: COMEX, FISCAL, GALLERY (obrigatório)'],
       ['• Grupos: Lista de grupos responsáveis separados por vírgulas (opcional)'],
       ['• Tem AMS: "sim" ou "não" (padrão: não)'],
       ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (padrão: nao_tem_book)'],

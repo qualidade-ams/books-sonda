@@ -116,8 +116,8 @@ describe('ExcelImportService', () => {
         'Template Padrão': 'portugues',
         'Status': 'ativo',
         'Email Gestor': 'gestor@teste.com',
-        'Produtos': 'CE_PLUS,FISCAL',
-        'Grupos': 'CE Plus,Outros'
+        'Produtos': 'COMEX,FISCAL',
+        'Grupos': 'Comex,Outros'
       };
 
       // Act
@@ -131,8 +131,8 @@ describe('ExcelImportService', () => {
         templatePadrao: 'portugues',
         status: 'ativo',
         emailGestor: 'gestor@teste.com',
-        produtos: ['CE_PLUS', 'FISCAL'],
-        grupos: ['CE Plus', 'Todos']
+        produtos: ['COMEX', 'FISCAL'],
+        grupos: ['Comex', 'Todos']
       });
     });
 

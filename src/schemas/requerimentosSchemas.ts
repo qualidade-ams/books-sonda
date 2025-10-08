@@ -9,7 +9,7 @@ const chamadoSchema = z
 
 // Schema para validação de módulo
 const moduloSchema = z
-  .enum(['CE Plus', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
+  .enum(['Comex', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
     errorMap: () => ({ message: 'Selecione um módulo válido' })
   });
 

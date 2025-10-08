@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Users, AlertCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -140,6 +140,14 @@ const Clientes: React.FC = () => {
     setClienteEditando(null);
   };
 
+  // Calcular estatísticas dos clientes
+  const stats = {
+    total: clientes.length,
+    ativos: clientes.filter(c => c.status === 'ativo').length,
+    inativos: clientes.filter(c => c.status === 'inativo').length,
+    principais: clientes.filter(c => c.principal_contato).length,
+  };
+
   // Preparar dados iniciais do formulário
   const dadosIniciais = clienteEditando
     ? {
@@ -211,6 +219,58 @@ const Clientes: React.FC = () => {
               </Button>
             </ProtectedAction>
           </div>
+        </div>
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
+                Total
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.total}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
+                Ativos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                {stats.ativos}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
+                Inativos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-gray-600">
+                {stats.inativos}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
+                Principais
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                {stats.principais}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabela de Clientes */}

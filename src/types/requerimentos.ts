@@ -35,7 +35,7 @@ export interface Requerimento {
 }
 
 // Tipos para opções de select
-export type ModuloType = 'CE Plus' |'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
+export type ModuloType = 'Comex' |'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
 export type TipoCobrancaType = 'Selecione' | 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type TipoCobrancaFaturamentoType = Exclude<TipoCobrancaType, 'Selecione'>; // Tipo para faturamento sem 'Selecione'
@@ -43,7 +43,7 @@ export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
 // Constantes para opções de select
 export const MODULO_OPTIONS: { value: ModuloType; label: string }[] = [
-  { value: 'CE Plus', label: 'CE Plus' },
+  { value: 'Comex', label: 'Comex' },
   { value: 'Comply', label: 'Comply' },
   { value: 'Comply e-DOCS', label: 'Comply e-DOCS' },
   { value: 'pw.SATI', label: 'pw.SATI' },

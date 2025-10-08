@@ -123,7 +123,7 @@ export function GrupoForm({ grupo, onSubmit, onCancel, isLoading = false }: Grup
             <Input
               id="nome"
               {...register('nome')}
-              placeholder="Ex: CE Plus, Fiscal, Gallery..."
+              placeholder="Ex: Comex, Fiscal, Gallery..."
               disabled={isLoading || isSubmitting}
             />
             {errors.nome && (

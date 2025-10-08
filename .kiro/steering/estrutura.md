@@ -60,10 +60,11 @@ books-snd/
 │   │   │   │   │   └── TemplatePreview.test.tsx		   # Testes do componente de prévia de templates
 │   │   │   │   ├── ClientImportExportButtons.tsx		   # Componente unificado de botões para importação e exportação de empresas e clientes com suporte a Excel e PDF
 │   │   │   │   ├── ClienteForm.tsx						   # Formulário de cadastro/edição de clientes
-│   │   │   │   ├── ClientesTable.tsx					   # Tabela de listagem de clientes
+│   │   │   │   ├── ClientesTable.tsx					   # Tabela de listagem de clientes com sistema de busca otimizado (debounce de 500ms para melhor performance, sincronização automática entre busca local e filtros externos, controle de estado local para entrada de texto responsiva, filtros por status e empresa com ordenação alfabética automática por nome abreviado usando localeCompare pt-BR, badges visuais por status com ícones, formatação de datas, integração com sistema de permissões, interface responsiva com colunas condicionais e fallback para estados vazios)
 │   │   │   │   ├── EmpresaForm.tsx						   # Formulário de cadastro/edição de empresas com campos AMS, Tipo de Book, Link SharePoint, vigência de contrato e opções específicas para books de qualidade (Book Personalizado e Anexo)
 │   │   │   │   ├── EmpresaImportExportButtons.tsx		   # Componente específico de botões para importação e exportação de empresas clientes com dropdown menus, suporte a Excel e PDF, modal avançado de importação com preview de dados e resultado detalhado, integração completa com hook useExcelImport, controle otimizado de estado do modal (fechamento automático quando não há dados para exibir), e botão "Nova Importação" na tela de resultado para facilitar importações sequenciais sem fechar o modal
-│   │   │   │   ├── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes
+│   │   │   │   ├── EmpresasFiltros.tsx					   # Componente de filtros simplificados para empresas clientes (busca por nome com ícone Search posicionado à esquerda, filtros únicos por status e produtos usando Select padrão, interface minimalista com botão toggle simples para mostrar/ocultar filtros, layout responsivo em grid de 3 colunas md:grid-cols-3, integração com componentes Select padrão do shadcn/ui, sem badges visuais ou contadores para manter consistência com padrão da tela de clientes)
+│   │   │   │   ├── EmpresasTable.tsx					   # Tabela de listagem de empresas clientes com mapeamento de templates para siglas concisas (PT-BR, EN, SAMARCO, NOVO NORDISK) - correção na detecção do template "Novo Nordisk" com espaço
 │   │   │   │   ├── GrupoForm.tsx						   # Formulário de cadastro/edição de grupos responsáveis
 │   │   │   │   ├── GruposTable.tsx						   # Tabela de listagem de grupos responsáveis
 │   │   │   │   └── index.ts							      # Exportações centralizadas dos componentes
@@ -152,7 +153,8 @@ books-snd/
 │   │   │   └── RealTimeNotifications.tsx				   # Notificações em tempo real via Supabase
 │   │   └── ui/                 						      # Componentes de interface genéricos (shadcn/ui)
 │   │       ├── input-horas.tsx                         # Componente especializado para entrada de horas com suporte a formatos HH:MM e números inteiros, validação em tempo real, normalização automática, formatação para exibição, integração com horasUtils e feedback visual de validação
-│   │       └── [52 componentes UI]                     # Componentes base da biblioteca shadcn/ui incluindo componentes customizados como confirm-dialog, field-speech-button, lazy-loading, pagination-optimized e stepper
+│   │       ├── multi-select.tsx                        # Componente de seleção múltipla com interface moderna (suporte a busca, badges removíveis, controle de máximo de itens exibidos, navegação por teclado, estados de loading e disabled, integração com Command palette, popover customizável, funcionalidade "Selecionar Todos/Desselecionar Todos" com separador visual, detecção inteligente de contexto (status/produtos) e acessibilidade completa)
+│   │       └── [51+ componentes UI]                    # Componentes base da biblioteca shadcn/ui incluindo componentes customizados como confirm-dialog, field-speech-button, lazy-loading, pagination-optimized e stepper
 │   │				
 │   ├── config/                 						      # Configurações da aplicação
 │   │   └── emailTemplateConfig.ts						   # Configurações de templates de email
@@ -238,7 +240,7 @@ books-snd/
 │   │   │   ├── MonitoramentoVigencias.tsx             # Monitoramento de vigências de contratos das empresas
 │   │   │   ├── Dashboard.tsx           				   # Painel principal administrativo simplificado com boas-vindas e suporte a tema escuro
 │   │   │   ├── EmailConfig.tsx         				   # Configuração de templates de email
-│   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes com integração do componente EmpresaImportExportButtons para funcionalidades unificadas de importação e exportação, handler de importação otimizado com forceRefresh automático e notificação de sucesso
+│   │   │   ├── EmpresasClientes.tsx    				   # Cadastro de empresas clientes com integração do componente EmpresaImportExportButtons para funcionalidades unificadas de importação e exportação, handler de importação otimizado com forceRefresh automático e notificação de sucesso, filtros padronizados seguindo padrão da tela de clientes (Select simples em vez de MultiSelect, layout em grid de 4 colunas md:grid-cols-4 para melhor distribuição dos filtros incluindo novo filtro por e-mail gestor, interface minimalista sem badges visuais, filtros inicializados para mostrar todos os status por padrão), sistema de busca otimizado com debounce de 500ms para melhor performance (sincronização automática entre busca local e filtros externos, controle de estado local para entrada de texto responsiva), correção de handlers de filtros com valores especiais únicos para evitar erros do Radix UI Select.Item, remoção de imports não utilizados e limpeza de código
 │   │   │   ├── GroupManagement.tsx     			   	# Gerenciamento de grupos de usuários
 │   │   │   ├── GruposResponsaveis.tsx  				   # Gerenciamento de grupos responsáveis
 │   │   │   ├── HistoricoBooks.tsx      				   # Histórico e relatórios de books com interface aprimorada (exibe todos os registros por padrão sem filtros de mês/ano pré-definidos, seção dedicada para empresas com books enviados com badge verde e scroll otimizado, melhorias na exibição de empresas sem books com informações mais detalhadas incluindo nome abreviado, controle de altura máxima com scroll para listas extensas)
@@ -256,24 +258,30 @@ books-snd/
 │   │				
 │   ├── schemas/                						      # Schemas de validação Zod
 │   │   ├── __tests__/          						      # Testes dos schemas
-│   │   │   └── clientBooksSchemas.test.ts			   # Testes dos schemas do sistema de books
+│   │   │   ├── clientBooksSchemas.test.ts			   # Testes dos schemas do sistema de books (atualizado com migração CE_PLUS → COMEX)
+│   │   │   └── requerimentosSchemas.test.ts		   # Testes dos schemas do sistema de requerimentos (validação de formulários, filtros, faturamento, módulos válidos incluindo migração CE Plus → Comex, tipos de cobrança, constraints de negócio e validações condicionais)
 │   │   ├── clientBooksSchemas.ts					   # Schemas de validação para formulários do sistema de clientes e books (inclui tipoBookSchema para validação dos tipos: nao_tem_book, qualidade, outros)
 │   │   └── requerimentosSchemas.ts					   # Schemas de validação Zod para o sistema de requerimentos (validação de formulários de requerimento, filtros, faturamento, campos obrigatórios, constraints de negócio, validações condicionais e tipos inferidos, validação de horas como números inteiros de 0 a 9999)
 │   │				
 │   ├── services/               						      # Serviços e lógica de negócio
 │   │   ├── __tests__/          						      # Testes dos serviços
+│   │   │   ├── anexoAuditService.test.ts            # Testes do serviço de auditoria de anexos (logs, métricas e troubleshooting)
 │   │   │   ├── anexoMetricsService.test.ts          # Testes do serviço de métricas de anexos (estatísticas, alertas, dashboard e monitoramento)
 │   │   │   ├── anexoService.test.ts                 # Testes do serviço de gerenciamento de anexos (validação de tipos, tamanhos, upload e tokens de acesso)
 │   │   │   ├── booksDisparoService.test.ts          # Testes do serviço de controle de disparos de books
+│   │   │   ├── booksDisparoServiceAnexos.test.ts    # Testes específicos do serviço de disparos com anexos (integração entre books e sistema de anexos)
 │   │   │   ├── clientesService.test.ts              # Testes do serviço de clientes
 │   │   │   ├── empresasClientesService.test.ts      # Testes do serviço de empresas clientes
 │   │   │   ├── excelImportService.test.ts           # Testes do serviço de importação Excel
-│   │   │   ├── gruposResponsaveisService.test.ts    # Testes do serviço de grupos responsáveis
+│   │   │   ├── faturamentoService.test.ts           # Testes do serviço de faturamento para sistema de requerimentos
+│   │   │   ├── gruposResponsaveisService.test.ts    # Testes do serviço de grupos responsáveis (atualizado com migração CE Plus → Comex)
+│   │   │   ├── historicoAnexosService.test.ts       # Testes do serviço de histórico com suporte a anexos
 │   │   │   ├── historicoService.test.ts             # Testes do serviço de histórico
 │   │   │   ├── jobSchedulerService.test.ts          # Testes do serviço de agendamento de jobs
 │   │   │   ├── realTimeNotificationService.test.ts  # Testes do serviço de notificações em tempo real
 │   │   │   ├── requerimentosService.test.ts         # Testes do serviço de requerimentos de especificações funcionais (CRUD, validações, faturamento, estatísticas e integração com sistema de permissões)
-│   │   │   └── templateValidationService.test.ts    # Testes do serviço de validação de templates
+│   │   │   ├── templateValidationService.test.ts    # Testes do serviço de validação de templates
+│   │   │   └── webhookAnexosIntegration.test.ts     # Testes de integração webhook para sistema de anexos
 │   │   ├── configuration/      						      # Serviços de configuração
 │   │   │   └── index.ts									      # Exportações da infraestrutura de configuração
 │   │   ├── adminNotificationService.ts       			# Notificações para administradores
@@ -326,13 +334,13 @@ books-snd/
 │   │   │   └── anexosLimitesValidacoes.test.ts      # Teste E2E de limites e validações do sistema de anexos (upload de arquivos que excedem 25MB total, tipos não permitidos, mais de 10 arquivos por empresa)
 │   │   ├── integration/        					      	# Testes de integração
 │   │   │   ├── anexosFluxoCompleto.test.ts          # Teste de fluxo completo do sistema de anexos (upload múltiplo, validação de limite de 25MB, disparo personalizado com anexos, processamento e movimentação para storage permanente)
-│   │   │   ├── cadastroCompleto.test.ts             # Teste de fluxo completo de cadastro
+│   │   │   ├── cadastroCompleto.test.ts             # Teste de fluxo completo de cadastro com validação de produtos COMEX (atualizado com migração CE Plus → Comex)
 │   │   │   ├── disparoEmails.test.ts                # Teste de disparo de emails
 │   │   │   ├── importacaoExcel.test.ts              # Teste de importação de Excel
 │   │   │   ├── mesReferenciaBooks.test.ts           # Teste de cálculo do mês de referência para disparos de books (validação do mês anterior ao disparo)
 │   │   │   ├── requerimentosFluxoCompleto.test.ts   # Teste de integração completo do sistema de requerimentos (fluxo lançar → enviar → faturar, validação de integração com Supabase, sistema de permissões, envio de email, estrutura de dados, constraints de negócio, relacionamentos entre tabelas, cenários de erro e recuperação)
 │   │   │   └── vigenciaAutomatica.test.ts           # Teste de inativação automática de empresas por vigência expirada
-│   │   ├── clientBooksTypes.test.ts             		# Testes dos tipos do sistema de books
+│   │   ├── clientBooksTypes.test.ts             		# Testes dos tipos do sistema de books (atualizado com migração CE Plus → Comex)
 │   │   ├── permissions.test.ts                  		# Testes do sistema de permissões
 │   │   └── setup.ts                             		# Configuração dos testes
 │   │				
@@ -340,7 +348,7 @@ books-snd/
 │   │   ├── api.ts                               		# Tipos para APIs
 │   │   ├── approval.ts                          		# Tipos para sistema de aprovação
 │   │   ├── audit.ts                             		# Tipos para auditoria
-│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros), interface RelatorioMetricas com separação de empresas com e sem books, tipos completos do sistema de anexos (AnexoTemporario, AnexoWebhookData, AnexosSummaryWebhook, DisparoComAnexos) para integração com disparos personalizados e processamento de arquivos anexados
+│   │   ├── clientBooks.ts                       		# Tipos do sistema de clientes e books, incluindo constantes TIPO_BOOK_OPTIONS para seleção de tipos de book (nao_tem_book, qualidade, outros), interface RelatorioMetricas com separação de empresas com e sem books, tipos completos do sistema de anexos (AnexoTemporario, AnexoWebhookData, AnexosSummaryWebhook, DisparoComAnexos) para integração com disparos personalizados e processamento de arquivos anexados, e tipo Produto atualizado com valores 'COMEX' | 'FISCAL' | 'GALLERY' (migração de CE_PLUS para COMEX)
 │   │   ├── clientBooksTypes.ts                  		# Tipos específicos do sistema de books
 │   │   ├── configuration.ts                     		# Tipos para configurações
 │   │   ├── constants.ts                         		# Constantes tipadas
@@ -358,20 +366,23 @@ books-snd/
 │   │   │   ├── anexoCache.test.ts                   # Testes do sistema de cache de anexos (TTL, invalidação, estatísticas e performance)
 │   │   │   ├── anexoCompression.test.ts             # Testes da compressão automática de anexos (algoritmos, tipos de arquivo, estatísticas de redução)
 │   │   │   ├── clientBooksVariableMapping.test.ts   # Testes do mapeamento de variáveis com casos específicos para nomes de mês em português e inglês, validação do mês de referência (mês anterior ao disparo), testes de variáveis de sistema do mês atual e correção de sintaxe
-│   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros
+│   │   │   ├── errorRecovery.test.ts                # Testes de recuperação de erros com validação de integridade de dados (atualizado com migração CE_PLUS → COMEX)
+│   │   │   ├── requerimentosColors.test.ts          # Testes do sistema de cores para tipos de cobrança do sistema de requerimentos (validação de cores, classes CSS, ícones e contraste)
+│   │   │   ├── requerimentosErrorHandler.test.ts    # Testes do tratamento de erros específicos do sistema de requerimentos (validação de erros, recovery e fallbacks)
 │   │   │   └── templateSelection.integration.test.ts # Testes de integração para seleção de templates (padrão e personalizados)
 │   │   ├── anexoCache.ts              					# Sistema de cache local para anexos com TTL configurável (cache em memória por empresa, invalidação automática, utilitários de limpeza, estatísticas de uso e integração com sistema de anexos para otimização de performance)
 │   │   ├── anexoCompression.ts        					# Utilitários para compressão automática de anexos (compressão inteligente baseada no tamanho e tipo do arquivo, suporte a PDFs, imagens e documentos Office, processamento em paralelo com limite de concorrência, estatísticas de redução de tamanho e otimização de performance para uploads)
 │   │   ├── anexoInfrastructureUtils.ts					# Utilitários para infraestrutura de anexos (configuração de buckets, validações de storage e operações de manutenção)
 │   │   ├── cacheKeyGenerator.ts       					# Geração de chaves de cache
 │   │   ├── clientBooksErrorHandler.ts       			# Tratamento de erros específicos do sistema de books
-│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, variáveis de sistema para mês atual (sistema.mesNomeAtual e sistema.mesNomeAtualEn), correção de sintaxe na função de mapeamento de variáveis
+│   │   ├── clientBooksVariableMapping.ts       		# Mapeamento de variáveis para templates com cálculo automático do mês de referência (mês anterior ao disparo), suporte a nomes de meses em português e inglês, variáveis de sistema para mês atual (sistema.mesNomeAtual e sistema.mesNomeAtualEn), mapeamento de produtos atualizado (COMEX, FISCAL, GALLERY) após migração de CE_PLUS para COMEX, correção de sintaxe na função de mapeamento de variáveis
 │   │   ├── clientExportUtils.ts         				# Utilitários para exportação de dados de clientes (colaboradores)
 │   │   ├── cnpjMask.ts            					   	# Formatação e máscara de CNPJ
-│   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com design aprimorado - layout em cards, cores temáticas Sonda (#2563eb), caixa de resumo estatístico expandida com contadores de empresas ativas/inativas/suspensas, cabeçalho profissional, integração Supabase e mapeamento assíncrono de templates, correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes) - usado pela tela EmpresasClientes.tsx
 │   │   ├── configurationDebug.ts      					# Debug de configurações
 │   │   ├── configurationLogger.ts     					# Logging estruturado
 │   │   ├── configurationMapper.ts     					# Mapeamento de configurações
+│   │   ├── dateUtils.ts               					# Utilitários para manipulação de datas
+│   │   ├── empresasExportUtils.ts       				# Utilitários específicos para exportação de empresas clientes (Excel e PDF com design aprimorado - layout em cards, cores temáticas Sonda (#2563eb), caixa de resumo estatístico expandida com contadores de empresas ativas/inativas/suspensas, cabeçalho profissional, integração Supabase e mapeamento assíncrono de templates, correção da sintaxe de aplicação de cores no jsPDF para compatibilidade com versões mais recentes) - usado pela tela EmpresasClientes.tsx
 │   │   ├── emailValidation.ts         					# Validação de emails
 │   │   ├── emailVariableMapping.ts              		# Mapeamento de variáveis de email
 │   │   ├── environmentCheck.ts        					# Verificação de ambiente
@@ -382,11 +393,13 @@ books-snd/
 │   │   ├── formatters.ts             				   	# Formatação de valores (datas, números) com timezone Brasil e precisão de segundos
 │   │   ├── historicoAlternativo.ts    					# Consulta alternativa do histórico sem joins complexos (evita problemas de relacionamento)
 │   │   ├── horasUtils.ts              					# Utilitários completos para conversão e validação de horas (suporte a formato HH:MM e números inteiros, conversão entre minutos/horas/decimal, validação de formato, normalização de entrada, soma de horas, formatação para exibição amigável, integração com banco de dados e análise detalhada de horas convertidas)
+│   │   ├── mesCobrancaUtils.ts        					# Utilitários para cálculo de mês de cobrança e referência
 │   │   ├── paginationUtils.ts         					# Utilitários de paginação
 │   │   ├── performance-optimizations.ts			   	# Otimizações de performance
 │   │   ├── permissionUtils.ts         					# Utilitários de permissões (legacy)
 │   │   ├── permissionsUtils.ts        					# Utilitários de permissões (novo)
 │   │   ├── requerimentosColors.ts       				# Sistema completo de cores para tipos de cobrança do sistema de requerimentos (8 tipos: Banco de Horas/azul, Cobro Interno/verde, Contrato/cinza, Faturado/laranja, Hora Extra/vermelho, Sobreaviso/roxo, Reprovado/slate, Bolsão Enel/amarelo), funções utilitárias para classes CSS de cards, badges, botões e inputs com estados hover e focus, mapeamento de ícones emoji por tipo, cores hexadecimais para gráficos, validação de tipos, contraste de texto automático e constantes para reutilização em componentes
+│   │   ├── requerimentosErrorHandler.ts       			# Tratamento de erros específicos do sistema de requerimentos (validação de erros, recovery, fallbacks e logging estruturado)
 │   │   ├── requerimentosPerformance.ts       			# Utilitários de performance para o sistema de requerimentos (hooks para debounce de busca, memoização de filtros e estatísticas, lazy loading de componentes com correção do React.createElement para fallback, otimização de re-renders, formatação de números com cache, paginação virtual, intersection observer, configurações de queries otimizadas e scroll otimizado)
 │   │   ├── retryUtils.ts             				   	# Lógica de retry com backoff
 │   │   ├── templateMappingValidation.ts				   # Validação de mapeamento de templates
@@ -423,6 +436,7 @@ books-snd/
 │       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
 │       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
+│       ├── rename_ce_plus_to_comex.sql           # Migração completa para renomear CE Plus para Comex em todo o sistema (atualiza produtos, grupos responsáveis, requerimentos e constraints, inclui verificação prévia de dados existentes, logs de progresso detalhados, validação pós-migração com contadores e alertas de inconsistências, numeração corrigida dos passos da migração)
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
 │       ├── README_SISTEMA_REQUERIMENTOS.md        # Documentação completa do sistema de requerimentos (guia de instalação, estrutura de arquivos, instruções de migração e exemplos de uso)
 │       ├── run_sistema_requerimentos_migration.sql # Script de execução completa das migrações do sistema de requerimentos (executa todas as migrações em sequência: estrutura, permissões, RLS e validações)
@@ -508,7 +522,13 @@ books-snd/
 ├── IMPLEMENTACAO_LAYOUT_4_COLUNAS_REQUERIMENTOS.md
 ├── IMPLEMENTACAO_LAYOUT_LINHA_REQUERIMENTOS.md         # Documentação da implementação do layout em linha horizontal para requerimentos (transformação do RequerimentoCard de formato de cards para layout horizontal em grid de 12 colunas, seguindo padrão da tela "Faturar Requerimentos", cabeçalho de lista com identificação das colunas, botões de ação apenas com ícones, densidade otimizada de informações, consistência visual entre telas, atualização completa dos testes unitários e manutenção de todas as funcionalidades existentes)     # Documentação da implementação do layout em 4 colunas para cards de requerimentos (grid responsivo expandido até 4 colunas no desktop, layout vertical ultra-compacto do RequerimentoCard, tipografia reduzida, densidade otimizada para visualização de 4x mais cards simultaneamente, breakpoints inteligentes mobile/tablet/desktop, otimizações de espaço com padding compacto, botões reduzidos, seção de horas inline F:/T:/Total, responsividade completa e compatibilidade com todos os testes unitários)
 ├── IMPLEMENTACAO_LIMPEZA_CACHE_INICIAL.md            # Documentação da implementação de sistema de limpeza automática de cache inicial (execução única por sessão, limpeza completa de React Query/InMemoryCache/LocalStorage/SessionStorage, controle via sessionStorage, logs detalhados, integração transparente com CacheInitializer e useCacheManager, garantia de dados sempre atualizados na primeira sessão)
+├── AJUSTES_FILTROS_LAYOUT.md                          # Documentação dos ajustes de layout e filtros implementados no sistema (melhorias na interface de filtros, otimizações de layout e experiência do usuário)
+├── ALTERACAO_CE_PLUS_PARA_COMEX.md                    # Documentação completa da migração de CE Plus para Comex (resumo das mudanças em código-fonte, banco de dados, testes, componentes, serviços, utilitários, migrações SQL, impacto zero downtime, retrocompatibilidade, validação completa e instruções de aplicação)
+├── CORRECAO_STATUS_PADRAO_TODOS.md                     # Documentação da correção do status padrão dos filtros na tela de empresas clientes (alteração de "Ativo" para "Todos os status" por padrão, padronização com tela de clientes, inicialização correta dos filtros, lógica robusta para arrays vazios/undefined, consistência visual e melhor experiência do usuário)
+├── GUIA_MIGRACAO_CE_PLUS_COMEX.md                     # Guia completo de migração de CE Plus para Comex (instruções passo a passo, checklist de validação, scripts de migração e troubleshooting)
+├── IMPLEMENTACAO_FILTRO_EMAIL_GESTOR_EMPRESAS.md      # Documentação da implementação do filtro por e-mail gestor na tela de empresas clientes (novo campo de filtro, integração com sistema de busca, melhorias na experiência de filtragem e localização de empresas por gestor responsável)
 ├── index.html                  					      	# Template HTML principal da aplicação com meta tags Open Graph atualizadas para "Controle Qualidade"
+├── MELHORIA_FILTROS_MULTISELECT.md                    # Documentação das melhorias implementadas nos filtros multiselect (otimizações de interface, melhor experiência do usuário, performance aprimorada e funcionalidades avançadas de seleção múltipla)
 ├── MELHORIA_LAYOUT_HORIZONTAL_REQUERIMENTO_CARD.md    # Documentação da melhoria do layout horizontal do componente RequerimentoCard (implementação de grid responsivo em duas colunas para melhor aproveitamento do espaço, compactação de elementos com line-clamp-2 para descrição e observação, otimizações de responsividade com breakpoints, seção de horas inline com flex-wrap, footer de ações responsivo, melhorias de espaçamento e compatibilidade completa com testes, acessibilidade e temas)
 ├── OTIMIZACAO_LAYOUT_MULTIPLAS_COLUNAS_REQUERIMENTOS.md # Documentação da otimização do layout para múltiplas colunas no sistema de requerimentos (implementação de grid responsivo expandido até 5 colunas em telas grandes, layout ultra-compacto vertical do RequerimentoCard, tipografia reduzida, altura consistente de cards, breakpoints inteligentes, melhorias de UX com truncamento e densidade otimizada para visualização de mais cards simultaneamente)
 ├── MELHORIA_CORES_PADRAO_SISTEMA_PDF.md            # Documentação da melhoria das cores padrão do sistema para exportação PDF (implementação da cor azul Sonda #2563eb como padrão corporativo em todas as exportações PDF)
@@ -516,6 +536,7 @@ books-snd/
 ├── MELHORIAS_RESPONSIVIDADE_SIDEBAR.md             # Documentação das melhorias de responsividade implementadas na sidebar
 ├── MELHORIA_TEMPLATE_EXCEL_EMPRESAS_COMPLETO.md    # Documentação da melhoria do template Excel para importação de empresas com todos os 15 campos disponíveis, validações robustas e instruções integradas
 ├── PADRONIZACAO_BOTAO_IMPORTAR_EMPRESAS.md         # Documentação da padronização do botão de importação na tela "Cadastro de Empresas" com dropdown contendo opções "Baixar Template Excel" e "Importar do Excel", seguindo padrão visual estabelecido e implementação do componente EmpresaImportExportButtons
+├── PADRONIZACAO_FILTROS_CLIENTES.md                # Documentação da padronização dos filtros da tela de empresas clientes seguindo o padrão da tela de clientes (substituição de MultiSelect por Select simples, layout em grid de 3 colunas, interface minimalista sem badges visuais, mantendo funcionalidade de filtros múltiplos internamente, consistência visual em todo o sistema)
 ├── supabase/                   					      	# Configurações do banco de dados
 │   ├── .temp/                  					      	# Arquivos temporários do Supabase
 │   │   └── cli-latest                              # CLI do Supabase
@@ -542,6 +563,7 @@ books-snd/
 │       ├── migration_empresa_ams_tipo_book.sql    # Migração para adicionar campos "Tem AMS" e "Tipo de Book" na tabela empresas_clientes
 │       ├── performance_optimization_indexes.sql   # Índices para otimização de performance
 │       ├── rename_colaboradores_to_clientes.sql   # Migração para renomear tabela colaboradores para clientes
+│       ├── rename_ce_plus_to_comex.sql           # Migração completa para renomear CE Plus para Comex em todo o sistema (atualiza produtos, grupos responsáveis, requerimentos e constraints, inclui verificação prévia de dados existentes, logs de progresso detalhados, validação pós-migração com contadores e alertas de inconsistências, numeração corrigida dos passos da migração)
 │       ├── run_sistema_requerimentos_migration.sql # Script de execução completa das migrações do sistema de requerimentos (executa todas as migrações em sequência: estrutura, permissões, RLS e validações)
 │       ├── setup_rls_policies.sql                 # Configuração de políticas RLS
 │       ├── sistema_requerimentos_migration.sql    # Migração principal do sistema de requerimentos (criação da tabela requerimentos com todos os campos, constraints, índices e triggers necessários para gerenciamento de especificações funcionais de chamados técnicos, incluindo validações de negócio, campos calculados e verificação automática da estrutura criada)

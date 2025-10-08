@@ -10,3 +10,6 @@ export { default as GruposTable } from './GruposTable';
 
 // Botões de Importação/Exportação
 export { EmpresaImportExportButtons } from './EmpresaImportExportButtons';
+
+// Filtros
+export { default as EmpresasFiltros } from './EmpresasFiltros';

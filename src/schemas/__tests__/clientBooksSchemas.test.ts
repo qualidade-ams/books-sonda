@@ -18,7 +18,7 @@ describe('clientBooksSchemas', () => {
         templatePadrao: 'portugues' as const,
         status: 'ativo' as const,
         emailGestor: 'gestor@empresa.com',
-        produtos: ['CE_PLUS' as const],
+        produtos: ['COMEX' as const],
         grupos: ['123e4567-e89b-12d3-a456-426614174000']
       };
 
@@ -32,7 +32,7 @@ describe('clientBooksSchemas', () => {
         nomeAbreviado: 'Teste',
         templatePadrao: 'portugues' as const,
         status: 'ativo' as const,
-        produtos: ['CE_PLUS' as const]
+        produtos: ['COMEX' as const]
       };
 
       const result = empresaFormSchema.safeParse(invalidData);
@@ -47,7 +47,7 @@ describe('clientBooksSchemas', () => {
         templatePadrao: 'portugues' as const,
         status: 'ativo' as const,
         emailGestor: 'email-invalido',
-        produtos: ['CE_PLUS' as const]
+        produtos: ['COMEX' as const]
       };
 
       const result = empresaFormSchema.safeParse(invalidData);
@@ -63,7 +63,7 @@ describe('clientBooksSchemas', () => {
         nomeAbreviado: 'Teste',
         templatePadrao: 'portugues' as const,
         status: 'inativo' as const,
-        produtos: ['CE_PLUS' as const]
+        produtos: ['COMEX' as const]
       };
 
       const result = empresaFormSchema.safeParse(invalidData);

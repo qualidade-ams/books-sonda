@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -61,9 +61,24 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   showEmpresaColumn = true,
 }) => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [buscaLocal, setBuscaLocal] = useState(filtros.busca || '');
+
+  // Debounce para a busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onFiltrosChange({ ...filtros, busca: buscaLocal });
+    }, 500); // 500ms de delay
+
+    return () => clearTimeout(timer);
+  }, [buscaLocal, filtros, onFiltrosChange]);
+
+  // Sincronizar busca local com filtros externos
+  useEffect(() => {
+    setBuscaLocal(filtros.busca || '');
+  }, [filtros.busca]);
 
   const handleBuscaChange = (busca: string) => {
-    onFiltrosChange({ ...filtros, busca });
+    setBuscaLocal(busca);
   };
 
   const handleStatusChange = (status: string) => {
@@ -146,7 +161,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Nome ou e-mail..."
-                  value={filtros.busca || ''}
+                  value={buscaLocal}
                   onChange={(e) => handleBuscaChange(e.target.value)}
                   className="pl-10"
                 />
@@ -185,11 +200,13 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todas">Todas as empresas</SelectItem>
-                    {empresasAtivas.map((empresa) => (
-                      <SelectItem key={empresa.id} value={empresa.id}>
-                        {empresa.nome_completo}
-                      </SelectItem>
-                    ))}
+                    {empresasAtivas
+                      .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
+                      .map((empresa) => (
+                        <SelectItem key={empresa.id} value={empresa.id}>
+                          {empresa.nome_abreviado}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -248,9 +265,6 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         <Building2 className="h-4 w-4 text-gray-400" />
                         <div className="space-y-1">
                           <div className="font-medium text-sm">
-                            {cliente.empresa.nome_completo}
-                          </div>
-                          <div className="text-xs text-gray-500">
                             {cliente.empresa.nome_abreviado}
                           </div>
                         </div>

@@ -349,7 +349,7 @@ describe('errorRecovery', () => {
           nomeCompleto: 'Empresa Teste',
           nomeAbreviado: 'Teste',
           emailGestor: 'gestor@teste.com',
-          produtos: ['CE_PLUS']
+          produtos: ['COMEX']
         };
 
         const errors = await DataIntegrityValidator.validateEmpresaIntegrity(validData);
@@ -360,7 +360,7 @@ describe('errorRecovery', () => {
       it('deve detectar nome completo ausente', async () => {
         const invalidData = {
           nomeAbreviado: 'Teste',
-          produtos: ['CE_PLUS']
+          produtos: ['COMEX']
         };
 
         const errors = await DataIntegrityValidator.validateEmpresaIntegrity(invalidData);
@@ -373,7 +373,7 @@ describe('errorRecovery', () => {
           nomeCompleto: 'Empresa Teste',
           nomeAbreviado: 'Teste',
           emailGestor: 'email-invalido',
-          produtos: ['CE_PLUS']
+          produtos: ['COMEX']
         };
 
         const errors = await DataIntegrityValidator.validateEmpresaIntegrity(invalidData);

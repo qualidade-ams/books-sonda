@@ -25,7 +25,7 @@ export const EMPRESA_STATUS = {
 };
 
 export const PRODUTOS = {
-  CE_PLUS: 'CE_PLUS' as const,
+  COMEX: 'COMEX' as const,
   FISCAL: 'FISCAL' as const,
   GALLERY: 'GALLERY' as const,
 };
@@ -138,7 +138,14 @@ export class EmpresasClientesService {
       }
     }
 
-    const { data, error } = await query.order('nome_completo');
+    if (filtros?.emailGestor) {
+      const emailTerm = filtros.emailGestor.trim();
+      if (emailTerm) {
+        query = query.ilike('email_gestor', `%${emailTerm}%`);
+      }
+    }
+
+    const { data, error } = await query.order('nome_abreviado');
 
     if (error) {
       throw ClientBooksErrorFactory.databaseError('listar empresas', error);
@@ -206,6 +213,13 @@ export class EmpresasClientesService {
       const searchTerm = filtros.busca.trim();
       if (searchTerm) {
         query = query.or(`nome_completo.ilike.%${searchTerm}%,nome_abreviado.ilike.%${searchTerm}%`);
+      }
+    }
+
+    if (filtros?.emailGestor) {
+      const emailTerm = filtros.emailGestor.trim();
+      if (emailTerm) {
+        query = query.ilike('email_gestor', `%${emailTerm}%`);
       }
     }
 

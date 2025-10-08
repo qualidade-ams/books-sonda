@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS empresas_clientes (
 CREATE TABLE IF NOT EXISTS empresa_produtos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id UUID REFERENCES empresas_clientes(id) ON DELETE CASCADE,
-  produto VARCHAR(50) NOT NULL CHECK (produto IN ('CE_PLUS', 'FISCAL', 'GALLERY')),
+  produto VARCHAR(50) NOT NULL CHECK (produto IN ('COMEX', 'FISCAL', 'GALLERY')),
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(empresa_id, produto)
 );
@@ -122,7 +122,7 @@ CREATE TRIGGER update_clientes_updated_at BEFORE UPDATE ON clientes FOR EACH ROW
 
 -- Inserir grupos padrão
 INSERT INTO grupos_responsaveis (nome, descricao) VALUES
-('CE Plus', 'Grupo responsável pelo produto CE Plus'),
+('Comex', 'Grupo responsável pelo produto Comex'),
 ('Fiscal', 'Grupo responsável pelo produto Fiscal'),
 ('Gallery', 'Grupo responsável pelo produto Gallery'),
 ('Todos', 'Grupo com demais responsáveis')

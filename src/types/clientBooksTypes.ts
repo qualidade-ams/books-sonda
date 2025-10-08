@@ -54,7 +54,7 @@ export const TEMPLATE_PADRAO = {
 } as const;
 
 export const PRODUTOS = {
-  CE_PLUS: 'CE_PLUS',
+  COMEX: 'COMEX',
   FISCAL: 'FISCAL',
   GALLERY: 'GALLERY'
 } as const;
@@ -136,6 +136,7 @@ export interface EmpresaFiltros {
   status?: EmpresaStatus[];
   produtos?: Produto[];
   busca?: string;
+  emailGestor?: string;
 }
 
 export interface ClienteFiltros {
@@ -219,7 +220,7 @@ export const TEMPLATE_PADRAO_OPTIONS: SelectOption[] = [
 ];
 
 export const PRODUTOS_OPTIONS: SelectOption[] = [
-  { value: PRODUTOS.CE_PLUS, label: 'CE Plus' },
+  { value: PRODUTOS.COMEX, label: 'Comex' },
   { value: PRODUTOS.FISCAL, label: 'Fiscal' },
   { value: PRODUTOS.GALLERY, label: 'Gallery' }
 ];

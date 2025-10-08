@@ -50,7 +50,8 @@ export const useEmpresas = (
       const hasActiveFilters = filtros && (
         (filtros.busca && filtros.busca.trim()) ||
         (filtros.produtos && filtros.produtos.length > 0) ||
-        (filtros.status && filtros.status.length > 0)
+        (filtros.status && filtros.status.length > 0) ||
+        (filtros.emailGestor && filtros.emailGestor.trim())
       );
 
       // Tentar buscar do cache primeiro APENAS se não há filtros e não há paginação

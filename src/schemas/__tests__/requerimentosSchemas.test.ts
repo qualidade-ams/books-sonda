@@ -99,7 +99,7 @@ describe('requerimentosSchemas', () => {
 
     describe('Validação de módulo', () => {
       it('deve aceitar módulos válidos', () => {
-        const validModulos = ['CE Plus', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'];
+        const validModulos = ['Comex', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'];
         
         validModulos.forEach(modulo => {
           const testData = { ...validData, modulo: modulo as any };

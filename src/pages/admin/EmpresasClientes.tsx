@@ -1,9 +1,16 @@
-import { useState } from 'react';
-import { Plus, Filter, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Filter, Search } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 
 import {
   Dialog,
@@ -24,7 +31,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { Checkbox } from '@/components/ui/checkbox';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useEmpresasStats } from '@/hooks/useEmpresasStats';
@@ -47,7 +53,7 @@ import {
 const EmpresasClientes = () => {
   // Estados para filtros
   const [filtros, setFiltros] = useState<EmpresaFiltros>({
-    status: ['ativo'] // Por padrão, mostrar apenas empresas ativas
+    // Por padrão, mostrar todos os status
   });
 
   // Estados para modais
@@ -56,16 +62,28 @@ const EmpresasClientes = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [buscaLocal, setBuscaLocal] = useState(filtros.busca || '');
 
   // Estados para empresa selecionada
   const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaClienteCompleta | null>(null);
 
+  // Debounce para a busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFiltros(prev => ({ ...prev, busca: buscaLocal }));
+    }, 500); // 500ms de delay
 
+    return () => clearTimeout(timer);
+  }, [buscaLocal]);
+
+  // Sincronizar busca local com filtros externos
+  useEffect(() => {
+    setBuscaLocal(filtros.busca || '');
+  }, [filtros.busca]);
 
   // Hooks
   const {
     empresas,
-    selectedEmpresas,
     isLoading,
     isCreating,
     isUpdating,
@@ -75,38 +93,16 @@ const EmpresasClientes = () => {
     atualizarEmpresa,
     deletarEmpresa,
 
-    toggleEmpresaSelection,
-    selectAllEmpresas,
-    clearSelection,
     forceRefresh,
   } = useEmpresas(filtros);
 
   // Garantir que empresas é sempre um array
   const empresasArray = Array.isArray(empresas) ? empresas : [];
 
-
-
   const { grupos } = useGrupos();
 
   // Hook para estatísticas reais do banco (independente dos filtros)
   const { data: statsReais } = useEmpresasStats();
-
-  // Hook para monitoramento automático de vigências - DESABILITADO
-  // useVigenciaMonitor({
-  //   intervaloMinutos: 60, // Verificar a cada 1 hora
-  //   diasAlerta: 30, // Alertar 30 dias antes do vencimento
-  //   inativarAutomaticamente: true,
-  //   executarAoIniciar: false // Não executar ao carregar a página para evitar sobrecarga
-  // });
-
-  // Handler para refresh após importação
-  const handleImportComplete = async () => {
-    // Forçar refresh da lista de empresas após importação
-    await forceRefresh();
-    toast.success('Lista de empresas atualizada!');
-  };
-
-
 
   // Usar estatísticas reais do banco ou fallback para dados filtrados
   const stats = statsReais || {
@@ -124,26 +120,45 @@ const EmpresasClientes = () => {
     }));
   };
 
-  const handleStatusFilterChange = (status: StatusEmpresa, checked: boolean) => {
-    setFiltros(prev => ({
-      ...prev,
-      status: checked
-        ? [...(prev.status || []), status]
-        : (prev.status || []).filter(s => s !== status)
-    }));
+  const handleBuscaChange = (busca: string) => {
+    setBuscaLocal(busca);
   };
 
-  const handleProdutoFilterChange = (produto: Produto, checked: boolean) => {
-    setFiltros(prev => ({
-      ...prev,
-      produtos: checked
-        ? [...(prev.produtos || []), produto]
-        : (prev.produtos || []).filter(p => p !== produto)
-    }));
+
+
+  const handleStatusSelectChange = (value: string) => {
+    if (value === '__todos_status__') {
+      setFiltros(prev => ({
+        ...prev,
+        status: undefined
+      }));
+    } else {
+      setFiltros(prev => ({
+        ...prev,
+        status: [value as StatusEmpresa]
+      }));
+    }
   };
 
-  const limparFiltros = () => {
-    setFiltros({ status: ['ativo'] }); // Voltar ao padrão: apenas empresas ativas
+  const handleProdutoSelectChange = (value: string) => {
+    if (value === '__todos_produtos__') {
+      setFiltros(prev => ({
+        ...prev,
+        produtos: undefined
+      }));
+    } else {
+      setFiltros(prev => ({
+        ...prev,
+        produtos: [value as Produto]
+      }));
+    }
+  };
+
+  // Handler para refresh após importação
+  const handleImportComplete = async () => {
+    // Forçar refresh da lista de empresas após importação
+    await forceRefresh();
+    toast.success('Lista de empresas atualizada!');
   };
 
   // Handlers para ações
@@ -175,8 +190,6 @@ const EmpresasClientes = () => {
     setShowDeleteModal(false);
     setSelectedEmpresa(null);
   };
-
-
 
   // Preparar dados iniciais para edição
   const getInitialDataForEdit = (empresa: EmpresaClienteCompleta): Partial<EmpresaFormData> => {
@@ -285,10 +298,6 @@ const EmpresasClientes = () => {
           </Card>
         </div>
 
-
-
-
-
         {/* Tabela de Empresas */}
         <Card>
           <CardHeader>
@@ -296,7 +305,6 @@ const EmpresasClientes = () => {
               <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas ({empresas.length})</CardTitle>
 
               <div className="flex flex-col sm:flex-row gap-2">
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -306,111 +314,80 @@ const EmpresasClientes = () => {
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
-                {selectedEmpresas.length === 0 ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllEmpresas}
-                    disabled={empresasArray.length === 0}
-                    className="whitespace-nowrap"
-                  >
-                    Selecionar Todas
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSelection}
-                    className="whitespace-nowrap"
-                  >
-                    Limpar Seleção
-                  </Button>
-                )}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Filtros Responsivos */}
+            {/* Filtros */}
             {mostrarFiltros && (
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-t space-y-4">
-                {/* Busca */}
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Buscar empresa..."
-                    value={filtros.busca || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFiltroChange('busca', e.target.value)}
-                    className="h-8 flex-1"
-                  />
-                </div>
-
-                {/* Filtros em Grid Responsivo */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Status */}
-                  <div className="space-y-2">
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Status:</span>
-                    <div className="flex flex-wrap gap-3">
-                      {STATUS_EMPRESA_OPTIONS.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-1">
-                          <Checkbox
-                            id={`status-${option.value}`}
-                            checked={filtros.status?.includes(option.value as StatusEmpresa) || false}
-                            onCheckedChange={(checked) =>
-                              handleStatusFilterChange(option.value as StatusEmpresa, checked as boolean)
-                            }
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={`status-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
-                            {option.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Produtos */}
-                  <div className="space-y-2">
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Produtos:</span>
-                    <div className="flex flex-wrap gap-3">
-                      {PRODUTOS_OPTIONS.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-1">
-                          <Checkbox
-                            id={`produto-${option.value}`}
-                            checked={filtros.produtos?.includes(option.value as Produto) || false}
-                            onCheckedChange={(checked) =>
-                              handleProdutoFilterChange(option.value as Produto, checked as boolean)
-                            }
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={`produto-${option.value}`} className="text-xs cursor-pointer whitespace-nowrap">
-                            {option.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Buscar</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Nome ou e-mail..."
+                      value={buscaLocal}
+                      onChange={(e) => handleBuscaChange(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
                 </div>
 
-                {/* Botão Limpar */}
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={limparFiltros}
-                    className="h-8 text-xs"
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={filtros.status?.[0] || '__todos_status__'}
+                    onValueChange={handleStatusSelectChange}
                   >
-                    Limpar Filtros
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos_status__">Todos os status</SelectItem>
+                      {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Produtos</label>
+                  <Select
+                    value={filtros.produtos?.[0] || '__todos_produtos__'}
+                    onValueChange={handleProdutoSelectChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os produtos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
+                      {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">E-mail Gestor</label>
+                  <Input
+                    placeholder="Filtrar por e-mail..."
+                    value={filtros.emailGestor || ''}
+                    onChange={(e) => handleFiltroChange('emailGestor', e.target.value)}
+                  />
                 </div>
               </div>
             )}
+          </CardHeader>
 
-
+          <CardContent>
             <EmpresasTable
               empresas={empresasArray}
               loading={isLoading}
-              selectedEmpresas={selectedEmpresas}
-              onToggleSelection={toggleEmpresaSelection}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -478,10 +455,6 @@ const EmpresasClientes = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-
-
-
       </div>
     </AdminLayout>
   );

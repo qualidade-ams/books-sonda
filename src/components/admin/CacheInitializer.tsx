@@ -13,17 +13,17 @@ export const CacheInitializer = () => {
     const initializeCache = async () => {
       try {
         console.info('🧹 Iniciando limpeza de cache inicial...');
-        
+
         // Obter estatísticas antes da limpeza
         const statsBefore = getCacheStats();
         console.debug('📊 Estatísticas antes da limpeza:', statsBefore);
-        
+
         // Executar limpeza completa
         const success = await clearAllCache();
-        
+
         if (success) {
           console.info('✅ Limpeza de cache inicial concluída com sucesso');
-          
+
           // Toast discreto para feedback (apenas em desenvolvimento)
           if (process.env.NODE_ENV === 'development') {
             toast.success('Cache limpo - dados atualizados', {
@@ -34,10 +34,10 @@ export const CacheInitializer = () => {
         } else {
           throw new Error('Falha na limpeza de cache');
         }
-        
+
       } catch (error) {
         console.error('❌ Erro durante limpeza inicial de cache:', error);
-        
+
         // Toast de erro apenas em desenvolvimento
         if (process.env.NODE_ENV === 'development') {
           toast.error('Erro na limpeza de cache', {
@@ -50,11 +50,11 @@ export const CacheInitializer = () => {
 
     // Executar limpeza apenas uma vez por sessão
     const cacheInitialized = sessionStorage.getItem('cache_initialized');
-    
+
     if (!cacheInitialized) {
       initializeCache();
       sessionStorage.setItem('cache_initialized', 'true');
-      
+
       // Marcar timestamp da inicialização
       sessionStorage.setItem('cache_initialized_at', new Date().toISOString());
     } else {

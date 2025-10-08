@@ -54,7 +54,7 @@ export type AnexoTemporarioUpdate = Partial<Omit<AnexoTemporario, 'id' | 'create
 export type StatusEmpresa = 'ativo' | 'inativo' | 'suspenso';
 export type StatusCliente = 'ativo' | 'inativo';
 export type TemplatePadrao = 'portugues' | 'ingles';
-export type Produto = 'CE_PLUS' | 'FISCAL' | 'GALLERY';
+export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
 export type TipoBook = 'nao_tem_book' | 'outros' | 'qualidade';
@@ -156,6 +156,7 @@ export interface EmpresaFiltros {
   status?: StatusEmpresa[];
   produtos?: Produto[];
   busca?: string;
+  emailGestor?: string;
 }
 
 export interface ClienteFiltros {
@@ -171,7 +172,7 @@ export interface SelectOption {
 }
 
 export const PRODUTOS_OPTIONS: SelectOption[] = [
-  { value: 'CE_PLUS', label: 'CE Plus' },
+  { value: 'COMEX', label: 'Comex' },
   { value: 'FISCAL', label: 'Fiscal' },
   { value: 'GALLERY', label: 'Gallery' }
 ];

@@ -103,7 +103,7 @@ export function ExcelImportDialog({ trigger, onImportComplete }: ExcelImportDial
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Baixe o template Excel e preencha com os dados das empresas</li>
             <li>• Certifique-se de que todos os campos obrigatórios estão preenchidos</li>
-            <li>• Para produtos, use: CE_PLUS, FISCAL, GALLERY (separados por vírgula)</li>
+            <li>• Para produtos, use: COMEX, FISCAL, GALLERY (separados por vírgula)</li>
             <li>• Para grupos, use os nomes dos grupos cadastrados (separados por vírgula)</li>
             <li>• O sistema validará os dados antes da importação</li>
           </ul>

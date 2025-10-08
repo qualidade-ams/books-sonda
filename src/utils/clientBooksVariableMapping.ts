@@ -58,7 +58,7 @@ const mapearProdutos = (produtos: Array<{ produto: string }>): { lista: string; 
   }
 
   const mapeamento: { [key: string]: string } = {
-    'CE_PLUS': 'CE Plus',
+    'COMEX': 'Comex',
     'FISCAL': 'Fiscal',
     'GALLERY': 'Gallery'
   };
@@ -319,7 +319,7 @@ export const gerarDadosExemplo = (): ClientBooksTemplateData => {
       created_at: dataAtual.toISOString(),
       updated_at: dataAtual.toISOString(),
       produtos: [
-        { id: 'prod-1', empresa_id: 'exemplo-empresa-id', produto: 'CE_PLUS', created_at: dataAtual.toISOString() },
+        { id: 'prod-1', empresa_id: 'exemplo-empresa-id', produto: 'COMEX', created_at: dataAtual.toISOString() },
         { id: 'prod-2', empresa_id: 'exemplo-empresa-id', produto: 'FISCAL', created_at: dataAtual.toISOString() }
       ]
     } as EmpresaClienteCompleta,

@@ -138,7 +138,7 @@ export class PaginationUtils {
   ): string {
     const filterStr = filters ? JSON.stringify(filters) : '';
     const sortStr = params.sortBy ? `${params.sortBy}_${params.sortOrder}` : '';
-    
+
     return `${baseKey}:page_${params.page}:size_${params.pageSize}:sort_${sortStr}:filters_${btoa(filterStr)}`;
   }
 
@@ -217,13 +217,18 @@ export class PaginationUtils {
     entityType: string
   ): any {
     const config = PAGINATION_CONFIGS[entityType];
-    
+
     // Aplicar ordenação se especificada e válida
     if (params.sortBy && config.allowedSortFields.includes(params.sortBy)) {
       baseQuery = baseQuery.order(params.sortBy, { ascending: params.sortOrder === 'asc' });
     } else {
-      // Ordenação padrão por created_at desc para melhor performance com índices
-      baseQuery = baseQuery.order('created_at', { ascending: false });
+      // Ordenação padrão específica por entidade
+      if (entityType === 'empresas') {
+        baseQuery = baseQuery.order('nome_abreviado', { ascending: true });
+      } else {
+        // Ordenação padrão por created_at desc para melhor performance com índices
+        baseQuery = baseQuery.order('created_at', { ascending: false });
+      }
     }
 
     // Aplicar paginação
@@ -261,7 +266,7 @@ export class PaginationUtils {
     }
 
     const stats = PaginationUtils.calculatePaginationStats(page, pageSize, total);
-    
+
     if (total === 1) {
       return '1 item';
     }

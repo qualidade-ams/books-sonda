@@ -30,7 +30,7 @@ CREATE TABLE empresas_clientes (
 CREATE TABLE empresa_produtos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id UUID REFERENCES empresas_clientes(id) ON DELETE CASCADE,
-  produto VARCHAR(50) NOT NULL CHECK (produto IN ('CE_PLUS', 'FISCAL', 'GALLERY')),
+  produto VARCHAR(50) NOT NULL CHECK (produto IN ('COMEX', 'FISCAL', 'GALLERY')),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -160,7 +160,7 @@ interface EmpresaFormData {
   status: 'ativo' | 'inativo' | 'suspenso';
   descricaoStatus?: string;
   emailGestor: string;
-  produtos: ('CE_PLUS' | 'FISCAL' | 'GALLERY')[];
+  produtos: ('COMEX' | 'FISCAL' | 'GALLERY')[];
   grupos: string[];
 }
 

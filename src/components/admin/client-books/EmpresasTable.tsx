@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import {
   Edit,
   Trash2,
@@ -28,8 +28,6 @@ import type {
 interface EmpresasTableProps {
   empresas: EmpresaClienteCompleta[];
   loading: boolean;
-  selectedEmpresas: string[];
-  onToggleSelection: (empresaId: string) => void;
   onEdit: (empresa: EmpresaClienteCompleta) => void;
   onDelete: (empresa: EmpresaClienteCompleta) => void;
 }
@@ -37,8 +35,6 @@ interface EmpresasTableProps {
 const EmpresasTable: React.FC<EmpresasTableProps> = ({
   empresas,
   loading,
-  selectedEmpresas,
-  onToggleSelection,
   onEdit,
   onDelete,
 }) => {
@@ -80,12 +76,12 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     if (!produtos || produtos.length === 0) return '-';
 
     const produtoLabels = {
-      CE_PLUS: 'CE Plus',
+      COMEX: 'Comex',
       FISCAL: 'Fiscal',
       GALLERY: 'Gallery'
     };
 
-    
+
     return (
       <div className="flex flex-wrap gap-1">
         {produtos.map((produto, index) => (
@@ -121,6 +117,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
       if (label.toLowerCase().includes('português') || label.toLowerCase().includes('portugues')) return 'PT-BR';
       if (label.toLowerCase().includes('inglês') || label.toLowerCase().includes('ingles')) return 'EN';
       if (label.toLowerCase().includes('samarco')) return 'SAMARCO';
+      if (label.toLowerCase().includes('novo nordisk')) return 'NOVO NORDISK';
       return label; // Para outros templates, manter o nome original
     };
 
@@ -154,13 +151,10 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   }
 
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="rounded-md mt-4 overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12 text-center">
-              <span className="sr-only">Seleção</span>
-            </TableHead>
             <TableHead className="min-w-[290px]">Nome</TableHead>
             <TableHead className="min-w-[40px]">Status</TableHead>
             <TableHead className="min-w-[80px]">Template</TableHead>
@@ -173,16 +167,10 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
         <TableBody>
           {empresas.map((empresa) => (
             <TableRow key={empresa.id}>
-              <TableCell>
-                <Checkbox
-                  checked={selectedEmpresas.includes(empresa.id)}
-                  onCheckedChange={() => onToggleSelection(empresa.id)}
-                />
-              </TableCell>
               <TableCell className="font-medium">
                 <div className="flex flex-col">
-                  <span className="truncate max-w-[290px]" title={empresa.nome_completo}>
-                    {empresa.nome_completo}
+                  <span className="truncate max-w-[200px]" title={empresa.nome_abreviado}>
+                    {empresa.nome_abreviado}
                   </span>
                   {empresa.link_sharepoint && (
                     <a

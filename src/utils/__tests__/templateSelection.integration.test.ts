@@ -44,7 +44,7 @@ describe('Template Selection Integration Tests', () => {
         nomeAbreviado: 'TestePT',
         templatePadrao: 'portugues',
         status: 'ativo',
-        produtos: ['CE_PLUS'],
+        produtos: ['COMEX'],
         grupos: []
       };
 
@@ -120,7 +120,7 @@ describe('Template Selection Integration Tests', () => {
         nomeAbreviado: 'SemTemplate',
         templatePadrao: '', // Template vazio
         status: 'ativo',
-        produtos: ['CE_PLUS'],
+        produtos: ['COMEX'],
         grupos: []
       };
 

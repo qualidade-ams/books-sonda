@@ -42,8 +42,8 @@ describe('GruposResponsaveisService', () => {
 
   describe('criarGrupo', () => {
     const grupoValidoData: GrupoFormData = {
-      nome: 'CE Plus',
-      descricao: 'Grupo responsável pelo produto CE Plus',
+      nome: 'Comex',
+      descricao: 'Grupo responsável pelo produto Comex',
       emails: [
         { email: 'responsavel1@sonda.com', nome: 'Responsável 1' },
         { email: 'responsavel2@sonda.com', nome: 'Responsável 2' }
@@ -53,8 +53,8 @@ describe('GruposResponsaveisService', () => {
     it('deve criar um grupo com dados válidos', async () => {
       const grupoCriado = {
         id: 'grupo-1',
-        nome: 'CE Plus',
-        descricao: 'Grupo responsável pelo produto CE Plus'
+        nome: 'Comex',
+        descricao: 'Grupo responsável pelo produto Comex'
       };
 
       // Mock para verificar nome único
@@ -84,8 +84,8 @@ describe('GruposResponsaveisService', () => {
 
       expect(resultado).toEqual(grupoCriado);
       expect(mockInsert).toHaveBeenCalledWith({
-        nome: 'CE Plus',
-        descricao: 'Grupo responsável pelo produto CE Plus'
+        nome: 'Comex',
+        descricao: 'Grupo responsável pelo produto Comex'
       });
     });
 
@@ -179,7 +179,7 @@ describe('GruposResponsaveisService', () => {
       const grupos = [
         { 
           id: '1', 
-          nome: 'CE Plus', 
+          nome: 'Comex', 
           emails: [
             { id: 'email-1', email: 'teste1@sonda.com', nome: 'Teste 1' }
           ]
@@ -227,7 +227,7 @@ describe('GruposResponsaveisService', () => {
     it('deve retornar grupo quando encontrado', async () => {
       const grupo = {
         id: '1',
-        nome: 'CE Plus',
+        nome: 'Comex',
         emails: [
           { id: 'email-1', email: 'teste@sonda.com', nome: 'Teste' }
         ]
@@ -271,7 +271,7 @@ describe('GruposResponsaveisService', () => {
     it('deve retornar grupo quando encontrado pelo nome', async () => {
       const grupo = {
         id: '1',
-        nome: 'CE Plus',
+        nome: 'Comex',
         emails: []
       };
 
@@ -284,10 +284,10 @@ describe('GruposResponsaveisService', () => {
       const mockSelect = vi.fn().mockReturnValue(mockQuery);
       (supabase.from as any).mockReturnValue({ select: mockSelect });
 
-      const resultado = await gruposResponsaveisService.obterGrupoPorNome('CE Plus');
+      const resultado = await gruposResponsaveisService.obterGrupoPorNome('Comex');
 
       expect(resultado).toEqual(grupo);
-      expect(mockQuery.eq).toHaveBeenCalledWith('nome', 'CE Plus');
+      expect(mockQuery.eq).toHaveBeenCalledWith('nome', 'Comex');
     });
   });
 
@@ -295,7 +295,7 @@ describe('GruposResponsaveisService', () => {
     it('deve atualizar grupo com dados válidos', async () => {
       const grupoAtual = {
         id: '1',
-        nome: 'CE Plus',
+        nome: 'Comex',
         descricao: 'Descrição antiga'
       };
 
@@ -316,14 +316,14 @@ describe('GruposResponsaveisService', () => {
         .mockReturnValueOnce({ update: mockUpdate });
 
       const dadosAtualizacao = {
-        nome: 'CE Plus Atualizado',
+        nome: 'Comex Atualizado',
         descricao: 'Nova descrição'
       };
 
       await gruposResponsaveisService.atualizarGrupo('1', dadosAtualizacao);
 
       expect(mockUpdate).toHaveBeenCalledWith({
-        nome: 'CE Plus Atualizado',
+        nome: 'Comex Atualizado',
         descricao: 'Nova descrição',
         updated_at: expect.any(String)
       });
@@ -547,7 +547,7 @@ describe('GruposResponsaveisService', () => {
         {
           grupos_responsaveis: {
             id: '1',
-            nome: 'CE Plus',
+            nome: 'Comex',
             emails: []
           }
         },
@@ -570,7 +570,7 @@ describe('GruposResponsaveisService', () => {
       const resultado = await gruposResponsaveisService.obterGruposPorEmpresa('empresa-1');
 
       expect(resultado).toHaveLength(2);
-      expect(resultado[0].nome).toBe('CE Plus');
+      expect(resultado[0].nome).toBe('Comex');
       expect(resultado[1].nome).toBe('Fiscal');
       expect(mockQuery.eq).toHaveBeenCalledWith('empresa_id', 'empresa-1');
     });
@@ -614,7 +614,7 @@ describe('GruposResponsaveisService', () => {
       const mockGetQuery = {
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({ 
-            data: { id: 'grupo-existente', nome: 'CE Plus' }, 
+            data: { id: 'grupo-existente', nome: 'Comex' }, 
             error: null 
           })
         })

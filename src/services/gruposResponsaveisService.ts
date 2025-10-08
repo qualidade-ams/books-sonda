@@ -413,8 +413,8 @@ export class GruposResponsaveisService {
     try {
       const gruposPadrao = [
         {
-          nome: 'CE Plus',
-          descricao: 'Grupo responsável pelo produto CE Plus',
+          nome: 'Comex',
+          descricao: 'Grupo responsável pelo produto Comex',
           emails: []
         },
         {

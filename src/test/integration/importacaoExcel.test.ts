@@ -78,8 +78,8 @@ describe('Testes de Integração - Importação Excel', () => {
           'Template Padrão': 'portugues',
           'Status': 'ativo',
           'E-mail Gestor': 'gestor@alpha.com',
-          'Produtos': 'CE_PLUS,FISCAL',
-          'Grupos': 'CE Plus,Fiscal'
+          'Produtos': 'COMEX,FISCAL',
+          'Grupos': 'Comex,Fiscal'
         },
         {
           'Nome Completo': 'Empresa Beta S.A.',
@@ -114,7 +114,7 @@ describe('Testes de Integração - Importação Excel', () => {
       const mockGruposQuery = {
         eq: vi.fn().mockReturnValue({
           single: vi.fn()
-            .mockResolvedValueOnce({ data: { id: 'grupo-1', nome: 'CE Plus' }, error: null })
+            .mockResolvedValueOnce({ data: { id: 'grupo-1', nome: 'Comex' }, error: null })
             .mockResolvedValueOnce({ data: { id: 'grupo-2', nome: 'Fiscal' }, error: null })
             .mockResolvedValueOnce({ data: { id: 'grupo-3', nome: 'Gallery' }, error: null })
         })
@@ -155,7 +155,7 @@ describe('Testes de Integração - Importação Excel', () => {
         templatePadrao: 'portugues',
         status: 'ativo',
         emailGestor: 'gestor@alpha.com',
-        produtos: ['CE_PLUS', 'FISCAL'],
+        produtos: ['COMEX', 'FISCAL'],
         grupos: ['grupo-1', 'grupo-2']
       });
 

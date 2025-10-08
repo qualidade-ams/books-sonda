@@ -51,7 +51,7 @@ describe('EmpresasClientesService', () => {
       templatePadrao: 'portugues',
       status: 'ativo',
       emailGestor: 'gestor@empresa.com',
-      produtos: ['CE_PLUS', 'FISCAL'],
+      produtos: ['COMEX', 'FISCAL'],
       grupos: ['grupo-1', 'grupo-2'],
       temAms: false,
       tipoBook: 'nao_tem_book'

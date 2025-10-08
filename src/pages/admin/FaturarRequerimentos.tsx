@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect, MultiSelectOption } from '@/components/ui/multi-select';
+import { MultiSelect, Option } from '@/components/ui/multi-select';
 import {
   Dialog,
   DialogContent,
@@ -201,7 +201,7 @@ export default function FaturarRequerimentos() {
   ];
 
   // Opções para o MultiSelect de tipos de cobrança
-  const tipoCobrancaOptions: MultiSelectOption[] = TIPO_COBRANCA_OPTIONS
+  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS
     .filter(option => option.value !== 'Selecione')
     .map(option => ({
       value: option.value,
@@ -485,7 +485,7 @@ export default function FaturarRequerimentos() {
                   <div className="h-10">
                     <MultiSelect
                       options={tipoCobrancaOptions}
-                      value={filtroTipo}
+                      selected={filtroTipo}
                       onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
                       placeholder="Selecione os tipos..."
                     />

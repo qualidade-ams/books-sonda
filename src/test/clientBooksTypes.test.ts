@@ -63,7 +63,7 @@ describe('Client Books Types', () => {
     expect(Cliente_STATUS.ATIVO).toBe('ativo');
     expect(Cliente_STATUS.INATIVO).toBe('inativo');
 
-    expect(PRODUTOS.CE_PLUS).toBe('CE_PLUS');
+    expect(PRODUTOS.COMEX).toBe('COMEX');
     expect(PRODUTOS.FISCAL).toBe('FISCAL');
     expect(PRODUTOS.GALLERY).toBe('GALLERY');
 
@@ -77,11 +77,11 @@ describe('Client Books Types', () => {
       nomeAbreviado: 'Form',
       templatePadrao: 'portugues',
       status: 'ativo',
-      produtos: ['CE_PLUS', 'FISCAL'],
+      produtos: ['COMEX', 'FISCAL'],
       grupos: ['grupo-1', 'grupo-2']
     };
 
-    expect(empresaForm.produtos).toContain('CE_PLUS');
+    expect(empresaForm.produtos).toContain('COMEX');
     expect(empresaForm.grupos).toHaveLength(2);
   });
 
@@ -120,13 +120,13 @@ describe('Client Books Types', () => {
   it('deve ter o tipo GrupoResponsavel definido corretamente', () => {
     const grupo: GrupoResponsavel = {
       id: 'grupo-id',
-      nome: 'CE Plus',
-      descricao: 'Grupo responsável pelo CE Plus',
+      nome: 'Comex',
+      descricao: 'Grupo responsável pelo Comex',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z'
     };
 
-    expect(grupo.nome).toBe('CE Plus');
-    expect(grupo.descricao).toBe('Grupo responsável pelo CE Plus');
+    expect(grupo.nome).toBe('Comex');
+    expect(grupo.descricao).toBe('Grupo responsável pelo Comex');
   });
 });

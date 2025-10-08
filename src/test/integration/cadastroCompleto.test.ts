@@ -46,8 +46,8 @@ describe('Testes de Integração - Cadastro Completo', () => {
     it('deve criar empresa, grupos e clientes em sequência', async () => {
       // Dados de teste
       const grupoData: GrupoFormData = {
-        nome: 'CE Plus',
-        descricao: 'Grupo responsável pelo CE Plus',
+        nome: 'Comex',
+        descricao: 'Grupo responsável pelo Comex',
         emails: [
           { email: 'responsavel1@sonda.com', nome: 'Responsável 1' },
           { email: 'responsavel2@sonda.com', nome: 'Responsável 2' }
@@ -61,7 +61,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
         templatePadrao: 'portugues',
         status: 'ativo',
         emailGestor: 'gestor@empresa.com',
-        produtos: ['CE_PLUS', 'FISCAL'],
+        produtos: ['COMEX', 'FISCAL'],
         grupos: ['grupo-1'] // ID do grupo criado
       };
 
@@ -86,8 +86,8 @@ describe('Testes de Integração - Cadastro Completo', () => {
       // Mocks para criação do grupo
       const grupoCriado = {
         id: 'grupo-1',
-        nome: 'CE Plus',
-        descricao: 'Grupo responsável pelo CE Plus'
+        nome: 'Comex',
+        descricao: 'Grupo responsável pelo Comex'
       };
 
       // Mock para verificar nome único do grupo
@@ -275,7 +275,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
         nomeAbreviado: 'Teste',
         templatePadrao: 'portugues',
         status: 'ativo',
-        produtos: ['CE_PLUS'],
+        produtos: ['COMEX'],
         grupos: ['grupo-inexistente']
       };
 
@@ -397,7 +397,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
             grupo_id: 'grupo-1',
             grupos_responsaveis: {
               id: 'grupo-1',
-              nome: 'CE Plus',
+              nome: 'Comex',
               emails: [
                 { email: 'responsavel@sonda.com', nome: 'Responsável' }
               ]
@@ -445,7 +445,7 @@ describe('Testes de Integração - Cadastro Completo', () => {
       expect(empresa).toEqual(empresaCompletaMock);
       expect(clientes).toEqual(empresaCompletaMock.clientes);
       expect(grupos).toHaveLength(1);
-      expect(grupos[0].nome).toBe('CE Plus');
+      expect(grupos[0].nome).toBe('Comex');
     });
 
     it('deve filtrar dados corretamente em consultas complexas', async () => {

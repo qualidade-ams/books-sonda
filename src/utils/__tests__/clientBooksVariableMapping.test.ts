@@ -106,8 +106,8 @@ describe('clientBooksVariableMapping', () => {
     it('deve mapear produtos corretamente', () => {
       const variaveis = mapearVariaveisClientBooks(dadosExemplo);
 
-      expect(variaveis['empresa.produtos']).toBe('CE Plus, Fiscal');
-      expect(variaveis['empresa.produtosList']).toContain('CE Plus');
+      expect(variaveis['empresa.produtos']).toBe('Comex, Fiscal');
+      expect(variaveis['empresa.produtosList']).toContain('Comex');
       expect(variaveis['empresa.produtosList']).toContain('Fiscal');
     });
   });

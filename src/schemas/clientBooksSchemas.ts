@@ -46,8 +46,8 @@ const statusClienteSchema = z.enum(['ativo', 'inativo'] as const, {
 const templatePadraoSchema = z.string().min(1, 'Template é obrigatório');
 
 // Schema para produtos
-const produtoSchema = z.enum(['CE_PLUS', 'FISCAL', 'GALLERY'] as const, {
-  errorMap: () => ({ message: 'Produto deve ser CE_PLUS, FISCAL ou GALLERY' })
+const produtoSchema = z.enum(['COMEX', 'FISCAL', 'GALLERY'] as const, {
+  errorMap: () => ({ message: 'Produto deve ser COMEX, FISCAL ou GALLERY' })
 });
 
 // Schema para status de disparo

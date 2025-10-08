@@ -544,12 +544,13 @@ export const processProdutosString = (produtosString: string): string[] => {
     .filter(item => item.length > 0);
 
   // Mapear produtos válidos
-  const produtosValidos = ['CE_PLUS', 'FISCAL', 'GALLERY'];
+  const produtosValidos = ['COMEX', 'FISCAL', 'GALLERY'];
   const produtosMapeados: { [key: string]: string } = {
-    'CE PLUS': 'CE_PLUS',
-    'CE-PLUS': 'CE_PLUS',
-    'CEPLUS': 'CE_PLUS',
-    'CE': 'CE_PLUS'
+    'CE PLUS': 'COMEX',
+    'CE-PLUS': 'COMEX',
+    'CEPLUS': 'COMEX',
+    'CE': 'COMEX',
+    'COMEX': 'COMEX'
   };
 
   return produtos
@@ -568,7 +569,7 @@ export const downloadImportEmpresasTemplate = () => {
       'E-mail Gestor': 'gestor@exemplo.com',
       'Link SharePoint': 'https://sharepoint.exemplo.com',
       'Template Padrão': 'portugues',
-      'Produtos': 'CE_PLUS, FISCAL'
+      'Produtos': 'COMEX, FISCAL'
     },
     {
       'Nome Completo': 'Outra Empresa S.A.',
