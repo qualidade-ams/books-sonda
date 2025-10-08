@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { Save, RefreshCw, User, Edit, Plus } from 'lucide-react';
+import { Save, RefreshCw, User, Edit, Plus, Filter, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { userManagementService, type UserData, type CreateUserData } from '@/services/userManagementService';
 
 
@@ -39,6 +40,9 @@ const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateLoading, setIsCreateLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
+  const [groupFilter, setGroupFilter] = useState('todos');
+  const [showFilters, setShowFilters] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState<UserFormData>({
@@ -338,11 +342,27 @@ const UserManagement = () => {
   };
 
   // Filtrar usuários
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.group_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    // Filtro de busca
+    const matchesSearch = searchTerm === '' || 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.group_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filtro de status
+    const matchesStatus = statusFilter === 'todos' || 
+      (statusFilter === 'ativo' && user.active) ||
+      (statusFilter === 'inativo' && !user.active);
+
+    // Filtro de grupo
+    const matchesGroup = groupFilter === 'todos' || 
+      user.group_name === groupFilter;
+
+    return matchesSearch && matchesStatus && matchesGroup;
+  });
+
+  // Obter lista única de grupos para o filtro
+  const uniqueGroups = [...new Set(users.map(user => user.group_name).filter(Boolean))].sort();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -665,27 +685,76 @@ const UserManagement = () => {
         {/* Lista de Usuários */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-lg lg:text-xl">Usuários Cadastrados ({filteredUsers.length})</CardTitle>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="text-lg lg:text-xl">Usuários Cadastrados ({filteredUsers.length})</CardTitle>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
               </div>
             </div>
 
-            {/* Filtros dentro do card */}
-            <div className="flex gap-4 mt-4 pt-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Buscar por nome, email ou grupo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
+            {/* Filtros */}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Buscar</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Nome ou e-mail..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Grupo</label>
+                  <Select
+                    value={groupFilter}
+                    onValueChange={setGroupFilter}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os grupos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os grupos</SelectItem>
+                      {uniqueGroups.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {group}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Button variant="outline" onClick={loadUsers} disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-            </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoading ? (

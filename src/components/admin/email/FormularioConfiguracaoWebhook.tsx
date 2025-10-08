@@ -100,10 +100,10 @@ const WebhookConfigForm = () => {
 
   const testWebhook = async () => {
     setTesting(true);
-    
+
     // Obter email do usuário logado ou usar fallback
     const userEmail = user?.email || 'teste@empresa.com';
-    
+
     try {
       const response = await fetch(config.webhook_url, {
         method: 'POST',
@@ -112,7 +112,8 @@ const WebhookConfigForm = () => {
         },
         body: JSON.stringify({
           nome: 'Teste do Webhook',
-          email: userEmail,          
+          email: [userEmail], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
+          email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
           mensagem: `
           <!DOCTYPE html>
 	<html lang="pt-BR">
@@ -156,9 +157,15 @@ const WebhookConfigForm = () => {
               </table>
             </body>
           </html>
-                  `
-                }),
-              });
+                  `,
+          // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
+          anexos: {
+            totalArquivos: 0,
+            tamanhoTotal: 0,
+            arquivos: []
+          }
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
@@ -210,11 +217,11 @@ const WebhookConfigForm = () => {
 
       <Card>
         <CardContent className="space-y-6 pt-6">
-          <ProtectedAction 
-            screenKey="email-config" 
+          <ProtectedAction
+            screenKey="email-config"
             requiredLevel="edit"
             fallback={
-              <PermissionFeedback 
+              <PermissionFeedback
                 message="Você não tem permissão para editar configurações de email. Entre em contato com o administrador para solicitar acesso."
                 variant="warning"
               />
@@ -248,9 +255,9 @@ const WebhookConfigForm = () => {
                 )}
                 Salvar Configuração
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={testWebhook} 
+              <Button
+                variant="outline"
+                onClick={testWebhook}
                 disabled={testing || !config.webhook_url}
                 className="flex-1"
               >

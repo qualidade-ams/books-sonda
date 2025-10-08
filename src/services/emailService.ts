@@ -572,8 +572,15 @@ export const emailService = {
         },
         body: JSON.stringify({
           nome: assuntoFinal, // Usar o assunto processado
-          email: to,
-          mensagem: corpoFinal // Enviar HTML do template
+          email: Array.isArray(to) ? to : [to], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
+          email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
+          mensagem: corpoFinal, // Enviar HTML do template
+          // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
+          anexos: {
+            totalArquivos: 0,
+            tamanhoTotal: 0,
+            arquivos: []
+          }
         })
       });
 
