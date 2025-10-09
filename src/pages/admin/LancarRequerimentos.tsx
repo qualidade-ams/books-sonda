@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect, MultiSelectOption } from '@/components/ui/multi-select';
+import { MultiSelect, Option } from '@/components/ui/multi-select';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { InputHoras } from '@/components/ui/input-horas';
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
@@ -70,7 +70,7 @@ const LancarRequerimentos = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showReprovadoModal, setShowReprovadoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Estados para modal de Reprovado
   const [reprovadoData, setReprovadoData] = useState<RequerimentoFormData | null>(null);
   const [horasReprovado, setHorasReprovado] = useState('');
@@ -95,17 +95,17 @@ const LancarRequerimentos = () => {
   });
 
   // Opções para multi-select
-  const moduloOptions: MultiSelectOption[] = MODULO_OPTIONS.map(opt => ({
+  const moduloOptions: Option[] = MODULO_OPTIONS.map(opt => ({
     value: opt.value,
     label: opt.label
   }));
 
-  const linguagemOptions: MultiSelectOption[] = LINGUAGEM_OPTIONS.map(opt => ({
+  const linguagemOptions: Option[] = LINGUAGEM_OPTIONS.map(opt => ({
     value: opt.value,
     label: opt.label
   }));
 
-  const tipoCobrancaOptions: MultiSelectOption[] = TIPO_COBRANCA_OPTIONS
+  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS
     .filter(opt => opt.value !== 'Selecione') // Filtrar 'Selecione'
     .map(opt => ({
       value: opt.value,
@@ -147,17 +147,17 @@ const LancarRequerimentos = () => {
         const modulos = Array.isArray(filtros.modulo) ? filtros.modulo : [filtros.modulo];
         if (!modulos.includes(req.modulo)) return false;
       }
-      
+
       if (filtros.linguagem) {
         const linguagens = Array.isArray(filtros.linguagem) ? filtros.linguagem : [filtros.linguagem];
         if (!linguagens.includes(req.linguagem)) return false;
       }
-      
+
       if (filtros.tipo_cobranca) {
         const tipos = Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : [filtros.tipo_cobranca];
         if (!tipos.includes(req.tipo_cobranca)) return false;
       }
-      
+
       if (filtros.mes_cobranca && req.mes_cobranca !== filtros.mes_cobranca) return false;
 
       // Filtros de data
@@ -184,7 +184,7 @@ const LancarRequerimentos = () => {
   // Estatísticas dos requerimentos filtrados
   const statsRequerimentos = useMemo(() => {
     const total = requerimentosFiltrados.length;
-    
+
     // Somar horas corretamente usando somarHoras
     let totalHorasString = '0:00';
     requerimentosFiltrados.forEach(req => {
@@ -201,7 +201,7 @@ const LancarRequerimentos = () => {
       acc[req.tipo_cobranca].quantidade++;
       if (req.horas_total) {
         acc[req.tipo_cobranca].horas = somarHoras(
-          acc[req.tipo_cobranca].horas, 
+          acc[req.tipo_cobranca].horas,
           req.horas_total.toString()
         );
       }
@@ -325,7 +325,7 @@ const LancarRequerimentos = () => {
       setShowReprovadoModal(false);
       setReprovadoData(null);
       setHorasReprovado('');
-      
+
       screenReader.announceSuccess('Requerimento reprovado criado e banco de horas gerado automaticamente');
     } catch (error) {
       console.error('Erro ao processar requerimento reprovado:', error);
@@ -490,27 +490,6 @@ const LancarRequerimentos = () => {
           </ProtectedAction>
         </div>
 
-        {/* Feedback de seleção */}
-        {selectedRequerimentos.length > 0 && (
-          <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                {selectedRequerimentos.length} selecionado(s)
-              </Badge>
-              <span className="text-sm text-blue-700 dark:text-blue-300">
-                Requerimentos selecionados para envio
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearSelection}
-            >
-              Limpar Seleção
-            </Button>
-          </div>
-        )}
-
         {/* Lista de Requerimentos */}
         <Card>
           <CardHeader>
@@ -599,10 +578,10 @@ const LancarRequerimentos = () => {
                     <div className="h-10">
                       <MultiSelect
                         options={moduloOptions}
-                        value={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
+                        selected={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
                         onChange={(values) => handleFiltroChange('modulo', values.length > 0 ? values : undefined)}
                         placeholder="Todos os módulos"
-                        maxDisplay={2}
+                        maxCount={2}
                       />
                     </div>
                   </div>
@@ -613,10 +592,10 @@ const LancarRequerimentos = () => {
                     <div className="h-10">
                       <MultiSelect
                         options={linguagemOptions}
-                        value={Array.isArray(filtros.linguagem) ? filtros.linguagem : filtros.linguagem ? [filtros.linguagem] : []}
+                        selected={Array.isArray(filtros.linguagem) ? filtros.linguagem : filtros.linguagem ? [filtros.linguagem] : []}
                         onChange={(values) => handleFiltroChange('linguagem', values.length > 0 ? values : undefined)}
                         placeholder="Todas as linguagens"
-                        maxDisplay={2}
+                        maxCount={2}
                       />
                     </div>
                   </div>
@@ -627,10 +606,10 @@ const LancarRequerimentos = () => {
                     <div className="h-10">
                       <MultiSelect
                         options={tipoCobrancaOptions}
-                        value={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
+                        selected={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
                         onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
                         placeholder="Todos os tipos"
-                        maxDisplay={2}
+                        maxCount={2}
                       />
                     </div>
                   </div>
@@ -680,17 +659,17 @@ const LancarRequerimentos = () => {
                     />
                   </div>
                   <div className="w-[11%] pr-1">Chamado</div>
-                  <div className="w-[14%] pr-1">Cliente</div>
+                  <div className="w-[9%] pr-1">Cliente</div>
                   <div className="w-[6%] text-center pr-1">Módulo</div>
                   <div className="w-[6%] text-center pr-1">Linguagem</div>
                   <div className="w-[5%] text-center pr-1">H.Func</div>
                   <div className="w-[5%] text-center pr-1">H.Téc</div>
                   <div className="w-[5%] text-center pr-1">Total</div>
                   <div className="w-[7%] text-center pr-1">Data Envio</div>
-                  <div className="w-[7%] text-center pr-1">Data Aprov.</div> 
+                  <div className="w-[7%] text-center pr-1">Data Aprov.</div>
                   <div className="w-[8%] text-center pr-1">Valor Total</div>
                   <div className="w-[7%] text-center pr-1">Mês/Ano</div>
-                  <div className="w-[7%] text-center pr-1">Autor</div>
+                  <div className="w-[10%] text-center pr-1">Autor</div>
                   <div className="w-[8%] text-center">Ações</div>
                 </div>
               </div>
@@ -838,15 +817,14 @@ const LancarRequerimentos = () => {
                 Requerimento Reprovado
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                   O requerimento será criado como <strong>Reprovado</strong> e automaticamente será gerado um requerimento de <strong>Banco de Horas</strong> com as horas especificadas abaixo.
                 </p>
                 <div className="text-xs text-slate-500">
-                  <strong>Chamado:</strong> {reprovadoData?.chamado}<br />
-                  <strong>Cliente:</strong> {reprovadoData?.cliente_nome}
+                  <strong>Chamado:</strong> {reprovadoData?.chamado}
                 </div>
               </div>
 

@@ -65,8 +65,8 @@ export function RequerimentoCardSkeleton() {
           <Skeleton className="h-3 w-16" />
         </div>
         
-        {/* Cliente - 14% */}
-        <div className="w-[14%] pr-1">
+        {/* Cliente - 9% */}
+        <div className="w-[9%] pr-1">
           <Skeleton className="h-4 w-24 mb-1" />
           <Skeleton className="h-3 w-20" />
         </div>
@@ -116,8 +116,8 @@ export function RequerimentoCardSkeleton() {
           <Skeleton className="h-3 w-12 mx-auto" />
         </div>
         
-        {/* Autor - 7% */}
-        <div className="w-[7%] text-center pr-1">
+        {/* Autor - 10% */}
+        <div className="w-[10%] text-center pr-1">
           <Skeleton className="h-3 w-12 mx-auto" />
         </div>
         

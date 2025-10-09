@@ -208,8 +208,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             </div>
           </div>
 
-          {/* Cliente - 14% */}
-          <div className="w-[14%] min-w-0 pr-1">
+          {/* Cliente - 9% */}
+          <div className="w-[9%] min-w-0 pr-1">
             <div className="truncate font-medium text-xs">{requerimento.cliente_nome}</div>
             <div className="text-xs text-gray-500 truncate">{requerimento.descricao}</div>
           </div>
@@ -278,8 +278,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             <div className="text-xs font-bold">{requerimento.mes_cobranca}</div>
           </div>
 
-          {/* Autor - 7% */}
-          <div className="w-[7%] text-center pr-1">
+          {/* Autor - 10% */}
+          <div className="w-[10%] text-center pr-1">
             <div className="text-xs truncate" title={requerimento.autor_nome || 'Não informado'}>
               {requerimento.autor_nome || '-'}
             </div>
