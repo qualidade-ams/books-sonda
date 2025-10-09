@@ -27,6 +27,9 @@ export interface Requerimento {
   quantidade_tickets?: number;
   // Campos de anexo
   anexos?: any[];
+  // Campos de autor
+  autor_id?: string;
+  autor_nome?: string;
   status: StatusRequerimento;
   enviado_faturamento: boolean;
   data_envio_faturamento?: string;
@@ -109,6 +112,9 @@ export interface RequerimentoFormData {
   // Campos de ticket (para Banco de Horas)
   tem_ticket?: boolean;
   quantidade_tickets?: number;
+  // Campos de autor (preenchidos automaticamente)
+  autor_id?: string;
+  autor_nome?: string;
 }
 
 // Interface para dados de faturamento

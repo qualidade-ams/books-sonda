@@ -192,8 +192,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             )}
           </div>
 
-          {/* Tipo + Chamado - 12% */}
-          <div className="w-[12%] flex items-center gap-1 min-w-0 pr-1">
+          {/* Tipo + Chamado - 11% */}
+          <div className="w-[11%] flex items-center gap-1 min-w-0 pr-1">
             <span className="text-base flex-shrink-0">{icon}</span>
             <div className="min-w-0 flex-1">
               <div className="font-medium truncate text-xs">{requerimento.chamado}</div>
@@ -208,8 +208,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             </div>
           </div>
 
-          {/* Cliente - 16% */}
-          <div className="w-[16%] min-w-0 pr-1">
+          {/* Cliente - 14% */}
+          <div className="w-[14%] min-w-0 pr-1">
             <div className="truncate font-medium text-xs">{requerimento.cliente_nome}</div>
             <div className="text-xs text-gray-500 truncate">{requerimento.descricao}</div>
           </div>
@@ -273,13 +273,20 @@ const RequerimentoCardComponent = function RequerimentoCard({
             </div>
           </div>
 
-          {/* Mês/Ano - 8% */}
-          <div className="w-[8%] text-center pr-1">
+          {/* Mês/Ano - 7% */}
+          <div className="w-[7%] text-center pr-1">
             <div className="text-xs font-bold">{requerimento.mes_cobranca}</div>
           </div>
 
-          {/* Ações - 10% */}
-          <div className="w-[10%] flex justify-center gap-1">
+          {/* Autor - 7% */}
+          <div className="w-[7%] text-center pr-1">
+            <div className="text-xs truncate" title={requerimento.autor_nome || 'Não informado'}>
+              {requerimento.autor_nome || '-'}
+            </div>
+          </div>
+
+          {/* Ações - 8% */}
+          <div className="w-[8%] flex justify-center gap-1">
             {showActions && (
               <>
                 {/* Botão Editar */}

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/multi-select';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import { InputHoras } from '@/components/ui/input-horas';
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 import {
   Dialog,
@@ -67,7 +68,12 @@ const LancarRequerimentos = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showReprovadoModal, setShowReprovadoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Estados para modal de Reprovado
+  const [reprovadoData, setReprovadoData] = useState<RequerimentoFormData | null>(null);
+  const [horasReprovado, setHorasReprovado] = useState('');
 
   // Hooks de responsividade e acessibilidade
   const { grid, form, navigation, cards } = useResponsive();
@@ -263,6 +269,15 @@ const LancarRequerimentos = () => {
   // Handlers para ações
   const handleCreate = useCallback(async (data: RequerimentoFormData) => {
     try {
+      // Se o tipo de cobrança for "Reprovado", abrir modal para definir horas
+      if (data.tipo_cobranca === 'Reprovado') {
+        setReprovadoData(data);
+        setHorasReprovado('');
+        setShowCreateModal(false);
+        setShowReprovadoModal(true);
+        return;
+      }
+
       await createRequerimento.mutateAsync(data);
       setShowCreateModal(false);
       screenReader.announceSuccess('Requerimento criado com sucesso');
@@ -285,6 +300,38 @@ const LancarRequerimentos = () => {
     setShowEditModal(false);
     setSelectedRequerimento(null);
   };
+
+  // Handler para confirmar modal de Reprovado
+  const handleConfirmReprovado = useCallback(async () => {
+    if (!reprovadoData || !horasReprovado) return;
+
+    try {
+      // 1. Criar o requerimento "Reprovado" original
+      await createRequerimento.mutateAsync(reprovadoData);
+
+      // 2. Criar automaticamente um requerimento "Banco de Horas" com as horas especificadas
+      const bancoHorasData: RequerimentoFormData = {
+        ...reprovadoData,
+        tipo_cobranca: 'Banco de Horas',
+        horas_funcional: horasReprovado,
+        horas_tecnico: '0',
+        descricao: `Banco de horas referente ao chamado reprovado ${reprovadoData.chamado}`,
+        observacao: `Gerado automaticamente a partir do requerimento reprovado ${reprovadoData.chamado}`
+      };
+
+      await createRequerimento.mutateAsync(bancoHorasData);
+
+      // Fechar modal e limpar estados
+      setShowReprovadoModal(false);
+      setReprovadoData(null);
+      setHorasReprovado('');
+      
+      screenReader.announceSuccess('Requerimento reprovado criado e banco de horas gerado automaticamente');
+    } catch (error) {
+      console.error('Erro ao processar requerimento reprovado:', error);
+      screenReader.announceError('Erro ao processar requerimento reprovado');
+    }
+  }, [reprovadoData, horasReprovado, createRequerimento, screenReader]);
 
   const handleDelete = (requerimento: Requerimento) => {
     setSelectedRequerimento(requerimento);
@@ -618,7 +665,7 @@ const LancarRequerimentos = () => {
             {/* Cabeçalho da Lista */}
             {!isLoading && requerimentosFiltrados.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border">
-                <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3">
                   <div className="w-[4%] text-center pr-1">
                     <Checkbox
                       checked={selectedRequerimentos.length === requerimentosFiltrados.length && requerimentosFiltrados.length > 0}
@@ -632,8 +679,8 @@ const LancarRequerimentos = () => {
                       aria-label="Selecionar todos os requerimentos"
                     />
                   </div>
-                  <div className="w-[12%] pr-1">Chamado</div>
-                  <div className="w-[16%] pr-1">Cliente</div>
+                  <div className="w-[11%] pr-1">Chamado</div>
+                  <div className="w-[14%] pr-1">Cliente</div>
                   <div className="w-[6%] text-center pr-1">Módulo</div>
                   <div className="w-[6%] text-center pr-1">Linguagem</div>
                   <div className="w-[5%] text-center pr-1">H.Func</div>
@@ -642,8 +689,9 @@ const LancarRequerimentos = () => {
                   <div className="w-[7%] text-center pr-1">Data Envio</div>
                   <div className="w-[7%] text-center pr-1">Data Aprov.</div> 
                   <div className="w-[8%] text-center pr-1">Valor Total</div>
-                  <div className="w-[8%] text-center pr-1">Mês/Ano</div>
-                  <div className="w-[10%] text-center">Ações</div>
+                  <div className="w-[7%] text-center pr-1">Mês/Ano</div>
+                  <div className="w-[7%] text-center pr-1">Autor</div>
+                  <div className="w-[8%] text-center">Ações</div>
                 </div>
               </div>
             )}
@@ -780,6 +828,75 @@ const LancarRequerimentos = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Modal de Horas para Reprovado */}
+        <Dialog open={showReprovadoModal} onOpenChange={setShowReprovadoModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-slate-600" />
+                Requerimento Reprovado
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                  O requerimento será criado como <strong>Reprovado</strong> e automaticamente será gerado um requerimento de <strong>Banco de Horas</strong> com as horas especificadas abaixo.
+                </p>
+                <div className="text-xs text-slate-500">
+                  <strong>Chamado:</strong> {reprovadoData?.chamado}<br />
+                  <strong>Cliente:</strong> {reprovadoData?.cliente_nome}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="horas-reprovado">
+                  Horas para Banco de Horas <span className="text-red-500">*</span>
+                </Label>
+                <InputHoras
+                  id="horas-reprovado"
+                  value={horasReprovado}
+                  onChange={setHorasReprovado}
+                  placeholder="Ex: 8 ou 8:30"
+                  className="w-full"
+                />
+                <p className="text-xs text-slate-500">
+                  Informe as horas que serão creditadas no banco de horas (formato: HH:MM ou número inteiro)
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowReprovadoModal(false);
+                    setReprovadoData(null);
+                    setHorasReprovado('');
+                    setShowCreateModal(true); // Reabrir modal de criação
+                  }}
+                  disabled={createRequerimento.isPending}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleConfirmReprovado}
+                  disabled={!horasReprovado || createRequerimento.isPending}
+                  className="bg-slate-600 hover:bg-slate-700"
+                >
+                  {createRequerimento.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Processando...
+                    </>
+                  ) : (
+                    'Confirmar e Criar'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

@@ -53,71 +53,76 @@ export function StatsCardSkeleton() {
 export function RequerimentoCardSkeleton() {
   return (
     <div className="py-2 px-3 border-b border-gray-100 dark:border-gray-800">
-      <div className="flex items-center gap-2">
-        {/* Checkbox */}
+      <div className="flex items-center text-sm">
+        {/* Checkbox - 4% */}
         <div className="w-[4%] text-center pr-1">
           <Skeleton className="h-4 w-4 mx-auto rounded" />
         </div>
         
-        {/* Chamado */}
-        <div className="w-[12%] pr-1">
+        {/* Chamado - 11% */}
+        <div className="w-[11%] pr-1">
           <Skeleton className="h-4 w-20 mb-1" />
           <Skeleton className="h-3 w-16" />
         </div>
         
-        {/* Cliente */}
-        <div className="w-[16%] pr-1">
+        {/* Cliente - 14% */}
+        <div className="w-[14%] pr-1">
           <Skeleton className="h-4 w-24 mb-1" />
           <Skeleton className="h-3 w-20" />
         </div>
         
-        {/* Módulo */}
+        {/* Módulo - 6% */}
         <div className="w-[6%] text-center pr-1">
           <Skeleton className="h-3 w-10 mx-auto" />
         </div>
         
-        {/* Linguagem */}
+        {/* Linguagem - 6% */}
         <div className="w-[6%] text-center pr-1">
           <Skeleton className="h-3 w-10 mx-auto" />
         </div>
         
-        {/* Horas Func. */}
+        {/* Horas Func. - 5% */}
         <div className="w-[5%] text-center pr-1">
           <Skeleton className="h-3 w-8 mx-auto" />
         </div>
         
-        {/* Horas Téc. */}
+        {/* Horas Téc. - 5% */}
         <div className="w-[5%] text-center pr-1">
           <Skeleton className="h-3 w-8 mx-auto" />
         </div>
         
-        {/* Total */}
+        {/* Total - 5% */}
         <div className="w-[5%] text-center pr-1">
           <Skeleton className="h-3 w-8 mx-auto" />
         </div>
         
-        {/* Data Envio */}
+        {/* Data Envio - 7% */}
         <div className="w-[7%] text-center pr-1">
           <Skeleton className="h-3 w-14 mx-auto" />
         </div>
         
-        {/* Data Aprovação */}
+        {/* Data Aprovação - 7% */}
         <div className="w-[7%] text-center pr-1">
           <Skeleton className="h-3 w-14 mx-auto" />
         </div>
         
-        {/* Mês/Ano */}
-        <div className="w-[8%] text-center pr-1">
-          <Skeleton className="h-3 w-12 mx-auto" />
-        </div>
-        
-        {/* Valor Total */}
+        {/* Valor Total - 8% */}
         <div className="w-[8%] text-center pr-1">
           <Skeleton className="h-3 w-16 mx-auto" />
         </div>
         
-        {/* Ações */}
-        <div className="w-[10%] flex justify-center gap-1">
+        {/* Mês/Ano - 7% */}
+        <div className="w-[7%] text-center pr-1">
+          <Skeleton className="h-3 w-12 mx-auto" />
+        </div>
+        
+        {/* Autor - 7% */}
+        <div className="w-[7%] text-center pr-1">
+          <Skeleton className="h-3 w-12 mx-auto" />
+        </div>
+        
+        {/* Ações - 8% */}
+        <div className="w-[8%] flex justify-center gap-1">
           <Skeleton className="h-6 w-6 rounded" />
           <Skeleton className="h-6 w-6 rounded" />
           <Skeleton className="h-6 w-6 rounded" />

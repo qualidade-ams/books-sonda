@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { requerimentosService } from '@/services/requerimentosService';
 import {
   Requerimento,
@@ -110,7 +111,19 @@ export function useCreateRequerimento() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: RequerimentoFormData) => requerimentosService.criarRequerimento(data),
+    mutationFn: async (data: RequerimentoFormData) => {
+      // Obter dados do usuário autenticado do Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Adicionar dados do autor se usuário estiver autenticado
+      const dataComAutor: RequerimentoFormData = {
+        ...data,
+        autor_id: user?.id || undefined,
+        autor_nome: user?.user_metadata?.full_name || user?.email || 'Usuário não identificado'
+      };
+      
+      return requerimentosService.criarRequerimento(dataComAutor);
+    },
     onSuccess: (novoRequerimento) => {
       // Invalidar todas as queries relacionadas
       queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });

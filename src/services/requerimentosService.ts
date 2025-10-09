@@ -60,6 +60,9 @@ export class RequerimentosService {
       // Campos de ticket (para Banco de Horas)
       tem_ticket: data.tem_ticket || false,
       quantidade_tickets: data.quantidade_tickets || null,
+      // Campos de autor (preenchidos pelo frontend)
+      autor_id: data.autor_id || null,
+      autor_nome: data.autor_nome || 'Sistema',
       status: 'lancado' as StatusRequerimento,
       enviado_faturamento: false
     };
@@ -81,6 +84,53 @@ export class RequerimentosService {
     }
 
     return this.formatarRequerimento(requerimento);
+  }
+
+  /**
+   * Resolver nomes de usuários baseado nos IDs
+   */
+  private async resolverNomesUsuarios(userIds: string[]): Promise<Record<string, string>> {
+    if (userIds.length === 0) return {};
+
+    const usersMap: Record<string, string> = {};
+
+    try {
+      // Primeiro tentar buscar na tabela profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+
+      if (profiles && profiles.length > 0) {
+        profiles.forEach(profile => {
+          usersMap[profile.id] = profile.full_name || profile.email || 'Usuário não identificado';
+        });
+      }
+
+      // Para IDs que não foram encontrados na profiles, tentar no auth.users
+      const idsNaoEncontrados = userIds.filter(id => !usersMap[id]);
+      if (idsNaoEncontrados.length > 0) {
+        try {
+          const { data: authUsers } = await supabase.auth.admin.listUsers();
+          if (authUsers?.users && Array.isArray(authUsers.users)) {
+            authUsers.users.forEach((user: any) => {
+              if (user?.id && idsNaoEncontrados.includes(user.id)) {
+                usersMap[user.id] = user.user_metadata?.full_name || 
+                                   user.user_metadata?.name || 
+                                   user.email || 
+                                   'Usuário não identificado';
+              }
+            });
+          }
+        } catch (authError) {
+          console.warn('Não foi possível buscar usuários do auth:', authError);
+        }
+      }
+    } catch (error) {
+      console.warn('Erro ao resolver nomes de usuários:', error);
+    }
+
+    return usersMap;
   }
 
   /**
@@ -128,7 +178,24 @@ export class RequerimentosService {
       throw new Error(`Erro ao listar requerimentos: ${error.message}`);
     }
 
-    return (data || []).map(this.formatarRequerimento);
+    // Resolver nomes de usuários para os campos autor_id
+    const userIds = [...new Set((data || [])
+      .map(req => req.autor_id)
+      .filter(Boolean))] as string[];
+    
+    const usersMap = await this.resolverNomesUsuarios(userIds);
+
+    // Mapear requerimentos e atualizar nomes de autores
+    return (data || []).map(req => {
+      const requerimento = this.formatarRequerimento(req);
+      
+      // Atualizar nome do autor se temos o mapeamento
+      if (req.autor_id && usersMap[req.autor_id]) {
+        requerimento.autor_nome = usersMap[req.autor_id];
+      }
+      
+      return requerimento;
+    });
   }
 
   /**
@@ -195,6 +262,14 @@ export class RequerimentosService {
         return null;
       }
       throw new Error(`Erro ao obter requerimento: ${error.message}`);
+    }
+
+    // Resolver nome do autor se necessário
+    if (data.autor_id) {
+      const usersMap = await this.resolverNomesUsuarios([data.autor_id]);
+      if (usersMap[data.autor_id]) {
+        data.autor_nome = usersMap[data.autor_id];
+      }
     }
 
     return this.formatarRequerimento(data);
