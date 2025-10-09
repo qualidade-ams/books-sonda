@@ -48,6 +48,7 @@ interface RequerimentosTableProps {
   onSelectAll: () => void;
   onClearSelection: () => void;
   showEnviarFaturamento?: boolean;
+  showActions?: boolean;
 }
 
 const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
@@ -60,6 +61,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   onSelectAll,
   onClearSelection,
   showEnviarFaturamento = true,
+  showActions = true,
 }) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
   const enviarParaFaturamento = useEnviarParaFaturamento();
@@ -92,21 +94,21 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
     try {
       const horasFuncional = requerimento.horas_funcional?.toString() || '0';
       const horasTecnico = requerimento.horas_tecnico?.toString() || '0';
-      
+
       if (!horasFuncional || horasFuncional === 'null' || horasFuncional === 'undefined') {
         return '0';
       }
-      
+
       if (!horasTecnico || horasTecnico === 'null' || horasTecnico === 'undefined') {
         return '0';
       }
-      
+
       const resultado = somarHoras(horasFuncional, horasTecnico);
-      
+
       if (!resultado || resultado === 'NaN' || resultado.includes('NaN')) {
         return '0';
       }
-      
+
       return resultado;
     } catch (error) {
       console.error('Erro ao calcular horas total:', error);
@@ -123,31 +125,31 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
 
       const horasFuncionalStr = requerimento.horas_funcional?.toString() || '0';
       const horasTecnicoStr = requerimento.horas_tecnico?.toString() || '0';
-      
+
       if (horasFuncionalStr === 'null' || horasFuncionalStr === 'undefined' || horasFuncionalStr === 'NaN') {
         return null;
       }
-      
+
       if (horasTecnicoStr === 'null' || horasTecnicoStr === 'undefined' || horasTecnicoStr === 'NaN') {
         return null;
       }
 
       const horasFuncionalDecimal = converterParaHorasDecimal(horasFuncionalStr);
       const horasTecnicoDecimal = converterParaHorasDecimal(horasTecnicoStr);
-      
+
       if (isNaN(horasFuncionalDecimal) || isNaN(horasTecnicoDecimal)) {
         return null;
       }
-      
+
       const valorFuncional = (requerimento.valor_hora_funcional || 0) * horasFuncionalDecimal;
       const valorTecnico = (requerimento.valor_hora_tecnico || 0) * horasTecnicoDecimal;
-      
+
       const total = valorFuncional + valorTecnico;
-      
+
       if (isNaN(total)) {
         return null;
       }
-      
+
       return total;
     } catch (error) {
       console.error('Erro ao calcular valor total:', error);
@@ -193,7 +195,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             </TableHead>
             <TableHead className="min-w-[150px]">Chamado</TableHead>
             <TableHead className="min-w-[150px]">Cliente</TableHead>
-            <TableHead className="min-w-[100px] hidden md:table-cell">Módulo</TableHead>
+            <TableHead className="min-w-[150px] hidden md:table-cell">Módulo</TableHead>
             <TableHead className="min-w-[100px] hidden md:table-cell">Linguagem</TableHead>
             <TableHead className="min-w-[80px] text-center hidden lg:table-cell">H.Func</TableHead>
             <TableHead className="min-w-[80px] text-center hidden lg:table-cell">H.Téc</TableHead>
@@ -203,7 +205,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="min-w-[120px] text-center hidden 2xl:table-cell">Valor Total</TableHead>
             <TableHead className="min-w-[100px] text-center">Período de Cobrança</TableHead>
             <TableHead className="min-w-[100px] text-center hidden lg:table-cell">Autor</TableHead>
-            <TableHead className="w-32">Ações</TableHead>
+            {showActions && <TableHead className="w-32">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -220,7 +222,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                     aria-label={`Selecionar requerimento ${requerimento.chamado}`}
                   />
                 </TableCell>
-                
+
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
@@ -251,7 +253,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                     {/* Mostrar horas em telas pequenas */}
                     <div className="lg:hidden mt-1">
                       <span className="text-xs text-gray-500">
-                        F: {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')} | 
+                        F: {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')} |
                         T: {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
                       </span>
                     </div>
@@ -345,94 +347,96 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   </span>
                 </TableCell>
 
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEdit(requerimento)}
-                        className="h-8 w-8 p-0"
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </ProtectedAction>
-                    
-                    <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDelete(requerimento)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </ProtectedAction>
+                {showActions && (
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(requerimento)}
+                          className="h-8 w-8 p-0"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
 
-                    {showEnviarFaturamento && !requerimento.enviado_faturamento && (
-                      <AlertDialog 
-                        open={confirmDialogOpen === requerimento.id} 
-                        onOpenChange={(open) => setConfirmDialogOpen(open ? requerimento.id : null)}
-                      >
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={enviarParaFaturamento.isPending}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                            title="Enviar para Faturamento"
-                          >
-                            {enviarParaFaturamento.isPending ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2">
-                              <AlertCircle className="h-5 w-5 text-amber-500" />
-                              Confirmar Envio para Faturamento
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja enviar o requerimento <strong>{requerimento.chamado}</strong> para faturamento?
-                              <br /><br />
-                              Esta ação não pode ser desfeita e o requerimento será movido para a tela de faturamento.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={enviarParaFaturamento.isPending}>
-                              Cancelar
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleEnviarFaturamento(requerimento)}
+                      <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDelete(requerimento)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
+
+                      {showEnviarFaturamento && !requerimento.enviado_faturamento && (
+                        <AlertDialog
+                          open={confirmDialogOpen === requerimento.id}
+                          onOpenChange={(open) => setConfirmDialogOpen(open ? requerimento.id : null)}
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               disabled={enviarParaFaturamento.isPending}
-                              className="bg-blue-600 hover:bg-blue-700"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                              title="Enviar para Faturamento"
                             >
                               {enviarParaFaturamento.isPending ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                  Enviando...
-                                </>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600" />
                               ) : (
-                                'Confirmar Envio'
+                                <Send className="h-4 w-4" />
                               )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-amber-500" />
+                                Confirmar Envio para Faturamento
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja enviar o requerimento <strong>{requerimento.chamado}</strong> para faturamento?
+                                <br /><br />
+                                Esta ação não pode ser desfeita e o requerimento será movido para a tela de faturamento.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={enviarParaFaturamento.isPending}>
+                                Cancelar
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleEnviarFaturamento(requerimento)}
+                                disabled={enviarParaFaturamento.isPending}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                {enviarParaFaturamento.isPending ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                    Enviando...
+                                  </>
+                                ) : (
+                                  'Confirmar Envio'
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
 
-                    {requerimento.enviado_faturamento && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs py-0 px-2">
-                        ✓
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
+                      {requerimento.enviado_faturamento && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs py-0 px-2">
+                          ✓
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}

@@ -173,7 +173,11 @@ export function PageLoadingSkeleton() {
 }
 
 // Skeleton para tabela de requerimentos
-export function RequerimentosTableSkeleton() {
+interface RequerimentosTableSkeletonProps {
+  showActions?: boolean;
+}
+
+export function RequerimentosTableSkeleton({ showActions = true }: RequerimentosTableSkeletonProps = {}) {
   return (
     <div className="rounded-md mt-4 overflow-x-auto">
       <Table>
@@ -218,9 +222,11 @@ export function RequerimentosTableSkeleton() {
             <TableHead className="min-w-[100px] text-center hidden lg:table-cell">
               <Skeleton className="h-4 w-12 mx-auto" />
             </TableHead>
-            <TableHead className="w-32">
-              <Skeleton className="h-4 w-12" />
-            </TableHead>
+            {showActions && (
+              <TableHead className="w-32">
+                <Skeleton className="h-4 w-12" />
+              </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -283,13 +289,15 @@ export function RequerimentosTableSkeleton() {
               <TableCell className="hidden lg:table-cell text-center">
                 <Skeleton className="h-4 w-16 mx-auto" />
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-8 w-8" />
-                </div>
-              </TableCell>
+              {showActions && (
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

@@ -21,6 +21,7 @@ export const REQUERIMENTOS_QUERY_KEYS = {
   details: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'detail'] as const,
   detail: (id: string) => [...REQUERIMENTOS_QUERY_KEYS.details(), id] as const,
   naoEnviados: () => [...REQUERIMENTOS_QUERY_KEYS.all, 'nao-enviados'] as const,
+  enviados: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'enviados', filtros] as const,
   faturamento: (mes?: number, ano?: number) => [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento', mes, ano] as const,
   clientes: () => ['clientes-requerimentos'] as const,
   estatisticas: (filtros?: FiltrosRequerimentos) => [...REQUERIMENTOS_QUERY_KEYS.all, 'estatisticas', filtros] as const
@@ -45,6 +46,26 @@ export function useRequerimentosNaoEnviados() {
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
     queryFn: () => requerimentosService.buscarRequerimentosNaoEnviados(),
+    staleTime: 1000 * 60 * 2, // 2 minutos
+    gcTime: 1000 * 60 * 5, // 5 minutos
+  });
+}
+
+/**
+ * Hook para buscar requerimentos enviados para faturamento (histórico)
+ */
+export function useRequerimentosEnviados(filtros?: FiltrosRequerimentos) {
+  return useQuery({
+    queryKey: REQUERIMENTOS_QUERY_KEYS.enviados(filtros),
+    queryFn: () => {
+      // Se há filtros específicos, usar listarRequerimentos com status enviado_faturamento
+      if (filtros && Object.keys(filtros).some(key => filtros[key as keyof FiltrosRequerimentos] !== undefined)) {
+        const filtrosComStatus = { ...filtros, status: 'enviado_faturamento' as StatusRequerimento };
+        return requerimentosService.listarRequerimentos(filtrosComStatus);
+      }
+      // Caso contrário, usar a função padrão que busca do mês atual
+      return requerimentosService.buscarRequerimentosParaFaturamento();
+    },
     staleTime: 1000 * 60 * 2, // 2 minutos
     gcTime: 1000 * 60 * 5, // 5 minutos
   });
@@ -340,6 +361,7 @@ export function useRequerimentosManager() {
     // Queries
     useRequerimentos,
     useRequerimentosNaoEnviados,
+    useRequerimentosEnviados,
     useRequerimentosFaturamento,
     useRequerimento,
     useClientesRequerimentos,

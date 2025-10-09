@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, Option } from '@/components/ui/multi-select';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InputHoras } from '@/components/ui/input-horas';
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 import {
@@ -47,6 +48,7 @@ import { useDebounceSearch, useMemoizedFilter, useVirtualPagination } from '@/ut
 
 import {
   useRequerimentosNaoEnviados,
+  useRequerimentosEnviados,
   useCreateRequerimento,
   useUpdateRequerimento,
   useDeleteRequerimento,
@@ -72,6 +74,9 @@ const LancarRequerimentos = () => {
   const [showReprovadoModal, setShowReprovadoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Estado para controlar a aba ativa
+  const [activeTab, setActiveTab] = useState('nao-enviados');
+
   // Estados para modal de Reprovado
   const [reprovadoData, setReprovadoData] = useState<RequerimentoFormData | null>(null);
   const [horasReprovado, setHorasReprovado] = useState('');
@@ -84,7 +89,25 @@ const LancarRequerimentos = () => {
   const [selectedRequerimento, setSelectedRequerimento] = useState<Requerimento | null>(null);
   const [selectedRequerimentos, setSelectedRequerimentos] = useState<string[]>([]);
 
-  // Estados para filtros
+  // Estados específicos para aba de enviados
+  const [selectedRequerimentosEnviados, setSelectedRequerimentosEnviados] = useState<string[]>([]);
+  const [showFiltersEnviados, setShowFiltersEnviados] = useState(false);
+  const [filtrosEnviados, setFiltrosEnviados] = useState<FiltrosRequerimentos>({
+    busca: '',
+    modulo: undefined,
+    linguagem: undefined,
+    tipo_cobranca: undefined,
+    mes_cobranca: (() => {
+      const hoje = new Date();
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      return `${mes}/${ano}`;
+    })(), // Formato MM/YYYY por padrão
+    data_inicio: undefined,
+    data_fim: undefined
+  });
+
+  // Estados para filtros da aba não enviados
   const [filtros, setFiltros] = useState<FiltrosRequerimentos>({
     busca: '',
     modulo: undefined,
@@ -121,6 +144,12 @@ const LancarRequerimentos = () => {
   } = useRequerimentosNaoEnviados();
 
   const {
+    data: requerimentosEnviados = [],
+    isLoading: isLoadingEnviados,
+    refetch: refetchEnviados
+  } = useRequerimentosEnviados(filtrosEnviados);
+
+  const {
     data: estatisticas
   } = useEstatisticasRequerimentos();
 
@@ -129,13 +158,18 @@ const LancarRequerimentos = () => {
   const deleteRequerimento = useDeleteRequerimento();
   const enviarMultiplos = useEnviarMultiplosParaFaturamento();
 
+  // Determinar qual lista e filtros usar baseado na aba ativa
+  const currentRequerimentos = activeTab === 'nao-enviados' ? requerimentos : requerimentosEnviados;
+  const currentIsLoading = activeTab === 'nao-enviados' ? isLoading : isLoadingEnviados;
+  const currentFiltros = activeTab === 'nao-enviados' ? filtros : filtrosEnviados;
+
   // Filtrar requerimentos com memoização otimizada
   const requerimentosFiltrados = useMemoizedFilter(
-    requerimentos || [],
+    currentRequerimentos || [],
     (req) => {
       // Filtro de busca (chamado, cliente, descrição)
-      if (filtros.busca) {
-        const busca = filtros.busca.toLowerCase();
+      if (currentFiltros.busca) {
+        const busca = currentFiltros.busca.toLowerCase();
         const matchBusca =
           req.chamado.toLowerCase().includes(busca) ||
           req.cliente_nome?.toLowerCase().includes(busca) ||
@@ -144,39 +178,39 @@ const LancarRequerimentos = () => {
       }
 
       // Filtros específicos (suporte a múltipla seleção)
-      if (filtros.modulo) {
-        const modulos = Array.isArray(filtros.modulo) ? filtros.modulo : [filtros.modulo];
+      if (currentFiltros.modulo) {
+        const modulos = Array.isArray(currentFiltros.modulo) ? currentFiltros.modulo : [currentFiltros.modulo];
         if (!modulos.includes(req.modulo)) return false;
       }
 
-      if (filtros.linguagem) {
-        const linguagens = Array.isArray(filtros.linguagem) ? filtros.linguagem : [filtros.linguagem];
+      if (currentFiltros.linguagem) {
+        const linguagens = Array.isArray(currentFiltros.linguagem) ? currentFiltros.linguagem : [currentFiltros.linguagem];
         if (!linguagens.includes(req.linguagem)) return false;
       }
 
-      if (filtros.tipo_cobranca) {
-        const tipos = Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : [filtros.tipo_cobranca];
+      if (currentFiltros.tipo_cobranca) {
+        const tipos = Array.isArray(currentFiltros.tipo_cobranca) ? currentFiltros.tipo_cobranca : [currentFiltros.tipo_cobranca];
         if (!tipos.includes(req.tipo_cobranca)) return false;
       }
 
-      if (filtros.mes_cobranca && req.mes_cobranca !== filtros.mes_cobranca) return false;
+      if (currentFiltros.mes_cobranca && req.mes_cobranca !== currentFiltros.mes_cobranca) return false;
 
       // Filtros de data
-      if (filtros.data_inicio) {
+      if (currentFiltros.data_inicio) {
         const dataEnvio = new Date(req.data_envio);
-        const dataInicio = new Date(filtros.data_inicio);
+        const dataInicio = new Date(currentFiltros.data_inicio);
         if (dataEnvio < dataInicio) return false;
       }
 
-      if (filtros.data_fim) {
+      if (currentFiltros.data_fim) {
         const dataEnvio = new Date(req.data_envio);
-        const dataFim = new Date(filtros.data_fim);
+        const dataFim = new Date(currentFiltros.data_fim);
         if (dataEnvio > dataFim) return false;
       }
 
       return true;
     },
-    [filtros]
+    [currentFiltros]
   );
 
   // Paginação virtual para performance
@@ -185,6 +219,7 @@ const LancarRequerimentos = () => {
   // Estatísticas dos requerimentos filtrados
   const statsRequerimentos = useMemo(() => {
     const total = requerimentosFiltrados.length;
+    const currentSelected = activeTab === 'nao-enviados' ? selectedRequerimentos : selectedRequerimentosEnviados;
 
     // Somar horas corretamente usando somarHoras
     let totalHorasString = '0:00';
@@ -193,6 +228,23 @@ const LancarRequerimentos = () => {
         totalHorasString = somarHoras(totalHorasString, req.horas_total.toString());
       }
     });
+
+    // Somar horas e valores dos selecionados
+    let horasSelecionados = '0:00';
+    let valorSelecionados = 0;
+    if (currentSelected.length > 0) {
+      const requerimentosSelecionados = requerimentosFiltrados.filter(req => currentSelected.includes(req.id));
+      requerimentosSelecionados.forEach(req => {
+        if (req.horas_total) {
+          horasSelecionados = somarHoras(horasSelecionados, req.horas_total.toString());
+        }
+
+        // Calcular valor se o tipo de cobrança tem valor monetário
+        if (req.valor_total_geral && typeof req.valor_total_geral === 'number') {
+          valorSelecionados += req.valor_total_geral;
+        }
+      });
+    }
 
     // Agrupar por tipo de cobrança
     const porTipo = requerimentosFiltrados.reduce((acc, req) => {
@@ -212,9 +264,12 @@ const LancarRequerimentos = () => {
     return {
       total,
       totalHoras: totalHorasString,
+      horasSelecionados,
+      valorSelecionados,
+      selecionados: currentSelected.length,
       porTipo
     };
-  }, [requerimentosFiltrados]);
+  }, [requerimentosFiltrados, selectedRequerimentos, selectedRequerimentosEnviados, activeTab]);
 
   // Handlers para filtros com debounce
   const debouncedSearch = useDebounceSearch((value: string) => {
@@ -250,22 +305,81 @@ const LancarRequerimentos = () => {
     });
   };
 
+  // Handlers para filtros da aba de enviados
+  const debouncedSearchEnviados = useDebounceSearch((value: string) => {
+    setFiltrosEnviados(prev => ({ ...prev, busca: value || undefined }));
+    setCurrentPage(1);
+  });
+
+  const handleFiltroEnviadosChange = useCallback((key: keyof FiltrosRequerimentos, value: any) => {
+    if (key === 'busca') {
+      debouncedSearchEnviados(value);
+    } else {
+      const specialValues = ['__all_modules__', '__all_languages__', '__all_types__', '__all_months__'];
+      const processedValue = specialValues.includes(value) ? undefined : value;
+
+      setFiltrosEnviados(prev => ({
+        ...prev,
+        [key]: processedValue || undefined
+      }));
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchEnviados]);
+
+  const limparFiltrosEnviados = () => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+
+    setFiltrosEnviados({
+      busca: '',
+      modulo: undefined,
+      linguagem: undefined,
+      tipo_cobranca: undefined,
+      mes_cobranca: `${mes}/${ano}`, // Manter mês corrente no formato MM/YYYY
+      data_inicio: undefined,
+      data_fim: undefined
+    });
+  };
+
   // Handlers para seleção múltipla
   const toggleRequerimentoSelection = (id: string) => {
-    setSelectedRequerimentos(prev =>
-      prev.includes(id)
-        ? prev.filter(reqId => reqId !== id)
-        : [...prev, id]
-    );
+    if (activeTab === 'nao-enviados') {
+      setSelectedRequerimentos(prev =>
+        prev.includes(id)
+          ? prev.filter(reqId => reqId !== id)
+          : [...prev, id]
+      );
+    } else if (activeTab === 'enviados') {
+      setSelectedRequerimentosEnviados(prev =>
+        prev.includes(id)
+          ? prev.filter(reqId => reqId !== id)
+          : [...prev, id]
+      );
+    }
   };
 
   const selectAllRequerimentos = () => {
-    setSelectedRequerimentos(requerimentosFiltrados.map(req => req.id));
+    if (activeTab === 'nao-enviados') {
+      setSelectedRequerimentos(requerimentosFiltrados.map(req => req.id));
+    } else if (activeTab === 'enviados') {
+      setSelectedRequerimentosEnviados(requerimentosFiltrados.map(req => req.id));
+    }
   };
 
   const clearSelection = () => {
-    setSelectedRequerimentos([]);
+    if (activeTab === 'nao-enviados') {
+      setSelectedRequerimentos([]);
+    } else if (activeTab === 'enviados') {
+      setSelectedRequerimentosEnviados([]);
+    }
   };
+
+  // Limpar seleção ao mudar de aba
+  React.useEffect(() => {
+    setSelectedRequerimentos([]);
+    setSelectedRequerimentosEnviados([]);
+  }, [activeTab]);
 
   // Handlers para ações
   const handleCreate = useCallback(async (data: RequerimentoFormData) => {
@@ -456,117 +570,138 @@ const LancarRequerimentos = () => {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl lg:text-2xl font-bold text-green-600">
-                    {selectedRequerimentos.length}
+                    {statsRequerimentos.selecionados}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                    Tipos Únicos
+                    {activeTab === 'enviados' ? 'Valores Selecionados' : 'Tipos Únicos'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                    {Object.keys(statsRequerimentos.porTipo).length}
-                  </div>
+                  {activeTab === 'enviados' ? (
+                    <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                      R$ {(statsRequerimentos.valorSelecionados || 0).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                      {Object.keys(statsRequerimentos.porTipo).length}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
           )}
         </div>
 
-        {/* Ações Principais */}
-        <div className="flex flex-wrap gap-4 items-center justify-end">
-          <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
-            <Button
-              onClick={handleEnviarSelecionados}
-              disabled={enviarMultiplos.isPending || selectedRequerimentos.length === 0}
-              className="flex items-center gap-2"
-              title={selectedRequerimentos.length === 0 ? 'Nenhum requerimento selecionado' : undefined}
-            >
-              <Send className="h-4 w-4" />
-              {enviarMultiplos.isPending ? 'Enviando...' : `Enviar para Faturamento (${selectedRequerimentos.length})`}
-            </Button>
-          </ProtectedAction>
-        </div>
+        {/* Sistema de Abas - Estilo igual ao EmailConfig */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <TabsList>
+              <TabsTrigger value="nao-enviados">
+                Requerimentos Não Enviados ({requerimentos.length})
+              </TabsTrigger>
+              <TabsTrigger value="enviados">
+                Histórico de Enviados ({requerimentosEnviados.length})
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Lista de Requerimentos */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Requerimentos Não Enviados ({requerimentosFiltrados.length})
-              </CardTitle>
-
-              <div className={cn(
-                "flex gap-2",
-                navigation.stackActions ? "flex-col" : "flex-row"
-              )}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center justify-center space-x-2"
-                  aria-expanded={showFilters}
-                  aria-controls="filters-section"
-                >
-                  <Filter className="h-4 w-4" />
-                  <span>Filtros</span>
-                </Button>
-                {selectedRequerimentos.length === 0 ? (
+            {/* Ações Principais - apenas para aba não enviados */}
+            {activeTab === 'nao-enviados' && (
+              <div className="flex flex-wrap gap-4 items-center">
+                <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllRequerimentos}
-                    disabled={requerimentosFiltrados.length === 0}
-                    className="whitespace-nowrap"
-                    aria-label={`Selecionar todos os ${requerimentosFiltrados.length} requerimentos`}
+                    onClick={handleEnviarSelecionados}
+                    disabled={enviarMultiplos.isPending || selectedRequerimentos.length === 0}
+                    className="flex items-center gap-2"
+                    title={selectedRequerimentos.length === 0 ? 'Nenhum requerimento selecionado' : undefined}
                   >
-                    Selecionar Todos
+                    <Send className="h-4 w-4" />
+                    {enviarMultiplos.isPending ? 'Enviando...' : `Enviar para Faturamento (${selectedRequerimentos.length})`}
                   </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSelection}
-                    className="whitespace-nowrap"
-                    aria-label={`Limpar seleção de ${selectedRequerimentos.length} requerimentos`}
-                  >
-                    Limpar Seleção
-                  </Button>
-                )}
+                </ProtectedAction>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Filtros */}
-            {showFilters && (
-              <div
-                id="filters-section"
-                className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border space-y-4"
-                role="region"
-                aria-label="Filtros de requerimentos"
-              >
-                {/* Busca */}
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Buscar por chamado, cliente ou descrição..."
-                    defaultValue={filtros.busca || ''}
-                    onChange={(e) => handleFiltroChange('busca', e.target.value)}
-                    className="h-8 flex-1"
-                    aria-label="Campo de busca"
-                  />
-                </div>
+            )}
+          </div>
 
-                {/* Filtros em Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Módulo - Múltipla Seleção */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Módulo</Label>
-                    <div className="h-10">
+          <TabsContent value="nao-enviados">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Requerimentos Não Enviados
+                  </CardTitle>
+
+                  <div className={cn(
+                    "flex gap-2",
+                    navigation.stackActions ? "flex-col" : "flex-row"
+                  )}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="flex items-center justify-center space-x-2"
+                      aria-expanded={showFilters}
+                      aria-controls="filters-section"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    {activeTab === 'nao-enviados' && (
+                      <>
+                        {selectedRequerimentos.length === 0 ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={selectAllRequerimentos}
+                            disabled={requerimentosFiltrados.length === 0}
+                            className="whitespace-nowrap"
+                            aria-label={`Selecionar todos os ${requerimentosFiltrados.length} requerimentos`}
+                          >
+                            Selecionar Todos
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearSelection}
+                            className="whitespace-nowrap"
+                            aria-label={`Limpar seleção de ${selectedRequerimentos.length} requerimentos`}
+                          >
+                            Limpar Seleção
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Filtros */}
+                {showFilters && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                    {/* Busca */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Buscar por chamado, cliente ou descrição..."
+                          defaultValue={filtros.busca || ''}
+                          onChange={(e) => handleFiltroChange('busca', e.target.value)}
+                          className="pl-10"
+                          aria-label="Campo de busca"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Módulo */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Módulo</div>
                       <MultiSelect
                         options={moduloOptions}
                         selected={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
@@ -575,12 +710,10 @@ const LancarRequerimentos = () => {
                         maxCount={2}
                       />
                     </div>
-                  </div>
 
-                  {/* Linguagem - Múltipla Seleção */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Linguagem</Label>
-                    <div className="h-10">
+                    {/* Linguagem */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Linguagem</div>
                       <MultiSelect
                         options={linguagemOptions}
                         selected={Array.isArray(filtros.linguagem) ? filtros.linguagem : filtros.linguagem ? [filtros.linguagem] : []}
@@ -589,12 +722,10 @@ const LancarRequerimentos = () => {
                         maxCount={2}
                       />
                     </div>
-                  </div>
 
-                  {/* Tipo de Cobrança - Múltipla Seleção */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Tipo de Cobrança</Label>
-                    <div className="h-10">
+                    {/* Tipo de Cobrança */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
                       <MultiSelect
                         options={tipoCobrancaOptions}
                         selected={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
@@ -604,102 +735,269 @@ const LancarRequerimentos = () => {
                       />
                     </div>
                   </div>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
 
-                  {/* Mês/Ano de Cobrança - Seletor de Mês/Ano */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Mês/Ano de Cobrança</Label>
-                    <div className="h-10">
+                {/* Tabela de Requerimentos */}
+                {isLoading ? (
+                  <RequerimentosTableSkeleton />
+                ) : requerimentosFiltrados.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Nenhum requerimento encontrado
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      {filtros.busca || filtros.modulo || filtros.linguagem || filtros.tipo_cobranca
+                        ? 'Tente ajustar os filtros ou criar um novo requerimento.'
+                        : 'Comece criando seu primeiro requerimento.'}
+                    </p>
+                    <Button onClick={() => setShowCreateModal(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeiro Requerimento
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <RequerimentosTable
+                      requerimentos={paginatedData.items}
+                      loading={isLoading}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      selectedRequerimentos={selectedRequerimentos}
+                      onToggleSelection={toggleRequerimentoSelection}
+                      onSelectAll={selectAllRequerimentos}
+                      onClearSelection={clearSelection}
+                      showEnviarFaturamento={true}
+                    />
+
+                    {/* Paginação */}
+                    {paginatedData.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Mostrando {paginatedData.startIndex} a {paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={!paginatedData.hasPrevPage}
+                            aria-label="Página anterior"
+                          >
+                            Anterior
+                          </Button>
+                          <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                            {currentPage} de {paginatedData.totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
+                            disabled={!paginatedData.hasNextPage}
+                            aria-label="Próxima página"
+                          >
+                            Próxima
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="enviados">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                    <Send className="h-5 w-5" />
+                    Histórico - Requerimentos Enviados
+                  </CardTitle>
+
+                  <div className={cn(
+                    "flex gap-2",
+                    navigation.stackActions ? "flex-col" : "flex-row"
+                  )}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFiltersEnviados(!showFiltersEnviados)}
+                      className="flex items-center justify-center space-x-2"
+                      aria-expanded={showFiltersEnviados}
+                      aria-controls="filters-enviados-section"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    {selectedRequerimentosEnviados.length === 0 ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={selectAllRequerimentos}
+                        disabled={requerimentosFiltrados.length === 0}
+                        className="whitespace-nowrap"
+                        aria-label={`Selecionar todos os ${requerimentosFiltrados.length} requerimentos`}
+                      >
+                        Selecionar Todos
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearSelection}
+                        className="whitespace-nowrap"
+                        aria-label={`Limpar seleção de ${selectedRequerimentosEnviados.length} requerimentos`}
+                      >
+                        Limpar Seleção
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {/* Filtros para Enviados */}
+                {showFiltersEnviados && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                    {/* Busca */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Nome ou e-mail..."
+                          defaultValue={filtrosEnviados.busca || ''}
+                          onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
+                          className="pl-10"
+                          aria-label="Campo de busca"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Módulo */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Módulo</div>
+                      <Select
+                        value={Array.isArray(filtrosEnviados.modulo) && filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__'}
+                        onValueChange={(value) => handleFiltroEnviadosChange('modulo', value === '__all_modules__' ? undefined : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os módulos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all_modules__">Todos os módulos</SelectItem>
+                          {MODULO_OPTIONS.map((modulo) => (
+                            <SelectItem key={modulo.value} value={modulo.value}>
+                              {modulo.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Linguagem */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Linguagem</div>
+                      <Select
+                        value={Array.isArray(filtrosEnviados.linguagem) && filtrosEnviados.linguagem.length > 0 ? filtrosEnviados.linguagem[0] : '__all_languages__'}
+                        onValueChange={(value) => handleFiltroEnviadosChange('linguagem', value === '__all_languages__' ? undefined : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todas as linguagens" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all_languages__">Todas as linguagens</SelectItem>
+                          {LINGUAGEM_OPTIONS.map((linguagem) => (
+                            <SelectItem key={linguagem.value} value={linguagem.value}>
+                              {linguagem.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Mês/Ano */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Mês/Ano</div>
                       <MonthYearPicker
-                        value={filtros.mes_cobranca}
-                        onChange={(value) => handleFiltroChange('mes_cobranca', value)}
-                        placeholder="Todos os meses"
+                        value={filtrosEnviados.mes_cobranca || ''}
+                        onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
+                        placeholder="Outubro 2025"
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Botão Limpar */}
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={limparFiltros}
-                    className="h-8 text-xs"
-                  >
-                    Limpar Filtros
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Tabela de Requerimentos */}
-            {isLoading ? (
-              <RequerimentosTableSkeleton />
-            ) : requerimentosFiltrados.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Nenhum requerimento encontrado
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {filtros.busca || filtros.modulo || filtros.linguagem || filtros.tipo_cobranca
-                    ? 'Tente ajustar os filtros ou criar um novo requerimento.'
-                    : 'Comece criando seu primeiro requerimento.'}
-                </p>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Primeiro Requerimento
-                </Button>
-              </div>
-            ) : (
-              <>
-                <RequerimentosTable
-                  requerimentos={paginatedData.items}
-                  loading={isLoading}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  selectedRequerimentos={selectedRequerimentos}
-                  onToggleSelection={toggleRequerimentoSelection}
-                  onSelectAll={selectAllRequerimentos}
-                  onClearSelection={clearSelection}
-                  showEnviarFaturamento={true}
-                />
-
-                {/* Paginação */}
-                {paginatedData.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Mostrando {paginatedData.startIndex} a {paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={!paginatedData.hasPrevPage}
-                        aria-label="Página anterior"
-                      >
-                        Anterior
-                      </Button>
-                      <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        {currentPage} de {paginatedData.totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
-                        disabled={!paginatedData.hasNextPage}
-                        aria-label="Próxima página"
-                      >
-                        Próxima
-                      </Button>
-                    </div>
-                  </div>
                 )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="space-y-4">
+
+                {/* Tabela de Requerimentos Enviados com Seleção */}
+                {isLoadingEnviados ? (
+                  <RequerimentosTableSkeleton showActions={false} />
+                ) : requerimentosFiltrados.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Send className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Nenhum requerimento encontrado
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {filtrosEnviados.busca || filtrosEnviados.modulo || filtrosEnviados.linguagem || filtrosEnviados.tipo_cobranca
+                        ? 'Tente ajustar os filtros para encontrar requerimentos.'
+                        : 'Os requerimentos enviados para faturamento aparecerão aqui.'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <RequerimentosTable
+                      requerimentos={paginatedData.items}
+                      loading={isLoadingEnviados}
+                      onEdit={() => { }} // Função vazia - apenas visualização
+                      onDelete={() => { }} // Função vazia - apenas visualização
+                      selectedRequerimentos={selectedRequerimentosEnviados}
+                      onToggleSelection={toggleRequerimentoSelection}
+                      onSelectAll={selectAllRequerimentos}
+                      onClearSelection={clearSelection}
+                      showEnviarFaturamento={false} // Não mostrar botão de enviar
+                      showActions={false} // Não mostrar coluna de ações
+                    />
+
+                    {/* Paginação */}
+                    {paginatedData.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Mostrando {paginatedData.startIndex} a {paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={!paginatedData.hasPrevPage}
+                            aria-label="Página anterior"
+                          >
+                            Anterior
+                          </Button>
+                          <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                            {currentPage} de {paginatedData.totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
+                            disabled={!paginatedData.hasNextPage}
+                            aria-label="Próxima página"
+                          >
+                            Próxima
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Modal de Criação */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
