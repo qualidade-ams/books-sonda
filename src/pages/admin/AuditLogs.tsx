@@ -5,7 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Filter, RefreshCw, User, Clock, Database, Search, Download, FileText } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Filter, RefreshCw, User, Clock, Database, Search, Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { auditService } from '@/services/auditService';
 import type { AuditLogWithUser, AuditLogFilters, AuditLogSummary, PermissionAuditLog } from '@/types/audit';
 import { format } from 'date-fns';
@@ -33,12 +39,120 @@ const AuditLogChanges = ({ log }: { log: PermissionAuditLog }) => {
   return <span>{changes}</span>;
 };
 
-export default function AuditLogs() {
+// Componente de exportação para logs de auditoria
+interface AuditLogExportButtonsProps {
+  filters: AuditLogFilters;
+  summary: AuditLogSummary | null;
+  isLoading: boolean;
+}
+
+const AuditLogExportButtons = ({ filters, summary, isLoading }: AuditLogExportButtonsProps) => {
   const { toast } = useToast();
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const exportToExcel = async () => {
+    try {
+      setExportLoading(true);
+      
+      const { data: allLogs } = await auditService.getAuditLogs(filters, 1, 1000);
+      
+      if (allLogs.length === 0) {
+        toast({
+          title: "Nenhum dado para exportar",
+          description: "Não há logs para exportar com os filtros aplicados.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Importar dinamicamente o utilitário de exportação
+      const { exportAuditLogsToExcel } = await import('@/utils/auditLogsExportUtils');
+      await exportAuditLogsToExcel(allLogs);
+
+      toast({
+        title: "Exportação concluída",
+        description: `${allLogs.length} logs exportados para Excel com sucesso.`,
+      });
+
+    } catch (error) {
+      console.error('Erro ao exportar logs:', error);
+      toast({
+        title: "Erro na exportação",
+        description: "Ocorreu um erro ao exportar os logs.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const exportToPDF = async () => {
+    try {
+      setExportLoading(true);
+      
+      const { data: allLogs } = await auditService.getAuditLogs(filters, 1, 1000);
+      
+      if (allLogs.length === 0) {
+        toast({
+          title: "Nenhum dado para exportar",
+          description: "Não há logs para exportar com os filtros aplicados.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Importar dinamicamente o utilitário de exportação
+      const { exportAuditLogsToPDF } = await import('@/utils/auditLogsExportUtils');
+      await exportAuditLogsToPDF(allLogs, summary);
+
+      toast({
+        title: "Relatório PDF gerado",
+        description: `Relatório detalhado com ${allLogs.length} logs gerado com sucesso.`,
+      });
+
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      toast({
+        title: "Erro ao gerar relatório",
+        description: "Ocorreu um erro ao gerar o relatório PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={exportLoading || isLoading}>
+          {exportLoading ? (
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
+          Exportar
+          <ChevronDown className="h-4 w-4 ml-2" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={exportToExcel} disabled={exportLoading || isLoading}>
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Exportar para Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportToPDF} disabled={exportLoading || isLoading}>
+          <FileText className="mr-2 h-4 w-4" />
+          Exportar para PDF
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLogWithUser[]>([]);
   const [summary, setSummary] = useState<AuditLogSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [exportLoading, setExportLoading] = useState(false);
   const [filters, setFilters] = useState<AuditLogFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -87,194 +201,7 @@ export default function AuditLogs() {
     setCurrentPage(1);
   };
 
-  // Exportar logs para CSV
-  const exportToCSV = async () => {
-    try {
-      setExportLoading(true);
-      
-      // Buscar todos os logs com os filtros atuais (sem paginação)
-      const { data: allLogs } = await auditService.getAuditLogs(filters, 1, 1000);
-      
-      if (allLogs.length === 0) {
-        toast({
-          title: "Nenhum dado para exportar",
-          description: "Não há logs para exportar com os filtros aplicados.",
-          variant: "destructive",
-        });
-        return;
-      }
 
-      // Preparar dados para CSV
-      const csvData = [];
-      
-      // Cabeçalho
-      csvData.push([
-        'Data/Hora',
-        'Tabela',
-        'Ação',
-        'Alterações',
-        'Usuário',
-        'Email do Usuário'
-      ]);
-
-      // Dados
-      for (const log of allLogs) {
-        const changes = await auditService.formatChanges(log);
-        csvData.push([
-          format(new Date(log.changed_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR }),
-          auditService.getTableDisplayName(log.table_name),
-          getActionLabel(log.action),
-          changes,
-          log.user_name || 'Sistema',
-          log.user_email || ''
-        ]);
-      }
-
-      // Converter para CSV
-      const csvContent = csvData.map(row => 
-        row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
-      ).join('\n');
-
-      // Download
-      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `logs-auditoria-${format(new Date(), 'yyyy-MM-dd-HHmm')}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Exportação concluída",
-        description: `${allLogs.length} logs exportados com sucesso.`,
-      });
-
-    } catch (error) {
-      console.error('Erro ao exportar logs:', error);
-      toast({
-        title: "Erro na exportação",
-        description: "Ocorreu um erro ao exportar os logs.",
-        variant: "destructive",
-      });
-    } finally {
-      setExportLoading(false);
-    }
-  };
-
-  // Exportar relatório detalhado
-  const exportDetailedReport = async () => {
-    try {
-      setExportLoading(true);
-      
-      const { data: allLogs } = await auditService.getAuditLogs(filters, 1, 1000);
-      
-      if (allLogs.length === 0) {
-        toast({
-          title: "Nenhum dado para exportar",
-          description: "Não há logs para exportar com os filtros aplicados.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Gerar HTML do relatório
-      let htmlContent = `
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-          <meta charset="UTF-8">
-          <title>Relatório de Auditoria - ${format(new Date(), 'dd/MM/yyyy')}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .summary { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-            .log-entry { border: 1px solid #ddd; margin-bottom: 10px; padding: 15px; border-radius: 5px; }
-            .log-header { font-weight: bold; color: #333; margin-bottom: 5px; }
-            .log-details { color: #666; font-size: 14px; }
-            .action-badge { padding: 2px 8px; border-radius: 3px; color: white; font-size: 12px; }
-            .action-insert { background-color: #28a745; }
-            .action-update { background-color: #ffc107; color: black; }
-            .action-delete { background-color: #dc3545; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Relatório de Logs de Auditoria</h1>
-            <p>Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}</p>
-            <p>Total de registros: ${allLogs.length}</p>
-          </div>
-      `;
-
-      // Adicionar resumo se disponível
-      if (summary) {
-        htmlContent += `
-          <div class="summary">
-            <h3>Resumo (Últimos 30 dias)</h3>
-            <p><strong>Total de alterações:</strong> ${summary.total_changes}</p>
-            <p><strong>Alterações por tabela:</strong></p>
-            <ul>
-              ${Object.entries(summary.changes_by_table).map(([table, count]) => 
-                `<li>${auditService.getTableDisplayName(table)}: ${count}</li>`
-              ).join('')}
-            </ul>
-          </div>
-        `;
-      }
-
-      // Adicionar logs
-      for (const log of allLogs) {
-        const changes = await auditService.formatChanges(log);
-        const actionClass = `action-${log.action.toLowerCase()}`;
-        
-        htmlContent += `
-          <div class="log-entry">
-            <div class="log-header">
-              <span class="action-badge ${actionClass}">${getActionLabel(log.action)}</span>
-              ${auditService.getTableDisplayName(log.table_name)} - 
-              ${format(new Date(log.changed_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
-            </div>
-            <div class="log-details">
-              <strong>Alterações:</strong> ${changes}<br>
-              <strong>Usuário:</strong> ${log.user_name || 'Sistema'} ${log.user_email ? `(${log.user_email})` : ''}
-            </div>
-          </div>
-        `;
-      }
-
-      htmlContent += `
-        </body>
-        </html>
-      `;
-
-      // Download do HTML
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `relatorio-auditoria-${format(new Date(), 'yyyy-MM-dd-HHmm')}.html`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Relatório gerado",
-        description: `Relatório detalhado com ${allLogs.length} logs gerado com sucesso.`,
-      });
-
-    } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
-      toast({
-        title: "Erro ao gerar relatório",
-        description: "Ocorreu um erro ao gerar o relatório detalhado.",
-        variant: "destructive",
-      });
-    } finally {
-      setExportLoading(false);
-    }
-  };
 
   // Filtrar logs baseado no termo de busca
   const filteredLogs = logs.filter(log => {
@@ -321,6 +248,12 @@ export default function AuditLogs() {
             Acompanhe todas as alterações no sistema de permissões
           </p>
         </div>
+        
+        <AuditLogExportButtons 
+          filters={filters}
+          summary={summary}
+          isLoading={loading}
+        />
       </div>
 
       {/* Summary Cards */}
@@ -398,36 +331,6 @@ export default function AuditLogs() {
               >
                 <Filter className="h-4 w-4" />
                 <span>Filtros</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportToCSV}
-                disabled={exportLoading || loading}
-                className="flex items-center justify-center space-x-2"
-              >
-                {exportLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                <span>CSV</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportDetailedReport}
-                disabled={exportLoading || loading}
-                className="flex items-center justify-center space-x-2"
-              >
-                {exportLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
-                <span>Relatório</span>
               </Button>
             </div>
           </div>
