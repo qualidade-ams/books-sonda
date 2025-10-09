@@ -33,10 +33,11 @@ import {
 import {
   RequerimentoForm,
   RequerimentoCard,
+  RequerimentosTable,
   ContextualHelp,
   RequerimentosHelpGuide
 } from '@/components/admin/requerimentos';
-import { StatsCardSkeleton, RequerimentoCardSkeleton } from '@/components/admin/requerimentos/LoadingStates';
+import { StatsCardSkeleton, RequerimentoCardSkeleton, RequerimentosTableSkeleton } from '@/components/admin/requerimentos/LoadingStates';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -497,16 +498,6 @@ const LancarRequerimentos = () => {
               <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Requerimentos Não Enviados ({requerimentosFiltrados.length})
-                <ContextualHelp
-                  title="Ajuda - Requerimentos"
-                  trigger={
-                    <Button variant="ghost" size="sm" className="p-1">
-                      <HelpCircle className="h-4 w-4 text-blue-500" />
-                    </Button>
-                  }
-                >
-                  <RequerimentosHelpGuide />
-                </ContextualHelp>
               </CardTitle>
 
               <div className={cn(
@@ -641,47 +632,9 @@ const LancarRequerimentos = () => {
               </div>
             )}
 
-            {/* Cabeçalho da Lista */}
-            {!isLoading && requerimentosFiltrados.length > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border">
-                <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3">
-                  <div className="w-[4%] text-center pr-1">
-                    <Checkbox
-                      checked={selectedRequerimentos.length === requerimentosFiltrados.length && requerimentosFiltrados.length > 0}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          selectAllRequerimentos();
-                        } else {
-                          clearSelection();
-                        }
-                      }}
-                      aria-label="Selecionar todos os requerimentos"
-                    />
-                  </div>
-                  <div className="w-[11%] pr-1">Chamado</div>
-                  <div className="w-[9%] pr-1">Cliente</div>
-                  <div className="w-[6%] text-center pr-1">Módulo</div>
-                  <div className="w-[6%] text-center pr-1">Linguagem</div>
-                  <div className="w-[5%] text-center pr-1">H.Func</div>
-                  <div className="w-[5%] text-center pr-1">H.Téc</div>
-                  <div className="w-[5%] text-center pr-1">Total</div>
-                  <div className="w-[7%] text-center pr-1">Data Envio</div>
-                  <div className="w-[7%] text-center pr-1">Data Aprov.</div>
-                  <div className="w-[8%] text-center pr-1">Valor Total</div>
-                  <div className="w-[7%] text-center pr-1">Mês/Ano</div>
-                  <div className="w-[10%] text-center pr-1">Autor</div>
-                  <div className="w-[8%] text-center">Ações</div>
-                </div>
-              </div>
-            )}
-
-            {/* Lista de Requerimentos */}
+            {/* Tabela de Requerimentos */}
             {isLoading ? (
-              <div className="space-y-0">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <RequerimentoCardSkeleton key={i} />
-                ))}
-              </div>
+              <RequerimentosTableSkeleton />
             ) : requerimentosFiltrados.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -700,20 +653,17 @@ const LancarRequerimentos = () => {
               </div>
             ) : (
               <>
-                <div className="space-y-0">
-                  {paginatedData.items.map((requerimento) => (
-                    <RequerimentoCard
-                      key={requerimento.id}
-                      requerimento={requerimento}
-                      onEdit={handleEdit}
-                      onDelete={() => handleDelete(requerimento)}
-                      showActions={true}
-                      showEnviarFaturamento={true}
-                      isSelected={selectedRequerimentos.includes(requerimento.id)}
-                      onToggleSelection={() => toggleRequerimentoSelection(requerimento.id)}
-                    />
-                  ))}
-                </div>
+                <RequerimentosTable
+                  requerimentos={paginatedData.items}
+                  loading={isLoading}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  selectedRequerimentos={selectedRequerimentos}
+                  onToggleSelection={toggleRequerimentoSelection}
+                  onSelectAll={selectAllRequerimentos}
+                  onClearSelection={clearSelection}
+                  showEnviarFaturamento={true}
+                />
 
                 {/* Paginação */}
                 {paginatedData.totalPages > 1 && (

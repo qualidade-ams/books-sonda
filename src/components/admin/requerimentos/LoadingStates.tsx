@@ -1,5 +1,13 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 // Componente de loading spinner
@@ -160,6 +168,132 @@ export function PageLoadingSkeleton() {
           ))}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Skeleton para tabela de requerimentos
+export function RequerimentosTableSkeleton() {
+  return (
+    <div className="rounded-md mt-4 overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <Skeleton className="h-4 w-4" />
+            </TableHead>
+            <TableHead className="min-w-[120px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="min-w-[150px]">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="min-w-[100px] hidden md:table-cell">
+              <Skeleton className="h-4 w-16" />
+            </TableHead>
+            <TableHead className="min-w-[100px] hidden md:table-cell">
+              <Skeleton className="h-4 w-20" />
+            </TableHead>
+            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">
+              <Skeleton className="h-4 w-12 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">
+              <Skeleton className="h-4 w-12 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[80px] text-center">
+              <Skeleton className="h-4 w-12 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">
+              <Skeleton className="h-4 w-20 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">
+              <Skeleton className="h-4 w-20 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[120px] text-center hidden 2xl:table-cell">
+              <Skeleton className="h-4 w-20 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[100px] text-center">
+              <Skeleton className="h-4 w-12 mx-auto" />
+            </TableHead>
+            <TableHead className="min-w-[100px] text-center hidden lg:table-cell">
+              <Skeleton className="h-4 w-12 mx-auto" />
+            </TableHead>
+            <TableHead className="w-32">
+              <Skeleton className="h-4 w-12" />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-4 w-4" />
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-20" />
+                  <div className="md:hidden space-y-1">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                  <div className="lg:hidden">
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <div className="xl:hidden">
+                    <Skeleton className="h-3 w-18" />
+                  </div>
+                  <div className="lg:hidden">
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-5 w-16" />
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-5 w-16" />
+              </TableCell>
+              <TableCell className="hidden lg:table-cell text-center">
+                <Skeleton className="h-4 w-12 mx-auto" />
+              </TableCell>
+              <TableCell className="hidden lg:table-cell text-center">
+                <Skeleton className="h-4 w-12 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-4 w-12 mx-auto" />
+              </TableCell>
+              <TableCell className="hidden xl:table-cell text-center">
+                <Skeleton className="h-4 w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="hidden xl:table-cell text-center">
+                <Skeleton className="h-4 w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="hidden 2xl:table-cell text-center">
+                <Skeleton className="h-4 w-20 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-4 w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="hidden lg:table-cell text-center">
+                <Skeleton className="h-4 w-16 mx-auto" />
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
