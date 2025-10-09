@@ -136,7 +136,7 @@ const WebhookConfigForm = () => {
 								  <td>
 							<![endif]-->
 
-								<img src="https://orcamentos-snd.vercel.app/images/logo-sonda.png" alt="Logo" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
+								<img src="http://books-sonda.vercel.app/images/logo-sonda.png" alt="Logo" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
 
 								<!--[if gte mso 9]>
 								  </td>

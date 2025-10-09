@@ -185,16 +185,6 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
           </CardTitle>
           <div className="flex items-center space-x-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={saving}
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Atualizar</span>
-            </Button>
-            <Button
               onClick={handleSavePermissions}
               disabled={!hasUnsavedChanges || saving}
               className="flex items-center space-x-2"
@@ -225,7 +215,7 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
                   </span>
                 </div>
 
-                <div className="rounded-md border">
+                <div className="rounded-md">
                   <Table>
                     <TableHeader>
                       <TableRow>

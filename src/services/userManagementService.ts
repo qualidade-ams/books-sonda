@@ -29,7 +29,7 @@ export interface UpdateUserData {
 }
 
 class UserManagementService {
-  
+
 
   // Listar todos os usuários (requer permissões de admin)
   async listUsers(): Promise<UserData[]> {
@@ -47,7 +47,7 @@ class UserManagementService {
 
       // Buscar usuários do auth usando cliente administrativo
       const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-      
+
       if (authError) {
         console.error('Erro ao buscar usuários do auth:', authError);
         throw authError;
@@ -57,7 +57,7 @@ class UserManagementService {
       const { data: profiles, error: profilesError } = await supabaseAdmin
         .from('profiles')
         .select('id, email, full_name, created_at, updated_at');
-      
+
       if (profilesError) {
         console.warn('Erro ao buscar perfis:', profilesError);
       }
@@ -71,7 +71,7 @@ class UserManagementService {
             name
           )
         `);
-      
+
       if (groupsError) {
         console.warn('Erro ao buscar grupos:', groupsError);
       }
@@ -80,7 +80,7 @@ class UserManagementService {
       const combinedUsers: UserData[] = authUsers.users.map(user => {
         const profile = profiles?.find(p => p.id === user.id);
         const userGroup = userGroups?.find(ug => ug.user_id === user.id);
-        
+
         return {
           id: user.id,
           email: user.email || '',
@@ -90,6 +90,17 @@ class UserManagementService {
           last_sign_in_at: user.last_sign_in_at,
           group_name: userGroup?.user_groups?.name
         };
+      });
+
+      // Ordenar alfabeticamente por nome (full_name), depois por email se não tiver nome
+      combinedUsers.sort((a, b) => {
+        const nameA = a.full_name || a.email || '';
+        const nameB = b.full_name || b.email || '';
+        
+        return nameA.localeCompare(nameB, 'pt-BR', {
+          sensitivity: 'base',
+          ignorePunctuation: true
+        });
       });
 
       return combinedUsers;
@@ -108,7 +119,7 @@ class UserManagementService {
         throw new Error('Usuário não autenticado');
       }
 
-  
+
       const hasPermission = await checkAdminPermissions(user.id);
       if (!hasPermission) {
         console.warn('Usuário sem permissões administrativas, tentando criar usuário mesmo assim...');
@@ -126,7 +137,8 @@ class UserManagementService {
           full_name: userData.fullName,
           name: userData.fullName
         },
-        email_confirm: !userData.sendWelcomeEmail
+        // ✅ CORREÇÃO: Sempre confirmar email automaticamente quando enviamos boas-vindas
+        email_confirm: userData.sendWelcomeEmail ? true : false
       });
 
       if (authError) {
@@ -140,7 +152,7 @@ class UserManagementService {
       if (authData.user) {
         try {
           console.log('Verificando se perfil já existe para usuário:', authData.user.id);
-          
+
           // Primeiro, verificar se o perfil já existe
           const { data: existingProfile, error: checkError } = await supabaseAdmin
             .from('profiles')
@@ -166,7 +178,7 @@ class UserManagementService {
             if (updateError) {
               console.warn('Erro ao atualizar perfil existente:', updateError);
             } else {
-              
+
             }
           } else {
             // Perfil não existe, vamos criar
@@ -197,14 +209,25 @@ class UserManagementService {
         }
       }
 
+      // Enviar email de boas-vindas personalizado se solicitado
+      if (userData.sendWelcomeEmail && authData.user) {
+        try {
+          await this.sendWelcomeEmail(authData.user.email, userData.fullName, userData.password);
+          console.log('✅ Email de boas-vindas enviado para:', authData.user.email);
+        } catch (emailError) {
+          console.warn('⚠️ Erro ao enviar email de boas-vindas (não crítico):', emailError);
+          // Não falhar a criação do usuário por causa do email
+        }
+      }
+
       console.log('✅ Usuário criado com sucesso:', authData.user.email);
       return { success: true, user: authData.user };
     } catch (error: any) {
       console.error('Erro no serviço de criação de usuário:', error);
-      
+
       // Melhor tratamento de erros específicos
       let errorMessage = error.message;
-      
+
       if (error.message?.includes('Database error')) {
         errorMessage = 'Erro no banco de dados. Verifique as políticas RLS e triggers.';
       } else if (error.message?.includes('already registered')) {
@@ -214,7 +237,7 @@ class UserManagementService {
       } else if (error.message?.includes('weak password')) {
         errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   }
@@ -237,11 +260,11 @@ class UserManagementService {
 
       // 1. Atualizar dados do usuário no auth (se necessário)
       const authUpdates: any = {};
-      
+
       if (userData.email) {
         authUpdates.email = userData.email;
       }
-      
+
       if (userData.resetPassword && userData.newPassword) {
         authUpdates.password = userData.newPassword;
       }
@@ -280,7 +303,7 @@ class UserManagementService {
         if (profileError) {
           console.warn('Erro ao atualizar perfil (não crítico):', profileError);
         } else {
-          
+
         }
       } catch (profileException) {
         console.warn('Exceção ao atualizar perfil (não crítico):', profileException);
@@ -289,10 +312,10 @@ class UserManagementService {
       return { success: true };
     } catch (error: any) {
       console.error('Erro no serviço de atualização de usuário:', error);
-      
+
       // Melhor tratamento de erros específicos
       let errorMessage = error.message;
-      
+
       if (error.message?.includes('invalid email')) {
         errorMessage = 'Email inválido.';
       } else if (error.message?.includes('weak password')) {
@@ -300,7 +323,7 @@ class UserManagementService {
       } else if (error.message?.includes('email already exists')) {
         errorMessage = 'Este email já está sendo usado por outro usuário.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   }
@@ -325,6 +348,68 @@ class UserManagementService {
     } catch (error: any) {
       console.error('Erro no serviço de atualização de status:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Enviar email de boas-vindas personalizado
+  private async sendWelcomeEmail(email: string, fullName: string, password: string): Promise<void> {
+    try {
+      // Importar o emailService dinamicamente para evitar dependência circular
+      const { emailService } = await import('@/services/emailService');
+
+      // Template de email de boas-vindas
+      const welcomeTemplate = {
+        assunto: 'Bem-vindo ao Sistema Books SND',
+        corpo: `
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Bem-vindo ao Sistema Books SND</title>
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #f4f6fb; font-family: Arial, sans-serif;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6fb">
+              <tr>
+                <td align="center" style="padding: 20px 20px;">
+                  <table width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); overflow: hidden;">
+                    <tr>
+                      <td align="center" bgcolor="#1a4eff" style="padding: 20px;">
+                        <img src="http://books-sonda.vercel.app/images/logo-sonda.png" alt="Logo Sonda" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 24px; font-size: 14px; color: #111; line-height: 1.5;">
+                        <h2 style="margin-top: 0; color: #1a4eff; font-size: 18px;">Bem-vindo ao Sistema Books SND!</h2>
+                        <p>Olá <strong>${fullName}</strong>,</p>
+                        <p>Sua conta foi criada com sucesso no Sistema Books SND. Abaixo estão suas credenciais de acesso:</p>
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                          <p style="margin: 0;"><strong>Email:</strong> ${email}</p>
+                          <p style="margin: 5px 0 0 0;"><strong>Senha:</strong> ${password}</p>
+                        </div>
+                        <p><strong>Importante:</strong> Por segurança, recomendamos que você altere sua senha no primeiro acesso.</p>
+                        <p>Para acessar o sistema, clique no link abaixo:</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                          <a href="${window.location.origin}" style="background-color: #1a4eff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Acessar Sistema</a>
+                        </div>
+                        <p>Se você tiver alguma dúvida, entre em contato com o administrador do sistema.</p>
+                        <p>Atenciosamente,<br>Equipe Books SND</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `
+      };
+
+      // Enviar email usando o emailService
+      await emailService.sendTestEmail(email, welcomeTemplate);
+
+    } catch (error) {
+      console.error('Erro ao enviar email de boas-vindas:', error);
+      throw error;
     }
   }
 }

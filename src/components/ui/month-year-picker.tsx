@@ -67,7 +67,8 @@ export function MonthYearPicker({
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
     if (month && selectedYear) {
-      onChange(`${month}/${selectedYear}`);
+      const newValue = `${month}/${selectedYear}`;
+      onChange(newValue);
       setOpen(false);
     }
   };
@@ -75,7 +76,8 @@ export function MonthYearPicker({
   const handleYearChange = (year: string) => {
     setSelectedYear(year);
     if (selectedMonth && year) {
-      onChange(`${selectedMonth}/${year}`);
+      const newValue = `${selectedMonth}/${year}`;
+      onChange(newValue);
       setOpen(false);
     }
   };
@@ -158,13 +160,30 @@ export function MonthYearPicker({
             >
               Limpar
             </Button>
-            <Button
-              size="sm"
-              onClick={() => setOpen(false)}
-              className="h-7 text-xs"
-            >
-              Fechar
-            </Button>
+            <div className="flex gap-2">
+              {selectedMonth && selectedYear && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    const newValue = `${selectedMonth}/${selectedYear}`;
+                    onChange(newValue);
+                    setOpen(false);
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Confirmar
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(false)}
+                className="h-7 text-xs"
+              >
+                Fechar
+              </Button>
+            </div>
           </div>
         </div>
       </PopoverContent>

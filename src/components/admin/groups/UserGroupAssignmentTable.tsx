@@ -167,10 +167,6 @@ const UserGroupAssignmentTable: React.FC<UserGroupAssignmentTableProps> = ({
             {users.filter(u => !u.group_id).length} usuários sem grupo
           </span>
         </div>
-        <Button onClick={loadData} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
       </div>
 
       <Card>
