@@ -502,7 +502,7 @@ const LancarRequerimentos = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-full overflow-hidden">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
           <div>
@@ -600,7 +600,7 @@ const LancarRequerimentos = () => {
         </div>
 
         {/* Sistema de Abas - Estilo igual ao EmailConfig */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4 max-w-full overflow-hidden">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <TabsList>
               <TabsTrigger value="nao-enviados">
@@ -630,7 +630,7 @@ const LancarRequerimentos = () => {
           </div>
 
           <TabsContent value="nao-enviados">
-            <Card>
+            <Card className="w-full overflow-hidden">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
@@ -737,7 +737,7 @@ const LancarRequerimentos = () => {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 overflow-x-auto">
 
                 {/* Tabela de Requerimentos */}
                 {isLoading ? (
@@ -760,17 +760,19 @@ const LancarRequerimentos = () => {
                   </div>
                 ) : (
                   <>
-                    <RequerimentosTable
-                      requerimentos={paginatedData.items}
-                      loading={isLoading}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      selectedRequerimentos={selectedRequerimentos}
-                      onToggleSelection={toggleRequerimentoSelection}
-                      onSelectAll={selectAllRequerimentos}
-                      onClearSelection={clearSelection}
-                      showEnviarFaturamento={true}
-                    />
+                    <div className="w-full overflow-x-auto">
+                      <RequerimentosTable
+                        requerimentos={paginatedData.items}
+                        loading={isLoading}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        selectedRequerimentos={selectedRequerimentos}
+                        onToggleSelection={toggleRequerimentoSelection}
+                        onSelectAll={selectAllRequerimentos}
+                        onClearSelection={clearSelection}
+                        showEnviarFaturamento={true}
+                      />
+                    </div>
 
                     {/* Paginação */}
                     {paginatedData.totalPages > 1 && (
@@ -810,7 +812,7 @@ const LancarRequerimentos = () => {
           </TabsContent>
 
           <TabsContent value="enviados">
-            <Card>
+            <Card className="w-full overflow-hidden">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
@@ -879,7 +881,11 @@ const LancarRequerimentos = () => {
                     <div>
                       <div className="text-sm font-medium mb-2">Módulo</div>
                       <Select
-                        value={Array.isArray(filtrosEnviados.modulo) && filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__'}
+                        value={
+                          Array.isArray(filtrosEnviados.modulo)
+                            ? (filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__')
+                            : (filtrosEnviados.modulo || '__all_modules__')
+                        }
                         onValueChange={(value) => handleFiltroEnviadosChange('modulo', value === '__all_modules__' ? undefined : value)}
                       >
                         <SelectTrigger>
@@ -900,7 +906,11 @@ const LancarRequerimentos = () => {
                     <div>
                       <div className="text-sm font-medium mb-2">Linguagem</div>
                       <Select
-                        value={Array.isArray(filtrosEnviados.linguagem) && filtrosEnviados.linguagem.length > 0 ? filtrosEnviados.linguagem[0] : '__all_languages__'}
+                        value={
+                          Array.isArray(filtrosEnviados.linguagem)
+                            ? (filtrosEnviados.linguagem.length > 0 ? filtrosEnviados.linguagem[0] : '__all_languages__')
+                            : (filtrosEnviados.linguagem || '__all_languages__')
+                        }
                         onValueChange={(value) => handleFiltroEnviadosChange('linguagem', value === '__all_languages__' ? undefined : value)}
                       >
                         <SelectTrigger>
@@ -929,7 +939,7 @@ const LancarRequerimentos = () => {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 overflow-x-auto">
 
                 {/* Tabela de Requerimentos Enviados com Seleção */}
                 {isLoadingEnviados ? (
@@ -948,18 +958,20 @@ const LancarRequerimentos = () => {
                   </div>
                 ) : (
                   <>
-                    <RequerimentosTable
-                      requerimentos={paginatedData.items}
-                      loading={isLoadingEnviados}
-                      onEdit={() => { }} // Função vazia - apenas visualização
-                      onDelete={() => { }} // Função vazia - apenas visualização
-                      selectedRequerimentos={selectedRequerimentosEnviados}
-                      onToggleSelection={toggleRequerimentoSelection}
-                      onSelectAll={selectAllRequerimentos}
-                      onClearSelection={clearSelection}
-                      showEnviarFaturamento={false} // Não mostrar botão de enviar
-                      showActions={false} // Não mostrar coluna de ações
-                    />
+                    <div className="w-full overflow-x-auto">
+                      <RequerimentosTable
+                        requerimentos={paginatedData.items}
+                        loading={isLoadingEnviados}
+                        onEdit={() => { }} // Função vazia - apenas visualização
+                        onDelete={() => { }} // Função vazia - apenas visualização
+                        selectedRequerimentos={selectedRequerimentosEnviados}
+                        onToggleSelection={toggleRequerimentoSelection}
+                        onSelectAll={selectAllRequerimentos}
+                        onClearSelection={clearSelection}
+                        showEnviarFaturamento={false} // Não mostrar botão de enviar
+                        showActions={false} // Não mostrar coluna de ações
+                      />
+                    </div>
 
                     {/* Paginação */}
                     {paginatedData.totalPages > 1 && (

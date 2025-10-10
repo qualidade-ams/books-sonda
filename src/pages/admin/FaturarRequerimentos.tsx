@@ -690,25 +690,31 @@ export default function FaturarRequerimentos() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Linguagem
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Horas Func.
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              H.Func
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Horas Téc.
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              H.Téc
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Total
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Data Envio
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Anexos
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Data Aprov.
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Valor Total
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Período de Cobrança
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Autor
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Ações
                             </th>
                           </tr>
@@ -724,33 +730,30 @@ export default function FaturarRequerimentos() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                 {req.cliente_nome || 'N/A'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                {req.modulo}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <Badge variant="outline" className="text-xs">
+                                  {req.modulo}
+                                </Badge>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                {req.linguagem}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <Badge variant="outline" className="text-xs">
+                                  {req.linguagem}
+                                </Badge>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 text-center">
                                 {formatarHoras(req.horas_funcional)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-center">
                                 {formatarHoras(req.horas_tecnico)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white text-center">
                                 {formatarHoras(req.horas_total)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
                                 {formatarData(req.data_envio)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                {req.anexos && req.anexos.length > 0 ? (
-                                  <div className="flex items-center justify-center">
-                                    <Paperclip className="h-4 w-4 text-blue-600 mr-1" />
-                                    <span className="text-blue-600 font-medium">{req.anexos.length}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                {req.data_aprovacao ? formatarData(req.data_aprovacao) : '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                 {req.valor_total_geral ? (
@@ -764,7 +767,17 @@ export default function FaturarRequerimentos() {
                                   <span className="text-gray-400">-</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                {req.mes_cobranca ? (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {req.mes_cobranca}
+                                  </Badge>
+                                ) : '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                {req.autor_nome || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                 <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                   <Button
                                     variant="outline"

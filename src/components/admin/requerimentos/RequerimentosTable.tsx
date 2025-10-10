@@ -176,8 +176,8 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   }
 
   return (
-    <div className="rounded-md mt-4 overflow-x-auto">
-      <Table>
+    <div className="rounded-md mt-4 overflow-x-auto w-full max-w-full">
+      <Table className="min-w-full">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">
@@ -193,19 +193,19 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 aria-label="Selecionar todos os requerimentos"
               />
             </TableHead>
-            <TableHead className="min-w-[150px]">Chamado</TableHead>
-            <TableHead className="min-w-[150px]">Cliente</TableHead>
-            <TableHead className="min-w-[150px] hidden md:table-cell">Módulo</TableHead>
-            <TableHead className="min-w-[100px] hidden md:table-cell">Linguagem</TableHead>
-            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">H.Func</TableHead>
-            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">H.Téc</TableHead>
-            <TableHead className="min-w-[80px] text-center">Total</TableHead>
-            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">Data Envio</TableHead>
-            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">Data Aprov.</TableHead>
-            <TableHead className="min-w-[120px] text-center hidden 2xl:table-cell">Valor Total</TableHead>
-            <TableHead className="min-w-[100px] text-center">Período de Cobrança</TableHead>
-            <TableHead className="min-w-[100px] text-center hidden lg:table-cell">Autor</TableHead>
-            {showActions && <TableHead className="w-32">Ações</TableHead>}
+            <TableHead className="w-40">Chamado</TableHead>
+            <TableHead className="w-40">Cliente</TableHead>
+            <TableHead className="w-22 hidden md:table-cell">Módulo</TableHead>
+            <TableHead className="w-22 hidden md:table-cell">Linguagem</TableHead>
+            <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
+            <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
+            <TableHead className="w-20 text-center">Total</TableHead>
+            <TableHead className="w-24 text-center hidden xl:table-cell">Data Envio</TableHead>
+            <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
+            <TableHead className="w-28 text-center hidden 2xl:table-cell">Valor Total</TableHead>
+            <TableHead className="w-24 text-center">Período de Cobrança</TableHead>
+            <TableHead className="w-24 text-center hidden lg:table-cell">Autor</TableHead>
+            {showActions && <TableHead className="w-24">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
