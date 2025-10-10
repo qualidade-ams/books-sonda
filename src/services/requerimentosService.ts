@@ -699,7 +699,10 @@ export class RequerimentosService {
       valor_hora_tecnico: data.valor_hora_tecnico,
       valor_total_funcional: data.valor_total_funcional,
       valor_total_tecnico: data.valor_total_tecnico,
-      valor_total_geral: data.valor_total_geral
+      valor_total_geral: data.valor_total_geral,
+      // Campos de autor
+      autor_id: data.autor_id,
+      autor_nome: data.autor_nome
     };
   }
 }

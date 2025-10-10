@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -858,6 +858,81 @@ const LancarRequerimentos = () => {
                       </Button>
                     )}
                   </div>
+                </div>
+
+                {/* Navegação de Mês/Ano */}
+                <div className="flex items-center justify-center gap-1 py-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                      const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+                      const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+                      let novoMes = mesAtual - 1;
+                      let novoAno = anoAtual;
+
+                      if (novoMes < 1) {
+                        novoMes = 12;
+                        novoAno = anoAtual - 1;
+                      }
+
+                      const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+                      handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
+                    }}
+                    className="h-8 px-2"
+                    aria-label="Mês anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="sr-only">Anterior</span>
+                  </Button>
+
+                  <div className="text-center min-w-[120px]">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {(() => {
+                        const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                        const mesNum = parseInt(mes) || new Date().getMonth() + 1;
+                        const anoNum = parseInt(ano) || new Date().getFullYear();
+
+                        const mesesNomes = [
+                          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                        ];
+
+                        return `${mesesNomes[mesNum - 1]} ${anoNum}`;
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {requerimentosFiltrados.length} requerimento{requerimentosFiltrados.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                      const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+                      const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+                      let novoMes = mesAtual + 1;
+                      let novoAno = anoAtual;
+
+                      if (novoMes > 12) {
+                        novoMes = 1;
+                        novoAno = anoAtual + 1;
+                      }
+
+                      const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+                      handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
+                    }}
+                    className="h-8 px-2"
+                    aria-label="Próximo mês"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Próximo</span>
+                  </Button>
                 </div>
                 {/* Filtros para Enviados */}
                 {showFiltersEnviados && (

@@ -37,6 +37,8 @@ import { useAccessibility } from '@/hooks/useAccessibility';
 import { formatarHorasParaExibicao, somarHoras, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { requerValorHora } from '@/types/requerimentos';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface RequerimentosTableProps {
   requerimentos: Requerimento[];
@@ -66,10 +68,40 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
   const enviarParaFaturamento = useEnviarParaFaturamento();
   const { screenReader } = useAccessibility();
+  const { user } = useAuth();
+  const { userGroup } = usePermissions();
 
-  // Formatação de datas
+  // Função para verificar se o usuário pode editar um requerimento
+  const podeEditarRequerimento = (requerimento: Requerimento): boolean => {
+    // Se não há usuário logado, não pode editar
+    if (!user?.id) return false;
+
+    // Se é administrador, pode editar todos
+    if (userGroup?.name?.toLowerCase().includes('administrador') ||
+      userGroup?.name?.toLowerCase().includes('admin')) {
+      return true;
+    }
+
+    // Se o requerimento não tem autor definido (requerimentos antigos), 
+    // só administradores podem editar
+    if (!requerimento.autor_id) {
+      return false;
+    }
+
+    // Se é o autor do requerimento, pode editar
+    return String(requerimento.autor_id) === String(user.id);
+  };
+
+  // Formatação de datas - corrige problema de timezone
   const formatDate = (dateString: string) => {
     try {
+      // Se a data está no formato YYYY-MM-DD, trata como data local
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return format(date, 'dd/MM/yyyy', { locale: ptBR });
+      }
+      // Para outros formatos, usa o comportamento padrão
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
       return dateString;
@@ -195,7 +227,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             </TableHead>
             <TableHead className="w-40">Chamado</TableHead>
             <TableHead className="w-40">Cliente</TableHead>
-            <TableHead className="w-22 hidden md:table-cell">Módulo</TableHead>
+            <TableHead className="w-28 hidden md:table-cell">Módulo</TableHead>
             <TableHead className="w-22 hidden md:table-cell">Linguagem</TableHead>
             <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
             <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
@@ -203,6 +235,8 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Envio</TableHead>
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
             <TableHead className="w-28 text-center hidden 2xl:table-cell">Valor Total</TableHead>
+            <TableHead className="w-24 text-center hidden 2xl:table-cell">Período de Cobrança</TableHead>
+            <TableHead className="w-40 text-center hidden 2xl:table-cell">Autor</TableHead>
             {showActions && <TableHead className="w-24">Ações</TableHead>}
           </TableRow>
         </TableHeader>
@@ -211,8 +245,14 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             const horasTotal = calcularHorasTotal(requerimento);
             const valorTotal = calcularValorTotal(requerimento);
 
+            const isOwnRequerimento = requerimento.autor_id && String(requerimento.autor_id) === String(user?.id);
+
             return (
-              <TableRow key={requerimento.id}>
+              <TableRow
+                key={requerimento.id}
+                className={isOwnRequerimento ? "bg-blue-50 dark:bg-blue-950/20" : ""}
+                style={isOwnRequerimento ? { borderLeft: '4px solid #3B82F6' } : {}}
+              >
                 <TableCell>
                   <Checkbox
                     checked={selectedRequerimentos.includes(requerimento.id)}
@@ -328,36 +368,46 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   </div>
                 </TableCell>
 
+                <TableCell className="hidden 2xl:table-cell text-center text-sm text-gray-500">
+                  {requerimento.mes_cobranca || '-'}
+                </TableCell>
 
+                <TableCell className="hidden 2xl:table-cell text-center text-sm text-gray-500">
+                  {requerimento.autor_nome || '-'}
+                </TableCell>
 
                 {showActions && (
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onEdit(requerimento)}
-                          className="h-8 w-8 p-0"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </ProtectedAction>
+                      {podeEditarRequerimento(requerimento) && (
+                        <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEdit(requerimento)}
+                            className="h-8 w-8 p-0"
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                      )}
 
-                      <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onDelete(requerimento)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </ProtectedAction>
+                      {podeEditarRequerimento(requerimento) && (
+                        <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onDelete(requerimento)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                      )}
 
-                      {showEnviarFaturamento && !requerimento.enviado_faturamento && (
+                      {showEnviarFaturamento && !requerimento.enviado_faturamento && podeEditarRequerimento(requerimento) && (
                         <AlertDialog
                           open={confirmDialogOpen === requerimento.id}
                           onOpenChange={(open) => setConfirmDialogOpen(open ? requerimento.id : null)}

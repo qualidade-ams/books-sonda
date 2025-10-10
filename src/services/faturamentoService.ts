@@ -345,10 +345,26 @@ export class FaturamentoService {
                     })()}
                                 </td>
                                 <td align="center" style="padding:10px; color:#64748b;">
-                                  ${new Date(req.data_envio).toLocaleDateString('pt-BR')}
+                                  ${(() => {
+                                    const dateStr = req.data_envio;
+                                    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                      const [year, month, day] = dateStr.split('-');
+                                      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                      return date.toLocaleDateString('pt-BR');
+                                    }
+                                    return new Date(dateStr).toLocaleDateString('pt-BR');
+                                  })()}
                                 </td>
                                 <td align="center" style="padding:10px; color:#64748b;">
-                                  ${req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR') : '-'}
+                                  ${req.data_aprovacao ? (() => {
+                                    const dateStr = req.data_aprovacao;
+                                    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                      const [year, month, day] = dateStr.split('-');
+                                      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                      return date.toLocaleDateString('pt-BR');
+                                    }
+                                    return new Date(dateStr).toLocaleDateString('pt-BR');
+                                  })() : '-'}
                                 </td>
                                 <td align="center" style="padding:10px; color:#64748b;">
                                   ${(() => {

@@ -46,8 +46,10 @@ export function useRequerimentosNaoEnviados() {
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.naoEnviados(),
     queryFn: () => requerimentosService.buscarRequerimentosNaoEnviados(),
-    staleTime: 1000 * 60 * 2, // 2 minutos
+    staleTime: 1000 * 30, // 30 segundos
     gcTime: 1000 * 60 * 5, // 5 minutos
+    refetchInterval: 1000 * 60, // Atualizar a cada 1 minuto
+    refetchOnWindowFocus: true, // Atualizar quando focar na janela
   });
 }
 
@@ -66,8 +68,10 @@ export function useRequerimentosEnviados(filtros?: FiltrosRequerimentos) {
       // Caso contrário, usar a função padrão que busca do mês atual
       return requerimentosService.buscarRequerimentosParaFaturamento();
     },
-    staleTime: 1000 * 60 * 2, // 2 minutos
+    staleTime: 1000 * 30, // 30 segundos
     gcTime: 1000 * 60 * 5, // 5 minutos
+    refetchInterval: 1000 * 60, // Atualizar a cada 1 minuto
+    refetchOnWindowFocus: true, // Atualizar quando focar na janela
   });
 }
 

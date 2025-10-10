@@ -9,12 +9,13 @@ import {
   TrendingUp,
   Filter,
   RefreshCw,
-
   Plus,
   X,
   AlertTriangle,
   Paperclip,
-  Calculator
+  Calculator,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -264,6 +265,25 @@ export default function FaturarRequerimentos() {
     setDestinatariosCC(novosDestinatarios);
   };
 
+  // Funções de navegação de mês
+  const navegarMesAnterior = () => {
+    if (mesSelecionado === 1) {
+      setMesSelecionado(12);
+      setAnoSelecionado(anoSelecionado - 1);
+    } else {
+      setMesSelecionado(mesSelecionado - 1);
+    }
+  };
+
+  const navegarMesProximo = () => {
+    if (mesSelecionado === 12) {
+      setMesSelecionado(1);
+      setAnoSelecionado(anoSelecionado + 1);
+    } else {
+      setMesSelecionado(mesSelecionado + 1);
+    }
+  };
+
   // Validação silenciosa para habilitar/desabilitar botões
   const isFormularioValido = (): boolean => {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
@@ -365,7 +385,18 @@ export default function FaturarRequerimentos() {
 
 
   const formatarData = (data: string): string => {
-    return new Date(data).toLocaleDateString('pt-BR');
+    try {
+      // Se a data está no formato YYYY-MM-DD, trata como data local
+      if (data.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = data.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return date.toLocaleDateString('pt-BR');
+      }
+      // Para outros formatos, usa o comportamento padrão
+      return new Date(data).toLocaleDateString('pt-BR');
+    } catch {
+      return data;
+    }
   };
 
   const formatarHoras = (horas: string | number): string => {
@@ -441,110 +472,64 @@ export default function FaturarRequerimentos() {
           </div>
         </div>
 
-        {/* Ações Principais */}
-        <div className="flex flex-wrap gap-4 items-center justify-end">
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
-            className="flex items-center justify-center space-x-2"
-            aria-expanded={filtrosExpandidos}
-            aria-controls="filters-section"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filtros</span>
-            {filtroTipo.length > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {filtroTipo.length}
-              </Badge>
-            )}
-          </Button>
-        </div>
 
-        {/* Filtros */}
-        {filtrosExpandidos && (
-          <Card id="filters-section">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filtros de Período e Tipo
-                {filtroTipo.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''} selecionado{filtroTipo.length !== 1 ? 's' : ''}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
-                  <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nomesMeses.map((nome, index) => (
-                        <SelectItem key={index + 1} value={(index + 1).toString()}>
-                          {nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* Navegação de Período e Filtros */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navegarMesAnterior}
+                className="flex items-center gap-6"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
-                  <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
-                        <SelectItem key={ano} value={ano.toString()}>
-                          {ano}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
-                  <div className="h-10">
-                    <MultiSelect
-                      options={tipoCobrancaOptions}
-                      selected={filtroTipo}
-                      onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
-                      placeholder="Selecione os tipos..."
-                    />
-                  </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {estatisticasPeriodo.totalRequerimentos} requerimento{estatisticasPeriodo.totalRequerimentos !== 1 ? 's' : ''}
                 </div>
               </div>
 
-              {/* Botões de ação rápida */}
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+              <div className="flex items-center gap-6">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFiltroTipo([])}
-                  disabled={filtroTipo.length === 0}
+                  onClick={navegarMesProximo}
+                  className="flex items-center gap-2"
                 >
-                  Limpar Filtros
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
-                  disabled={filtroTipo.length === tipoCobrancaOptions.length}
+                  onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                  className="flex items-center gap-2"
+                  aria-expanded={filtrosExpandidos}
+                  aria-controls="filters-section"
                 >
-                  Selecionar Todos
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                  {filtroTipo.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {filtroTipo.length}
+                    </Badge>
+                  )}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
+
+
 
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -634,6 +619,92 @@ export default function FaturarRequerimentos() {
             </CardContent>
           </Card>
         </div>
+
+
+
+        {/* Filtros */}
+        {filtrosExpandidos && (
+          <Card id="filters-section">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filtros de Período e Tipo
+                {filtroTipo.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''} selecionado{filtroTipo.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
+                  <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nomesMeses.map((nome, index) => (
+                        <SelectItem key={index + 1} value={(index + 1).toString()}>
+                          {nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
+                  <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
+                        <SelectItem key={ano} value={ano.toString()}>
+                          {ano}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
+                  <div className="h-10">
+                    <MultiSelect
+                      options={tipoCobrancaOptions}
+                      selected={filtroTipo}
+                      onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
+                      placeholder="Selecione os tipos..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões de ação rápida */}
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiltroTipo([])}
+                  disabled={filtroTipo.length === 0}
+                >
+                  Limpar Filtros
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
+                  disabled={filtroTipo.length === tipoCobrancaOptions.length}
+                >
+                  Selecionar Todos
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Conteúdo Principal */}
         {isLoading ? (
@@ -739,6 +810,12 @@ export default function FaturarRequerimentos() {
                               Valor Total
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Período de Cobrança
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Autor
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Ações
                             </th>
                           </tr>
@@ -791,7 +868,12 @@ export default function FaturarRequerimentos() {
                                   <span className="text-gray-400">-</span>
                                 )}
                               </td>
-
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                {req.mes_cobranca || '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                                {req.autor_nome || '-'}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                 <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                   <Button
