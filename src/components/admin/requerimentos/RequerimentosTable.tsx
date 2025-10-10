@@ -203,8 +203,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Envio</TableHead>
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
             <TableHead className="w-28 text-center hidden 2xl:table-cell">Valor Total</TableHead>
-            <TableHead className="w-24 text-center">Período de Cobrança</TableHead>
-            <TableHead className="w-24 text-center hidden lg:table-cell">Autor</TableHead>
             {showActions && <TableHead className="w-24">Ações</TableHead>}
           </TableRow>
         </TableHeader>
@@ -264,12 +262,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                         {requerimento.data_aprovacao && ` | ${formatDate(requerimento.data_aprovacao)}`}
                       </span>
                     </div>
-                    {/* Mostrar autor em telas pequenas */}
-                    <div className="lg:hidden mt-1">
-                      <span className="text-xs text-gray-500" title={requerimento.autor_nome || 'Não informado'}>
-                        {requerimento.autor_nome || 'Não informado'}
-                      </span>
-                    </div>
+
                   </div>
                 </TableCell>
 
@@ -335,17 +328,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   </div>
                 </TableCell>
 
-                <TableCell className="text-center">
-                  <div className="text-sm font-medium">
-                    {requerimento.mes_cobranca}
-                  </div>
-                </TableCell>
 
-                <TableCell className="hidden lg:table-cell text-center">
-                  <span className="text-sm truncate" title={requerimento.autor_nome || 'Não informado'}>
-                    {requerimento.autor_nome || '-'}
-                  </span>
-                </TableCell>
 
                 {showActions && (
                   <TableCell>

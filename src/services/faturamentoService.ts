@@ -22,6 +22,7 @@ export interface RelatorioFaturamento {
   totais_gerais: {
     total_requerimentos: number;
     total_horas: number;
+    total_faturado: number;
   };
 }
 
@@ -51,7 +52,7 @@ export class FaturamentoService {
         .from('requerimentos')
         .select(`
           *,
-          empresas_clientes!inner(nome_completo)
+          empresas_clientes!inner(nome_completo, nome_abreviado)
         `)
         .eq('status', 'enviado_faturamento')
         .eq('mes_cobranca', `${String(mes).padStart(2, '0')}/${ano}`)
@@ -67,7 +68,7 @@ export class FaturamentoService {
       // Mapear dados com nome do cliente e fazer cast de tipos
       return (data || []).map(item => ({
         ...item,
-        cliente_nome: item.empresas_clientes?.nome_completo,
+        cliente_nome: item.empresas_clientes?.nome_abreviado || item.empresas_clientes?.nome_completo,
         // Cast dos tipos específicos para compatibilidade com interface Requerimento
         modulo: item.modulo as any,
         linguagem: item.linguagem as any,
@@ -106,7 +107,7 @@ export class FaturamentoService {
         console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
         return;
       }
-      
+
       const tipoFaturamento = tipo as TipoCobrancaFaturamentoType;
       grupos[tipoFaturamento].quantidade += 1;
       grupos[tipoFaturamento].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
@@ -123,6 +124,7 @@ export class FaturamentoService {
     const totais: EstatisticasFaturamento = {
       total_requerimentos: requerimentos.length,
       total_horas: 0,
+      valor_estimado: 0,
       tipos_cobranca: {
         'Banco de Horas': { quantidade: 0, horas: 0, percentual: 0 },
         'Cobro Interno': { quantidade: 0, horas: 0, percentual: 0 },
@@ -143,11 +145,14 @@ export class FaturamentoService {
         console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
         return;
       }
-      
+
       const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+      const valorTotal = req.valor_total_geral || 0;
+
       totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].quantidade += 1;
       totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].horas += horas;
       totais.total_horas += horas;
+      totais.valor_estimado! += valorTotal;
     });
 
     // Calcular percentuais
@@ -186,7 +191,8 @@ export class FaturamentoService {
         requerimentos_por_tipo,
         totais_gerais: {
           total_requerimentos: estatisticas.total_requerimentos,
-          total_horas: estatisticas.total_horas
+          total_horas: estatisticas.total_horas,
+          total_faturado: estatisticas.valor_estimado || 0
         }
       };
     } catch (error) {
@@ -217,223 +223,179 @@ export class FaturamentoService {
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Faturamento - ${relatorio.periodo}</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8fafc;
-        }
-        .header {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 2.2em;
-            font-weight: 700;
-        }
-        .header p {
-            margin: 10px 0 0 0;
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .summary-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #2563eb;
-        }
-        .summary-card h3 {
-            margin: 0 0 10px 0;
-            color: #64748b;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .summary-card .value {
-            font-size: 2.2em;
-            font-weight: 700;
-            color: #2563eb;
-            margin: 0;
-        }
-        .tipo-section {
-            background: white;
-            margin-bottom: 30px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .tipo-header {
-            padding: 20px 25px;
-            color: white;
-            font-weight: 600;
-            font-size: 1.2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .tipo-stats {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        .requerimentos-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .requerimentos-table th {
-            background-color: #f8fafc;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #475569;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        .requerimentos-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .requerimentos-table tr:hover {
-            background-color: #f8fafc;
-        }
-        .chamado {
-            font-family: 'Courier New', monospace;
-            background-color: #f1f5f9;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        .horas {
-            font-weight: 600;
-            color: #059669;
-        }
-        .data {
-            color: #64748b;
-            font-size: 0.9em;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            color: #64748b;
-            font-size: 0.9em;
-            border-top: 1px solid #e2e8f0;
-        }
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #64748b;
-            font-style: italic;
-        }
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            .header h1 {
-                font-size: 1.8em;
-            }
-            .summary {
-                grid-template-columns: 1fr;
-            }
-            .requerimentos-table {
-                font-size: 0.9em;
-            }
-            .tipo-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Relatório de Faturamento - ${relatorio.periodo}</title>
 </head>
-<body>
-    <div class="header">
-        <h1>Relatório de Faturamento</h1>
-        <p>Especificações Funcionais - ${relatorio.periodo}</p>
-    </div>
 
-    <div class="summary">
-        <div class="summary-card">
-            <h3>Total de Requerimentos</h3>
-            <div class="value">${relatorio.totais_gerais.total_requerimentos}</div>
-        </div>
-        <div class="summary-card">
-            <h3>Total de Horas</h3>
-            <div class="value">${relatorio.totais_gerais.total_horas.toFixed(1)}</div>
-        </div>
-    </div>
+<body style="margin:0; padding:0; background-color:#f4f6fb; font-family:Arial, sans-serif; color:#333;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6fb">
+    <tr>
+      <td align="center" style="padding:20px;">
+        <!-- CONTAINER PRINCIPAL -->
+        <table width="1000" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"
+          style="border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.08); overflow:hidden;">
+          
+          <!-- CABEÇALHO -->
+          <tr>
+            <td align="center" bgcolor="#2563eb" style="padding:30px 20px; color:#fff;">
+              <h1 style="margin:0; font-size:24px; font-weight:bold;">Relatório de Faturamento</h1>
+              <p style="margin:10px 0 0 0; font-size:16px;">Especificações Funcionais - ${relatorio.periodo}</p>
+            </td>
+          </tr>
 
-    ${tiposComRequerimentos.length === 0 ? `
-    <div class="no-data">
-        <h3>Nenhum requerimento encontrado para faturamento</h3>
-        <p>Não há requerimentos enviados para faturamento no período de ${relatorio.periodo}.</p>
-    </div>
-    ` : tiposComRequerimentos.map(([tipo, dados]) => `
-    <div class="tipo-section">
-        <div class="tipo-header" style="background-color: ${corPorTipo[tipo as TipoCobrancaFaturamentoType]};">
-            <span>${tipo}</span>
-            <div class="tipo-stats">
-                ${dados.quantidade} requerimento${dados.quantidade !== 1 ? 's' : ''} • 
-                ${dados.horas_total.toFixed(1)} horas
-            </div>
-        </div>
-        <table class="requerimentos-table">
-            <thead>
+          <!-- RESUMO -->
+          <tr>
+            <td style="padding:30px 20px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                    <th>Chamado</th>
-                    <th>Cliente</th>
-                    <th>Módulo</th>
-                    <th>Linguagem</th>
-                    <th>Horas Func.</th>
-                    <th>Horas Téc.</th>
-                    <th>Total Horas</th>
-                    <th>Data Envio</th>
+                  <td align="center" width="30%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total de Requerimentos</h3>
+                    <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">${relatorio.totais_gerais.total_requerimentos}</p>
+                  </td>
+                  <td align="center" width="35%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total de Horas</h3>
+                    <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">${(() => { const total = relatorio.totais_gerais.total_horas; const horas = Math.floor(total); const minutos = Math.round((total - horas) * 60); return `${horas}h ${minutos.toString().padStart(2, '0')}min`; })()}</p>
+                  </td>
+                  <td align="center" width="35%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total Faturamento</h3>
+                    <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">R$ ${relatorio.totais_gerais.total_faturado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    
+                  </td>
                 </tr>
-            </thead>
-            <tbody>
-                ${dados.requerimentos.map(req => `
-                <tr>
-                    <td><span class="chamado">${req.chamado}</span></td>
-                    <td>${req.cliente_nome || 'N/A'}</td>
-                    <td>${req.modulo}</td>
-                    <td>${req.linguagem}</td>
-                    <td class="horas">${(typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional).toFixed(1)}</td>
-                    <td class="horas">${(typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico).toFixed(1)}</td>
-                    <td class="horas">${(typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total).toFixed(1)}</td>
-                    <td class="data">${new Date(req.data_envio).toLocaleDateString('pt-BR')}</td>
-                </tr>
-                `).join('')}
-            </tbody>
+              </table>
+            </td>
+          </tr>
+
+          ${tiposComRequerimentos.length === 0
+        ? `
+              <tr>
+                <td align="center" style="padding:40px; color:#64748b; font-style:italic;">
+                  <h3 style="margin:0;">Nenhum requerimento encontrado para faturamento</h3>
+                  <p>Não há requerimentos enviados para faturamento no período de ${relatorio.periodo}.</p>
+                </td>
+              </tr>
+              `
+        : tiposComRequerimentos
+          .map(
+            ([tipo, dados]) => `
+            <!-- BLOCO DE TIPO DE COBRANÇA -->
+            <tr>
+              <td style="padding:0 20px 30px 20px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0; border-radius:8px;">
+                  <tr>
+                    <td bgcolor="${corPorTipo[tipo]}" style="padding:15px; color:#fff; font-weight:bold; font-size:16px;">
+                      ${tipo}
+                    </td>
+                    <td bgcolor="${corPorTipo[tipo]}" align="right" style="padding:15px; color:#fff; font-size:13px;">
+                      ${dados.quantidade} requerimento${dados.quantidade !== 1 ? 's' : ''} • ${(() => { const total = dados.horas_total; const horas = Math.floor(total); const minutos = Math.round((total - horas) * 60); return `${horas}:${minutos.toString().padStart(2, '0')}`; })()}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding:0;">
+                      <table width="100%" cellpadding="8" cellspacing="0" border="0" style="border-collapse:collapse; font-size:14px;">
+                        <thead>
+                          <tr bgcolor="#f8fafc" style="color:#475569; font-weight:bold;">
+                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Chamado</th>
+                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Cliente</th>
+                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Módulo</th>
+                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Linguagem</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">H.Func</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">H.Téc</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Total</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Envio</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Aprov.</th>
+                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Valor Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${dados.requerimentos
+                .map(
+                  (req) => `
+                              <tr>
+                                <td style="padding:10px;">
+                                  <span style="font-family:'Courier New', monospace; background-color:#f1f5f9; padding:3px 6px; border-radius:4px;">
+                                    ${req.chamado}
+                                  </span>
+                                </td>
+                                <td style="padding:10px;">${req.cliente_nome || 'N/A'}</td>
+                                <td style="padding:10px;">${req.modulo}</td>
+                                <td style="padding:10px;">${req.linguagem}</td>
+                                <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
+                                  ${(() => {
+                      const horas = typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional;
+                      const horasInt = Math.floor(horas);
+                      const minutos = Math.round((horas - horasInt) * 60);
+                      return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
+                    })()}
+                                </td>
+                                <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
+                                  ${(() => {
+                      const horas = typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico;
+                      const horasInt = Math.floor(horas);
+                      const minutos = Math.round((horas - horasInt) * 60);
+                      return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
+                    })()}
+                                </td>
+                                <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
+                                  ${(() => {
+                      const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+                      const horasInt = Math.floor(horas);
+                      const minutos = Math.round((horas - horasInt) * 60);
+                      return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
+                    })()}
+                                </td>
+                                <td align="center" style="padding:10px; color:#64748b;">
+                                  ${new Date(req.data_envio).toLocaleDateString('pt-BR')}
+                                </td>
+                                <td align="center" style="padding:10px; color:#64748b;">
+                                  ${req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td align="center" style="padding:10px; color:#64748b;">
+                                  ${(() => {
+                      // Calcular valor da linha baseado nas horas e valor/hora
+                      const horasFuncional = typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional;
+                      const horasTecnico = typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico;
+                      const valorHoraFunc = req.valor_hora_funcional || 0;
+                      const valorHoraTec = req.valor_hora_tecnico || 0;
+
+                      const valorTotal = (horasFuncional * valorHoraFunc) + (horasTecnico * valorHoraTec);
+
+                      return valorTotal > 0
+                        ? `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : '-';
+                    })()}
+                                </td>
+                              </tr>
+                              `
+                )
+                .join('')}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            `
+          )
+          .join('')
+      }
+
+          <!-- RODAPÉ -->
+          <tr>
+            <td align="center" style="padding:20px; font-size:12px; color:#64748b; border-top:1px solid #e2e8f0;">
+              Relatório gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}<br/>
+              Sistema de Requerimentos
+            </td>
+          </tr>
         </table>
-    </div>
-    `).join('')}
-
-    <div class="footer">
-        <p>Relatório gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-        <p>Sistema de Requerimentos - Books SND</p>
-    </div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
-    `.trim();
+`.trim();
+
   }
 
   /**
@@ -453,16 +415,22 @@ export class FaturamentoService {
         throw new Error('É necessário informar pelo menos um destinatário');
       }
 
-      // Validar formato de email
+      // Validar formato de email (destinatários principais)
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const emailsInvalidos = emailFaturamento.destinatarios.filter(email => !emailRegex.test(email));
-      if (emailsInvalidos.length > 0) {
-        throw new Error(`E-mails inválidos: ${emailsInvalidos.join(', ')}`);
+
+      // Validar formato de email (CC)
+      const emailsCCInvalidos = (emailFaturamento.destinatariosCC || []).filter(email => !emailRegex.test(email));
+
+      if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
+        const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
+        throw new Error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
       }
 
       // Preparar dados do email
       const emailData: EmailData = {
         to: emailFaturamento.destinatarios,
+        cc: emailFaturamento.destinatariosCC && emailFaturamento.destinatariosCC.length > 0 ? emailFaturamento.destinatariosCC : undefined,
         subject: emailFaturamento.assunto,
         html: emailFaturamento.corpo,
         attachments: emailFaturamento.anexos
@@ -475,16 +443,19 @@ export class FaturamentoService {
         // Registrar log de auditoria
         await this.registrarLogFaturamento({
           destinatarios: emailFaturamento.destinatarios,
+          destinatariosCC: emailFaturamento.destinatariosCC,
           assunto: emailFaturamento.assunto,
           status: 'enviado',
           data_envio: new Date().toISOString()
         });
 
+        const totalDestinatarios = emailFaturamento.destinatarios.length + (emailFaturamento.destinatariosCC?.length || 0);
         return {
           success: true,
-          message: `Relatório de faturamento enviado com sucesso para ${emailFaturamento.destinatarios.length} destinatário(s)`,
+          message: `Relatório de faturamento enviado com sucesso para ${totalDestinatarios} destinatário(s)`,
           detalhes: {
             destinatarios: emailFaturamento.destinatarios,
+            destinatariosCC: emailFaturamento.destinatariosCC,
             data_envio: new Date().toISOString()
           }
         };
@@ -497,6 +468,7 @@ export class FaturamentoService {
       // Registrar log de erro
       await this.registrarLogFaturamento({
         destinatarios: emailFaturamento.destinatarios,
+        destinatariosCC: emailFaturamento.destinatariosCC,
         assunto: emailFaturamento.assunto,
         status: 'erro',
         erro: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -515,16 +487,22 @@ export class FaturamentoService {
    */
   private async registrarLogFaturamento(dados: {
     destinatarios: string[];
+    destinatariosCC?: string[];
     assunto: string;
     status: 'enviado' | 'erro';
     erro?: string;
     data_envio: string;
   }): Promise<void> {
     try {
+      const todosDestinatarios = [
+        ...dados.destinatarios,
+        ...(dados.destinatariosCC || []).map(email => `CC: ${email}`)
+      ];
+
       await supabase
         .from('email_logs')
         .insert([{
-          destinatario: dados.destinatarios.join(', '),
+          destinatario: todosDestinatarios.join(', '),
           assunto: `[FATURAMENTO] ${dados.assunto}`,
           status: dados.status,
           erro: dados.erro,

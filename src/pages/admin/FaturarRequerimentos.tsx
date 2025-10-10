@@ -9,7 +9,7 @@ import {
   TrendingUp,
   Filter,
   RefreshCw,
-  Eye,
+
   Plus,
   X,
   AlertTriangle,
@@ -92,9 +92,10 @@ export default function FaturarRequerimentos() {
 
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
-  const [previewAberto, setPreviewAberto] = useState(false);
+
 
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
+  const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
@@ -223,6 +224,7 @@ export default function FaturarRequerimentos() {
       setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
       setCorpoEmail(htmlTemplate);
       setDestinatarios(['']); // Inicializar com um campo vazio para o usuário preencher
+      setDestinatariosCC([]); // Inicializar CC vazio
       setModalEmailAberto(true);
     } catch (error) {
       console.error('Erro ao preparar email:', error);
@@ -246,6 +248,22 @@ export default function FaturarRequerimentos() {
     setDestinatarios(novosDestinatarios);
   };
 
+  const handleAdicionarDestinatarioCC = () => {
+    setDestinatariosCC([...destinatariosCC, '']);
+  };
+
+  const handleRemoverDestinatarioCC = (index: number) => {
+    if (destinatariosCC.length > 0) {
+      setDestinatariosCC(destinatariosCC.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleAtualizarDestinatarioCC = (index: number, valor: string) => {
+    const novosDestinatarios = [...destinatariosCC];
+    novosDestinatarios[index] = valor;
+    setDestinatariosCC(novosDestinatarios);
+  };
+
   // Validação silenciosa para habilitar/desabilitar botões
   const isFormularioValido = (): boolean => {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
@@ -257,7 +275,11 @@ export default function FaturarRequerimentos() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0) {
+    // Validar CC também
+    const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
+    const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
+
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
       return false;
     }
 
@@ -280,8 +302,13 @@ export default function FaturarRequerimentos() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0) {
-      toast.error(`E-mails inválidos: ${emailsInvalidos.join(', ')}`);
+    // Validar CC também
+    const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
+    const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
+
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
+      const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
+      toast.error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
       return false;
     }
 
@@ -300,11 +327,17 @@ export default function FaturarRequerimentos() {
 
     try {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
+      const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
+
+      // Gerar relatório HTML automaticamente
+      const relatorio = await faturamentoService.gerarRelatorioFaturamento(mesSelecionado, anoSelecionado);
+      const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
       const emailFaturamento: EmailFaturamento = {
         destinatarios: emailsValidos,
+        destinatariosCC: emailsCCValidos,
         assunto: assuntoEmail,
-        corpo: corpoEmail
+        corpo: htmlTemplate
       };
 
       const resultado = await faturamentoService.dispararFaturamento(emailFaturamento);
@@ -316,8 +349,8 @@ export default function FaturarRequerimentos() {
 
         // Limpar formulário
         setDestinatarios(['']);
+        setDestinatariosCC([]);
         setAssuntoEmail('');
-        setCorpoEmail('');
       } else {
         toast.error(resultado.error || 'Erro ao disparar faturamento');
       }
@@ -329,10 +362,7 @@ export default function FaturarRequerimentos() {
     }
   };
 
-  const handlePreviewEmail = () => {
-    if (!validarFormularioEmail()) return;
-    setPreviewAberto(true);
-  };
+
 
   const formatarData = (data: string): string => {
     return new Date(data).toLocaleDateString('pt-BR');
@@ -709,12 +739,6 @@ export default function FaturarRequerimentos() {
                               Valor Total
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Período de Cobrança
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Autor
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Ações
                             </th>
                           </tr>
@@ -767,16 +791,7 @@ export default function FaturarRequerimentos() {
                                   <span className="text-gray-400">-</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
-                                {req.mes_cobranca ? (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {req.mes_cobranca}
-                                  </Badge>
-                                ) : '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
-                                {req.autor_nome || 'N/A'}
-                              </td>
+
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                                 <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                   <Button
@@ -805,7 +820,7 @@ export default function FaturarRequerimentos() {
 
         {/* Modal de Email */}
         <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
@@ -851,6 +866,45 @@ export default function FaturarRequerimentos() {
                 </div>
               </div>
 
+              {/* Campo CC */}
+              <div>
+                <Label className="text-base font-medium">Destinatários em Cópia (CC)</Label>
+                <div className="space-y-2 mt-2">
+                  {destinatariosCC.length === 0 ? (
+                    <p className="text-sm text-gray-500">Nenhum destinatário em cópia adicionado</p>
+                  ) : (
+                    destinatariosCC.map((email, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={email}
+                          onChange={(e) => handleAtualizarDestinatarioCC(index, e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoverDestinatarioCC(index)}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAdicionarDestinatarioCC}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar CC
+                  </Button>
+                </div>
+              </div>
+
               {/* Assunto */}
               <div>
                 <Label htmlFor="assunto" className="text-base font-medium">
@@ -865,31 +919,33 @@ export default function FaturarRequerimentos() {
                 />
               </div>
 
-              {/* Corpo do Email */}
+              {/* Preview do Relatório */}
               <div>
-                <Label htmlFor="corpo" className="text-base font-medium">
-                  Corpo do Email (HTML)
-                </Label>
-                <Textarea
-                  id="corpo"
-                  value={corpoEmail}
-                  onChange={(e) => setCorpoEmail(e.target.value)}
-                  placeholder="Conteúdo HTML do email"
-                  className="mt-2 min-h-[200px] font-mono text-sm"
-                />
+                <Label className="text-base font-medium">Preview do Relatório</Label>
+                {/* Preview do Relatório */}
+                <div className="mt-2">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Preview do Relatório
+                  </h4>
+                  <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
+                        <strong> Requerimentos:</strong> {estatisticasPeriodo.totalRequerimentos} |
+                        <strong> Horas:</strong> {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')} |
+                        <strong> Valor:</strong> R$ {estatisticasPeriodo.valorTotalFaturavel.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div
+                      className="max-h-[600px] overflow-y-auto p-4"
+                      dangerouslySetInnerHTML={{ __html: corpoEmail }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
             <DialogFooter className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePreviewEmail}
-                disabled={!assuntoEmail || !corpoEmail}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -908,29 +964,7 @@ export default function FaturarRequerimentos() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de Preview */}
-        <Dialog open={previewAberto} onOpenChange={setPreviewAberto}>
-          <DialogContent className="max-w-6xl max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>Preview do Email</DialogTitle>
-            </DialogHeader>
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-100 p-4 border-b">
-                <p><strong>Para:</strong> {destinatarios.filter(e => e.trim()).join(', ')}</p>
-                <p><strong>Assunto:</strong> {assuntoEmail}</p>
-              </div>
-              <div
-                className="p-4 max-h-[60vh] overflow-y-auto"
-                dangerouslySetInnerHTML={{ __html: corpoEmail }}
-              />
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setPreviewAberto(false)}>
-                Fechar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+
 
         {/* Confirmação de Envio */}
         <AlertDialog open={confirmacaoAberta} onOpenChange={setConfirmacaoAberta}>

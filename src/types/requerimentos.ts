@@ -131,6 +131,7 @@ export interface FaturamentoData {
 // Interface para email de faturamento
 export interface EmailFaturamento {
   destinatarios: string[];
+  destinatariosCC?: string[];
   assunto: string;
   corpo: string;
   anexos?: any[];
