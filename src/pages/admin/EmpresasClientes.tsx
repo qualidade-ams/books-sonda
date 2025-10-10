@@ -205,10 +205,12 @@ const EmpresasClientes = () => {
       grupos: empresa.grupos?.map(g => g.grupo_id) || [],
       temAms: empresa.tem_ams || false,
       tipoBook: empresa.tipo_book as any || 'nao_tem_book',
+      tipoCobranca: empresa.tipo_cobranca as any || 'banco_horas',
       vigenciaInicial: empresa.vigencia_inicial || '',
       vigenciaFinal: empresa.vigencia_final || '',
       bookPersonalizado: empresa.book_personalizado || false,
       anexo: empresa.anexo || false,
+      observacao: empresa.observacao || '',
     };
   };
 

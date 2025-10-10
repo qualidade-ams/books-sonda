@@ -64,6 +64,7 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
       'Template Padrão': await mapearTemplatePadrao(empresa.template_padrao),
       'Tem AMS': empresa.tem_ams ? 'Sim' : 'Não',
       'Tipo de Book': empresa.tipo_book,
+      'Tipo de Cobrança': empresa.tipo_cobranca === 'banco_horas' ? 'Banco de Horas' : 'Ticket',
       'Book Personalizado': empresa.book_personalizado ? 'Sim' : 'Não',
       'Permite Anexo': empresa.anexo ? 'Sim' : 'Não',
       'Vigência Inicial': empresa.vigencia_inicial || '',
@@ -71,6 +72,7 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
       'Link SharePoint': empresa.link_sharepoint || '',
       'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',
       'Grupos Responsáveis': empresa.grupos?.map(g => g.grupos_responsaveis?.nome).filter(Boolean).join(', ') || '',
+      'Observação': empresa.observacao || '',
       'Data de Criação': new Date(empresa.created_at).toLocaleDateString('pt-BR'),
       'Última Atualização': new Date(empresa.updated_at).toLocaleDateString('pt-BR')
     }))
@@ -92,6 +94,7 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 20 }, // Template Padrão
     { wch: 10 }, // Tem AMS
     { wch: 15 }, // Tipo de Book
+    { wch: 18 }, // Tipo de Cobrança
     { wch: 15 }, // Book Personalizado
     { wch: 15 }, // Permite Anexo
     { wch: 15 }, // Vigência Inicial

@@ -17,10 +17,12 @@ const empresaExcelSchema = z.object({
   'Grupos': z.string().optional(), // String separada por vírgulas
   'Tem AMS': z.string().optional(), // 'sim' ou 'não'
   'Tipo Book': z.enum(['nao_tem_book', 'outros', 'qualidade']).default('nao_tem_book'),
+  'Tipo Cobrança': z.enum(['banco_horas', 'ticket']).default('banco_horas'),
   'Vigência Inicial': z.string().optional(), // Data no formato YYYY-MM-DD
   'Vigência Final': z.string().optional(), // Data no formato YYYY-MM-DD
   'Book Personalizado': z.string().optional(), // 'sim' ou 'não'
   'Anexo': z.string().optional(), // 'sim' ou 'não'
+  'Observação': z.string().optional(), // Máximo 500 caracteres
 });
 
 export interface ImportResult {
@@ -299,10 +301,12 @@ class ExcelImportService {
       grupos: grupoIds, // Agora são IDs, não nomes
       temAms: stringToBoolean(row['Tem AMS']),
       tipoBook: row['Tipo Book'] || 'nao_tem_book',
+      tipoCobranca: row['Tipo Cobrança'] || 'banco_horas',
       vigenciaInicial: row['Vigência Inicial'] || '',
       vigenciaFinal: row['Vigência Final'] || '',
       bookPersonalizado: stringToBoolean(row['Book Personalizado']),
-      anexo: stringToBoolean(row['Anexo'])
+      anexo: stringToBoolean(row['Anexo']),
+      observacao: row['Observação'] || ''
     };
   }
 
@@ -323,10 +327,12 @@ class ExcelImportService {
         'Grupos',
         'Tem AMS',
         'Tipo Book',
+        'Tipo Cobrança',
         'Vigência Inicial',
         'Vigência Final',
         'Book Personalizado',
-        'Anexo'
+        'Anexo',
+        'Observação'
       ],
       [
         'EXEMPLO EMPRESA LTDA',
@@ -340,10 +346,12 @@ class ExcelImportService {
         'Comex,Outros',
         'sim',
         'qualidade',
+        'banco_horas',
         '2024-01-01',
         '2024-12-31',
         'não',
-        'sim'
+        'sim',
+        'Observações sobre a empresa'
       ],
       [],
       ['INSTRUÇÕES:'],
@@ -360,8 +368,10 @@ class ExcelImportService {
       ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (padrão: nao_tem_book)'],
       ['• Vigência Inicial: Data no formato YYYY-MM-DD (opcional)'],
       ['• Vigência Final: Data no formato YYYY-MM-DD (opcional)'],
+      ['• Tipo Cobrança: "banco_horas" ou "ticket" (padrão: banco_horas)'],
       ['• Book Personalizado: "sim" ou "não" (padrão: não)'],
-      ['• Anexo: "sim" ou "não" (padrão: não)']
+      ['• Anexo: "sim" ou "não" (padrão: não)'],
+      ['• Observação: Texto livre (opcional)']
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);

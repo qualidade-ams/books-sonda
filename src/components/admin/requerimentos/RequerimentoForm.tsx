@@ -20,8 +20,7 @@ import {
   MODULO_OPTIONS,
   LINGUAGEM_OPTIONS,
   TIPO_COBRANCA_OPTIONS,
-  requerValorHora,
-  permiteTickets
+  requerValorHora
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { cn } from '@/lib/utils';
@@ -74,7 +73,6 @@ export function RequerimentoForm({
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
       // Campos de ticket
-      tem_ticket: requerimento?.tem_ticket || false,
       quantidade_tickets: requerimento?.quantidade_tickets || undefined
     }
   });
@@ -83,9 +81,22 @@ export function RequerimentoForm({
   const horasFuncional = form.watch('horas_funcional');
   const horasTecnico = form.watch('horas_tecnico');
   const tipoCobranca = form.watch('tipo_cobranca');
+  const clienteId = form.watch('cliente_id');
   const valorHoraFuncional = form.watch('valor_hora_funcional');
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
-  const temTicket = form.watch('tem_ticket');
+
+  // Buscar dados do cliente selecionado para verificar tipo de cobrança da empresa
+  const clienteSelecionado = useMemo(() => {
+    if (!clienteId || !clientes.length) return null;
+    return clientes.find(cliente => cliente.id === clienteId);
+  }, [clienteId, clientes]);
+
+  // Verificar se deve mostrar campo de tickets automaticamente
+  const mostrarCampoTickets = useMemo(() => {
+    // Só mostra se tipo de cobrança for "Banco de Horas" E a empresa for do tipo "ticket"
+    return tipoCobranca === 'Banco de Horas' &&
+      clienteSelecionado?.tipo_cobranca === 'ticket';
+  }, [tipoCobranca, clienteSelecionado]);
 
   // Verificar se o tipo de cobrança requer campos de valor/hora
   const mostrarCamposValor = useMemo(() => {
@@ -644,74 +655,40 @@ export function RequerimentoForm({
               </>
             )}
 
-            {/* Seção: Tickets (condicional para Banco de Horas) */}
-            {tipoCobranca === 'Banco de Horas' && (
+            {/* Seção: Tickets (automática baseada no tipo de cobrança da empresa) */}
+            {mostrarCampoTickets && (
               <>
                 <Separator />
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     🎫 Controle de Tickets
-                    <OptimizedTooltip content="Campos específicos para controle de tickets no Banco de Horas">
+                    <OptimizedTooltip content="Campo automático para empresas do tipo 'ticket' quando selecionado 'Banco de Horas'">
                       <HelpCircle className="h-4 w-4 text-blue-500" />
                     </OptimizedTooltip>
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Checkbox Tem Ticket */}
+                    {/* Quantidade de Tickets (sempre visível quando mostrarCampoTickets for true) */}
                     <FormField
                       control={form.control}
-                      name="tem_ticket"
+                      name="quantidade_tickets"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormItem>
+                          <FormLabel>Quantidade de Tickets *</FormLabel>
                           <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value || false}
-                              onChange={(e) => {
-                                field.onChange(e.target.checked);
-                                // Limpar quantidade_tickets quando desmarcar
-                                if (!e.target.checked) {
-                                  form.setValue('quantidade_tickets', undefined);
-                                }
-                              }}
-                              className="mt-1"
+                            <Input
+                              type="number"
+                              min="1"
+                              max="9999"
+                              placeholder="Digite a quantidade"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                             />
                           </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Ticket
-                            </FormLabel>
-                            <FormDescription>
-                              Marque se este requerimento possui tickets
-                            </FormDescription>
-                          </div>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    {/* Quantidade de Tickets (condicional) */}
-                    {temTicket && (
-                      <FormField
-                        control={form.control}
-                        name="quantidade_tickets"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Quantidade de Tickets *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="9999"
-                                placeholder="Digite a quantidade"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
                   </div>
                 </div>
               </>

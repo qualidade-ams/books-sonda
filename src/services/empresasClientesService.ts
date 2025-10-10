@@ -65,10 +65,12 @@ export class EmpresasClientesService {
       email_gestor: data.emailGestor || null,
       tem_ams: data.temAms || false,
       tipo_book: data.tipoBook || 'nao_tem_book',
+      tipo_cobranca: data.tipoCobranca || 'banco_horas',
       book_personalizado: data.bookPersonalizado || false,
       anexo: data.anexo || false,
       vigencia_inicial: data.vigenciaInicial || null,
-      vigencia_final: data.vigenciaFinal || null
+      vigencia_final: data.vigenciaFinal || null,
+      observacao: data.observacao || null
     };
 
     // Inserir empresa
@@ -323,6 +325,7 @@ export class EmpresasClientesService {
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
       if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
       if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;
+      if (data.tipoCobranca !== undefined) updateData.tipo_cobranca = data.tipoCobranca;
       
       // Incluir campos de vigência
       if (data.vigenciaInicial !== undefined) updateData.vigencia_inicial = data.vigenciaInicial || null;
@@ -331,6 +334,9 @@ export class EmpresasClientesService {
       // Incluir campos de book personalizado e anexo
       if (data.bookPersonalizado !== undefined) updateData.book_personalizado = data.bookPersonalizado;
       if (data.anexo !== undefined) updateData.anexo = data.anexo;
+      
+      // Incluir campo de observação
+      if (data.observacao !== undefined) updateData.observacao = data.observacao || null;
 
       // Se status mudou, atualizar data e descrição
       if (data.status) {

@@ -138,8 +138,7 @@ export const requerimentoFormSchema = z.object({
   // Campos de valor/hora (condicionais)
   valor_hora_funcional: valorHoraSchema,
   valor_hora_tecnico: valorHoraSchema,
-  // Campos de ticket (para Banco de Horas)
-  tem_ticket: z.boolean().optional(),
+  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets: z
     .number({
       invalid_type_error: 'Quantidade deve ser um número inteiro'
@@ -185,24 +184,6 @@ export const requerimentoFormSchema = z.object({
 }, {
   message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
   path: ['valor_hora_funcional']
-}).refine((data) => {
-  // Validação customizada: campos de ticket para Banco de Horas
-  if (data.tipo_cobranca === 'Banco de Horas' && data.tem_ticket === true) {
-    // Se tem_ticket é true, quantidade_tickets deve ser informada
-    if (!data.quantidade_tickets || data.quantidade_tickets <= 0) {
-      return false;
-    }
-  }
-  
-  // Se tem_ticket é false ou undefined, quantidade_tickets deve ser undefined/null
-  if (data.tem_ticket !== true && data.quantidade_tickets) {
-    return false;
-  }
-  
-  return true;
-}, {
-  message: 'Quando "Ticket" está marcado, é obrigatório informar a quantidade de tickets',
-  path: ['quantidade_tickets']
 });
 
 // Schema para validação de filtros

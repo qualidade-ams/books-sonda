@@ -72,6 +72,31 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     );
   };
 
+  const getTipoCobrancaBadge = (tipoCobranca: string | null) => {
+    if (!tipoCobranca) return '-';
+
+    const variants = {
+      banco_horas: 'default',
+      ticket: 'secondary'
+    } as const;
+
+    const labels = {
+      banco_horas: 'Banco de Horas',
+      ticket: 'Ticket'
+    };
+
+    return (
+      <div className="flex justify-center">
+        <Badge
+          variant={variants[tipoCobranca as keyof typeof variants] || 'default'}
+          className="text-xs px-2 py-1"
+        >
+          {labels[tipoCobranca as keyof typeof labels] || tipoCobranca}
+        </Badge>
+      </div>
+    );
+  };
+
   const getProdutosBadges = (produtos: any[]) => {
     if (!produtos || produtos.length === 0) return '-';
 
@@ -160,7 +185,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableHead className="min-w-[80px]">Template</TableHead>
             <TableHead className="min-w-[150px] hidden md:table-cell">Produtos</TableHead>
             <TableHead className="min-w-[180px] hidden lg:table-cell">E-mail Gestor</TableHead>
-            <TableHead className="min-w-[80px] hidden xl:table-cell">Data Status</TableHead>
+            <TableHead className="min-w-[80px] hidden 2xl:table-cell">Data Status</TableHead>
             <TableHead className="w-32">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -229,7 +254,8 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                   '-'
                 )}
               </TableCell>
-              <TableCell className="hidden xl:table-cell text-sm text-gray-500">
+
+              <TableCell className="hidden 2xl:table-cell text-sm text-gray-500">
                 {formatDate(empresa.data_status)}
               </TableCell>
               <TableCell>

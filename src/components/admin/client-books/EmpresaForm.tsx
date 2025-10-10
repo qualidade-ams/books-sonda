@@ -32,11 +32,13 @@ import type {
   Produto,
   GrupoResponsavel,
   TipoBook,
+  TipoCobranca,
 } from '@/types/clientBooks';
 import {
   PRODUTOS_OPTIONS,
   STATUS_EMPRESA_OPTIONS,
   TIPO_BOOK_OPTIONS,
+  TIPO_COBRANCA_OPTIONS,
 } from '@/types/clientBooks';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -70,10 +72,12 @@ const empresaSchema = z.object({
   grupos: z.array(z.string()).optional(),
   temAms: z.boolean().optional(),
   tipoBook: z.enum(['nao_tem_book', 'outros', 'qualidade']).optional(),
+  tipoCobranca: z.enum(['banco_horas', 'ticket']).optional(),
   vigenciaInicial: z.string().optional(),
   vigenciaFinal: z.string().optional(),
   bookPersonalizado: z.boolean().optional(),
   anexo: z.boolean().optional(),
+  observacao: z.string().max(500, 'Observação deve ter no máximo 500 caracteres').optional(),
 }).refine((data) => {
   // Validação condicional para descrição do status
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -140,10 +144,12 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       grupos: [],
       temAms: false,
       tipoBook: 'nao_tem_book',
+      tipoCobranca: 'banco_horas',
       vigenciaInicial: '',
       vigenciaFinal: '',
       bookPersonalizado: false,
       anexo: false,
+      observacao: '',
       ...initialData,
     } as EmpresaFormData,
   });
@@ -167,10 +173,12 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         grupos: [],
         temAms: false,
         tipoBook: 'nao_tem_book',
+        tipoCobranca: 'banco_horas',
         vigenciaInicial: '',
         vigenciaFinal: '',
         bookPersonalizado: false,
         anexo: false,
+        observacao: '',
         ...initialData,
       } as EmpresaFormData);
     }
@@ -191,10 +199,12 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         grupos: data.grupos || [],
         temAms: data.temAms || false,
         tipoBook: data.tipoBook || 'nao_tem_book',
+        tipoCobranca: data.tipoCobranca || 'banco_horas',
         vigenciaInicial: data.vigenciaInicial || '',
         vigenciaFinal: data.vigenciaFinal || '',
         bookPersonalizado: data.bookPersonalizado || false,
-        anexo: data.anexo || false
+        anexo: data.anexo || false,
+        observacao: data.observacao?.trim() || ''
       };
 
       await onSubmit(normalizedData);
@@ -584,6 +594,53 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           </Card>
         )}
 
+        {/* Tipo de Cobrança */}
+        <Card>
+          <CardContent className="pt-6">
+            <FormField
+              control={form.control}
+              name="tipoCobranca"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-semibold">Tipo de Cobrança *</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {TIPO_COBRANCA_OPTIONS.map((option) => (
+                      <FormItem
+                        key={option.value}
+                        className="flex flex-row items-start space-x-3 space-y-0"
+                      >
+                        <FormControl>
+                          <input
+                            type="radio"
+                            name="tipoCobranca"
+                            value={option.value}
+                            checked={field.value === option.value}
+                            onChange={() => field.onChange(option.value)}
+                            disabled={isSubmitting || isLoading}
+                            className="mt-1"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal cursor-pointer">
+                            {option.label}
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            {option.value === 'banco_horas' 
+                              ? 'Cliente utiliza sistema de banco de horas'
+                              : 'Cliente utiliza sistema de tickets'
+                            }
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
         {/* Produtos Contratados */}
         <Card>
           <CardContent>
@@ -666,6 +723,31 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             )}
           </CardContent>
         </Card>
+
+        {/* Observações */}
+        <FormField
+          control={form.control}
+          name="observacao"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Observações</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Digite observações gerais sobre a empresa (máximo 500 caracteres)"
+                  {...field}
+                  disabled={isSubmitting || isLoading}
+                  rows={4}
+                  maxLength={500}
+                  className={form.formState.errors.observacao ? 'border-red-500 focus:border-red-500' : ''}
+                />
+              </FormControl>
+              <FormDescription>
+                {field.value?.length || 0}/500 caracteres
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Botões de Ação */}
         <div className="flex justify-end space-x-4 pt-6">

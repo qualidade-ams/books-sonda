@@ -70,8 +70,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1">
-          <div className="p-6">
+        <main className="flex-1 bg-gray-50 dark:bg-sonda-black">
+          <div className="p-6 min-h-screen">
             <Breadcrumb />
             <div className="p-6">
               {children}

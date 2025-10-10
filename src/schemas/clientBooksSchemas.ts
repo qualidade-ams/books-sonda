@@ -65,6 +65,11 @@ const tipoBookSchema = z.enum(['nao_tem_book', 'qualidade', 'outros'] as const, 
   errorMap: () => ({ message: 'Tipo de book deve ser nao_tem_book, qualidade ou outros' })
 });
 
+// Schema para tipo de cobrança
+const tipoCobrancaSchema = z.enum(['banco_horas', 'ticket'] as const, {
+  errorMap: () => ({ message: 'Tipo de cobrança deve ser banco_horas ou ticket' })
+});
+
 /**
  * Schema para formulário de empresa cliente
  */
@@ -94,7 +99,17 @@ export const empresaFormSchema = z.object({
     .default([]),
 
   temAms: z.boolean().default(false),
-  tipoBook: tipoBookSchema.optional().default('nao_tem_book')
+  tipoBook: tipoBookSchema.optional().default('nao_tem_book'),
+  tipoCobranca: tipoCobrancaSchema.default('banco_horas'),
+  vigenciaInicial: z.string().optional().or(z.literal('')),
+  vigenciaFinal: z.string().optional().or(z.literal('')),
+  bookPersonalizado: z.boolean().default(false),
+  anexo: z.boolean().default(false),
+  observacao: z
+    .string()
+    .max(500, 'Observação deve ter no máximo 500 caracteres')
+    .optional()
+    .or(z.literal(''))
 }).refine((data) => {
   // Se status for inativo ou suspenso, descrição é obrigatória
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {

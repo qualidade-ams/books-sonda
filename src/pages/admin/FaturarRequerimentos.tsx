@@ -5,14 +5,12 @@ import {
   FileText,
   Calendar,
   Clock,
-  DollarSign,
   TrendingUp,
   Filter,
   RefreshCw,
   Plus,
   X,
   AlertTriangle,
-  Paperclip,
   Calculator,
   ChevronLeft,
   ChevronRight
@@ -45,6 +43,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { FaturamentoExportButtons } from '@/components/admin/requerimentos';
 import { toast } from 'sonner';
 
 import { useRequerimentosFaturamento, useRejeitarRequerimento } from '@/hooks/useRequerimentos';
@@ -437,38 +436,48 @@ export default function FaturarRequerimentos() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-full overflow-hidden">
         {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-              Faturar Requerimentos
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Visualize e processe requerimentos enviados para faturamento
-            </p>
-          </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+                Faturar Requerimentos
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Visualize e processe requerimentos enviados para faturamento
+              </p>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {filtroTipo.length > 0 && (
-              <Badge variant="outline" className="text-sm">
-                Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              {filtroTipo.length > 0 && (
+                <Badge variant="outline" className="text-sm">
+                  Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-              <Button
-                onClick={handleAbrirModalEmail}
-                disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
-                className="flex items-center gap-2"
-                title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
-              >
-                <Send className="h-4 w-4" />
-                Disparar Faturamento
-              </Button>
-            </ProtectedAction>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <FaturamentoExportButtons
+                  requerimentosAgrupados={requerimentosAgrupados}
+                  estatisticas={estatisticasPeriodo}
+                  mesNome={nomesMeses[mesSelecionado - 1]}
+                  ano={anoSelecionado}
+                  disabled={isLoading}
+                />
+                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                  <Button
+                    onClick={handleAbrirModalEmail}
+                    disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
+                    className="flex items-center gap-2 text-sm"
+                    size='sm'
+                    title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
+                  >
+                    <Send className="h-4 w-4" />
+                    Disparar Faturamento
+                  </Button>
+                </ProtectedAction>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -776,7 +785,7 @@ export default function FaturarRequerimentos() {
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-[900px]">
                         <thead className="bg-gray-50 dark:bg-gray-800">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -785,16 +794,16 @@ export default function FaturarRequerimentos() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Cliente
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
                               Módulo
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
                               Linguagem
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                               H.Func
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                               H.Téc
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -803,16 +812,16 @@ export default function FaturarRequerimentos() {
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Data Envio
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
                               Data Aprov.
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                               Valor Total
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
                               Período de Cobrança
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
                               Autor
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -831,20 +840,20 @@ export default function FaturarRequerimentos() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                 {req.cliente_nome || 'N/A'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm hidden md:table-cell">
                                 <Badge variant="outline" className="text-xs">
                                   {req.modulo}
                                 </Badge>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm hidden md:table-cell">
                                 <Badge variant="outline" className="text-xs">
                                   {req.linguagem}
                                 </Badge>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 text-center">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 text-center hidden lg:table-cell">
                                 {formatarHoras(req.horas_funcional)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-center">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-center hidden lg:table-cell">
                                 {formatarHoras(req.horas_tecnico)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white text-center">
@@ -853,7 +862,7 @@ export default function FaturarRequerimentos() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
                                 {formatarData(req.data_envio)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
                                 {req.data_aprovacao ? formatarData(req.data_aprovacao) : '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -868,10 +877,10 @@ export default function FaturarRequerimentos() {
                                   <span className="text-gray-400">-</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
                                 {req.mes_cobranca || '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
                                 {req.autor_nome || '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center">

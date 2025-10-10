@@ -385,10 +385,12 @@ export type Database = {
           link_sharepoint: string | null
           nome_abreviado: string
           nome_completo: string
+          observacao: string | null
           status: string | null
           tem_ams: boolean | null
           template_padrao: string | null
           tipo_book: Database["public"]["Enums"]["tipo_book_enum"] | null
+          tipo_cobranca: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
           updated_at: string | null
           vigencia_final: string | null
           vigencia_inicial: string | null
@@ -404,10 +406,12 @@ export type Database = {
           link_sharepoint?: string | null
           nome_abreviado: string
           nome_completo: string
+          observacao?: string | null
           status?: string | null
           tem_ams?: boolean | null
           template_padrao?: string | null
           tipo_book?: Database["public"]["Enums"]["tipo_book_enum"] | null
+          tipo_cobranca?: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null
@@ -423,10 +427,12 @@ export type Database = {
           link_sharepoint?: string | null
           nome_abreviado?: string
           nome_completo?: string
+          observacao?: string | null
           status?: string | null
           tem_ams?: boolean | null
           template_padrao?: string | null
           tipo_book?: Database["public"]["Enums"]["tipo_book_enum"] | null
+          tipo_cobranca?: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null
@@ -1117,6 +1123,7 @@ export type Database = {
     }
     Enums: {
       tipo_book_enum: "nao_tem_book" | "qualidade" | "outros"
+      tipo_cobranca_enum: "banco_horas" | "ticket"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1245,6 +1252,7 @@ export const Constants = {
   public: {
     Enums: {
       tipo_book_enum: ["nao_tem_book", "qualidade", "outros"],
+      tipo_cobranca_enum: ["banco_horas", "ticket"],
     },
   },
 } as const

@@ -87,10 +87,7 @@ export const requerValorHora = (tipoCobranca: TipoCobrancaType): boolean => {
   return TIPOS_COM_VALOR_HORA.includes(tipoCobranca);
 };
 
-// Função utilitária para verificar se tipo permite tickets
-export const permiteTickets = (tipoCobranca: TipoCobrancaType): boolean => {
-  return tipoCobranca === 'Banco de Horas';
-};
+
 
 // Interface para dados do formulário
 export interface RequerimentoFormData {
@@ -109,8 +106,7 @@ export interface RequerimentoFormData {
   // Campos de valor/hora (condicionais)
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
-  // Campos de ticket (para Banco de Horas)
-  tem_ticket?: boolean;
+  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets?: number;
   // Campos de autor (preenchidos automaticamente)
   autor_id?: string;
@@ -141,6 +137,7 @@ export interface EmailFaturamento {
 export interface ClienteRequerimento {
   id: string;
   nome_abreviado: string;
+  tipo_cobranca: 'banco_horas' | 'ticket';
 }
 
 // Interface para estatísticas

@@ -58,6 +58,7 @@ export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
 export type TipoBook = 'nao_tem_book' | 'outros' | 'qualidade';
+export type TipoCobranca = 'banco_horas' | 'ticket';
 export type StatusAnexo = 'pendente' | 'enviando' | 'processado' | 'erro';
 
 // Interfaces para formulários
@@ -73,10 +74,12 @@ export interface EmpresaFormData {
   grupos: string[];
   temAms?: boolean;
   tipoBook?: TipoBook;
+  tipoCobranca?: TipoCobranca;
   vigenciaInicial?: string;
   vigenciaFinal?: string;
   bookPersonalizado?: boolean;
   anexo?: boolean;
+  observacao?: string;
 }
 
 export interface ClienteFormData {
@@ -211,6 +214,11 @@ export const TIPO_BOOK_OPTIONS: SelectOption[] = [
   { value: 'nao_tem_book', label: 'Não tem Book' },
   { value: 'outros', label: 'Outros' },
   { value: 'qualidade', label: 'Qualidade' }
+];
+
+export const TIPO_COBRANCA_OPTIONS: SelectOption[] = [
+  { value: 'banco_horas', label: 'Banco de Horas' },
+  { value: 'ticket', label: 'Ticket' }
 ];
 
 // Interfaces para sistema de disparos

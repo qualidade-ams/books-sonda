@@ -861,7 +861,7 @@ const LancarRequerimentos = () => {
                 </div>
 
                 {/* Navegação de Mês/Ano */}
-                <div className="flex items-center justify-center gap-1 py-2">
+                <div className="flex items-center justify-center gap-4 py-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -881,15 +881,15 @@ const LancarRequerimentos = () => {
                       const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
                       handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
                     }}
-                    className="h-8 px-2"
+                    className="h-8 px-3"
                     aria-label="Mês anterior"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span className="sr-only">Anterior</span>
                   </Button>
 
-                  <div className="text-center min-w-[120px]">
-                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <div className="text-center min-w-[140px] px-4">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                       {(() => {
                         const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
                         const mesNum = parseInt(mes) || new Date().getMonth() + 1;
@@ -927,7 +927,7 @@ const LancarRequerimentos = () => {
                       const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
                       handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
                     }}
-                    className="h-8 px-2"
+                    className="h-8 px-3"
                     aria-label="Próximo mês"
                   >
                     <ChevronRight className="h-4 w-4" />

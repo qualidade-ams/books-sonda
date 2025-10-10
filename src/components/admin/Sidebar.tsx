@@ -75,6 +75,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   // Estado para controlar quais seções estão expandidas
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
+    // Verificar se é uma nova sessão (sem estado salvo de seções expandidas)
+    const hasSessionState = sessionStorage.getItem('sidebar-session-initialized');
+    
+    if (!hasSessionState) {
+      // Primeira vez na sessão - iniciar com menus fechados
+      sessionStorage.setItem('sidebar-session-initialized', 'true');
+      return [];
+    }
+    
+    // Sessão já inicializada - usar estado salvo do localStorage
     try {
       const saved = localStorage.getItem('sidebar-expanded-sections');
       if (saved) {
@@ -84,8 +94,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       console.warn('Erro ao carregar estado da sidebar:', error);
     }
 
-    // Estado padrão: todas as seções expandidas
-    return ['requerimentos', 'comunicacao', 'clientes', 'configuracoes', 'administracao'];
+    // Estado padrão: todas as seções fechadas
+    return [];
   });
 
   const handleLogout = async () => {
