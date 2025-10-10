@@ -82,26 +82,26 @@ const RequerimentoCardComponent = function RequerimentoCard({
       // Garantir que os valores sejam válidos
       const horasFuncional = requerimento.horas_funcional?.toString() || '0';
       const horasTecnico = requerimento.horas_tecnico?.toString() || '0';
-      
+
       // Validar se os valores não são null, undefined ou NaN
       if (!horasFuncional || horasFuncional === 'null' || horasFuncional === 'undefined') {
         console.warn('Horas funcional inválida:', requerimento.horas_funcional);
         return '0';
       }
-      
+
       if (!horasTecnico || horasTecnico === 'null' || horasTecnico === 'undefined') {
         console.warn('Horas técnico inválida:', requerimento.horas_tecnico);
         return '0';
       }
-      
+
       const resultado = somarHoras(horasFuncional, horasTecnico);
-      
+
       // Verificar se o resultado é válido
       if (!resultado || resultado === 'NaN' || resultado.includes('NaN')) {
         console.warn('Resultado de soma inválido:', { horasFuncional, horasTecnico, resultado });
         return '0';
       }
-      
+
       return resultado;
     } catch (error) {
       console.error('Erro ao calcular horas total:', error, {
@@ -121,13 +121,13 @@ const RequerimentoCardComponent = function RequerimentoCard({
 
       const horasFuncionalStr = requerimento.horas_funcional?.toString() || '0';
       const horasTecnicoStr = requerimento.horas_tecnico?.toString() || '0';
-      
+
       // Validar se os valores não são inválidos
       if (horasFuncionalStr === 'null' || horasFuncionalStr === 'undefined' || horasFuncionalStr === 'NaN') {
         console.warn('Horas funcional inválida para cálculo de valor:', requerimento.horas_funcional);
         return null;
       }
-      
+
       if (horasTecnicoStr === 'null' || horasTecnicoStr === 'undefined' || horasTecnicoStr === 'NaN') {
         console.warn('Horas técnico inválida para cálculo de valor:', requerimento.horas_tecnico);
         return null;
@@ -135,24 +135,24 @@ const RequerimentoCardComponent = function RequerimentoCard({
 
       const horasFuncionalDecimal = converterParaHorasDecimal(horasFuncionalStr);
       const horasTecnicoDecimal = converterParaHorasDecimal(horasTecnicoStr);
-      
+
       // Verificar se as conversões resultaram em números válidos
       if (isNaN(horasFuncionalDecimal) || isNaN(horasTecnicoDecimal)) {
         console.warn('Conversão de horas resultou em NaN:', { horasFuncionalStr, horasTecnicoStr });
         return null;
       }
-      
+
       const valorFuncional = (requerimento.valor_hora_funcional || 0) * horasFuncionalDecimal;
       const valorTecnico = (requerimento.valor_hora_tecnico || 0) * horasTecnicoDecimal;
-      
+
       const total = valorFuncional + valorTecnico;
-      
+
       // Verificar se o total é válido
       if (isNaN(total)) {
         console.warn('Cálculo de valor total resultou em NaN:', { valorFuncional, valorTecnico });
         return null;
       }
-      
+
       return total;
     } catch (error) {
       console.error('Erro ao calcular valor total:', error, {
@@ -199,11 +199,6 @@ const RequerimentoCardComponent = function RequerimentoCard({
               <div className="font-medium truncate text-xs">{requerimento.chamado}</div>
               <Badge className={`${badgeClasses} text-xs px-1 py-0 mt-1`}>
                 {requerimento.tipo_cobranca}
-                {requerimento.tipo_cobranca === 'Banco de Horas' && requerimento.tem_ticket && (
-                  <span className="ml-1" title={`${requerimento.quantidade_tickets} tickets`}>
-                    🎫
-                  </span>
-                )}
               </Badge>
             </div>
           </div>
@@ -238,10 +233,17 @@ const RequerimentoCardComponent = function RequerimentoCard({
             </div>
           </div>
 
-          {/* Total - 5% */}
-          <div className="w-[5%] text-center font-medium pr-1">
-            <div className="text-xs font-bold">
-              {formatarHorasParaExibicao(horasTotal, 'HHMM')}
+          {/* Total - 6% */}
+          <div className="w-[6%] text-center font-medium pr-1">
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="text-xs font-bold">
+                {formatarHorasParaExibicao(horasTotal, 'HHMM')}
+              </div>
+              {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
+                <Badge variant="secondary" className="text-[8px] px-0.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-none">
+                  🎫 {requerimento.quantidade_tickets}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -278,8 +280,8 @@ const RequerimentoCardComponent = function RequerimentoCard({
             <div className="text-xs font-bold">{requerimento.mes_cobranca}</div>
           </div>
 
-          {/* Autor - 10% */}
-          <div className="w-[10%] text-center pr-1">
+          {/* Autor - 9% */}
+          <div className="w-[9%] text-center pr-1">
             <div className="text-xs truncate" title={requerimento.autor_nome || 'Não informado'}>
               {requerimento.autor_nome || '-'}
             </div>

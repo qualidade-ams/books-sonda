@@ -140,13 +140,20 @@ export const requerimentoFormSchema = z.object({
   valor_hora_tecnico: valorHoraSchema,
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets: z
-    .number({
-      invalid_type_error: 'Quantidade deve ser um número inteiro'
-    })
-    .int('Quantidade deve ser um número inteiro')
-    .min(1, 'Quantidade deve ser maior que zero')
-    .max(9999, 'Quantidade não pode exceder 9999')
+    .union([
+      z.string().transform((val) => {
+        if (!val || val.trim() === '') return undefined;
+        const num = parseInt(val, 10);
+        if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
+        return num;
+      }),
+      z.number().int('Quantidade deve ser um número inteiro'),
+      z.undefined()
+    ])
     .optional()
+    .refine((val) => val === undefined || (val >= 1 && val <= 9999), {
+      message: 'Quantidade deve ser entre 1 e 9999'
+    })
 }).refine((data) => {
   // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
   if (data.data_aprovacao && data.data_aprovacao !== '') {

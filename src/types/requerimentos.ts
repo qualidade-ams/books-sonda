@@ -22,8 +22,7 @@ export interface Requerimento {
   valor_total_funcional?: number;
   valor_total_tecnico?: number;
   valor_total_geral?: number;
-  // Campos de ticket (para Banco de Horas)
-  tem_ticket?: boolean;
+  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets?: number;
   // Campos de anexo
   anexos?: any[];

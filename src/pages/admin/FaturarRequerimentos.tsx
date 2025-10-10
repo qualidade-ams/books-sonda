@@ -21,7 +21,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, Option } from '@/components/ui/multi-select';
 import {
@@ -48,6 +55,7 @@ import { toast } from 'sonner';
 
 import { useRequerimentosFaturamento, useRejeitarRequerimento } from '@/hooks/useRequerimentos';
 import { faturamentoService } from '@/services/faturamentoService';
+import { getBadgeClasses, getCobrancaIcon, getCobrancaColors } from '@/utils/requerimentosColors';
 
 import {
   Requerimento,
@@ -57,10 +65,7 @@ import {
   requerValorHora
 } from '@/types/requerimentos';
 
-import {
-  getCobrancaColors,
-  getCobrancaIcon
-} from '@/utils/requerimentosColors';
+
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 
 // Interface para dados agrupados por tipo de cobrança
@@ -785,122 +790,154 @@ export default function FaturarRequerimentos() {
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[900px]">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Chamado
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Cliente
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                              Módulo
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                              Linguagem
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                              H.Func
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                              H.Téc
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Total
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Data Envio
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                              Data Aprov.
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Valor Total
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                              Período de Cobrança
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                              Autor
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Ações
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                          {grupo.requerimentos.map(req => (
-                            <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
-                                  {req.chamado}
-                                </code>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                {req.cliente_nome || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm hidden md:table-cell">
-                                <Badge variant="outline" className="text-xs">
-                                  {req.modulo}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm hidden md:table-cell">
-                                <Badge variant="outline" className="text-xs">
-                                  {req.linguagem}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 text-center hidden lg:table-cell">
-                                {formatarHoras(req.horas_funcional)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-center hidden lg:table-cell">
-                                {formatarHoras(req.horas_tecnico)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white text-center">
-                                {formatarHoras(req.horas_total)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center">
-                                {formatarData(req.data_envio)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
-                                {req.data_aprovacao ? formatarData(req.data_aprovacao) : '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                {req.valor_total_geral ? (
-                                  <span className="font-medium text-green-600">
-                                    R$ {req.valor_total_geral.toLocaleString('pt-BR', {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2
-                                    })}
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-32">Chamado</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead className="hidden md:table-cell w-28">Módulo</TableHead>
+                            <TableHead className="hidden md:table-cell w-24">Linguagem</TableHead>
+                            <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
+                            <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
+                            <TableHead className="w-25 text-center">Total</TableHead>
+                            <TableHead className="w-24 text-center">Data Envio</TableHead>
+                            <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
+                            <TableHead className="w-28 text-center">Valor Total</TableHead>
+                            <TableHead className="w-24 text-center hidden xl:table-cell">Período</TableHead>
+                            <TableHead className="w-32 text-center hidden xl:table-cell">Autor</TableHead>
+                            <TableHead className="w-24">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {grupo.requerimentos.map(req => {
+                            return (
+                              <TableRow key={req.id}>
+                                <TableCell className="font-medium">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-base flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
+                                      <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm truncate max-w-[90px]" title={req.chamado}>
+                                        {req.chamado}
+                                      </code>
+                                    </div>
+                                    <Badge className={`${getBadgeClasses(req.tipo_cobranca)} text-xs px-2 py-1 mt-1 w-fit`}>
+                                      {req.tipo_cobranca}
+                                    </Badge>
+                                    {/* Mostrar módulo e linguagem em telas pequenas */}
+                                    <div className="md:hidden mt-1 space-y-1">
+                                      <div className="text-xs text-gray-500">{req.modulo}</div>
+                                      <div className="text-xs text-gray-500">{req.linguagem}</div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium truncate max-w-[120px]" title={req.cliente_nome}>
+                                      {req.cliente_nome || 'N/A'}
+                                    </span>
+                                    {/* Mostrar horas em telas pequenas */}
+                                    <div className="lg:hidden mt-1">
+                                      <span className="text-xs text-gray-500">
+                                        F: {formatarHoras(req.horas_funcional)} |
+                                        T: {formatarHoras(req.horas_tecnico)}
+                                      </span>
+                                    </div>
+                                    {/* Mostrar datas em telas pequenas */}
+                                    <div className="xl:hidden mt-1">
+                                      <span className="text-xs text-gray-400">
+                                        {formatarData(req.data_envio)}
+                                        {req.data_aprovacao && ` | ${formatarData(req.data_aprovacao)}`}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="hidden md:table-cell">
+                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-600">
+                                    {req.modulo}
+                                  </Badge>
+                                </TableCell>
+
+                                <TableCell className="hidden md:table-cell">
+                                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-600">
+                                    {req.linguagem}
+                                  </Badge>
+                                </TableCell>
+
+                                <TableCell className="hidden lg:table-cell text-center">
+                                  <span className="text-sm font-medium text-blue-600">
+                                    {formatarHoras(req.horas_funcional)}
                                   </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
-                                {req.mes_cobranca || '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center hidden xl:table-cell">
-                                {req.autor_nome || '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAbrirConfirmacaoRejeicao(req)}
-                                    disabled={rejeitarRequerimento.isPending}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                  >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Rejeitar
-                                  </Button>
-                                </ProtectedAction>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                </TableCell>
+
+                                <TableCell className="hidden lg:table-cell text-center">
+                                  <span className="text-sm font-medium text-green-600">
+                                    {formatarHoras(req.horas_tecnico)}
+                                  </span>
+                                </TableCell>
+
+                                <TableCell className="text-center">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                      {formatarHoras(req.horas_total)}
+                                    </span>
+                                    {req.quantidade_tickets && req.quantidade_tickets > 0 && (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                        🎫 {req.quantidade_tickets} ticket{req.quantidade_tickets > 1 ? 's' : ''}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="text-center text-sm text-gray-500">
+                                  {formatarData(req.data_envio)}
+                                </TableCell>
+
+                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                                  {req.data_aprovacao ? formatarData(req.data_aprovacao) : '-'}
+                                </TableCell>
+
+                                <TableCell className="text-center">
+                                  {req.valor_total_geral ? (
+                                    <span className="text-sm font-medium text-green-600">
+                                      R$ {req.valor_total_geral.toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </TableCell>
+
+                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                                  {req.mes_cobranca || '-'}
+                                </TableCell>
+
+                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                                  {req.autor_nome || '-'}
+                                </TableCell>
+
+                                <TableCell className="text-center">
+                                  <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleAbrirConfirmacaoRejeicao(req)}
+                                      disabled={rejeitarRequerimento.isPending}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                    >
+                                      <X className="h-4 w-4 mr-1" />
+                                      Rejeitar
+                                    </Button>
+                                  </ProtectedAction>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
                   </CardContent>
                 </Card>

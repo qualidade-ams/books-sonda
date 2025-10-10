@@ -231,7 +231,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-22 hidden md:table-cell">Linguagem</TableHead>
             <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
             <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
-            <TableHead className="w-20 text-center">Total</TableHead>
+            <TableHead className="w-40 text-center">Total</TableHead>
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Envio</TableHead>
             <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
             <TableHead className="w-28 text-center hidden 2xl:table-cell">Valor Total</TableHead>
@@ -331,9 +331,16 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 <TableCell className="text-center">
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
-                    {formatarHorasParaExibicao(horasTotal, 'HHMM')}
-                  </span>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {formatarHorasParaExibicao(horasTotal, 'HHMM')}
+                    </span>
+                    {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
+                      <Badge variant="secondary" className="text-medium px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                        🎫 {requerimento.quantidade_tickets} ticket{requerimento.quantidade_tickets > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
 
                 <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">

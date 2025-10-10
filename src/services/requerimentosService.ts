@@ -57,8 +57,7 @@ export class RequerimentosService {
       // Campos de valor/hora (incluir apenas se fornecidos)
       valor_hora_funcional: data.valor_hora_funcional || null,
       valor_hora_tecnico: data.valor_hora_tecnico || null,
-      // Campos de ticket (para Banco de Horas)
-      tem_ticket: data.tem_ticket || false,
+      // Campos de ticket (para Banco de Horas - automático baseado na empresa)
       quantidade_tickets: data.quantidade_tickets || null,
       // Campos de autor (preenchidos pelo frontend)
       autor_id: data.autor_id || null,
@@ -321,8 +320,7 @@ export class RequerimentosService {
     // Campos de valor/hora
     if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
     if (data.valor_hora_tecnico !== undefined) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
-    // Campos de ticket
-    if (data.tem_ticket !== undefined) updateData.tem_ticket = data.tem_ticket || false;
+    // Campos de ticket (automático baseado na empresa)
     if (data.quantidade_tickets !== undefined) updateData.quantidade_tickets = data.quantidade_tickets || null;
 
     const { error } = await supabase
@@ -700,6 +698,8 @@ export class RequerimentosService {
       valor_total_funcional: data.valor_total_funcional,
       valor_total_tecnico: data.valor_total_tecnico,
       valor_total_geral: data.valor_total_geral,
+      // Campos de ticket
+      quantidade_tickets: data.quantidade_tickets,
       // Campos de autor
       autor_id: data.autor_id,
       autor_nome: data.autor_nome

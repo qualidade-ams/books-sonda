@@ -337,12 +337,19 @@ export class FaturamentoService {
                     })()}
                                 </td>
                                 <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
-                                  ${(() => {
+                                  <div>
+                                    ${(() => {
                       const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
                       const horasInt = Math.floor(horas);
                       const minutos = Math.round((horas - horasInt) * 60);
                       return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
                     })()}
+                                    ${req.quantidade_tickets && req.quantidade_tickets > 0 ? `
+                                      <br><span style="background-color:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:12px; font-size:10px; font-weight:normal;">
+                                        🎫 ${req.quantidade_tickets} ticket${req.quantidade_tickets > 1 ? 's' : ''}
+                                      </span>
+                                    ` : ''}
+                                  </div>
                                 </td>
                                 <td align="center" style="padding:10px; color:#64748b;">
                                   ${(() => {
