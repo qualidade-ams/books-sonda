@@ -151,13 +151,13 @@ const Clientes: React.FC = () => {
   // Preparar dados iniciais do formulário
   const dadosIniciais = clienteEditando
     ? {
-      nomeCompleto: clienteEditando.nome_completo,
-      email: clienteEditando.email,
+      nomeCompleto: clienteEditando.nome_completo || '',
+      email: clienteEditando.email || '',
       funcao: clienteEditando.funcao || '',
-      empresaId: clienteEditando.empresa_id,
-      status: clienteEditando.status as ClienteStatus,
+      empresaId: clienteEditando.empresa_id || '',
+      status: (clienteEditando.status as ClienteStatus) || 'ativo',
       descricaoStatus: clienteEditando.descricao_status || '',
-      principalContato: clienteEditando.principal_contato,
+      principalContato: clienteEditando.principal_contato || false,
     }
     : undefined;
 

@@ -53,6 +53,17 @@ const clienteSchema = z.object({
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
     .optional(),
   principalContato: z.boolean(),
+}).superRefine((data, ctx) => {
+  // Se o status for inativo, a descrição é obrigatória
+  if (data.status === 'inativo') {
+    if (!data.descricaoStatus || data.descricaoStatus.trim().length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Justificativa é obrigatória quando o status for Inativo',
+        path: ['descricaoStatus'],
+      });
+    }
+  }
 });
 
 interface ClienteFormProps {
@@ -75,40 +86,71 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
   empresaIdPredefinida,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
+
+  // Preparar valores padrão
+  const getDefaultValues = (): ClienteFormData => ({
+    nomeCompleto: initialData?.nomeCompleto || '',
+    email: initialData?.email || '',
+    funcao: initialData?.funcao || '',
+    empresaId: initialData?.empresaId || empresaIdPredefinida || '',
+    status: initialData?.status || 'ativo',
+    descricaoStatus: initialData?.descricaoStatus || '',
+    principalContato: initialData?.principalContato || false,
+  });
 
   const form = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
-    defaultValues: {
-      nomeCompleto: '',
-      email: '',
-      funcao: '',
-      empresaId: empresaIdPredefinida || '',
-      status: 'ativo',
-      descricaoStatus: '',
-      principalContato: false,
-      ...initialData,
-    },
+    defaultValues: getDefaultValues(),
   });
 
   const watchStatus = form.watch('status');
 
-  // Reset form quando initialData mudar
+  // Limpar descricaoStatus quando status mudar para ativo (apenas se não estiver inicializando)
   useEffect(() => {
-    if (initialData) {
-      form.reset({
+    if (formInitialized && watchStatus === 'ativo') {
+      form.setValue('descricaoStatus', '');
+    }
+  }, [watchStatus, form, formInitialized]);
+
+  // Inicializar formulário apenas uma vez quando os dados iniciais estiverem disponíveis
+  useEffect(() => {
+    if (initialData && !formInitialized) {
+      console.log('🔍 Inicializando formulário com dados:', initialData);
+
+      const formData = {
+        nomeCompleto: initialData.nomeCompleto || '',
+        email: initialData.email || '',
+        funcao: initialData.funcao || '',
+        empresaId: initialData.empresaId || empresaIdPredefinida || '',
+        status: initialData.status || 'ativo' as const,
+        descricaoStatus: initialData.descricaoStatus || '',
+        principalContato: initialData.principalContato || false,
+      };
+      console.log('🔍 Dados para inicialização:', formData);
+
+      form.reset(formData);
+      setFormInitialized(true);
+    } else if (!initialData && !formInitialized) {
+      // Para modo de criação, inicializar com valores padrão
+      console.log('🔍 Inicializando formulário para criação');
+      const defaultData = {
         nomeCompleto: '',
         email: '',
         funcao: '',
         empresaId: empresaIdPredefinida || '',
-        status: 'ativo',
+        status: 'ativo' as const,
         descricaoStatus: '',
         principalContato: false,
-        ...initialData,
-      });
+      };
+      form.reset(defaultData);
+      setFormInitialized(true);
     }
-  }, [initialData, form, empresaIdPredefinida]);
+  }, [initialData, formInitialized, empresaIdPredefinida, form]);
 
   const handleSubmit = async (data: ClienteFormData) => {
+    console.log('🔍 Dados do formulário antes do envio:', data);
+
     setIsSubmitting(true);
     try {
       // Normalizar dados antes do envio
@@ -120,6 +162,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
         descricaoStatus: data.descricaoStatus?.trim() || ''
       };
 
+      console.log('🔍 Dados normalizados para envio:', normalizedData);
       await onSubmit(normalizedData);
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
