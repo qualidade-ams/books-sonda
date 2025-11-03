@@ -201,7 +201,7 @@ const ControleDisparosPersonalizados = () => {
       if (anexos.length === 0) {
         toast({
           title: 'Anexos obrigatórios',
-          description: `A empresa "${empresaData?.nome_completo}" requer anexos para o disparo`,
+          description: `A empresa "${empresaData?.nome_abreviado}" requer anexos para o disparo`,
           variant: 'destructive',
         });
         return;
@@ -211,7 +211,7 @@ const ControleDisparosPersonalizados = () => {
       if (anexosComErro.length > 0) {
         toast({
           title: 'Anexos com erro',
-          description: `A empresa "${empresaData?.nome_completo}" possui anexos com erro`,
+          description: `A empresa "${empresaData?.nome_abreviado}" possui anexos com erro`,
           variant: 'destructive',
         });
         return;
@@ -637,12 +637,12 @@ const ControleDisparosPersonalizados = () => {
                       <Checkbox
                         checked={selecionadas.includes(status.empresaId)}
                         onCheckedChange={() => toggleSelectOne(status.empresaId)}
-                        aria-label={`Selecionar ${status.empresa.nome_completo}`}
+                        aria-label={`Selecionar ${status.empresa.nome_abreviado}`}
                       />
                       {getStatusIcon(status.status)}
                       <div>
                         <h3 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                          {status.empresa.nome_completo}
+                          {status.empresa.nome_abreviado}
                           {status.empresa.anexo && (
                             <span title="Empresa com anexos">
                               <Paperclip className="h-4 w-4 text-purple-600" />
@@ -786,7 +786,7 @@ const ControleDisparosPersonalizados = () => {
                 Gerenciar Anexos
                 {empresaAnexoSelecionada && (
                   <span className="text-sm font-normal text-muted-foreground">
-                    - {statusMensal.find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_completo}
+                    - {statusMensal.find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_abreviado}
                   </span>
                 )}
               </DialogTitle>

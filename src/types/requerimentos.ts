@@ -39,8 +39,7 @@ export interface Requerimento {
 // Tipos para opções de select
 export type ModuloType = 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
-export type TipoCobrancaType = 'Selecione' | 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
-export type TipoCobrancaFaturamentoType = Exclude<TipoCobrancaType, 'Selecione'>; // Tipo para faturamento sem 'Selecione'
+export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
 // Constantes para opções de select
@@ -63,7 +62,6 @@ export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
 ];
 
 export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[] = [
-  { value: 'Selecione', label: 'Selecione' },
   { value: 'Banco de Horas', label: 'Banco de Horas' },
   { value: 'Cobro Interno', label: 'Cobro Interno' },
   { value: 'Contrato', label: 'Contrato' },
@@ -111,6 +109,11 @@ export interface RequerimentoFormData {
   // Campos de autor (preenchidos automaticamente)
   autor_id?: string;
   autor_nome?: string;
+}
+
+// Interface para dados de faturamento (mes_cobranca obrigatório)
+export interface RequerimentoFaturamentoData extends RequerimentoFormData {
+  mes_cobranca: string; // Obrigatório para faturamento
 }
 
 // Interface para dados de faturamento

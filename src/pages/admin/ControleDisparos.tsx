@@ -590,12 +590,12 @@ const ControleDisparos = () => {
                       <Checkbox
                         checked={selecionadas.includes(status.empresaId)}
                         onCheckedChange={() => toggleSelectOne(status.empresaId)}
-                        aria-label={`Selecionar ${status.empresa.nome_completo}`}
+                        aria-label={`Selecionar ${status.empresa.nome_abreviado}`}
                       />
                       {getStatusIcon(status.status)}
                       <div>
                         <h3 className="font-medium text-gray-900 dark:text-white">
-                          {status.empresa.nome_completo}
+                          {status.empresa.nome_abreviado}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {status.clientesAtivos} clientes ativos

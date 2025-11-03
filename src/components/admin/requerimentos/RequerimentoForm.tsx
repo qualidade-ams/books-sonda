@@ -61,13 +61,8 @@ export function RequerimentoForm({
       horas_funcional: requerimento?.horas_funcional || 0,
       horas_tecnico: requerimento?.horas_tecnico || 0,
       linguagem: requerimento?.linguagem || 'Funcional',
-      tipo_cobranca: requerimento?.tipo_cobranca || 'Selecione',
-      mes_cobranca: requerimento?.mes_cobranca || (() => {
-        const hoje = new Date();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const ano = hoje.getFullYear();
-        return `${mes}/${ano}`;
-      })(),
+      tipo_cobranca: requerimento?.tipo_cobranca || 'Banco de Horas',
+      mes_cobranca: requerimento?.mes_cobranca || '',
       observacao: requerimento?.observacao || '',
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
@@ -100,7 +95,7 @@ export function RequerimentoForm({
 
   // Verificar se o tipo de cobrança requer campos de valor/hora
   const mostrarCamposValor = useMemo(() => {
-    return tipoCobranca !== 'Selecione' && requerValorHora(tipoCobranca);
+    return tipoCobranca && requerValorHora(tipoCobranca);
   }, [tipoCobranca]);
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
@@ -159,7 +154,6 @@ export function RequerimentoForm({
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
     const cores = {
-      'Selecione': 'bg-gray-50 text-gray-500 border-gray-200',
       'Banco de Horas': 'bg-blue-100 text-blue-800 border-blue-300',
       'Cobro Interno': 'bg-green-100 text-green-800 border-green-300',
       'Contrato': 'bg-gray-100 text-gray-800 border-gray-300',
@@ -559,14 +553,12 @@ export function RequerimentoForm({
                   name="mes_cobranca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Mês/Ano de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
-                      </FormLabel>
+                      <FormLabel>Mês/Ano de Cobrança</FormLabel>
                       <FormControl>
                         <MonthYearPicker
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="Selecione mês e ano"
+                          placeholder="Selecione mês e ano (opcional)"
                           format="MM/YYYY"
                           allowFuture={true}
                         />

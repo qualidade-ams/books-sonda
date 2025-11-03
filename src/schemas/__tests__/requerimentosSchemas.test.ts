@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   requerimentoFormSchema,
+  requerimentoFaturamentoSchema,
   filtrosRequerimentosSchema,
   emailFaturamentoSchema,
   buscaRequerimentosSchema,
@@ -12,8 +13,8 @@ import {
 import { RequerimentoFormData } from '@/types/requerimentos';
 
 describe('requerimentosSchemas', () => {
-  describe('requerimentoFormSchema', () => {
-    const validData: RequerimentoFormData = {
+  // Dados válidos compartilhados entre os testes
+  const validData: RequerimentoFormData = {
       chamado: 'RF-6017993',
       cliente_id: '123e4567-e89b-12d3-a456-426614174000',
       modulo: 'Comply',
@@ -23,11 +24,12 @@ describe('requerimentosSchemas', () => {
       horas_funcional: 10.5,
       horas_tecnico: 5.0,
       linguagem: 'Funcional',
-      tipo_cobranca: 'Faturado',
-      mes_cobranca: '01/2024',
+      tipo_cobranca: 'Banco de Horas', // Mudado para não requerer valor/hora
+      mes_cobranca: '01/2024', // Opcional no formulário, obrigatório no faturamento
       observacao: 'Observação de teste'
     };
 
+  describe('requerimentoFormSchema', () => {
     it('deve validar dados válidos', () => {
       const result = requerimentoFormSchema.safeParse(validData);
       expect(result.success).toBe(true);
@@ -143,13 +145,29 @@ describe('requerimentosSchemas', () => {
 
     describe('Validação de tipo de cobrança', () => {
       it('deve aceitar tipos de cobrança válidos', () => {
-        const validTipos = [
-          'Banco de Horas', 'Cobro Interno', 'Contrato', 'Faturado',
-          'Hora Extra', 'Sobreaviso', 'Reprovado', 'Bolsão Enel'
+        // Tipos que não requerem valor/hora
+        const tiposSemValorHora = [
+          'Banco de Horas', 'Cobro Interno', 'Contrato', 'Reprovado'
         ];
 
-        validTipos.forEach(tipo => {
+        tiposSemValorHora.forEach(tipo => {
           const testData = { ...validData, tipo_cobranca: tipo as any };
+          const result = requerimentoFormSchema.safeParse(testData);
+          expect(result.success).toBe(true);
+        });
+
+        // Tipos que requerem valor/hora
+        const tiposComValorHora = [
+          'Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'
+        ];
+
+        tiposComValorHora.forEach(tipo => {
+          const testData = { 
+            ...validData, 
+            tipo_cobranca: tipo as any,
+            valor_hora_funcional: 100.00,
+            valor_hora_tecnico: 120.00
+          };
           const result = requerimentoFormSchema.safeParse(testData);
           expect(result.success).toBe(true);
         });
@@ -266,27 +284,30 @@ describe('requerimentosSchemas', () => {
     });
 
     describe('Validação de mês de cobrança', () => {
-      it('deve rejeitar mês menor que 1', () => {
-        const invalidData = { ...validData, mes_cobranca: '00/2024' };
-        const result = requerimentoFormSchema.safeParse(invalidData);
-
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0].message).toBe('Mês deve ser entre 1 e 12');
-        }
+      it('deve aceitar mês de cobrança vazio (opcional)', () => {
+        const testData = { ...validData, mes_cobranca: '' };
+        const result = requerimentoFormSchema.safeParse(testData);
+        expect(result.success).toBe(true);
       });
 
-      it('deve rejeitar mês maior que 12', () => {
+      it('deve aceitar mês de cobrança undefined (opcional)', () => {
+        const testData = { ...validData };
+        delete testData.mes_cobranca;
+        const result = requerimentoFormSchema.safeParse(testData);
+        expect(result.success).toBe(true);
+      });
+
+      it('deve rejeitar formato inválido quando preenchido', () => {
         const invalidData = { ...validData, mes_cobranca: '13/2024' };
         const result = requerimentoFormSchema.safeParse(invalidData);
-
+        
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error.issues[0].message).toBe('Mês deve ser entre 1 e 12');
+          expect(result.error.issues[0].message).toBe('Formato deve ser MM/YYYY (ex: 09/2025)');
         }
       });
 
-      it('deve aceitar meses válidos', () => {
+      it('deve aceitar meses válidos quando preenchido', () => {
         for (let mes = 1; mes <= 12; mes++) {
           const mesFormatado = mes.toString().padStart(2, '0');
           const testData = { ...validData, mes_cobranca: `${mesFormatado}/2024` };
@@ -336,6 +357,31 @@ describe('requerimentosSchemas', () => {
         const result = requerimentoFormSchema.safeParse(testData);
         expect(result.success).toBe(true);
       });
+    });
+  });
+
+  describe('requerimentoFaturamentoSchema', () => {
+    it('deve exigir mes_cobranca para faturamento', () => {
+      const dataWithoutMes = { ...validData };
+      delete dataWithoutMes.mes_cobranca;
+      
+      const result = requerimentoFaturamentoSchema.safeParse(dataWithoutMes);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe('Mês de cobrança é obrigatório');
+      }
+    });
+
+    it('deve aceitar dados válidos com mes_cobranca para faturamento', () => {
+      const result = requerimentoFaturamentoSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
+    it('deve rejeitar mes_cobranca vazio para faturamento', () => {
+      const dataWithEmptyMes = { ...validData, mes_cobranca: '' };
+      
+      const result = requerimentoFaturamentoSchema.safeParse(dataWithEmptyMes);
+      expect(result.success).toBe(false);
     });
   });
 

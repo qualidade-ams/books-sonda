@@ -22,7 +22,6 @@ const linguagemSchema = z
 // Schema para validação de tipo de cobrança
 const tipoCobrancaSchema = z
   .enum([
-    'Selecione',
     'Banco de Horas', 
     'Cobro Interno', 
     'Contrato', 
@@ -35,13 +34,13 @@ const tipoCobrancaSchema = z
     errorMap: () => ({ message: 'Selecione um tipo de cobrança válido' })
   });
 
-// Schema para validação de horas (suporta formato HH:MM e números inteiros)
+// Schema para validação de horas (suporta formato HH:MM e números decimais)
 const horasSchema = z
   .union([
     // Aceita números (compatibilidade com formato antigo)
     z.number({
       invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
-    }).min(0, 'Horas não podem ser negativas').max(9999, 'Horas não podem exceder 9999'),
+    }).min(0, 'Horas não podem ser negativas').max(9999.99, 'Horas não podem exceder 9999.99'),
     
     // Aceita strings no formato HH:MM
     z.string().refine((val) => {
@@ -61,11 +60,11 @@ const horasSchema = z
         return horas >= 0 && horas <= 9999 && minutos >= 0 && minutos < 60;
       }
       
-      // Formato número inteiro
-      const numero = parseInt(valor);
-      return !isNaN(numero) && numero >= 0 && numero <= 9999;
+      // Formato número (inteiro ou decimal)
+      const numero = parseFloat(valor);
+      return !isNaN(numero) && numero >= 0 && numero <= 9999.99;
     }, {
-      message: 'Formato inválido. Use HH:MM (ex: 111:30) ou número inteiro (ex: 120)'
+      message: 'Formato inválido. Use HH:MM (ex: 111:30) ou número (ex: 120 ou 120.5)'
     })
   ], {
     invalid_type_error: 'Horas devem ser um número ou formato HH:MM'
@@ -83,6 +82,19 @@ const mesCobrancaSchema = z
     const anoAtual = new Date().getFullYear();
     return ano >= anoAtual - 5 && ano <= anoAtual + 10;
   }, 'Ano deve estar entre 5 anos atrás e 10 anos à frente');
+
+// Schema opcional para mês/ano (usado no formulário de criação)
+const mesCobrancaOpcionalSchema = z
+  .union([
+    z.string().min(1).regex(/^(0[1-9]|1[0-2])\/\d{4}$/, 'Formato deve ser MM/YYYY (ex: 09/2025)').refine((val) => {
+      const [mes, ano] = val.split('/').map(Number);
+      const anoAtual = new Date().getFullYear();
+      return ano >= anoAtual - 5 && ano <= anoAtual + 10;
+    }, 'Ano deve estar entre 5 anos atrás e 10 anos à frente'),
+    z.literal(''),
+    z.undefined()
+  ])
+  .optional();
 
 // Schema para validação de data
 const dataSchema = z
@@ -133,7 +145,7 @@ export const requerimentoFormSchema = z.object({
   horas_tecnico: horasSchema,
   linguagem: linguagemSchema,
   tipo_cobranca: tipoCobrancaSchema,
-  mes_cobranca: mesCobrancaSchema,
+  mes_cobranca: mesCobrancaOpcionalSchema,
   observacao: observacaoSchema,
   // Campos de valor/hora (condicionais)
   valor_hora_funcional: valorHoraSchema,
@@ -226,6 +238,81 @@ export const filtrosRequerimentosSchema = z.object({
   path: ['data_fim']
 });
 
+// Schema para validação no envio para faturamento (mes_cobranca obrigatório)
+export const requerimentoFaturamentoSchema = z.object({
+  chamado: chamadoSchema,
+  cliente_id: z
+    .string()
+    .min(1, 'Cliente é obrigatório')
+    .uuid('ID do cliente deve ser um UUID válido'),
+  modulo: moduloSchema,
+  descricao: descricaoSchema,
+  data_envio: dataSchema,
+  data_aprovacao: dataOpcionalSchema,
+  horas_funcional: horasSchema,
+  horas_tecnico: horasSchema,
+  linguagem: linguagemSchema,
+  tipo_cobranca: tipoCobrancaSchema,
+  mes_cobranca: mesCobrancaSchema, // Obrigatório para faturamento
+  observacao: observacaoSchema,
+  // Campos de valor/hora (condicionais)
+  valor_hora_funcional: valorHoraSchema,
+  valor_hora_tecnico: valorHoraSchema,
+  // Campos de ticket (para Banco de Horas - automático baseado na empresa)
+  quantidade_tickets: z
+    .union([
+      z.string().transform((val) => {
+        if (!val || val.trim() === '') return undefined;
+        const num = parseInt(val, 10);
+        if (isNaN(num)) throw new Error('Quantidade deve ser um número inteiro');
+        return num;
+      }),
+      z.number().int('Quantidade deve ser um número inteiro'),
+      z.undefined()
+    ])
+    .optional()
+    .refine((val) => val === undefined || (val >= 1 && val <= 9999), {
+      message: 'Quantidade deve ser entre 1 e 9999'
+    })
+}).refine((data) => {
+  // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
+  if (data.data_aprovacao && data.data_aprovacao !== '') {
+    const dataEnvio = new Date(data.data_envio);
+    const dataAprovacao = new Date(data.data_aprovacao);
+    return dataAprovacao >= dataEnvio;
+  }
+  return true;
+}, {
+  message: 'Data de aprovação deve ser igual ou posterior à data de envio',
+  path: ['data_aprovacao']
+}).refine((data) => {
+  // Validação customizada: campos de valor/hora obrigatórios para tipos específicos
+  const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+  
+  if (tiposComValorHora.includes(data.tipo_cobranca)) {
+    // Converter horas para número para comparação
+    const horasFuncionalNum = typeof data.horas_funcional === 'string' 
+      ? parseFloat(data.horas_funcional) || 0 
+      : data.horas_funcional || 0;
+    const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
+      ? parseFloat(data.horas_tecnico) || 0 
+      : data.horas_tecnico || 0;
+    
+    // Se tem horas funcionais, deve ter valor/hora funcional
+    if (horasFuncionalNum > 0 && (!data.valor_hora_funcional || data.valor_hora_funcional <= 0)) {
+      return false;
+    }
+    // Se tem horas técnicas, deve ter valor/hora técnico
+    if (horasTecnicoNum > 0 && (!data.valor_hora_tecnico || data.valor_hora_tecnico <= 0)) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
+  path: ['valor_hora_funcional']
+});
+
 // Schema para validação de email de faturamento
 export const emailFaturamentoSchema = z.object({
   destinatarios: z
@@ -258,6 +345,7 @@ export const buscaRequerimentosSchema = z.object({
 
 // Tipos inferidos dos schemas
 export type RequerimentoFormData = z.infer<typeof requerimentoFormSchema>;
+export type RequerimentoFaturamentoData = z.infer<typeof requerimentoFaturamentoSchema>;
 export type FiltrosRequerimentosData = z.infer<typeof filtrosRequerimentosSchema>;
 export type EmailFaturamentoData = z.infer<typeof emailFaturamentoSchema>;
 export type BuscaRequerimentosData = z.infer<typeof buscaRequerimentosSchema>;
@@ -276,5 +364,9 @@ export const validarHoras = (horas: number | string): boolean => {
 };
 
 export const validarMesCobranca = (mes: number): boolean => {
-  return mesCobrancaSchema.safeParse(mes).success;
+  // Converter número para formato MM/YYYY para validação
+  const mesFormatado = mes.toString().padStart(2, '0');
+  const anoAtual = new Date().getFullYear();
+  const mesCobrancaString = `${mesFormatado}/${anoAtual}`;
+  return mesCobrancaSchema.safeParse(mesCobrancaString).success;
 };
