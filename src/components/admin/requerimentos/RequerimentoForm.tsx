@@ -311,7 +311,9 @@ export function RequerimentoForm({
                   name="modulo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Módulo *</FormLabel>
+                      <FormLabel>
+                        Módulo <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -337,7 +339,9 @@ export function RequerimentoForm({
                   name="linguagem"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Linguagem *</FormLabel>
+                      <FormLabel>
+                        Linguagem <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -364,7 +368,9 @@ export function RequerimentoForm({
                 name="descricao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descrição *</FormLabel>
+                    <FormLabel>
+                      Descrição <span className="text-gray-700 dark:text-gray-300">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Descreva o requerimento..."
@@ -394,7 +400,9 @@ export function RequerimentoForm({
                   name="data_envio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Data de Envio do Orçamento *</FormLabel>
+                      <FormLabel>
+                        Data de Envio do Orçamento <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="date"
@@ -449,7 +457,9 @@ export function RequerimentoForm({
                   name="horas_funcional"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Horas Funcionais *</FormLabel>
+                      <FormLabel>
+                        Horas Funcionais <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <FormControl>
                         <InputHoras
                           value={field.value}
@@ -471,7 +481,9 @@ export function RequerimentoForm({
                   name="horas_tecnico"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Horas Técnicas *</FormLabel>
+                      <FormLabel>
+                        Horas Técnicas <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <FormControl>
                         <InputHoras
                           value={field.value}
@@ -513,7 +525,9 @@ export function RequerimentoForm({
                   name="tipo_cobranca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo de Cobrança *</FormLabel>
+                      <FormLabel>
+                        Tipo de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -545,7 +559,9 @@ export function RequerimentoForm({
                   name="mes_cobranca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mês/Ano de Cobrança *</FormLabel>
+                      <FormLabel>
+                        Mês/Ano de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
                       <FormControl>
                         <MonthYearPicker
                           value={field.value}
@@ -583,7 +599,9 @@ export function RequerimentoForm({
                       name="valor_hora_funcional"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valor/Hora Funcional *</FormLabel>
+                          <FormLabel>
+                            Valor/Hora Funcional <span className="text-gray-700 dark:text-gray-300">*</span>
+                          </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
@@ -612,7 +630,9 @@ export function RequerimentoForm({
                       name="valor_hora_tecnico"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valor/Hora Técnico *</FormLabel>
+                          <FormLabel>
+                            Valor/Hora Técnico <span className="text-gray-700 dark:text-gray-300">*</span>
+                          </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
@@ -674,7 +694,9 @@ export function RequerimentoForm({
                       name="quantidade_tickets"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantidade de Tickets *</FormLabel>
+                          <FormLabel>
+                            Quantidade de Tickets <span className="text-gray-700 dark:text-gray-300">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"

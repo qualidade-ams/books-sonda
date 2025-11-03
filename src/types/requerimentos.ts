@@ -37,7 +37,7 @@ export interface Requerimento {
 }
 
 // Tipos para opções de select
-export type ModuloType = 'Comex' |'Comply' | 'Comply e-DOCS' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
+export type ModuloType = 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
 export type TipoCobrancaType = 'Selecione' | 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type TipoCobrancaFaturamentoType = Exclude<TipoCobrancaType, 'Selecione'>; // Tipo para faturamento sem 'Selecione'
@@ -48,6 +48,7 @@ export const MODULO_OPTIONS: { value: ModuloType; label: string }[] = [
   { value: 'Comex', label: 'Comex' },
   { value: 'Comply', label: 'Comply' },
   { value: 'Comply e-DOCS', label: 'Comply e-DOCS' },
+  { value: 'Gallery', label: 'Gallery' },
   { value: 'pw.SATI', label: 'pw.SATI' },
   { value: 'pw.SPED', label: 'pw.SPED' },
   { value: 'pw.SATI/pw.SPED', label: 'pw.SATI/pw.SPED' }
@@ -76,7 +77,7 @@ export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[]
 // Tipos de cobrança que requerem campos de valor/hora
 export const TIPOS_COM_VALOR_HORA: TipoCobrancaType[] = [
   'Faturado',
-  'Hora Extra', 
+  'Hora Extra',
   'Sobreaviso',
   'Bolsão Enel'
 ];

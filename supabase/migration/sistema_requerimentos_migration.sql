@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS requerimentos (
   
   -- Constraints de validação
   CONSTRAINT valid_chamado CHECK (chamado ~ '^[A-Za-z0-9\-]+$'),
-  CONSTRAINT valid_modulo CHECK (modulo IN ('Comex','Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED')),
+  CONSTRAINT valid_modulo CHECK (modulo IN ('Comex','Comply', 'Comply e-DOCS', 'Gallery', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED')),
   CONSTRAINT valid_linguagem CHECK (linguagem IN ('ABAP', 'DBA', 'Funcional', 'PL/SQL', 'Técnico')),
   CONSTRAINT valid_cobranca CHECK (tipo_cobranca IN ('Banco de Horas', 'Cobro Interno', 'Contrato', 'Faturado', 'Hora Extra', 'Sobreaviso', 'Reprovado', 'Bolsão Enel')),
   CONSTRAINT valid_status CHECK (status IN ('lancado', 'enviado_faturamento', 'faturado')),

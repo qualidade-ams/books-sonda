@@ -47,7 +47,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'requerimentos') THEN
     ALTER TABLE requerimentos DROP CONSTRAINT IF EXISTS valid_modulo;
     ALTER TABLE requerimentos ADD CONSTRAINT valid_modulo 
-      CHECK (modulo IN ('Comex','Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'));
+      CHECK (modulo IN ('Comex','Comply', 'Comply e-DOCS', 'Gallery', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'));
     
     -- Atualizar registros existentes na tabela requerimentos
     UPDATE requerimentos SET modulo = 'Comex' WHERE modulo = 'CE Plus';

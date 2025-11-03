@@ -683,7 +683,7 @@ const LancarRequerimentos = () => {
                 </div>
                 {/* Filtros */}
                 {showFilters && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t">
                     {/* Busca */}
                     <div>
                       <div className="text-sm font-medium mb-2">Buscar</div>
@@ -732,6 +732,16 @@ const LancarRequerimentos = () => {
                         onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
                         placeholder="Todos os tipos"
                         maxCount={2}
+                      />
+                    </div>
+
+                    {/* Período de Cobrança */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                      <MonthYearPicker
+                        value={filtros.mes_cobranca || ''}
+                        onChange={(value) => handleFiltroChange('mes_cobranca', value)}
+                        placeholder="Todos os períodos"
                       />
                     </div>
                   </div>

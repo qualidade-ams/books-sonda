@@ -9,7 +9,7 @@ const chamadoSchema = z
 
 // Schema para validação de módulo
 const moduloSchema = z
-  .enum(['Comex', 'Comply', 'Comply e-DOCS', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
+  .enum(['Comex', 'Comply', 'Comply e-DOCS', 'Gallery', 'pw.SATI', 'pw.SPED', 'pw.SATI/pw.SPED'] as const, {
     errorMap: () => ({ message: 'Selecione um módulo válido' })
   });
 
@@ -195,8 +195,20 @@ export const requerimentoFormSchema = z.object({
 
 // Schema para validação de filtros
 export const filtrosRequerimentosSchema = z.object({
+  busca: z.string().optional(),
+  modulo: z.union([
+    moduloSchema,
+    z.array(moduloSchema)
+  ]).optional(),
+  linguagem: z.union([
+    linguagemSchema,
+    z.array(linguagemSchema)
+  ]).optional(),
   status: z.enum(['lancado', 'enviado_faturamento', 'faturado']).optional(),
-  tipo_cobranca: tipoCobrancaSchema.optional(),
+  tipo_cobranca: z.union([
+    tipoCobrancaSchema,
+    z.array(tipoCobrancaSchema)
+  ]).optional(),
   mes_cobranca: mesCobrancaSchema.optional(),
   cliente_id: z.string().uuid().optional(),
   data_inicio: dataSchema.optional(),
