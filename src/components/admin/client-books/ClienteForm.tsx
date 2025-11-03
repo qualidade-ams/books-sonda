@@ -290,7 +290,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                   <SelectContent>
                     {empresasAtivas.map((empresa) => (
                       <SelectItem key={empresa.id} value={empresa.id}>
-                        {empresa.nome_completo}
+                        {empresa.nome_abreviado}
                       </SelectItem>
                     ))}
                   </SelectContent>

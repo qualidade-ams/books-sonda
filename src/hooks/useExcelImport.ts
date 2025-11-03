@@ -8,14 +8,14 @@ export interface UseExcelImportReturn {
   isLoading: boolean;
   preview: ImportPreview | null;
   importResult: ImportResult | null;
-  
+
   // Ações
   parseFile: (file: File) => Promise<void>;
   importData: () => Promise<void>;
   downloadTemplate: () => void;
   downloadReport: () => void;
   clearPreview: () => void;
-  
+
   // Mutações
   parseFileMutation: any;
   importDataMutation: any;
@@ -34,7 +34,7 @@ export function useExcelImport(): UseExcelImportReturn {
     onSuccess: (data) => {
       setPreview(data);
       setImportResult(null);
-      
+
       if (data.isValid) {
         toast({
           title: "Arquivo processado com sucesso",
@@ -68,7 +68,7 @@ export function useExcelImport(): UseExcelImportReturn {
     },
     onSuccess: (result) => {
       setImportResult(result);
-      
+
       if (result.success) {
         toast({
           title: "Importação concluída com sucesso",
@@ -113,7 +113,7 @@ export function useExcelImport(): UseExcelImportReturn {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Template baixado",
         description: "Template Excel baixado com sucesso.",
@@ -148,7 +148,7 @@ export function useExcelImport(): UseExcelImportReturn {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Relatório baixado",
         description: "Relatório de importação baixado com sucesso.",
@@ -173,14 +173,14 @@ export function useExcelImport(): UseExcelImportReturn {
     isLoading: parseFileMutation.isPending || importDataMutation.isPending,
     preview,
     importResult,
-    
+
     // Ações
     parseFile,
     importData,
     downloadTemplate,
     downloadReport,
     clearPreview,
-    
+
     // Mutações
     parseFileMutation,
     importDataMutation,

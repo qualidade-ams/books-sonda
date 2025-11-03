@@ -64,6 +64,7 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
     'E-mail': cliente.email,
     'Função': cliente.funcao || '',
     'Empresa': cliente.empresa.nome_completo,
+    'Empresa Abreviado': cliente.empresa.nome_abreviado,
     'Status': cliente.status,
     'Descrição Status': cliente.descricao_status || '',
     'Principal Contato': cliente.principal_contato ? 'Sim' : 'Não',
@@ -83,6 +84,7 @@ export const exportClientesToExcel = (clientes: ClienteCompleto[]) => {
     { wch: 30 }, // E-mail
     { wch: 20 }, // Função
     { wch: 30 }, // Empresa
+    { wch: 20 }, // Empresa Abreviado
     { wch: 12 }, // Status
     { wch: 25 }, // Descrição Status
     { wch: 15 }, // Principal Contato
@@ -252,7 +254,7 @@ export const exportClientesToPDF = async (
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    doc.text(cliente.empresa.nome_abreviado, contentX, contentY + 5);
+    doc.text(`${cliente.empresa.nome_abreviado} - ${cliente.empresa.nome_completo}`, contentX, contentY + 5);
 
     contentY += 12;
 
@@ -344,7 +346,7 @@ export interface ClienteImportData {
   nomeCompleto: string;
   email: string;
   funcao?: string;
-  empresaNome: string; // Nome da empresa para associação
+  empresaNome: string; // Nome abreviado da empresa para associação
   status: string;
   descricaoStatus?: string;
   principalContato: string; // 'Sim' ou 'Não'
@@ -476,7 +478,7 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
           h && h.toLowerCase().includes('função') || h.toLowerCase().includes('funcao')
         );
         const empresaIndex = headers.findIndex(h =>
-          h && h.toLowerCase().includes('empresa')
+          h && (h.toLowerCase().includes('empresa abreviada') || h.toLowerCase().includes('empresa abreviado'))
         );
         const statusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('status') && !h.toLowerCase().includes('descrição')
@@ -495,7 +497,7 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
           throw new Error('Coluna "E-mail" não encontrada no arquivo');
         }
         if (empresaIndex === -1) {
-          throw new Error('Coluna "Empresa" não encontrada no arquivo');
+          throw new Error('Coluna "Empresa Abreviada" não encontrada no arquivo');
         }
 
         // Processar cada linha
@@ -507,7 +509,7 @@ export const processImportClientesExcel = (file: File): Promise<ClienteImportDat
             funcao: funcaoIndex !== -1 && row[funcaoIndex]
               ? String(row[funcaoIndex]).trim()
               : undefined,
-            empresaNome: String(row[empresaIndex]).trim(),
+            empresaNome: String(row[empresaIndex]).trim(), // Nome abreviado da empresa
             status: statusIndex !== -1 && row[statusIndex]
               ? String(row[statusIndex]).trim().toLowerCase()
               : 'ativo',
@@ -609,7 +611,7 @@ export const downloadImportClientesTemplate = () => {
       'Nome Completo': 'João Silva',
       'E-mail': 'joao@exemplo.com',
       'Função': 'Gerente',
-      'Empresa': 'Exemplo Empresa LTDA',
+      'Empresa Abreviada': 'EXEMPLO',
       'Status': 'ativo',
       'Descrição Status': 'Cliente ativo (opcional)',
       'Principal Contato': 'Sim'
@@ -618,7 +620,7 @@ export const downloadImportClientesTemplate = () => {
       'Nome Completo': 'Maria Santos',
       'E-mail': 'maria@outra.com',
       'Função': 'Analista',
-      'Empresa': 'Outra Empresa S.A.',
+      'Empresa Abreviada': 'OUTRA',
       'Status': 'ativo',
       'Descrição Status': '',
       'Principal Contato': 'Não'
@@ -633,7 +635,7 @@ export const downloadImportClientesTemplate = () => {
     { wch: 25 }, // Nome Completo
     { wch: 30 }, // E-mail
     { wch: 20 }, // Função
-    { wch: 30 }, // Empresa
+    { wch: 20 }, // Empresa Abreviada
     { wch: 12 }, // Status
     { wch: 25 }, // Descrição Status
     { wch: 15 }  // Principal Contato

@@ -247,14 +247,15 @@ export function ClientImportExportButtons({
           continue;
         }
 
-        // Encontrar empresa por nome
+        // Encontrar empresa por nome abreviado (prioridade) ou nome completo
         const empresa = empresas.find(e => 
-          e.nome_completo.toLowerCase() === item.empresaNome.toLowerCase() ||
           e.nome_abreviado.toLowerCase() === item.empresaNome.toLowerCase()
+        ) || empresas.find(e => 
+          e.nome_completo.toLowerCase() === item.empresaNome.toLowerCase()
         );
 
         if (!empresa) {
-          erros.push(`Linha ${i + 2}: Empresa "${item.empresaNome}" não encontrada`);
+          erros.push(`Linha ${i + 2}: Empresa "${item.empresaNome}" não encontrada. Use o nome abreviado da empresa.`);
           continue;
         }
 
