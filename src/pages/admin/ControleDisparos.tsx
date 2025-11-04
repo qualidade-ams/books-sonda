@@ -6,7 +6,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Filter
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -33,12 +34,20 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { useToast } from '@/hooks/use-toast';
 import { useControleDisparos } from '@/hooks/useControleDisparos';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton';
+import FiltrosStatusDisparos from '@/components/admin/FiltrosStatusDisparos';
 import type {
   AgendamentoDisparo,
   StatusControleMensal
@@ -64,6 +73,10 @@ const ControleDisparos = () => {
   const [dataAgendamento, setDataAgendamento] = useState('');
   const [observacoesAgendamento, setObservacoesAgendamento] = useState('');
 
+  // Estados para filtros
+  const [statusFiltro, setStatusFiltro] = useState<StatusControleMensal | 'todos'>('todos');
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
 
 
   // Hooks
@@ -82,9 +95,17 @@ const ControleDisparos = () => {
 
   const { empresas } = useEmpresas({ status: ['ativo'] }) as any;
 
+  // Filtrar dados baseado no status selecionado
+  const statusMensalFiltrado = useMemo(() => {
+    if (statusFiltro === 'todos') {
+      return statusMensal;
+    }
+    return statusMensal.filter(status => status.status === statusFiltro);
+  }, [statusMensal, statusFiltro]);
+
   // Seleção de empresas
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
-  const allIds = useMemo(() => statusMensal.map(s => s.empresaId), [statusMensal]);
+  const allIds = useMemo(() => statusMensalFiltrado.map(s => s.empresaId), [statusMensalFiltrado]);
   const allSelected = selecionadas.length > 0 && selecionadas.length === allIds.length;
   const toggleSelectAll = () => {
     setSelecionadas(prev => (prev.length === allIds.length ? [] : allIds));
@@ -92,6 +113,11 @@ const ControleDisparos = () => {
   const toggleSelectOne = (id: string) => {
     setSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  // Limpar seleção quando filtro muda
+  useMemo(() => {
+    setSelecionadas([]);
+  }, [statusFiltro]);
 
   // Verificar se todas as empresas selecionadas já foram enviadas
   const empresasSelecionadasStatus = useMemo(() => {
@@ -391,8 +417,9 @@ const ControleDisparos = () => {
               Acompanhe e gerencie o envio mensal de books
             </p>
           </div>
-
         </div>
+
+
 
         {/* Seletor de Mês/Ano */}
         <Card>
@@ -444,6 +471,8 @@ const ControleDisparos = () => {
             </div>
           </CardContent>
         </Card>
+
+
 
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -561,27 +590,140 @@ const ControleDisparos = () => {
         {/* Lista de Status por Empresa */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              Status por Empresa
-              {statusMensal.length > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
-                  <Label htmlFor="select-all">Selecionar todas</Label>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="flex items-center gap-3">
+                Status por Empresa ({statusMensalFiltrado.length})
+                {statusMensalFiltrado.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
+                    <Label htmlFor="select-all">Selecionar todas</Label>
+                  </div>
+                )}
+              </CardTitle>
+              
+              <div className="flex items-center gap-2">
+                {statusFiltro !== 'todos' && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Filtrado: {statusMensalFiltrado.length} de {statusMensal.length} empresas
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+              </div>
+            </div>
+            
+            {/* Filtros */}
+            {mostrarFiltros && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status do Disparo</label>
+                  <Select
+                    value={statusFiltro}
+                    onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">
+                        <div className="flex items-center justify-between w-full">
+                          <span>Todos os Status</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stats.total}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="enviado">
+                        <div className="flex items-center justify-between w-full">
+                          <span>Enviados</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stats.enviados}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="pendente">
+                        <div className="flex items-center justify-between w-full">
+                          <span>Pendentes</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stats.pendentes}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="falhou">
+                        <div className="flex items-center justify-between w-full">
+                          <span>Falhas</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stats.falhas}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="agendado">
+                        <div className="flex items-center justify-between w-full">
+                          <span>Agendados</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stats.agendados}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </CardTitle>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status Atual</label>
+                  <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50 dark:bg-gray-800">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {statusFiltro === 'todos' ? 'Todos os Status' : 
+                       statusFiltro === 'enviado' ? 'Enviados' :
+                       statusFiltro === 'pendente' ? 'Pendentes' :
+                       statusFiltro === 'falhou' ? 'Falhas' :
+                       statusFiltro === 'agendado' ? 'Agendados' : 'Nenhum filtro'}
+                    </span>
+                    <Badge variant="secondary" className="ml-2">
+                      {statusFiltro === 'todos' ? stats.total :
+                       statusFiltro === 'enviado' ? stats.enviados :
+                       statusFiltro === 'pendente' ? stats.pendentes :
+                       statusFiltro === 'falhou' ? stats.falhas :
+                       statusFiltro === 'agendado' ? stats.agendados : 0}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ações</label>
+                  <Button
+                    variant="outline"
+                    onClick={() => setStatusFiltro('todos')}
+                    disabled={statusFiltro === 'todos'}
+                    className="w-full h-10"
+                  >
+                    Limpar Filtros
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
-            {statusMensal.length === 0 ? (
+            {statusMensalFiltrado.length === 0 ? (
               <div className="text-center py-8">
                 <AlertCircle className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  Nenhuma empresa encontrada para este período
+                  {statusFiltro === 'todos' 
+                    ? 'Nenhuma empresa encontrada para este período'
+                    : `Nenhuma empresa com status "${statusFiltro}" encontrada`
+                  }
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {statusMensal.map((status) => (
+                {statusMensalFiltrado.map((status) => (
                   <div
                     key={status.empresaId}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"

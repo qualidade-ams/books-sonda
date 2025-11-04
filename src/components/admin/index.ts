@@ -5,6 +5,7 @@ export { default as LayoutAdmin } from './LayoutAdmin';
 export { default as Sidebar } from './Sidebar';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as CacheInitializer } from './CacheInitializer';
+export { default as FiltrosStatusDisparos } from './FiltrosStatusDisparos';
 
 // Componentes de requerimentos
 export * from './requerimentos';
