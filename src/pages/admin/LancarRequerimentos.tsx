@@ -36,6 +36,7 @@ import {
   RequerimentoCard,
   RequerimentosTable,
   RequerimentosExportButtons,
+  RequerimentoViewModal,
   ContextualHelp,
   RequerimentosHelpGuide
 } from '@/components/admin/requerimentos';
@@ -71,6 +72,7 @@ const LancarRequerimentos = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showReprovadoModal, setShowReprovadoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,12 +132,10 @@ const LancarRequerimentos = () => {
     label: opt.label
   }));
 
-  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS
-    .filter(opt => opt.value !== 'Selecione') // Filtrar 'Selecione'
-    .map(opt => ({
-      value: opt.value,
-      label: opt.label
-    }));
+  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS.map(opt => ({
+    value: opt.value,
+    label: opt.label
+  }));
 
   // Hooks
   const {
@@ -405,6 +405,11 @@ const LancarRequerimentos = () => {
   const handleEdit = (requerimento: Requerimento) => {
     setSelectedRequerimento(requerimento);
     setShowEditModal(true);
+  };
+
+  const handleView = (requerimento: Requerimento) => {
+    setSelectedRequerimento(requerimento);
+    setShowViewModal(true);
   };
 
   const handleUpdate = async (data: RequerimentoFormData) => {
@@ -1056,12 +1061,14 @@ const LancarRequerimentos = () => {
                         loading={isLoadingEnviados}
                         onEdit={() => { }} // Função vazia - apenas visualização
                         onDelete={() => { }} // Função vazia - apenas visualização
+                        onView={handleView} // Função para visualizar
                         selectedRequerimentos={selectedRequerimentosEnviados}
                         onToggleSelection={toggleRequerimentoSelection}
                         onSelectAll={selectAllRequerimentos}
                         onClearSelection={clearSelection}
                         showEnviarFaturamento={false} // Não mostrar botão de enviar
-                        showActions={false} // Não mostrar coluna de ações
+                        showActions={true} // Mostrar coluna de ações
+                        showEditDelete={false} // Não mostrar botões de editar/excluir (apenas visualizar)
                       />
                     </div>
 
@@ -1136,6 +1143,16 @@ const LancarRequerimentos = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Visualização */}
+        <RequerimentoViewModal
+          requerimento={selectedRequerimento}
+          open={showViewModal}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedRequerimento(null);
+          }}
+        />
 
         {/* Modal de Confirmação de Exclusão */}
         <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

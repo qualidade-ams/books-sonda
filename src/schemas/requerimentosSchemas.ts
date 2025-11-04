@@ -160,12 +160,15 @@ export const requerimentoFormSchema = z.object({
         return num;
       }),
       z.number().int('Quantidade deve ser um número inteiro'),
-      z.undefined()
+      z.undefined(),
+      z.null()
     ])
     .optional()
-    .refine((val) => val === undefined || (val >= 1 && val <= 9999), {
+    .refine((val) => val === undefined || val === null || (val >= 1 && val <= 9999), {
       message: 'Quantidade deve ser entre 1 e 9999'
-    })
+    }),
+  // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
+  empresa_tipo_cobranca: z.string().optional()
 }).refine((data) => {
   // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
   if (data.data_aprovacao && data.data_aprovacao !== '') {
@@ -203,6 +206,36 @@ export const requerimentoFormSchema = z.object({
 }, {
   message: 'Para este tipo de cobrança, é obrigatório informar o valor/hora quando há horas correspondentes',
   path: ['valor_hora_funcional']
+}).refine((data) => {
+  // Validação customizada: quantidade_tickets obrigatória quando tipo_cobranca é "Banco de Horas" e empresa é do tipo "ticket"
+  const tipoCobrancaBancoHoras = data.tipo_cobranca === 'Banco de Horas';
+  const empresaTipoTicket = data.empresa_tipo_cobranca === 'ticket';
+  const precisaTickets = tipoCobrancaBancoHoras && empresaTipoTicket;
+  
+  console.log('Validação de tickets:', {
+    tipo_cobranca: data.tipo_cobranca,
+    empresa_tipo_cobranca: data.empresa_tipo_cobranca,
+    quantidade_tickets: data.quantidade_tickets,
+    tipoCobrancaBancoHoras,
+    empresaTipoTicket,
+    precisaTickets
+  });
+  
+  if (precisaTickets) {
+    // Se precisa de tickets, o campo deve estar preenchido e ser maior que 0
+    const temTicketsValidos = data.quantidade_tickets !== undefined && 
+                             data.quantidade_tickets !== null && 
+                             data.quantidade_tickets > 0;
+    
+    if (!temTicketsValidos) {
+      console.log('Validação falhou: quantidade_tickets é obrigatória mas não foi preenchida');
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Quantidade de tickets é obrigatória para empresas com cobrança por ticket quando o tipo é "Banco de Horas"',
+  path: ['quantidade_tickets']
 });
 
 // Schema para validação de filtros

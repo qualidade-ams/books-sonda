@@ -14,7 +14,8 @@ import {
   Send,
   Edit,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -45,12 +46,14 @@ interface RequerimentosTableProps {
   loading: boolean;
   onEdit: (requerimento: Requerimento) => void;
   onDelete: (requerimento: Requerimento) => void;
+  onView?: (requerimento: Requerimento) => void;
   selectedRequerimentos: string[];
   onToggleSelection: (id: string) => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
   showEnviarFaturamento?: boolean;
   showActions?: boolean;
+  showEditDelete?: boolean; // Nova prop para controlar botões de editar/excluir
 }
 
 const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
@@ -58,12 +61,14 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   loading,
   onEdit,
   onDelete,
+  onView,
   selectedRequerimentos,
   onToggleSelection,
   onSelectAll,
   onClearSelection,
   showEnviarFaturamento = true,
   showActions = true,
+  showEditDelete = true, // Por padrão, mostra botões de editar/excluir
 }) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
   const enviarParaFaturamento = useEnviarParaFaturamento();
@@ -386,7 +391,19 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 {showActions && (
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {podeEditarRequerimento(requerimento) && (
+                      {onView && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onView(requerimento)}
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                          title="Visualizar"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+
+                      {showEditDelete && podeEditarRequerimento(requerimento) && (
                         <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
                           <Button
                             variant="outline"
@@ -400,7 +417,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                         </ProtectedAction>
                       )}
 
-                      {podeEditarRequerimento(requerimento) && (
+                      {showEditDelete && podeEditarRequerimento(requerimento) && (
                         <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
                           <Button
                             variant="outline"
@@ -414,7 +431,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                         </ProtectedAction>
                       )}
 
-                      {showEnviarFaturamento && !requerimento.enviado_faturamento && podeEditarRequerimento(requerimento) && (
+                      {showEditDelete && showEnviarFaturamento && !requerimento.enviado_faturamento && podeEditarRequerimento(requerimento) && (
                         <AlertDialog
                           open={confirmDialogOpen === requerimento.id}
                           onOpenChange={(open) => setConfirmDialogOpen(open ? requerimento.id : null)}

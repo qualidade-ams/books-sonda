@@ -32,7 +32,7 @@ export const exportarRequerimentosExcel = (
         ['Data de Geração:', new Date().toLocaleDateString('pt-BR')],
         ['Total de Requerimentos:', requerimentos.length],
         [''],
-        ['Chamado', 'Cliente', 'Módulo', 'Linguagem', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Autor', 'Tipo Cobrança', 'Tickets', 'Descrição', 'Observação']
+        ['Chamado', 'Cliente', 'Módulo', 'Descrição', 'Linguagem', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Autor', 'Tipo Cobrança', 'Tickets', 'Observação']
       ];
 
       requerimentos.forEach(req => {
@@ -67,6 +67,7 @@ export const exportarRequerimentosExcel = (
           req.chamado,
           req.cliente_nome || 'N/A',
           req.modulo,
+          req.descricao || '-',
           req.linguagem,
           formatarHoras(req.horas_funcional),
           formatarHoras(req.horas_tecnico),
@@ -78,7 +79,6 @@ export const exportarRequerimentosExcel = (
           req.autor_nome || '-',
           req.tipo_cobranca,
           req.quantidade_tickets && req.quantidade_tickets > 0 ? `${req.quantidade_tickets} ticket${req.quantidade_tickets !== 1 ? 's' : ''}` : '-',
-          req.descricao || '-',
           req.observacao || '-'
         ]);
       });
@@ -95,6 +95,7 @@ export const exportarRequerimentosExcel = (
       { width: 12 }, // Chamado
       { width: 25 }, // Cliente
       { width: 12 }, // Módulo
+      { width: 30 }, // Descrição
       { width: 12 }, // Linguagem
       { width: 8 },  // H.Func
       { width: 8 },  // H.Téc
@@ -106,7 +107,6 @@ export const exportarRequerimentosExcel = (
       { width: 20 }, // Autor
       { width: 15 }, // Tipo
       { width: 10 }, // Tickets
-      { width: 30 }, // Descrição
       { width: 30 }  // Observação
     ];
 
@@ -121,6 +121,7 @@ export const exportarRequerimentosExcel = (
       { width: 12 }, // Chamado
       { width: 25 }, // Cliente
       { width: 12 }, // Módulo
+      { width: 30 }, // Descrição
       { width: 12 }, // Linguagem
       { width: 8 },  // H.Func
       { width: 8 },  // H.Téc
@@ -132,7 +133,6 @@ export const exportarRequerimentosExcel = (
       { width: 20 }, // Autor
       { width: 15 }, // Tipo
       { width: 10 }, // Tickets
-      { width: 30 }, // Descrição
       { width: 30 }  // Observação
     ];
 
@@ -281,16 +281,30 @@ export const exportarRequerimentosPDF = (
 
       contentY += 6;
 
-      // Linha 2: Cliente + Módulo/Linguagem
+      // Linha 2: Cliente + Módulo
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(9);
       const clienteText = req.cliente_nome || 'N/A';
       doc.text(`Cliente: ${clienteText}`, contentX, contentY);
-      doc.text(`${req.modulo}/${req.linguagem}`, contentX + 80, contentY);
+      doc.text(`Módulo: ${req.modulo}`, contentX + 80, contentY);
+
+      contentY += 5;
+
+      // Linha 2.5: Descrição (destacada)
+      doc.setTextColor(...colors.dark);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const descricaoText = req.descricao || 'Sem descrição';
+      const maxDescricaoWidth = pageWidth - contentX - 30;
+      const descricaoLines = doc.splitTextToSize(descricaoText, maxDescricaoWidth);
+      
+      // Mostrar apenas a primeira linha da descrição para manter o layout compacto
+      const descricaoDisplay = Array.isArray(descricaoLines) ? descricaoLines[0] : descricaoLines;
+      doc.text(`Descrição: ${descricaoDisplay}`, contentX, contentY);
 
       contentY += 6;
 
-      // Linha 3: Horas
+      // Linha 3: Linguagem + Horas
       const formatarHoras = (horas: string | number): string => {
         if (typeof horas === 'string') {
           return formatarHorasParaExibicao(horas, 'completo');
@@ -308,7 +322,7 @@ export const exportarRequerimentosPDF = (
       doc.setTextColor(...colors.dark);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      const horasText = `Horas: F:${formatarHoras(req.horas_funcional)} | T:${formatarHoras(req.horas_tecnico)} | Total:${formatarHoras(req.horas_total)}`;
+      const horasText = `${req.linguagem} | F:${formatarHoras(req.horas_funcional)} | T:${formatarHoras(req.horas_tecnico)} | Total:${formatarHoras(req.horas_total)}`;
       doc.text(horasText, contentX, contentY);
 
       contentY += 6;

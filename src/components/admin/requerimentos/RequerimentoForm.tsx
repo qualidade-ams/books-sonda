@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calculator, HelpCircle } from 'lucide-react';
+import { Calculator, HelpCircle, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,7 +68,9 @@ export function RequerimentoForm({
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
       // Campos de ticket
-      quantidade_tickets: requerimento?.quantidade_tickets || undefined
+      quantidade_tickets: requerimento?.quantidade_tickets || undefined,
+      // Campo auxiliar para validação
+      empresa_tipo_cobranca: undefined
     }
   });
 
@@ -79,6 +81,14 @@ export function RequerimentoForm({
   const clienteId = form.watch('cliente_id');
   const valorHoraFuncional = form.watch('valor_hora_funcional');
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
+  
+  // Watch para campos obrigatórios
+  const chamado = form.watch('chamado');
+  const descricao = form.watch('descricao');
+  const dataEnvio = form.watch('data_envio');
+  const modulo = form.watch('modulo');
+  const linguagem = form.watch('linguagem');
+  const quantidadeTickets = form.watch('quantidade_tickets');
 
   // Buscar dados do cliente selecionado para verificar tipo de cobrança da empresa
   const clienteSelecionado = useMemo(() => {
@@ -149,7 +159,69 @@ export function RequerimentoForm({
     }
   }, [horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico, mostrarCamposValor]);
 
+  // Validação customizada para habilitar/desabilitar botão
+  const validationStatus = useMemo(() => {
+    const status = {
+      isValid: true,
+      camposFaltando: [] as string[]
+    };
 
+    // Campos obrigatórios básicos
+    if (!chamado || chamado.trim() === '') status.camposFaltando.push('Chamado');
+    if (!clienteId || clienteId.trim() === '') status.camposFaltando.push('Cliente');
+    if (!descricao || descricao.trim() === '') status.camposFaltando.push('Descrição');
+    if (!dataEnvio || dataEnvio.trim() === '') status.camposFaltando.push('Data de Envio');
+    if (!modulo || modulo.trim() === '') status.camposFaltando.push('Módulo');
+    if (!linguagem || linguagem.trim() === '') status.camposFaltando.push('Linguagem');
+    if (!tipoCobranca || tipoCobranca.trim() === '') status.camposFaltando.push('Tipo de Cobrança');
+
+    // Validação condicional de tickets
+    if (mostrarCampoTickets) {
+      const ticketsValidos = quantidadeTickets !== undefined && 
+                            quantidadeTickets !== null && 
+                            quantidadeTickets > 0;
+      if (!ticketsValidos) {
+        status.camposFaltando.push('Quantidade de Tickets');
+      }
+    }
+
+    // Validação condicional de valores/hora
+    if (mostrarCamposValor) {
+      const horasFuncionalNum = typeof horasFuncional === 'string' 
+        ? parseFloat(horasFuncional) || 0 
+        : horasFuncional || 0;
+      const horasTecnicoNum = typeof horasTecnico === 'string' 
+        ? parseFloat(horasTecnico) || 0 
+        : horasTecnico || 0;
+
+      // Se tem horas funcionais, deve ter valor/hora funcional
+      if (horasFuncionalNum > 0 && (!valorHoraFuncional || valorHoraFuncional <= 0)) {
+        status.camposFaltando.push('Valor/Hora Funcional');
+      }
+      // Se tem horas técnicas, deve ter valor/hora técnico
+      if (horasTecnicoNum > 0 && (!valorHoraTecnico || valorHoraTecnico <= 0)) {
+        status.camposFaltando.push('Valor/Hora Técnico');
+      }
+    }
+
+    status.isValid = status.camposFaltando.length === 0;
+    return status;
+  }, [
+    chamado, clienteId, descricao, dataEnvio, modulo, linguagem, tipoCobranca,
+    mostrarCampoTickets, quantidadeTickets,
+    mostrarCamposValor, horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico
+  ]);
+
+  // Atualizar campo auxiliar para validação de tickets
+  useEffect(() => {
+    if (clienteSelecionado?.tipo_cobranca) {
+      console.log('Atualizando empresa_tipo_cobranca:', clienteSelecionado.tipo_cobranca);
+      form.setValue('empresa_tipo_cobranca', clienteSelecionado.tipo_cobranca);
+    } else {
+      console.log('Limpando empresa_tipo_cobranca');
+      form.setValue('empresa_tipo_cobranca', undefined);
+    }
+  }, [clienteSelecionado, form]);
 
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
@@ -168,8 +240,18 @@ export function RequerimentoForm({
 
   const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
     try {
+      console.log('Dados do formulário antes da validação:', data);
+      console.log('Tipo de cobrança:', data.tipo_cobranca);
+      console.log('Empresa tipo cobrança:', data.empresa_tipo_cobranca);
+      console.log('Quantidade tickets:', data.quantidade_tickets);
+      console.log('Mostrar campo tickets:', mostrarCampoTickets);
+      
       screenReader.announceLoading('Salvando requerimento...');
-      await onSubmit(data);
+      
+      // Remover campo auxiliar antes de enviar
+      const { empresa_tipo_cobranca, ...dataToSubmit } = data;
+      
+      await onSubmit(dataToSubmit as RequerimentoFormData);
       if (!requerimento) {
         form.reset();
         screenReader.announceSuccess('Requerimento criado com sucesso');
@@ -696,7 +778,16 @@ export function RequerimentoForm({
                               max="9999"
                               placeholder="Digite a quantidade"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || value === null) {
+                                  field.onChange(undefined);
+                                } else {
+                                  const num = parseInt(value, 10);
+                                  field.onChange(isNaN(num) ? undefined : num);
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -753,10 +844,11 @@ export function RequerimentoForm({
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !form.formState.isValid}
+                disabled={isLoading || !validationStatus.isValid}
                 className="min-w-[120px]"
                 size={responsiveForm.buttonSize as any}
                 aria-label={requerimento ? 'Atualizar requerimento' : 'Criar novo requerimento'}
+                title={!validationStatus.isValid ? `Campos obrigatórios: ${validationStatus.camposFaltando.join(', ')}` : undefined}
               >
                 {isLoading ? (
                   <LoadingSpinner
@@ -768,6 +860,28 @@ export function RequerimentoForm({
                 )}
               </Button>
             </div>
+
+            {/* Indicador de Validação */}
+            {!validationStatus.isValid && validationStatus.camposFaltando.length > 0 && (
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Campos obrigatórios pendentes:
+                    </p>
+                    <ul className="text-amber-700 dark:text-amber-300 space-y-1">
+                      {validationStatus.camposFaltando.map((campo, index) => (
+                        <li key={index} className="flex items-center gap-1">
+                          <span className="w-1 h-1 bg-amber-600 dark:bg-amber-400 rounded-full"></span>
+                          {campo}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </form>
         </Form>
       </CardContent>
