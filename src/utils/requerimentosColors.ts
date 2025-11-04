@@ -12,14 +12,6 @@ export interface CobrancaColors {
 
 // Sistema de cores para tipos de cobrança
 export const COBRANCA_COLORS: Record<TipoCobrancaType, CobrancaColors> = {
-  'Selecione': {
-    bg: 'bg-gray-25',
-    border: 'border-gray-100',
-    text: 'text-gray-400',
-    badge: 'bg-gray-300',
-    hover: 'hover:bg-gray-50',
-    ring: 'ring-gray-100'
-  },
   'Banco de Horas': {
     bg: 'bg-blue-50',
     border: 'border-blue-200',
@@ -106,11 +98,11 @@ export const getBadgeClasses = (tipoCobranca: TipoCobrancaType): string => {
 // Função para obter classe CSS para botão
 export const getButtonClasses = (tipoCobranca: TipoCobrancaType, variant: 'primary' | 'secondary' = 'primary'): string => {
   const colors = getCobrancaColors(tipoCobranca);
-  
+
   if (variant === 'primary') {
     return `${colors.badge} hover:opacity-90 text-white px-4 py-2 rounded-md font-medium transition-opacity duration-200`;
   }
-  
+
   return `${colors.bg} ${colors.border} ${colors.text} ${colors.hover} border px-4 py-2 rounded-md font-medium transition-colors duration-200`;
 };
 
@@ -123,7 +115,6 @@ export const getInputFocusClasses = (tipoCobranca: TipoCobrancaType): string => 
 // Função para obter cor hexadecimal (para gráficos)
 export const getHexColor = (tipoCobranca: TipoCobrancaType): string => {
   const colorMap: Record<TipoCobrancaType, string> = {
-    'Selecione': '#9CA3AF',         // gray-400
     'Banco de Horas': '#3B82F6',    // blue-500
     'Cobro Interno': '#10B981',     // green-500
     'Contrato': '#6B7280',          // gray-500
@@ -133,7 +124,7 @@ export const getHexColor = (tipoCobranca: TipoCobrancaType): string => {
     'Reprovado': '#64748B',         // slate-500
     'Bolsão Enel': '#EAB308'        // yellow-500
   };
-  
+
   return colorMap[tipoCobranca];
 };
 
@@ -169,8 +160,8 @@ export const getCobrancaIcon = (tipoCobranca: TipoCobrancaType): string => {
     'Reprovado': '❌',
     'Bolsão Enel': '⚡'
   };
-  
-  return iconMap[tipoCobranca];
+
+  return iconMap[tipoCobranca] || '📄'; // Ícone padrão se não encontrar
 };
 
 // Constantes para uso em componentes

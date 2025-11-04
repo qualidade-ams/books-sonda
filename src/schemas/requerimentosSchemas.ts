@@ -248,7 +248,7 @@ export const requerimentoFaturamentoSchema = z.object({
   modulo: moduloSchema,
   descricao: descricaoSchema,
   data_envio: dataSchema,
-  data_aprovacao: dataOpcionalSchema,
+  data_aprovacao: dataSchema, // Obrigatório para faturamento
   horas_funcional: horasSchema,
   horas_tecnico: horasSchema,
   linguagem: linguagemSchema,

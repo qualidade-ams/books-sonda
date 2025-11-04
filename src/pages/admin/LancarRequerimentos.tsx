@@ -35,6 +35,7 @@ import {
   RequerimentoForm,
   RequerimentoCard,
   RequerimentosTable,
+  RequerimentosExportButtons,
   ContextualHelp,
   RequerimentosHelpGuide
 } from '@/components/admin/requerimentos';
@@ -514,6 +515,12 @@ const LancarRequerimentos = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            <RequerimentosExportButtons
+              requerimentos={requerimentos}
+              requerimentosEnviados={requerimentosEnviados}
+              estatisticas={statsRequerimentos}
+              disabled={isLoading || isLoadingEnviados}
+            />
             <ProtectedAction screenKey="lancar_requerimentos" requiredLevel="edit">
               <Button
                 onClick={() => setShowCreateModal(true)}

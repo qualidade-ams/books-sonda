@@ -52,7 +52,7 @@ export class RequerimentosService {
       horas_tecnico: horasTecnicoDecimal,
       linguagem: data.linguagem,
       tipo_cobranca: data.tipo_cobranca,
-      mes_cobranca: data.mes_cobranca,
+      mes_cobranca: data.mes_cobranca?.trim() || null,
       observacao: data.observacao?.trim() || null,
       // Campos de valor/hora (incluir apenas se fornecidos)
       valor_hora_funcional: data.valor_hora_funcional || null,
@@ -315,7 +315,7 @@ export class RequerimentosService {
     }
     if (data.linguagem) updateData.linguagem = data.linguagem;
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
-    if (data.mes_cobranca) updateData.mes_cobranca = data.mes_cobranca;
+    if (data.mes_cobranca !== undefined) updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
     if (data.observacao !== undefined) updateData.observacao = data.observacao?.trim() || null;
     // Campos de valor/hora
     if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
@@ -382,8 +382,18 @@ export class RequerimentosService {
     }
 
     // Verificar se tipo de cobrança é válido para faturamento
-    if (requerimento.tipo_cobranca === 'Selecione') {
+    if (!requerimento.tipo_cobranca) {
       throw new Error('É necessário selecionar um tipo de cobrança válido antes de enviar para faturamento');
+    }
+
+    // Verificar se mês de cobrança está preenchido para faturamento
+    if (!requerimento.mes_cobranca || !requerimento.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
+      throw new Error('Mês de cobrança é obrigatório para envio ao faturamento e deve estar no formato MM/YYYY');
+    }
+
+    // Verificar se data de aprovação está preenchida para faturamento
+    if (!requerimento.data_aprovacao || requerimento.data_aprovacao.trim() === '') {
+      throw new Error('Data de aprovação do orçamento é obrigatória para envio ao faturamento');
     }
 
     // Atualizar status
@@ -610,9 +620,10 @@ export class RequerimentosService {
       }
     }
 
-    if (!isUpdate || data.mes_cobranca !== undefined) {
-      if (!data.mes_cobranca || !data.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
-        errors.push('Mês de cobrança é obrigatório e deve estar no formato MM/YYYY');
+    // Validar mês de cobrança apenas se fornecido (campo opcional na criação)
+    if (data.mes_cobranca !== undefined && data.mes_cobranca !== '') {
+      if (!data.mes_cobranca.match(/^(0[1-9]|1[0-2])\/\d{4}$/)) {
+        errors.push('Mês de cobrança deve estar no formato MM/YYYY');
       }
     }
 

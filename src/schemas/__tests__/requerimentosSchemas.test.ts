@@ -377,6 +377,27 @@ describe('requerimentosSchemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('deve exigir data_aprovacao para faturamento', () => {
+      const dataWithoutAprovacao = { ...validData, data_aprovacao: '' };
+      
+      const result = requerimentoFaturamentoSchema.safeParse(dataWithoutAprovacao);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe('Data é obrigatória');
+      }
+    });
+
+    it('deve rejeitar data_aprovacao undefined para faturamento', () => {
+      const dataWithoutAprovacao = { ...validData };
+      delete dataWithoutAprovacao.data_aprovacao;
+      
+      const result = requerimentoFaturamentoSchema.safeParse(dataWithoutAprovacao);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe('Required');
+      }
+    });
+
     it('deve rejeitar mes_cobranca vazio para faturamento', () => {
       const dataWithEmptyMes = { ...validData, mes_cobranca: '' };
       
