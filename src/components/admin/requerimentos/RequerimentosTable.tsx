@@ -214,10 +214,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
 
   return (
     <div className="rounded-md mt-4 overflow-x-auto w-full max-w-full">
-      <Table className="min-w-full text-[10px] sm:text-xs lg:text-sm">
+      <Table className="min-w-full text-xs sm:text-sm lg:text-base">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-6 sm:w-8 lg:w-12 text-[10px] sm:text-xs">
+            <TableHead className="w-8 sm:w-10 lg:w-14 text-xs sm:text-sm py-3">
               <Checkbox
                 checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
                 onCheckedChange={(checked) => {
@@ -228,21 +228,21 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   }
                 }}
                 aria-label="Selecionar todos os requerimentos"
-                className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4"
+                className="h-4 w-4 sm:h-5 sm:w-5"
               />
             </TableHead>
-            <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Chamado</TableHead>
-            <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Cliente</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-28 text-[10px] sm:text-xs lg:text-sm">Módulo</TableHead>
-            <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Func</TableHead>
-            <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Téc</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-24 xl:w-40 text-center text-[10px] sm:text-xs lg:text-sm">Total</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Envio</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Aprov.</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-28 text-center text-[10px] sm:text-xs lg:text-sm">Valor Total</TableHead>
-            <TableHead className="w-10 sm:w-14 lg:w-18 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Período</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-24 xl:w-40 text-center text-[10px] sm:text-xs lg:text-sm">Autor</TableHead>
-            {showActions && <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-[10px] sm:text-xs lg:text-sm">Ações</TableHead>}
+            <TableHead className="w-24 sm:w-28 lg:w-36 xl:w-44 text-xs sm:text-sm lg:text-base py-3">Chamado</TableHead>
+            <TableHead className="w-24 sm:w-28 lg:w-36 xl:w-44 text-xs sm:text-sm lg:text-base py-3">Cliente</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-32 text-xs sm:text-sm lg:text-base py-3">Módulo</TableHead>
+            <TableHead className="w-14 sm:w-16 lg:w-20 xl:w-24 text-center text-xs sm:text-sm lg:text-base py-3">H.Func</TableHead>
+            <TableHead className="w-14 sm:w-16 lg:w-20 xl:w-24 text-center text-xs sm:text-sm lg:text-base py-3">H.Téc</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Total</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Envio</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Aprov.</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-32 text-center text-xs sm:text-sm lg:text-base py-3">Valor Total</TableHead>
+            <TableHead className="w-14 sm:w-18 lg:w-22 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Período</TableHead>
+            <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Autor</TableHead>
+            {showActions && <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-xs sm:text-sm lg:text-base py-3">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -258,114 +258,114 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className={isOwnRequerimento ? "bg-blue-50 dark:bg-blue-950/20" : ""}
                 style={isOwnRequerimento ? { borderLeft: '4px solid #3B82F6' } : {}}
               >
-                <TableCell className="py-1">
+                <TableCell className="py-3">
                   <Checkbox
                     checked={selectedRequerimentos.includes(requerimento.id)}
                     onCheckedChange={() => onToggleSelection(requerimento.id)}
                     aria-label={`Selecionar requerimento ${requerimento.chamado}`}
-                    className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4"
+                    className="h-4 w-4 sm:h-5 sm:w-5"
                   />
                 </TableCell>
 
-                <TableCell className="font-medium py-1">
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <span className="text-[10px] sm:text-xs lg:text-sm flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="truncate text-[10px] sm:text-xs lg:text-sm" title={requerimento.chamado}>
+                <TableCell className="font-medium py-3">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
+                    <div className="flex flex-col min-w-0 flex-1 space-y-1">
+                      <span className="truncate text-xs sm:text-sm lg:text-base font-medium" title={requerimento.chamado}>
                         {requerimento.chamado}
                       </span>
-                      <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[6px] sm:text-[8px] lg:text-[10px] px-0.5 sm:px-1 py-0 leading-tight mt-0.5 w-fit max-w-full`}>
+                      <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[8px] sm:text-[10px] lg:text-xs px-1 sm:px-2 py-0.5 leading-tight w-fit max-w-full`}>
                         <span className="truncate">{requerimento.tipo_cobranca}</span>
                       </Badge>
                     </div>
                   </div>
                 </TableCell>
 
-                <TableCell className="py-1">
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-medium truncate text-[10px] sm:text-xs lg:text-sm" title={requerimento.cliente_nome}>
+                <TableCell className="py-3">
+                  <div className="flex flex-col min-w-0 space-y-1">
+                    <span className="font-medium truncate text-xs sm:text-sm lg:text-base" title={requerimento.cliente_nome}>
                       {requerimento.cliente_nome}
                     </span>
-                    <span className="text-[8px] sm:text-[10px] lg:text-xs text-gray-500 truncate" title={requerimento.descricao}>
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-500 truncate" title={requerimento.descricao}>
                       {requerimento.descricao}
                     </span>
                   </div>
                 </TableCell>
 
-                <TableCell className="py-1">
-                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-blue-600 border-blue-600 px-0.5 sm:px-1 py-0 leading-tight">
+                <TableCell className="py-3">
+                  <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight">
                     <span className="truncate">{requerimento.modulo}</span>
                   </Badge>
                 </TableCell>
 
-                <TableCell className="text-center py-1">
-                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium">
+                <TableCell className="text-center py-3">
+                  <span className="text-xs sm:text-sm lg:text-base font-medium">
                     {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')}
                   </span>
                 </TableCell>
 
-                <TableCell className="text-center py-1">
-                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium">
+                <TableCell className="text-center py-3">
+                  <span className="text-xs sm:text-sm lg:text-base font-medium">
                     {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
                   </span>
                 </TableCell>
 
-                <TableCell className="text-center py-1">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-[10px] sm:text-xs lg:text-sm font-bold text-gray-900 dark:text-white">
+                <TableCell className="text-center py-3">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
                       {formatarHorasParaExibicao(horasTotal, 'HHMM')}
                     </span>
                     {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
-                      <Badge variant="secondary" className="text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                      <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                         🎫 {requerimento.quantidade_tickets}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
 
-                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   {formatDate(requerimento.data_envio)}
                 </TableCell>
 
-                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   {requerimento.data_aprovacao ? formatDate(requerimento.data_aprovacao) : '-'}
                 </TableCell>
 
-                <TableCell className="text-center py-1">
+                <TableCell className="text-center py-3">
                   {valorTotal !== null ? (
-                    <span className="text-[8px] sm:text-[10px] lg:text-xs font-medium text-green-600">
+                    <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
                       R$ {valorTotal.toLocaleString('pt-BR', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
                     </span>
                   ) : (
-                    <span className="text-[8px] sm:text-[10px] lg:text-xs">-</span>
+                    <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
                   )}
                 </TableCell>
 
-                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   {requerimento.mes_cobranca || '-'}
                 </TableCell>
 
-                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   <span className="truncate" title={requerimento.autor_nome}>
                     {requerimento.autor_nome || '-'}
                   </span>
                 </TableCell>
 
                 {showActions && (
-                  <TableCell className="py-1">
-                    <div className="flex items-center gap-0.5">
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-1">
                       {onView && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => onView(requerimento)}
-                          className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-blue-600 hover:text-blue-800"
+                          className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-blue-600 hover:text-blue-800"
                           title="Visualizar"
                         >
-                          <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
+                          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                         </Button>
                       )}
 
@@ -375,10 +375,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onEdit(requerimento)}
-                            className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0"
                             title="Editar"
                           >
-                            <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
+                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                           </Button>
                         </ProtectedAction>
                       )}
@@ -389,10 +389,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onDelete(requerimento)}
-                            className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-red-600 hover:text-red-800"
+                            className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-red-600 hover:text-red-800"
                             title="Excluir"
                           >
-                            <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                           </Button>
                         </ProtectedAction>
                       )}
@@ -407,13 +407,13 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                               variant="outline"
                               size="sm"
                               disabled={enviarParaFaturamento.isPending}
-                              className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-blue-600 hover:text-blue-800"
+                              className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-blue-600 hover:text-blue-800"
                               title="Enviar para Faturamento"
                             >
                               {enviarParaFaturamento.isPending ? (
-                                <div className="animate-spin rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 lg:h-3 lg:w-3 border-b-2 border-blue-600" />
+                                <div className="animate-spin rounded-full h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 border-b-2 border-blue-600" />
                               ) : (
-                                <Send className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
+                                <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                               )}
                             </Button>
                           </AlertDialogTrigger>
@@ -453,7 +453,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                       )}
 
                       {requerimento.enviado_faturamento && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-[6px] sm:text-[8px] lg:text-xs py-0 px-0.5 sm:px-1">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-[8px] sm:text-[10px] lg:text-xs py-0.5 px-1 sm:px-2">
                           ✓
                         </Badge>
                       )}
