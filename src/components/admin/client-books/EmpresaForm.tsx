@@ -55,7 +55,7 @@ const empresaSchema = z.object({
   linkSharepoint: z
     .string()
     .optional(),
-  templatePadrao: z.string().min(1, 'Template é obrigatório'),
+  templatePadrao: z.string().optional(),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   descricaoStatus: z
     .string()
@@ -97,6 +97,24 @@ const empresaSchema = z.object({
 }, {
   message: 'A vigência inicial não pode ser posterior à vigência final',
   path: ['vigenciaFinal'],
+}).refine((data) => {
+  // Validação condicional para Template Padrão quando Tem AMS for true
+  if (data.temAms && (!data.templatePadrao || !data.templatePadrao.trim())) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Template Padrão é obrigatório quando a empresa tem AMS',
+  path: ['templatePadrao'],
+}).refine((data) => {
+  // Validação condicional para Tipo de Cobrança quando Tem AMS for true
+  if (data.temAms && !data.tipoCobranca) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Tipo de Cobrança é obrigatório quando a empresa tem AMS',
+  path: ['tipoCobranca'],
 }).refine((data) => {
   // Validação condicional para Tipo de Book quando Tem AMS for true
   if (data.temAms && !data.tipoBook) {
@@ -215,17 +233,18 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         nomeCompleto: data.nomeCompleto.trim(),
         nomeAbreviado: data.nomeAbreviado.trim(),
         linkSharepoint: data.temAms ? (data.linkSharepoint?.trim() || '') : '',
+        templatePadrao: data.temAms ? (data.templatePadrao || 'portugues') : 'portugues',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
         produtos: data.produtos.map(p => p.toUpperCase() as Produto), // Normalizar produtos para uppercase
         grupos: data.grupos || [],
         temAms: data.temAms || false,
-        tipoBook: data.tipoBook || 'nao_tem_book',
-        tipoCobranca: data.tipoCobranca || 'banco_horas',
+        tipoBook: data.temAms ? (data.tipoBook || 'nao_tem_book') : 'nao_tem_book',
+        tipoCobranca: data.temAms ? (data.tipoCobranca || 'banco_horas') : 'banco_horas',
         vigenciaInicial: data.vigenciaInicial || '',
         vigenciaFinal: data.vigenciaFinal || '',
-        bookPersonalizado: data.bookPersonalizado || false,
-        anexo: data.anexo || false,
+        bookPersonalizado: data.temAms ? (data.bookPersonalizado || false) : false,
+        anexo: data.temAms ? (data.anexo || false) : false,
         observacao: data.observacao?.trim() || ''
       };
 
@@ -405,39 +424,64 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           />
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="templatePadrao"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Template Padrão *</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={isSubmitting || isLoading || templatesLoading}
-                >
+        {/* Template Padrão - só aparece quando Tem AMS for Sim */}
+        {watchTemAms && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="templatePadrao"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Template Padrão *</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSubmitting || isLoading || templatesLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o template" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {bookTemplateOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex flex-col">
+                            <span>{option.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="emailGestor"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-mail do Customer Success *</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o template" />
-                    </SelectTrigger>
+                    <Input
+                      type="email"
+                      placeholder="gestor@sonda.com"
+                      {...field}
+                      disabled={isSubmitting || isLoading}
+                      className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
+                    />
                   </FormControl>
-                  <SelectContent>
-                    {bookTemplateOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex flex-col">
-                          <span>{option.label}</span>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+        {/* E-mail do Customer Success - aparece sempre quando Tem AMS for Não */}
+        {!watchTemAms && (
           <FormField
             control={form.control}
             name="emailGestor"
@@ -457,7 +501,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               </FormItem>
             )}
           />
-        </div>
+        )}
 
 
 
@@ -620,52 +664,54 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           </Card>
         )}
 
-        {/* Tipo de Cobrança */}
-        <Card>
-          <CardContent className="pt-6">
-            <FormField
-              control={form.control}
-              name="tipoCobranca"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base font-semibold">Tipo de Cobrança *</FormLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {TIPO_COBRANCA_OPTIONS.map((option) => (
-                      <FormItem
-                        key={option.value}
-                        className="flex flex-row items-start space-x-3 space-y-0"
-                      >
-                        <FormControl>
-                          <input
-                            type="radio"
-                            name="tipoCobranca"
-                            value={option.value}
-                            checked={field.value === option.value}
-                            onChange={() => field.onChange(option.value)}
-                            disabled={isSubmitting || isLoading}
-                            className="mt-1"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="font-normal cursor-pointer">
-                            {option.label}
-                          </FormLabel>
-                          <FormDescription className="text-xs">
-                            {option.value === 'banco_horas' 
-                              ? 'Cliente utiliza sistema de banco de horas'
-                              : 'Cliente utiliza sistema de tickets'
-                            }
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+        {/* Tipo de Cobrança - só aparece quando Tem AMS for Sim */}
+        {watchTemAms && (
+          <Card>
+            <CardContent className="pt-6">
+              <FormField
+                control={form.control}
+                name="tipoCobranca"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-semibold">Tipo de Cobrança *</FormLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {TIPO_COBRANCA_OPTIONS.map((option) => (
+                        <FormItem
+                          key={option.value}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <input
+                              type="radio"
+                              name="tipoCobranca"
+                              value={option.value}
+                              checked={field.value === option.value}
+                              onChange={() => field.onChange(option.value)}
+                              disabled={isSubmitting || isLoading}
+                              className="mt-1"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="font-normal cursor-pointer">
+                              {option.label}
+                            </FormLabel>
+                            <FormDescription className="text-xs">
+                              {option.value === 'banco_horas' 
+                                ? 'Cliente utiliza sistema de banco de horas'
+                                : 'Cliente utiliza sistema de tickets'
+                              }
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Produtos Contratados */}
         <Card>

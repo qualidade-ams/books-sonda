@@ -2,6 +2,7 @@ import React from 'react';
 import { Filter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ const EmpresasFiltros: React.FC<EmpresasFiltrosProps> = ({
     filtros.busca && filtros.busca.length > 0,
     filtros.status && filtros.status.length > 0,
     filtros.produtos && filtros.produtos.length > 0,
+    filtros.temAms !== undefined,
   ].filter(Boolean).length;
 
   // Handlers para os selects simples
@@ -91,6 +93,14 @@ const EmpresasFiltros: React.FC<EmpresasFiltrosProps> = ({
       );
     }
     
+    if (filtros.temAms !== undefined) {
+      badges.push(
+        <Badge key="temAms" variant="secondary" className="text-xs">
+          Tem AMS: {filtros.temAms ? 'Sim' : 'Não'}
+        </Badge>
+      );
+    }
+    
     return badges;
   };
 
@@ -111,7 +121,7 @@ const EmpresasFiltros: React.FC<EmpresasFiltrosProps> = ({
 
       {/* Filtros */}
       {isOpen && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
           {/* Busca */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Buscar empresas</label>
@@ -166,6 +176,30 @@ const EmpresasFiltros: React.FC<EmpresasFiltrosProps> = ({
                     {option.label}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tem AMS */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Tem AMS</label>
+            <Select
+              value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
+              onValueChange={(value) => {
+                if (value === '__todos_ams__') {
+                  onFiltroChange('temAms', undefined);
+                } else {
+                  onFiltroChange('temAms', value === 'sim');
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__todos_ams__">Todos</SelectItem>
+                <SelectItem value="sim">Sim</SelectItem>
+                <SelectItem value="nao">Não</SelectItem>
               </SelectContent>
             </Select>
           </div>

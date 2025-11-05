@@ -136,14 +136,17 @@ export class EmpresasClientesService {
     if (filtros?.busca) {
       const searchTerm = filtros.busca.trim();
       if (searchTerm) {
-        query = query.or(`nome_completo.ilike.%${searchTerm}%,nome_abreviado.ilike.%${searchTerm}%`);
+        query = query.or(`nome_completo.ilike.%${searchTerm}%,nome_abreviado.ilike.%${searchTerm}%,email_gestor.ilike.%${searchTerm}%`);
       }
     }
 
-    if (filtros?.emailGestor) {
-      const emailTerm = filtros.emailGestor.trim();
-      if (emailTerm) {
-        query = query.ilike('email_gestor', `%${emailTerm}%`);
+    if (filtros?.temAms !== undefined) {
+      if (filtros.temAms === true) {
+        // Filtrar apenas empresas com AMS = true
+        query = query.eq('tem_ams', true);
+      } else {
+        // Filtrar empresas com AMS = false ou null (considerando null como "sem AMS")
+        query = query.or('tem_ams.eq.false,tem_ams.is.null');
       }
     }
 
@@ -214,14 +217,17 @@ export class EmpresasClientesService {
     if (filtros?.busca) {
       const searchTerm = filtros.busca.trim();
       if (searchTerm) {
-        query = query.or(`nome_completo.ilike.%${searchTerm}%,nome_abreviado.ilike.%${searchTerm}%`);
+        query = query.or(`nome_completo.ilike.%${searchTerm}%,nome_abreviado.ilike.%${searchTerm}%,email_gestor.ilike.%${searchTerm}%`);
       }
     }
 
-    if (filtros?.emailGestor) {
-      const emailTerm = filtros.emailGestor.trim();
-      if (emailTerm) {
-        query = query.ilike('email_gestor', `%${emailTerm}%`);
+    if (filtros?.temAms !== undefined) {
+      if (filtros.temAms === true) {
+        // Filtrar apenas empresas com AMS = true
+        query = query.eq('tem_ams', true);
+      } else {
+        // Filtrar empresas com AMS = false ou null (considerando null como "sem AMS")
+        query = query.or('tem_ams.eq.false,tem_ams.is.null');
       }
     }
 

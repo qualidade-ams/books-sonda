@@ -326,7 +326,7 @@ const EmpresasClientes = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Nome ou e-mail..."
+                      placeholder="Nome, e-mail gestor..."
                       value={buscaLocal}
                       onChange={(e) => handleBuscaChange(e.target.value)}
                       className="pl-10"
@@ -375,12 +375,26 @@ const EmpresasClientes = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">E-mail Gestor</label>
-                  <Input
-                    placeholder="Filtrar por e-mail..."
-                    value={filtros.emailGestor || ''}
-                    onChange={(e) => handleFiltroChange('emailGestor', e.target.value)}
-                  />
+                  <label className="text-sm font-medium">Tem AMS</label>
+                  <Select
+                    value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
+                    onValueChange={(value) => {
+                      if (value === '__todos_ams__') {
+                        handleFiltroChange('temAms', undefined);
+                      } else {
+                        handleFiltroChange('temAms', value === 'sim');
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos_ams__">Todos</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}

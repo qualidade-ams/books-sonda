@@ -159,7 +159,7 @@ export interface EmpresaFiltros {
   status?: StatusEmpresa[];
   produtos?: Produto[];
   busca?: string;
-  emailGestor?: string;
+  temAms?: boolean;
 }
 
 export interface ClienteFiltros {

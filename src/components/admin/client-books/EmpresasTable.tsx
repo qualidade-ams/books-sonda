@@ -97,6 +97,23 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     );
   };
 
+  const getAmsBadge = (temAms: boolean) => {
+    return (
+      <div className="flex justify-center">
+        <Badge
+          variant={temAms ? 'default' : 'secondary'}
+          className={`text-xs px-2 py-1 ${
+            temAms 
+              ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/30'
+              : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
+          }`}
+        >
+          {temAms ? 'Sim' : 'Não'}
+        </Badge>
+      </div>
+    );
+  };
+
   const getProdutosBadges = (produtos: any[]) => {
     if (!produtos || produtos.length === 0) return '-';
 
@@ -183,6 +200,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableHead className="min-w-[290px]">Nome</TableHead>
             <TableHead className="min-w-[40px]">Status</TableHead>
             <TableHead className="min-w-[80px]">Template</TableHead>
+            <TableHead className="min-w-[60px] hidden sm:table-cell">Tem AMS</TableHead>
             <TableHead className="min-w-[150px] hidden md:table-cell">Produtos</TableHead>
             <TableHead className="min-w-[180px] hidden lg:table-cell">E-mail Gestor</TableHead>
             <TableHead className="min-w-[80px] hidden 2xl:table-cell">Data Status</TableHead>
@@ -237,6 +255,9 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
               </TableCell>
               <TableCell>
                 {getTemplateBadge(empresa.template_padrao)}
+              </TableCell>
+              <TableCell className="hidden sm:table-cell">
+                {getAmsBadge(empresa.tem_ams || false)}
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 {getProdutosBadges(empresa.produtos || [])}

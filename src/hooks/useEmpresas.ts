@@ -34,7 +34,15 @@ export const useEmpresas = (
       // Garantir que sempre retorne um array
       return Array.isArray(generatedKey) ? generatedKey : [generatedKey];
     }
-    return [baseKey, filtros] as const;
+    // Criar chave mais específica para garantir que mudanças no filtro temAms sejam detectadas
+    return [
+      baseKey, 
+      filtros?.busca || '',
+      filtros?.status || [],
+      filtros?.produtos || [],
+      filtros?.emailGestor || '',
+      filtros?.temAms
+    ] as const;
   }, [filtros, validatedParams]);
 
   // Query para listar empresas com cache otimizado
@@ -51,7 +59,8 @@ export const useEmpresas = (
         (filtros.busca && filtros.busca.trim()) ||
         (filtros.produtos && filtros.produtos.length > 0) ||
         (filtros.status && filtros.status.length > 0) ||
-        (filtros.emailGestor && filtros.emailGestor.trim())
+        (filtros.emailGestor && filtros.emailGestor.trim()) ||
+        (filtros.temAms !== undefined)
       );
 
       // Tentar buscar do cache primeiro APENAS se não há filtros e não há paginação
@@ -77,8 +86,15 @@ export const useEmpresas = (
 
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: filtros && (
+      (filtros.busca && filtros.busca.trim()) ||
+      (filtros.produtos && filtros.produtos.length > 0) ||
+      (filtros.status && filtros.status.length > 0) ||
+      (filtros.emailGestor && filtros.emailGestor.trim()) ||
+      (filtros.temAms !== undefined)
+    ) ? 0 : 5 * 60 * 1000, // 0 quando há filtros, 5 minutos quando não há
     gcTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnMount: true, // Sempre refetch ao montar quando há filtros
   });
 
   // Extrair dados baseado no tipo de resultado
