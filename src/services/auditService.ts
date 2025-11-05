@@ -259,13 +259,14 @@ export class AuditService {
       case 'empresas_clientes':
         const empresaNome = this.getValueFromJson(values, 'nome_completo') || 
                            this.getValueFromJson(values, 'nome_abreviado') || 'Sem nome';
-        const empresaCnpj = this.getValueFromJson(values, 'cnpj') || 'Sem CNPJ';
+        const empresaAbrev = this.getValueFromJson(values, 'nome_abreviado');
         const empresaStatus = this.getValueFromJson(values, 'status') || 'Sem status';
-        return `Empresa criada: "${empresaNome}" - CNPJ: ${empresaCnpj} - Status: ${this.formatStatus(empresaStatus)}`;
+        const empresaInfo = empresaAbrev && empresaAbrev !== empresaNome ? ` (${empresaAbrev})` : '';
+        return `Empresa criada: "${empresaNome}"${empresaInfo} - Status: ${this.formatStatus(empresaStatus)}`;
 
       // Clientes (colaboradores)
       case 'clientes':
-        const clienteNome = this.getValueFromJson(values, 'nome') || 'Sem nome';
+        const clienteNome = this.getValueFromJson(values, 'nome_completo') || 'Sem nome';
         const clienteEmail = this.getValueFromJson(values, 'email') || 'Sem email';
         const clienteEmpresa = this.getValueFromJson(values, 'empresa_id');
         const empresaClienteNome = clienteEmpresa ? await this.getEmpresaNameById(clienteEmpresa) : 'Empresa não informada';
@@ -350,12 +351,15 @@ export class AuditService {
       case 'empresas_clientes':
         const delEmpresaNome = this.getValueFromJson(values, 'nome_completo') || 
                               this.getValueFromJson(values, 'nome_abreviado') || 'Sem nome';
-        const delEmpresaCnpj = this.getValueFromJson(values, 'cnpj') || 'Sem CNPJ';
-        return `Empresa excluída: "${delEmpresaNome}" - CNPJ: ${delEmpresaCnpj}`;
+        const delEmpresaAbrev = this.getValueFromJson(values, 'nome_abreviado');
+        const delEmpresaStatus = this.getValueFromJson(values, 'status');
+        const delEmpresaInfo = delEmpresaAbrev && delEmpresaAbrev !== delEmpresaNome ? ` (${delEmpresaAbrev})` : '';
+        const delStatusInfo = delEmpresaStatus ? ` - Status: ${this.formatStatus(delEmpresaStatus)}` : '';
+        return `Empresa excluída: "${delEmpresaNome}"${delEmpresaInfo}${delStatusInfo}`;
 
       // Clientes excluídos
       case 'clientes':
-        const delClienteNome = this.getValueFromJson(values, 'nome') || 'Sem nome';
+        const delClienteNome = this.getValueFromJson(values, 'nome_completo') || 'Sem nome';
         const delClienteEmail = this.getValueFromJson(values, 'email') || 'Sem email';
         const delClienteEmpresa = this.getValueFromJson(values, 'empresa_id');
         const delEmpresaClienteNome = delClienteEmpresa ? await this.getEmpresaNameById(delClienteEmpresa) : 'Empresa não informada';
@@ -455,10 +459,12 @@ export class AuditService {
         'vigencia_final': 'Vigência Final'
       },
       'clientes': {
-        'nome': 'Nome',
+        'nome_completo': 'Nome Completo',
         'email': 'Email',
+        'funcao': 'Função',
         'empresa_id': 'Empresa',
-        'status': 'Status'
+        'status': 'Status',
+        'principal_contato': 'Contato Principal'
       },
       'grupos_responsaveis': {
         'nome': 'Nome',
@@ -510,22 +516,22 @@ export class AuditService {
     // Handle special field types that need name resolution
     if (fieldName === 'user_id' && typeof value === 'string') {
       const userName = await this.getUserNameById(value);
-      return userName || `ID: ${value}`;
+      return userName || 'Usuário não identificado';
     }
     
     if (fieldName === 'group_id' && typeof value === 'string') {
       const groupName = await this.getGroupNameById(value);
-      return groupName || `ID: ${value}`;
+      return groupName || 'Grupo não identificado';
     }
 
     if (fieldName === 'empresa_id' && typeof value === 'string') {
       const empresaName = await this.getEmpresaNameById(value);
-      return empresaName || `ID: ${value}`;
+      return empresaName || 'Empresa não identificada';
     }
 
     if (fieldName === 'cliente_id' && typeof value === 'string') {
       const clienteName = await this.getClienteNameById(value);
-      return clienteName || `ID: ${value}`;
+      return clienteName || 'Cliente não identificado';
     }
     
     if (fieldName === 'screen_key' && typeof value === 'string') {
@@ -552,6 +558,12 @@ export class AuditService {
       return this.formatTipoCobranca(value);
     }
 
+    // Format template_padrao field - resolve template name by ID
+    if (fieldName === 'template_padrao' && typeof value === 'string') {
+      const templateName = await this.getTemplateNameById(value);
+      return templateName || 'Template não identificado';
+    }
+
     // Format arrays (like produtos)
     if (Array.isArray(value)) {
       return value.map(v => this.formatProduto(v)).join(', ');
@@ -576,8 +588,12 @@ export class AuditService {
   private getRecordIdentifier(values: any): string {
     if (values.name) return `Nome: ${values.name}`;
     if (values.screen_name) return `Tela: ${values.screen_name}`;
-    if (values.id) return `ID: ${values.id}`;
-    return 'Detalhes não disponíveis';
+    if (values.nome_completo) return `${values.nome_completo}`;
+    if (values.nome_abreviado) return `${values.nome_abreviado}`;
+    if (values.nome) return `${values.nome}`;
+    if (values.email) return `${values.email}`;
+    if (values.chamado) return `Chamado ${values.chamado}`;
+    return 'Registro não identificado';
   }
 
   /**
@@ -609,7 +625,7 @@ export class AuditService {
         return empresaNome ? `Empresa "${empresaNome}"` : 'Empresa';
 
       case 'clientes':
-        const clienteNome = this.getValueFromJson(values, 'nome');
+        const clienteNome = this.getValueFromJson(values, 'nome_completo');
         return clienteNome ? `Cliente "${clienteNome}"` : 'Cliente';
 
       case 'grupos_responsaveis':
@@ -723,13 +739,31 @@ export class AuditService {
     try {
       const { data: cliente } = await supabase
         .from('clientes')
-        .select('nome')
+        .select('nome_completo')
         .eq('id', clienteId)
         .single();
 
-      return cliente?.nome || null;
+      return cliente?.nome_completo || null;
     } catch (error) {
       console.warn('Error fetching cliente name:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get template name by ID
+   */
+  private async getTemplateNameById(templateId: string): Promise<string | null> {
+    try {
+      const { data: template } = await supabase
+        .from('email_templates')
+        .select('nome')
+        .eq('id', templateId)
+        .single();
+
+      return template?.nome || null;
+    } catch (error) {
+      console.warn('Error fetching template name:', error);
       return null;
     }
   }

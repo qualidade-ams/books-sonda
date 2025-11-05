@@ -234,7 +234,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Chamado</TableHead>
             <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Cliente</TableHead>
             <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-28 text-[10px] sm:text-xs lg:text-sm">Módulo</TableHead>
-            <TableHead className="w-12 sm:w-16 lg:w-18 xl:w-22 text-[10px] sm:text-xs lg:text-sm">Linguagem</TableHead>
             <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Func</TableHead>
             <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Téc</TableHead>
             <TableHead className="w-12 sm:w-16 lg:w-24 xl:w-40 text-center text-[10px] sm:text-xs lg:text-sm">Total</TableHead>
@@ -296,12 +295,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 <TableCell className="py-1">
                   <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-blue-600 border-blue-600 px-0.5 sm:px-1 py-0 leading-tight">
                     <span className="truncate">{requerimento.modulo}</span>
-                  </Badge>
-                </TableCell>
-
-                <TableCell className="py-1">
-                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-purple-600 border-purple-600 px-0.5 sm:px-1 py-0 leading-tight">
-                    <span className="truncate">{requerimento.linguagem}</span>
                   </Badge>
                 </TableCell>
 

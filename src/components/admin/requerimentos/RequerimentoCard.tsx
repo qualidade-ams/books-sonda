@@ -209,14 +209,9 @@ const RequerimentoCardComponent = function RequerimentoCard({
             <div className="text-xs text-gray-500 truncate">{requerimento.descricao}</div>
           </div>
 
-          {/* Módulo - 6% */}
-          <div className="w-[6%] text-center min-w-0 pr-1">
+          {/* Módulo - 12% (expandido para compensar remoção da linguagem) */}
+          <div className="w-[12%] text-center min-w-0 pr-1">
             <div className="truncate text-xs">{requerimento.modulo}</div>
-          </div>
-
-          {/* Linguagem - 6% */}
-          <div className="w-[6%] text-center min-w-0 pr-1">
-            <div className="truncate text-xs">{requerimento.linguagem}</div>
           </div>
 
           {/* Horas Func. - 5% */}

@@ -18,7 +18,6 @@ import {
   RequerimentoFormData,
   Requerimento,
   MODULO_OPTIONS,
-  LINGUAGEM_OPTIONS,
   TIPO_COBRANCA_OPTIONS,
   requerValorHora
 } from '@/types/requerimentos';
@@ -409,33 +408,6 @@ export function RequerimentoForm({
                   )}
                 />
 
-                {/* Linguagem */}
-                <FormField
-                  control={form.control}
-                  name="linguagem"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Linguagem <span className="text-gray-700 dark:text-gray-300">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma linguagem" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LINGUAGEM_OPTIONS.map((linguagem) => (
-                            <SelectItem key={linguagem.value} value={linguagem.value}>
-                              {linguagem.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               {/* Descrição */}

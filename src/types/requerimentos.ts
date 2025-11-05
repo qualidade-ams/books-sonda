@@ -162,7 +162,6 @@ export interface EstatisticasRequerimentos {
 export interface FiltrosRequerimentos {
   busca?: string;
   modulo?: ModuloType | ModuloType[]; // Suporte a múltipla seleção
-  linguagem?: LinguagemType | LinguagemType[]; // Suporte a múltipla seleção
   status?: StatusRequerimento;
   tipo_cobranca?: TipoCobrancaType | TipoCobrancaType[]; // Suporte a múltipla seleção
   mes_cobranca?: string; // Formato MM/YYYY

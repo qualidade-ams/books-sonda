@@ -143,7 +143,6 @@ export const requerimentoFormSchema = z.object({
   data_aprovacao: dataOpcionalSchema,
   horas_funcional: horasSchema,
   horas_tecnico: horasSchema,
-  linguagem: linguagemSchema,
   tipo_cobranca: tipoCobrancaSchema,
   mes_cobranca: mesCobrancaOpcionalSchema,
   observacao: observacaoSchema,
@@ -245,10 +244,6 @@ export const filtrosRequerimentosSchema = z.object({
     moduloSchema,
     z.array(moduloSchema)
   ]).optional(),
-  linguagem: z.union([
-    linguagemSchema,
-    z.array(linguagemSchema)
-  ]).optional(),
   status: z.enum(['lancado', 'enviado_faturamento', 'faturado']).optional(),
   tipo_cobranca: z.union([
     tipoCobrancaSchema,
@@ -284,7 +279,6 @@ export const requerimentoFaturamentoSchema = z.object({
   data_aprovacao: dataSchema, // Obrigatório para faturamento
   horas_funcional: horasSchema,
   horas_tecnico: horasSchema,
-  linguagem: linguagemSchema,
   tipo_cobranca: tipoCobrancaSchema,
   mes_cobranca: mesCobrancaSchema, // Obrigatório para faturamento
   observacao: observacaoSchema,

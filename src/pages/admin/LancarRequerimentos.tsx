@@ -63,7 +63,6 @@ import {
   RequerimentoFormData,
   FiltrosRequerimentos,
   MODULO_OPTIONS,
-  LINGUAGEM_OPTIONS,
   TIPO_COBRANCA_OPTIONS
 } from '@/types/requerimentos';
 
@@ -98,7 +97,6 @@ const LancarRequerimentos = () => {
   const [filtrosEnviados, setFiltrosEnviados] = useState<FiltrosRequerimentos>({
     busca: '',
     modulo: undefined,
-    linguagem: undefined,
     tipo_cobranca: undefined,
     mes_cobranca: (() => {
       const hoje = new Date();
@@ -114,7 +112,6 @@ const LancarRequerimentos = () => {
   const [filtros, setFiltros] = useState<FiltrosRequerimentos>({
     busca: '',
     modulo: undefined,
-    linguagem: undefined,
     tipo_cobranca: undefined,
     mes_cobranca: undefined,
     data_inicio: undefined,
@@ -127,10 +124,7 @@ const LancarRequerimentos = () => {
     label: opt.label
   }));
 
-  const linguagemOptions: Option[] = LINGUAGEM_OPTIONS.map(opt => ({
-    value: opt.value,
-    label: opt.label
-  }));
+
 
   const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS.map(opt => ({
     value: opt.value,
@@ -184,10 +178,7 @@ const LancarRequerimentos = () => {
         if (!modulos.includes(req.modulo)) return false;
       }
 
-      if (currentFiltros.linguagem) {
-        const linguagens = Array.isArray(currentFiltros.linguagem) ? currentFiltros.linguagem : [currentFiltros.linguagem];
-        if (!linguagens.includes(req.linguagem)) return false;
-      }
+
 
       if (currentFiltros.tipo_cobranca) {
         const tipos = Array.isArray(currentFiltros.tipo_cobranca) ? currentFiltros.tipo_cobranca : [currentFiltros.tipo_cobranca];
@@ -298,7 +289,6 @@ const LancarRequerimentos = () => {
     setFiltros({
       busca: '',
       modulo: undefined,
-      linguagem: undefined,
       tipo_cobranca: undefined,
       mes_cobranca: undefined,
       data_inicio: undefined,
@@ -335,7 +325,6 @@ const LancarRequerimentos = () => {
     setFiltrosEnviados({
       busca: '',
       modulo: undefined,
-      linguagem: undefined,
       tipo_cobranca: undefined,
       mes_cobranca: `${mes}/${ano}`, // Manter mês corrente no formato MM/YYYY
       data_inicio: undefined,
@@ -483,7 +472,6 @@ const LancarRequerimentos = () => {
       data_aprovacao: requerimento.data_aprovacao,
       horas_funcional: requerimento.horas_funcional,
       horas_tecnico: requerimento.horas_tecnico,
-      linguagem: requerimento.linguagem,
       tipo_cobranca: requerimento.tipo_cobranca,
       mes_cobranca: requerimento.mes_cobranca,
       observacao: requerimento.observacao || ''
@@ -723,17 +711,6 @@ const LancarRequerimentos = () => {
                       />
                     </div>
 
-                    {/* Linguagem */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Linguagem</div>
-                      <MultiSelect
-                        options={linguagemOptions}
-                        selected={Array.isArray(filtros.linguagem) ? filtros.linguagem : filtros.linguagem ? [filtros.linguagem] : []}
-                        onChange={(values) => handleFiltroChange('linguagem', values.length > 0 ? values : undefined)}
-                        placeholder="Todas as linguagens"
-                        maxCount={2}
-                      />
-                    </div>
 
                     {/* Tipo de Cobrança */}
                     <div>
@@ -771,7 +748,7 @@ const LancarRequerimentos = () => {
                       Nenhum requerimento encontrado
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      {filtros.busca || filtros.modulo || filtros.linguagem || filtros.tipo_cobranca
+                      {filtros.busca || filtros.modulo || filtros.tipo_cobranca
                         ? 'Tente ajustar os filtros ou criar um novo requerimento.'
                         : 'Comece criando seu primeiro requerimento.'}
                     </p>
@@ -999,30 +976,7 @@ const LancarRequerimentos = () => {
                       </Select>
                     </div>
 
-                    {/* Linguagem */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Linguagem</div>
-                      <Select
-                        value={
-                          Array.isArray(filtrosEnviados.linguagem)
-                            ? (filtrosEnviados.linguagem.length > 0 ? filtrosEnviados.linguagem[0] : '__all_languages__')
-                            : (filtrosEnviados.linguagem || '__all_languages__')
-                        }
-                        onValueChange={(value) => handleFiltroEnviadosChange('linguagem', value === '__all_languages__' ? undefined : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Todas as linguagens" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__all_languages__">Todas as linguagens</SelectItem>
-                          {LINGUAGEM_OPTIONS.map((linguagem) => (
-                            <SelectItem key={linguagem.value} value={linguagem.value}>
-                              {linguagem.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+
 
                     {/* Mês/Ano */}
                     <div>
@@ -1048,7 +1002,7 @@ const LancarRequerimentos = () => {
                       Nenhum requerimento encontrado
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {filtrosEnviados.busca || filtrosEnviados.modulo || filtrosEnviados.linguagem || filtrosEnviados.tipo_cobranca
+                      {filtrosEnviados.busca || filtrosEnviados.modulo || filtrosEnviados.tipo_cobranca
                         ? 'Tente ajustar os filtros para encontrar requerimentos.'
                         : 'Os requerimentos enviados para faturamento aparecerão aqui.'}
                     </p>

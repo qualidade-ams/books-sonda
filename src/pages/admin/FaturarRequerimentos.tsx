@@ -877,7 +877,6 @@ export default function FaturarRequerimentos() {
                             <TableHead className="w-20 sm:w-24 lg:w-32 text-[10px] sm:text-xs lg:text-sm">Chamado</TableHead>
                             <TableHead className="w-20 sm:w-24 lg:w-32 text-[10px] sm:text-xs lg:text-sm">Cliente</TableHead>
                             <TableHead className="w-16 sm:w-20 lg:w-28 text-[10px] sm:text-xs lg:text-sm">Módulo</TableHead>
-                            <TableHead className="w-16 sm:w-18 lg:w-24 text-[10px] sm:text-xs lg:text-sm">Linguagem</TableHead>
                             <TableHead className="w-12 sm:w-16 lg:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Func</TableHead>
                             <TableHead className="w-12 sm:w-16 lg:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Téc</TableHead>
                             <TableHead className="w-16 sm:w-20 lg:w-25 text-center text-[10px] sm:text-xs lg:text-sm">Total</TableHead>
@@ -916,11 +915,7 @@ export default function FaturarRequerimentos() {
                                   </Badge>
                                 </TableCell>
 
-                                <TableCell className="py-1">
-                                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-purple-600 border-purple-600 px-0.5 sm:px-1 py-0 leading-tight">
-                                    <span className="truncate">{req.linguagem}</span>
-                                  </Badge>
-                                </TableCell>
+
 
                                 <TableCell className="text-center py-1">
                                   <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-blue-600">
