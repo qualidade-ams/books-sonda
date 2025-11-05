@@ -896,14 +896,9 @@ export default function FaturarRequerimentos() {
                                 <TableCell className="font-medium py-1">
                                   <div className="flex items-center gap-0.5 sm:gap-1">
                                     <span className="text-[10px] sm:text-xs lg:text-sm flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
-                                    <div className="flex flex-col min-w-0 flex-1">
-                                      <code className="bg-gray-100 dark:bg-gray-800 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[8px] sm:text-[10px] lg:text-xs truncate" title={req.chamado}>
-                                        {req.chamado}
-                                      </code>
-                                      <Badge className={`${getBadgeClasses(req.tipo_cobranca)} text-[6px] sm:text-[8px] lg:text-[10px] px-0.5 sm:px-1 py-0 leading-tight mt-0.5 w-fit max-w-full`}>
-                                        <span className="truncate">{req.tipo_cobranca}</span>
-                                      </Badge>
-                                    </div>
+                                    <code className="bg-gray-100 dark:bg-gray-800 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[8px] sm:text-[10px] lg:text-xs truncate flex-1" title={req.chamado}>
+                                      {req.chamado}
+                                    </code>
                                   </div>
                                 </TableCell>
 
