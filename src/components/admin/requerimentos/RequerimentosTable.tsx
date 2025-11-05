@@ -214,10 +214,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
 
   return (
     <div className="rounded-md mt-4 overflow-x-auto w-full max-w-full">
-      <Table className="min-w-full">
+      <Table className="min-w-full text-[10px] sm:text-xs lg:text-sm">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">
+            <TableHead className="w-6 sm:w-8 lg:w-12 text-[10px] sm:text-xs">
               <Checkbox
                 checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
                 onCheckedChange={(checked) => {
@@ -228,21 +228,22 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   }
                 }}
                 aria-label="Selecionar todos os requerimentos"
+                className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4"
               />
             </TableHead>
-            <TableHead className="w-40">Chamado</TableHead>
-            <TableHead className="w-40">Cliente</TableHead>
-            <TableHead className="w-28 hidden md:table-cell">Módulo</TableHead>
-            <TableHead className="w-22 hidden md:table-cell">Linguagem</TableHead>
-            <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
-            <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
-            <TableHead className="w-40 text-center">Total</TableHead>
-            <TableHead className="w-24 text-center hidden xl:table-cell">Data Envio</TableHead>
-            <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
-            <TableHead className="w-28 text-center hidden 2xl:table-cell">Valor Total</TableHead>
-            <TableHead className="w-24 text-center hidden 2xl:table-cell">Período de Cobrança</TableHead>
-            <TableHead className="w-40 text-center hidden 2xl:table-cell">Autor</TableHead>
-            {showActions && <TableHead className="w-24">Ações</TableHead>}
+            <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Chamado</TableHead>
+            <TableHead className="w-20 sm:w-24 lg:w-32 xl:w-40 text-[10px] sm:text-xs lg:text-sm">Cliente</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-28 text-[10px] sm:text-xs lg:text-sm">Módulo</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-18 xl:w-22 text-[10px] sm:text-xs lg:text-sm">Linguagem</TableHead>
+            <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Func</TableHead>
+            <TableHead className="w-10 sm:w-12 lg:w-16 xl:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Téc</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-24 xl:w-40 text-center text-[10px] sm:text-xs lg:text-sm">Total</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Envio</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Aprov.</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-28 text-center text-[10px] sm:text-xs lg:text-sm">Valor Total</TableHead>
+            <TableHead className="w-10 sm:w-14 lg:w-18 xl:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Período</TableHead>
+            <TableHead className="w-12 sm:w-16 lg:w-24 xl:w-40 text-center text-[10px] sm:text-xs lg:text-sm">Autor</TableHead>
+            {showActions && <TableHead className="w-12 sm:w-16 lg:w-20 xl:w-24 text-[10px] sm:text-xs lg:text-sm">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -258,148 +259,120 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className={isOwnRequerimento ? "bg-blue-50 dark:bg-blue-950/20" : ""}
                 style={isOwnRequerimento ? { borderLeft: '4px solid #3B82F6' } : {}}
               >
-                <TableCell>
+                <TableCell className="py-1">
                   <Checkbox
                     checked={selectedRequerimentos.includes(requerimento.id)}
                     onCheckedChange={() => onToggleSelection(requerimento.id)}
                     aria-label={`Selecionar requerimento ${requerimento.chamado}`}
+                    className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4"
                   />
                 </TableCell>
 
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
-                      <span className="truncate max-w-[80px]" title={requerimento.chamado}>
+                <TableCell className="font-medium py-1">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
+                    <span className="text-[10px] sm:text-xs lg:text-sm flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="truncate text-[10px] sm:text-xs lg:text-sm" title={requerimento.chamado}>
                         {requerimento.chamado}
                       </span>
-                    </div>
-                    <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-xs px-2 py-1 mt-1 w-fit`}>
-                      {requerimento.tipo_cobranca}
-                    </Badge>
-                    {/* Mostrar módulo e linguagem em telas pequenas */}
-                    <div className="md:hidden mt-1 space-y-1">
-                      <div className="text-xs text-gray-500">{requerimento.modulo}</div>
-                      <div className="text-xs text-gray-500">{requerimento.linguagem}</div>
+                      <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[6px] sm:text-[8px] lg:text-[10px] px-0.5 sm:px-1 py-0 leading-tight mt-0.5 w-fit max-w-full`}>
+                        <span className="truncate">{requerimento.tipo_cobranca}</span>
+                      </Badge>
                     </div>
                   </div>
                 </TableCell>
 
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium truncate max-w-[120px]" title={requerimento.cliente_nome}>
+                <TableCell className="py-1">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate text-[10px] sm:text-xs lg:text-sm" title={requerimento.cliente_nome}>
                       {requerimento.cliente_nome}
                     </span>
-                    <span className="text-xs text-gray-500 truncate max-w-[120px]" title={requerimento.descricao}>
+                    <span className="text-[8px] sm:text-[10px] lg:text-xs text-gray-500 truncate" title={requerimento.descricao}>
                       {requerimento.descricao}
                     </span>
-                    {/* Mostrar horas em telas pequenas */}
-                    <div className="lg:hidden mt-1">
-                      <span className="text-xs text-gray-500">
-                        F: {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')} |
-                        T: {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
-                      </span>
-                    </div>
-                    {/* Mostrar datas em telas pequenas */}
-                    <div className="xl:hidden mt-1">
-                      <span className="text-xs text-gray-400">
-                        {formatDate(requerimento.data_envio)}
-                        {requerimento.data_aprovacao && ` | ${formatDate(requerimento.data_aprovacao)}`}
-                      </span>
-                    </div>
-
                   </div>
                 </TableCell>
 
-                <TableCell className="hidden md:table-cell">
-                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-600">
-                    {requerimento.modulo}
+                <TableCell className="py-1">
+                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-blue-600 border-blue-600 px-0.5 sm:px-1 py-0 leading-tight">
+                    <span className="truncate">{requerimento.modulo}</span>
                   </Badge>
                 </TableCell>
 
-                <TableCell className="hidden md:table-cell">
-                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-600">
-                    {requerimento.linguagem}
+                <TableCell className="py-1">
+                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-purple-600 border-purple-600 px-0.5 sm:px-1 py-0 leading-tight">
+                    <span className="truncate">{requerimento.linguagem}</span>
                   </Badge>
                 </TableCell>
 
-                <TableCell className="hidden lg:table-cell text-center">
-                  <span className="text-sm font-medium">
+                <TableCell className="text-center py-1">
+                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium">
                     {formatarHorasParaExibicao(requerimento.horas_funcional?.toString() || '0', 'HHMM')}
                   </span>
                 </TableCell>
 
-                <TableCell className="hidden lg:table-cell text-center">
-                  <span className="text-sm font-medium">
+                <TableCell className="text-center py-1">
+                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium">
                     {formatarHorasParaExibicao(requerimento.horas_tecnico?.toString() || '0', 'HHMM')}
                   </span>
                 </TableCell>
 
-                <TableCell className="text-center">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                <TableCell className="text-center py-1">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-[10px] sm:text-xs lg:text-sm font-bold text-gray-900 dark:text-white">
                       {formatarHorasParaExibicao(horasTotal, 'HHMM')}
                     </span>
                     {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
-                      <Badge variant="secondary" className="text-medium px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        🎫 {requerimento.quantidade_tickets} ticket{requerimento.quantidade_tickets > 1 ? 's' : ''}
+                      <Badge variant="secondary" className="text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                        🎫 {requerimento.quantidade_tickets}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
 
-                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                   {formatDate(requerimento.data_envio)}
                 </TableCell>
 
-                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                   {requerimento.data_aprovacao ? formatDate(requerimento.data_aprovacao) : '-'}
                 </TableCell>
 
-                <TableCell className="hidden 2xl:table-cell text-center">
+                <TableCell className="text-center py-1">
                   {valorTotal !== null ? (
-                    <span className="text-sm font-medium text-green-600">
+                    <span className="text-[8px] sm:text-[10px] lg:text-xs font-medium text-green-600">
                       R$ {valorTotal.toLocaleString('pt-BR', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
                     </span>
                   ) : (
-                    '-'
+                    <span className="text-[8px] sm:text-[10px] lg:text-xs">-</span>
                   )}
-                  {/* Mostrar valor em telas pequenas */}
-                  <div className="2xl:hidden mt-1">
-                    {valorTotal !== null && (
-                      <span className="text-xs text-green-600">
-                        R$ {valorTotal.toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
-                      </span>
-                    )}
-                  </div>
                 </TableCell>
 
-                <TableCell className="hidden 2xl:table-cell text-center text-sm text-gray-500">
+                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                   {requerimento.mes_cobranca || '-'}
                 </TableCell>
 
-                <TableCell className="hidden 2xl:table-cell text-center text-sm text-gray-500">
-                  {requerimento.autor_nome || '-'}
+                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                  <span className="truncate" title={requerimento.autor_nome}>
+                    {requerimento.autor_nome || '-'}
+                  </span>
                 </TableCell>
 
                 {showActions && (
-                  <TableCell>
-                    <div className="flex items-center gap-1">
+                  <TableCell className="py-1">
+                    <div className="flex items-center gap-0.5">
                       {onView && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => onView(requerimento)}
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                          className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-blue-600 hover:text-blue-800"
                           title="Visualizar"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
                         </Button>
                       )}
 
@@ -409,10 +382,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onEdit(requerimento)}
-                            className="h-8 w-8 p-0"
+                            className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0"
                             title="Editar"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
                           </Button>
                         </ProtectedAction>
                       )}
@@ -423,10 +396,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onDelete(requerimento)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-red-600 hover:text-red-800"
                             title="Excluir"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
                           </Button>
                         </ProtectedAction>
                       )}
@@ -441,13 +414,13 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                               variant="outline"
                               size="sm"
                               disabled={enviarParaFaturamento.isPending}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                              className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 p-0 text-blue-600 hover:text-blue-800"
                               title="Enviar para Faturamento"
                             >
                               {enviarParaFaturamento.isPending ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600" />
+                                <div className="animate-spin rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 lg:h-3 lg:w-3 border-b-2 border-blue-600" />
                               ) : (
-                                <Send className="h-4 w-4" />
+                                <Send className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
                               )}
                             </Button>
                           </AlertDialogTrigger>
@@ -487,7 +460,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                       )}
 
                       {requerimento.enviado_faturamento && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs py-0 px-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-[6px] sm:text-[8px] lg:text-xs py-0 px-0.5 sm:px-1">
                           ✓
                         </Badge>
                       )}

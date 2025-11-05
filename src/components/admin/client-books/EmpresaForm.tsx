@@ -54,8 +54,7 @@ const empresaSchema = z.object({
     .max(100, 'Nome abreviado deve ter no máximo 100 caracteres'),
   linkSharepoint: z
     .string()
-    .min(1, 'Link SharePoint é obrigatório')
-    .url('Link deve ser uma URL válida'),
+    .optional(),
   templatePadrao: z.string().min(1, 'Template é obrigatório'),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   descricaoStatus: z
@@ -107,6 +106,29 @@ const empresaSchema = z.object({
 }, {
   message: 'Tipo de Book é obrigatório quando a empresa tem AMS',
   path: ['tipoBook'],
+}).refine((data) => {
+  // Validação condicional para Link SharePoint quando Tem AMS for true
+  if (data.temAms && (!data.linkSharepoint || !data.linkSharepoint.trim())) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Link SharePoint é obrigatório quando a empresa tem AMS',
+  path: ['linkSharepoint'],
+}).refine((data) => {
+  // Validação de URL para Link SharePoint quando preenchido
+  if (data.linkSharepoint && data.linkSharepoint.trim()) {
+    try {
+      new URL(data.linkSharepoint);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Link SharePoint deve ser uma URL válida',
+  path: ['linkSharepoint'],
 });
 
 interface EmpresaFormProps {
@@ -192,7 +214,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         ...data,
         nomeCompleto: data.nomeCompleto.trim(),
         nomeAbreviado: data.nomeAbreviado.trim(),
-        linkSharepoint: data.linkSharepoint?.trim() || '',
+        linkSharepoint: data.temAms ? (data.linkSharepoint?.trim() || '') : '',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
         produtos: data.produtos.map(p => p.toUpperCase() as Produto), // Normalizar produtos para uppercase
@@ -437,26 +459,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-          <FormField
-            control={form.control}
-            name="linkSharepoint"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Link SharePoint *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://..."
-                    {...field}
-                    disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+
 
         {/* Vigência do Contrato */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -501,35 +504,58 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
         {/* Configurações Book - só aparece quando Tem AMS for Sim */}
         {watchTemAms && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="tipoBook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Book *</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isSubmitting || isLoading}
-                  >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <FormField
+                control={form.control}
+                name="linkSharepoint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link SharePoint *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="https://..."
+                        {...field}
+                        disabled={isSubmitting || isLoading}
+                        className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {TIPO_BOOK_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tipoBook"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Book *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting || isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TIPO_BOOK_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         )}
 

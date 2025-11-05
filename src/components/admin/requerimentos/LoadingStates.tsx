@@ -180,51 +180,51 @@ interface RequerimentosTableSkeletonProps {
 export function RequerimentosTableSkeleton({ showActions = true }: RequerimentosTableSkeletonProps = {}) {
   return (
     <div className="rounded-md mt-4 overflow-x-auto">
-      <Table>
+      <Table className="text-xs sm:text-sm">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">
-              <Skeleton className="h-4 w-4" />
+            <TableHead className="w-8 sm:w-12">
+              <Skeleton className="h-3 w-3 sm:h-4 sm:w-4" />
             </TableHead>
-            <TableHead className="min-w-[120px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead className="w-24 sm:w-32 lg:w-40">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-16" />
             </TableHead>
-            <TableHead className="min-w-[150px]">
-              <Skeleton className="h-4 w-16" />
+            <TableHead className="w-24 sm:w-32 lg:w-40">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-16" />
             </TableHead>
-            <TableHead className="min-w-[100px] hidden md:table-cell">
-              <Skeleton className="h-4 w-16" />
+            <TableHead className="w-16 sm:w-20 lg:w-28">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-16" />
             </TableHead>
-            <TableHead className="min-w-[100px] hidden md:table-cell">
-              <Skeleton className="h-4 w-20" />
+            <TableHead className="w-16 sm:w-18 lg:w-22">
+              <Skeleton className="h-3 sm:h-4 w-14 sm:w-20" />
             </TableHead>
-            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">
-              <Skeleton className="h-4 w-12 mx-auto" />
+            <TableHead className="w-12 sm:w-16 lg:w-20 text-center">
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[80px] text-center hidden lg:table-cell">
-              <Skeleton className="h-4 w-12 mx-auto" />
+            <TableHead className="w-12 sm:w-16 lg:w-20 text-center">
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[80px] text-center">
-              <Skeleton className="h-4 w-12 mx-auto" />
+            <TableHead className="w-16 sm:w-24 lg:w-40 text-center">
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">
-              <Skeleton className="h-4 w-20 mx-auto" />
+            <TableHead className="w-16 sm:w-20 lg:w-24 text-center">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-20 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[100px] text-center hidden xl:table-cell">
-              <Skeleton className="h-4 w-20 mx-auto" />
+            <TableHead className="w-16 sm:w-20 lg:w-24 text-center">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-20 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[120px] text-center hidden 2xl:table-cell">
-              <Skeleton className="h-4 w-20 mx-auto" />
+            <TableHead className="w-16 sm:w-20 lg:w-28 text-center">
+              <Skeleton className="h-3 sm:h-4 w-12 sm:w-20 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[100px] text-center">
-              <Skeleton className="h-4 w-12 mx-auto" />
+            <TableHead className="w-14 sm:w-18 lg:w-24 text-center">
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
             </TableHead>
-            <TableHead className="min-w-[100px] text-center hidden lg:table-cell">
-              <Skeleton className="h-4 w-12 mx-auto" />
+            <TableHead className="w-16 sm:w-24 lg:w-40 text-center">
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
             </TableHead>
             {showActions && (
-              <TableHead className="w-32">
-                <Skeleton className="h-4 w-12" />
+              <TableHead className="w-16 sm:w-20 lg:w-24">
+                <Skeleton className="h-3 sm:h-4 w-8 sm:w-12" />
               </TableHead>
             )}
           </TableRow>
@@ -233,68 +233,59 @@ export function RequerimentosTableSkeleton({ showActions = true }: Requerimentos
           {Array.from({ length: 6 }).map((_, i) => (
             <TableRow key={i}>
               <TableCell>
-                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-3 w-3 sm:h-4 sm:w-4" />
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
-                  <Skeleton className="h-4 w-20" />
-                  <div className="md:hidden space-y-1">
-                    <Skeleton className="h-3 w-16" />
-                    <Skeleton className="h-3 w-14" />
-                  </div>
+                  <Skeleton className="h-3 sm:h-4 w-16 sm:w-20" />
+                  <Skeleton className="h-2 sm:h-3 w-12 sm:w-16" />
                 </div>
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-3 w-32" />
-                  <div className="lg:hidden">
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                  <div className="xl:hidden">
-                    <Skeleton className="h-3 w-18" />
-                  </div>
-                  <div className="lg:hidden">
-                    <Skeleton className="h-3 w-16" />
-                  </div>
+                  <Skeleton className="h-3 sm:h-4 w-18 sm:w-24" />
+                  <Skeleton className="h-2 sm:h-3 w-20 sm:w-32" />
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <Skeleton className="h-5 w-16" />
+              <TableCell>
+                <Skeleton className="h-3 sm:h-4 w-12 sm:w-16" />
               </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <Skeleton className="h-5 w-16" />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell text-center">
-                <Skeleton className="h-4 w-12 mx-auto" />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell text-center">
-                <Skeleton className="h-4 w-12 mx-auto" />
+              <TableCell>
+                <Skeleton className="h-3 sm:h-4 w-12 sm:w-16" />
               </TableCell>
               <TableCell className="text-center">
-                <Skeleton className="h-4 w-12 mx-auto" />
-              </TableCell>
-              <TableCell className="hidden xl:table-cell text-center">
-                <Skeleton className="h-4 w-16 mx-auto" />
-              </TableCell>
-              <TableCell className="hidden xl:table-cell text-center">
-                <Skeleton className="h-4 w-16 mx-auto" />
-              </TableCell>
-              <TableCell className="hidden 2xl:table-cell text-center">
-                <Skeleton className="h-4 w-20 mx-auto" />
+                <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
               </TableCell>
               <TableCell className="text-center">
-                <Skeleton className="h-4 w-16 mx-auto" />
+                <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
               </TableCell>
-              <TableCell className="hidden lg:table-cell text-center">
-                <Skeleton className="h-4 w-16 mx-auto" />
+              <TableCell className="text-center">
+                <div className="space-y-0.5">
+                  <Skeleton className="h-3 sm:h-4 w-8 sm:w-12 mx-auto" />
+                  <Skeleton className="h-2 sm:h-3 w-6 sm:w-8 mx-auto" />
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-2 sm:h-3 w-10 sm:w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-2 sm:h-3 w-10 sm:w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-2 sm:h-3 w-12 sm:w-20 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-2 sm:h-3 w-8 sm:w-16 mx-auto" />
+              </TableCell>
+              <TableCell className="text-center">
+                <Skeleton className="h-2 sm:h-3 w-10 sm:w-16 mx-auto" />
               </TableCell>
               {showActions && (
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
+                  <div className="flex items-center gap-0.5 sm:gap-1">
+                    <Skeleton className="h-5 w-5 sm:h-8 sm:w-8" />
+                    <Skeleton className="h-5 w-5 sm:h-8 sm:w-8" />
+                    <Skeleton className="h-5 w-5 sm:h-8 sm:w-8" />
                   </div>
                 </TableCell>
               )}

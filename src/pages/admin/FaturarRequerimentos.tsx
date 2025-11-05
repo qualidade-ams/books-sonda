@@ -60,8 +60,10 @@ import { getBadgeClasses, getCobrancaIcon, getCobrancaColors } from '@/utils/req
 import {
   Requerimento,
   TipoCobrancaType,
+  ModuloType,
   EmailFaturamento,
   TIPO_COBRANCA_OPTIONS,
+  MODULO_OPTIONS,
   requerValorHora
 } from '@/types/requerimentos';
 
@@ -106,6 +108,7 @@ export default function FaturarRequerimentos() {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
 
   const [filtroTipo, setFiltroTipo] = useState<TipoCobrancaType[]>([]);
+  const [filtroModulo, setFiltroModulo] = useState<ModuloType[]>([]);
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
 
   // Estados para rejeição
@@ -191,14 +194,49 @@ export default function FaturarRequerimentos() {
   }, [dadosFaturamento, requerimentosAgrupados]);
 
   const gruposFiltrados = useMemo(() => {
-    if (filtroTipo.length === 0) {
-      return Object.values(requerimentosAgrupados);
+    let grupos = Object.values(requerimentosAgrupados);
+
+    // Filtrar por tipo de cobrança
+    if (filtroTipo.length > 0) {
+      grupos = grupos.filter(grupo => filtroTipo.includes(grupo.tipo));
     }
 
-    return Object.values(requerimentosAgrupados).filter(grupo =>
-      filtroTipo.includes(grupo.tipo)
-    );
-  }, [requerimentosAgrupados, filtroTipo]);
+    // Filtrar por módulo
+    if (filtroModulo.length > 0) {
+      grupos = grupos.map(grupo => ({
+        ...grupo,
+        requerimentos: grupo.requerimentos.filter(req => 
+          filtroModulo.includes(req.modulo)
+        ),
+        quantidade: grupo.requerimentos.filter(req => 
+          filtroModulo.includes(req.modulo)
+        ).length
+      })).filter(grupo => grupo.quantidade > 0);
+
+      // Recalcular totais para grupos filtrados por módulo
+      grupos = grupos.map(grupo => {
+        let totalHoras = '0:00';
+        let totalValor = 0;
+
+        grupo.requerimentos.forEach(req => {
+          if (req.horas_total) {
+            totalHoras = somarHoras(totalHoras, req.horas_total.toString());
+          }
+          if (req.valor_total_geral) {
+            totalValor += req.valor_total_geral;
+          }
+        });
+
+        return {
+          ...grupo,
+          totalHoras,
+          totalValor
+        };
+      });
+    }
+
+    return grupos;
+  }, [requerimentosAgrupados, filtroTipo, filtroModulo]);
 
   // Funções
   const nomesMeses = [
@@ -213,6 +251,12 @@ export default function FaturarRequerimentos() {
       value: option.value,
       label: option.label
     }));
+
+  // Opções para o MultiSelect de módulos
+  const moduloOptions: Option[] = MODULO_OPTIONS.map(option => ({
+    value: option.value,
+    label: option.label
+  }));
 
   const handleAbrirModalEmail = async () => {
     if (estatisticasPeriodo.totalRequerimentos === 0) {
@@ -455,11 +499,18 @@ export default function FaturarRequerimentos() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              {filtroTipo.length > 0 && (
-                <Badge variant="outline" className="text-sm">
-                  Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
-                </Badge>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {filtroTipo.length > 0 && (
+                  <Badge variant="outline" className="text-sm">
+                    Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {filtroModulo.length > 0 && (
+                  <Badge variant="outline" className="text-sm">
+                    Filtrado por {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
 
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <FaturamentoExportButtons
@@ -532,9 +583,9 @@ export default function FaturarRequerimentos() {
                 >
                   <Filter className="h-4 w-4" />
                   Filtros
-                  {filtroTipo.length > 0 && (
+                  {(filtroTipo.length > 0 || filtroModulo.length > 0) && (
                     <Badge variant="secondary" className="ml-1">
-                      {filtroTipo.length}
+                      {filtroTipo.length + filtroModulo.length}
                     </Badge>
                   )}
                 </Button>
@@ -642,16 +693,23 @@ export default function FaturarRequerimentos() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Filter className="h-5 w-5" />
-                Filtros de Período e Tipo
-                {filtroTipo.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''} selecionado{filtroTipo.length !== 1 ? 's' : ''}
-                  </Badge>
-                )}
+                Filtros de Período, Tipo e Módulo
+                <div className="flex gap-2">
+                  {filtroTipo.length > 0 && (
+                    <Badge variant="secondary">
+                      {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                  {filtroModulo.length > 0 && (
+                    <Badge variant="secondary">
+                      {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
                   <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
@@ -695,6 +753,18 @@ export default function FaturarRequerimentos() {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="modulo" className="text-sm font-medium">Módulos</Label>
+                  <div className="h-10">
+                    <MultiSelect
+                      options={moduloOptions}
+                      selected={filtroModulo}
+                      onChange={(values) => setFiltroModulo(values as ModuloType[])}
+                      placeholder="Selecione os módulos..."
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Botões de ação rápida */}
@@ -702,8 +772,11 @@ export default function FaturarRequerimentos() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFiltroTipo([])}
-                  disabled={filtroTipo.length === 0}
+                  onClick={() => {
+                    setFiltroTipo([]);
+                    setFiltroModulo([]);
+                  }}
+                  disabled={filtroTipo.length === 0 && filtroModulo.length === 0}
                 >
                   Limpar Filtros
                 </Button>
@@ -713,7 +786,15 @@ export default function FaturarRequerimentos() {
                   onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
                   disabled={filtroTipo.length === tipoCobrancaOptions.length}
                 >
-                  Selecionar Todos
+                  Todos os Tipos
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiltroModulo(moduloOptions.map(opt => opt.value as ModuloType))}
+                  disabled={filtroModulo.length === moduloOptions.length}
+                >
+                  Todos os Módulos
                 </Button>
               </div>
             </CardContent>
@@ -790,145 +871,128 @@ export default function FaturarRequerimentos() {
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                      <Table>
+                      <Table className="text-[10px] sm:text-xs lg:text-sm">
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-32">Chamado</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead className="hidden md:table-cell w-28">Módulo</TableHead>
-                            <TableHead className="hidden md:table-cell w-24">Linguagem</TableHead>
-                            <TableHead className="w-20 text-center hidden lg:table-cell">H.Func</TableHead>
-                            <TableHead className="w-20 text-center hidden lg:table-cell">H.Téc</TableHead>
-                            <TableHead className="w-25 text-center">Total</TableHead>
-                            <TableHead className="w-24 text-center">Data Envio</TableHead>
-                            <TableHead className="w-24 text-center hidden xl:table-cell">Data Aprov.</TableHead>
-                            <TableHead className="w-28 text-center">Valor Total</TableHead>
-                            <TableHead className="w-24 text-center hidden xl:table-cell">Período</TableHead>
-                            <TableHead className="w-32 text-center hidden xl:table-cell">Autor</TableHead>
-                            <TableHead className="w-24">Ações</TableHead>
+                            <TableHead className="w-20 sm:w-24 lg:w-32 text-[10px] sm:text-xs lg:text-sm">Chamado</TableHead>
+                            <TableHead className="w-20 sm:w-24 lg:w-32 text-[10px] sm:text-xs lg:text-sm">Cliente</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-[10px] sm:text-xs lg:text-sm">Módulo</TableHead>
+                            <TableHead className="w-16 sm:w-18 lg:w-24 text-[10px] sm:text-xs lg:text-sm">Linguagem</TableHead>
+                            <TableHead className="w-12 sm:w-16 lg:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Func</TableHead>
+                            <TableHead className="w-12 sm:w-16 lg:w-20 text-center text-[10px] sm:text-xs lg:text-sm">H.Téc</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-25 text-center text-[10px] sm:text-xs lg:text-sm">Total</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Envio</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Data Aprov.</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-center text-[10px] sm:text-xs lg:text-sm">Valor Total</TableHead>
+                            <TableHead className="w-14 sm:w-18 lg:w-24 text-center text-[10px] sm:text-xs lg:text-sm">Período</TableHead>
+                            <TableHead className="w-16 sm:w-24 lg:w-32 text-center text-[10px] sm:text-xs lg:text-sm">Autor</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-24 text-[10px] sm:text-xs lg:text-sm">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {grupo.requerimentos.map(req => {
                             return (
                               <TableRow key={req.id}>
-                                <TableCell className="font-medium">
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-base flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
-                                      <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm truncate max-w-[90px]" title={req.chamado}>
+                                <TableCell className="font-medium py-1">
+                                  <div className="flex items-center gap-0.5 sm:gap-1">
+                                    <span className="text-[10px] sm:text-xs lg:text-sm flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <code className="bg-gray-100 dark:bg-gray-800 px-1 sm:px-2 py-0.5 sm:py-1 rounded text-[8px] sm:text-[10px] lg:text-xs truncate" title={req.chamado}>
                                         {req.chamado}
                                       </code>
-                                    </div>
-                                    <Badge className={`${getBadgeClasses(req.tipo_cobranca)} text-xs px-2 py-1 mt-1 w-fit`}>
-                                      {req.tipo_cobranca}
-                                    </Badge>
-                                    {/* Mostrar módulo e linguagem em telas pequenas */}
-                                    <div className="md:hidden mt-1 space-y-1">
-                                      <div className="text-xs text-gray-500">{req.modulo}</div>
-                                      <div className="text-xs text-gray-500">{req.linguagem}</div>
+                                      <Badge className={`${getBadgeClasses(req.tipo_cobranca)} text-[6px] sm:text-[8px] lg:text-[10px] px-0.5 sm:px-1 py-0 leading-tight mt-0.5 w-fit max-w-full`}>
+                                        <span className="truncate">{req.tipo_cobranca}</span>
+                                      </Badge>
                                     </div>
                                   </div>
                                 </TableCell>
 
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium truncate max-w-[120px]" title={req.cliente_nome}>
+                                <TableCell className="py-1">
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-medium truncate text-[10px] sm:text-xs lg:text-sm" title={req.cliente_nome}>
                                       {req.cliente_nome || 'N/A'}
                                     </span>
-                                    {/* Mostrar horas em telas pequenas */}
-                                    <div className="lg:hidden mt-1">
-                                      <span className="text-xs text-gray-500">
-                                        F: {formatarHoras(req.horas_funcional)} |
-                                        T: {formatarHoras(req.horas_tecnico)}
-                                      </span>
-                                    </div>
-                                    {/* Mostrar datas em telas pequenas */}
-                                    <div className="xl:hidden mt-1">
-                                      <span className="text-xs text-gray-400">
-                                        {formatarData(req.data_envio)}
-                                        {req.data_aprovacao && ` | ${formatarData(req.data_aprovacao)}`}
-                                      </span>
-                                    </div>
                                   </div>
                                 </TableCell>
 
-                                <TableCell className="hidden md:table-cell">
-                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-600">
-                                    {req.modulo}
+                                <TableCell className="py-1">
+                                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-blue-600 border-blue-600 px-0.5 sm:px-1 py-0 leading-tight">
+                                    <span className="truncate">{req.modulo}</span>
                                   </Badge>
                                 </TableCell>
 
-                                <TableCell className="hidden md:table-cell">
-                                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-600">
-                                    {req.linguagem}
+                                <TableCell className="py-1">
+                                  <Badge variant="outline" className="text-[6px] sm:text-[8px] lg:text-[10px] text-purple-600 border-purple-600 px-0.5 sm:px-1 py-0 leading-tight">
+                                    <span className="truncate">{req.linguagem}</span>
                                   </Badge>
                                 </TableCell>
 
-                                <TableCell className="hidden lg:table-cell text-center">
-                                  <span className="text-sm font-medium text-blue-600">
+                                <TableCell className="text-center py-1">
+                                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-blue-600">
                                     {formatarHoras(req.horas_funcional)}
                                   </span>
                                 </TableCell>
 
-                                <TableCell className="hidden lg:table-cell text-center">
-                                  <span className="text-sm font-medium text-green-600">
+                                <TableCell className="text-center py-1">
+                                  <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
                                     {formatarHoras(req.horas_tecnico)}
                                   </span>
                                 </TableCell>
 
-                                <TableCell className="text-center">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                <TableCell className="text-center py-1">
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <span className="text-[10px] sm:text-xs lg:text-sm font-bold text-gray-900 dark:text-white">
                                       {formatarHoras(req.horas_total)}
                                     </span>
                                     {req.quantidade_tickets && req.quantidade_tickets > 0 && (
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                        🎫 {req.quantidade_tickets} ticket{req.quantidade_tickets > 1 ? 's' : ''}
+                                      <Badge variant="secondary" className="text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                        🎫 {req.quantidade_tickets}
                                       </Badge>
                                     )}
                                   </div>
                                 </TableCell>
 
-                                <TableCell className="text-center text-sm text-gray-500">
+                                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                                   {formatarData(req.data_envio)}
                                 </TableCell>
 
-                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                                   {req.data_aprovacao ? formatarData(req.data_aprovacao) : '-'}
                                 </TableCell>
 
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-1">
                                   {req.valor_total_geral ? (
-                                    <span className="text-sm font-medium text-green-600">
+                                    <span className="text-[8px] sm:text-[10px] lg:text-xs font-medium text-green-600">
                                       R$ {req.valor_total_geral.toLocaleString('pt-BR', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                       })}
                                     </span>
                                   ) : (
-                                    <span className="text-gray-400">-</span>
+                                    <span className="text-[8px] sm:text-[10px] lg:text-xs text-gray-400">-</span>
                                   )}
                                 </TableCell>
 
-                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
+                                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
                                   {req.mes_cobranca || '-'}
                                 </TableCell>
 
-                                <TableCell className="hidden xl:table-cell text-center text-sm text-gray-500">
-                                  {req.autor_nome || '-'}
+                                <TableCell className="text-center text-[8px] sm:text-[10px] lg:text-xs text-gray-500 py-1">
+                                  <span className="truncate" title={req.autor_nome}>
+                                    {req.autor_nome || '-'}
+                                  </span>
                                 </TableCell>
 
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-1">
                                   <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                       disabled={rejeitarRequerimento.isPending}
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                      className="h-5 w-auto sm:h-6 lg:h-8 px-1 sm:px-2 lg:px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-[8px] sm:text-[10px] lg:text-xs"
                                     >
-                                      <X className="h-4 w-4 mr-1" />
+                                      <X className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4 mr-0.5 sm:mr-1" />
                                       Rejeitar
                                     </Button>
                                   </ProtectedAction>
