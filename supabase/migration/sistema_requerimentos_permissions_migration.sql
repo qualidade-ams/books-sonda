@@ -8,7 +8,7 @@
 -- Registrar telas do sistema de requerimentos
 INSERT INTO screens (key, name, description, category, route) VALUES
 ('lancar_requerimentos', 'Lançar Requerimentos', 'Tela para lançamento de novos requerimentos de especificações funcionais', 'requerimentos', '/admin/lancar-requerimentos'),
-('faturar_requerimentos', 'Faturar Requerimentos', 'Tela para faturamento e envio de relatórios de requerimentos aprovados', 'requerimentos', '/admin/faturar-requerimentos')
+('faturar_requerimentos', 'Enviar Requerimentos', 'Tela para faturamento e envio de relatórios de requerimentos aprovados', 'requerimentos', '/admin/faturar-requerimentos')
 ON CONFLICT (key) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,

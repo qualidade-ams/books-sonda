@@ -66,7 +66,7 @@ describe('FaturarRequerimentos', () => {
     renderWithProviders(<FaturarRequerimentos />);
 
     await waitFor(() => {
-      expect(screen.getByText('Faturar Requerimentos')).toBeInTheDocument();
+      expect(screen.getByText('Enviar Requerimentos')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Visualize e processe requerimentos enviados para faturamento')).toBeInTheDocument();

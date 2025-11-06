@@ -9,7 +9,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PermissionsProvider } from '@/contexts/PermissionsContext';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { supabase } from '@/integrations/supabase/client';
 
 // Mock do Supabase
@@ -32,6 +32,20 @@ vi.mock('@/integrations/supabase/client', () => ({
   }
 }));
 
+// Mock do PermissionsContext
+vi.mock('@/contexts/PermissionsContext', () => ({
+  PermissionsProvider: ({ children }: { children: React.ReactNode }) => children,
+  usePermissions: () => ({
+    userPermissions: {},
+    userGroup: null,
+    loading: false,
+    error: null,
+    retryCount: 0,
+    refreshPermissions: vi.fn(),
+    hasPermission: vi.fn(() => false)
+  })
+}));
+
 // Componente de teste para tela protegida
 const TelaLancarRequerimentos = () => {
   return (
@@ -45,11 +59,18 @@ const TelaLancarRequerimentos = () => {
 const TelaFaturarRequerimentos = () => {
   return (
     <div data-testid="tela-faturar-requerimentos">
-      <h1>Faturar Requerimentos</h1>
+      <h1>Enviar Requerimentos</h1>
       <p>Tela para faturamento de requerimentos</p>
     </div>
   );
 };
+
+// Mock do hook usePermissions
+const mockUsePermissions = vi.fn();
+
+vi.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => mockUsePermissions()
+}));
 
 // Wrapper de teste com providers
 const TestWrapper = ({ children, userPermissions = [] }: { 
@@ -63,22 +84,24 @@ const TestWrapper = ({ children, userPermissions = [] }: {
     }
   });
 
-  // Mock do contexto de permissões
-  const mockPermissionsContext = {
-    permissions: userPermissions.reduce((acc, perm) => {
+  // Configurar mock do usePermissions
+  mockUsePermissions.mockReturnValue({
+    userPermissions: userPermissions.reduce((acc, perm) => {
       acc[perm] = 'edit';
       return acc;
     }, {} as Record<string, string>),
+    userGroup: null,
     loading: false,
-    hasPermission: (screenKey: string) => userPermissions.includes(screenKey),
-    getPermissionLevel: (screenKey: string) => userPermissions.includes(screenKey) ? 'edit' : null,
-    refreshPermissions: vi.fn()
-  };
+    error: null,
+    retryCount: 0,
+    refreshPermissions: vi.fn(),
+    hasPermission: (screenKey: string, level: string = 'view') => userPermissions.includes(screenKey)
+  });
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <PermissionsProvider value={mockPermissionsContext}>
+        <PermissionsProvider>
           {children}
         </PermissionsProvider>
       </BrowserRouter>
@@ -124,7 +147,7 @@ describe('Sistema de Requerimentos - Permissões', () => {
       expect(screen.getByText('Tela para lançamento de requerimentos')).toBeInTheDocument();
     });
 
-    it('deve ter acesso à tela Faturar Requerimentos', async () => {
+    it('deve ter acesso à tela Enviar Requerimentos', async () => {
       render(
         <TestWrapper userPermissions={['faturar_requerimentos']}>
           <ProtectedRoute screenKey="faturar_requerimentos">
@@ -137,7 +160,7 @@ describe('Sistema de Requerimentos - Permissões', () => {
         expect(screen.getByTestId('tela-faturar-requerimentos')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Faturar Requerimentos')).toBeInTheDocument();
+      expect(screen.getByText('Enviar Requerimentos')).toBeInTheDocument();
       expect(screen.getByText('Tela para faturamento de requerimentos')).toBeInTheDocument();
     });
   });
@@ -160,7 +183,7 @@ describe('Sistema de Requerimentos - Permissões', () => {
       expect(screen.getByText(/acesso negado/i)).toBeInTheDocument();
     });
 
-    it('deve ser bloqueado na tela Faturar Requerimentos', async () => {
+    it('deve ser bloqueado na tela Enviar Requerimentos', async () => {
       render(
         <TestWrapper userPermissions={[]}>
           <ProtectedRoute screenKey="faturar_requerimentos">

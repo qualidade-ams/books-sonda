@@ -152,7 +152,24 @@ export class RequerimentosService {
     }
 
     if (filtros?.tipo_cobranca) {
-      query = query.eq('tipo_cobranca', filtros.tipo_cobranca);
+      if (Array.isArray(filtros.tipo_cobranca)) {
+        query = query.in('tipo_cobranca', filtros.tipo_cobranca);
+      } else {
+        query = query.eq('tipo_cobranca', filtros.tipo_cobranca);
+      }
+    }
+
+    if (filtros?.modulo) {
+      if (Array.isArray(filtros.modulo)) {
+        query = query.in('modulo', filtros.modulo);
+      } else {
+        query = query.eq('modulo', filtros.modulo);
+      }
+    }
+
+    if (filtros?.busca && filtros.busca.trim()) {
+      const termoBusca = filtros.busca.trim();
+      query = query.or(`chamado.ilike.%${termoBusca}%,descricao.ilike.%${termoBusca}%`);
     }
 
     if (filtros?.mes_cobranca) {
@@ -177,9 +194,9 @@ export class RequerimentosService {
       throw new Error(`Erro ao listar requerimentos: ${error.message}`);
     }
 
-    // Resolver nomes de usuários para os campos autor_id
+    // Resolver nomes de usuários para os campos autor_id (se existirem)
     const userIds = [...new Set((data || [])
-      .map(req => req.autor_id)
+      .map(req => (req as any).autor_id)
       .filter(Boolean))] as string[];
     
     const usersMap = await this.resolverNomesUsuarios(userIds);
@@ -189,8 +206,9 @@ export class RequerimentosService {
       const requerimento = this.formatarRequerimento(req);
       
       // Atualizar nome do autor se temos o mapeamento
-      if (req.autor_id && usersMap[req.autor_id]) {
-        requerimento.autor_nome = usersMap[req.autor_id];
+      const autorId = (req as any).autor_id;
+      if (autorId && usersMap[autorId]) {
+        requerimento.autor_nome = usersMap[autorId];
       }
       
       return requerimento;
@@ -264,10 +282,11 @@ export class RequerimentosService {
     }
 
     // Resolver nome do autor se necessário
-    if (data.autor_id) {
-      const usersMap = await this.resolverNomesUsuarios([data.autor_id]);
-      if (usersMap[data.autor_id]) {
-        data.autor_nome = usersMap[data.autor_id];
+    const autorId = (data as any).autor_id;
+    if (autorId) {
+      const usersMap = await this.resolverNomesUsuarios([autorId]);
+      if (usersMap[autorId]) {
+        (data as any).autor_nome = usersMap[autorId];
       }
     }
 
@@ -548,7 +567,7 @@ export class RequerimentosService {
           if (req.cliente_id) {
             try {
               const { data: cliente, error: clienteError } = await supabase
-                .from('clientes')
+                .from('empresas_clientes')
                 .select('nome_abreviado, nome_completo')
                 .eq('id', req.cliente_id)
                 .maybeSingle(); // Use maybeSingle para evitar erro se não encontrar
@@ -569,7 +588,7 @@ export class RequerimentosService {
         })
       );
 
-      return requerimentosComNomes;
+      return requerimentosComNomes.map(req => this.formatarRequerimento(req));
     } catch (error) {
       console.error('Erro geral ao buscar requerimentos faturados:', error);
       // Retornar array vazio para não quebrar a interface
@@ -832,9 +851,9 @@ export class RequerimentosService {
       valor_total_geral: data.valor_total_geral,
       // Campos de ticket
       quantidade_tickets: data.quantidade_tickets,
-      // Campos de autor
-      autor_id: data.autor_id,
-      autor_nome: data.autor_nome
+      // Campos de autor (podem não existir na tabela ainda)
+      autor_id: (data as any).autor_id || undefined,
+      autor_nome: (data as any).autor_nome || 'Sistema'
     };
   }
 }

@@ -99,7 +99,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_tecnico: 4.0,
         linguagem: 'ABAP',
         tipo_cobranca: 'Faturado',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         observacao: 'Requerimento prioritário para cliente'
       };
 
@@ -241,7 +241,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
       
       expect(relatorio).toMatchObject({
         periodo: 'Janeiro de 2024',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         ano_cobranca: 2024,
         totais_gerais: {
           total_requerimentos: 1,
@@ -367,7 +367,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_tecnico: 3.0,
         linguagem: 'PL/SQL',
         tipo_cobranca: 'Banco de Horas',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         observacao: 'Observação de teste'
       };
 
@@ -398,7 +398,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
               data_aprovacao: requerimentoData.data_aprovacao,
               horas_funcional: requerimentoData.horas_funcional,
               horas_tecnico: requerimentoData.horas_tecnico,
-              horas_total: requerimentoData.horas_funcional + requerimentoData.horas_tecnico,
+              horas_total: Number(requerimentoData.horas_funcional) + Number(requerimentoData.horas_tecnico),
               linguagem: requerimentoData.linguagem,
               tipo_cobranca: requerimentoData.tipo_cobranca,
               mes_cobranca: requerimentoData.mes_cobranca,
@@ -434,7 +434,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_total: 8.0,
         linguagem: 'PL/SQL',
         tipo_cobranca: 'Banco de Horas',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         status: 'lancado',
         enviado_faturamento: false
       });
@@ -451,7 +451,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_tecnico: 3.0,
         linguagem: 'PL/SQL',
         tipo_cobranca: 'Banco de Horas',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         observacao: 'Observação de teste',
         status: 'lancado',
         enviado_faturamento: false
@@ -471,7 +471,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_tecnico: 1.0,
         linguagem: 'ABAP',
         tipo_cobranca: 'Faturado',
-        mes_cobranca: 1
+        mes_cobranca: '01/2024'
       };
 
       await expect(
@@ -491,7 +491,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         horas_tecnico: 1.0,
         linguagem: 'ABAP',
         tipo_cobranca: 'Faturado',
-        mes_cobranca: 1
+        mes_cobranca: '01/2024'
       };
 
       // Mock para cliente não encontrado
@@ -588,7 +588,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
           horas_total: 6.0,
           linguagem: 'ABAP',
           tipo_cobranca: 'Faturado',
-          mes_cobranca: 1,
+          mes_cobranca: '01/2024',
           observacao: null,
           status: 'enviado_faturamento',
           enviado_faturamento: true,
@@ -610,7 +610,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
           horas_total: 8.0,
           linguagem: 'PL/SQL',
           tipo_cobranca: 'Hora Extra',
-          mes_cobranca: 1,
+          mes_cobranca: '01/2024',
           observacao: 'Urgente',
           status: 'enviado_faturamento',
           enviado_faturamento: true,
@@ -828,13 +828,12 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
         update: mockBatchUpdate
       });
 
-      const resultado = await faturamentoService.marcarComoFaturados(requerimentoIds);
+      await requerimentosService.marcarComoFaturados(requerimentoIds);
 
-      expect(resultado.success).toBe(true);
-      expect(resultado.message).toContain('3 requerimento(s) marcado(s) como faturado(s)');
-      
+      // Verificar que a operação foi executada sem erro
       expect(mockBatchUpdate).toHaveBeenCalledWith({
         status: 'faturado',
+        data_faturamento: expect.any(String),
         updated_at: expect.any(String)
       });
     });

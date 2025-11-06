@@ -8,13 +8,13 @@ import {
   useRequerimentosFaturamento,
   useEstatisticasFaturamento,
   useDispararFaturamento,
-  useMarcarComoFaturados,
   useTemplateEmailFaturamento,
   useFaturamento,
   FATURAMENTO_QUERY_KEYS
 } from '../useFaturamento';
 import { faturamentoService } from '@/services/faturamentoService';
-import type { RelatorioFaturamento, EmailFaturamento } from '@/services/faturamentoService';
+import type { RelatorioFaturamento } from '@/services/faturamentoService';
+import type { EmailFaturamento } from '@/types/requerimentos';
 import type { Requerimento } from '@/types/requerimentos';
 
 // Mock do serviço
@@ -24,7 +24,6 @@ vi.mock('@/services/faturamentoService', () => ({
     buscarRequerimentosParaFaturamento: vi.fn(),
     buscarEstatisticasFaturamento: vi.fn(),
     dispararFaturamento: vi.fn(),
-    marcarComoFaturados: vi.fn(),
     criarTemplateEmailFaturamento: vi.fn(),
   }
 }));
@@ -54,7 +53,7 @@ describe('useFaturamento hooks', () => {
     horas_total: 15,
     linguagem: 'ABAP',
     tipo_cobranca: 'Faturado',
-    mes_cobranca: 1,
+    mes_cobranca: '01/2024',
     status: 'enviado_faturamento',
     enviado_faturamento: true,
     data_envio_faturamento: '2024-01-20T10:00:00Z',
@@ -64,7 +63,7 @@ describe('useFaturamento hooks', () => {
 
   const mockRelatorio: RelatorioFaturamento = {
     periodo: 'Janeiro de 2024',
-    mes_cobranca: 1,
+    mes_cobranca: '01/2024',
     ano_cobranca: 2024,
     requerimentos_por_tipo: {
       'Banco de Horas': { quantidade: 0, horas_total: 0, requerimentos: [] },
@@ -78,7 +77,8 @@ describe('useFaturamento hooks', () => {
     },
     totais_gerais: {
       total_requerimentos: 1,
-      total_horas: 15
+      total_horas: 15,
+      total_faturado: 0
     }
   };
 
@@ -257,53 +257,7 @@ describe('useFaturamento hooks', () => {
     });
   });
 
-  describe('useMarcarComoFaturados', () => {
-    it('deve marcar requerimentos como faturados com sucesso', async () => {
-      const mockResultado = {
-        success: true,
-        message: '2 requerimentos marcados como faturados'
-      };
 
-      vi.mocked(faturamentoService.marcarComoFaturados).mockResolvedValue(mockResultado);
-
-      const { result } = renderHook(() => useMarcarComoFaturados(), {
-        wrapper: createWrapper(),
-      });
-
-      const ids = ['1', '2'];
-      await result.current.mutateAsync(ids);
-
-      expect(faturamentoService.marcarComoFaturados).toHaveBeenCalledWith(ids);
-      expect(toast.success).toHaveBeenCalledWith(
-        '2 requerimentos marcados como faturados',
-        expect.objectContaining({
-          description: '2 requerimento(s) atualizado(s)'
-        })
-      );
-    });
-
-    it('deve tratar erro ao marcar como faturados', async () => {
-      const mockResultado = {
-        success: false,
-        error: 'Erro na atualização'
-      };
-
-      vi.mocked(faturamentoService.marcarComoFaturados).mockResolvedValue(mockResultado);
-
-      const { result } = renderHook(() => useMarcarComoFaturados(), {
-        wrapper: createWrapper(),
-      });
-
-      await result.current.mutateAsync(['1']);
-
-      expect(toast.error).toHaveBeenCalledWith(
-        'Erro na atualização',
-        expect.objectContaining({
-          description: 'Verifique os dados e tente novamente'
-        })
-      );
-    });
-  });
 
   describe('useTemplateEmailFaturamento', () => {
     it('deve gerar template HTML', () => {
@@ -377,7 +331,6 @@ describe('useFaturamento hooks', () => {
 
       expect(typeof result.current.refetch).toBe('function');
       expect(typeof result.current.dispararFaturamento.mutate).toBe('function');
-      expect(typeof result.current.marcarComoFaturados.mutate).toBe('function');
       expect(typeof result.current.templateEmail.gerarTemplate).toBe('function');
     });
   });

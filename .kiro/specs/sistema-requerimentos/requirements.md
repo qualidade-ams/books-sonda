@@ -13,7 +13,7 @@ O Sistema de Requerimentos é uma funcionalidade administrativa que permite o la
 #### Acceptance Criteria
 
 1. WHEN o usuário for administrador THEN o sistema SHALL exibir o menu "Requerimentos" na sidebar
-2. WHEN o usuário clicar em "Requerimentos" THEN o sistema SHALL expandir o submenu com as opções "Lançar Requerimentos" e "Faturar Requerimentos"
+2. WHEN o usuário clicar em "Requerimentos" THEN o sistema SHALL expandir o submenu com as opções "Lançar Requerimentos" e "Enviar Requerimentos"
 3. WHEN o usuário não for administrador THEN o sistema SHALL ocultar o menu "Requerimentos"
 
 ### Requirement 2
@@ -52,7 +52,7 @@ O Sistema de Requerimentos é uma funcionalidade administrativa que permite o la
 
 #### Acceptance Criteria
 
-1. WHEN o usuário clicar em "Enviar para faturamento" em um requerimento THEN o sistema SHALL transferir o requerimento para tela "Faturar Requerimentos"
+1. WHEN o usuário clicar em "Enviar para faturamento" em um requerimento THEN o sistema SHALL transferir o requerimento para tela "Enviar Requerimentos"
 2. WHEN o requerimento for transferido THEN o sistema SHALL alterar status para "Enviado para Faturamento"
 3. WHEN o requerimento for transferido THEN o sistema SHALL remover da visualização de "Lançar Requerimentos"
 4. WHEN o sistema transferir requerimento THEN o sistema SHALL manter todos os dados originais
@@ -63,7 +63,7 @@ O Sistema de Requerimentos é uma funcionalidade administrativa que permite o la
 
 #### Acceptance Criteria
 
-1. WHEN o usuário acessar "Faturar Requerimentos" THEN o sistema SHALL exibir todos os requerimentos enviados para faturamento no mês atual
+1. WHEN o usuário acessar "Enviar Requerimentos" THEN o sistema SHALL exibir todos os requerimentos enviados para faturamento no mês atual
 2. WHEN o sistema exibir requerimentos THEN o sistema SHALL agrupar por tipo de cobrança
 3. WHEN o sistema exibir requerimentos THEN o sistema SHALL mostrar totais de horas por categoria
 4. WHEN o usuário visualizar a tela THEN o sistema SHALL exibir botão "Disparar Faturamento"
@@ -132,6 +132,6 @@ O Sistema de Requerimentos é uma funcionalidade administrativa que permite o la
 
 1. WHEN o sistema for implementado THEN o sistema SHALL registrar telas no sistema de permissões
 2. WHEN o sistema registrar telas THEN o sistema SHALL criar permissão para "Lançar Requerimentos"
-3. WHEN o sistema registrar telas THEN o sistema SHALL criar permissão para "Faturar Requerimentos"
+3. WHEN o sistema registrar telas THEN o sistema SHALL criar permissão para "Enviar Requerimentos"
 4. WHEN o sistema configurar permissões THEN o sistema SHALL atribuir permissões ao grupo administrador
 5. WHEN usuário sem permissão tentar acessar THEN o sistema SHALL exibir mensagem de acesso negado

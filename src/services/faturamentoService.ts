@@ -3,7 +3,6 @@ import { emailService, EmailData } from './emailService';
 import type {
   Requerimento,
   TipoCobrancaType,
-  TipoCobrancaFaturamentoType,
   FaturamentoData,
   EmailFaturamento
 } from '@/types/requerimentos';
@@ -13,7 +12,7 @@ export interface RelatorioFaturamento {
   mes_cobranca: string; // Formato MM/YYYY
   ano_cobranca: number;
   requerimentos_por_tipo: {
-    [key in TipoCobrancaFaturamentoType]: {
+    [key in TipoCobrancaType]: {
       quantidade: number;
       horas_total: number;
       requerimentos: Requerimento[];
@@ -31,7 +30,7 @@ export interface EstatisticasFaturamento {
   total_horas: number;
   valor_estimado?: number;
   tipos_cobranca: {
-    [key in TipoCobrancaFaturamentoType]: {
+    [key in TipoCobrancaType]: {
       quantidade: number;
       horas: number;
       percentual: number;
@@ -102,13 +101,7 @@ export class FaturamentoService {
 
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
-      // Pular requerimentos com tipo 'Selecione' (não deveria existir no banco, mas por segurança)
-      if (tipo === 'Selecione') {
-        console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
-        return;
-      }
-
-      const tipoFaturamento = tipo as TipoCobrancaFaturamentoType;
+      const tipoFaturamento = tipo as TipoCobrancaType;
       grupos[tipoFaturamento].quantidade += 1;
       grupos[tipoFaturamento].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
       grupos[tipoFaturamento].requerimentos.push(req);
@@ -137,27 +130,21 @@ export class FaturamentoService {
       }
     };
 
-    // Calcular totais por tipo (filtrar 'Selecione' se existir)
+    // Calcular totais por tipo
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
-      // Pular requerimentos com tipo 'Selecione' (não deveria existir no banco, mas por segurança)
-      if (tipo === 'Selecione') {
-        console.warn('Requerimento com tipo_cobranca "Selecione" encontrado:', req.id);
-        return;
-      }
-
       const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
       const valorTotal = req.valor_total_geral || 0;
 
-      totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].quantidade += 1;
-      totais.tipos_cobranca[tipo as TipoCobrancaFaturamentoType].horas += horas;
+      totais.tipos_cobranca[tipo as TipoCobrancaType].quantidade += 1;
+      totais.tipos_cobranca[tipo as TipoCobrancaType].horas += horas;
       totais.total_horas += horas;
       totais.valor_estimado! += valorTotal;
     });
 
     // Calcular percentuais
     Object.keys(totais.tipos_cobranca).forEach(tipo => {
-      const tipoKey = tipo as TipoCobrancaFaturamentoType;
+      const tipoKey = tipo as TipoCobrancaType;
       if (totais.total_horas > 0) {
         totais.tipos_cobranca[tipoKey].percentual =
           (totais.tipos_cobranca[tipoKey].horas / totais.total_horas) * 100;
@@ -246,7 +233,7 @@ export class FaturamentoService {
     const tiposComRequerimentos = Object.entries(relatorio.requerimentos_por_tipo)
       .filter(([_, dados]) => dados.quantidade > 0);
 
-    const corPorTipo: { [key in TipoCobrancaFaturamentoType]: string } = {
+    const corPorTipo: { [key in TipoCobrancaType]: string } = {
       'Banco de Horas': '#3B82F6',
       'Cobro Interno': '#10B981',
       'Contrato': '#6B7280',
@@ -613,9 +600,9 @@ export class FaturamentoService {
   }
 
   /**
-   * Marca requerimentos como faturados
+   * Marca requerimentos como enviados
    */
-  async marcarComoFaturados(requerimentoIds: string[]): Promise<{
+  async marcarComoenviados(requerimentoIds: string[]): Promise<{
     success: boolean;
     message?: string;
     error?: string;
@@ -634,7 +621,7 @@ export class FaturamentoService {
         .in('id', requerimentoIds);
 
       if (error) {
-        throw new Error(`Erro ao marcar requerimentos como faturados: ${error.message}`);
+        throw new Error(`Erro ao marcar requerimentos como enviados: ${error.message}`);
       }
 
       return {
@@ -642,7 +629,7 @@ export class FaturamentoService {
         message: `${requerimentoIds.length} requerimento(s) marcado(s) como faturado(s) com sucesso`
       };
     } catch (error) {
-      console.error('Erro ao marcar requerimentos como faturados:', error);
+      console.error('Erro ao marcar requerimentos como enviados:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido'

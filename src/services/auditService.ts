@@ -100,6 +100,7 @@ export class AuditService {
       const user = usersMap[log.changed_by];
       return {
         ...log,
+        action: log.action as 'INSERT' | 'UPDATE' | 'DELETE',
         user_name: user?.full_name || user?.email?.split('@')[0] || 'Sistema',
         user_email: user?.email
       };
@@ -158,7 +159,10 @@ export class AuditService {
       total_changes: totalChanges || 0,
       changes_by_table: changesByTable,
       changes_by_action: changesByAction,
-      recent_changes: recentChanges || []
+      recent_changes: (recentChanges || []).map(change => ({
+        ...change,
+        action: change.action as 'INSERT' | 'UPDATE' | 'DELETE'
+      }))
     };
   }
 
@@ -786,7 +790,7 @@ export class AuditService {
       'historico_books': 'Histórico de Books',
       'monitoramento_vigencias': 'Monitoramento de Vigências',
       'lancar_requerimentos': 'Lançar Requerimentos',
-      'faturar_requerimentos': 'Faturar Requerimentos'
+      'faturar_requerimentos': 'Enviar Requerimentos'
     };
     
     return screenNames[screenKey] || screenKey;

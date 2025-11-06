@@ -8,8 +8,8 @@ import { supabase } from '../integrations/supabase/client';
 const empresaExcelSchema = z.object({
   'Nome Completo': z.string().min(1, 'Nome completo é obrigatório'),
   'Nome Abreviado': z.string().min(1, 'Nome abreviado é obrigatório'),
-  'Link SharePoint': z.string().min(1, 'Link SharePoint é obrigatório'),
-  'Template Padrão': z.enum(['portugues', 'ingles']).default('portugues'),
+  'Link SharePoint': z.string().optional(), // Agora é condicional
+  'Template Padrão': z.string().optional(), // Pode ser ID do template ou nome
   'Status': z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
   'Descrição Status': z.string().optional(),
   'Email Gestor': z.string().email('Email inválido').min(1, 'Email do customer success é obrigatório'),
@@ -17,12 +17,49 @@ const empresaExcelSchema = z.object({
   'Grupos': z.string().optional(), // String separada por vírgulas
   'Tem AMS': z.string().optional(), // 'sim' ou 'não'
   'Tipo Book': z.enum(['nao_tem_book', 'outros', 'qualidade']).default('nao_tem_book'),
-  'Tipo Cobrança': z.enum(['banco_horas', 'ticket']).default('banco_horas'),
+  'Tipo Cobrança': z.enum(['banco_horas', 'ticket', 'outros']).default('banco_horas'), // Adicionado 'outros'
   'Vigência Inicial': z.string().optional(), // Data no formato YYYY-MM-DD
   'Vigência Final': z.string().optional(), // Data no formato YYYY-MM-DD
   'Book Personalizado': z.string().optional(), // 'sim' ou 'não'
   'Anexo': z.string().optional(), // 'sim' ou 'não'
   'Observação': z.string().optional(), // Máximo 500 caracteres
+}).refine((data) => {
+  // Validação condicional para Link SharePoint
+  const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
+  const tipoBook = data['Tipo Book'];
+  
+  if (temAms && tipoBook !== 'nao_tem_book' && (!data['Link SharePoint'] || !data['Link SharePoint'].trim())) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Link SharePoint é obrigatório quando a empresa tem AMS e possui book',
+  path: ['Link SharePoint'],
+}).refine((data) => {
+  // Validação condicional para Template Padrão
+  const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
+  
+  if (temAms && (!data['Template Padrão'] || !data['Template Padrão'].trim())) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Template Padrão é obrigatório quando a empresa tem AMS',
+  path: ['Template Padrão'],
+}).refine((data) => {
+  // Validação de URL para Link SharePoint quando preenchido
+  if (data['Link SharePoint'] && data['Link SharePoint'].trim()) {
+    try {
+      new URL(data['Link SharePoint']);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Link SharePoint deve ser uma URL válida',
+  path: ['Link SharePoint'],
 });
 
 export interface ImportResult {
@@ -187,6 +224,16 @@ class ExcelImportService {
           }
         });
 
+        // Validação de Tipo Cobrança
+        if (row['Tipo Cobrança'] && !['banco_horas', 'ticket', 'outros'].includes(row['Tipo Cobrança'])) {
+          errors.push({
+            row: row._rowIndex,
+            field: 'Tipo Cobrança',
+            message: 'Tipo Cobrança deve ser "banco_horas", "ticket" ou "outros"',
+            data: row
+          });
+        }
+
       } catch (error) {
         if (error instanceof z.ZodError) {
           error.errors.forEach(err => {
@@ -338,7 +385,7 @@ class ExcelImportService {
         'EXEMPLO EMPRESA LTDA',
         'EXEMPLO',
         'https://sharepoint.com/exemplo',
-        'portugues',
+        'ID_DO_TEMPLATE_OU_NOME',
         'ativo',
         '',
         'gestor@sonda.com',
@@ -355,10 +402,10 @@ class ExcelImportService {
       ],
       [],
       ['INSTRUÇÕES:'],
-      ['• Nome Completo: Nome completo da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
-      ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letas maiúsculas (obrigatório)'],
-      ['• Link SharePoint: URL do SharePoint da empresa (obrigatório)'],
-      ['• Template Padrão: Utilizar o ID para Importação respectivo template localizado na tela de Templates'],
+      ['• Nome Completo: Nome completo da empresa - Para manter o padrão preencha com letras maiúsculas (obrigatório)'],
+      ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letras maiúsculas (obrigatório)'],
+      ['• Link SharePoint: URL do SharePoint da empresa (obrigatório APENAS quando Tem AMS = "sim" E Tipo Book ≠ "nao_tem_book")'],
+      ['• Template Padrão: ID ou nome do template (obrigatório APENAS quando Tem AMS = "sim")'],
       ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
       ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
       ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],
@@ -366,12 +413,18 @@ class ExcelImportService {
       ['• Grupos: Lista de grupos responsáveis separados por vírgulas (opcional)'],
       ['• Tem AMS: "sim" ou "não" (padrão: não)'],
       ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (padrão: nao_tem_book)'],
+      ['• Tipo Cobrança: "banco_horas", "ticket" ou "outros" (padrão: banco_horas)'],
       ['• Vigência Inicial: Data no formato YYYY-MM-DD (opcional)'],
       ['• Vigência Final: Data no formato YYYY-MM-DD (opcional)'],
-      ['• Tipo Cobrança: "banco_horas" ou "ticket" (padrão: banco_horas)'],
       ['• Book Personalizado: "sim" ou "não" (padrão: não)'],
       ['• Anexo: "sim" ou "não" (padrão: não)'],
-      ['• Observação: Texto livre (opcional)']
+      ['• Observação: Texto livre até 500 caracteres (opcional)'],
+      [],
+      ['REGRAS CONDICIONAIS:'],
+      ['• Link SharePoint: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"'],
+      ['• Template Padrão: Obrigatório apenas quando "Tem AMS" = "sim"'],
+      ['• Tipo Book: Obrigatório apenas quando "Tem AMS" = "sim"'],
+      ['• Tipo Cobrança: Obrigatório apenas quando "Tem AMS" = "sim"']
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);

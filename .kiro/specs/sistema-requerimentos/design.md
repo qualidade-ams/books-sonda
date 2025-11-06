@@ -34,7 +34,7 @@ graph TB
 graph TB
     A[Sidebar] --> B[Menu Requerimentos]
     B --> C[Lançar Requerimentos]
-    B --> D[Faturar Requerimentos]
+    B --> D[Enviar Requerimentos]
     
     C --> E[RequerimentoForm]
     C --> F[RequerimentosList]

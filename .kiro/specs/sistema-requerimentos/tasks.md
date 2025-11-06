@@ -101,7 +101,7 @@ Pra# Implementation Plan
   - Integrar com emailService existente para envio
   - _Requirements: 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [x] 9. Implementar página FaturarRequerimentos
+- [x] 9. Implementar página EnviarRequerimentos
 
 
 
@@ -121,7 +121,7 @@ Pra# Implementation Plan
 
 
   - Adicionar seção "Requerimentos" na sidebar existente
-  - Criar submenus "Lançar Requerimentos" e "Faturar Requerimentos"
+  - Criar submenus "Lançar Requerimentos" e "Enviar Requerimentos"
   - Implementar verificação de permissões para exibição do menu
   - Integrar com sistema de navegação existente
   - Adicionar ícones apropriados (FileText, DollarSign)

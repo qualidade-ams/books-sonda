@@ -575,7 +575,7 @@ export default function FaturarRequerimentos() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-                Faturar Requerimentos
+                Enviar Requerimentos
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Visualize e processe requerimentos enviados para faturamento
@@ -922,32 +922,20 @@ export default function FaturarRequerimentos() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs value={abaAtiva} onValueChange={(value) => handleTrocarAba(value as 'para_faturar' | 'faturados')} className="space-y-6">
-            <div className="flex items-center justify-between">
-              <TabsList className="grid w-auto grid-cols-2">
-                <TabsTrigger value="para_faturar" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Para Faturar
-                  {dadosFaturamento?.requerimentos && (
-                    <Badge variant="secondary" className="ml-1">
-                      {dadosFaturamento.requerimentos.length}
-                    </Badge>
-                  )}
+          <Tabs value={abaAtiva} onValueChange={(value) => handleTrocarAba(value as 'para_faturar' | 'faturados')} className="w-full space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="para_faturar">
+                  Para Enviar ({dadosFaturamento?.requerimentos?.length || 0})
                 </TabsTrigger>
-                <TabsTrigger value="faturados" className="flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Faturados
-                  {dadosFaturados && (
-                    <Badge variant="secondary" className="ml-1">
-                      {dadosFaturados.length}
-                    </Badge>
-                  )}
+                <TabsTrigger value="faturados">
+                  Históricos de Enviados ({dadosFaturados?.length || 0})
                 </TabsTrigger>
               </TabsList>
 
-              {/* Controles de seleção */}
-              {requerimentosSelecionados.length > 0 && (
-                <div className="flex items-center gap-2">
+              {/* Ações Principais - apenas para aba para_faturar */}
+              {abaAtiva === 'para_faturar' && requerimentosSelecionados.length > 0 && (
+                <div className="flex flex-wrap gap-4 items-center">
                   <Badge variant="outline">
                     {requerimentosSelecionados.length} selecionado{requerimentosSelecionados.length !== 1 ? 's' : ''}
                   </Badge>
@@ -1173,7 +1161,7 @@ export default function FaturarRequerimentos() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl flex items-center gap-2">
                         <Check className="h-5 w-5 text-green-600" />
-                        Requerimentos Faturados
+                        Requerimentos Enviados
                       </CardTitle>
                       <Badge variant="secondary" className="bg-green-100 text-green-800">
                         {dadosFaturados.length} faturado{dadosFaturados.length !== 1 ? 's' : ''}

@@ -212,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         },
         {
           icon: DollarSign,
-          label: 'Faturar Requerimentos',
+          label: 'Enviar Requerimentos',
           path: '/admin/faturar-requerimentos',
           screenKey: 'faturar_requerimentos'
         }

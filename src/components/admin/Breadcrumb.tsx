@@ -23,7 +23,7 @@ const Breadcrumb = () => {
     'disparos-personalizados': 'Disparos Personalizados',
     'monitoramento-vigencias': 'Monitoramento de Vigências',
     'lancar-requerimentos': 'Lançar Requerimentos',
-    'faturar-requerimentos': 'Faturar Requerimentos'
+    'faturar-requerimentos': 'Enviar Requerimentos'
   };
 
   return (

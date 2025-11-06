@@ -87,7 +87,7 @@ CREATE POLICY "requerimentos_delete_policy" ON requerimentos
 
 -- Política específica para operações de faturamento
 -- Permite atualização de campos relacionados ao faturamento apenas para usuários
--- com permissão na tela "Faturar Requerimentos"
+-- com permissão na tela "Enviar Requerimentos"
 CREATE POLICY "requerimentos_faturamento_policy" ON requerimentos
   FOR UPDATE
   USING (
@@ -136,7 +136,7 @@ COMMENT ON POLICY "requerimentos_delete_policy" ON requerimentos IS
   'Permite exclusão de requerimentos não enviados para faturamento por usuários com permissão na tela Lançar Requerimentos';
 
 COMMENT ON POLICY "requerimentos_faturamento_policy" ON requerimentos IS 
-  'Política específica para operações de faturamento na tela Faturar Requerimentos';
+  'Política específica para operações de faturamento na tela Enviar Requerimentos';
 
 -- Log da migração de RLS (comentado - tabela de logs não existe)
 -- INSERT INTO permission_audit_logs (...) - Removido pois tabela não existe

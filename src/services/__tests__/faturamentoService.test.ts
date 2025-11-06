@@ -54,7 +54,7 @@ describe('FaturamentoService', () => {
       horas_total: 15,
       linguagem: 'ABAP',
       tipo_cobranca: 'Faturado',
-      mes_cobranca: 1,
+      mes_cobranca: '01/2024',
       observacao: 'Teste',
       status: 'enviado_faturamento',
       enviado_faturamento: true,
@@ -76,7 +76,7 @@ describe('FaturamentoService', () => {
       horas_total: 20,
       linguagem: 'Funcional',
       tipo_cobranca: 'Banco de Horas',
-      mes_cobranca: 1,
+      mes_cobranca: '01/2024',
       status: 'enviado_faturamento',
       enviado_faturamento: true,
       data_envio_faturamento: '2024-01-21T10:00:00Z',
@@ -236,7 +236,7 @@ describe('FaturamentoService', () => {
       const relatorio = await service.gerarRelatorioFaturamento(1, 2024);
 
       expect(relatorio.periodo).toBe('Janeiro de 2024');
-      expect(relatorio.mes_cobranca).toBe(1);
+      expect(relatorio.mes_cobranca).toBe('01/2024');
       expect(relatorio.ano_cobranca).toBe(2024);
       expect(relatorio.totais_gerais.total_requerimentos).toBe(2);
       expect(relatorio.totais_gerais.total_horas).toBe(35);
@@ -288,7 +288,7 @@ describe('FaturamentoService', () => {
     it('deve mostrar mensagem quando não há requerimentos', async () => {
       const relatorioVazio = {
         periodo: 'Janeiro de 2024',
-        mes_cobranca: 1,
+        mes_cobranca: '01/2024',
         ano_cobranca: 2024,
         requerimentos_por_tipo: {
           'Banco de Horas': { quantidade: 0, horas_total: 0, requerimentos: [] },
@@ -302,7 +302,8 @@ describe('FaturamentoService', () => {
         },
         totais_gerais: {
           total_requerimentos: 0,
-          total_horas: 0
+          total_horas: 0,
+          total_faturado: 0
         }
       };
 
@@ -386,42 +387,7 @@ describe('FaturamentoService', () => {
     });
   });
 
-  describe('marcarComoFaturados', () => {
-    it('deve marcar requerimentos como faturados com sucesso', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          in: vi.fn().mockResolvedValue({ data: null, error: null })
-        })
-      } as any);
 
-      const resultado = await service.marcarComoFaturados(['1', '2']);
-
-      expect(resultado.success).toBe(true);
-      expect(resultado.message).toContain('2 requerimento(s) marcado(s) como faturado(s)');
-    });
-
-    it('deve validar IDs obrigatórios', async () => {
-      const resultado = await service.marcarComoFaturados([]);
-
-      expect(resultado.success).toBe(false);
-      expect(resultado.error).toContain('pelo menos um requerimento');
-    });
-
-    it('deve tratar erro na atualização', async () => {
-      const mockError = { message: 'Erro de conexão' };
-      
-      vi.mocked(supabase.from).mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          in: vi.fn().mockResolvedValue({ data: null, error: mockError })
-        })
-      } as any);
-
-      const resultado = await service.marcarComoFaturados(['1']);
-
-      expect(resultado.success).toBe(false);
-      expect(resultado.error).toContain('Erro ao marcar requerimentos como faturados');
-    });
-  });
 
   describe('buscarEstatisticasFaturamento', () => {
     it('deve buscar estatísticas por período', async () => {

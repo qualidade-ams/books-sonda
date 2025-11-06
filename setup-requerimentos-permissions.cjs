@@ -30,7 +30,7 @@ async function setupRequerimentosPermissions() {
       },
       {
         key: 'faturar_requerimentos',
-        name: 'Faturar Requerimentos',
+        name: 'Enviar Requerimentos',
         description: 'Tela para faturamento e envio de relatórios de requerimentos aprovados',
         category: 'requerimentos',
         route: '/admin/faturar-requerimentos'
