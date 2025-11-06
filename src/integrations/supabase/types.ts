@@ -1123,7 +1123,7 @@ export type Database = {
     }
     Enums: {
       tipo_book_enum: "nao_tem_book" | "qualidade" | "outros"
-      tipo_cobranca_enum: "banco_horas" | "ticket"
+      tipo_cobranca_enum: "banco_horas" | "ticket" | "outros"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1252,7 +1252,7 @@ export const Constants = {
   public: {
     Enums: {
       tipo_book_enum: ["nao_tem_book", "qualidade", "outros"],
-      tipo_cobranca_enum: ["banco_horas", "ticket"],
+      tipo_cobranca_enum: ["banco_horas", "ticket", "outros"],
     },
   },
 } as const

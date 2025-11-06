@@ -317,7 +317,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                     </span>
                     {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
                       <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        🎫 {requerimento.quantidade_tickets}
+                        🎫 {requerimento.quantidade_tickets} {requerimento.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
                       </Badge>
                     )}
                   </div>

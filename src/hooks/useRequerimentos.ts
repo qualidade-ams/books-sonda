@@ -325,6 +325,45 @@ export function useRejeitarRequerimento() {
 }
 
 /**
+ * Hook para marcar requerimentos como faturados
+ */
+export function useMarcarComoFaturados() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => requerimentosService.marcarComoFaturados(ids),
+    onSuccess: (_, ids) => {
+      // Invalidar todas as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: REQUERIMENTOS_QUERY_KEYS.all });
+
+      // Invalidar cache de faturamento
+      queryClient.invalidateQueries({ 
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      });
+
+      toast.success(`${ids.length} requerimento(s) marcado(s) como faturado(s) com sucesso!`);
+    },
+    onError: (error: unknown) => {
+      console.error('Erro ao marcar requerimentos como faturados:', error);
+      const message = getRequerimentoErrorMessage(error);
+      toast.error(`Erro ao marcar como faturados: ${message}`);
+    }
+  });
+}
+
+/**
+ * Hook para buscar requerimentos faturados
+ */
+export function useRequerimentosFaturados(mesCobranca?: string) {
+  return useQuery({
+    queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados', mesCobranca],
+    queryFn: () => requerimentosService.buscarRequerimentosFaturados(mesCobranca),
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    gcTime: 1000 * 60 * 10, // 10 minutos
+  });
+}
+
+/**
  * Hook para invalidar cache de requerimentos
  */
 export function useInvalidateRequerimentos() {
@@ -378,6 +417,7 @@ export function useRequerimentosManager() {
     enviarParaFaturamento: useEnviarParaFaturamento(),
     enviarMultiplosParaFaturamento: useEnviarMultiplosParaFaturamento(),
     rejeitarRequerimento: useRejeitarRequerimento(),
+    marcarComoFaturados: useMarcarComoFaturados(),
     
     // Cache management
     invalidate

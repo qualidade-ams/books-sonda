@@ -66,8 +66,8 @@ const tipoBookSchema = z.enum(['nao_tem_book', 'qualidade', 'outros'] as const, 
 });
 
 // Schema para tipo de cobrança
-const tipoCobrancaSchema = z.enum(['banco_horas', 'ticket'] as const, {
-  errorMap: () => ({ message: 'Tipo de cobrança deve ser banco_horas ou ticket' })
+const tipoCobrancaSchema = z.enum(['banco_horas', 'ticket', 'outros'] as const, {
+  errorMap: () => ({ message: 'Tipo de cobrança deve ser banco_horas, ticket ou outros' })
 });
 
 /**

@@ -32,6 +32,7 @@ export interface Requerimento {
   status: StatusRequerimento;
   enviado_faturamento: boolean;
   data_envio_faturamento?: string;
+  data_faturamento?: string;
   created_at: string;
   updated_at: string;
 }
@@ -140,7 +141,7 @@ export interface EmailFaturamento {
 export interface ClienteRequerimento {
   id: string;
   nome_abreviado: string;
-  tipo_cobranca: 'banco_horas' | 'ticket';
+  tipo_cobranca: 'banco_horas' | 'ticket' | 'outros';
 }
 
 // Interface para estatísticas

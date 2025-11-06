@@ -95,6 +95,22 @@ export function RequerimentoForm({
     return clientes.find(cliente => cliente.id === clienteId);
   }, [clienteId, clientes]);
 
+  // Filtrar opções de tipo de cobrança baseado no tipo de cobrança da empresa
+  const tipoCobrancaOptionsFiltradas = useMemo(() => {
+    // Se não há cliente selecionado, mostrar todas as opções
+    if (!clienteSelecionado) {
+      return TIPO_COBRANCA_OPTIONS;
+    }
+
+    // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
+    if (clienteSelecionado.tipo_cobranca === 'outros') {
+      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+    }
+
+    // Para outros tipos de cobrança da empresa, mostrar todas as opções
+    return TIPO_COBRANCA_OPTIONS;
+  }, [clienteSelecionado]);
+
   // Verificar se deve mostrar campo de tickets automaticamente
   const mostrarCampoTickets = useMemo(() => {
     // Só mostra se tipo de cobrança for "Banco de Horas" E a empresa for do tipo "ticket"
@@ -221,6 +237,17 @@ export function RequerimentoForm({
       form.setValue('empresa_tipo_cobranca', undefined);
     }
   }, [clienteSelecionado, form]);
+
+  // Limpar tipo de cobrança se a opção atual não estiver mais disponível
+  useEffect(() => {
+    const tipoCobrancaAtual = form.getValues('tipo_cobranca');
+    const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
+    
+    if (tipoCobrancaAtual && !opcoesDisponiveis.includes(tipoCobrancaAtual)) {
+      console.log('Limpando tipo de cobrança não disponível:', tipoCobrancaAtual);
+      form.setValue('tipo_cobranca', '');
+    }
+  }, [tipoCobrancaOptionsFiltradas, form]);
 
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
@@ -583,7 +610,7 @@ export function RequerimentoForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {TIPO_COBRANCA_OPTIONS.map((tipo) => (
+                          {tipoCobrancaOptionsFiltradas.map((tipo) => (
                             <SelectItem key={tipo.value} value={tipo.value}>
                               <div className="flex items-center gap-2">
                                 <div className={cn(
@@ -597,6 +624,11 @@ export function RequerimentoForm({
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                      {clienteSelecionado?.tipo_cobranca === 'outros' && (
+                        <FormDescription className="text-amber-600 dark:text-amber-400">
+                          ⚠️ A opção "Banco de Horas" não está disponível para empresas com tipo de cobrança "Outros"
+                        </FormDescription>
+                      )}
                     </FormItem>
                   )}
                 />

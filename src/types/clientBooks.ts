@@ -58,7 +58,7 @@ export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY';
 export type StatusDisparo = 'enviado' | 'falhou' | 'agendado' | 'cancelado';
 export type StatusControleMensal = 'pendente' | 'enviado' | 'falhou' | 'agendado';
 export type TipoBook = 'nao_tem_book' | 'outros' | 'qualidade';
-export type TipoCobranca = 'banco_horas' | 'ticket';
+export type TipoCobranca = 'banco_horas' | 'ticket' | 'outros';
 export type StatusAnexo = 'pendente' | 'enviando' | 'processado' | 'erro';
 
 // Interfaces para formulários
@@ -218,7 +218,8 @@ export const TIPO_BOOK_OPTIONS: SelectOption[] = [
 
 export const TIPO_COBRANCA_OPTIONS: SelectOption[] = [
   { value: 'banco_horas', label: 'Banco de Horas' },
-  { value: 'ticket', label: 'Ticket' }
+  { value: 'ticket', label: 'Ticket' },
+  { value: 'outros', label: 'Outros' }
 ];
 
 // Interfaces para sistema de disparos

@@ -202,6 +202,44 @@ export class FaturamentoService {
   }
 
   /**
+   * Gera relatório de faturamento apenas com requerimentos selecionados
+   */
+  async gerarRelatorioFaturamentoSelecionados(
+    requerimentosSelecionados: Requerimento[],
+    mes: number,
+    ano: number = new Date().getFullYear()
+  ): Promise<RelatorioFaturamento> {
+    try {
+      if (!requerimentosSelecionados || requerimentosSelecionados.length === 0) {
+        throw new Error('Nenhum requerimento selecionado para gerar relatório');
+      }
+
+      const requerimentos_por_tipo = this.agruparRequerimentosPorTipo(requerimentosSelecionados);
+      const estatisticas = this.calcularTotaisPorCategoria(requerimentosSelecionados);
+
+      const nomesMeses = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+
+      return {
+        periodo: `${nomesMeses[mes - 1]} de ${ano} (${requerimentosSelecionados.length} selecionados)`,
+        mes_cobranca: `${String(mes).padStart(2, '0')}/${ano}`,
+        ano_cobranca: ano,
+        requerimentos_por_tipo,
+        totais_gerais: {
+          total_requerimentos: estatisticas.total_requerimentos,
+          total_horas: estatisticas.total_horas,
+          total_faturado: estatisticas.valor_estimado || 0
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao gerar relatório de faturamento selecionados:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Cria template HTML para relatório de faturamento
    */
   criarTemplateEmailFaturamento(relatorio: RelatorioFaturamento): string {

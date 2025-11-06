@@ -71,7 +71,7 @@ const empresaSchema = z.object({
   grupos: z.array(z.string()).optional(),
   temAms: z.boolean().optional(),
   tipoBook: z.enum(['nao_tem_book', 'outros', 'qualidade']).optional(),
-  tipoCobranca: z.enum(['banco_horas', 'ticket']).optional(),
+  tipoCobranca: z.enum(['banco_horas', 'ticket', 'outros']).optional(),
   vigenciaInicial: z.string().optional(),
   vigenciaFinal: z.string().optional(),
   bookPersonalizado: z.boolean().optional(),
@@ -125,13 +125,13 @@ const empresaSchema = z.object({
   message: 'Tipo de Book é obrigatório quando a empresa tem AMS',
   path: ['tipoBook'],
 }).refine((data) => {
-  // Validação condicional para Link SharePoint quando Tem AMS for true
-  if (data.temAms && (!data.linkSharepoint || !data.linkSharepoint.trim())) {
+  // Validação condicional para Link SharePoint quando Tem AMS for true E Tipo de Book não for "nao_tem_book"
+  if (data.temAms && data.tipoBook !== 'nao_tem_book' && (!data.linkSharepoint || !data.linkSharepoint.trim())) {
     return false;
   }
   return true;
 }, {
-  message: 'Link SharePoint é obrigatório quando a empresa tem AMS',
+  message: 'Link SharePoint é obrigatório quando a empresa tem AMS e possui book',
   path: ['linkSharepoint'],
 }).refine((data) => {
   // Validação de URL para Link SharePoint quando preenchido
@@ -232,7 +232,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         ...data,
         nomeCompleto: data.nomeCompleto.trim(),
         nomeAbreviado: data.nomeAbreviado.trim(),
-        linkSharepoint: data.temAms ? (data.linkSharepoint?.trim() || '') : '',
+        linkSharepoint: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.linkSharepoint?.trim() || '') : '',
         templatePadrao: data.temAms ? (data.templatePadrao || 'portugues') : 'portugues',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
@@ -549,27 +549,6 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         {/* Configurações Book - só aparece quando Tem AMS for Sim */}
         {watchTemAms && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <FormField
-                control={form.control}
-                name="linkSharepoint"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Link SharePoint *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://..."
-                        {...field}
-                        disabled={isSubmitting || isLoading}
-                        className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -578,7 +557,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   <FormItem>
                     <FormLabel>Tipo de Book *</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Limpar o Link SharePoint quando Tipo de Book for "Não tem Book"
+                        if (value === 'nao_tem_book') {
+                          form.setValue('linkSharepoint', '');
+                        }
+                      }}
                       value={field.value}
                       disabled={isSubmitting || isLoading}
                     >
@@ -600,6 +585,30 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 )}
               />
             </div>
+
+            {/* Link SharePoint - só aparece quando Tem AMS for Sim E Tipo de Book não for "Não tem Book" */}
+            {watchTipoBook !== 'nao_tem_book' && (
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                <FormField
+                  control={form.control}
+                  name="linkSharepoint"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Link SharePoint *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://..."
+                          {...field}
+                          disabled={isSubmitting || isLoading}
+                          className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -674,7 +683,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-base font-semibold">Tipo de Cobrança *</FormLabel>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                       {TIPO_COBRANCA_OPTIONS.map((option) => (
                         <FormItem
                           key={option.value}
@@ -698,7 +707,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                             <FormDescription className="text-xs">
                               {option.value === 'banco_horas' 
                                 ? 'Cliente utiliza sistema de banco de horas'
-                                : 'Cliente utiliza sistema de tickets'
+                                : option.value === 'ticket'
+                                ? 'Cliente utiliza sistema de tickets'
+                                : 'Outros tipos de cobrança'
                               }
                             </FormDescription>
                           </div>

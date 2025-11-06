@@ -236,7 +236,7 @@ const RequerimentoCardComponent = function RequerimentoCard({
               </div>
               {requerimento.quantidade_tickets && requerimento.quantidade_tickets > 0 && (
                 <Badge variant="secondary" className="text-[8px] px-0.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-none">
-                  🎫 {requerimento.quantidade_tickets}
+                  🎫 {requerimento.quantidade_tickets} {requerimento.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
                 </Badge>
               )}
             </div>

@@ -13,7 +13,10 @@ import {
   AlertTriangle,
   Calculator,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Check,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -38,6 +41,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +58,12 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import { FaturamentoExportButtons } from '@/components/admin/requerimentos';
 import { toast } from 'sonner';
 
-import { useRequerimentosFaturamento, useRejeitarRequerimento } from '@/hooks/useRequerimentos';
+import { 
+  useRequerimentosFaturamento, 
+  useRejeitarRequerimento, 
+  useMarcarComoFaturados,
+  useRequerimentosFaturados 
+} from '@/hooks/useRequerimentos';
 import { faturamentoService } from '@/services/faturamentoService';
 import { getBadgeClasses, getCobrancaIcon, getCobrancaColors } from '@/utils/requerimentosColors';
 
@@ -115,6 +125,10 @@ export default function FaturarRequerimentos() {
   const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
   const [confirmacaoRejeicaoAberta, setConfirmacaoRejeicaoAberta] = useState(false);
 
+  // Estados para controle de abas e seleção
+  const [abaAtiva, setAbaAtiva] = useState<'para_faturar' | 'faturados'>('para_faturar');
+  const [requerimentosSelecionados, setRequerimentosSelecionados] = useState<string[]>([]);
+
   // Hooks
   const {
     data: dadosFaturamento,
@@ -124,6 +138,14 @@ export default function FaturarRequerimentos() {
   } = useRequerimentosFaturamento(mesSelecionado, anoSelecionado);
 
   const rejeitarRequerimento = useRejeitarRequerimento();
+  const marcarComoFaturados = useMarcarComoFaturados();
+  
+  // Hook para buscar requerimentos faturados
+  const {
+    data: dadosFaturados,
+    isLoading: isLoadingFaturados,
+    error: errorFaturados
+  } = useRequerimentosFaturados(`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`);
 
   // Dados processados
   const requerimentosAgrupados = useMemo((): RequerimentosAgrupados => {
@@ -245,12 +267,10 @@ export default function FaturarRequerimentos() {
   ];
 
   // Opções para o MultiSelect de tipos de cobrança
-  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS
-    .filter(option => option.value !== 'Selecione')
-    .map(option => ({
-      value: option.value,
-      label: option.label
-    }));
+  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS.map(option => ({
+    value: option.value,
+    label: option.label
+  }));
 
   // Opções para o MultiSelect de módulos
   const moduloOptions: Option[] = MODULO_OPTIONS.map(option => ({
@@ -259,18 +279,32 @@ export default function FaturarRequerimentos() {
   }));
 
   const handleAbrirModalEmail = async () => {
-    if (estatisticasPeriodo.totalRequerimentos === 0) {
-      toast.error('Não há requerimentos para faturamento no período selecionado');
+    if (requerimentosSelecionados.length === 0) {
+      toast.error('Selecione pelo menos um requerimento para faturamento');
       return;
     }
 
     try {
-      // Gerar relatório HTML
-      const relatorio = await faturamentoService.gerarRelatorioFaturamento(mesSelecionado, anoSelecionado);
+      // Filtrar apenas os requerimentos selecionados
+      const requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
+        requerimentosSelecionados.includes(req.id)
+      ) || [];
+
+      if (requerimentosSelecionadosData.length === 0) {
+        toast.error('Nenhum requerimento selecionado encontrado');
+        return;
+      }
+
+      // Gerar relatório HTML apenas com os requerimentos selecionados
+      const relatorio = await faturamentoService.gerarRelatorioFaturamentoSelecionados(
+        requerimentosSelecionadosData, 
+        mesSelecionado, 
+        anoSelecionado
+      );
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
       // Configurar dados padrão do email
-      setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
+      setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado} (${requerimentosSelecionados.length} requerimento(s))`);
       setCorpoEmail(htmlTemplate);
       setDestinatarios(['']); // Inicializar com um campo vazio para o usuário preencher
       setDestinatariosCC([]); // Inicializar CC vazio
@@ -397,8 +431,17 @@ export default function FaturarRequerimentos() {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
 
-      // Gerar relatório HTML automaticamente
-      const relatorio = await faturamentoService.gerarRelatorioFaturamento(mesSelecionado, anoSelecionado);
+      // Filtrar apenas os requerimentos selecionados
+      const requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
+        requerimentosSelecionados.includes(req.id)
+      ) || [];
+
+      // Gerar relatório HTML apenas com os requerimentos selecionados
+      const relatorio = await faturamentoService.gerarRelatorioFaturamentoSelecionados(
+        requerimentosSelecionadosData, 
+        mesSelecionado, 
+        anoSelecionado
+      );
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
       const emailFaturamento: EmailFaturamento = {
@@ -408,14 +451,19 @@ export default function FaturarRequerimentos() {
         corpo: htmlTemplate
       };
 
+      // 1. Disparar o email
       const resultado = await faturamentoService.dispararFaturamento(emailFaturamento);
 
       if (resultado.success) {
-        toast.success(resultado.message || 'Faturamento disparado com sucesso!');
+        // 2. Marcar os requerimentos selecionados como faturados
+        await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
+        
+        toast.success(`Faturamento disparado e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)!`);
+        
+        // Limpar estados
         setModalEmailAberto(false);
         setConfirmacaoAberta(false);
-
-        // Limpar formulário
+        setRequerimentosSelecionados([]);
         setDestinatarios(['']);
         setDestinatariosCC([]);
         setAssuntoEmail('');
@@ -483,6 +531,42 @@ export default function FaturarRequerimentos() {
     }
   };
 
+  // Funções de controle de seleção
+  const handleSelecionarRequerimento = (id: string, selecionado: boolean) => {
+    if (selecionado) {
+      setRequerimentosSelecionados(prev => [...prev, id]);
+    } else {
+      setRequerimentosSelecionados(prev => prev.filter(reqId => reqId !== id));
+    }
+  };
+
+  const handleSelecionarTodos = (requerimentos: Requerimento[], selecionado: boolean) => {
+    if (selecionado) {
+      const novosIds = requerimentos.map(req => req.id);
+      setRequerimentosSelecionados(prev => [...new Set([...prev, ...novosIds])]);
+    } else {
+      const idsParaRemover = requerimentos.map(req => req.id);
+      setRequerimentosSelecionados(prev => prev.filter(id => !idsParaRemover.includes(id)));
+    }
+  };
+
+  const handleMarcarComoFaturados = async () => {
+    if (requerimentosSelecionados.length === 0) return;
+
+    try {
+      await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
+      setRequerimentosSelecionados([]);
+    } catch (error) {
+      console.error('Erro ao marcar como faturados:', error);
+    }
+  };
+
+  // Limpar seleção ao trocar de aba
+  const handleTrocarAba = (aba: 'para_faturar' | 'faturados') => {
+    setAbaAtiva(aba);
+    setRequerimentosSelecionados([]);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-full overflow-hidden">
@@ -523,13 +607,13 @@ export default function FaturarRequerimentos() {
                 <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                   <Button
                     onClick={handleAbrirModalEmail}
-                    disabled={isLoading || estatisticasPeriodo.totalRequerimentos === 0}
+                    disabled={isLoading || requerimentosSelecionados.length === 0}
                     className="flex items-center gap-2 text-sm"
                     size='sm'
-                    title={estatisticasPeriodo.totalRequerimentos === 0 ? 'Não há requerimentos para faturamento no período selecionado' : undefined}
+                    title={requerimentosSelecionados.length === 0 ? 'Selecione requerimentos para disparar faturamento' : `Disparar faturamento de ${requerimentosSelecionados.length} requerimento(s) selecionado(s)`}
                   >
                     <Send className="h-4 w-4" />
-                    Disparar Faturamento
+                    Disparar Faturamento ({requerimentosSelecionados.length})
                   </Button>
                 </ProtectedAction>
               </div>
@@ -838,8 +922,41 @@ export default function FaturarRequerimentos() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {gruposFiltrados.map(grupo => {
+          <Tabs value={abaAtiva} onValueChange={(value) => handleTrocarAba(value as 'para_faturar' | 'faturados')} className="space-y-6">
+            <div className="flex items-center justify-between">
+              <TabsList className="grid w-auto grid-cols-2">
+                <TabsTrigger value="para_faturar" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Para Faturar
+                  {dadosFaturamento?.requerimentos && (
+                    <Badge variant="secondary" className="ml-1">
+                      {dadosFaturamento.requerimentos.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="faturados" className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  Faturados
+                  {dadosFaturados && (
+                    <Badge variant="secondary" className="ml-1">
+                      {dadosFaturados.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Controles de seleção */}
+              {requerimentosSelecionados.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">
+                    {requerimentosSelecionados.length} selecionado{requerimentosSelecionados.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            <TabsContent value="para_faturar" className="space-y-6">
+              {gruposFiltrados.map(grupo => {
               const colors = getCobrancaColors(grupo.tipo);
               const icon = getCobrancaIcon(grupo.tipo);
 
@@ -874,6 +991,13 @@ export default function FaturarRequerimentos() {
                       <Table className="text-xs sm:text-sm lg:text-base">
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-12 text-xs sm:text-sm lg:text-base py-3">
+                              <Checkbox
+                                checked={grupo.requerimentos.length > 0 && grupo.requerimentos.every(req => requerimentosSelecionados.includes(req.id))}
+                                onCheckedChange={(checked) => handleSelecionarTodos(grupo.requerimentos, checked as boolean)}
+                                aria-label="Selecionar todos os requerimentos deste grupo"
+                              />
+                            </TableHead>
                             <TableHead className="w-24 sm:w-28 lg:w-36 text-xs sm:text-sm lg:text-base py-3">Chamado</TableHead>
                             <TableHead className="w-24 sm:w-28 lg:w-36 text-xs sm:text-sm lg:text-base py-3">Cliente</TableHead>
                             <TableHead className="w-20 sm:w-24 lg:w-32 text-xs sm:text-sm lg:text-base py-3">Módulo</TableHead>
@@ -892,6 +1016,13 @@ export default function FaturarRequerimentos() {
                           {grupo.requerimentos.map(req => {
                             return (
                               <TableRow key={req.id}>
+                                <TableCell className="py-3">
+                                  <Checkbox
+                                    checked={requerimentosSelecionados.includes(req.id)}
+                                    onCheckedChange={(checked) => handleSelecionarRequerimento(req.id, checked as boolean)}
+                                    aria-label={`Selecionar requerimento ${req.chamado}`}
+                                  />
+                                </TableCell>
                                 <TableCell className="font-medium py-3">
                                   <div className="flex items-center gap-1 sm:gap-2">
                                     <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
@@ -936,7 +1067,7 @@ export default function FaturarRequerimentos() {
                                     </span>
                                     {req.quantidade_tickets && req.quantidade_tickets > 0 && (
                                       <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                        🎫 {req.quantidade_tickets}
+                                        🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
                                       </Badge>
                                     )}
                                   </div>
@@ -997,7 +1128,167 @@ export default function FaturarRequerimentos() {
                 </Card>
               );
             })}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="faturados" className="space-y-6">
+              {isLoadingFaturados ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <RefreshCw className="h-8 w-8 mx-auto mb-4 animate-spin text-blue-500" />
+                      <p>Carregando requerimentos faturados...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : errorFaturados ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-red-500">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
+                      <p>Erro ao carregar requerimentos faturados</p>
+                      <Button onClick={() => window.location.reload()} className="mt-4">
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !dadosFaturados || dadosFaturados.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-gray-500">
+                      <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">
+                        Nenhum requerimento faturado
+                      </h3>
+                      <p>
+                        Não há requerimentos faturados no período de{' '}
+                        <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        Requerimentos Faturados
+                      </CardTitle>
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        {dadosFaturados.length} faturado{dadosFaturados.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12 text-xs sm:text-sm lg:text-base py-3">
+                              <Checkbox
+                                checked={dadosFaturados.length > 0 && dadosFaturados.every(req => requerimentosSelecionados.includes(req.id))}
+                                onCheckedChange={(checked) => handleSelecionarTodos(dadosFaturados, checked as boolean)}
+                                aria-label="Selecionar todos os requerimentos faturados"
+                              />
+                            </TableHead>
+                            <TableHead className="w-24 sm:w-28 lg:w-36 text-xs sm:text-sm lg:text-base py-3">Chamado</TableHead>
+                            <TableHead className="w-24 sm:w-28 lg:w-36 text-xs sm:text-sm lg:text-base py-3">Cliente</TableHead>
+                            <TableHead className="w-20 sm:w-24 lg:w-32 text-xs sm:text-sm lg:text-base py-3">Módulo</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-xs sm:text-sm lg:text-base py-3 text-center">H.Func</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-xs sm:text-sm lg:text-base py-3 text-center">H.Téc</TableHead>
+                            <TableHead className="w-2 text-xs sm:text-sm lg:text-base py-3 text-center">Total</TableHead>
+                            <TableHead className="w-20 sm:w-24 lg:w-32 text-xs sm:text-sm lg:text-base py-3 text-center">Data Faturamento</TableHead>
+                            <TableHead className="w-20 sm:w-24 lg:w-32 text-xs sm:text-sm lg:text-base py-3 text-center">Valor Total</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-xs sm:text-sm lg:text-base py-3 text-center">Autor</TableHead>
+                            <TableHead className="w-16 sm:w-20 lg:w-28 text-xs sm:text-sm lg:text-base py-3 text-center">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {dadosFaturados.map(req => (
+                            <TableRow key={req.id}>
+                              <TableCell className="py-3">
+                                <Checkbox
+                                  checked={requerimentosSelecionados.includes(req.id)}
+                                  onCheckedChange={(checked) => handleSelecionarRequerimento(req.id, checked as boolean)}
+                                  aria-label={`Selecionar requerimento ${req.chamado}`}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium py-3">
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                  <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(req.tipo_cobranca)}</span>
+                                  <code className="bg-gray-100 dark:bg-gray-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs lg:text-sm truncate flex-1" title={req.chamado}>
+                                    {req.chamado}
+                                  </code>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-3">
+                                <span className="text-[10px] sm:text-xs lg:text-sm truncate" title={req.cliente_nome}>
+                                  {req.cliente_nome || '-'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center py-3">
+                                <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight">
+                                  {req.modulo}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                                {formatarHorasParaExibicao(req.horas_funcional?.toString() || '0', 'HHMM')}
+                              </TableCell>
+                              <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                                {formatarHorasParaExibicao(req.horas_tecnico?.toString() || '0', 'HHMM')}
+                              </TableCell>
+                              <TableCell className="text-center py-3">
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
+                                    {formatarHorasParaExibicao(somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0'), 'HHMM')}
+                                  </span>
+                                  {req.quantidade_tickets && req.quantidade_tickets > 0 && (
+                                    <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                      🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                                {req.data_faturamento ? new Date(req.data_faturamento).toLocaleDateString('pt-BR') : '-'}
+                              </TableCell>
+                              <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                                {req.valor_total_geral ? (
+                                  <span className="font-semibold text-green-600">
+                                    R$ {req.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                ) : '-'}
+                              </TableCell>
+                              <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                                <span className="truncate" title={req.autor_nome}>
+                                  {req.autor_nome || '-'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center py-3">
+                                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAbrirConfirmacaoRejeicao(req)}
+                                    disabled={rejeitarRequerimento.isPending}
+                                    className="h-7 w-auto sm:h-8 lg:h-9 px-2 sm:px-3 lg:px-4 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-[10px] sm:text-xs lg:text-sm"
+                                  >
+                                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5 mr-1 sm:mr-1.5" />
+                                    Rejeitar
+                                  </Button>
+                                </ProtectedAction>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
         {/* Modal de Email */}
@@ -1152,16 +1443,17 @@ export default function FaturarRequerimentos() {
         <AlertDialog open={confirmacaoAberta} onOpenChange={setConfirmacaoAberta}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Envio de Faturamento</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5 text-blue-600" />
+                Confirmar Disparo de Faturamento
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja enviar o relatório de faturamento para{' '}
+                Tem certeza que deseja disparar o faturamento para{' '}
                 <strong>{destinatarios.filter(e => e.trim()).length} destinatário(s)</strong>?
                 <br /><br />
                 <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
                 <br />
-                <strong>Total de requerimentos:</strong> {estatisticasPeriodo.totalRequerimentos}
-                <br />
-                <strong>Total de horas:</strong> {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')}
+                <strong>Requerimentos selecionados:</strong> {requerimentosSelecionados.length}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1171,16 +1463,17 @@ export default function FaturarRequerimentos() {
               <AlertDialogAction
                 onClick={handleDispararFaturamento}
                 disabled={enviandoEmail}
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 {enviandoEmail ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Enviando...
+                    Processando...
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Confirmar Envio
+                    Confirmar Disparo
                   </>
                 )}
               </AlertDialogAction>
@@ -1234,6 +1527,8 @@ export default function FaturarRequerimentos() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+
       </div>
     </AdminLayout>
   );

@@ -457,6 +457,127 @@ export class RequerimentosService {
   }
 
   /**
+   * Marcar requerimentos como faturados
+   */
+  async marcarComoFaturados(ids: string[]): Promise<void> {
+    if (!ids || ids.length === 0) {
+      throw new Error('Lista de IDs é obrigatória');
+    }
+
+    console.log('Marcando requerimentos como faturados:', { ids, quantidade: ids.length });
+
+    // Verificar se todos os requerimentos existem e estão no status correto
+    const { data: requerimentos, error: selectError } = await supabase
+      .from('requerimentos')
+      .select('id, chamado, status')
+      .in('id', ids);
+
+    if (selectError) {
+      throw new Error(`Erro ao verificar requerimentos: ${selectError.message}`);
+    }
+
+    if (!requerimentos || requerimentos.length !== ids.length) {
+      throw new Error('Um ou mais requerimentos não foram encontrados');
+    }
+
+    // Verificar se todos estão no status correto
+    const requerimentosInvalidos = requerimentos.filter(req => req.status !== 'enviado_faturamento');
+    if (requerimentosInvalidos.length > 0) {
+      throw new Error(`Apenas requerimentos enviados para faturamento podem ser marcados como faturados. Requerimentos inválidos: ${requerimentosInvalidos.map(r => r.chamado).join(', ')}`);
+    }
+
+    // Marcar como faturados
+    const { error } = await supabase
+      .from('requerimentos')
+      .update({
+        status: 'faturado',
+        data_faturamento: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .in('id', ids);
+
+    if (error) {
+      throw new Error(`Erro ao marcar requerimentos como faturados: ${error.message}`);
+    }
+
+    console.log('Requerimentos marcados como faturados com sucesso:', { 
+      ids, 
+      chamados: requerimentos.map(r => r.chamado) 
+    });
+  }
+
+  /**
+   * Buscar requerimentos faturados
+   */
+  async buscarRequerimentosFaturados(mesCobranca?: string): Promise<Requerimento[]> {
+    try {
+      // Consulta simples sem JOIN para evitar erro 400
+      let query = supabase
+        .from('requerimentos')
+        .select('*')
+        .eq('status', 'faturado');
+
+      // Ordenar por data_faturamento se existir, senão por created_at
+      try {
+        query = query.order('data_faturamento', { ascending: false });
+      } catch {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      if (mesCobranca) {
+        query = query.eq('mes_cobranca', mesCobranca);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro na consulta de requerimentos faturados:', error);
+        // Retornar array vazio em caso de erro para não quebrar a interface
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Buscar nomes dos clientes separadamente para evitar problemas de JOIN
+      const requerimentosComNomes = await Promise.all(
+        data.map(async (req) => {
+          let cliente_nome = 'N/A';
+          
+          if (req.cliente_id) {
+            try {
+              const { data: cliente, error: clienteError } = await supabase
+                .from('clientes')
+                .select('nome_abreviado, nome_completo')
+                .eq('id', req.cliente_id)
+                .maybeSingle(); // Use maybeSingle para evitar erro se não encontrar
+
+              if (!clienteError && cliente) {
+                cliente_nome = cliente.nome_abreviado || cliente.nome_completo || 'N/A';
+              }
+            } catch (clienteErr) {
+              console.warn('Erro ao buscar cliente:', clienteErr);
+              // Manter cliente_nome como 'N/A'
+            }
+          }
+
+          return {
+            ...req,
+            cliente_nome
+          };
+        })
+      );
+
+      return requerimentosComNomes;
+    } catch (error) {
+      console.error('Erro geral ao buscar requerimentos faturados:', error);
+      // Retornar array vazio para não quebrar a interface
+      return [];
+    }
+  }
+
+  /**
    * Buscar clientes da tabela empresas_clientes
    */
   async buscarClientes(): Promise<ClienteRequerimento[]> {
