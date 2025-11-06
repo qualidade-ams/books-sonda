@@ -926,7 +926,7 @@ export default function FaturarRequerimentos() {
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
               <TabsList>
                 <TabsTrigger value="para_faturar">
-                  Para Enviar ({dadosFaturamento?.requerimentos?.length || 0})
+                  Enviar para Faturamento ({dadosFaturamento?.requerimentos?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger value="faturados">
                   Históricos de Enviados ({dadosFaturados?.length || 0})
