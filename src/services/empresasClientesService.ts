@@ -308,8 +308,9 @@ export class EmpresasClientesService {
 
   /**
    * Atualizar empresa
+   * @returns Número de clientes inativados (se aplicável)
    */
-  async atualizarEmpresa(id: string, data: Partial<EmpresaFormData>): Promise<void> {
+  async atualizarEmpresa(id: string, data: Partial<EmpresaFormData>): Promise<{ clientesInativados: number }> {
     try {
       // Validar dados se fornecidos
       if (data.nomeCompleto || data.nomeAbreviado || data.status) {
@@ -319,6 +320,25 @@ export class EmpresasClientesService {
       // Verificar duplicatas se nome completo ou abreviado foram alterados
       if (data.nomeCompleto || data.nomeAbreviado) {
         await this.verificarDuplicatasParaEdicao(id, data.nomeCompleto, data.nomeAbreviado);
+      }
+
+      // Verificar se o status está mudando para inativo
+      const statusMudandoParaInativo = data.status === EMPRESA_STATUS.INATIVO;
+      let clientesInativados = 0;
+
+      // Se estiver inativando a empresa, inativar todos os clientes ativos primeiro
+      if (statusMudandoParaInativo) {
+        const descricaoClientes = data.descricaoStatus || 'Empresa inativada';
+        
+        // Importar dinamicamente o serviço de clientes para evitar dependência circular
+        const { clientesService } = await import('./clientesService');
+        
+        try {
+          clientesInativados = await clientesService.inativarClientesPorEmpresa(id, descricaoClientes);
+        } catch (error) {
+          console.error('Erro ao inativar clientes da empresa:', error);
+          // Continuar com a inativação da empresa mesmo se houver erro nos clientes
+        }
       }
 
       // Preparar dados para atualização
@@ -363,6 +383,11 @@ export class EmpresasClientesService {
         throw ClientBooksErrorFactory.databaseError('atualizar empresa', error);
       }
 
+      // Log de clientes inativados
+      if (clientesInativados > 0) {
+        console.log(`✅ Empresa inativada com sucesso. ${clientesInativados} cliente(s) também foram inativados automaticamente.`);
+      }
+
       // Atualizar produtos se fornecidos (normalizar para uppercase)
       if (data.produtos) {
         const produtosNormalizados = data.produtos.map(p => p.toUpperCase());
@@ -373,6 +398,9 @@ export class EmpresasClientesService {
       if (data.grupos) {
         await this.atualizarGrupos(id, data.grupos);
       }
+
+      // Retornar número de clientes inativados
+      return { clientesInativados };
     } catch (error) {
       if (error instanceof ClientBooksError) {
         throw error;
@@ -418,8 +446,9 @@ export class EmpresasClientesService {
 
   /**
    * Alteração em lote de status
+   * @returns Número total de clientes inativados (se aplicável)
    */
-  async alterarStatusLote(ids: string[], status: string, descricao: string): Promise<void> {
+  async alterarStatusLote(ids: string[], status: string, descricao: string): Promise<{ clientesInativados: number }> {
     try {
       if (!ids || ids.length === 0) {
         throw ClientBooksErrorFactory.validationError('ids', ids, 'Lista de IDs não pode estar vazia');
@@ -431,6 +460,31 @@ export class EmpresasClientesService {
 
       if ((status === EMPRESA_STATUS.INATIVO || status === EMPRESA_STATUS.SUSPENSO) && !descricao) {
         throw ClientBooksErrorFactory.validationError('descricao', descricao, 'Descrição é obrigatória para status Inativo ou Suspenso');
+      }
+
+      // Se estiver inativando empresas, inativar todos os clientes ativos primeiro
+      if (status === EMPRESA_STATUS.INATIVO) {
+        const descricaoClientes = descricao || 'Empresa inativada';
+        
+        // Importar dinamicamente o serviço de clientes para evitar dependência circular
+        const { clientesService } = await import('./clientesService');
+        
+        let totalClientesInativados = 0;
+        
+        // Inativar clientes de cada empresa
+        for (const empresaId of ids) {
+          try {
+            const clientesInativados = await clientesService.inativarClientesPorEmpresa(empresaId, descricaoClientes);
+            totalClientesInativados += clientesInativados;
+          } catch (error) {
+            console.error(`Erro ao inativar clientes da empresa ${empresaId}:`, error);
+            // Continuar com as outras empresas mesmo se houver erro
+          }
+        }
+
+        if (totalClientesInativados > 0) {
+          console.log(`✅ ${totalClientesInativados} cliente(s) foram inativados automaticamente junto com as empresas.`);
+        }
       }
 
       const updateData: EmpresaClienteUpdate = {
@@ -448,6 +502,9 @@ export class EmpresasClientesService {
       if (error) {
         throw ClientBooksErrorFactory.databaseError('alterar status em lote', error);
       }
+
+      // Retornar número total de clientes inativados
+      return { clientesInativados: status === EMPRESA_STATUS.INATIVO ? totalClientesInativados : 0 };
     } catch (error) {
       if (error instanceof ClientBooksError) {
         throw error;

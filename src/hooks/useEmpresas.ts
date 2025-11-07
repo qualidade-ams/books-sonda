@@ -174,7 +174,7 @@ export const useEmpresas = (
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<EmpresaFormData> }) =>
       empresasClientesService.atualizarEmpresa(id, data),
-    onSuccess: async (_, { id, data }) => {
+    onSuccess: async (result, { id, data }) => {
       // Invalidar cache específico da empresa
       clientBooksCacheService.invalidateEmpresaCache(id);
 
@@ -189,6 +189,17 @@ export const useEmpresas = (
 
       // ✅ ADICIONADO: Invalidar cache de histórico de disparos
       await queryClient.invalidateQueries({ queryKey: ['historico-disparos'] });
+
+      // ✅ ADICIONADO: Invalidar cache de clientes para refletir inativações
+      await queryClient.invalidateQueries({ queryKey: ['clientes'] });
+
+      // Mensagem base de sucesso
+      let mensagemSucesso = 'Empresa atualizada com sucesso!';
+
+      // Se clientes foram inativados, adicionar à mensagem
+      if (result.clientesInativados > 0) {
+        mensagemSucesso = `Empresa inativada com sucesso! ${result.clientesInativados} cliente(s) também foram inativados automaticamente.`;
+      }
 
       // ✅ NOVO: Verificar vigência automaticamente se foi definida uma vigência final
       if (data.vigenciaFinal) {
@@ -206,24 +217,24 @@ export const useEmpresas = (
             const empresasInativadas = await vigenciaService.executarVerificacaoManual();
             
             if (empresasInativadas > 0) {
-              toast.success(`Empresa atualizada! ${empresasInativadas} empresa(s) com vigência vencida foram automaticamente inativadas.`);
+              toast.success(`${mensagemSucesso} ${empresasInativadas} empresa(s) com vigência vencida foram automaticamente inativadas.`);
               
               // Recarregar dados após inativação automática
               await queryClient.invalidateQueries({ queryKey: ['empresas'] });
               await queryClient.refetchQueries({ queryKey: cacheKey });
             } else {
-              toast.success('Empresa atualizada com sucesso!');
+              toast.success(mensagemSucesso);
             }
           } catch (error) {
             console.error('Erro na verificação automática de vigência:', error);
-            toast.success('Empresa atualizada com sucesso!');
+            toast.success(mensagemSucesso);
             toast.warning('Não foi possível executar verificação automática de vigência. Verifique manualmente na tela de Monitoramento.');
           }
         } else {
-          toast.success('Empresa atualizada com sucesso!');
+          toast.success(mensagemSucesso);
         }
       } else {
-        toast.success('Empresa atualizada com sucesso!');
+        toast.success(mensagemSucesso);
       }
 
       // Forçar refetch para garantir dados atualizados
@@ -259,7 +270,7 @@ export const useEmpresas = (
   const batchUpdateMutation = useMutation({
     mutationFn: ({ ids, status, descricao }: { ids: string[]; status: string; descricao: string }) =>
       empresasClientesService.alterarStatusLote(ids, status, descricao),
-    onSuccess: async (_, { ids }) => {
+    onSuccess: async (result, { ids, status }) => {
       // Invalidar cache para todas as empresas afetadas
       ids.forEach(id => clientBooksCacheService.invalidateEmpresaCache(id));
       await queryClient.invalidateQueries({ queryKey: ['empresas'] });
@@ -268,8 +279,17 @@ export const useEmpresas = (
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
 
+      // ✅ ADICIONADO: Invalidar cache de clientes para refletir inativações
+      await queryClient.invalidateQueries({ queryKey: ['clientes'] });
+
       setSelectedEmpresas([]);
-      toast.success('Status das empresas alterado com sucesso!');
+
+      // Mensagem de sucesso com informação sobre clientes inativados
+      if (status === 'inativo' && result.clientesInativados > 0) {
+        toast.success(`Status das empresas alterado com sucesso! ${result.clientesInativados} cliente(s) também foram inativados automaticamente.`);
+      } else {
+        toast.success('Status das empresas alterado com sucesso!');
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || 'Erro ao alterar status das empresas');

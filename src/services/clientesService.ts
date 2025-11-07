@@ -372,6 +372,61 @@ export class ClientesService {
     });
   }
 
+  /**
+   * Inativar todos os clientes de uma empresa
+   */
+  async inativarClientesPorEmpresa(empresaId: string, descricao: string): Promise<number> {
+    try {
+      if (!empresaId) {
+        throw new ClienteError('ID da empresa é obrigatório', 'EMPRESA_ID_REQUIRED');
+      }
+
+      if (!descricao) {
+        throw new ClienteError('Descrição é obrigatória para inativação', 'DESCRIPTION_REQUIRED');
+      }
+
+      // Buscar clientes ativos da empresa
+      const { data: clientesAtivos, error: errorBusca } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .eq('status', Cliente_STATUS.ATIVO as any);
+
+      if (errorBusca) {
+        throw new ClienteError(`Erro ao buscar clientes ativos: ${errorBusca.message}`, 'SEARCH_ERROR');
+      }
+
+      if (!clientesAtivos || clientesAtivos.length === 0) {
+        return 0; // Nenhum cliente ativo para inativar
+      }
+
+      // Inativar todos os clientes ativos
+      const updateData: ClienteUpdate = {
+        status: Cliente_STATUS.INATIVO as any,
+        data_status: new Date().toISOString(),
+        descricao_status: descricao,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: errorUpdate } = await supabase
+        .from('clientes')
+        .update(updateData)
+        .eq('empresa_id', empresaId)
+        .eq('status', Cliente_STATUS.ATIVO as any);
+
+      if (errorUpdate) {
+        throw new ClienteError(`Erro ao inativar clientes: ${errorUpdate.message}`, 'UPDATE_ERROR');
+      }
+
+      return clientesAtivos.length;
+    } catch (error) {
+      if (error instanceof ClienteError) {
+        throw error;
+      }
+      throw new ClienteError(`Erro inesperado ao inativar clientes: ${error.message}`, 'UNEXPECTED_ERROR');
+    }
+  }
+
   // Métodos privados auxiliares
 
   private async validarDadosCliente(data: ClienteFormData, isUpdate = false): Promise<void> {
