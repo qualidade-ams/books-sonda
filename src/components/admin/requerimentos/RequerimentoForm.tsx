@@ -416,7 +416,7 @@ export function RequerimentoForm({
                       <FormLabel>
                         Módulo <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione um módulo" />
@@ -428,6 +428,34 @@ export function RequerimentoForm({
                               {modulo.label}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Linguagem */}
+                <FormField
+                  control={form.control}
+                  name="linguagem"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Linguagem <span className="text-gray-700 dark:text-gray-300">*</span>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma linguagem" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ABAP">ABAP</SelectItem>
+                          <SelectItem value="DBA">DBA</SelectItem>
+                          <SelectItem value="Funcional">Funcional</SelectItem>
+                          <SelectItem value="PL/SQL">PL/SQL</SelectItem>
+                          <SelectItem value="Técnico">Técnico</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -54,6 +54,7 @@ interface RequerimentosTableProps {
   showEnviarFaturamento?: boolean;
   showActions?: boolean;
   showEditDelete?: boolean; // Nova prop para controlar botões de editar/excluir
+  showDataFaturamento?: boolean; // Nova prop para controlar coluna Data Faturamento
 }
 
 const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
@@ -69,6 +70,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   showEnviarFaturamento = true,
   showActions = true,
   showEditDelete = true, // Por padrão, mostra botões de editar/excluir
+  showDataFaturamento = false, // Por padrão, não mostra coluna Data Faturamento
 }) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
   const enviarParaFaturamento = useEnviarParaFaturamento();
@@ -239,6 +241,9 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Total</TableHead>
             <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Envio</TableHead>
             <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Aprov.</TableHead>
+            {showDataFaturamento && (
+              <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Faturamento</TableHead>
+            )}
             <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-32 text-center text-xs sm:text-sm lg:text-base py-3">Valor Total</TableHead>
             <TableHead className="w-14 sm:w-18 lg:w-22 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Período</TableHead>
             <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Autor</TableHead>
@@ -330,6 +335,12 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   {requerimento.data_aprovacao ? formatDate(requerimento.data_aprovacao) : '-'}
                 </TableCell>
+
+                {showDataFaturamento && (
+                  <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                    {requerimento.data_faturamento ? formatDate(requerimento.data_faturamento) : '-'}
+                  </TableCell>
+                )}
 
                 <TableCell className="text-center py-3">
                   {valorTotal !== null ? (

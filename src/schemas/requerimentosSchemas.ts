@@ -138,6 +138,7 @@ export const requerimentoFormSchema = z.object({
     .min(1, 'Cliente é obrigatório')
     .uuid('ID do cliente deve ser um UUID válido'),
   modulo: moduloSchema,
+  linguagem: linguagemSchema, // Campo linguagem obrigatório
   descricao: descricaoSchema,
   data_envio: dataSchema,
   data_aprovacao: dataOpcionalSchema,

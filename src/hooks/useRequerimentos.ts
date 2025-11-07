@@ -60,13 +60,10 @@ export function useRequerimentosEnviados(filtros?: FiltrosRequerimentos) {
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.enviados(filtros),
     queryFn: () => {
-      // Se há filtros específicos, usar listarRequerimentos com status enviado_faturamento
-      if (filtros && Object.keys(filtros).some(key => filtros[key as keyof FiltrosRequerimentos] !== undefined)) {
-        const filtrosComStatus = { ...filtros, status: 'enviado_faturamento' as StatusRequerimento };
-        return requerimentosService.listarRequerimentos(filtrosComStatus);
-      }
-      // Caso contrário, usar a função padrão que busca do mês atual
-      return requerimentosService.buscarRequerimentosParaFaturamento();
+      // Buscar requerimentos enviados para faturamento ou já faturados
+      // Usar buscarRequerimentosFaturados que busca ambos os status
+      const mesCobranca = filtros?.mes_cobranca;
+      return requerimentosService.buscarRequerimentosFaturados(mesCobranca);
     },
     staleTime: 1000 * 30, // 30 segundos
     gcTime: 1000 * 60 * 5, // 5 minutos
@@ -247,6 +244,11 @@ export function useEnviarParaFaturamento() {
         queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
       });
 
+      // Invalidar cache de faturados para atualizar a aba "Histórico de Enviados"
+      queryClient.invalidateQueries({ 
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'] 
+      });
+
       toast.success('Requerimento enviado para faturamento com sucesso!');
     },
     onError: (error: unknown) => {
@@ -282,6 +284,11 @@ export function useEnviarMultiplosParaFaturamento() {
       // Invalidar cache de faturamento
       queryClient.invalidateQueries({ 
         queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
+      });
+
+      // Invalidar cache de faturados para atualizar a aba "Histórico de Enviados"
+      queryClient.invalidateQueries({ 
+        queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturados'] 
       });
 
       toast.success(`${ids.length} requerimento(s) enviado(s) para faturamento com sucesso!`);

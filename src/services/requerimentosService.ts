@@ -42,7 +42,7 @@ export class RequerimentosService {
       : data.horas_tecnico;
 
     const requerimentoData = {
-      chamado: data.chamado.trim(),
+      chamado: data.chamado.trim().toUpperCase(), // Sempre salvar em maiúsculas
       cliente_id: data.cliente_id,
       modulo: data.modulo,
       descricao: data.descricao.trim(),
@@ -316,7 +316,7 @@ export class RequerimentosService {
       updated_at: new Date().toISOString()
     };
 
-    if (data.chamado) updateData.chamado = data.chamado.trim();
+    if (data.chamado) updateData.chamado = data.chamado.trim().toUpperCase(); // Sempre salvar em maiúsculas
     if (data.cliente_id) updateData.cliente_id = data.cliente_id;
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
@@ -446,8 +446,9 @@ export class RequerimentosService {
     }
 
     // Verificar se está no status correto para rejeição
-    if (requerimento.status !== 'enviado_faturamento') {
-      throw new Error('Apenas requerimentos enviados para faturamento podem ser rejeitados');
+    // Permitir rejeitar requerimentos enviados para faturamento ou já faturados
+    if (requerimento.status !== 'enviado_faturamento' && requerimento.status !== 'faturado') {
+      throw new Error('Apenas requerimentos enviados para faturamento ou faturados podem ser rejeitados');
     }
 
     console.log('Rejeitando requerimento:', {
@@ -464,6 +465,7 @@ export class RequerimentosService {
         status: 'lancado',
         enviado_faturamento: false,
         data_envio_faturamento: null,
+        data_faturamento: null, // Limpar data de faturamento também
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
@@ -531,16 +533,22 @@ export class RequerimentosService {
   async buscarRequerimentosFaturados(mesCobranca?: string): Promise<Requerimento[]> {
     try {
       // Consulta simples sem JOIN para evitar erro 400
+      // Buscar requerimentos enviados para faturamento OU já faturados
       let query = supabase
         .from('requerimentos')
         .select('*')
-        .eq('status', 'faturado');
+        .in('status', ['enviado_faturamento', 'faturado']);
 
-      // Ordenar por data_faturamento se existir, senão por created_at
+      // Ordenar por data_envio_faturamento (quando foi enviado para faturamento)
+      // Se não existir, ordenar por data_faturamento, senão por created_at
       try {
-        query = query.order('data_faturamento', { ascending: false });
+        query = query.order('data_envio_faturamento', { ascending: false, nullsLast: true });
       } catch {
-        query = query.order('created_at', { ascending: false });
+        try {
+          query = query.order('data_faturamento', { ascending: false, nullsLast: true });
+        } catch {
+          query = query.order('created_at', { ascending: false });
+        }
       }
 
       if (mesCobranca) {
@@ -564,21 +572,37 @@ export class RequerimentosService {
         data.map(async (req) => {
           let cliente_nome = 'N/A';
           
+          console.log('Buscando cliente para requerimento:', {
+            requerimento_id: req.id,
+            chamado: req.chamado,
+            cliente_id: req.cliente_id,
+            tem_cliente_id: !!req.cliente_id
+          });
+          
           if (req.cliente_id) {
             try {
               const { data: cliente, error: clienteError } = await supabase
                 .from('empresas_clientes')
                 .select('nome_abreviado, nome_completo')
                 .eq('id', req.cliente_id)
-                .maybeSingle(); // Use maybeSingle para evitar erro se não encontrar
+                .maybeSingle();
+
+              console.log('Resultado da busca de cliente:', {
+                cliente_id: req.cliente_id,
+                encontrou: !!cliente,
+                erro: clienteError?.message,
+                nome_abreviado: cliente?.nome_abreviado,
+                nome_completo: cliente?.nome_completo
+              });
 
               if (!clienteError && cliente) {
                 cliente_nome = cliente.nome_abreviado || cliente.nome_completo || 'N/A';
               }
             } catch (clienteErr) {
               console.warn('Erro ao buscar cliente:', clienteErr);
-              // Manter cliente_nome como 'N/A'
             }
+          } else {
+            console.warn('Requerimento sem cliente_id:', req.id, req.chamado);
           }
 
           return {
@@ -826,7 +850,8 @@ export class RequerimentosService {
       id: data.id,
       chamado: data.chamado,
       cliente_id: data.cliente_id,
-      cliente_nome: data.cliente?.nome_abreviado,
+      // Suporta tanto data.cliente_nome (busca direta) quanto data.cliente?.nome_abreviado (JOIN)
+      cliente_nome: data.cliente_nome || data.cliente?.nome_abreviado,
       modulo: data.modulo,
       descricao: data.descricao,
       data_envio: data.data_envio,
@@ -841,6 +866,7 @@ export class RequerimentosService {
       status: data.status,
       enviado_faturamento: data.enviado_faturamento,
       data_envio_faturamento: data.data_envio_faturamento,
+      data_faturamento: data.data_faturamento, // Campo de data de faturamento
       created_at: data.created_at,
       updated_at: data.updated_at,
       // Campos de valor/hora
