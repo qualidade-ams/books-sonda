@@ -555,57 +555,59 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {/* Gráfico de Pizza - Distribuição por Tipo de Cobrança */}
-              {statsRequerimentos && statsRequerimentos.porTipoCobranca && statsRequerimentos.porTipoCobranca.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <PieChart className="h-5 w-5 text-blue-600" />
-                      Distribuição por Tipo de Cobrança
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {statsRequerimentos.porTipoCobranca.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={350}>
-                        <RechartsPieChart>
-                          <Pie
-                            data={statsRequerimentos.porTipoCobranca.map(item => ({
-                              name: item.tipo,
-                              value: item.count,
-                              porcentagem: item.porcentagem
-                            }))}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, porcentagem }) => `${name}: ${porcentagem.toFixed(1)}%`}
-                            outerRadius={100}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {statsRequerimentos.porTipoCobranca.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={getHexColor(entry.tipo)} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value: number, name: string, props: any) => [
-                              `${value} requerimentos (${props.payload.porcentagem.toFixed(1)}%)`,
-                              name
-                            ]}
-                          />
-                          <Legend />
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-[350px] text-gray-500">
-                        Sem dados para exibir
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+              {/* Grid de 2 colunas para gráficos */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Gráfico de Pizza - Distribuição por Tipo de Cobrança */}
+                {statsRequerimentos && statsRequerimentos.porTipoCobranca && statsRequerimentos.porTipoCobranca.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PieChart className="h-5 w-5 text-blue-600" />
+                        Distribuição por Tipo de Cobrança
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {statsRequerimentos.porTipoCobranca.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={350}>
+                          <RechartsPieChart>
+                            <Pie
+                              data={statsRequerimentos.porTipoCobranca.map(item => ({
+                                name: item.tipo,
+                                value: item.count,
+                                porcentagem: item.porcentagem
+                              }))}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, porcentagem }) => `${name}: ${porcentagem.toFixed(1)}%`}
+                              outerRadius={100}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {statsRequerimentos.porTipoCobranca.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={getHexColor(entry.tipo)} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value: number, name: string, props: any) => [
+                                `${value} requerimentos (${props.payload.porcentagem.toFixed(1)}%)`,
+                                name
+                              ]}
+                            />
+                            <Legend />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[350px] text-gray-500">
+                          Sem dados para exibir
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Gráfico de Barras - Horas por Tipo de Cobrança */}
-              <Card>
+                {/* Gráfico de Barras - Horas por Tipo de Cobrança */}
+                <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-blue-600" />
@@ -646,8 +648,8 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Gráfico de Barras - Valor Faturado por Tipo */}
-              <Card>
+                {/* Gráfico de Barras - Valor Faturado por Tipo */}
+                <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="h-5 w-5 text-blue-600" />
@@ -688,10 +690,13 @@ const Dashboard = () => {
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
+              </div>
 
-              {/* Gráfico de Barras - Top 10 Empresas por Faturamento */}
-              {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
-                <Card>
+              {/* Grid de 2 colunas - Top 10 Empresas */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Gráfico de Barras - Top 10 Empresas por Faturamento */}
+                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Award className="h-5 w-5 text-orange-600" />
@@ -736,9 +741,9 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {/* Gráfico de Barras - Top 10 Empresas por Banco de Horas */}
-              {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
-                <Card>
+                {/* Gráfico de Barras - Top 10 Empresas por Banco de Horas */}
+                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5 text-blue-600" />
@@ -775,9 +780,10 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
-              )}
+                )}
+              </div>
 
-              {/* Gráfico de Barras - Por Módulo */}
+              {/* Gráfico de Barras - Por Módulo (largura completa) */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -819,9 +825,11 @@ const Dashboard = () => {
                 Evolução Mensal
               </h3>
 
-              {/* Gráfico de Linha - Evolução de Requerimentos */}
-              {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
-                <Card>
+              {/* Grid de 2 colunas - Evolução Mensal */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Gráfico de Linha - Evolução de Requerimentos */}
+                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -853,9 +861,9 @@ const Dashboard = () => {
                 </Card>
               ) : null}
 
-              {/* Gráfico de Área - Evolução de Horas */}
-              {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
-                <Card>
+                {/* Gráfico de Área - Evolução de Horas */}
+                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5 text-blue-600" />
@@ -893,9 +901,9 @@ const Dashboard = () => {
                 </Card>
               ) : null}
 
-              {/* Gráfico de Barras - Valor Faturado por Mês */}
-              {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.valor > 0).length > 0 ? (
-                <Card>
+                {/* Gráfico de Barras - Valor Faturado por Mês */}
+                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.valor > 0).length > 0 ? (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-blue-600" />
@@ -924,9 +932,9 @@ const Dashboard = () => {
                 </Card>
               ) : null}
 
-              {/* Gráfico de Linha - Tickets por Mês */}
-              {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.tickets > 0).length > 0 ? (
-                <Card>
+                {/* Gráfico de Linha - Tickets por Mês */}
+                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.tickets > 0).length > 0 ? (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Ticket className="h-5 w-5 text-blue-600" />
@@ -956,11 +964,14 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
-              ) : null}
+                ) : null}
+              </div>
 
-              {/* Gráfico de Área Empilhada - Horas por Tipo de Cobrança por Mês */}
-              {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
-                <Card>
+              {/* Grid de 2 colunas - Gráficos Empilhados por Tipo */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Gráfico de Área Empilhada - Horas por Tipo de Cobrança por Mês */}
+                {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5 text-blue-600" />
@@ -1002,9 +1013,9 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {/* Gráfico de Barras Empilhadas - Valor Faturado por Tipo de Cobrança por Mês */}
-              {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
-                <Card>
+                {/* Gráfico de Barras Empilhadas - Valor Faturado por Tipo de Cobrança por Mês */}
+                {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-blue-600" />
@@ -1042,7 +1053,8 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
-              )}
+                )}
+              </div>
             </div>
           </>
         )}
