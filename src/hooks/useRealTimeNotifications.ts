@@ -53,7 +53,9 @@ export function useRealTimeNotifications(config: UseRealTimeNotificationsConfig 
       unsubscribeFunctions.current = unsubscribes;
       setIsConnected(true);
 
-      console.log('[useRealTimeNotifications] Conectado com sucesso');
+      if (import.meta.env.DEV) {
+        console.log('[useRealTimeNotifications] Conectado com sucesso');
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -82,7 +84,9 @@ export function useRealTimeNotifications(config: UseRealTimeNotificationsConfig 
       setIsConnected(false);
       setConnectionError(null);
       
-      console.log('[useRealTimeNotifications] Desconectado');
+      if (import.meta.env.DEV) {
+        console.log('[useRealTimeNotifications] Desconectado');
+      }
 
     } catch (error) {
       console.error('[useRealTimeNotifications] Erro ao desconectar:', error);

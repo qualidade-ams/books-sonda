@@ -8,8 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVigenciaMonitor } from '@/hooks/useVigenciaMonitor';
 import { 
   Calendar, 
@@ -237,28 +235,26 @@ export function VigenciaMonitor({ compacto = false, showLogs = true }: VigenciaM
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-96">
-              <div className="space-y-3">
-                {statusVigencias.map((empresa) => (
-                  <div key={empresa.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{empresa.nome_completo}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Vigência até: {formatarData(empresa.vigencia_final)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={obterCorStatus(empresa.status_vigencia)}>
-                        {obterTextoStatus(empresa.status_vigencia, empresa.dias_restantes)}
-                      </Badge>
-                      <Badge variant={empresa.status === 'ativo' ? 'default' : 'secondary'}>
-                        {empresa.status}
-                      </Badge>
-                    </div>
+            <div className="space-y-3">
+              {statusVigencias.map((empresa) => (
+                <div key={empresa.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium">{empresa.nome_completo}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Vigência até: {formatarData(empresa.vigencia_final)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={obterCorStatus(empresa.status_vigencia)}>
+                      {obterTextoStatus(empresa.status_vigencia, empresa.dias_restantes)}
+                    </Badge>
+                    <Badge variant={empresa.status === 'ativo' ? 'default' : 'secondary'}>
+                      {empresa.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -273,22 +269,20 @@ export function VigenciaMonitor({ compacto = false, showLogs = true }: VigenciaM
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-64">
-              <div className="space-y-2">
-                {logs.map((log, index) => (
-                  <div key={index} className="flex items-start gap-3 p-2 text-sm">
-                    <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                    <div className="flex-1">
-                      <p className="font-medium">{log.operacao}</p>
-                      <p className="text-muted-foreground">{log.detalhes}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatarDataHora(log.data_operacao)}
-                      </p>
-                    </div>
+            <div className="space-y-2">
+              {logs.map((log, index) => (
+                <div key={index} className="flex items-start gap-3 p-2 text-sm">
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                  <div className="flex-1">
+                    <p className="font-medium">{log.operacao}</p>
+                    <p className="text-muted-foreground">{log.detalhes}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatarDataHora(log.data_operacao)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

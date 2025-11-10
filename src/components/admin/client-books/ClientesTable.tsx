@@ -101,20 +101,20 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     switch (status) {
       case 'ativo':
         return (
-          <Badge variant="default" className="bg-blue-600 text-white border-blue-600">
+          <Badge variant="default" className="bg-blue-600 text-white border-blue-600 text-xs px-2 py-1">
             <CheckCircle className="h-3 w-3 mr-1" />
             Ativo
           </Badge>
         );
       case 'inativo':
         return (
-          <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200">
+          <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200 text-xs px-2 py-1">
             <XCircle className="h-3 w-3 mr-1" />
             Inativo
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-xs px-2 py-1">{status}</Badge>;
     }
   };
 
@@ -229,51 +229,57 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
             </p>
           </div>
         ) : (
-          <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full" style={{ tableLayout: 'fixed' }}>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                {showEmpresaColumn && <TableHead>Empresa</TableHead>}
-                <TableHead>Função</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Principal</TableHead>
-                <TableHead>Atualizado</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead className="w-[30%]">Cliente</TableHead>
+                {showEmpresaColumn && <TableHead className="w-[18%]">Empresa</TableHead>}
+                <TableHead className="w-[12%] hidden xl:table-cell">Função</TableHead>
+                <TableHead className="w-[15%]">Status</TableHead>
+                <TableHead className="w-[13%]">Atualizado</TableHead>
+                <TableHead className="w-[12%]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clientes.map((cliente) => (
                 <TableRow key={cliente.id}>
-                  <TableCell>
+                  <TableCell className="font-medium">
                     <div className="space-y-1">
-                      <div className="font-medium flex items-center space-x-2">
-                        <span>{cliente.nome_completo}</span>
+                      <div className="flex items-center gap-1.5">
                         {cliente.principal_contato && (
-                          <Star className="h-4 w-4 text-blue-600 fill-current" />
+                          <Star className="h-4 w-4 text-blue-600 fill-current flex-shrink-0" title="Contato Principal" />
                         )}
+                        <span className="truncate">
+                          {cliente.nome_completo}
+                        </span>
                       </div>
-                      <div className="flex items-center space-x-1 text-sm text-gray-500">
-                        <Mail className="h-3 w-3" />
-                        <span>{cliente.email}</span>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{cliente.email}</span>
                       </div>
+                      {/* Mostrar função em telas pequenas */}
+                      {cliente.funcao && (
+                        <div className="xl:hidden text-xs text-gray-500 mt-1">
+                          {cliente.funcao}
+                        </div>
+                      )}
                     </div>
                   </TableCell>
 
                   {showEmpresaColumn && (
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        <div className="space-y-1">
-                          <div className="font-medium text-sm">
-                            {cliente.empresa.nome_abreviado}
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <span className="truncate">
+                          {cliente.empresa.nome_abreviado}
+                        </span>
                       </div>
                     </TableCell>
                   )}
 
-                  <TableCell>
-                    <span className="text-sm">
+                  <TableCell className="hidden xl:table-cell">
+                    <span className="truncate block">
                       {cliente.funcao || '-'}
                     </span>
                   </TableCell>
@@ -282,23 +288,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     {getStatusBadge(cliente.status as ClienteStatus)}
                   </TableCell>
 
-                  <TableCell>
-                    {cliente.principal_contato ? (
-                      <Badge variant="default" className="bg-white text-blue-600 border-blue-600">
-                        <Star className="h-3 w-3 mr-1" />
-                        Principal
-                      </Badge>
-                    ) : (
-                      <span className="text-gray-500 text-sm">-</span>
-                    )}
-                  </TableCell>
-
                   <TableCell className="text-sm text-gray-500">
                     {formatarData(cliente.updated_at)}
                   </TableCell>
 
                   <TableCell>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center gap-1">
                       <ProtectedAction screenKey="clientes" requiredLevel="edit">
                         <Button
                           size="sm"
@@ -327,6 +322,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CardContent>
     </Card>

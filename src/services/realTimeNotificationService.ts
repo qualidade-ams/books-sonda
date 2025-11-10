@@ -84,7 +84,10 @@ export class RealTimeNotificationService {
       await this.setupConfigurationSubscription();
 
       this.isConnected = true;
-      console.log('[RealTimeNotification] Serviço inicializado com sucesso');
+      
+      if (import.meta.env.DEV) {
+        console.log('[RealTimeNotification] Serviço inicializado com sucesso');
+      }
 
       // Log de auditoria removido - auditLogger é específico para templates
       // await auditLogger.logOperation(...);
@@ -112,7 +115,10 @@ export class RealTimeNotificationService {
       // Remover todas as subscriptions
       for (const [channelName, channel] of this.channels) {
         await supabase.removeChannel(channel);
-        console.log(`[RealTimeNotification] Canal ${channelName} removido`);
+        
+        if (import.meta.env.DEV) {
+          console.log(`[RealTimeNotification] Canal ${channelName} removido`);
+        }
       }
 
       this.channels.clear();
@@ -121,7 +127,9 @@ export class RealTimeNotificationService {
       this.progressStatuses.clear();
       this.isConnected = false;
 
-      console.log('[RealTimeNotification] Serviço finalizado');
+      if (import.meta.env.DEV) {
+        console.log('[RealTimeNotification] Serviço finalizado');
+      }
 
       // Log de auditoria removido - auditLogger é específico para templates
       // await auditLogger.logOperation(...);
@@ -139,7 +147,9 @@ export class RealTimeNotificationService {
     callbacks.push(callback);
     this.eventCallbacks.set(eventType, callbacks);
 
-    console.log(`[RealTimeNotification] Subscrito a eventos ${eventType}`);
+    if (import.meta.env.DEV) {
+      console.log(`[RealTimeNotification] Subscrito a eventos ${eventType}`);
+    }
 
     // Retorna função para cancelar subscription
     return () => {
@@ -166,7 +176,9 @@ export class RealTimeNotificationService {
       callback(existingStatus);
     }
 
-    console.log(`[RealTimeNotification] Subscrito a progresso da operação ${operationId}`);
+    if (import.meta.env.DEV) {
+      console.log(`[RealTimeNotification] Subscrito a progresso da operação ${operationId}`);
+    }
 
     // Retorna função para cancelar subscription
     return () => {
@@ -196,7 +208,9 @@ export class RealTimeNotificationService {
       // Enviar via Supabase Realtime (se configurado)
       await this.broadcastEvent(fullEvent);
 
-      console.log(`[RealTimeNotification] Evento emitido: ${fullEvent.type} - ${fullEvent.title}`);
+      if (import.meta.env.DEV) {
+        console.log(`[RealTimeNotification] Evento emitido: ${fullEvent.type} - ${fullEvent.title}`);
+      }
 
     } catch (error) {
       console.error('[RealTimeNotification] Erro ao emitir evento:', error);
@@ -536,8 +550,10 @@ export class RealTimeNotificationService {
 
   private async broadcastEvent(event: RealTimeEvent): Promise<void> {
     // Implementação futura: broadcast via Supabase Realtime
-    // Por enquanto, apenas log local
-    console.log('[RealTimeNotification] Broadcasting event:', event);
+    // Por enquanto, apenas log local em desenvolvimento
+    if (import.meta.env.DEV) {
+      console.log('[RealTimeNotification] Broadcasting event:', event);
+    }
   }
 
   private generateEventId(): string {

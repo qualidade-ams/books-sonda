@@ -473,16 +473,16 @@ const HistoricoBooks = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
+                  <div className="w-full overflow-x-auto">
+                    <Table className="w-full" style={{ tableLayout: 'fixed' }}>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Data/Hora</TableHead>
-                          <TableHead>Empresa</TableHead>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Assunto</TableHead>
-                          <TableHead>Ações</TableHead>
+                          <TableHead className="w-[15%]">Data/Hora</TableHead>
+                          <TableHead className="w-[20%]">Empresa</TableHead>
+                          <TableHead className="w-[25%]">Cliente</TableHead>
+                          <TableHead className="w-[15%]">Status</TableHead>
+                          <TableHead className="w-[15%]">Assunto</TableHead>
+                          <TableHead className="w-[10%]">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -51,6 +51,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+
+  // Estado para controlar o submenu flutuante quando minimizado
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const [submenuPosition, setSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const submenuRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Função para determinar qual seção deve estar expandida baseada na rota atual
   const getCurrentSection = () => {
@@ -364,6 +370,53 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     }
   }, [location.pathname]);
 
+  // Funções para controlar o submenu flutuante
+  const handleMouseEnterSection = (sectionKey: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isCollapsed) return;
+
+    // Limpar timeout anterior
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setSubmenuPosition({
+      top: rect.top,
+      left: rect.right + 8 // 8px de espaçamento
+    });
+    setHoveredSection(sectionKey);
+  };
+
+  const handleMouseLeaveSection = () => {
+    if (!isCollapsed) return;
+
+    // Delay para permitir que o usuário mova o mouse para o submenu
+    timeoutRef.current = setTimeout(() => {
+      setHoveredSection(null);
+      setSubmenuPosition(null);
+    }, 300);
+  };
+
+  const handleMouseEnterSubmenu = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+
+  const handleMouseLeaveSubmenu = () => {
+    setHoveredSection(null);
+    setSubmenuPosition(null);
+  };
+
+  // Limpar timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className={cn(
       "bg-blue-600 flex flex-col transition-all duration-300 ease-in-out h-screen fixed left-0 top-0 z-10",
@@ -448,31 +501,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           }
 
           // Se é uma seção com filhos
+          const sectionButton = (
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0",
+                isCollapsed ? "justify-center px-4" : "justify-between px-3"
+              )}
+              onClick={() => toggleSection(sectionKey)}
+              onMouseEnter={(e) => handleMouseEnterSection(sectionKey, e)}
+              onMouseLeave={handleMouseLeaveSection}
+            >
+              <div className="flex items-center min-w-0 flex-1">
+                <Icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </div>
+              {!isCollapsed && item.children.length > 0 && (
+                isExpanded ? (
+                  <ChevronUp className="h-3 w-3 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 flex-shrink-0" />
+                )
+              )}
+            </Button>
+          );
+
           return (
             <div key={sectionKey} className="space-y-1 sidebar-item">
               {/* Cabeçalho da seção */}
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0",
-                  isCollapsed ? "justify-center px-4" : "justify-between px-3"
-                )}
-                onClick={() => toggleSection(sectionKey)}
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <Icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
-                  {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </div>
-                {!isCollapsed && item.children.length > 0 && (
-                  isExpanded ? (
-                    <ChevronUp className="h-3 w-3 flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3 flex-shrink-0" />
-                  )
-                )}
-              </Button>
+              {isCollapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {sectionButton}
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                sectionButton
+              )}
 
-              {/* Itens filhos */}
+              {/* Itens filhos (quando não está colapsado) */}
               {!isCollapsed && isExpanded && item.children.map((child, childIndex) => {
                 const ChildIcon = child.icon;
                 const isChildActive = child.path && location.pathname === child.path;
@@ -563,6 +633,66 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           </>
         )}
       </div>
+
+      {/* Submenu flutuante quando minimizado */}
+      {isCollapsed && hoveredSection && submenuPosition && (
+        <div
+          ref={submenuRef}
+          className="fixed bg-blue-600 border border-blue-500 rounded-md shadow-2xl py-1 min-w-[200px] z-[60]"
+          style={{
+            top: `${submenuPosition.top}px`,
+            left: `${submenuPosition.left}px`,
+          }}
+          onMouseEnter={handleMouseEnterSubmenu}
+          onMouseLeave={handleMouseLeaveSubmenu}
+        >
+          {menuItems.map((item) => {
+            const sectionKey = item.label.toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/\s+/g, '-');
+
+            if (sectionKey === hoveredSection && item.children && item.children.length > 0) {
+              return (
+                <div key={sectionKey} className="space-y-0.5 px-1">
+                  {/* Título da seção */}
+                  <div className="px-3 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
+                    {item.label}
+                  </div>
+
+                  {/* Itens do submenu */}
+                  {item.children.map((child, childIndex) => {
+                    const ChildIcon = child.icon;
+                    const isChildActive = child.path && location.pathname === child.path;
+
+                    return (
+                      <Button
+                        key={child.path || childIndex}
+                        variant={isChildActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full text-white hover:bg-blue-700 justify-start px-3 py-1.5 h-8 text-sm",
+                          isChildActive && "bg-blue-800 text-white"
+                        )}
+                        onClick={() => {
+                          if (child.path) {
+                            handleNavigation(child.path);
+                            setHoveredSection(null);
+                            setSubmenuPosition(null);
+                          }
+                        }}
+                      >
+                        <ChildIcon className="h-3 w-3 mr-2 flex-shrink-0" />
+                        <span className="truncate">{child.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      )}
     </div>
   );
 };

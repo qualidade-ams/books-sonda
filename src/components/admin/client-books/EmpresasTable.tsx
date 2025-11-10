@@ -197,14 +197,14 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[290px]">Nome</TableHead>
-            <TableHead className="min-w-[40px]">Status</TableHead>
-            <TableHead className="min-w-[80px]">Template</TableHead>
-            <TableHead className="min-w-[60px] hidden sm:table-cell">Tem AMS</TableHead>
-            <TableHead className="min-w-[150px] hidden md:table-cell">Produtos</TableHead>
-            <TableHead className="min-w-[180px] hidden lg:table-cell">E-mail Gestor</TableHead>
-            <TableHead className="min-w-[80px] hidden 2xl:table-cell">Data Status</TableHead>
-            <TableHead className="w-32">Ações</TableHead>
+            <TableHead className="w-[35%] min-w-[200px]">Nome</TableHead>
+            <TableHead className="w-[8%] min-w-[70px]">Status</TableHead>
+            <TableHead className="w-[12%] min-w-[90px]">Template</TableHead>
+            <TableHead className="w-[8%] min-w-[70px] hidden xl:table-cell">Tem AMS</TableHead>
+            <TableHead className="w-[15%] min-w-[120px] hidden xl:table-cell">Produtos</TableHead>
+            <TableHead className="w-[15%] min-w-[140px] hidden 2xl:table-cell">E-mail Gestor</TableHead>
+            <TableHead className="w-[7%] min-w-[90px] hidden 2xl:table-cell">Data Status</TableHead>
+            <TableHead className="w-[10%] min-w-[90px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -212,7 +212,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableRow key={empresa.id}>
               <TableCell className="font-medium">
                 <div className="flex flex-col">
-                  <span className="truncate max-w-[200px]" title={empresa.nome_abreviado}>
+                  <span className="truncate" title={empresa.nome_abreviado}>
                     {empresa.nome_abreviado}
                   </span>
                   {empresa.link_sharepoint && (
@@ -220,22 +220,23 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                       href={empresa.link_sharepoint}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 mt-1"
+                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 mt-1"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      SharePoint
+                      <span className="hidden lg:inline">SharePoint</span>
+                      <span className="lg:hidden">SP</span>
                     </a>
                   )}
                   {/* Mostrar produtos em telas pequenas */}
-                  <div className="md:hidden mt-1">
+                  <div className="xl:hidden mt-1">
                     {getProdutosBadges(empresa.produtos || [])}
                   </div>
                   {/* Mostrar email em telas pequenas */}
                   {empresa.email_gestor && (
-                    <div className="lg:hidden mt-1">
+                    <div className="2xl:hidden mt-1">
                       <a
                         href={`mailto:${empresa.email_gestor}`}
-                        className="text-blue-600 hover:text-blue-800 text-xs truncate max-w-[150px] block"
+                        className="text-blue-600 hover:text-blue-800 text-xs truncate block"
                         title={empresa.email_gestor}
                       >
                         {empresa.email_gestor}
@@ -256,17 +257,17 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
               <TableCell>
                 {getTemplateBadge(empresa.template_padrao)}
               </TableCell>
-              <TableCell className="hidden sm:table-cell">
+              <TableCell className="hidden xl:table-cell">
                 {getAmsBadge(empresa.tem_ams || false)}
               </TableCell>
-              <TableCell className="hidden md:table-cell">
+              <TableCell className="hidden xl:table-cell">
                 {getProdutosBadges(empresa.produtos || [])}
               </TableCell>
-              <TableCell className="hidden lg:table-cell">
+              <TableCell className="hidden 2xl:table-cell">
                 {empresa.email_gestor ? (
                   <a
                     href={`mailto:${empresa.email_gestor}`}
-                    className="text-blue-600 hover:text-blue-800 text-sm truncate max-w-[200px] block"
+                    className="text-blue-600 hover:text-blue-800 text-sm truncate block"
                     title={empresa.email_gestor}
                   >
                     {empresa.email_gestor}
