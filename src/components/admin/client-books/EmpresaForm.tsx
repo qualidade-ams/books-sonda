@@ -98,13 +98,13 @@ const empresaSchema = z.object({
   message: 'A vigência inicial não pode ser posterior à vigência final',
   path: ['vigenciaFinal'],
 }).refine((data) => {
-  // Validação condicional para Template Padrão quando Tem AMS for true
-  if (data.temAms && (!data.templatePadrao || !data.templatePadrao.trim())) {
+  // Validação condicional para Template Padrão quando Tem AMS for true E Tipo de Book não for "nao_tem_book"
+  if (data.temAms && data.tipoBook !== 'nao_tem_book' && (!data.templatePadrao || !data.templatePadrao.trim())) {
     return false;
   }
   return true;
 }, {
-  message: 'Template Padrão é obrigatório quando a empresa tem AMS',
+  message: 'Template Padrão é obrigatório quando a empresa tem AMS e possui book',
   path: ['templatePadrao'],
 }).refine((data) => {
   // Validação condicional para Tipo de Cobrança quando Tem AMS for true
@@ -233,7 +233,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         nomeCompleto: data.nomeCompleto.trim(),
         nomeAbreviado: data.nomeAbreviado.trim(),
         linkSharepoint: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.linkSharepoint?.trim() || '') : '',
-        templatePadrao: data.temAms ? (data.templatePadrao || 'portugues') : 'portugues',
+        templatePadrao: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.templatePadrao || 'portugues') : '',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
         produtos: data.produtos.map(p => p.toUpperCase() as Produto), // Normalizar produtos para uppercase
@@ -424,86 +424,26 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           />
         )}
 
-        {/* Template Padrão - só aparece quando Tem AMS for Sim */}
-        {watchTemAms && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="templatePadrao"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Template Padrão *</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isSubmitting || isLoading || templatesLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o template" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {bookTemplateOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div className="flex flex-col">
-                            <span>{option.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="emailGestor"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail do Customer Success *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="gestor@sonda.com"
-                      {...field}
-                      disabled={isSubmitting || isLoading}
-                      className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
-
-        {/* E-mail do Customer Success - aparece sempre quando Tem AMS for Não */}
-        {!watchTemAms && (
-          <FormField
-            control={form.control}
-            name="emailGestor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>E-mail do Customer Success *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="gestor@sonda.com"
-                    {...field}
-                    disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-
+        {/* E-mail do Customer Success - aparece sempre */}
+        <FormField
+          control={form.control}
+          name="emailGestor"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>E-mail do Customer Success *</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="gestor@sonda.com"
+                  {...field}
+                  disabled={isSubmitting || isLoading}
+                  className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Vigência do Contrato */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -559,9 +499,10 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // Limpar o Link SharePoint quando Tipo de Book for "Não tem Book"
+                        // Limpar o Link SharePoint e Template Padrão quando Tipo de Book for "Não tem Book"
                         if (value === 'nao_tem_book') {
                           form.setValue('linkSharepoint', '');
+                          form.setValue('templatePadrao', '');
                         }
                       }}
                       value={field.value}
@@ -584,6 +525,40 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   </FormItem>
                 )}
               />
+
+              {/* Template Padrão - só aparece quando Tipo de Book não for "Não tem Book" */}
+              {watchTipoBook !== 'nao_tem_book' && (
+                <FormField
+                  control={form.control}
+                  name="templatePadrao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Template Padrão *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isSubmitting || isLoading || templatesLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o template" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bookTemplateOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <div className="flex flex-col">
+                                <span>{option.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Link SharePoint - só aparece quando Tem AMS for Sim E Tipo de Book não for "Não tem Book" */}

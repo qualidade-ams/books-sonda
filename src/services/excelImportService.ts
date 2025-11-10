@@ -16,13 +16,65 @@ const empresaExcelSchema = z.object({
   'Produtos': z.string().min(1, 'Pelo menos um produto é obrigatório'), // String separada por vírgulas
   'Grupos': z.string().optional(), // String separada por vírgulas
   'Tem AMS': z.string().optional(), // 'sim' ou 'não'
-  'Tipo Book': z.enum(['nao_tem_book', 'outros', 'qualidade']).default('nao_tem_book'),
-  'Tipo Cobrança': z.enum(['banco_horas', 'ticket', 'outros']).default('banco_horas'), // Adicionado 'outros'
+  'Tipo Book': z.string().optional(), // Será validado condicionalmente
+  'Tipo Cobrança': z.string().optional(), // Será validado condicionalmente
   'Vigência Inicial': z.string().optional(), // Data no formato YYYY-MM-DD
   'Vigência Final': z.string().optional(), // Data no formato YYYY-MM-DD
   'Book Personalizado': z.string().optional(), // 'sim' ou 'não'
   'Anexo': z.string().optional(), // 'sim' ou 'não'
   'Observação': z.string().optional(), // Máximo 500 caracteres
+}).refine((data) => {
+  // Validação condicional para Tipo Book
+  const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
+  const tipoBook = data['Tipo Book'];
+  
+  // Se tem AMS, Tipo Book é obrigatório e deve ser válido
+  if (temAms) {
+    if (!tipoBook || !tipoBook.trim()) {
+      return false;
+    }
+    if (!['nao_tem_book', 'outros', 'qualidade'].includes(tipoBook)) {
+      return false;
+    }
+  }
+  
+  // Se não tem AMS, Tipo Book pode estar vazio ou ser válido
+  if (!temAms && tipoBook && tipoBook.trim()) {
+    if (!['nao_tem_book', 'outros', 'qualidade'].includes(tipoBook)) {
+      return false;
+    }
+  }
+  
+  return true;
+}, {
+  message: 'Tipo Book é obrigatório quando a empresa tem AMS. Valores válidos: nao_tem_book, outros, qualidade',
+  path: ['Tipo Book'],
+}).refine((data) => {
+  // Validação condicional para Tipo Cobrança
+  const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
+  const tipoCobranca = data['Tipo Cobrança'];
+  
+  // Se tem AMS, Tipo Cobrança é obrigatório e deve ser válido
+  if (temAms) {
+    if (!tipoCobranca || !tipoCobranca.trim()) {
+      return false;
+    }
+    if (!['banco_horas', 'ticket', 'outros'].includes(tipoCobranca)) {
+      return false;
+    }
+  }
+  
+  // Se não tem AMS, Tipo Cobrança pode estar vazio ou ser válido
+  if (!temAms && tipoCobranca && tipoCobranca.trim()) {
+    if (!['banco_horas', 'ticket', 'outros'].includes(tipoCobranca)) {
+      return false;
+    }
+  }
+  
+  return true;
+}, {
+  message: 'Tipo Cobrança é obrigatório quando a empresa tem AMS. Valores válidos: banco_horas, ticket, outros',
+  path: ['Tipo Cobrança'],
 }).refine((data) => {
   // Validação condicional para Link SharePoint
   const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
@@ -38,13 +90,15 @@ const empresaExcelSchema = z.object({
 }).refine((data) => {
   // Validação condicional para Template Padrão
   const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
+  const tipoBook = data['Tipo Book'];
   
-  if (temAms && (!data['Template Padrão'] || !data['Template Padrão'].trim())) {
+  // Template Padrão é obrigatório apenas quando tem AMS E Tipo de Book não for "nao_tem_book"
+  if (temAms && tipoBook !== 'nao_tem_book' && (!data['Template Padrão'] || !data['Template Padrão'].trim())) {
     return false;
   }
   return true;
 }, {
-  message: 'Template Padrão é obrigatório quando a empresa tem AMS',
+  message: 'Template Padrão é obrigatório quando a empresa tem AMS e possui book',
   path: ['Template Padrão'],
 }).refine((data) => {
   // Validação de URL para Link SharePoint quando preenchido
@@ -224,15 +278,7 @@ class ExcelImportService {
           }
         });
 
-        // Validação de Tipo Cobrança
-        if (row['Tipo Cobrança'] && !['banco_horas', 'ticket', 'outros'].includes(row['Tipo Cobrança'])) {
-          errors.push({
-            row: row._rowIndex,
-            field: 'Tipo Cobrança',
-            message: 'Tipo Cobrança deve ser "banco_horas", "ticket" ou "outros"',
-            data: row
-          });
-        }
+        // Validação de Tipo Cobrança - removida pois já está no schema
 
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -336,19 +382,29 @@ class ExcelImportService {
       return ['sim', 'SIM', 'Sim', 'true', 'TRUE', 'True', '1'].includes(value.toString().trim());
     };
 
+    // Determinar valores padrão baseados em "Tem AMS" e "Tipo Book"
+    const temAms = stringToBoolean(row['Tem AMS']);
+    const tipoBook = row['Tipo Book']?.trim() || (temAms ? 'nao_tem_book' : 'nao_tem_book');
+    const tipoCobranca = row['Tipo Cobrança']?.trim() || (temAms ? 'banco_horas' : 'banco_horas');
+    
+    // Template Padrão só é necessário quando tem AMS E Tipo de Book não for "nao_tem_book"
+    const templatePadrao = (temAms && tipoBook !== 'nao_tem_book') 
+      ? (row['Template Padrão'] || 'portugues') 
+      : '';
+
     return {
       nomeCompleto: row['Nome Completo'],
       nomeAbreviado: row['Nome Abreviado'],
       linkSharepoint: row['Link SharePoint'] || '',
-      templatePadrao: row['Template Padrão'] || 'portugues',
+      templatePadrao,
       status: row['Status'] || 'ativo',
       descricaoStatus: row['Descrição Status'] || '',
       emailGestor: row['Email Gestor'] || '',
       produtos,
       grupos: grupoIds, // Agora são IDs, não nomes
-      temAms: stringToBoolean(row['Tem AMS']),
-      tipoBook: row['Tipo Book'] || 'nao_tem_book',
-      tipoCobranca: row['Tipo Cobrança'] || 'banco_horas',
+      temAms,
+      tipoBook,
+      tipoCobranca,
       vigenciaInicial: row['Vigência Inicial'] || '',
       vigenciaFinal: row['Vigência Final'] || '',
       bookPersonalizado: stringToBoolean(row['Book Personalizado']),
@@ -365,8 +421,6 @@ class ExcelImportService {
       [
         'Nome Completo',
         'Nome Abreviado',
-        'Link SharePoint',
-        'Template Padrão',
         'Status',
         'Descrição Status',
         'Email Gestor',
@@ -374,6 +428,8 @@ class ExcelImportService {
         'Grupos',
         'Tem AMS',
         'Tipo Book',
+        'Template Padrão',
+        'Link SharePoint',
         'Tipo Cobrança',
         'Vigência Inicial',
         'Vigência Final',
@@ -384,8 +440,6 @@ class ExcelImportService {
       [
         'EXEMPLO EMPRESA LTDA',
         'EXEMPLO',
-        'https://sharepoint.com/exemplo',
-        'ID_DO_TEMPLATE_OU_NOME',
         'ativo',
         '',
         'gestor@sonda.com',
@@ -393,6 +447,8 @@ class ExcelImportService {
         'Comex,Outros',
         'sim',
         'qualidade',
+        'ID_DO_TEMPLATE_OU_NOME',
+        'https://sharepoint.com/exemplo',
         'banco_horas',
         '2024-01-01',
         '2024-12-31',
@@ -401,19 +457,19 @@ class ExcelImportService {
         'Observações sobre a empresa'
       ],
       [],
-      ['INSTRUÇÕES:'],
+      ['INSTRUÇÕES (ordem das colunas):'],
       ['• Nome Completo: Nome completo da empresa - Para manter o padrão preencha com letras maiúsculas (obrigatório)'],
       ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letras maiúsculas (obrigatório)'],
-      ['• Link SharePoint: URL do SharePoint da empresa (obrigatório APENAS quando Tem AMS = "sim" E Tipo Book ≠ "nao_tem_book")'],
-      ['• Template Padrão: ID ou nome do template (obrigatório APENAS quando Tem AMS = "sim")'],
       ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
       ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
       ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],
       ['• Produtos: Lista separada por vírgulas: COMEX, FISCAL, GALLERY (obrigatório)'],
       ['• Grupos: Lista de grupos responsáveis separados por vírgulas (opcional)'],
       ['• Tem AMS: "sim" ou "não" (padrão: não)'],
-      ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (padrão: nao_tem_book)'],
-      ['• Tipo Cobrança: "banco_horas", "ticket" ou "outros" (padrão: banco_horas)'],
+      ['• Tipo Book: "nao_tem_book", "outros" ou "qualidade" (obrigatório quando Tem AMS = "sim")'],
+      ['• Template Padrão: ID ou nome do template (obrigatório APENAS quando Tem AMS = "sim" E Tipo Book ≠ "nao_tem_book")'],
+      ['• Link SharePoint: URL do SharePoint da empresa (obrigatório APENAS quando Tem AMS = "sim" E Tipo Book ≠ "nao_tem_book")'],
+      ['• Tipo Cobrança: "banco_horas", "ticket" ou "outros" (obrigatório quando Tem AMS = "sim")'],
       ['• Vigência Inicial: Data no formato YYYY-MM-DD (opcional)'],
       ['• Vigência Final: Data no formato YYYY-MM-DD (opcional)'],
       ['• Book Personalizado: "sim" ou "não" (padrão: não)'],
@@ -421,10 +477,10 @@ class ExcelImportService {
       ['• Observação: Texto livre até 500 caracteres (opcional)'],
       [],
       ['REGRAS CONDICIONAIS:'],
-      ['• Link SharePoint: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"'],
-      ['• Template Padrão: Obrigatório apenas quando "Tem AMS" = "sim"'],
       ['• Tipo Book: Obrigatório apenas quando "Tem AMS" = "sim"'],
-      ['• Tipo Cobrança: Obrigatório apenas quando "Tem AMS" = "sim"']
+      ['• Tipo Cobrança: Obrigatório apenas quando "Tem AMS" = "sim"'],
+      ['• Template Padrão: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"'],
+      ['• Link SharePoint: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"']
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
@@ -433,8 +489,6 @@ class ExcelImportService {
     const colWidths = [
       { wch: 25 }, // Nome Completo
       { wch: 15 }, // Nome Abreviado
-      { wch: 35 }, // Link SharePoint
-      { wch: 15 }, // Template Padrão
       { wch: 10 }, // Status
       { wch: 20 }, // Descrição Status
       { wch: 25 }, // Email Gestor
@@ -442,10 +496,14 @@ class ExcelImportService {
       { wch: 20 }, // Grupos
       { wch: 10 }, // Tem AMS
       { wch: 15 }, // Tipo Book
+      { wch: 25 }, // Template Padrão
+      { wch: 35 }, // Link SharePoint
+      { wch: 15 }, // Tipo Cobrança
       { wch: 15 }, // Vigência Inicial
       { wch: 15 }, // Vigência Final
       { wch: 18 }, // Book Personalizado
-      { wch: 10 }  // Anexo
+      { wch: 10 }, // Anexo
+      { wch: 30 }  // Observação
     ];
 
     worksheet['!cols'] = colWidths;
