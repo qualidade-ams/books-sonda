@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Send,
   Edit,
   Trash2,
@@ -215,41 +221,45 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   }
 
   return (
-    <div className="rounded-md mt-4 overflow-x-auto w-full max-w-full">
-      <Table className="min-w-full text-xs sm:text-sm lg:text-base">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-8 sm:w-10 lg:w-14 text-xs sm:text-sm py-3">
-              <Checkbox
-                checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    onSelectAll();
-                  } else {
-                    onClearSelection();
-                  }
-                }}
-                aria-label="Selecionar todos os requerimentos"
-                className="h-4 w-4 sm:h-5 sm:w-5"
-              />
-            </TableHead>
-            <TableHead className="w-24 sm:w-28 lg:w-36 xl:w-44 text-xs sm:text-sm lg:text-base py-3">Chamado</TableHead>
-            <TableHead className="w-24 sm:w-28 lg:w-36 xl:w-44 text-xs sm:text-sm lg:text-base py-3">Cliente</TableHead>
-            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-32 text-xs sm:text-sm lg:text-base py-3">Módulo</TableHead>
-            <TableHead className="w-14 sm:w-16 lg:w-20 xl:w-24 text-center text-xs sm:text-sm lg:text-base py-3">H.Func</TableHead>
-            <TableHead className="w-14 sm:w-16 lg:w-20 xl:w-24 text-center text-xs sm:text-sm lg:text-base py-3">H.Téc</TableHead>
-            <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Total</TableHead>
-            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Envio</TableHead>
-            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Aprov.</TableHead>
-            {showDataFaturamento && (
-              <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Data Faturamento</TableHead>
-            )}
-            <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-32 text-center text-xs sm:text-sm lg:text-base py-3">Valor Total</TableHead>
-            <TableHead className="w-14 sm:w-18 lg:w-22 xl:w-28 text-center text-xs sm:text-sm lg:text-base py-3">Período</TableHead>
-            <TableHead className="w-16 sm:w-20 lg:w-28 xl:w-44 text-center text-xs sm:text-sm lg:text-base py-3">Autor</TableHead>
-            {showActions && <TableHead className="w-16 sm:w-20 lg:w-24 xl:w-28 text-xs sm:text-sm lg:text-base py-3">Ações</TableHead>}
-          </TableRow>
-        </TableHeader>
+    <div className="relative w-full">
+      <Table className="w-full text-xs sm:text-sm min-w-[1400px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12 text-xs py-2 sticky left-0 dark:bg-gray-950">
+                <Checkbox
+                  checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onSelectAll();
+                    } else {
+                      onClearSelection();
+                    }
+                  }}
+                  aria-label="Selecionar todos os requerimentos"
+                  className="h-4 w-4"
+                />
+              </TableHead>
+              <TableHead className="min-w-[140px] text-xs sm:text-sm py-2">Chamado</TableHead>
+              <TableHead className="min-w-[160px] text-xs sm:text-sm py-2">Cliente</TableHead>
+              <TableHead className="min-w-[100px] text-xs sm:text-sm py-2">Módulo</TableHead>
+              <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
+              <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
+              <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprov.</TableHead>
+              {showDataFaturamento && (
+                <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
+              )}
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
+              <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+              <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Autor</TableHead>
+              {showActions && (
+                <TableHead className="w-40 text-xs sm:text-sm py-2 sticky right-0 bg-white dark:bg-gray-950 z-10 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
+                  Ações
+                </TableHead>
+              )}
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {requerimentos.map((requerimento) => {
             const horasTotal = calcularHorasTotal(requerimento);
@@ -263,30 +273,42 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className={isOwnRequerimento ? "bg-blue-50 dark:bg-blue-950/20" : ""}
                 style={isOwnRequerimento ? { borderLeft: '4px solid #3B82F6' } : {}}
               >
-                <TableCell className="py-3">
+                <TableCell className="py-2 sticky left-0 dark:bg-gray-950">
                   <Checkbox
                     checked={selectedRequerimentos.includes(requerimento.id)}
                     onCheckedChange={() => onToggleSelection(requerimento.id)}
                     aria-label={`Selecionar requerimento ${requerimento.chamado}`}
-                    className="h-4 w-4 sm:h-5 sm:w-5"
+                    className="h-4 w-4"
                   />
                 </TableCell>
 
-                <TableCell className="font-medium py-3">
+                <TableCell className="font-medium py-2">
                   <div className="flex items-center gap-1 sm:gap-2">
                     <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
                     <div className="flex flex-col min-w-0 flex-1 space-y-1">
                       <span className="truncate text-xs sm:text-sm lg:text-base font-medium" title={requerimento.chamado}>
                         {requerimento.chamado}
                       </span>
-                      <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[8px] sm:text-[10px] lg:text-xs px-1 sm:px-2 py-0.5 leading-tight w-fit max-w-full`}>
-                        <span className="truncate">{requerimento.tipo_cobranca}</span>
-                      </Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
+                              <span className="truncate">{requerimento.tipo_cobranca}</span>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{requerimento.tipo_cobranca}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span className="xl:hidden text-[9px] text-gray-500 truncate" title={requerimento.autor_nome}>
+                        {requerimento.autor_nome || '-'}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
 
-                <TableCell className="py-3">
+                <TableCell className="py-2">
                   <div className="flex flex-col min-w-0 space-y-1">
                     <span className="font-medium truncate text-xs sm:text-sm lg:text-base" title={requerimento.cliente_nome}>
                       {requerimento.cliente_nome}
@@ -366,7 +388,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 {showActions && (
-                  <TableCell className="py-3">
+                  <TableCell className="py-2 sticky right-0 bg-white dark:bg-gray-950 z-10 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-1">
                       {onView && (
                         <Button

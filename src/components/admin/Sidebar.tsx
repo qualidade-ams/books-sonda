@@ -638,7 +638,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       {isCollapsed && hoveredSection && submenuPosition && (
         <div
           ref={submenuRef}
-          className="fixed bg-blue-600 border border-blue-500 rounded-md shadow-2xl py-1 min-w-[200px] z-[60]"
+          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 w-auto z-[9999]"
           style={{
             top: `${submenuPosition.top}px`,
             left: `${submenuPosition.left}px`,
@@ -654,9 +654,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
             if (sectionKey === hoveredSection && item.children && item.children.length > 0) {
               return (
-                <div key={sectionKey} className="space-y-0.5 px-1">
+                <div key={sectionKey} className="space-y-0.5">
                   {/* Título da seção */}
-                  <div className="px-3 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
+                  <div className="px-2 py-1.5 text-white font-semibold text-sm border-b border-blue-500 mb-1">
                     {item.label}
                   </div>
 
@@ -670,7 +670,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         key={child.path || childIndex}
                         variant={isChildActive ? "secondary" : "ghost"}
                         className={cn(
-                          "w-full text-white hover:bg-blue-700 justify-start px-3 py-1.5 h-8 text-sm",
+                          "w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm whitespace-nowrap",
                           isChildActive && "bg-blue-800 text-white"
                         )}
                         onClick={() => {
