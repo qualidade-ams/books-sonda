@@ -222,10 +222,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
 
   return (
     <div className="relative w-full">
-      <Table className="w-full text-xs sm:text-sm min-w-[1400px]">
+      <Table className="w-full text-xs sm:text-sm min-w-[1190px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12 text-xs py-2 sticky left-0 dark:bg-gray-950">
+              <TableHead className="w-12 text-xs py-2">
                 <Checkbox
                   checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
                   onCheckedChange={(checked) => {
@@ -245,8 +245,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
               <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
               <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
               <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprov.</TableHead>
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Datas</TableHead>
               {showDataFaturamento && (
                 <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
               )}
@@ -254,7 +253,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
               <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
               <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Autor</TableHead>
               {showActions && (
-                <TableHead className="w-40 text-xs sm:text-sm py-2 sticky right-0 bg-white dark:bg-gray-950 z-10 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
+                <TableHead className="w-40 text-xs sm:text-sm py-2">
                   Ações
                 </TableHead>
               )}
@@ -273,7 +272,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className={isOwnRequerimento ? "bg-blue-50 dark:bg-blue-950/20" : ""}
                 style={isOwnRequerimento ? { borderLeft: '4px solid #3B82F6' } : {}}
               >
-                <TableCell className="py-2 sticky left-0 dark:bg-gray-950">
+                <TableCell className="py-2">
                   <Checkbox
                     checked={selectedRequerimentos.includes(requerimento.id)}
                     onCheckedChange={() => onToggleSelection(requerimento.id)}
@@ -388,7 +387,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 {showActions && (
-                  <TableCell className="py-2 sticky right-0 bg-white dark:bg-gray-950 z-10 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
+                  <TableCell className="py-2">
                     <div className="flex items-center gap-1">
                       {onView && (
                         <Button

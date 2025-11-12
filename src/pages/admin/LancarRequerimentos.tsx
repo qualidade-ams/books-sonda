@@ -630,7 +630,7 @@ const LancarRequerimentos = () => {
           </div>
 
           <TabsContent value="nao-enviados">
-            <Card className="w-full overflow-hidden">
+            <Card className="w-full max-[1366px]:max-w-[1190px] max-[1366px]:mx-auto overflow-hidden">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
@@ -759,19 +759,17 @@ const LancarRequerimentos = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="w-full overflow-x-auto">
-                      <RequerimentosTable
-                        requerimentos={paginatedData.items}
-                        loading={isLoading}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        selectedRequerimentos={selectedRequerimentos}
-                        onToggleSelection={toggleRequerimentoSelection}
-                        onSelectAll={selectAllRequerimentos}
-                        onClearSelection={clearSelection}
-                        showEnviarFaturamento={true}
-                      />
-                    </div>
+                    <RequerimentosTable
+                      requerimentos={paginatedData.items}
+                      loading={isLoading}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      selectedRequerimentos={selectedRequerimentos}
+                      onToggleSelection={toggleRequerimentoSelection}
+                      onSelectAll={selectAllRequerimentos}
+                      onClearSelection={clearSelection}
+                      showEnviarFaturamento={true}
+                    />
 
                     {/* Paginação */}
                     {paginatedData.totalPages > 1 && (
@@ -811,7 +809,7 @@ const LancarRequerimentos = () => {
           </TabsContent>
 
           <TabsContent value="enviados">
-            <Card className="w-full overflow-hidden">
+            <Card className="w-full max-[1366px]:max-w-[1190px] max-[1366px]:mx-auto overflow-hidden">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
@@ -1009,22 +1007,20 @@ const LancarRequerimentos = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="w-full overflow-x-auto">
-                      <RequerimentosTable
-                        requerimentos={paginatedData.items}
-                        loading={isLoadingEnviados}
-                        onEdit={() => { }} // Função vazia - apenas visualização
-                        onDelete={() => { }} // Função vazia - apenas visualização
-                        onView={handleView} // Função para visualizar
-                        selectedRequerimentos={selectedRequerimentosEnviados}
-                        onToggleSelection={toggleRequerimentoSelection}
-                        onSelectAll={selectAllRequerimentos}
-                        onClearSelection={clearSelection}
-                        showEnviarFaturamento={false} // Não mostrar botão de enviar
-                        showActions={true} // Mostrar coluna de ações
-                        showEditDelete={false} // Não mostrar botões de editar/excluir (apenas visualizar)
-                      />
-                    </div>
+                    <RequerimentosTable
+                      requerimentos={paginatedData.items}
+                      loading={isLoadingEnviados}
+                      onEdit={() => { }} // Função vazia - apenas visualização
+                      onDelete={() => { }} // Função vazia - apenas visualização
+                      onView={handleView} // Função para visualizar
+                      selectedRequerimentos={selectedRequerimentosEnviados}
+                      onToggleSelection={toggleRequerimentoSelection}
+                      onSelectAll={selectAllRequerimentos}
+                      onClearSelection={clearSelection}
+                      showEnviarFaturamento={false} // Não mostrar botão de enviar
+                      showActions={true} // Mostrar coluna de ações
+                      showEditDelete={false} // Não mostrar botões de editar/excluir (apenas visualizar)
+                    />
 
                     {/* Paginação */}
                     {paginatedData.totalPages > 1 && (
