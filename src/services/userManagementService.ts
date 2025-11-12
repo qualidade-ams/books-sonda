@@ -221,6 +221,28 @@ class UserManagementService {
       }
 
       console.log('✅ Usuário criado com sucesso:', authData.user.email);
+
+      // Registrar log de auditoria manualmente
+      try {
+        await supabaseAdmin
+          .from('permission_audit_logs')
+          .insert({
+            table_name: 'profiles',
+            record_id: authData.user.id,
+            action: 'INSERT',
+            new_values: {
+              id: authData.user.id,
+              email: userData.email,
+              full_name: userData.fullName,
+              created_at: new Date().toISOString()
+            },
+            changed_by: user.id
+          });
+        console.log('✅ Log de auditoria registrado');
+      } catch (auditError) {
+        console.warn('⚠️ Erro ao registrar log de auditoria (não crítico):', auditError);
+      }
+
       return { success: true, user: authData.user };
     } catch (error: any) {
       console.error('Erro no serviço de criação de usuário:', error);
@@ -307,6 +329,34 @@ class UserManagementService {
         }
       } catch (profileException) {
         console.warn('Exceção ao atualizar perfil (não crítico):', profileException);
+      }
+
+      // Registrar log de auditoria manualmente
+      try {
+        // Buscar dados antigos para comparação
+        const { data: oldProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', userData.userId)
+          .single();
+
+        await supabaseAdmin
+          .from('permission_audit_logs')
+          .insert({
+            table_name: 'profiles',
+            record_id: userData.userId,
+            action: 'UPDATE',
+            old_values: oldProfile || {},
+            new_values: {
+              email: userData.email,
+              full_name: userData.fullName,
+              updated_at: new Date().toISOString()
+            },
+            changed_by: user.id
+          });
+        console.log('✅ Log de auditoria de atualização registrado');
+      } catch (auditError) {
+        console.warn('⚠️ Erro ao registrar log de auditoria (não crítico):', auditError);
       }
 
       return { success: true };
