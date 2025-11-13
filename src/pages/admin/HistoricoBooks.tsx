@@ -126,6 +126,19 @@ const HistoricoBooks = () => {
     );
   }, [historico, termoBusca]);
 
+  // Função auxiliar para extrair número de clientes do e-mail consolidado
+  const extrairNumeroClientesConsolidado = (erroDetalhes: string | null): number => {
+    if (!erroDetalhes) return 0;
+    
+    // Padrão: "E-mail consolidado enviado para X clientes"
+    const match = erroDetalhes.match(/E-mail consolidado (?:enviado para|para) (\d+) clientes/i);
+    if (match && match[1]) {
+      return parseInt(match[1], 10);
+    }
+    
+    return 0;
+  };
+
   // Estatísticas do histórico atual
   const statsHistorico = useMemo(() => {
     const total = historicoFiltrado.length;
@@ -134,8 +147,25 @@ const HistoricoBooks = () => {
     const agendados = historicoFiltrado.filter(h => h.status === 'agendado').length;
     const cancelados = historicoFiltrado.filter(h => h.status === 'cancelado').length;
     
-    const empresasUnicas = new Set(historicoFiltrado.map(h => h.empresa_id));
-    const clientesUnicos = new Set(historicoFiltrado.map(h => h.cliente_id));
+    // Contar empresas únicas e total de clientes (considerando e-mails consolidados)
+    const empresasUnicasSet = new Set<string>();
+    let totalClientes = 0;
+    
+    historicoFiltrado.forEach(item => {
+      if (item.empresa_id) {
+        empresasUnicasSet.add(item.empresa_id);
+      }
+      
+      // Verificar se é e-mail consolidado e extrair número de clientes
+      const numClientesConsolidado = extrairNumeroClientesConsolidado(item.erro_detalhes);
+      if (numClientesConsolidado > 0) {
+        // E-mail consolidado: somar o número de clientes informado
+        totalClientes += numClientesConsolidado;
+      } else if (item.cliente_id) {
+        // E-mail individual: contar 1 cliente
+        totalClientes += 1;
+      }
+    });
     
     return {
       total,
@@ -143,8 +173,8 @@ const HistoricoBooks = () => {
       falhas,
       agendados,
       cancelados,
-      empresasUnicas: empresasUnicas.size,
-      clientesUnicos: clientesUnicos.size,
+      empresasUnicas: empresasUnicasSet.size, // Empresas únicas do histórico
+      clientesUnicos: totalClientes, // Total de clientes (considerando consolidados)
       taxaSucesso: total > 0 ? Math.round((enviados / total) * 100) : 0
     };
   }, [historicoFiltrado]);
@@ -428,10 +458,9 @@ const HistoricoBooks = () => {
 
         {/* Abas Principais */}
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="historico">Histórico</TabsTrigger>
             <TabsTrigger value="relatorio">Relatório Mensal</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="problemas">Problemas</TabsTrigger>
           </TabsList>
 
@@ -692,118 +721,9 @@ const HistoricoBooks = () => {
             </Card>
           </TabsContent>
 
-          {/* Aba Performance */}
-          <TabsContent value="performance" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Estatísticas de Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {estatisticasPerformance ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {estatisticasPerformance.totalDisparos}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Total de Disparos
-                      </p>
-                    </div>
-                    
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
-                        {estatisticasPerformance.taxaSucesso}%
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Taxa de Sucesso
-                      </p>
-                    </div>
-                    
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {estatisticasPerformance.mediaDisparosPorDia}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Média por Dia
-                      </p>
-                    </div>
-                    
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {estatisticasPerformance.empresasAtendidas}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Empresas Atendidas
-                      </p>
-                    </div>
-                    
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {estatisticasPerformance.clientesAtendidos}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Clientes Atendidos
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <BarChart3 className="h-8 w-8 mx-auto text-gray-400" />
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      Carregando estatísticas de performance...
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Aba Problemas */}
           <TabsContent value="problemas" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Empresas sem Books */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-red-600 flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    Empresas sem Books
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {empresasSemBooks && empresasSemBooks.length > 0 ? (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {empresasSemBooks.map((empresa) => (
-                        <div
-                          key={empresa.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div>
-                            <div className="font-medium">{empresa.nome_completo}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {empresa.nome_abreviado}
-                            </div>
-                          </div>
-                          <Badge variant="destructive">
-                            Sem Books
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <CheckCircle className="h-6 w-6 mx-auto text-green-600" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Todas as empresas receberam books
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Clientes com Falhas */}
+            {/* Clientes com Falhas */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-orange-600 flex items-center gap-2">
@@ -846,7 +766,6 @@ const HistoricoBooks = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
           </TabsContent>
         </Tabs>
 

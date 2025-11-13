@@ -530,7 +530,10 @@ class HistoricoService {
     mediaDisparosPorDia: number;
   }> {
     try {
-      // Buscar todos os disparos no período
+      console.log('🔍 [buscarEstatisticasPerformance] Buscando estatísticas...');
+      console.log('📅 Período:', { dataInicio, dataFim });
+      
+      // Buscar todos os disparos no período (padrão + personalizados)
       const { data: disparos, error } = await supabase
         .from('historico_disparos')
         .select('*')
@@ -538,8 +541,34 @@ class HistoricoService {
         .lte('data_disparo', dataFim.toISOString());
 
       if (error) {
+        console.error('❌ [buscarEstatisticasPerformance] Erro na query:', error);
         throw new Error(`Erro ao buscar estatísticas: ${error.message}`);
       }
+      
+      console.log('✅ [buscarEstatisticasPerformance] Disparos encontrados:', disparos?.length || 0);
+      
+      // Buscar e-mails dos clientes em uma query separada
+      const clienteIds = [...new Set(disparos?.map(d => d.cliente_id).filter(Boolean) || [])];
+      console.log('📧 [buscarEstatisticasPerformance] Buscando e-mails de', clienteIds.length, 'clientes...');
+      
+      const { data: clientes, error: errorClientes } = await supabase
+        .from('clientes')
+        .select('id, email')
+        .in('id', clienteIds);
+      
+      if (errorClientes) {
+        console.warn('⚠️ [buscarEstatisticasPerformance] Erro ao buscar e-mails:', errorClientes);
+      }
+      
+      // Criar mapa de cliente_id -> email
+      const emailMap = new Map<string, string>();
+      clientes?.forEach(cliente => {
+        if (cliente.email) {
+          emailMap.set(cliente.id, cliente.email);
+        }
+      });
+      
+      console.log('✅ [buscarEstatisticasPerformance] E-mails encontrados:', emailMap.size);
 
       if (!disparos || disparos.length === 0) {
         return {
@@ -553,30 +582,78 @@ class HistoricoService {
         };
       }
 
-      const totalDisparos = disparos.length;
-      const sucessos = disparos.filter(d => d.status === 'enviado').length;
-      const falhas = disparos.filter(d => d.status === 'falhou').length;
-      const taxaSucesso = totalDisparos > 0 ? (sucessos / totalDisparos) * 100 : 0;
+      // Agrupar por empresa para contar disparos por empresa (não por cliente)
+      const empresasMap = new Map<string, { enviados: number; falhas: number; emails: Set<string> }>();
+      
+      disparos.forEach(disparo => {
+        const empresaId = disparo.empresa_id;
+        
+        if (!empresasMap.has(empresaId)) {
+          empresasMap.set(empresaId, {
+            enviados: 0,
+            falhas: 0,
+            emails: new Set()
+          });
+        }
+        
+        const empresa = empresasMap.get(empresaId)!;
+        
+        // Contar status por empresa
+        if (disparo.status === 'enviado') {
+          empresa.enviados++;
+        } else if (disparo.status === 'falhou') {
+          empresa.falhas++;
+        }
+        
+        // Coletar e-mails únicos usando o mapa
+        const email = emailMap.get(disparo.cliente_id);
+        if (email) {
+          empresa.emails.add(email.toLowerCase().trim());
+        }
+      });
 
-      // Contar empresas e clientes únicos
-      const empresasUnicas = new Set(disparos.map(d => d.empresa_id));
-      const clientesUnicos = new Set(disparos.map(d => d.cliente_id));
+      // Calcular estatísticas por empresa
+      const totalEmpresas = empresasMap.size;
+      let empresasComSucesso = 0;
+      let empresasComFalha = 0;
+      const todosEmails = new Set<string>();
 
-      // Calcular média de disparos por dia
+      empresasMap.forEach((dados) => {
+        // Empresa tem sucesso se pelo menos um envio foi bem-sucedido
+        if (dados.enviados > 0) {
+          empresasComSucesso++;
+        }
+        // Empresa tem falha se todos os envios falharam
+        if (dados.falhas > 0 && dados.enviados === 0) {
+          empresasComFalha++;
+        }
+        // Coletar todos os e-mails únicos
+        dados.emails.forEach(email => todosEmails.add(email));
+      });
+
+      // Taxa de sucesso baseada em empresas
+      const taxaSucesso = totalEmpresas > 0 ? (empresasComSucesso / totalEmpresas) * 100 : 0;
+
+      // Calcular média de disparos por dia (baseado em empresas)
       const diasPeriodo = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24));
-      const mediaDisparosPorDia = diasPeriodo > 0 ? totalDisparos / diasPeriodo : 0;
+      const mediaDisparosPorDia = diasPeriodo > 0 ? totalEmpresas / diasPeriodo : 0;
 
-      return {
-        totalDisparos,
-        sucessos,
-        falhas,
+      const resultado = {
+        totalDisparos: totalEmpresas, // Total de empresas (não clientes)
+        sucessos: empresasComSucesso, // Empresas com sucesso
+        falhas: empresasComFalha, // Empresas com falha
         taxaSucesso: Math.round(taxaSucesso * 100) / 100,
-        empresasAtendidas: empresasUnicas.size,
-        clientesAtendidos: clientesUnicos.size,
+        empresasAtendidas: totalEmpresas, // Total de empresas únicas
+        clientesAtendidos: todosEmails.size, // E-mails únicos que receberam
         mediaDisparosPorDia: Math.round(mediaDisparosPorDia * 100) / 100
       };
+      
+      console.log('📊 [buscarEstatisticasPerformance] Resultado:', resultado);
+      
+      return resultado;
 
     } catch (error) {
+      console.error('❌ [buscarEstatisticasPerformance] Erro geral:', error);
       throw new Error(`Erro ao buscar estatísticas de performance: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
