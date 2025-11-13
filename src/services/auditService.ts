@@ -279,8 +279,8 @@ export class AuditService {
       // Grupos responsáveis
       case 'grupos_responsaveis':
         const grupoRespNome = this.getValueFromJson(values, 'nome') || 'Sem nome';
-        const grupoRespProduto = this.getValueFromJson(values, 'produto') || 'Sem produto';
-        return `Grupo responsável criado: "${grupoRespNome}" - Produto: ${this.formatProduto(grupoRespProduto)}`;
+        const grupoRespDesc = this.getValueFromJson(values, 'descricao') || '';
+        return grupoRespDesc ? `Grupo responsável criado: "${grupoRespNome}" - ${grupoRespDesc}` : `Grupo responsável criado: "${grupoRespNome}"`;
 
       // Templates de email
       case 'email_templates':
@@ -302,7 +302,11 @@ export class AuditService {
         const reqChamado = this.getValueFromJson(values, 'chamado') || 'Sem chamado';
         const reqCliente = this.getValueFromJson(values, 'cliente_id');
         const reqTipoCobranca = this.getValueFromJson(values, 'tipo_cobranca') || 'Sem tipo';
-        const clienteReqNome = reqCliente ? await this.getClienteNameById(reqCliente) : 'Cliente não informado';
+        let clienteReqNome = '(não informado)';
+        if (reqCliente) {
+          const nomeCliente = await this.getClienteNameById(reqCliente);
+          clienteReqNome = nomeCliente || '(não identificado)';
+        }
         return `Requerimento criado: Chamado ${reqChamado} - Cliente: ${clienteReqNome} - Tipo: ${this.formatTipoCobranca(reqTipoCobranca)}`;
       
       default:
@@ -372,8 +376,8 @@ export class AuditService {
       // Grupos responsáveis excluídos
       case 'grupos_responsaveis':
         const delGrupoRespNome = this.getValueFromJson(values, 'nome') || 'Sem nome';
-        const delGrupoRespProduto = this.getValueFromJson(values, 'produto') || 'Sem produto';
-        return `Grupo responsável excluído: "${delGrupoRespNome}" - Produto: ${this.formatProduto(delGrupoRespProduto)}`;
+        const delGrupoRespDesc = this.getValueFromJson(values, 'descricao') || '';
+        return delGrupoRespDesc ? `Grupo responsável excluído: "${delGrupoRespNome}" - ${delGrupoRespDesc}` : `Grupo responsável excluído: "${delGrupoRespNome}"`;
 
       // Templates excluídos
       case 'email_templates':
@@ -385,7 +389,11 @@ export class AuditService {
       case 'requerimentos':
         const delReqChamado = this.getValueFromJson(values, 'chamado') || 'Sem chamado';
         const delReqCliente = this.getValueFromJson(values, 'cliente_id');
-        const delClienteReqNome = delReqCliente ? await this.getClienteNameById(delReqCliente) : 'Cliente não informado';
+        let delClienteReqNome = '(não informado)';
+        if (delReqCliente) {
+          const nomeDelCliente = await this.getClienteNameById(delReqCliente);
+          delClienteReqNome = nomeDelCliente || '(não identificado)';
+        }
         return `Requerimento excluído: Chamado ${delReqChamado} - Cliente: ${delClienteReqNome}`;
       
       default:
@@ -472,8 +480,7 @@ export class AuditService {
       },
       'grupos_responsaveis': {
         'nome': 'Nome',
-        'produto': 'Produto',
-        'ativo': 'Ativo'
+        'descricao': 'Descrição'
       },
       'email_templates': {
         'nome': 'Nome',
@@ -492,17 +499,30 @@ export class AuditService {
       },
       'requerimentos': {
         'chamado': 'Chamado',
-        'cliente_id': 'Cliente',
+        'cliente_id': 'Empresa Cliente',
         'modulo': 'Módulo',
         'linguagem': 'Linguagem',
         'tipo_cobranca': 'Tipo de Cobrança',
         'descricao': 'Descrição',
         'horas_funcional': 'Horas Funcionais',
         'horas_tecnico': 'Horas Técnicas',
-        'horas_total': 'Horas Total',
+        'horas_total': 'Total de Horas',
+        'valor_total_geral': 'Valor Total Geral',
+        'valor_hora_tecnico': 'Valor/Hora Técnico',
+        'valor_hora_funcional': 'Valor/Hora Funcional',
+        'valor_total_tecnico': 'Valor Total Técnico',
+        'valor_total_funcional': 'Valor Total Funcional',
         'data_aprovacao': 'Data de Aprovação',
+        'data_envio': 'Data de Envio',
         'status': 'Status',
-        'enviado_faturamento': 'Enviado para Faturamento'
+        'enviado_faturamento': 'Enviado para Faturamento',
+        'data_envio_faturamento': 'Data de Envio para Faturamento',
+        'data_faturamento': 'Data de Faturamento',
+        'mes_cobranca': 'Período de Cobrança',
+        'quantidade_tickets': 'Quantidade de Tickets',
+        'observacao': 'Observação',
+        'autor_id': 'Autor',
+        'autor_nome': 'Autor'
       }
     };
     
@@ -513,9 +533,9 @@ export class AuditService {
    * Format field values for better display
    */
   private async formatFieldValue(fieldName: string, value: any, tableName?: string): Promise<string> {
-    if (value === null || value === undefined) return 'Vazio';
-    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
-    if (typeof value === 'string' && value.trim() === '') return 'Vazio';
+    if (value === null || value === undefined) return '(vazio)';
+    if (typeof value === 'boolean') return this.formatBoolean(value);
+    if (typeof value === 'string' && value.trim() === '') return '(vazio)';
     
     // Handle special field types that need name resolution
     if (fieldName === 'user_id' && typeof value === 'string') {
@@ -533,9 +553,14 @@ export class AuditService {
       return empresaName || 'Empresa não identificada';
     }
 
-    if (fieldName === 'cliente_id' && typeof value === 'string') {
-      const clienteName = await this.getClienteNameById(value);
-      return clienteName || 'Cliente não identificado';
+    if (fieldName === 'cliente_id') {
+      if (!value || value === null || value === undefined) {
+        return '(não informado)';
+      }
+      if (typeof value === 'string') {
+        const clienteName = await this.getClienteNameById(value);
+        return clienteName || '(não identificado)';
+      }
     }
     
     if (fieldName === 'screen_key' && typeof value === 'string') {
@@ -562,6 +587,31 @@ export class AuditService {
       return this.formatTipoCobranca(value);
     }
 
+    // Format enviado_faturamento (boolean to text)
+    if (fieldName === 'enviado_faturamento') {
+      if (value === null || value === undefined) return 'Não';
+      if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+      if (typeof value === 'string') {
+        const lowerValue = value.toLowerCase();
+        if (lowerValue === 'true' || lowerValue === 'sim' || lowerValue === 't') return 'Sim';
+        if (lowerValue === 'false' || lowerValue === 'nao' || lowerValue === 'não' || lowerValue === 'f') return 'Não';
+      }
+      return String(value);
+    }
+
+    // Format status de requerimento
+    if (fieldName === 'status' && tableName === 'requerimentos' && typeof value === 'string') {
+      const statusMap: Record<string, string> = {
+        'lancado': 'Lançado',
+        'enviado': 'Enviado para Faturamento',
+        'faturado': 'Faturado',
+        'aprovado': 'Aprovado',
+        'reprovado': 'Reprovado',
+        'pendente': 'Pendente'
+      };
+      return statusMap[value] || value;
+    }
+
     // Format template_padrao field - resolve template name by ID
     if (fieldName === 'template_padrao' && typeof value === 'string') {
       const templateName = await this.getTemplateNameById(value);
@@ -571,6 +621,38 @@ export class AuditService {
     // Format arrays (like produtos)
     if (Array.isArray(value)) {
       return value.map(v => this.formatProduto(v)).join(', ');
+    }
+
+    // Format horas (hours)
+    if (fieldName.includes('horas') && (typeof value === 'number' || typeof value === 'string')) {
+      const numValue = typeof value === 'number' ? value : parseFloat(value);
+      if (!isNaN(numValue)) {
+        // Se for número inteiro, mostrar como está
+        if (Number.isInteger(numValue)) {
+          return `${numValue}h`;
+        }
+        // Se for decimal, formatar com 2 casas
+        return `${numValue.toFixed(2)}h`;
+      }
+    }
+
+    // Format monetary values
+    if (fieldName.includes('valor') && typeof value === 'number') {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(value);
+    }
+
+    // Format monetary values as string
+    if (fieldName.includes('valor') && typeof value === 'string') {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(numValue);
+      }
     }
 
     // Format dates
@@ -738,9 +820,22 @@ export class AuditService {
 
   /**
    * Get cliente name by ID
+   * Note: In requerimentos table, cliente_id references empresas_clientes, not clientes
    */
   private async getClienteNameById(clienteId: string): Promise<string | null> {
     try {
+      // First try empresas_clientes (used in requerimentos)
+      const { data: empresa } = await supabase
+        .from('empresas_clientes')
+        .select('nome_completo, nome_abreviado')
+        .eq('id', clienteId)
+        .single();
+
+      if (empresa) {
+        return empresa.nome_abreviado || empresa.nome_completo || null;
+      }
+
+      // Fallback to clientes table (used in other contexts)
       const { data: cliente } = await supabase
         .from('clientes')
         .select('nome_completo')
@@ -859,6 +954,20 @@ export class AuditService {
     };
     
     return statuses[status || ''] || status || 'Desconhecido';
+  }
+
+  /**
+   * Format boolean values to Portuguese
+   */
+  private formatBoolean(value: boolean | string | null): string {
+    if (value === null || value === undefined) return 'Não';
+    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+      if (lowerValue === 'true' || lowerValue === 'sim' || lowerValue === 't') return 'Sim';
+      if (lowerValue === 'false' || lowerValue === 'nao' || lowerValue === 'não' || lowerValue === 'f') return 'Não';
+    }
+    return String(value);
   }
 
   /**

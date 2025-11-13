@@ -1,0 +1,7 @@
+-- =====================================================
+-- Criar Triggers de Auditoria para Todas as Tabelas
+-- =====================================================
+-- Este script cria triggers de auditoria para:
+-- - grupos_responsaveis (Grupos Responsáveis)
+-- - email_templates (Templates de E-mail)
+-- - hist
