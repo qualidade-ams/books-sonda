@@ -505,17 +505,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Button
               variant="ghost"
               className={cn(
-                "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0",
-                isCollapsed ? "justify-center px-4" : "justify-between px-3"
+                "w-full text-white hover:bg-blue-700 font-medium min-w-0 flex-shrink-0 gap-3",
+                isCollapsed ? "justify-center px-4" : "justify-start px-3 pr-2"
               )}
               onClick={() => toggleSection(sectionKey)}
               onMouseEnter={(e) => handleMouseEnterSection(sectionKey, e)}
               onMouseLeave={handleMouseLeaveSection}
             >
-              <div className="flex items-center min-w-0 flex-1">
-                <Icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
-              </div>
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {!isCollapsed && <span className="truncate flex-shrink">{item.label}</span>}
               {!isCollapsed && item.children.length > 0 && (
                 isExpanded ? (
                   <ChevronUp className="h-3 w-3 flex-shrink-0" />
@@ -638,7 +636,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       {isCollapsed && hoveredSection && submenuPosition && (
         <div
           ref={submenuRef}
-          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 w-auto z-[9999]"
+          className="fixed bg-blue-600 border border-blue-500/30 rounded-md shadow-2xl py-1 min-w-[200px] max-w-[240px] z-[9999]"
           style={{
             top: `${submenuPosition.top}px`,
             left: `${submenuPosition.left}px`,
@@ -670,7 +668,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         key={child.path || childIndex}
                         variant={isChildActive ? "secondary" : "ghost"}
                         className={cn(
-                          "w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm whitespace-nowrap",
+                          "w-full text-white hover:bg-blue-700 justify-start px-2 py-1.5 h-8 text-sm gap-2",
                           isChildActive && "bg-blue-800 text-white"
                         )}
                         onClick={() => {
@@ -681,7 +679,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                           }
                         }}
                       >
-                        <ChildIcon className="h-3 w-3 mr-2 flex-shrink-0" />
+                        <ChildIcon className="h-3 w-3 flex-shrink-0" />
                         <span className="truncate">{child.label}</span>
                       </Button>
                     );
