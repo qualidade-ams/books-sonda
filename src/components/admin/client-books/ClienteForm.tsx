@@ -247,7 +247,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                 <FormLabel>Status *</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
@@ -279,7 +279,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                 <FormLabel>Empresa *</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>

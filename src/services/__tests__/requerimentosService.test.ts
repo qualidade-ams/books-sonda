@@ -57,7 +57,7 @@ describe('RequerimentosService', () => {
     horas_tecnico: 5.0,
     linguagem: 'Funcional',
     tipo_cobranca: 'Faturado',
-    mes_cobranca: 1,
+    mes_cobranca: '01/2024',
     observacao: 'Observação de teste'
   };
 

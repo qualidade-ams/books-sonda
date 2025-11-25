@@ -221,8 +221,8 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   }
 
   return (
-    <div className="relative w-full">
-      <Table className="w-full text-xs sm:text-sm min-w-[1190px]">
+    <div className="relative w-full overflow-x-auto">
+      <Table className="w-full text-xs sm:text-sm min-w-[1400px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-12 text-xs py-2">
@@ -245,7 +245,8 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
               <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
               <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
               <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Datas</TableHead>
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
+              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
               {showDataFaturamento && (
                 <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
               )}

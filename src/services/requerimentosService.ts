@@ -542,10 +542,10 @@ export class RequerimentosService {
       // Ordenar por data_envio_faturamento (quando foi enviado para faturamento)
       // Se não existir, ordenar por data_faturamento, senão por created_at
       try {
-        query = query.order('data_envio_faturamento', { ascending: false, nullsLast: true });
+        query = query.order('data_envio_faturamento', { ascending: false, nullsFirst: false });
       } catch {
         try {
-          query = query.order('data_faturamento', { ascending: false, nullsLast: true });
+          query = query.order('data_faturamento', { ascending: false, nullsFirst: false });
         } catch {
           query = query.order('created_at', { ascending: false });
         }
@@ -758,8 +758,31 @@ export class RequerimentosService {
     // Apenas validar se fornecida e se é válida em relação à data de envio
 
     if (!isUpdate || data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
-      const horasFuncional = Number(data.horas_funcional || 0);
-      const horasTecnico = Number(data.horas_tecnico || 0);
+      // Converter horas para decimal (suporta formato HH:MM e números)
+      let horasFuncional = 0;
+      let horasTecnico = 0;
+
+      try {
+        if (data.horas_funcional !== undefined) {
+          const horasFuncionalStr = typeof data.horas_funcional === 'string' 
+            ? data.horas_funcional 
+            : data.horas_funcional.toString();
+          horasFuncional = converterParaHorasDecimal(horasFuncionalStr);
+        }
+      } catch (error) {
+        errors.push('Formato de horas funcionais inválido');
+      }
+
+      try {
+        if (data.horas_tecnico !== undefined) {
+          const horasTecnicoStr = typeof data.horas_tecnico === 'string'
+            ? data.horas_tecnico
+            : data.horas_tecnico.toString();
+          horasTecnico = converterParaHorasDecimal(horasTecnicoStr);
+        }
+      } catch (error) {
+        errors.push('Formato de horas técnicas inválido');
+      }
       
       if (data.horas_funcional === undefined || horasFuncional < 0) {
         errors.push('Horas funcionais são obrigatórias e devem ser >= 0');

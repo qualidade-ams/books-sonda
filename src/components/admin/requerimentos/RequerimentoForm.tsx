@@ -67,9 +67,7 @@ export function RequerimentoForm({
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
       // Campos de ticket
-      quantidade_tickets: requerimento?.quantidade_tickets || undefined,
-      // Campo auxiliar para validação
-      empresa_tipo_cobranca: undefined
+      quantidade_tickets: requerimento?.quantidade_tickets || undefined
     }
   });
 
@@ -190,6 +188,18 @@ export function RequerimentoForm({
     if (!linguagem || linguagem.trim() === '') status.camposFaltando.push('Linguagem');
     if (!tipoCobranca || tipoCobranca.trim() === '') status.camposFaltando.push('Tipo de Cobrança');
 
+    // Validação de horas - pelo menos uma deve ser maior que zero
+    const horasFuncionalNum = typeof horasFuncional === 'string' 
+      ? converterParaHorasDecimal(horasFuncional) 
+      : horasFuncional || 0;
+    const horasTecnicoNum = typeof horasTecnico === 'string' 
+      ? converterParaHorasDecimal(horasTecnico) 
+      : horasTecnico || 0;
+
+    if (horasFuncionalNum === 0 && horasTecnicoNum === 0) {
+      status.camposFaltando.push('Horas Funcionais ou Horas Técnicas (pelo menos uma deve ser maior que zero)');
+    }
+
     // Validação condicional de tickets
     if (mostrarCampoTickets) {
       const ticketsValidos = quantidadeTickets !== undefined && 
@@ -227,16 +237,8 @@ export function RequerimentoForm({
     mostrarCamposValor, horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico
   ]);
 
-  // Atualizar campo auxiliar para validação de tickets
-  useEffect(() => {
-    if (clienteSelecionado?.tipo_cobranca) {
-      console.log('Atualizando empresa_tipo_cobranca:', clienteSelecionado.tipo_cobranca);
-      form.setValue('empresa_tipo_cobranca', clienteSelecionado.tipo_cobranca);
-    } else {
-      console.log('Limpando empresa_tipo_cobranca');
-      form.setValue('empresa_tipo_cobranca', undefined);
-    }
-  }, [clienteSelecionado, form]);
+  // Não é necessário armazenar empresa_tipo_cobranca no formulário
+  // Usamos clienteSelecionado?.tipo_cobranca diretamente na validação
 
   // Limpar tipo de cobrança se a opção atual não estiver mais disponível
   useEffect(() => {
@@ -245,7 +247,9 @@ export function RequerimentoForm({
     
     if (tipoCobrancaAtual && !opcoesDisponiveis.includes(tipoCobrancaAtual)) {
       console.log('Limpando tipo de cobrança não disponível:', tipoCobrancaAtual);
-      form.setValue('tipo_cobranca', '');
+      // Define para o primeiro valor disponível ou 'Banco de Horas' como padrão
+      const valorPadrao = opcoesDisponiveis[0] || 'Banco de Horas';
+      form.setValue('tipo_cobranca', valorPadrao as any);
     }
   }, [tipoCobrancaOptionsFiltradas, form]);
 
@@ -265,19 +269,18 @@ export function RequerimentoForm({
   };
 
   const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
+    console.log('Dados do formulário antes da validação:', data);
+    console.log('Tipo de cobrança:', data.tipo_cobranca);
+    console.log('Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
+    console.log('Quantidade tickets:', data.quantidade_tickets);
+    console.log('Mostrar campo tickets:', mostrarCampoTickets);
+    
+    screenReader.announceLoading('Salvando requerimento...');
+    
     try {
-      console.log('Dados do formulário antes da validação:', data);
-      console.log('Tipo de cobrança:', data.tipo_cobranca);
-      console.log('Empresa tipo cobrança:', data.empresa_tipo_cobranca);
-      console.log('Quantidade tickets:', data.quantidade_tickets);
-      console.log('Mostrar campo tickets:', mostrarCampoTickets);
+      await onSubmit(data);
       
-      screenReader.announceLoading('Salvando requerimento...');
-      
-      // Remover campo auxiliar antes de enviar
-      const { empresa_tipo_cobranca, ...dataToSubmit } = data;
-      
-      await onSubmit(dataToSubmit as RequerimentoFormData);
+      // ✅ Só reseta o formulário se for criação E teve sucesso
       if (!requerimento) {
         form.reset();
         screenReader.announceSuccess('Requerimento criado com sucesso');
@@ -285,10 +288,15 @@ export function RequerimentoForm({
         screenReader.announceSuccess('Requerimento atualizado com sucesso');
       }
     } catch (error) {
+      // ❌ NÃO reseta o formulário em caso de erro - mantém os dados preenchidos
       console.error('Erro ao submeter formulário:', error);
-      screenReader.announceError('Erro ao salvar requerimento');
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar requerimento';
+      screenReader.announceError(errorMessage);
+      
+      // Propagar o erro para que o React Hook Form saiba que houve falha
+      throw error;
     }
-  }, [onSubmit, requerimento, form, screenReader]);
+  }, [onSubmit, requerimento, form, screenReader, mostrarCampoTickets, clienteSelecionado]);
 
   // Validações em tempo real
   const chamadoValidation = useMemo(() => [
@@ -377,7 +385,7 @@ export function RequerimentoForm({
                     >
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         disabled={isLoading || isLoadingClientes}
                       >
                         <SelectTrigger aria-describedby="cliente-help">
@@ -631,7 +639,7 @@ export function RequerimentoForm({
                       <FormLabel>
                         Tipo de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo de cobrança" />
