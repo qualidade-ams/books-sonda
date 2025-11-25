@@ -221,7 +221,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   }
 
   return (
-    <div className="relative w-full overflow-x-auto">
+    <div className="relative w-full">
       <Table className="w-full text-xs sm:text-sm min-w-[1400px]">
           <TableHeader>
             <TableRow>
@@ -292,9 +292,11 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
-                              <span className="truncate">{requerimento.tipo_cobranca}</span>
-                            </Badge>
+                            <span className="inline-block">
+                              <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
+                                <span className="truncate">{requerimento.tipo_cobranca}</span>
+                              </Badge>
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{requerimento.tipo_cobranca}</p>

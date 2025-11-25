@@ -143,7 +143,20 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
     }
   };
 
-  const getTemplateBadge = (templateId: string) => {
+  const getTemplateBadge = (templateId: string, temAms: boolean) => {
+    // Se não tem AMS, mostrar badge branco com borda e texto azul
+    if (!temAms) {
+      return (
+        <Badge 
+          variant="outline" 
+          className="text-xs bg-white dark:bg-gray-950 border-blue-500 text-blue-600 dark:text-blue-400"
+        >
+          Não
+        </Badge>
+      );
+    }
+
+    // Se tem AMS, verificar se o template existe
     const template = getTemplateById(templateId);
 
     if (!template) {
@@ -255,7 +268,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                 </div>
               </TableCell>
               <TableCell>
-                {getTemplateBadge(empresa.template_padrao)}
+                {getTemplateBadge(empresa.template_padrao, empresa.tem_ams || false)}
               </TableCell>
               <TableCell className="hidden xl:table-cell">
                 {getAmsBadge(empresa.tem_ams || false)}
