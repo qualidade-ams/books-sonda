@@ -311,14 +311,9 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 <TableCell className="py-2">
-                  <div className="flex flex-col min-w-0 space-y-1">
-                    <span className="font-medium truncate text-xs sm:text-sm lg:text-base" title={requerimento.cliente_nome}>
-                      {requerimento.cliente_nome}
-                    </span>
-                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-500 truncate" title={requerimento.descricao}>
-                      {requerimento.descricao}
-                    </span>
-                  </div>
+                  <span className="font-medium truncate block text-xs sm:text-sm lg:text-base" title={requerimento.cliente_nome}>
+                    {requerimento.cliente_nome}
+                  </span>
                 </TableCell>
 
                 <TableCell className="py-3">
