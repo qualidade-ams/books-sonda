@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/tooltip';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
-import { PesquisaForm, PesquisasTable } from '@/components/admin/pesquisas-satisfacao';
+import { PesquisaForm, PesquisasTable, PesquisasExportButtons } from '@/components/admin/pesquisas-satisfacao';
 import { 
   usePesquisasSatisfacao, 
   useCriarPesquisa, 
@@ -157,6 +157,20 @@ function LancarPesquisas() {
             </p>
           </div>
           <div className="flex gap-2 items-center">
+            <PesquisasExportButtons
+              pesquisas={pesquisas}
+              estatisticas={estatisticas || {
+                total: 0,
+                pendentes: 0,
+                enviados: 0,
+                sql_server: 0,
+                manuais: 0,
+                por_empresa: {},
+                por_categoria: {},
+                por_mes: {}
+              }}
+              disabled={isLoading}
+            />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
