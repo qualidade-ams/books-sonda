@@ -26,7 +26,8 @@ import {
   Shield,
   FileText,
   DollarSign,
-  Heart
+  Heart,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -240,6 +241,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Enviar Pesquisas',
           path: '/admin/enviar-pesquisas',
           screenKey: 'enviar_pesquisas'
+        },
+        {
+          icon: ClipboardCheck,
+          label: 'Plano de Ação',
+          path: '/admin/plano-acao',
+          screenKey: 'plano_acao'
         }
       ]
     },

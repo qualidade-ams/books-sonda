@@ -415,7 +415,8 @@ export class RequerimentosService {
       throw new Error('Data de aprovação do orçamento é obrigatória para envio ao faturamento');
     }
 
-    // Atualizar status
+    // Atualizar status para 'enviado_faturamento'
+    // Irá para 'faturado' apenas quando disparar o email
     const { error } = await supabase
       .from('requerimentos')
       .update({
@@ -533,11 +534,11 @@ export class RequerimentosService {
   async buscarRequerimentosFaturados(mesCobranca?: string): Promise<Requerimento[]> {
     try {
       // Consulta simples sem JOIN para evitar erro 400
-      // Buscar requerimentos enviados para faturamento OU já faturados
+      // Buscar APENAS requerimentos já faturados (não incluir enviado_faturamento)
       let query = supabase
         .from('requerimentos')
         .select('*')
-        .in('status', ['enviado_faturamento', 'faturado']);
+        .eq('status', 'faturado');
 
       // Ordenar por data_envio_faturamento (quando foi enviado para faturamento)
       // Se não existir, ordenar por data_faturamento, senão por created_at
@@ -616,6 +617,87 @@ export class RequerimentosService {
     } catch (error) {
       console.error('Erro geral ao buscar requerimentos faturados:', error);
       // Retornar array vazio para não quebrar a interface
+      return [];
+    }
+  }
+
+  /**
+   * Buscar requerimentos enviados (para histórico na tela Lançar Requerimentos)
+   * Busca tanto 'enviado_faturamento' quanto 'faturado'
+   */
+  async buscarRequerimentosEnviados(mesCobranca?: string): Promise<Requerimento[]> {
+    try {
+      // Buscar requerimentos enviados para faturamento OU já faturados
+      let query = supabase
+        .from('requerimentos')
+        .select('*')
+        .in('status', ['enviado_faturamento', 'faturado']);
+
+      // Ordenar por data_envio_faturamento
+      query = query.order('data_envio_faturamento', { ascending: false, nullsFirst: false });
+
+      if (mesCobranca) {
+        query = query.eq('mes_cobranca', mesCobranca);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro na consulta de requerimentos enviados:', error);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Buscar nomes dos clientes separadamente
+      const requerimentosComNomes = await Promise.all(
+        data.map(async (req) => {
+          let cliente_nome = 'N/A';
+          
+          if (req.cliente_id) {
+            try {
+              const { data: cliente, error: clienteError } = await supabase
+                .from('empresas_clientes')
+                .select('nome_abreviado, nome_completo')
+                .eq('id', req.cliente_id)
+                .maybeSingle();
+
+              if (!clienteError && cliente) {
+                cliente_nome = cliente.nome_abreviado || cliente.nome_completo || 'N/A';
+              }
+            } catch (err) {
+              console.error('Erro ao buscar cliente:', err);
+            }
+          }
+
+          return {
+            ...req,
+            cliente_nome
+          } as Requerimento;
+        })
+      );
+
+      // Resolver nomes dos autores
+      const autoresIds = requerimentosComNomes
+        .map(req => req.autor_id)
+        .filter((id): id is string => !!id);
+
+      if (autoresIds.length > 0) {
+        const usersMap = await this.resolverNomesUsuarios(autoresIds);
+        
+        return requerimentosComNomes.map(req => ({
+          ...req,
+          autor_nome: req.autor_id && usersMap[req.autor_id] 
+            ? usersMap[req.autor_id] 
+            : req.autor_nome || 'N/A'
+        }));
+      }
+
+      return requerimentosComNomes;
+    } catch (error) {
+      console.error('Erro ao buscar requerimentos enviados:', error);
       return [];
     }
   }

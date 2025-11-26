@@ -55,15 +55,16 @@ export function useRequerimentosNaoEnviados() {
 
 /**
  * Hook para buscar requerimentos enviados para faturamento (histórico)
+ * Busca tanto 'enviado_faturamento' quanto 'faturado'
  */
 export function useRequerimentosEnviados(filtros?: FiltrosRequerimentos) {
   return useQuery({
     queryKey: REQUERIMENTOS_QUERY_KEYS.enviados(filtros),
     queryFn: () => {
-      // Buscar requerimentos enviados para faturamento ou já faturados
-      // Usar buscarRequerimentosFaturados que busca ambos os status
+      // Buscar requerimentos enviados para faturamento OU já faturados
+      // Usar buscarRequerimentosEnviados que busca ambos os status
       const mesCobranca = filtros?.mes_cobranca;
-      return requerimentosService.buscarRequerimentosFaturados(mesCobranca);
+      return requerimentosService.buscarRequerimentosEnviados(mesCobranca);
     },
     staleTime: 1000 * 30, // 30 segundos
     gcTime: 1000 * 60 * 5, // 5 minutos

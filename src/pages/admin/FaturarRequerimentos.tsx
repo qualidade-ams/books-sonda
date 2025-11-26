@@ -884,21 +884,6 @@ export default function FaturarRequerimentos() {
               </div>
             </CardContent>
           </Card>
-        ) : estatisticasPeriodo.totalRequerimentos === 0 ? (
-          <Card>
-            <CardContent className="p-8">
-              <div className="text-center text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">
-                  Nenhum requerimento encontrado
-                </h3>
-                <p>
-                  Não há requerimentos enviados para faturamento no período de{' '}
-                  <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         ) : (
           <Tabs value={abaAtiva} onValueChange={(value) => handleTrocarAba(value as 'para_faturar' | 'faturados')} className="w-full space-y-4">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -922,7 +907,23 @@ export default function FaturarRequerimentos() {
             </div>
 
             <TabsContent value="para_faturar" className="space-y-6">
-              {gruposFiltrados.map(grupo => {
+              {gruposFiltrados.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-gray-500">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">
+                        Nenhum requerimento encontrado
+                      </h3>
+                      <p>
+                        Não há requerimentos enviados para faturamento no período de{' '}
+                        <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                gruposFiltrados.map(grupo => {
               const colors = getCobrancaColors(grupo.tipo);
               const icon = getCobrancaIcon(grupo.tipo);
 
@@ -1116,7 +1117,8 @@ export default function FaturarRequerimentos() {
                   </CardContent>
                 </Card>
               );
-            })}
+            })
+              )}
             </TabsContent>
 
             <TabsContent value="faturados" className="space-y-6">
