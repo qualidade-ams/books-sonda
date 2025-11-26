@@ -54,6 +54,10 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
         query = query.eq('status', filtros.status);
       }
 
+      if (filtros.resposta && filtros.resposta !== 'todas') {
+        query = query.eq('resposta', filtros.resposta);
+      }
+
       if (filtros.empresa) {
         query = query.ilike('empresa', `%${filtros.empresa}%`);
       }

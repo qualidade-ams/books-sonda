@@ -116,6 +116,65 @@ export function PesquisasTable({
     }
   };
 
+  // Função para obter badge de resposta (do pior para o melhor)
+  const getBadgeResposta = (resposta: string | null) => {
+    if (!resposta) return null;
+
+    const respostaNormalizada = resposta.trim().toLowerCase();
+
+    // Muito Insatisfeito (Pior)
+    if (respostaNormalizada.includes('muito insatisfeito')) {
+      return (
+        <Badge variant="destructive" className="bg-red-600 hover:bg-red-700 whitespace-nowrap">
+          Muito Insatisfeito
+        </Badge>
+      );
+    }
+
+    // Insatisfeito
+    if (respostaNormalizada.includes('insatisfeito') && !respostaNormalizada.includes('muito')) {
+      return (
+        <Badge variant="destructive" className="bg-orange-500 hover:bg-orange-600 whitespace-nowrap">
+          Insatisfeito
+        </Badge>
+      );
+    }
+
+    // Neutro
+    if (respostaNormalizada.includes('neutro')) {
+      return (
+        <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white whitespace-nowrap">
+          Neutro
+        </Badge>
+      );
+    }
+
+    // Satisfeito
+    if (respostaNormalizada.includes('satisfeito') && !respostaNormalizada.includes('muito')) {
+      return (
+        <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+          Satisfeito
+        </Badge>
+      );
+    }
+
+    // Muito Satisfeito (Melhor)
+    if (respostaNormalizada.includes('muito satisfeito')) {
+      return (
+        <Badge variant="default" className="bg-green-600 hover:bg-green-700 whitespace-nowrap">
+          Muito Satisfeito
+        </Badge>
+      );
+    }
+
+    // Resposta não reconhecida
+    return (
+      <Badge variant="outline" className="whitespace-nowrap">
+        {resposta}
+      </Badge>
+    );
+  };
+
   if (pesquisas.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -138,13 +197,12 @@ export function PesquisasTable({
                   className={algunsSelecionados ? "data-[state=checked]:bg-primary" : ""}
                 />
               </TableHead>
-              <TableHead>Origem</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Consultor</TableHead>
               <TableHead>Chamado</TableHead>
+              <TableHead>Empresa</TableHead>
               <TableHead>Data Resposta</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Comentário</TableHead>
+              <TableHead>Resposta</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -158,30 +216,39 @@ export function PesquisasTable({
                     aria-label={`Selecionar ${pesquisa.cliente}`}
                   />
                 </TableCell>
+                {/* Coluna Chamado com ícone de origem + tipo + número */}
                 <TableCell>
-                  <Badge
-                    variant={pesquisa.origem === 'sql_server' ? 'default' : 'secondary'}
-                    className="gap-1"
-                  >
-                    {pesquisa.origem === 'sql_server' ? (
-                      <>
-                        <Database className="h-3 w-3" />
-                        SQL
-                      </>
-                    ) : (
-                      <>
-                        <FileEdit className="h-3 w-3" />
-                        Manual
-                      </>
-                    )}
-                  </Badge>
+                  {pesquisa.nro_caso ? (
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      {/* Ícone de origem (SQL/Manual) */}
+                      {pesquisa.origem === 'sql_server' ? (
+                        <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      ) : (
+                        <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                      )}
+                      {/* Tipo e número do chamado em uma linha */}
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {pesquisa.tipo_caso && `${pesquisa.tipo_caso} `}
+                        <span className="font-mono text-foreground">{pesquisa.nro_caso}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {pesquisa.origem === 'sql_server' ? (
+                        <Database className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <FileEdit className="h-4 w-4 text-gray-600" />
+                      )}
+                      <span>-</span>
+                    </div>
+                  )}
                 </TableCell>
+                {/* Coluna Empresa */}
                 <TableCell className="font-medium">
                   {(() => {
                     const validacao = validarEmpresa(pesquisa.empresa);
                     
                     if (validacao.encontrada) {
-                      // Empresa cadastrada - exibir nome abreviado
                       return (
                         <TooltipProvider>
                           <Tooltip>
@@ -197,7 +264,6 @@ export function PesquisasTable({
                         </TooltipProvider>
                       );
                     } else {
-                      // Empresa NÃO cadastrada - exibir em vermelho
                       return (
                         <TooltipProvider>
                           <Tooltip>
@@ -217,26 +283,36 @@ export function PesquisasTable({
                     }
                   })()}
                 </TableCell>
+                {/* Coluna Data Resposta */}
+                <TableCell className="text-xs">
+                  {formatarData(pesquisa.data_resposta)}
+                </TableCell>
+                {/* Coluna Cliente */}
                 <TableCell>{pesquisa.cliente}</TableCell>
-                <TableCell>{pesquisa.categoria || '-'}</TableCell>
-                <TableCell>{pesquisa.prestador || '-'}</TableCell>
+                {/* Coluna Comentário (substituiu Categoria) */}
                 <TableCell>
-                  {pesquisa.nro_caso ? (
-                    <div className="flex flex-col gap-0.5">
-                      {pesquisa.tipo_caso && (
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {pesquisa.tipo_caso}
-                        </span>
-                      )}
-                      <span className="font-mono">{pesquisa.nro_caso}</span>
-                    </div>
+                  {pesquisa.comentario_pesquisa ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help line-clamp-2 text-sm">
+                            {pesquisa.comentario_pesquisa}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          <p className="text-xs whitespace-pre-wrap">{pesquisa.comentario_pesquisa}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     '-'
                   )}
                 </TableCell>
-                <TableCell className="text-xs">
-                  {formatarData(pesquisa.data_resposta)}
+                {/* Coluna Resposta */}
+                <TableCell>
+                  {getBadgeResposta(pesquisa.resposta) || '-'}
                 </TableCell>
+                {/* Coluna Ações */}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button

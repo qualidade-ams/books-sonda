@@ -97,6 +97,7 @@ export interface FiltrosPesquisas {
   busca?: string;
   origem?: OrigemPesquisa | 'todos';
   status?: StatusPesquisa | 'todos';
+  resposta?: string;
   empresa?: string;
   categoria?: string;
   grupo?: string;
@@ -170,6 +171,15 @@ export const STATUS_PESQUISA_OPTIONS = [
   { value: 'todos', label: 'Todos os Status' },
   { value: 'pendente', label: 'Pendente' },
   { value: 'enviado', label: 'Enviado' }
+] as const;
+
+export const RESPOSTA_PESQUISA_OPTIONS = [
+  { value: 'todas', label: 'Todas as Respostas' },
+  { value: 'Muito Insatisfeito', label: 'Muito Insatisfeito' },
+  { value: 'Insatisfeito', label: 'Insatisfeito' },
+  { value: 'Neutro', label: 'Neutro' },
+  { value: 'Satisfeito', label: 'Satisfeito' },
+  { value: 'Muito Satisfeito', label: 'Muito Satisfeito' }
 ] as const;
 
 export const MESES_OPTIONS = [

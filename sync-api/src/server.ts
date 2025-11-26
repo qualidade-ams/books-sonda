@@ -349,6 +349,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Comentario_Pesquisa
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
         WHERE [Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL
+          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     } else {
@@ -390,6 +391,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
         WHERE [Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL
           AND [Data_Resposta (Date-Hour-Minute-Second)] > @ultimaData
+          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     }

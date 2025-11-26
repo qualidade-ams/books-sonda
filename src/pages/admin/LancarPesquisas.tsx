@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/tooltip';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
-import { PesquisaForm, PesquisasTable, PesquisasExportButtons } from '@/components/admin/pesquisas-satisfacao';
+import { PesquisaForm, PesquisasTable, PesquisasExportButtons, SyncProgressModal } from '@/components/admin/pesquisas-satisfacao';
 import { 
   usePesquisasSatisfacao, 
   useCriarPesquisa, 
@@ -41,13 +41,13 @@ import { useSincronizarSqlServer, useUltimaSincronizacao } from '@/hooks/usePesq
 import { useApiStatus } from '@/hooks/useApiStatus';
 
 import type { Pesquisa, PesquisaFormData, FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
-import { ORIGEM_PESQUISA_OPTIONS, STATUS_PESQUISA_OPTIONS } from '@/types/pesquisasSatisfacao';
+import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS } from '@/types/pesquisasSatisfacao';
 
 function LancarPesquisas() {
   const [filtros, setFiltros] = useState<FiltrosPesquisas>({
     busca: '',
     origem: 'todos',
-    status: 'todos'
+    resposta: 'todas'
   });
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
@@ -55,6 +55,7 @@ function LancarPesquisas() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(100);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [modalSyncAberto, setModalSyncAberto] = useState(false);
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
@@ -113,6 +114,7 @@ function LancarPesquisas() {
   };
 
   const handleSincronizar = async () => {
+    setModalSyncAberto(true);
     await sincronizarSqlServer.mutateAsync();
     // Limpar cache e atualizar dados após sincronização
     await refetch();
@@ -331,14 +333,14 @@ function LancarPesquisas() {
               </Select>
 
               <Select
-                value={filtros.status}
-                onValueChange={(value) => handleAtualizarFiltro('status', value)}
+                value={filtros.resposta || 'todas'}
+                onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Resposta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_PESQUISA_OPTIONS.map(opt => (
+                  {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -429,6 +431,14 @@ function LancarPesquisas() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Progresso de Sincronização */}
+      <SyncProgressModal
+        open={modalSyncAberto}
+        onOpenChange={setModalSyncAberto}
+        isLoading={sincronizarSqlServer.isPending}
+        resultado={sincronizarSqlServer.data}
+      />
 
       </div>
     </LayoutAdmin>
