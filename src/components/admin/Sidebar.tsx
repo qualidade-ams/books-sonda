@@ -25,7 +25,8 @@ import {
   Settings,
   Shield,
   FileText,
-  DollarSign
+  DollarSign,
+  Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -221,6 +222,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Enviar Requerimentos',
           path: '/admin/faturar-requerimentos',
           screenKey: 'faturar_requerimentos'
+        }
+      ]
+    },
+    {
+      icon: MessageSquare,
+      label: 'Pesquisas de Satisfação',
+      children: [
+        {
+          icon: FileText,
+          label: 'Lançar Pesquisas',
+          path: '/admin/lancar-pesquisas',
+          screenKey: 'lancar_pesquisas'
+        },
+        {
+          icon: Send,
+          label: 'Enviar Pesquisas',
+          path: '/admin/enviar-pesquisas',
+          screenKey: 'enviar_pesquisas'
         }
       ]
     },

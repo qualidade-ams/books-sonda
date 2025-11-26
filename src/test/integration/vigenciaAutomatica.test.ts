@@ -76,10 +76,10 @@ describe('Vigência Automática', () => {
 
   describe('Validação de Vigências', () => {
     it('deve validar vigências corretamente', () => {
-      const validacao1 = vigenciaService.validarVigencias('2025-01-01', '2025-12-31');
+      const validacao1 = vigenciaService.validarVigencias('2024-01-01', '2025-12-31');
       expect(validacao1.valido).toBe(true);
 
-      const validacao2 = vigenciaService.validarVigencias('2025-12-31', '2025-01-01');
+      const validacao2 = vigenciaService.validarVigencias('2025-12-31', '2024-01-01');
       expect(validacao2.valido).toBe(false);
       expect(validacao2.erro).toContain('vigência inicial não pode ser posterior');
     });
@@ -183,7 +183,7 @@ describe('Vigência Automática', () => {
       const inicio = Date.now();
       
       for (let i = 0; i < 1000; i++) {
-        vigenciaService.validarVigencias('2025-01-01', '2025-12-31');
+        vigenciaService.validarVigencias('2024-01-01', '2025-12-31');
       }
       
       const duracao = Date.now() - inicio;

@@ -29,6 +29,8 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
 import LancarRequerimentos from "./pages/admin/LancarRequerimentos";
 import FaturarRequerimentos from "./pages/admin/FaturarRequerimentos";
+import LancarPesquisas from "./pages/admin/LancarPesquisas";
+import EnviarPesquisas from "./pages/admin/EnviarPesquisas";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -71,6 +73,8 @@ const App = () => (
                   <Route path="/admin/monitoramento-vigencias" element={<ProtectedRoute screenKey="monitoramento_vigencias"><MonitoramentoVigencias /></ProtectedRoute>} />
                   <Route path="/admin/lancar-requerimentos" element={<ProtectedRoute screenKey="lancar_requerimentos"><LancarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/faturar-requerimentos" element={<ProtectedRoute screenKey="faturar_requerimentos"><FaturarRequerimentos /></ProtectedRoute>} />
+                  <Route path="/admin/lancar-pesquisas" element={<ProtectedRoute screenKey="lancar_pesquisas"><LancarPesquisas /></ProtectedRoute>} />
+                  <Route path="/admin/enviar-pesquisas" element={<ProtectedRoute screenKey="enviar_pesquisas"><EnviarPesquisas /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

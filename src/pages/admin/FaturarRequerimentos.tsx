@@ -569,57 +569,36 @@ export default function FaturarRequerimentos() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-full overflow-hidden px-4 sm:px-6 lg:px-8">
+      <div className="space-y-6">
         {/* Cabeçalho */}
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-                Enviar Requerimentos
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Visualize e processe requerimentos enviados para faturamento
-              </p>
-            </div>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Enviar Requerimentos
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Visualize e processe requerimentos enviados para faturamento
+            </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-shrink-0">
-              <div className="flex flex-wrap gap-2">
-                {filtroTipo.length > 0 && (
-                  <Badge variant="outline" className="text-sm">
-                    Filtrado por {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
-                  </Badge>
-                )}
-                {filtroModulo.length > 0 && (
-                  <Badge variant="outline" className="text-sm">
-                    Filtrado por {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <FaturamentoExportButtons
-                  requerimentosAgrupados={requerimentosAgrupados}
-                  estatisticas={estatisticasPeriodo}
-                  mesNome={nomesMeses[mesSelecionado - 1]}
-                  ano={anoSelecionado}
-                  disabled={isLoading}
-                />
-                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-                  <Button
-                    onClick={handleAbrirModalEmail}
-                    disabled={isLoading || requerimentosSelecionados.length === 0}
-                    className="flex items-center gap-1 xl:gap-2 text-xs xl:text-sm whitespace-nowrap px-2 xl:px-3"
-                    size='sm'
-                    title={requerimentosSelecionados.length === 0 ? 'Selecione requerimentos para disparar faturamento' : `Disparar faturamento de ${requerimentosSelecionados.length} requerimento(s) selecionado(s)`}
-                  >
-                    <Send className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                    <span className="hidden sm:inline">Disparar Faturamento</span>
-                    <span className="sm:hidden">Disparar</span>
-                    <span>({requerimentosSelecionados.length})</span>
-                  </Button>
-                </ProtectedAction>
-              </div>
-            </div>
+          <div className="flex gap-2">
+            <FaturamentoExportButtons
+              requerimentosAgrupados={requerimentosAgrupados}
+              estatisticas={estatisticasPeriodo}
+              mesNome={nomesMeses[mesSelecionado - 1]}
+              ano={anoSelecionado}
+              disabled={isLoading}
+            />
+            <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+              <Button
+                onClick={handleAbrirModalEmail}
+                disabled={isLoading || requerimentosSelecionados.length === 0}
+                title={requerimentosSelecionados.length === 0 ? 'Selecione requerimentos para disparar faturamento' : `Disparar faturamento de ${requerimentosSelecionados.length} requerimento(s) selecionado(s)`}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Disparar Faturamento ({requerimentosSelecionados.length})
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 

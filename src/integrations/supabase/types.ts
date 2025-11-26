@@ -308,6 +308,112 @@ export type Database = {
         }
         Relationships: []
       }
+      pesquisas_satisfacao: {
+        Row: {
+          ano_abertura: number | null
+          autor_id: string | null
+          autor_nome: string | null
+          categoria: string | null
+          cliente: string
+          cliente_id: string | null
+          comentario_pesquisa: string | null
+          created_at: string
+          data_envio: string | null
+          data_resposta: string | null
+          email_cliente: string | null
+          empresa: string
+          empresa_id: string | null
+          grupo: string | null
+          id: string
+          id_externo: string | null
+          mes_abertura: number | null
+          nro_caso: string | null
+          observacao: string | null
+          origem: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          prestador: string | null
+          resposta: string | null
+          status: Database["public"]["Enums"]["status_pesquisa_enum"]
+          tipo_caso: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano_abertura?: number | null
+          autor_id?: string | null
+          autor_nome?: string | null
+          categoria?: string | null
+          cliente: string
+          cliente_id?: string | null
+          comentario_pesquisa?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_resposta?: string | null
+          email_cliente?: string | null
+          empresa: string
+          empresa_id?: string | null
+          grupo?: string | null
+          id?: string
+          id_externo?: string | null
+          mes_abertura?: number | null
+          nro_caso?: string | null
+          observacao?: string | null
+          origem?: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          prestador?: string | null
+          resposta?: string | null
+          status?: Database["public"]["Enums"]["status_pesquisa_enum"]
+          tipo_caso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano_abertura?: number | null
+          autor_id?: string | null
+          autor_nome?: string | null
+          categoria?: string | null
+          cliente?: string
+          cliente_id?: string | null
+          comentario_pesquisa?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_resposta?: string | null
+          email_cliente?: string | null
+          empresa?: string
+          empresa_id?: string | null
+          grupo?: string | null
+          id?: string
+          id_externo?: string | null
+          mes_abertura?: number | null
+          nro_caso?: string | null
+          observacao?: string | null
+          origem?: Database["public"]["Enums"]["origem_pesquisa_enum"]
+          prestador?: string | null
+          resposta?: string | null
+          status?: Database["public"]["Enums"]["status_pesquisa_enum"]
+          tipo_caso?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesquisas_satisfacao_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesquisas_satisfacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesquisas_satisfacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_grupos: {
         Row: {
           created_at: string | null
@@ -1122,6 +1228,8 @@ export type Database = {
       }
     }
     Enums: {
+      origem_pesquisa_enum: "sql_server" | "manual"
+      status_pesquisa_enum: "pendente" | "enviado"
       tipo_book_enum: "nao_tem_book" | "qualidade" | "outros"
       tipo_cobranca_enum: "banco_horas" | "ticket" | "outros"
     }
@@ -1251,6 +1359,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      origem_pesquisa_enum: ["sql_server", "manual"],
+      status_pesquisa_enum: ["pendente", "enviado"],
       tipo_book_enum: ["nao_tem_book", "qualidade", "outros"],
       tipo_cobranca_enum: ["banco_horas", "ticket", "outros"],
     },
