@@ -729,7 +729,10 @@ export function RequerimentoForm({
                                 placeholder="0,00"
                                 className="pl-8"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
+                                }}
                               />
                             </div>
                           </FormControl>
@@ -760,7 +763,10 @@ export function RequerimentoForm({
                                 placeholder="0,00"
                                 className="pl-8"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? undefined : parseFloat(value) || 0);
+                                }}
                               />
                             </div>
                           </FormControl>

@@ -46,7 +46,47 @@ export const InputHoras = forwardRef<HTMLInputElement, InputHorasProps>(
     }, [value]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const novoValor = e.target.value;
+      let novoValor = e.target.value;
+      
+      // Remove caracteres não numéricos exceto ':'
+      novoValor = novoValor.replace(/[^\d:]/g, '');
+      
+      // Aplicar máscara HH:MM
+      if (novoValor.length > 0) {
+        // Remove ':' extras
+        const partes = novoValor.split(':');
+        
+        if (partes.length > 2) {
+          // Se tiver mais de um ':', mantém apenas o primeiro
+          novoValor = partes[0] + ':' + partes.slice(1).join('');
+        }
+        
+        // Se tem ':', valida os minutos
+        if (novoValor.includes(':')) {
+          const [horas, minutos] = novoValor.split(':');
+          
+          // Limita minutos a 2 dígitos
+          if (minutos && minutos.length > 2) {
+            novoValor = `${horas}:${minutos.substring(0, 2)}`;
+          }
+          
+          // Valida se minutos estão entre 00 e 59
+          if (minutos && minutos.length === 2) {
+            const minutosNum = parseInt(minutos, 10);
+            if (minutosNum > 59) {
+              // Se minutos > 59, ajusta para 59
+              novoValor = `${horas}:59`;
+            }
+          }
+        }
+        
+        // Adiciona ':' automaticamente após 2 ou mais dígitos se não tiver ':'
+        if (!novoValor.includes(':') && novoValor.length >= 2) {
+          const horas = novoValor.substring(0, novoValor.length);
+          novoValor = horas + ':';
+        }
+      }
+      
       setInputValue(novoValor);
 
       // Validar formato
