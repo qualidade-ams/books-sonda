@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { PesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
 import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
 import { MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
+import { useEmpresas } from '@/hooks/useEmpresas';
 
 interface PesquisaFormProps {
   pesquisa?: Pesquisa | null;
@@ -47,6 +48,9 @@ interface PesquisaFormProps {
 }
 
 export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: PesquisaFormProps) {
+  // Buscar empresas para o select
+  const { empresas } = useEmpresas();
+
   const form = useForm<PesquisaFormData>({
     resolver: zodResolver(PesquisaFormSchema),
     defaultValues: {
@@ -58,14 +62,28 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       prestador: '',
       nro_caso: '',
       tipo_caso: '',
-      ano_abertura: new Date().getFullYear(),
-      mes_abertura: new Date().getMonth() + 1,
-      data_resposta: null,
+      data_resposta: undefined, // Vem em branco
       resposta: '',
       comentario_pesquisa: '',
       observacao: ''
     }
   });
+
+  // Opções de tipo de chamado
+  const tiposChamado = [
+    { value: 'IM', label: 'IM - Incidente' },
+    { value: 'PR', label: 'PR - Problema' },
+    { value: 'RF', label: 'RF - Requisição' }
+  ];
+
+  // Opções de resposta
+  const opcoesResposta = [
+    { value: 'Muito Satisfeito', label: 'Muito Satisfeito' },
+    { value: 'Satisfeito', label: 'Satisfeito' },
+    { value: 'Neutro', label: 'Neutro' },
+    { value: 'Insatisfeito', label: 'Insatisfeito' },
+    { value: 'Muito Insatisfeito', label: 'Muito Insatisfeito' }
+  ];
 
   // Preencher formulário ao editar
   useEffect(() => {
@@ -79,9 +97,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         prestador: pesquisa.prestador || '',
         nro_caso: pesquisa.nro_caso || '',
         tipo_caso: pesquisa.tipo_caso || '',
-        ano_abertura: pesquisa.ano_abertura || undefined,
-        mes_abertura: pesquisa.mes_abertura || undefined,
-        data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : null,
+        data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
         resposta: pesquisa.resposta || '',
         comentario_pesquisa: pesquisa.comentario_pesquisa || '',
         observacao: pesquisa.observacao || '',
@@ -130,9 +146,25 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Empresa *</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Nome da empresa" />
-                  </FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a empresa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {empresas
+                        .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
+                        .map(empresa => (
+                          <SelectItem key={empresa.id} value={empresa.nome_abreviado}>
+                            {empresa.nome_abreviado}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -197,7 +229,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Categorização</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="categoria"
@@ -233,24 +265,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="tipo_caso"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo do Chamado</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Tipo do chamado"
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
         </div>
 
@@ -258,7 +272,36 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Informações do Caso</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Linha com Tipo do Chamado e Número do Chamado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="tipo_caso"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo do Chamado</FormLabel>
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {tiposChamado.map(tipo => (
+                        <SelectItem key={tipo.value} value={tipo.value}>
+                          {tipo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="nro_caso"
@@ -276,130 +319,86 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="ano_abertura"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ano de Abertura</FormLabel>
-                  <Select
-                    value={field.value?.toString()}
-                    onValueChange={(value) => field.onChange(parseInt(value))}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o ano" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {anosDisponiveis.map(ano => (
-                        <SelectItem key={ano} value={ano.toString()}>
-                          {ano}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="mes_abertura"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mês de Abertura</FormLabel>
-                  <Select
-                    value={field.value?.toString()}
-                    onValueChange={(value) => field.onChange(parseInt(value))}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o mês" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {MESES_OPTIONS.map(mes => (
-                        <SelectItem key={mes.value} value={mes.value.toString()}>
-                          {mes.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
-
-          <FormField
-            control={form.control}
-            name="data_resposta"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data da Resposta</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP 'às' HH:mm", { locale: ptBR })
-                        ) : (
-                          <span>Selecione a data e hora</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value || undefined}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("2000-01-01")
-                      }
-                      initialFocus
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         {/* Seção: Feedback */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Feedback do Cliente</h3>
           
-          <FormField
-            control={form.control}
-            name="resposta"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Resposta</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    {...field} 
-                    placeholder="Resposta/feedback do cliente"
-                    rows={4}
+          {/* Linha com Resposta e Data da Resposta */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="resposta"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resposta</FormLabel>
+                  <Select
                     value={field.value || ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a resposta" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {opcoesResposta.map(opcao => (
+                        <SelectItem key={opcao.value} value={opcao.value}>
+                          {opcao.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="data_resposta"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data da Resposta</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP 'às' HH:mm", { locale: ptBR })
+                          ) : (
+                            <span>Selecione a data e hora</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value || undefined}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("2000-01-01")
+                        }
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}

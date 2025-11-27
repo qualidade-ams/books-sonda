@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { Plus, Database, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +36,9 @@ import {
   useCriarPesquisa, 
   useAtualizarPesquisa, 
   useExcluirPesquisa,
-  useEstatisticasPesquisas
+  useEstatisticasPesquisas,
+  useEnviarParaPlanoAcao,
+  useEnviarParaElogios
 } from '@/hooks/usePesquisasSatisfacao';
 import { useSincronizarSqlServer, useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
 import { useApiStatus } from '@/hooks/useApiStatus';
@@ -47,13 +50,14 @@ function LancarPesquisas() {
   const [filtros, setFiltros] = useState<FiltrosPesquisas>({
     busca: '',
     origem: 'todos',
-    resposta: 'todas'
+    resposta: 'todas',
+    status: 'pendente' // Mostrar apenas pesquisas pendentes
   });
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [pesquisaEditando, setPesquisaEditando] = useState<Pesquisa | null>(null);
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina, setItensPorPagina] = useState(100);
+  const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalSyncAberto, setModalSyncAberto] = useState(false);
 
@@ -68,6 +72,8 @@ function LancarPesquisas() {
   const atualizarPesquisa = useAtualizarPesquisa();
   const excluirPesquisa = useExcluirPesquisa();
   const sincronizarSqlServer = useSincronizarSqlServer();
+  const enviarParaPlanoAcao = useEnviarParaPlanoAcao();
+  const enviarParaElogios = useEnviarParaElogios();
 
   const handleNovoPesquisa = () => {
     setPesquisaEditando(null);
@@ -95,6 +101,32 @@ function LancarPesquisas() {
   const handleExcluir = async (id: string) => {
     await excluirPesquisa.mutateAsync(id);
     setSelecionados(prev => prev.filter(s => s !== id));
+  };
+
+  const handleEnviar = async (pesquisa: Pesquisa) => {
+    // Verificar se tem resposta
+    if (!pesquisa.resposta) {
+      toast.error('Pesquisa sem resposta não pode ser enviada');
+      return;
+    }
+
+    try {
+      // Determinar destino baseado na resposta
+      const respostasNegativas = ['Insatisfeito', 'Muito Insatisfeito'];
+      const respostasPositivas = ['Neutro', 'Satisfeito', 'Muito Satisfeito'];
+
+      if (respostasNegativas.includes(pesquisa.resposta)) {
+        // Enviar para Plano de Ação
+        await enviarParaPlanoAcao.mutateAsync(pesquisa.id);
+      } else if (respostasPositivas.includes(pesquisa.resposta)) {
+        // Enviar para Lançar Elogios
+        await enviarParaElogios.mutateAsync(pesquisa.id);
+      } else {
+        toast.error('Resposta inválida para envio');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar pesquisa:', error);
+    }
   };
 
   const handleSelecionarTodos = (selecionado: boolean) => {
@@ -217,7 +249,7 @@ function LancarPesquisas() {
 
       {/* Cards de Estatísticas */}
       {estatisticas && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -226,32 +258,6 @@ function LancarPesquisas() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                Pendentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                {estatisticas.pendentes}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                Enviados
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-green-600">
-                {estatisticas.enviados}
-              </div>
             </CardContent>
           </Card>
 
@@ -358,56 +364,63 @@ function LancarPesquisas() {
             onSelecionarItem={handleSelecionarItem}
             onEditar={handleEditarPesquisa}
             onExcluir={handleExcluir}
+            onEnviar={handleEnviar}
             isLoading={isLoading}
           />
 
           {/* Paginação no Rodapé */}
-          <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+            {/* Select de itens por página */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Mostrar:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
               <Select
                 value={itensPorPagina >= pesquisas.length ? 'todos' : itensPorPagina.toString()}
                 onValueChange={handleAlterarItensPorPagina}
               >
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-[100px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
                   <SelectItem value="500">500</SelectItem>
-                  <SelectItem value="1000">1000</SelectItem>
-                  <SelectItem value="todos">
-                    Todos ({pesquisas.length})
-                  </SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePaginaAnterior}
-                disabled={paginaAtual === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Página {paginaAtual} de {totalPaginas}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleProximaPagina}
-                disabled={paginaAtual === totalPaginas}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* Navegação de páginas */}
+            {totalPaginas > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePaginaAnterior}
+                  disabled={paginaAtual === 1}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleProximaPagina}
+                  disabled={paginaAtual === totalPaginas}
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
-            <span className="text-sm text-muted-foreground">
-              {indiceInicial + 1}-{Math.min(indiceFinal, pesquisas.length)} de {pesquisas.length}
-            </span>
+            {/* Contador de registros */}
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {indiceInicial + 1}-{Math.min(indiceFinal, pesquisas.length)} de {pesquisas.length} pesquisas
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -376,3 +376,79 @@ export async function buscarGrupos(): Promise<string[]> {
   const gruposUnicos = [...new Set(data.map(item => item.grupo).filter(Boolean) as string[])];
   return gruposUnicos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
+
+// ============================================
+// ENVIO DE PESQUISAS
+// ============================================
+
+/**
+ * Enviar pesquisa para Plano de Ação
+ */
+export async function enviarParaPlanoAcao(id: string): Promise<void> {
+  // Buscar dados da pesquisa
+  const pesquisa = await buscarPesquisaPorId(id);
+  
+  if (!pesquisa) {
+    throw new Error('Pesquisa não encontrada');
+  }
+
+  // Buscar dados do usuário autenticado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Criar plano de ação automaticamente
+  const { error: planoError } = await supabase
+    .from('planos_acao')
+    .insert({
+      pesquisa_id: pesquisa.id,
+      descricao_acao_corretiva: pesquisa.comentario_pesquisa || `Ação corretiva para pesquisa de ${pesquisa.cliente} - ${pesquisa.empresa}`,
+      acao_preventiva: null,
+      prioridade: pesquisa.resposta === 'Muito Insatisfeito' ? 'alta' : 'media',
+      status_plano: 'aberto',
+      data_inicio: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
+      data_conclusao: null,
+      data_primeiro_contato: null,
+      meio_contato: null,
+      resumo_comunicacao: null,
+      retorno_cliente: null,
+      status_final: null,
+      data_fechamento: null,
+      criado_por: user?.id || null
+    });
+
+  if (planoError) {
+    console.error('Erro ao criar plano de ação:', planoError);
+    throw new Error('Erro ao criar plano de ação');
+  }
+
+  // Atualizar status da pesquisa
+  const { error } = await supabase
+    .from('pesquisas_satisfacao')
+    .update({ 
+      status: 'enviado_plano_acao',
+      data_envio: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao enviar para Plano de Ação:', error);
+    throw new Error('Erro ao enviar pesquisa para Plano de Ação');
+  }
+}
+
+/**
+ * Enviar pesquisa para Elogios
+ */
+export async function enviarParaElogios(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('pesquisas_satisfacao')
+    .update({ 
+      status: 'enviado_elogios',
+      data_envio: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao enviar para Elogios:', error);
+    throw new Error('Erro ao enviar pesquisa para Elogios');
+  }
+}

@@ -9,7 +9,8 @@ import {
   Edit, 
   Trash2, 
   Database, 
-  FileEdit
+  FileEdit,
+  Send
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ interface PesquisasTableProps {
   onSelecionarItem: (id: string) => void;
   onEditar: (pesquisa: Pesquisa) => void;
   onExcluir: (id: string) => void;
+  onEnviar: (pesquisa: Pesquisa) => void;
   isLoading?: boolean;
 }
 
@@ -60,6 +62,7 @@ export function PesquisasTable({
   onSelecionarItem,
   onEditar,
   onExcluir,
+  onEnviar,
   isLoading
 }: PesquisasTableProps) {
   const [pesquisaParaExcluir, setPesquisaParaExcluir] = useState<string | null>(null);
@@ -197,13 +200,13 @@ export function PesquisasTable({
                   className={algunsSelecionados ? "data-[state=checked]:bg-primary" : ""}
                 />
               </TableHead>
-              <TableHead>Chamado</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead>Data Resposta</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Comentário</TableHead>
-              <TableHead>Resposta</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="w-[120px] text-center">Chamado</TableHead>
+              <TableHead className="w-[180px] text-center">Empresa</TableHead>
+              <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
+              <TableHead className="w-[150px] text-center">Cliente</TableHead>
+              <TableHead className="w-[200px] text-center">Comentário</TableHead>
+              <TableHead className="w-[140px] text-center">Resposta</TableHead>
+              <TableHead className="text-center w-[120px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,9 +220,9 @@ export function PesquisasTable({
                   />
                 </TableCell>
                 {/* Coluna Chamado com ícone de origem + tipo + número */}
-                <TableCell>
+                <TableCell className="text-center">
                   {pesquisa.nro_caso ? (
-                    <div className="flex items-center gap-2 whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                       {/* Ícone de origem (SQL/Manual) */}
                       {pesquisa.origem === 'sql_server' ? (
                         <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -233,7 +236,7 @@ export function PesquisasTable({
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       {pesquisa.origem === 'sql_server' ? (
                         <Database className="h-4 w-4 text-blue-600" />
                       ) : (
@@ -244,7 +247,7 @@ export function PesquisasTable({
                   )}
                 </TableCell>
                 {/* Coluna Empresa */}
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
                   {(() => {
                     const validacao = validarEmpresa(pesquisa.empresa);
                     
@@ -284,18 +287,20 @@ export function PesquisasTable({
                   })()}
                 </TableCell>
                 {/* Coluna Data Resposta */}
-                <TableCell className="text-sm text-gray-500">
+                <TableCell className="text-xs sm:text-sm text-gray-500 text-center">
                   {formatarData(pesquisa.data_resposta)}
                 </TableCell>
                 {/* Coluna Cliente */}
-                <TableCell className="text-sm">{pesquisa.cliente}</TableCell>
+                <TableCell className="max-w-[120px] whitespace-normal text-center">
+                  <div className="break-words leading-tight text-[10px] sm:text-xs lg:text-sm">{pesquisa.cliente}</div>
+                </TableCell>
                 {/* Coluna Comentário (substituiu Categoria) */}
-                <TableCell>
+                <TableCell className="max-w-[200px] text-center">
                   {pesquisa.comentario_pesquisa ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="cursor-help line-clamp-2 text-sm">
+                          <span className="cursor-help line-clamp-2 text-xs sm:text-sm break-words">
                             {pesquisa.comentario_pesquisa}
                           </span>
                         </TooltipTrigger>
@@ -305,16 +310,16 @@ export function PesquisasTable({
                       </Tooltip>
                     </TooltipProvider>
                   ) : (
-                    '-'
+                    <span className="text-xs sm:text-sm">-</span>
                   )}
                 </TableCell>
                 {/* Coluna Resposta */}
-                <TableCell>
+                <TableCell className="text-center">
                   {getBadgeResposta(pesquisa.resposta) || '-'}
                 </TableCell>
                 {/* Coluna Ações */}
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
+                <TableCell className="text-center">
+                  <div className="flex justify-center gap-1">
                     <Button
                       variant="outline"
                       size="sm"
@@ -333,6 +338,25 @@ export function PesquisasTable({
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEnviar(pesquisa)}
+                            disabled={isLoading || !pesquisa.resposta}
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                            title="Enviar pesquisa"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Enviar pesquisa</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableCell>
               </TableRow>

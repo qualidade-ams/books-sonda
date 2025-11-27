@@ -185,6 +185,46 @@ export function useMarcarComoEnviados() {
 }
 
 /**
+ * Hook para enviar pesquisa para Plano de Ação
+ */
+export function useEnviarParaPlanoAcao() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => pesquisasService.enviarParaPlanoAcao(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
+      queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
+      toast.success('Pesquisa enviada para Plano de Ação!');
+    },
+    onError: (error: Error) => {
+      console.error('Erro ao enviar para Plano de Ação:', error);
+      toast.error(`Erro ao enviar: ${error.message}`);
+    }
+  });
+}
+
+/**
+ * Hook para enviar pesquisa para Elogios
+ */
+export function useEnviarParaElogios() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => pesquisasService.enviarParaElogios(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
+      queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
+      toast.success('Pesquisa enviada para Elogios!');
+    },
+    onError: (error: Error) => {
+      console.error('Erro ao enviar para Elogios:', error);
+      toast.error(`Erro ao enviar: ${error.message}`);
+    }
+  });
+}
+
+/**
  * Hook para excluir múltiplos pesquisas
  */
 export function useExcluirPesquisasEmLote() {

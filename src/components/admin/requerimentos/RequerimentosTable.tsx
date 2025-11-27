@@ -239,9 +239,9 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className="h-4 w-4"
               />
             </TableHead>
-            <TableHead className="min-w-[140px] text-xs sm:text-sm py-2">Chamado</TableHead>
-            <TableHead className="min-w-[160px] text-xs sm:text-sm py-2">Cliente</TableHead>
-            <TableHead className="min-w-[100px] text-xs sm:text-sm py-2">Módulo</TableHead>
+            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
             <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
             <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
             <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
@@ -281,38 +281,38 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                   />
                 </TableCell>
 
-                <TableCell className="font-medium py-2">
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
-                    <div className="flex flex-col min-w-0 flex-1 space-y-1">
+                <TableCell className="font-medium py-2 text-center">
+                  <div className="flex flex-col items-center gap-1 sm:gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">{getCobrancaIcon(requerimento.tipo_cobranca)}</span>
                       <span className="truncate text-xs sm:text-sm lg:text-base font-medium" title={requerimento.chamado}>
                         {requerimento.chamado}
                       </span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">
-                              <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
-                                <span className="truncate">{requerimento.tipo_cobranca}</span>
-                              </Badge>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{requerimento.tipo_cobranca}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <span className="xl:hidden text-[9px] text-gray-500 truncate" title={requerimento.autor_nome}>
-                        {requerimento.autor_nome || '-'}
-                      </span>
                     </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block">
+                            <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
+                              <span className="truncate">{requerimento.tipo_cobranca}</span>
+                            </Badge>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{requerimento.tipo_cobranca}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <span className="xl:hidden text-[9px] text-gray-500 truncate" title={requerimento.autor_nome}>
+                      {requerimento.autor_nome || '-'}
+                    </span>
                   </div>
                 </TableCell>
 
-                <TableCell className="py-2">
-                  <span className="font-medium truncate block text-xs sm:text-sm lg:text-base" title={requerimento.cliente_nome}>
+                <TableCell className="py-2 text-center max-w-[120px]">
+                  <div className="font-medium break-words whitespace-normal leading-tight text-[10px] sm:text-xs lg:text-sm" title={requerimento.cliente_nome}>
                     {requerimento.cliente_nome}
-                  </span>
+                  </div>
                 </TableCell>
 
                 <TableCell className="py-3">

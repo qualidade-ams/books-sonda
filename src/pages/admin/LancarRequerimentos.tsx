@@ -75,7 +75,7 @@ const LancarRequerimentos = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [showReprovadoModal, setShowReprovadoModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(100);
+    const [itemsPerPage, setItemsPerPage] = useState(25);
 
     // Estado para controlar a aba ativa
     const [activeTab, setActiveTab] = useState('nao-enviados');
@@ -773,11 +773,33 @@ const LancarRequerimentos = () => {
                                         />
 
                                         {/* Paginação */}
-                                        {paginatedData.totalPages > 1 && (
-                                            <div className="flex items-center justify-between mt-6">
-                                                <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                    Mostrando {paginatedData.startIndex} a {paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
-                                                </div>
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                                            {/* Select de itens por página */}
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                                                <Select
+                                                    value={itemsPerPage.toString()}
+                                                    onValueChange={(value) => {
+                                                        const newValue = value === 'todos' ? requerimentosFiltrados.length : parseInt(value);
+                                                        setItemsPerPage(newValue);
+                                                        setCurrentPage(1);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="25">25</SelectItem>
+                                                        <SelectItem value="50">50</SelectItem>
+                                                        <SelectItem value="100">100</SelectItem>
+                                                        <SelectItem value="500">500</SelectItem>
+                                                        <SelectItem value="todos">Todos</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Navegação de páginas */}
+                                            {paginatedData.totalPages > 1 && (
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         variant="outline"
@@ -786,10 +808,10 @@ const LancarRequerimentos = () => {
                                                         disabled={!paginatedData.hasPrevPage}
                                                         aria-label="Página anterior"
                                                     >
-                                                        Anterior
+                                                        <ChevronLeft className="h-4 w-4" />
                                                     </Button>
                                                     <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                        {currentPage} de {paginatedData.totalPages}
+                                                        Página {currentPage} de {paginatedData.totalPages}
                                                     </span>
                                                     <Button
                                                         variant="outline"
@@ -798,11 +820,16 @@ const LancarRequerimentos = () => {
                                                         disabled={!paginatedData.hasNextPage}
                                                         aria-label="Próxima página"
                                                     >
-                                                        Próxima
+                                                        <ChevronRight className="h-4 w-4" />
                                                     </Button>
                                                 </div>
+                                            )}
+
+                                            {/* Contador de registros */}
+                                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                                {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
                                             </div>
-                                        )}
+                                        </div>
                                     </>
                                 )}
                             </CardContent>
@@ -1024,11 +1051,33 @@ const LancarRequerimentos = () => {
                                         />
 
                                         {/* Paginação */}
-                                        {paginatedData.totalPages > 1 && (
-                                            <div className="flex items-center justify-between mt-6">
-                                                <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                    Mostrando {paginatedData.startIndex} a {paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
-                                                </div>
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                                            {/* Select de itens por página */}
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                                                <Select
+                                                    value={itemsPerPage.toString()}
+                                                    onValueChange={(value) => {
+                                                        const newValue = value === 'todos' ? requerimentosFiltrados.length : parseInt(value);
+                                                        setItemsPerPage(newValue);
+                                                        setCurrentPage(1);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="25">25</SelectItem>
+                                                        <SelectItem value="50">50</SelectItem>
+                                                        <SelectItem value="100">100</SelectItem>
+                                                        <SelectItem value="500">500</SelectItem>
+                                                        <SelectItem value="todos">Todos</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Navegação de páginas */}
+                                            {paginatedData.totalPages > 1 && (
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         variant="outline"
@@ -1037,10 +1086,10 @@ const LancarRequerimentos = () => {
                                                         disabled={!paginatedData.hasPrevPage}
                                                         aria-label="Página anterior"
                                                     >
-                                                        Anterior
+                                                        <ChevronLeft className="h-4 w-4" />
                                                     </Button>
                                                     <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                        {currentPage} de {paginatedData.totalPages}
+                                                        Página {currentPage} de {paginatedData.totalPages}
                                                     </span>
                                                     <Button
                                                         variant="outline"
@@ -1049,11 +1098,16 @@ const LancarRequerimentos = () => {
                                                         disabled={!paginatedData.hasNextPage}
                                                         aria-label="Próxima página"
                                                     >
-                                                        Próxima
+                                                        <ChevronRight className="h-4 w-4" />
                                                     </Button>
                                                 </div>
+                                            )}
+
+                                            {/* Contador de registros */}
+                                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                                {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
                                             </div>
-                                        )}
+                                        </div>
                                     </>
                                 )}
                             </CardContent>

@@ -7,7 +7,7 @@
 // ============================================
 
 export type OrigemPesquisa = 'sql_server' | 'manual';
-export type StatusPesquisa = 'pendente' | 'enviado';
+export type StatusPesquisa = 'pendente' | 'enviado_plano_acao' | 'enviado_elogios';
 
 // ============================================
 // INTERFACE PRINCIPAL

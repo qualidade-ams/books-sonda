@@ -30,6 +30,7 @@ import MonitoramentoVigencias from "./pages/admin/MonitoramentoVigencias";
 import LancarRequerimentos from "./pages/admin/LancarRequerimentos";
 import FaturarRequerimentos from "./pages/admin/FaturarRequerimentos";
 import LancarPesquisas from "./pages/admin/LancarPesquisas";
+import LancarElogios from "./pages/admin/LancarElogios";
 import PlanoAcao from "./pages/admin/PlanoAcao";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -74,6 +75,7 @@ const App = () => (
                   <Route path="/admin/lancar-requerimentos" element={<ProtectedRoute screenKey="lancar_requerimentos"><LancarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/faturar-requerimentos" element={<ProtectedRoute screenKey="faturar_requerimentos"><FaturarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/lancar-pesquisas" element={<ProtectedRoute screenKey="lancar_pesquisas"><LancarPesquisas /></ProtectedRoute>} />
+                  <Route path="/admin/lancar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><LancarElogios /></ProtectedRoute>} />
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
