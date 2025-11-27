@@ -2,8 +2,8 @@
 // PÁGINA: PLANO DE AÇÃO
 // =====================================================
 
-import { useState } from 'react';
-import { Plus, Filter, Download, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,20 +31,79 @@ import {
   useEstatisticasPlanos,
   useHistoricoPlano,
 } from '@/hooks/usePlanosAcao';
+import { useCacheManager } from '@/hooks/useCacheManager';
 import type { PlanoAcaoCompleto, PlanoAcaoFormData, FiltrosPlanoAcao } from '@/types/planoAcao';
 import { PRIORIDADE_OPTIONS, STATUS_PLANO_OPTIONS } from '@/types/planoAcao';
 
 export default function PlanoAcao() {
-  const [filtros, setFiltros] = useState<FiltrosPlanoAcao>({});
+  const { clearFeatureCache } = useCacheManager();
+  
+  // Limpar cache ao entrar na tela
+  useEffect(() => {
+    clearFeatureCache('planos');
+  }, [clearFeatureCache]);
+
+  // Estados de navegação de mês/ano
+  const [mesAtual] = useState(new Date().getMonth() + 1);
+  const [anoAtual] = useState(new Date().getFullYear());
+  const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
+  const [anoSelecionado, setAnoSelecionado] = useState(anoAtual);
+
+  const [filtros, setFiltros] = useState<FiltrosPlanoAcao>({
+    mes: mesAtual,
+    ano: anoAtual
+  });
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [modalDetalhes, setModalDetalhes] = useState(false);
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoAcaoCompleto | null>(null);
 
+  // Nomes dos meses
+  const nomesMeses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  // Navegação de mês
+  const navegarMesAnterior = () => {
+    if (mesSelecionado === 1) {
+      const novoAno = anoSelecionado - 1;
+      setMesSelecionado(12);
+      setAnoSelecionado(novoAno);
+      setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno }));
+    } else {
+      const novoMes = mesSelecionado - 1;
+      setMesSelecionado(novoMes);
+      setFiltros(prev => ({ ...prev, mes: novoMes }));
+    }
+  };
+
+  const navegarMesProximo = () => {
+    if (mesSelecionado === 12) {
+      const novoAno = anoSelecionado + 1;
+      setMesSelecionado(1);
+      setAnoSelecionado(novoAno);
+      setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno }));
+    } else {
+      const novoMes = mesSelecionado + 1;
+      setMesSelecionado(novoMes);
+      setFiltros(prev => ({ ...prev, mes: novoMes }));
+    }
+  };
+
   // Queries
   const { data: planos = [], isLoading } = usePlanosAcao(filtros);
-  const { data: estatisticas } = useEstatisticasPlanos();
+  const { data: estatisticas } = useEstatisticasPlanos(filtros);
   const { data: historico = [] } = useHistoricoPlano(planoSelecionado?.id || '');
+
+  // Debug: Log dos dados
+  console.log('🔍 Debug Plano de Ação:', {
+    filtros,
+    totalPlanos: planos.length,
+    planos: planos.slice(0, 3), // Primeiros 3 planos
+    estatisticas,
+    isLoading
+  });
 
   // Mutations
   const criarPlano = useCriarPlanoAcao();
@@ -106,6 +165,39 @@ export default function PlanoAcao() {
           Novo Plano
         </Button>
       </div>
+
+      {/* Navegação de Período */}
+      <Card>
+        <CardContent className="py-3">
+          <div className="flex items-center justify-between gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navegarMesAnterior}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+
+            <div className="text-center">
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navegarMesProximo}
+              className="flex items-center gap-2"
+            >
+              Próximo
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Cards de Estatísticas */}
       {estatisticas && (
@@ -195,7 +287,7 @@ export default function PlanoAcao() {
             </Button>
           </div>
           {mostrarFiltros && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
               {/* Busca */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

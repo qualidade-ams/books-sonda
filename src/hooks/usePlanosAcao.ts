@@ -152,10 +152,10 @@ export function useAdicionarHistorico() {
 /**
  * Hook para obter estatísticas
  */
-export function useEstatisticasPlanos() {
+export function useEstatisticasPlanos(filtros?: FiltrosPlanoAcao) {
   return useQuery({
-    queryKey: ['estatisticas-planos'],
-    queryFn: () => planoAcaoService.obterEstatisticas(),
+    queryKey: ['estatisticas-planos', filtros],
+    queryFn: () => planoAcaoService.obterEstatisticas(filtros),
     staleTime: 60000, // 1 minuto
   });
 }

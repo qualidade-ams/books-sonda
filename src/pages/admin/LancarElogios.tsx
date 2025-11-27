@@ -2,7 +2,7 @@
  * Página para gerenciamento de elogios (pesquisas positivas)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThumbsUp, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -28,16 +28,32 @@ import {
   usePesquisasSatisfacao,
   useEstatisticasPesquisas
 } from '@/hooks/usePesquisasSatisfacao';
+import { useCacheManager } from '@/hooks/useCacheManager';
 
 import type { Pesquisa, FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
 import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS } from '@/types/pesquisasSatisfacao';
 
 function LancarElogios() {
+  const { clearFeatureCache } = useCacheManager();
+  
+  // Limpar cache ao entrar na tela
+  useEffect(() => {
+    clearFeatureCache('pesquisas');
+  }, [clearFeatureCache]);
+
+  // Estados de navegação de mês/ano
+  const [mesAtual] = useState(new Date().getMonth() + 1);
+  const [anoAtual] = useState(new Date().getFullYear());
+  const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
+  const [anoSelecionado, setAnoSelecionado] = useState(anoAtual);
+
   const [filtros, setFiltros] = useState<FiltrosPesquisas>({
     busca: '',
     origem: 'todos',
     resposta: 'todas',
-    status: 'enviado_elogios' // Mostrar apenas elogios enviados
+    status: 'enviado_elogios', // Mostrar apenas elogios enviados
+    mes: mesAtual,
+    ano: anoAtual
   });
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [pesquisaVisualizando, setPesquisaVisualizando] = useState<Pesquisa | null>(null);
@@ -45,6 +61,41 @@ function LancarElogios() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  // Nomes dos meses
+  const nomesMeses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  // Navegação de mês
+  const navegarMesAnterior = () => {
+    if (mesSelecionado === 1) {
+      const novoAno = anoSelecionado - 1;
+      setMesSelecionado(12);
+      setAnoSelecionado(novoAno);
+      setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno }));
+    } else {
+      const novoMes = mesSelecionado - 1;
+      setMesSelecionado(novoMes);
+      setFiltros(prev => ({ ...prev, mes: novoMes }));
+    }
+    setPaginaAtual(1);
+  };
+
+  const navegarMesProximo = () => {
+    if (mesSelecionado === 12) {
+      const novoAno = anoSelecionado + 1;
+      setMesSelecionado(1);
+      setAnoSelecionado(novoAno);
+      setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno }));
+    } else {
+      const novoMes = mesSelecionado + 1;
+      setMesSelecionado(novoMes);
+      setFiltros(prev => ({ ...prev, mes: novoMes }));
+    }
+    setPaginaAtual(1);
+  };
 
   // Queries
   const { data: pesquisas = [], isLoading } = usePesquisasSatisfacao(filtros);
@@ -135,6 +186,39 @@ function LancarElogios() {
             />
           </div>
         </div>
+
+        {/* Navegação de Período */}
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navegarMesAnterior}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navegarMesProximo}
+                className="flex items-center gap-2"
+              >
+                Próximo
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Cards de Estatísticas */}
         {estatisticas && (

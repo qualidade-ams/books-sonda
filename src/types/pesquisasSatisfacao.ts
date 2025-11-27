@@ -103,6 +103,8 @@ export interface FiltrosPesquisas {
   grupo?: string;
   ano_abertura?: number;
   mes_abertura?: number;
+  mes?: number; // Mês da data de resposta
+  ano?: number; // Ano da data de resposta
   data_inicio?: string;
   data_fim?: string;
 }

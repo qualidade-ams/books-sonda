@@ -13,6 +13,9 @@ export type TipoAtualizacao = 'criacao' | 'atualizacao' | 'contato' | 'conclusao
 export interface PlanoAcao {
   id: string;
   pesquisa_id: string;
+  chamado?: string;
+  empresa_id?: string;
+  data_resposta?: string; // Data de resposta da pesquisa (copiada para facilitar filtros)
   descricao_acao_corretiva: string;
   acao_preventiva?: string;
   prioridade: PrioridadePlano;
@@ -25,6 +28,7 @@ export interface PlanoAcao {
   retorno_cliente?: RetornoCliente;
   status_final?: StatusFinal;
   data_fechamento?: string;
+  justificativa_cancelamento?: string;
   criado_por?: string;
   criado_em: string;
   atualizado_em: string;
@@ -58,6 +62,8 @@ export interface PlanoAcaoCompleto extends PlanoAcao {
 // Interface para formulário de criação
 export interface PlanoAcaoFormData {
   pesquisa_id: string;
+  chamado?: string;
+  empresa_id?: string;
   descricao_acao_corretiva: string;
   acao_preventiva?: string;
   prioridade: PrioridadePlano;
@@ -69,6 +75,7 @@ export interface PlanoAcaoFormData {
   resumo_comunicacao?: string;
   retorno_cliente?: RetornoCliente;
   status_final?: StatusFinal;
+  justificativa_cancelamento?: string;
 }
 
 // Interface para filtros
@@ -79,6 +86,8 @@ export interface FiltrosPlanoAcao {
   empresa?: string;
   dataInicio?: string;
   dataFim?: string;
+  mes?: number; // Mês da data de resposta da pesquisa
+  ano?: number; // Ano da data de resposta da pesquisa
 }
 
 // Interface para estatísticas

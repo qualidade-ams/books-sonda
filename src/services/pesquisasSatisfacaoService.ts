@@ -78,6 +78,30 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
         query = query.eq('mes_abertura', filtros.mes_abertura);
       }
 
+      // Filtro por mês/ano da data de resposta
+      if (filtros.mes && filtros.ano) {
+        const mesStr = filtros.mes.toString().padStart(2, '0');
+        const anoStr = filtros.ano.toString();
+        
+        console.log('🔍 Filtrando pesquisas por mês/ano:', { 
+          mes: filtros.mes, 
+          ano: filtros.ano,
+          mesStr,
+          anoStr
+        });
+        
+        // Usar função SQL para extrair mês e ano da data_resposta
+        // Isso funciona melhor com datas no formato ISO
+        query = query.not('data_resposta', 'is', null);
+        
+        // Filtrar usando SQL functions para extrair mês e ano
+        // Format: YYYY-MM-DD, então podemos usar substring
+        const anoMesPrefix = `${anoStr}-${mesStr}`;
+        query = query.like('data_resposta', `${anoMesPrefix}%`);
+        
+        console.log('📅 Buscando registros com data_resposta começando com:', anoMesPrefix);
+      }
+
       if (filtros.data_inicio) {
         query = query.gte('data_resposta', filtros.data_inicio);
       }
@@ -104,6 +128,18 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
   }
 
   console.log(`📊 Total de registros carregados: ${allData.length}`);
+  
+  // Log de debug para ver algumas datas
+  if (allData.length > 0) {
+    console.log('📅 Primeiros 5 registros com suas datas:', 
+      allData.slice(0, 5).map(p => ({
+        id: p.id,
+        empresa: p.empresa,
+        data_resposta: p.data_resposta
+      }))
+    );
+  }
+  
   return allData;
 }
 

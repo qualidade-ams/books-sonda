@@ -2,7 +2,7 @@
  * Página para lançamento e gerenciamento de pesquisas
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Database, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,11 +42,18 @@ import {
 } from '@/hooks/usePesquisasSatisfacao';
 import { useSincronizarSqlServer, useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
 import { useApiStatus } from '@/hooks/useApiStatus';
+import { useCacheManager } from '@/hooks/useCacheManager';
 
 import type { Pesquisa, PesquisaFormData, FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
 import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS } from '@/types/pesquisasSatisfacao';
 
 function LancarPesquisas() {
+  const { clearFeatureCache } = useCacheManager();
+  
+  // Limpar cache ao entrar na tela
+  useEffect(() => {
+    clearFeatureCache('pesquisas');
+  }, [clearFeatureCache]);
   const [filtros, setFiltros] = useState<FiltrosPesquisas>({
     busca: '',
     origem: 'todos',
@@ -315,7 +322,7 @@ function LancarPesquisas() {
 
           {/* Filtros Colapsáveis */}
           {mostrarFiltros && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
               <Input
                 placeholder="Buscar por empresa, cliente, prestador..."
                 value={filtros.busca}
