@@ -27,6 +27,7 @@ import {
   FileText,
   DollarSign,
   Heart,
+  ThumbsUp,
   ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -245,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       ]
     },
     {
-      icon: Heart,
+      icon: ThumbsUp,
       label: 'Elogios',
       children: [
         {
