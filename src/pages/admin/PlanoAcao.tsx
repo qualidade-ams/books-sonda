@@ -184,20 +184,18 @@ export default function PlanoAcao() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Filtros</CardTitle>
+            <CardTitle>Planos de Ação ({planos.length})</CardTitle>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
             >
               <Filter className="h-4 w-4 mr-2" />
-              {mostrarFiltros ? 'Ocultar' : 'Mostrar'} Filtros
+              Filtros
             </Button>
           </div>
-        </CardHeader>
-        {mostrarFiltros && (
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {mostrarFiltros && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
               {/* Busca */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -262,14 +260,7 @@ export default function PlanoAcao() {
                 onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
               />
             </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Tabela */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Planos de Ação ({planos.length})</CardTitle>
+          )}
         </CardHeader>
         <CardContent>
           <PlanosAcaoTable

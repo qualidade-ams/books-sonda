@@ -252,7 +252,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             )}
             <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
             <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-            <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Autor</TableHead>
             {showActions && (
               <TableHead className="w-40 text-xs sm:text-sm py-2">
                 Ações
@@ -317,9 +316,29 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 <TableCell className="py-3">
-                  <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight">
-                    <span className="truncate">{requerimento.modulo}</span>
-                  </Badge>
+                  <div className="flex flex-col items-center gap-1">
+                    <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-blue-600 border-blue-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
+                      <span className="truncate">{requerimento.modulo}</span>
+                    </Badge>
+                    {requerimento.autor_nome && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-[9px] sm:text-[10px] text-gray-500 truncate cursor-help">
+                              {(() => {
+                                const nomes = requerimento.autor_nome.split(' ');
+                                if (nomes.length === 1) return nomes[0];
+                                return `${nomes[0]} ${nomes[nomes.length - 1]}`;
+                              })()}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{requerimento.autor_nome}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </TableCell>
 
                 <TableCell className="text-center py-3">
@@ -376,12 +395,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
 
                 <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
                   {requerimento.mes_cobranca || '-'}
-                </TableCell>
-
-                <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                  <span className="truncate" title={requerimento.autor_nome}>
-                    {requerimento.autor_nome || '-'}
-                  </span>
                 </TableCell>
 
                 {showActions && (
