@@ -221,45 +221,45 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   }
 
   return (
-    <div className="relative w-full">
+    <div className="w-full overflow-x-auto">
       <Table className="w-full text-xs sm:text-sm min-w-[1400px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12 text-xs py-2">
-                <Checkbox
-                  checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onSelectAll();
-                    } else {
-                      onClearSelection();
-                    }
-                  }}
-                  aria-label="Selecionar todos os requerimentos"
-                  className="h-4 w-4"
-                />
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12 text-xs py-2">
+              <Checkbox
+                checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onSelectAll();
+                  } else {
+                    onClearSelection();
+                  }
+                }}
+                aria-label="Selecionar todos os requerimentos"
+                className="h-4 w-4"
+              />
+            </TableHead>
+            <TableHead className="min-w-[140px] text-xs sm:text-sm py-2">Chamado</TableHead>
+            <TableHead className="min-w-[160px] text-xs sm:text-sm py-2">Cliente</TableHead>
+            <TableHead className="min-w-[100px] text-xs sm:text-sm py-2">Módulo</TableHead>
+            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
+            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
+            {showDataFaturamento && (
+              <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
+            )}
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+            <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Autor</TableHead>
+            {showActions && (
+              <TableHead className="w-40 text-xs sm:text-sm py-2">
+                Ações
               </TableHead>
-              <TableHead className="min-w-[140px] text-xs sm:text-sm py-2">Chamado</TableHead>
-              <TableHead className="min-w-[160px] text-xs sm:text-sm py-2">Cliente</TableHead>
-              <TableHead className="min-w-[100px] text-xs sm:text-sm py-2">Módulo</TableHead>
-              <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
-              <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
-              <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
-              {showDataFaturamento && (
-                <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
-              )}
-              <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
-              <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-              <TableHead className="min-w-[130px] text-center text-xs sm:text-sm py-2">Autor</TableHead>
-              {showActions && (
-                <TableHead className="w-40 text-xs sm:text-sm py-2">
-                  Ações
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
+            )}
+          </TableRow>
+        </TableHeader>
         <TableBody>
           {requerimentos.map((requerimento) => {
             const horasTotal = calcularHorasTotal(requerimento);

@@ -125,7 +125,7 @@ export function PesquisasTable({
     // Muito Insatisfeito (Pior)
     if (respostaNormalizada.includes('muito insatisfeito')) {
       return (
-        <Badge variant="destructive" className="bg-red-600 hover:bg-red-700 whitespace-nowrap">
+        <Badge variant="destructive" className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 whitespace-nowrap">
           Muito Insatisfeito
         </Badge>
       );
@@ -134,7 +134,7 @@ export function PesquisasTable({
     // Insatisfeito
     if (respostaNormalizada.includes('insatisfeito') && !respostaNormalizada.includes('muito')) {
       return (
-        <Badge variant="destructive" className="bg-orange-500 hover:bg-orange-600 whitespace-nowrap">
+        <Badge variant="destructive" className="text-xs px-2 py-1 bg-orange-500 hover:bg-orange-600 whitespace-nowrap">
           Insatisfeito
         </Badge>
       );
@@ -143,7 +143,7 @@ export function PesquisasTable({
     // Neutro
     if (respostaNormalizada.includes('neutro')) {
       return (
-        <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white whitespace-nowrap">
+        <Badge variant="secondary" className="text-xs px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white whitespace-nowrap">
           Neutro
         </Badge>
       );
@@ -152,7 +152,7 @@ export function PesquisasTable({
     // Satisfeito
     if (respostaNormalizada.includes('satisfeito') && !respostaNormalizada.includes('muito')) {
       return (
-        <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
+        <Badge variant="default" className="text-xs px-2 py-1 bg-blue-500 hover:bg-blue-600 whitespace-nowrap">
           Satisfeito
         </Badge>
       );
@@ -161,7 +161,7 @@ export function PesquisasTable({
     // Muito Satisfeito (Melhor)
     if (respostaNormalizada.includes('muito satisfeito')) {
       return (
-        <Badge variant="default" className="bg-green-600 hover:bg-green-700 whitespace-nowrap">
+        <Badge variant="default" className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 whitespace-nowrap">
           Muito Satisfeito
         </Badge>
       );
@@ -169,7 +169,7 @@ export function PesquisasTable({
 
     // Resposta não reconhecida
     return (
-      <Badge variant="outline" className="whitespace-nowrap">
+      <Badge variant="outline" className="text-xs px-2 py-1 whitespace-nowrap">
         {resposta}
       </Badge>
     );
@@ -185,7 +185,7 @@ export function PesquisasTable({
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="rounded-md mt-4 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -284,11 +284,11 @@ export function PesquisasTable({
                   })()}
                 </TableCell>
                 {/* Coluna Data Resposta */}
-                <TableCell className="text-xs">
+                <TableCell className="text-sm text-gray-500">
                   {formatarData(pesquisa.data_resposta)}
                 </TableCell>
                 {/* Coluna Cliente */}
-                <TableCell>{pesquisa.cliente}</TableCell>
+                <TableCell className="text-sm">{pesquisa.cliente}</TableCell>
                 {/* Coluna Comentário (substituiu Categoria) */}
                 <TableCell>
                   {pesquisa.comentario_pesquisa ? (
@@ -316,20 +316,22 @@ export function PesquisasTable({
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => onEditar(pesquisa)}
                       disabled={isLoading}
+                      className="h-8 w-8 p-0"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => handleExcluirClick(pesquisa.id)}
                       disabled={isLoading}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

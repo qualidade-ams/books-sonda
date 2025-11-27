@@ -237,12 +237,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           screenKey: 'lancar_pesquisas'
         },
         {
-          icon: Send,
-          label: 'Enviar Pesquisas',
-          path: '/admin/enviar-pesquisas',
-          screenKey: 'enviar_pesquisas'
-        },
-        {
           icon: ClipboardCheck,
           label: 'Plano de Ação',
           path: '/admin/plano-acao',

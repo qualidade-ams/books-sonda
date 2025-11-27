@@ -219,3 +219,14 @@
     pointer-events: auto;
   }
 }
+
+.table-responsive {
+  overflow-x: auto;
+  width: 100%;
+  padding-bottom: 5px;
+}
+
+.table-responsive table {
+  min-width: 1300px;
+  width: auto;
+}

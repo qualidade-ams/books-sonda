@@ -217,26 +217,26 @@ function LancarPesquisas() {
 
       {/* Cards de Estatísticas */}
       {estatisticas && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Total
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{estatisticas.total}</div>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
                 Pendentes
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-orange-600">
                 {estatisticas.pendentes}
               </div>
             </CardContent>
@@ -244,12 +244,12 @@ function LancarPesquisas() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
                 Enviados
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-green-600">
                 {estatisticas.enviados}
               </div>
             </CardContent>
@@ -257,12 +257,12 @@ function LancarPesquisas() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
                 SQL Server
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-blue-600">
                 {estatisticas.sql_server}
               </div>
             </CardContent>
@@ -270,12 +270,12 @@ function LancarPesquisas() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
                 Manuais
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-purple-600">
                 {estatisticas.manuais}
               </div>
             </CardContent>

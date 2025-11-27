@@ -3,7 +3,8 @@
 // =====================================================
 
 import { useState } from 'react';
-import { Plus, Filter, Download } from 'lucide-react';
+import { Plus, Filter, Download, Search } from 'lucide-react';
+import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,6 @@ import {
 } from '@/hooks/usePlanosAcao';
 import type { PlanoAcaoCompleto, PlanoAcaoFormData, FiltrosPlanoAcao } from '@/types/planoAcao';
 import { PRIORIDADE_OPTIONS, STATUS_PLANO_OPTIONS } from '@/types/planoAcao';
-import { Search } from 'lucide-react';
 
 export default function PlanoAcao() {
   const [filtros, setFiltros] = useState<FiltrosPlanoAcao>({});
@@ -91,13 +91,14 @@ export default function PlanoAcao() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Plano de Ação</h1>
-          <p className="text-muted-foreground">
-            Gerenciamento de planos de ação para pesquisas de satisfação
+    <LayoutAdmin>
+      <div className="space-y-6">
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Plano de Ação</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Gerenciamento de planos de ação para pesquisas de satisfação
           </p>
         </div>
         <Button onClick={handleNovo}>
@@ -310,6 +311,7 @@ export default function PlanoAcao() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </LayoutAdmin>
   );
 }
