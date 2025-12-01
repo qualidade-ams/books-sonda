@@ -329,7 +329,8 @@ export class FaturamentoService {
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Total</th>
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Envio</th>
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Aprov.</th>
-                            <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Valor Total</th>
+                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? '<th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Valor Total</th>' : ''}
+                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? '<th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Observação</th>' : ''}
                           </tr>
                         </thead>
                         <tbody>
@@ -398,21 +399,18 @@ export class FaturamentoService {
                                     return new Date(dateStr).toLocaleDateString('pt-BR');
                                   })() : '-'}
                                 </td>
+                                ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? `
                                 <td align="center" style="padding:10px; color:#64748b;">
-                                  ${(() => {
-                      // Calcular valor da linha baseado nas horas e valor/hora
-                      const horasFuncional = typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional;
-                      const horasTecnico = typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico;
-                      const valorHoraFunc = req.valor_hora_funcional || 0;
-                      const valorHoraTec = req.valor_hora_tecnico || 0;
-
-                      const valorTotal = (horasFuncional * valorHoraFunc) + (horasTecnico * valorHoraTec);
-
-                      return valorTotal > 0
-                        ? `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '-';
-                    })()}
+                                  ${req.valor_total_geral && req.valor_total_geral > 0
+                      ? `R$ ${req.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '-'}
                                 </td>
+                                ` : ''}
+                                ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? `
+                                <td align="left" style="padding:10px; color:#64748b; font-size:12px; max-width:200px;">
+                                  ${req.observacao || '-'}
+                                </td>
+                                ` : ''}
                               </tr>
                               `
                 )

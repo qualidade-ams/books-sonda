@@ -257,6 +257,9 @@ export default function FaturarRequerimentos() {
       });
     }
 
+    // Ordenar grupos alfabeticamente por tipo de cobrança
+    grupos = grupos.sort((a, b) => a.tipo.localeCompare(b.tipo, 'pt-BR'));
+
     return grupos;
   }, [requerimentosAgrupados, filtroTipo, filtroModulo]);
 
@@ -971,8 +974,12 @@ export default function FaturarRequerimentos() {
                             <TableHead className="text-center text-sm xl:text-base py-2 px-3">Horas</TableHead>
                             <TableHead className="text-center text-sm xl:text-base py-2 px-3">Datas</TableHead>
                             <TableHead className="text-center text-sm xl:text-base py-2 px-3">Período</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Valor Total</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Autor</TableHead>
+                            {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(grupo.tipo) && (
+                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">Valor Total</TableHead>
+                            )}
+                            {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(grupo.tipo) && (
+                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">Observação</TableHead>
+                            )}
                             <TableHead className="text-center text-sm xl:text-base py-2 px-3">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1007,9 +1014,20 @@ export default function FaturarRequerimentos() {
 
                                 {/* Coluna Módulo */}
                                 <TableCell className="text-center py-3 px-3">
-                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 px-2 py-0.5 whitespace-nowrap">
-                                    {req.modulo}
-                                  </Badge>
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 px-2 py-0.5 whitespace-nowrap">
+                                      {req.modulo}
+                                    </Badge>
+                                    {req.autor_nome && (
+                                      <span className="text-[10px] text-gray-500 truncate max-w-[100px]" title={req.autor_nome}>
+                                        {(() => {
+                                          const nomes = req.autor_nome.split(' ');
+                                          if (nomes.length === 1) return nomes[0];
+                                          return `${nomes[0]} ${nomes[nomes.length - 1]}`;
+                                        })()}
+                                      </span>
+                                    )}
+                                  </div>
                                 </TableCell>
 
                                 {/* Coluna Horas */}
@@ -1071,26 +1089,30 @@ export default function FaturarRequerimentos() {
                                   </span>
                                 </TableCell>
 
-                                {/* Coluna Valor Total */}
-                                <TableCell className="text-center py-3 px-3">
-                                  {req.valor_total_geral ? (
-                                    <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
-                                      R$ {req.valor_total_geral.toLocaleString('pt-BR', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      })}
-                                    </span>
-                                  ) : (
-                                    <span className="text-sm text-gray-400">-</span>
-                                  )}
-                                </TableCell>
+                                {/* Coluna Valor Total - apenas para tipos específicos */}
+                                {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca) && (
+                                  <TableCell className="text-center py-3 px-3">
+                                    {req.valor_total_geral ? (
+                                      <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                                        R$ {req.valor_total_geral.toLocaleString('pt-BR', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2
+                                        })}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">-</span>
+                                    )}
+                                  </TableCell>
+                                )}
 
-                                {/* Coluna Autor */}
-                                <TableCell className="text-center text-sm text-gray-500 py-3 px-3">
-                                  <span className="truncate block max-w-[120px] mx-auto" title={req.autor_nome}>
-                                    {req.autor_nome || '-'}
-                                  </span>
-                                </TableCell>
+                                {/* Coluna Observação - para tipos específicos incluindo Reprovado */}
+                                {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(req.tipo_cobranca) && (
+                                  <TableCell className="text-center py-3 px-3">
+                                    <span className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 max-w-[200px] mx-auto" title={req.observacao}>
+                                      {req.observacao || '-'}
+                                    </span>
+                                  </TableCell>
+                                )}
 
                                 {/* Coluna Ações */}
                                 <TableCell className="text-center py-3 px-3">
