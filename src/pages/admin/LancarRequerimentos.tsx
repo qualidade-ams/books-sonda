@@ -684,55 +684,56 @@ const LancarRequerimentos = () => {
                                 </div>
                                 {/* Filtros */}
                                 {showFilters && (
-                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t">
-                                        {/* Busca */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Buscar</div>
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                                <Input
-                                                    placeholder="Buscar por chamado, cliente ou descrição..."
-                                                    defaultValue={filtros.busca || ''}
-                                                    onChange={(e) => handleFiltroChange('busca', e.target.value)}
-                                                    className="pl-10"
-                                                    aria-label="Campo de busca"
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            {/* Busca */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Buscar</div>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                    <Input
+                                                        placeholder="Buscar por chamado, cliente ou descrição..."
+                                                        defaultValue={filtros.busca || ''}
+                                                        onChange={(e) => handleFiltroChange('busca', e.target.value)}
+                                                        className="pl-10"
+                                                        aria-label="Campo de busca"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Módulo */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Módulo</div>
+                                                <MultiSelect
+                                                    options={moduloOptions}
+                                                    selected={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
+                                                    onChange={(values) => handleFiltroChange('modulo', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os módulos"
+                                                    maxCount={2}
                                                 />
                                             </div>
-                                        </div>
 
-                                        {/* Módulo */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Módulo</div>
-                                            <MultiSelect
-                                                options={moduloOptions}
-                                                selected={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
-                                                onChange={(values) => handleFiltroChange('modulo', values.length > 0 ? values : undefined)}
-                                                placeholder="Todos os módulos"
-                                                maxCount={2}
-                                            />
-                                        </div>
+                                            {/* Tipo de Cobrança */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                                                <MultiSelect
+                                                    options={tipoCobrancaOptions}
+                                                    selected={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
+                                                    onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os tipos"
+                                                    maxCount={2}
+                                                />
+                                            </div>
 
-
-                                        {/* Tipo de Cobrança */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
-                                            <MultiSelect
-                                                options={tipoCobrancaOptions}
-                                                selected={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
-                                                onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
-                                                placeholder="Todos os tipos"
-                                                maxCount={2}
-                                            />
-                                        </div>
-
-                                        {/* Período de Cobrança */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                                            <MonthYearPicker
-                                                value={filtros.mes_cobranca || ''}
-                                                onChange={(value) => handleFiltroChange('mes_cobranca', value)}
-                                                placeholder="Todos os períodos"
-                                            />
+                                            {/* Período de Cobrança */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                                                <MonthYearPicker
+                                                    value={filtros.mes_cobranca || ''}
+                                                    onChange={(value) => handleFiltroChange('mes_cobranca', value)}
+                                                    placeholder="Todos os períodos"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -961,57 +962,57 @@ const LancarRequerimentos = () => {
                                 </div>
                                 {/* Filtros para Enviados */}
                                 {showFiltersEnviados && (
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
-                                        {/* Busca */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Buscar</div>
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                                <Input
-                                                    placeholder="Nome ou e-mail..."
-                                                    defaultValue={filtrosEnviados.busca || ''}
-                                                    onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
-                                                    className="pl-10"
-                                                    aria-label="Campo de busca"
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {/* Busca */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Buscar</div>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                    <Input
+                                                        placeholder="Nome ou e-mail..."
+                                                        defaultValue={filtrosEnviados.busca || ''}
+                                                        onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
+                                                        className="pl-10"
+                                                        aria-label="Campo de busca"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Módulo */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Módulo</div>
+                                                <Select
+                                                    value={
+                                                        Array.isArray(filtrosEnviados.modulo)
+                                                            ? (filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__')
+                                                            : (filtrosEnviados.modulo || '__all_modules__')
+                                                    }
+                                                    onValueChange={(value) => handleFiltroEnviadosChange('modulo', value === '__all_modules__' ? undefined : value)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Todos os módulos" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="__all_modules__">Todos os módulos</SelectItem>
+                                                        {MODULO_OPTIONS.map((modulo) => (
+                                                            <SelectItem key={modulo.value} value={modulo.value}>
+                                                                {modulo.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Mês/Ano */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Mês/Ano</div>
+                                                <MonthYearPicker
+                                                    value={filtrosEnviados.mes_cobranca || ''}
+                                                    onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
+                                                    placeholder="Outubro 2025"
                                                 />
                                             </div>
-                                        </div>
-
-                                        {/* Módulo */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Módulo</div>
-                                            <Select
-                                                value={
-                                                    Array.isArray(filtrosEnviados.modulo)
-                                                        ? (filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__')
-                                                        : (filtrosEnviados.modulo || '__all_modules__')
-                                                }
-                                                onValueChange={(value) => handleFiltroEnviadosChange('modulo', value === '__all_modules__' ? undefined : value)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Todos os módulos" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="__all_modules__">Todos os módulos</SelectItem>
-                                                    {MODULO_OPTIONS.map((modulo) => (
-                                                        <SelectItem key={modulo.value} value={modulo.value}>
-                                                            {modulo.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-
-
-                                        {/* Mês/Ano */}
-                                        <div>
-                                            <div className="text-sm font-medium mb-2">Mês/Ano</div>
-                                            <MonthYearPicker
-                                                value={filtrosEnviados.mes_cobranca || ''}
-                                                onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
-                                                placeholder="Outubro 2025"
-                                            />
                                         </div>
                                     </div>
                                 )}
