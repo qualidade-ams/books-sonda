@@ -346,7 +346,7 @@ export default function FaturarRequerimentos() {
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
       // Configurar dados padrão do email
-      setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado} (${requerimentosSelecionados.length} requerimento(s))`);
+      setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
       setCorpoEmail(htmlTemplate);
       setDestinatarios([]);
       setDestinatariosCC([]);
