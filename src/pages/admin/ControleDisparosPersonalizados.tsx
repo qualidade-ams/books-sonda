@@ -10,7 +10,8 @@ import {
   Sparkles,
   Paperclip,
   FileText,
-  Filter
+  Filter,
+  Search
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,7 @@ const ControleDisparosPersonalizados = () => {
 
   // Estados para filtros
   const [statusFiltro, setStatusFiltro] = useState<StatusControleMensal | 'todos'>('todos');
+  const [buscaEmpresa, setBuscaEmpresa] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
 
@@ -110,13 +112,27 @@ const ControleDisparosPersonalizados = () => {
     isUploading: isUploadingAnexos
   } = useAnexos();
 
-  // Filtrar dados baseado no status selecionado
+  // Filtrar dados baseado no status e busca por nome de empresa
   const statusMensalFiltrado = useMemo(() => {
-    if (statusFiltro === 'todos') {
-      return statusMensal;
+    let filtrados = statusMensal;
+    
+    // Filtrar por status
+    if (statusFiltro !== 'todos') {
+      filtrados = filtrados.filter(status => status.status === statusFiltro);
     }
-    return statusMensal.filter(status => status.status === statusFiltro);
-  }, [statusMensal, statusFiltro]);
+    
+    // Filtrar por nome de empresa (busca em nome completo e abreviado)
+    if (buscaEmpresa.trim()) {
+      const termoBusca = buscaEmpresa.toLowerCase().trim();
+      filtrados = filtrados.filter(status => {
+        const nomeCompleto = status.empresa?.nome_completo?.toLowerCase() || '';
+        const nomeAbreviado = status.empresa?.nome_abreviado?.toLowerCase() || '';
+        return nomeCompleto.includes(termoBusca) || nomeAbreviado.includes(termoBusca);
+      });
+    }
+    
+    return filtrados;
+  }, [statusMensal, statusFiltro, buscaEmpresa]);
 
   // Seleção de empresas
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
@@ -132,7 +148,7 @@ const ControleDisparosPersonalizados = () => {
   // Limpar seleção quando filtro muda
   useMemo(() => {
     setSelecionadas([]);
-  }, [statusFiltro]);
+  }, [statusFiltro, buscaEmpresa]);
 
   // Status das empresas selecionadas
   const empresasSelecionadasStatus = useMemo(() => {
@@ -663,91 +679,113 @@ const ControleDisparosPersonalizados = () => {
             
             {/* Filtros */}
             {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status do Disparo</label>
-                  <Select
-                    value={statusFiltro}
-                    onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Todos os Status</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {stats.total}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="enviado">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Enviados</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {stats.enviados}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="pendente">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Pendentes</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {stats.pendentes}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="falhou">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Falhas</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {stats.falhas}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="agendado">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Agendados</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {stats.agendados}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status Atual</label>
-                  <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50 dark:bg-gray-800">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {statusFiltro === 'todos' ? 'Todos os Status' : 
-                       statusFiltro === 'enviado' ? 'Enviados' :
-                       statusFiltro === 'pendente' ? 'Pendentes' :
-                       statusFiltro === 'falhou' ? 'Falhas' :
-                       statusFiltro === 'agendado' ? 'Agendados' : 'Nenhum filtro'}
-                    </span>
-                    <Badge variant="secondary" className="ml-2">
-                      {statusFiltro === 'todos' ? stats.total :
-                       statusFiltro === 'enviado' ? stats.enviados :
-                       statusFiltro === 'pendente' ? stats.pendentes :
-                       statusFiltro === 'falhou' ? stats.falhas :
-                       statusFiltro === 'agendado' ? stats.agendados : 0}
-                    </Badge>
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Busca por Nome de Empresa */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Buscar Empresa</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Nome da empresa..."
+                        value={buscaEmpresa}
+                        onChange={(e) => setBuscaEmpresa(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Ações</label>
-                  <Button
-                    variant="outline"
-                    onClick={() => setStatusFiltro('todos')}
-                    disabled={statusFiltro === 'todos'}
-                    className="w-full h-10"
-                  >
-                    Limpar Filtros
-                  </Button>
+                  {/* Status do Disparo */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status do Disparo</label>
+                    <Select
+                      value={statusFiltro}
+                      onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">
+                          <div className="flex items-center justify-between w-full">
+                            <span>Todos os Status</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {stats.total}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="enviado">
+                          <div className="flex items-center justify-between w-full">
+                            <span>Enviados</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {stats.enviados}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="pendente">
+                          <div className="flex items-center justify-between w-full">
+                            <span>Pendentes</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {stats.pendentes}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="falhou">
+                          <div className="flex items-center justify-between w-full">
+                            <span>Falhas</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {stats.falhas}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="agendado">
+                          <div className="flex items-center justify-between w-full">
+                            <span>Agendados</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {stats.agendados}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Status Atual */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status Atual</label>
+                    <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50 dark:bg-gray-800">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {statusFiltro === 'todos' ? 'Todos os Status' : 
+                         statusFiltro === 'enviado' ? 'Enviados' :
+                         statusFiltro === 'pendente' ? 'Pendentes' :
+                         statusFiltro === 'falhou' ? 'Falhas' :
+                         statusFiltro === 'agendado' ? 'Agendados' : 'Nenhum filtro'}
+                      </span>
+                      <Badge variant="secondary" className="ml-2">
+                        {statusFiltro === 'todos' ? stats.total :
+                         statusFiltro === 'enviado' ? stats.enviados :
+                         statusFiltro === 'pendente' ? stats.pendentes :
+                         statusFiltro === 'falhou' ? stats.falhas :
+                         statusFiltro === 'agendado' ? stats.agendados : 0}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Ações */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Ações</label>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setStatusFiltro('todos');
+                        setBuscaEmpresa('');
+                      }}
+                      disabled={statusFiltro === 'todos' && !buscaEmpresa}
+                      className="w-full h-10"
+                    >
+                      Limpar Filtros
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
