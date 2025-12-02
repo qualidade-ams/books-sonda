@@ -26,7 +26,8 @@ const Breadcrumb = () => {
     'faturar-requerimentos': 'Enviar Requerimentos',
     'lancar-pesquisas': 'Lançar Pesquisas',
     'plano-acao': 'Plano de Ação',
-    'lancar-elogios': 'Enviar Elogios'
+    'lancar-elogios': 'Lançar Elogios',
+    'enviar-elogios': 'Enviar Elogios'
   };
 
   return (

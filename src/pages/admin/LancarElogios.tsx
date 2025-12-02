@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 
 function LancarElogios() {
+  const navigate = useNavigate();
   const { clearFeatureCache } = useCacheManager();
   
   // Limpar cache ao entrar na tela
@@ -409,10 +411,9 @@ function LancarElogios() {
                               size="icon"
                               className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => {
-                                // TODO: Implementar envio (criar tela)
-                                console.log('Enviar elogio:', elogio.id);
+                                navigate('/admin/enviar-elogios');
                               }}
-                              title="Enviar"
+                              title="Ir para Enviar Elogios"
                             >
                               <Send className="h-4 w-4" />
                             </Button>

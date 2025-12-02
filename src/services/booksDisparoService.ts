@@ -476,7 +476,7 @@ class BooksDisparoService {
         .eq('book_personalizado', true)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
-        .order('nome_completo');
+        .order('nome_abreviado');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -567,13 +567,12 @@ class BooksDisparoService {
         emailsEnviados: empresaData.emailsEnviados.size
       }));
 
-      // Ordenação já aplicada na consulta SQL, mas garantindo localmente
-      return statusMensal.sort((a, b) =>
-        a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
-          sensitivity: 'base',
-          ignorePunctuation: true
-        })
-      );
+      // Ordenação alfabética por nome abreviado da empresa
+      return statusMensal.sort((a, b) => {
+        const nomeA = (a.empresa.nome_abreviado || a.empresa.nome_completo || '').toLowerCase();
+        const nomeB = (b.empresa.nome_abreviado || b.empresa.nome_completo || '').toLowerCase();
+        return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+      });
 
     } catch (error) {
       throw new Error(`Erro ao obter status mensal personalizado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -1266,7 +1265,7 @@ class BooksDisparoService {
         .eq('book_personalizado', false)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
-        .order('nome_completo');
+        .order('nome_abreviado');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -1357,13 +1356,12 @@ class BooksDisparoService {
         emailsEnviados: empresaData.emailsEnviados.size
       }));
 
-      // Ordenação já aplicada na consulta SQL, mas garantindo localmente
-      return statusMensal.sort((a, b) =>
-        a.empresa.nome_completo.localeCompare(b.empresa.nome_completo, 'pt-BR', {
-          sensitivity: 'base',
-          ignorePunctuation: true
-        })
-      );
+      // Ordenação alfabética por nome abreviado da empresa
+      return statusMensal.sort((a, b) => {
+        const nomeA = (a.empresa.nome_abreviado || a.empresa.nome_completo || '').toLowerCase();
+        const nomeB = (b.empresa.nome_abreviado || b.empresa.nome_completo || '').toLowerCase();
+        return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+      });
 
     } catch (error) {
       throw new Error(`Erro ao obter status mensal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);

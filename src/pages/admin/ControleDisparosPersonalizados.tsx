@@ -131,6 +131,13 @@ const ControleDisparosPersonalizados = () => {
       });
     }
     
+    // Ordenar alfabeticamente por nome abreviado da empresa
+    filtrados = filtrados.sort((a, b) => {
+      const nomeA = a.empresa?.nome_abreviado || a.empresa?.nome_completo || '';
+      const nomeB = b.empresa?.nome_abreviado || b.empresa?.nome_completo || '';
+      return nomeA.localeCompare(nomeB, 'pt-BR');
+    });
+    
     return filtrados;
   }, [statusMensal, statusFiltro, buscaEmpresa]);
 
