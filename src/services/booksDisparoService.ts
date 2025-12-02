@@ -34,12 +34,8 @@ class BooksDisparoService {
       // Buscar empresas ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
-          *,
-          clientes!inner(*)
-        `)
+        .select('*')
         .eq('status', 'ativo')
-        .eq('clientes.status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
         .eq('book_personalizado', false);
@@ -48,8 +44,31 @@ class BooksDisparoService {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
-
       if (!empresas || empresas.length === 0) {
+        return {
+          sucesso: 0,
+          falhas: 0,
+          total: 0,
+          detalhes: []
+        };
+      }
+
+      // Filtrar empresas que têm pelo menos um cliente ativo
+      const empresasComClientes: EmpresaCliente[] = [];
+      for (const empresa of empresas) {
+        const { data: clientesAtivos, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'ativo')
+          .limit(1);
+
+        if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
+          empresasComClientes.push(empresa);
+        }
+      }
+
+      if (empresasComClientes.length === 0) {
         return {
           sucesso: 0,
           falhas: 0,
@@ -63,7 +82,7 @@ class BooksDisparoService {
       let falhas = 0;
 
       // Processar cada empresa
-      for (const empresa of empresas) {
+      for (const empresa of empresasComClientes) {
         try {
           // Verificar se já existe controle mensal para esta empresa
           const { data: controleExistente } = await supabase
@@ -216,13 +235,9 @@ class BooksDisparoService {
       // Buscar empresas selecionadas e ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
-          *,
-          clientes!inner(*)
-        `)
+        .select('*')
         .in('id', empresaIds)
         .eq('status', 'ativo')
-        .eq('clientes.status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
         .eq('book_personalizado', false);
@@ -235,11 +250,30 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
+      // Filtrar empresas que têm pelo menos um cliente ativo
+      const empresasComClientes: EmpresaCliente[] = [];
+      for (const empresa of empresas) {
+        const { data: clientesAtivos, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'ativo')
+          .limit(1);
+
+        if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
+          empresasComClientes.push(empresa);
+        }
+      }
+
+      if (empresasComClientes.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
       const detalhes: DisparoDetalhe[] = [];
       let sucessos = 0;
       let falhas = 0;
 
-      for (const empresa of empresas) {
+      for (const empresa of empresasComClientes) {
         try {
           // Se não for reenvio forçado, pular já enviados
           if (!forceResend) {
@@ -427,7 +461,7 @@ class BooksDisparoService {
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
       const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
 
-      // Buscar empresas com contagens agregadas em uma única consulta
+      // Buscar empresas com book personalizado
       const { data: empresasData, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -436,75 +470,89 @@ class BooksDisparoService {
             status,
             data_processamento,
             observacoes
-          ),
-          clientes!left(id),
-          historico_disparos!left(id)
+          )
         `)
         .eq('status', 'ativo')
         .eq('book_personalizado', true)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
-        .eq('clientes.status', 'ativo')
-        .eq('historico_disparos.status', 'enviado')
-        .gte('historico_disparos.data_disparo', dataInicio)
-        .lt('historico_disparos.data_disparo', dataFim)
         .order('nome_completo');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
+      if (!empresasData || empresasData.length === 0) {
+        return [];
+      }
+
+      // Buscar clientes ativos para cada empresa
+      const empresasIds = empresasData.map(e => e.id);
+      
+      const { data: clientesData } = await supabase
+        .from('clientes')
+        .select('id, empresa_id')
+        .in('empresa_id', empresasIds)
+        .eq('status', 'ativo');
+
+      // Buscar histórico de disparos no período
+      const { data: historicosData } = await supabase
+        .from('historico_disparos')
+        .select('id, empresa_id')
+        .in('empresa_id', empresasIds)
+        .eq('status', 'enviado')
+        .gte('data_disparo', dataInicio)
+        .lt('data_disparo', dataFim);
+
       // Processar resultados agrupando por empresa
       const empresasMap = new Map<string, any>();
 
-      for (const row of empresasData || []) {
+      for (const row of empresasData) {
         const empresaId = row.id;
 
-        if (!empresasMap.has(empresaId)) {
-          empresasMap.set(empresaId, {
-            empresa: {
-              id: row.id,
-              nome_completo: row.nome_completo,
-              nome_abreviado: row.nome_abreviado,
-              status: row.status,
-              tem_ams: row.tem_ams,
-              tipo_book: row.tipo_book,
-              book_personalizado: row.book_personalizado,
-              anexo: row.anexo,
-              template_padrao: row.template_padrao,
-              link_sharepoint: row.link_sharepoint,
-              email_gestor: row.email_gestor,
-              data_status: row.data_status,
-              descricao_status: row.descricao_status,
-              vigencia_inicial: row.vigencia_inicial,
-              vigencia_final: row.vigencia_final,
-              created_at: row.created_at,
-              updated_at: row.updated_at
-            },
-            controle: row.controle_mensal?.[0] || null,
-            clientesAtivos: new Set(),
-            emailsEnviados: new Set()
-          });
+        empresasMap.set(empresaId, {
+          empresa: {
+            id: row.id,
+            nome_completo: row.nome_completo,
+            nome_abreviado: row.nome_abreviado,
+            status: row.status,
+            tem_ams: row.tem_ams,
+            tipo_book: row.tipo_book,
+            book_personalizado: row.book_personalizado,
+            anexo: row.anexo,
+            template_padrao: row.template_padrao,
+            link_sharepoint: row.link_sharepoint,
+            email_gestor: row.email_gestor,
+            data_status: row.data_status,
+            descricao_status: row.descricao_status,
+            vigencia_inicial: row.vigencia_inicial,
+            vigencia_final: row.vigencia_final,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          },
+          controle: row.controle_mensal?.[0] || null,
+          clientesAtivos: new Set(),
+          emailsEnviados: new Set()
+        });
+      }
+
+      // Mapear clientes por empresa
+      if (clientesData) {
+        for (const cliente of clientesData) {
+          const empresaData = empresasMap.get(cliente.empresa_id);
+          if (empresaData && cliente.id) {
+            empresaData.clientesAtivos.add(cliente.id);
+          }
         }
+      }
 
-        const empresaData = empresasMap.get(empresaId);
-
-        // Contar clientes únicos
-        if (row.clientes?.length > 0) {
-          row.clientes.forEach((cliente: any) => {
-            if (cliente.id) {
-              empresaData.clientesAtivos.add(cliente.id);
-            }
-          });
-        }
-
-        // Contar emails únicos
-        if (row.historico_disparos?.length > 0) {
-          row.historico_disparos.forEach((historico: any) => {
-            if (historico.id) {
-              empresaData.emailsEnviados.add(historico.id);
-            }
-          });
+      // Mapear históricos por empresa
+      if (historicosData) {
+        for (const historico of historicosData) {
+          const empresaData = empresasMap.get(historico.empresa_id);
+          if (empresaData && historico.id) {
+            empresaData.emailsEnviados.add(historico.id);
+          }
         }
       }
 
@@ -540,12 +588,8 @@ class BooksDisparoService {
       // Buscar empresas ativas com book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
-          *,
-          clientes!inner(*)
-        `)
+        .select('*')
         .eq('status', 'ativo')
-        .eq('clientes.status', 'ativo')
         .eq('book_personalizado', true);
 
       if (empresasError) {
@@ -561,12 +605,36 @@ class BooksDisparoService {
         };
       }
 
+      // Filtrar empresas que têm pelo menos um cliente ativo
+      const empresasComClientes: EmpresaCliente[] = [];
+      for (const empresa of empresas) {
+        const { data: clientesAtivos, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'ativo')
+          .limit(1);
+
+        if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
+          empresasComClientes.push(empresa);
+        }
+      }
+
+      if (empresasComClientes.length === 0) {
+        return {
+          sucesso: 0,
+          falhas: 0,
+          total: 0,
+          detalhes: []
+        };
+      }
+
       const detalhes: DisparoDetalhe[] = [];
       let sucessos = 0;
       let falhas = 0;
 
       // Processar cada empresa
-      for (const empresa of empresas) {
+      for (const empresa of empresasComClientes) {
         try {
           // Verificar se já existe controle mensal para esta empresa
           const { data: controleExistente } = await supabase
@@ -717,13 +785,9 @@ class BooksDisparoService {
       // Buscar empresas selecionadas e ativas com book personalizado
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select(`
-          *,
-          clientes!inner(*)
-        `)
+        .select('*')
         .in('id', empresaIds)
         .eq('status', 'ativo')
-        .eq('clientes.status', 'ativo')
         .eq('book_personalizado', true);
 
       if (empresasError) {
@@ -734,11 +798,30 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
+      // Filtrar empresas que têm pelo menos um cliente ativo
+      const empresasComClientes: EmpresaCliente[] = [];
+      for (const empresa of empresas) {
+        const { data: clientesAtivos, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('empresa_id', empresa.id)
+          .eq('status', 'ativo')
+          .limit(1);
+
+        if (!clientesError && clientesAtivos && clientesAtivos.length > 0) {
+          empresasComClientes.push(empresa);
+        }
+      }
+
+      if (empresasComClientes.length === 0) {
+        return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
+      }
+
       const detalhes: DisparoDetalhe[] = [];
       let sucessos = 0;
       let falhas = 0;
 
-      for (const empresa of empresas) {
+      for (const empresa of empresasComClientes) {
         try {
           // Se não for reenvio forçado, pular já enviados
           if (!forceResend) {
@@ -1166,7 +1249,7 @@ class BooksDisparoService {
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
       const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
 
-      // Buscar empresas com contagens agregadas em uma única consulta
+      // Buscar empresas com book padrão (não personalizado)
       const { data: empresasData, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select(`
@@ -1175,9 +1258,7 @@ class BooksDisparoService {
             status,
             data_processamento,
             observacoes
-          ),
-          clientes!left(id),
-          historico_disparos!left(id)
+          )
         `)
         .eq('status', 'ativo')
         .eq('tem_ams', true)
@@ -1185,67 +1266,83 @@ class BooksDisparoService {
         .eq('book_personalizado', false)
         .eq('controle_mensal.mes', mes)
         .eq('controle_mensal.ano', ano)
-        .eq('clientes.status', 'ativo')
-        .eq('historico_disparos.status', 'enviado')
-        .gte('historico_disparos.data_disparo', dataInicio)
-        .lt('historico_disparos.data_disparo', dataFim)
         .order('nome_completo');
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
       }
 
+      if (!empresasData || empresasData.length === 0) {
+        return [];
+      }
+
+      // Buscar clientes ativos para cada empresa
+      const empresasIds = empresasData.map(e => e.id);
+      
+      const { data: clientesData } = await supabase
+        .from('clientes')
+        .select('id, empresa_id')
+        .in('empresa_id', empresasIds)
+        .eq('status', 'ativo');
+
+      // Buscar histórico de disparos no período
+      const { data: historicosData } = await supabase
+        .from('historico_disparos')
+        .select('id, empresa_id')
+        .in('empresa_id', empresasIds)
+        .eq('status', 'enviado')
+        .gte('data_disparo', dataInicio)
+        .lt('data_disparo', dataFim);
+
       // Processar resultados agrupando por empresa
       const empresasMap = new Map<string, any>();
 
-      for (const row of empresasData || []) {
+      for (const row of empresasData) {
         const empresaId = row.id;
 
-        if (!empresasMap.has(empresaId)) {
-          empresasMap.set(empresaId, {
-            empresa: {
-              id: row.id,
-              nome_completo: row.nome_completo,
-              nome_abreviado: row.nome_abreviado,
-              status: row.status,
-              tem_ams: row.tem_ams,
-              tipo_book: row.tipo_book,
-              book_personalizado: row.book_personalizado,
-              anexo: row.anexo,
-              template_padrao: row.template_padrao,
-              link_sharepoint: row.link_sharepoint,
-              email_gestor: row.email_gestor,
-              data_status: row.data_status,
-              descricao_status: row.descricao_status,
-              vigencia_inicial: row.vigencia_inicial,
-              vigencia_final: row.vigencia_final,
-              created_at: row.created_at,
-              updated_at: row.updated_at
-            },
-            controle: row.controle_mensal?.[0] || null,
-            clientesAtivos: new Set(),
-            emailsEnviados: new Set()
-          });
+        empresasMap.set(empresaId, {
+          empresa: {
+            id: row.id,
+            nome_completo: row.nome_completo,
+            nome_abreviado: row.nome_abreviado,
+            status: row.status,
+            tem_ams: row.tem_ams,
+            tipo_book: row.tipo_book,
+            book_personalizado: row.book_personalizado,
+            anexo: row.anexo,
+            template_padrao: row.template_padrao,
+            link_sharepoint: row.link_sharepoint,
+            email_gestor: row.email_gestor,
+            data_status: row.data_status,
+            descricao_status: row.descricao_status,
+            vigencia_inicial: row.vigencia_inicial,
+            vigencia_final: row.vigencia_final,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          },
+          controle: row.controle_mensal?.[0] || null,
+          clientesAtivos: new Set(),
+          emailsEnviados: new Set()
+        });
+      }
+
+      // Mapear clientes por empresa
+      if (clientesData) {
+        for (const cliente of clientesData) {
+          const empresaData = empresasMap.get(cliente.empresa_id);
+          if (empresaData && cliente.id) {
+            empresaData.clientesAtivos.add(cliente.id);
+          }
         }
+      }
 
-        const empresaData = empresasMap.get(empresaId);
-
-        // Contar clientes únicos
-        if (row.clientes?.length > 0) {
-          row.clientes.forEach((cliente: any) => {
-            if (cliente.id) {
-              empresaData.clientesAtivos.add(cliente.id);
-            }
-          });
-        }
-
-        // Contar emails únicos
-        if (row.historico_disparos?.length > 0) {
-          row.historico_disparos.forEach((historico: any) => {
-            if (historico.id) {
-              empresaData.emailsEnviados.add(historico.id);
-            }
-          });
+      // Mapear históricos por empresa
+      if (historicosData) {
+        for (const historico of historicosData) {
+          const empresaData = empresasMap.get(historico.empresa_id);
+          if (empresaData && historico.id) {
+            empresaData.emailsEnviados.add(historico.id);
+          }
         }
       }
 

@@ -118,6 +118,7 @@ export default function FaturarRequerimentos() {
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [anexos, setAnexos] = useState<File[]>([]);
 
   const [filtroTipo, setFiltroTipo] = useState<TipoCobrancaType[]>([]);
   const [filtroModulo, setFiltroModulo] = useState<ModuloType[]>([]);
@@ -351,6 +352,7 @@ export default function FaturarRequerimentos() {
       setDestinatariosCC([]);
       setDestinatariosTexto(''); // Limpar campo de texto
       setDestinatariosCCTexto(''); // Limpar campo CC
+      setAnexos([]); // Limpar anexos
       setModalEmailAberto(true);
     } catch (error) {
       console.error('Erro ao preparar email:', error);
@@ -484,6 +486,60 @@ export default function FaturarRequerimentos() {
     setDestinatariosCC(emails);
   };
 
+  // Funções para gerenciar anexos
+  const handleAdicionarAnexos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const novosAnexos = Array.from(files);
+      
+      // Validar tamanho total (limite de 25MB)
+      const tamanhoTotal = [...anexos, ...novosAnexos].reduce((acc, file) => acc + file.size, 0);
+      const limiteBytes = 25 * 1024 * 1024; // 25MB
+      
+      if (tamanhoTotal > limiteBytes) {
+        toast.error('O tamanho total dos anexos não pode exceder 25MB');
+        return;
+      }
+      
+      setAnexos(prev => [...prev, ...novosAnexos]);
+      toast.success(`${novosAnexos.length} arquivo(s) adicionado(s)`);
+    }
+  };
+
+  const handleRemoverAnexo = (index: number) => {
+    setAnexos(prev => prev.filter((_, i) => i !== index));
+    toast.success('Anexo removido');
+  };
+
+  const formatarTamanhoArquivo = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  // Função para converter arquivos para base64
+  const converterArquivosParaBase64 = async (files: File[]): Promise<Array<{ filename: string; content: string; contentType: string }>> => {
+    const promises = files.map(file => {
+      return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1]; // Remove o prefixo data:...;base64,
+          resolve({
+            filename: file.name,
+            content: base64,
+            contentType: file.type
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    return Promise.all(promises);
+  };
+
   // Funções de navegação de mês
   const navegarMesAnterior = () => {
     if (mesSelecionado === 1) {
@@ -581,11 +637,15 @@ export default function FaturarRequerimentos() {
       );
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
+      // Converter anexos para base64 se houver
+      const attachments = anexos.length > 0 ? await converterArquivosParaBase64(anexos) : undefined;
+
       const emailFaturamento: EmailFaturamento = {
         destinatarios: emailsValidos,
         destinatariosCC: emailsCCValidos,
         assunto: assuntoEmail,
-        corpo: htmlTemplate
+        corpo: htmlTemplate,
+        anexos: attachments
       };
 
       // 1. Disparar o email
@@ -595,15 +655,19 @@ export default function FaturarRequerimentos() {
         // 2. Marcar os requerimentos selecionados como faturados
         await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
         
-        toast.success(`Faturamento disparado e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)!`);
+        const mensagemAnexos = anexos.length > 0 ? ` com ${anexos.length} anexo(s)` : '';
+        toast.success(`Faturamento disparado${mensagemAnexos} e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)!`);
         
         // Limpar estados
         setModalEmailAberto(false);
         setConfirmacaoAberta(false);
         setRequerimentosSelecionados([]);
-        setDestinatarios(['']);
+        setDestinatarios([]);
         setDestinatariosCC([]);
+        setDestinatariosTexto('');
+        setDestinatariosCCTexto('');
         setAssuntoEmail('');
+        setAnexos([]);
       } else {
         toast.error(resultado.error || 'Erro ao disparar faturamento');
       }
@@ -1872,6 +1936,75 @@ export default function FaturarRequerimentos() {
                   placeholder="Assunto do email"
                   className="mt-2"
                 />
+              </div>
+
+              {/* Anexos */}
+              <div>
+                <Label className="text-base font-medium">Anexos</Label>
+                <div className="mt-2">
+                  {/* Botão para adicionar anexos */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('file-input')?.click()}
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Adicionar Arquivos
+                    </Button>
+                    <input
+                      id="file-input"
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleAdicionarAnexos}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+                    />
+                    <span className="text-xs text-gray-500">
+                      Limite: 25MB total
+                    </span>
+                  </div>
+
+                  {/* Lista de anexos */}
+                  {anexos.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <span>{anexos.length} arquivo(s) anexado(s)</span>
+                        <span className="text-xs text-gray-500">
+                          Total: {formatarTamanhoArquivo(anexos.reduce((acc, file) => acc + file.size, 0))}
+                        </span>
+                      </div>
+                      <div className="border rounded-lg divide-y dark:divide-gray-700">
+                        {anexos.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatarTamanhoArquivo(file.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoverAnexo(index)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Preview do Relatório */}
