@@ -113,6 +113,8 @@ export default function FaturarRequerimentos() {
 
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
+  const [destinatariosTexto, setDestinatariosTexto] = useState('');
+  const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
@@ -345,8 +347,10 @@ export default function FaturarRequerimentos() {
       // Configurar dados padrão do email
       setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado} (${requerimentosSelecionados.length} requerimento(s))`);
       setCorpoEmail(htmlTemplate);
-      setDestinatarios(['']); // Inicializar com um campo vazio para o usuário preencher
-      setDestinatariosCC([]); // Inicializar CC vazio
+      setDestinatarios([]);
+      setDestinatariosCC([]);
+      setDestinatariosTexto(''); // Limpar campo de texto
+      setDestinatariosCCTexto(''); // Limpar campo CC
       setModalEmailAberto(true);
     } catch (error) {
       console.error('Erro ao preparar email:', error);
@@ -384,6 +388,100 @@ export default function FaturarRequerimentos() {
     const novosDestinatarios = [...destinatariosCC];
     novosDestinatarios[index] = valor;
     setDestinatariosCC(novosDestinatarios);
+  };
+
+  // Função para extrair emails de texto com formato "Nome <email@exemplo.com>"
+  const extrairEmails = (texto: string): string[] => {
+    // Regex para extrair emails do formato "Nome <email>" ou apenas "email"
+    const emailRegex = /<([^>]+)>|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const emails: string[] = [];
+    let match;
+
+    while ((match = emailRegex.exec(texto)) !== null) {
+      // match[1] é o email dentro de <>, match[2] é o email direto
+      const email = (match[1] || match[2]).trim();
+      if (email && !emails.includes(email)) {
+        emails.push(email);
+      }
+    }
+
+    return emails;
+  };
+
+  // Função para processar múltiplos emails colados
+  const handleColarEmails = (texto: string, tipo: 'destinatarios' | 'cc') => {
+    // Separar por ponto e vírgula, vírgula ou quebra de linha
+    const partes = texto.split(/[;\n,]+/);
+    const emailsExtraidos: string[] = [];
+
+    partes.forEach(parte => {
+      const emails = extrairEmails(parte.trim());
+      emailsExtraidos.push(...emails);
+    });
+
+    // Remover duplicatas e emails vazios
+    const emailsUnicos = [...new Set(emailsExtraidos.filter(e => e.length > 0))];
+
+    if (emailsUnicos.length > 0) {
+      if (tipo === 'destinatarios') {
+        // Obter emails já existentes no campo de texto
+        const emailsAtuais = destinatariosTexto
+          .split(';')
+          .map(e => e.trim())
+          .filter(e => e.length > 0);
+        
+        // Combinar e remover duplicatas
+        const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
+        
+        // Atualizar campo de texto com emails separados por ponto e vírgula
+        setDestinatariosTexto(todosEmails.join('; '));
+        
+        // Atualizar array para validação
+        setDestinatarios(todosEmails);
+      } else {
+        // Obter emails já existentes no campo CC
+        const emailsAtuais = destinatariosCCTexto
+          .split(';')
+          .map(e => e.trim())
+          .filter(e => e.length > 0);
+        
+        // Combinar e remover duplicatas
+        const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
+        
+        // Atualizar campo de texto com emails separados por ponto e vírgula
+        setDestinatariosCCTexto(todosEmails.join('; '));
+        
+        // Atualizar array para validação
+        setDestinatariosCC(todosEmails);
+      }
+      toast.success(`${emailsUnicos.length} email(s) adicionado(s) com sucesso!`);
+    }
+  };
+
+  // Função para atualizar destinatários a partir do campo de texto
+  const handleAtualizarDestinatariosTexto = (texto: string) => {
+    setDestinatariosTexto(texto);
+    
+    // Extrair emails do texto
+    const emails = texto
+      .split(';')
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+    
+    setDestinatarios(emails);
+  };
+
+  // Função para atualizar CC a partir do campo de texto
+  const handleAtualizarCCTexto = (texto: string) => {
+    setDestinatariosCCTexto(texto);
+    
+    // Extrair emails do texto
+    const emails = texto
+      .split(';')
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+    
+    setDestinatariosCC(emails);
   };
 
   // Funções de navegação de mês
@@ -1715,76 +1813,50 @@ export default function FaturarRequerimentos() {
               {/* Destinatários */}
               <div>
                 <Label className="text-base font-medium">Destinatários</Label>
-                <div className="space-y-2 mt-2">
-                  {destinatarios.map((email, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        type="email"
-                        placeholder="email@exemplo.com"
-                        value={email}
-                        onChange={(e) => handleAtualizarDestinatario(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      {destinatarios.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoverDestinatario(index)}
-                        >
-                          Remover
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAdicionarDestinatario}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Destinatário
-                  </Button>
+                
+                {/* Campo único para emails separados por ponto e vírgula */}
+                <div className="mt-2">
+                  <textarea
+                    placeholder="Cole ou digite emails separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                    className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
+                    value={destinatariosTexto}
+                    onChange={(e) => handleAtualizarDestinatariosTexto(e.target.value)}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const texto = e.clipboardData.getData('text');
+                      handleColarEmails(texto, 'destinatarios');
+                    }}
+                  />               
+                  {destinatarios.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      ✓ {destinatarios.length} email(s) adicionado(s)
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Campo CC */}
               <div>
-                <Label className="text-base font-medium">Destinatários em Cópia (CC)</Label>
-                <div className="space-y-2 mt-2">
-                  {destinatariosCC.length === 0 ? (
-                    <p className="text-sm text-gray-500">Nenhum destinatário em cópia adicionado</p>
-                  ) : (
-                    destinatariosCC.map((email, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          type="email"
-                          placeholder="email@exemplo.com"
-                          value={email}
-                          onChange={(e) => handleAtualizarDestinatarioCC(index, e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoverDestinatarioCC(index)}
-                        >
-                          Remover
-                        </Button>
-                      </div>
-                    ))
+                <Label className="text-base font-medium">Destinatários em Cópia (CC) - Opcional</Label>
+                
+                {/* Campo único para emails CC separados por ponto e vírgula */}
+                <div className="mt-2">
+                  <textarea
+                    placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                    className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
+                    value={destinatariosCCTexto}
+                    onChange={(e) => handleAtualizarCCTexto(e.target.value)}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const texto = e.clipboardData.getData('text');
+                      handleColarEmails(texto, 'cc');
+                    }}
+                  />
+                  {destinatariosCC.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      ✓ {destinatariosCC.length} email(s) em cópia adicionado(s)
+                    </p>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAdicionarDestinatarioCC}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar CC
-                  </Button>
                 </div>
               </div>
 
