@@ -963,7 +963,7 @@ const LancarRequerimentos = () => {
                                 {/* Filtros para Enviados */}
                                 {showFiltersEnviados && (
                                     <div className="space-y-4 pt-4 border-t">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {/* Busca */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Buscar</div>
@@ -982,26 +982,25 @@ const LancarRequerimentos = () => {
                                             {/* Módulo */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Módulo</div>
-                                                <Select
-                                                    value={
-                                                        Array.isArray(filtrosEnviados.modulo)
-                                                            ? (filtrosEnviados.modulo.length > 0 ? filtrosEnviados.modulo[0] : '__all_modules__')
-                                                            : (filtrosEnviados.modulo || '__all_modules__')
-                                                    }
-                                                    onValueChange={(value) => handleFiltroEnviadosChange('modulo', value === '__all_modules__' ? undefined : value)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Todos os módulos" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="__all_modules__">Todos os módulos</SelectItem>
-                                                        {MODULO_OPTIONS.map((modulo) => (
-                                                            <SelectItem key={modulo.value} value={modulo.value}>
-                                                                {modulo.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <MultiSelect
+                                                    options={moduloOptions}
+                                                    selected={Array.isArray(filtrosEnviados.modulo) ? filtrosEnviados.modulo : filtrosEnviados.modulo ? [filtrosEnviados.modulo] : []}
+                                                    onChange={(values) => handleFiltroEnviadosChange('modulo', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os módulos"
+                                                    maxCount={2}
+                                                />
+                                            </div>
+
+                                            {/* Tipo de Cobrança */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                                                <MultiSelect
+                                                    options={tipoCobrancaOptions}
+                                                    selected={Array.isArray(filtrosEnviados.tipo_cobranca) ? filtrosEnviados.tipo_cobranca : filtrosEnviados.tipo_cobranca ? [filtrosEnviados.tipo_cobranca] : []}
+                                                    onChange={(values) => handleFiltroEnviadosChange('tipo_cobranca', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os tipos"
+                                                    maxCount={2}
+                                                />
                                             </div>
 
                                             {/* Mês/Ano */}
