@@ -327,10 +327,20 @@ export default function FaturarRequerimentos() {
     }
 
     try {
-      // Filtrar apenas os requerimentos selecionados
-      const requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
-        requerimentosSelecionados.includes(req.id)
-      ) || [];
+      // Buscar requerimentos selecionados dependendo da aba ativa
+      let requerimentosSelecionadosData: Requerimento[] = [];
+      
+      if (abaAtiva === 'para_faturar') {
+        // Buscar na lista de requerimentos para faturar
+        requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
+          requerimentosSelecionados.includes(req.id)
+        ) || [];
+      } else {
+        // Buscar na lista de requerimentos já faturados
+        requerimentosSelecionadosData = dadosFaturados?.filter(req => 
+          requerimentosSelecionados.includes(req.id)
+        ) || [];
+      }
 
       if (requerimentosSelecionadosData.length === 0) {
         toast.error('Nenhum requerimento selecionado encontrado');
@@ -519,25 +529,72 @@ export default function FaturarRequerimentos() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // Função para converter arquivos para base64
-  const converterArquivosParaBase64 = async (files: File[]): Promise<Array<{ filename: string; content: string; contentType: string }>> => {
-    const promises = files.map(file => {
-      return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(',')[1]; // Remove o prefixo data:...;base64,
-          resolve({
-            filename: file.name,
-            content: base64,
-            contentType: file.type
-          });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    });
+  // Função para fazer upload dos arquivos para Supabase Storage
+  const uploadArquivosParaStorage = async (files: File[]): Promise<{
+    totalArquivos: number;
+    tamanhoTotal: number;
+    arquivos: Array<{
+      url: string;
+      nome: string;
+      tipo: string;
+      tamanho: number;
+      token: string;
+    }>;
+  }> => {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const arquivosUpload = [];
+    let tamanhoTotal = 0;
 
-    return Promise.all(promises);
+    for (const file of files) {
+      try {
+        // Gerar nome único para o arquivo
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const nomeArquivo = `faturamento/${timestamp}_${random}_${file.name}`;
+
+        // Upload para o bucket 'anexos-temporarios' (público)
+        const { data, error } = await supabase.storage
+          .from('anexos-temporarios')
+          .upload(nomeArquivo, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          console.error('Erro ao fazer upload do arquivo:', error);
+          throw new Error(`Erro ao fazer upload de ${file.name}: ${error.message}`);
+        }
+
+        // Obter URL pública do arquivo
+        const { data: urlData } = supabase.storage
+          .from('anexos-temporarios')
+          .getPublicUrl(nomeArquivo);
+
+        // Gerar token de acesso simples
+        const token = `${timestamp}_${random}`;
+
+        arquivosUpload.push({
+          url: urlData.publicUrl,
+          nome: file.name,
+          tipo: file.type,
+          tamanho: file.size,
+          token: token
+        });
+
+        tamanhoTotal += file.size;
+        
+        console.log(`✅ Upload concluído: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+      } catch (error) {
+        console.error(`❌ Erro ao processar arquivo ${file.name}:`, error);
+        throw error;
+      }
+    }
+
+    return {
+      totalArquivos: arquivosUpload.length,
+      tamanhoTotal: tamanhoTotal,
+      arquivos: arquivosUpload
+    };
   };
 
   // Funções de navegação de mês
@@ -624,10 +681,26 @@ export default function FaturarRequerimentos() {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
 
-      // Filtrar apenas os requerimentos selecionados
-      const requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
-        requerimentosSelecionados.includes(req.id)
-      ) || [];
+      // Buscar requerimentos selecionados dependendo da aba ativa
+      let requerimentosSelecionadosData: Requerimento[] = [];
+      
+      if (abaAtiva === 'para_faturar') {
+        // Buscar na lista de requerimentos para faturar
+        requerimentosSelecionadosData = dadosFaturamento?.requerimentos.filter(req => 
+          requerimentosSelecionados.includes(req.id)
+        ) || [];
+      } else {
+        // Buscar na lista de requerimentos já faturados
+        requerimentosSelecionadosData = dadosFaturados?.filter(req => 
+          requerimentosSelecionados.includes(req.id)
+        ) || [];
+      }
+
+      if (requerimentosSelecionadosData.length === 0) {
+        toast.error('Nenhum requerimento selecionado encontrado');
+        setEnviandoEmail(false);
+        return;
+      }
 
       // Gerar relatório HTML apenas com os requerimentos selecionados
       const relatorio = await faturamentoService.gerarRelatorioFaturamentoSelecionados(
@@ -637,26 +710,42 @@ export default function FaturarRequerimentos() {
       );
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
-      // Converter anexos para base64 se houver
-      const attachments = anexos.length > 0 ? await converterArquivosParaBase64(anexos) : undefined;
+      // Fazer upload dos anexos para Supabase Storage se houver
+      let dadosAnexos = undefined;
+      if (anexos.length > 0) {
+        try {
+          dadosAnexos = await uploadArquivosParaStorage(anexos);
+          console.log('✅ Anexos enviados para storage:', dadosAnexos);
+        } catch (error) {
+          console.error('❌ Erro ao fazer upload dos anexos:', error);
+          toast.error('Erro ao fazer upload dos anexos');
+          setEnviandoEmail(false);
+          return;
+        }
+      }
 
       const emailFaturamento: EmailFaturamento = {
         destinatarios: emailsValidos,
         destinatariosCC: emailsCCValidos,
         assunto: assuntoEmail,
         corpo: htmlTemplate,
-        anexos: attachments
+        anexos: dadosAnexos
       };
 
       // 1. Disparar o email
       const resultado = await faturamentoService.dispararFaturamento(emailFaturamento);
 
       if (resultado.success) {
-        // 2. Marcar os requerimentos selecionados como faturados
-        await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
+        // 2. Marcar os requerimentos selecionados como faturados (apenas se estiver na aba para_faturar)
+        if (abaAtiva === 'para_faturar') {
+          await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
+        }
         
         const mensagemAnexos = anexos.length > 0 ? ` com ${anexos.length} anexo(s)` : '';
-        toast.success(`Faturamento disparado${mensagemAnexos} e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)!`);
+        const mensagemFaturados = abaAtiva === 'para_faturar' 
+          ? ` e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)`
+          : '';
+        toast.success(`Faturamento disparado${mensagemAnexos}${mensagemFaturados}!`);
         
         // Limpar estados
         setModalEmailAberto(false);

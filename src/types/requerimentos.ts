@@ -134,7 +134,17 @@ export interface EmailFaturamento {
   destinatariosCC?: string[];
   assunto: string;
   corpo: string;
-  anexos?: any[];
+  anexos?: {
+    totalArquivos: number;
+    tamanhoTotal: number;
+    arquivos: Array<{
+      url: string;
+      nome: string;
+      tipo: string;
+      tamanho: number;
+      token: string;
+    }>;
+  };
 }
 
 // Interface para cliente (empresas_clientes)

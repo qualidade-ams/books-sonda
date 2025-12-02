@@ -216,6 +216,12 @@ export const emailService = {
         mensagem: emailData.html // Enviar HTML completo
       };
 
+      // ✅ SUPORTE PARA ANEXOS EM BASE64 (attachments)
+      if (emailData.attachments && emailData.attachments.length > 0) {
+        payload.attachments = emailData.attachments;
+        console.log(`📎 Incluindo ${emailData.attachments.length} anexo(s) em base64`);
+      }
+
       // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
       if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
         // Anexos disponíveis - incluir dados completos

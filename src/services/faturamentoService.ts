@@ -479,7 +479,7 @@ export class FaturamentoService {
         cc: emailFaturamento.destinatariosCC && emailFaturamento.destinatariosCC.length > 0 ? emailFaturamento.destinatariosCC : undefined,
         subject: emailFaturamento.assunto,
         html: emailFaturamento.corpo,
-        attachments: emailFaturamento.anexos
+        anexos: emailFaturamento.anexos
       };
 
       // Enviar email usando o emailService
