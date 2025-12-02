@@ -5,7 +5,6 @@ import {
   type EmpresaCliente,
   type EmpresaClienteInsert,
   type Cliente,
-  type ClienteInsert,
   type GrupoResponsavel,
   type EmpresaFormData,
   type ClienteFormData,

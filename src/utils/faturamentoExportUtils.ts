@@ -74,7 +74,7 @@ export const exportarFaturamentoExcel = (
       [''],
       ['Período:', `${mesNome} ${ano}`],
       [''],
-      ['Chamado', 'Cliente', 'Módulo', 'Linguagem', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Autor', 'Tipo Cobrança']
+      ['Chamado', 'Cliente', 'Módulo', 'Linguagem', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Observação', 'Autor', 'Tipo Cobrança']
     ];
 
     // Adicionar todos os requerimentos agrupados por tipo
@@ -97,18 +97,19 @@ export const exportarFaturamentoExcel = (
           }
         };
 
-        const formatarHoras = (horas: string | number): string => {
+        // Converter horas para formato decimal do Excel (horas/24)
+        const converterHorasParaExcel = (horas: string | number): number => {
           if (typeof horas === 'string') {
-            return formatarHorasParaExibicao(horas, 'completo');
+            if (horas.includes(':')) {
+              const [h, m] = horas.split(':').map(Number);
+              return (h + m / 60) / 24; // Formato de tempo do Excel
+            }
+            return 0;
           }
           if (typeof horas === 'number') {
-            const totalMinutos = Math.round(horas * 60);
-            const horasInt = Math.floor(totalMinutos / 60);
-            const minutosInt = totalMinutos % 60;
-            const horasFormatadas = `${horasInt}:${minutosInt.toString().padStart(2, '0')}`;
-            return formatarHorasParaExibicao(horasFormatadas, 'completo');
+            return horas / 24; // Formato de tempo do Excel
           }
-          return '0:00';
+          return 0;
         };
 
         detalhesData.push([
@@ -116,13 +117,14 @@ export const exportarFaturamentoExcel = (
           req.cliente_nome || 'N/A',
           req.modulo,
           req.linguagem,
-          formatarHoras(req.horas_funcional),
-          formatarHoras(req.horas_tecnico),
-          formatarHoras(req.horas_total),
+          converterHorasParaExcel(req.horas_funcional),
+          converterHorasParaExcel(req.horas_tecnico),
+          converterHorasParaExcel(req.horas_total),
           formatarData(req.data_envio),
           req.data_aprovacao ? formatarData(req.data_aprovacao) : '-',
-          req.valor_total_geral ? `R$ ${req.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-',
+          req.valor_total_geral || 0, // Valor como número
           req.mes_cobranca || '-',
+          req.observacao || '-',
           req.autor_nome || '-',
           req.tipo_cobranca
         ]);
@@ -137,16 +139,37 @@ export const exportarFaturamentoExcel = (
       { width: 25 }, // Cliente
       { width: 12 }, // Módulo
       { width: 12 }, // Linguagem
-      { width: 8 },  // H.Func
-      { width: 8 },  // H.Téc
-      { width: 8 },  // Total
+      { width: 10 }, // H.Func
+      { width: 10 }, // H.Téc
+      { width: 10 }, // Total
       { width: 12 }, // Data Envio
       { width: 12 }, // Data Aprov.
       { width: 15 }, // Valor Total
       { width: 12 }, // Período
+      { width: 30 }, // Observação
       { width: 20 }, // Autor
       { width: 15 }  // Tipo
     ];
+
+    // Aplicar formatação às células de horas (colunas E, F, G) e valores (coluna J)
+    const range = XLSX.utils.decode_range(detalhesSheet['!ref'] || 'A1');
+    for (let row = 6; row <= range.e.r; row++) { // Começar após cabeçalhos
+      // Formatar colunas de horas (E=4, F=5, G=6)
+      ['E', 'F', 'G'].forEach(col => {
+        const cellAddress = `${col}${row}`;
+        if (detalhesSheet[cellAddress] && typeof detalhesSheet[cellAddress].v === 'number') {
+          detalhesSheet[cellAddress].t = 'n';
+          detalhesSheet[cellAddress].z = '[h]:mm'; // Formato de horas
+        }
+      });
+      
+      // Formatar coluna de valor (J=9)
+      const valorCell = `J${row}`;
+      if (detalhesSheet[valorCell] && typeof detalhesSheet[valorCell].v === 'number') {
+        detalhesSheet[valorCell].t = 'n';
+        detalhesSheet[valorCell].z = 'R$ #,##0.00'; // Formato de moeda brasileira
+      }
+    }
 
     XLSX.utils.book_append_sheet(workbook, detalhesSheet, 'Detalhamento');
 

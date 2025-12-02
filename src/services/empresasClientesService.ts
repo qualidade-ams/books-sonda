@@ -462,14 +462,15 @@ export class EmpresasClientesService {
         throw ClientBooksErrorFactory.validationError('descricao', descricao, 'Descrição é obrigatória para status Inativo ou Suspenso');
       }
 
+      // Declarar variável fora do bloco if para estar disponível no return
+      let totalClientesInativados = 0;
+
       // Se estiver inativando empresas, inativar todos os clientes ativos primeiro
       if (status === EMPRESA_STATUS.INATIVO) {
         const descricaoClientes = descricao || 'Empresa inativada';
         
         // Importar dinamicamente o serviço de clientes para evitar dependência circular
         const { clientesService } = await import('./clientesService');
-        
-        let totalClientesInativados = 0;
         
         // Inativar clientes de cada empresa
         for (const empresaId of ids) {

@@ -128,6 +128,10 @@ export default function FaturarRequerimentos() {
   // Estados para controle de abas e seleção
   const [abaAtiva, setAbaAtiva] = useState<'para_faturar' | 'faturados'>('para_faturar');
   const [requerimentosSelecionados, setRequerimentosSelecionados] = useState<string[]>([]);
+  
+  // Estados para filtros da aba de histórico
+  const [filtroTipoHistorico, setFiltroTipoHistorico] = useState<TipoCobrancaType[]>([]);
+  const [filtroModuloHistorico, setFiltroModuloHistorico] = useState<ModuloType[]>([]);
 
   // Hooks
   const {
@@ -146,6 +150,25 @@ export default function FaturarRequerimentos() {
     isLoading: isLoadingFaturados,
     error: errorFaturados
   } = useRequerimentosFaturados(`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`);
+  
+  // Filtrar requerimentos faturados
+  const dadosFaturadosFiltrados = useMemo(() => {
+    if (!dadosFaturados) return [];
+    
+    let filtrados = [...dadosFaturados];
+    
+    // Filtrar por tipo de cobrança
+    if (filtroTipoHistorico.length > 0) {
+      filtrados = filtrados.filter(req => filtroTipoHistorico.includes(req.tipo_cobranca));
+    }
+    
+    // Filtrar por módulo
+    if (filtroModuloHistorico.length > 0) {
+      filtrados = filtrados.filter(req => filtroModuloHistorico.includes(req.modulo));
+    }
+    
+    return filtrados;
+  }, [dadosFaturados, filtroTipoHistorico, filtroModuloHistorico]);
 
   // Dados processados
   const requerimentosAgrupados = useMemo((): RequerimentosAgrupados => {
@@ -610,17 +633,64 @@ export default function FaturarRequerimentos() {
           </div>
 
           <div className="flex gap-2">
-            <FaturamentoExportButtons
-              requerimentosAgrupados={requerimentosAgrupados}
-              estatisticas={estatisticasPeriodo}
-              mesNome={nomesMeses[mesSelecionado - 1]}
-              ano={anoSelecionado}
-              disabled={isLoading}
-            />
+            {/* Botão de exportar - condicional por aba */}
+            {abaAtiva === 'para_faturar' ? (
+              <FaturamentoExportButtons
+                requerimentosAgrupados={requerimentosAgrupados}
+                estatisticas={estatisticasPeriodo}
+                mesNome={nomesMeses[mesSelecionado - 1]}
+                ano={anoSelecionado}
+                disabled={isLoading}
+              />
+            ) : (
+              <FaturamentoExportButtons
+                requerimentosAgrupados={(() => {
+                  const grupos: RequerimentosAgrupados = {};
+                  dadosFaturadosFiltrados.forEach(req => {
+                    const tipo = req.tipo_cobranca;
+                    if (!grupos[tipo]) {
+                      grupos[tipo] = {
+                        tipo,
+                        requerimentos: [],
+                        totalHoras: '0:00',
+                        totalValor: 0,
+                        quantidade: 0
+                      };
+                    }
+                    grupos[tipo].requerimentos.push(req);
+                    if (req.horas_total) {
+                      grupos[tipo].totalHoras = somarHoras(grupos[tipo].totalHoras, req.horas_total.toString());
+                    }
+                    if (req.valor_total_geral) {
+                      grupos[tipo].totalValor += req.valor_total_geral;
+                    }
+                    grupos[tipo].quantidade += 1;
+                  });
+                  return grupos;
+                })()}
+                estatisticas={{
+                  totalRequerimentos: dadosFaturadosFiltrados.length,
+                  totalHoras: dadosFaturadosFiltrados.reduce((acc, req) => somarHoras(acc, req.horas_total?.toString() || '0'), '0:00'),
+                  tiposAtivos: [...new Set(dadosFaturadosFiltrados.map(req => req.tipo_cobranca))].length,
+                  valorTotalFaturavel: dadosFaturadosFiltrados.reduce((acc, req) => {
+                    if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca)) {
+                      return acc + (req.valor_total_geral || 0);
+                    }
+                    return acc;
+                  }, 0)
+                }}
+                mesNome={nomesMeses[mesSelecionado - 1]}
+                ano={anoSelecionado}
+                disabled={dadosFaturadosFiltrados.length === 0}
+              />
+            )}
+            
+            {/* Botão Disparar Faturamento - aparece em ambas as abas */}
             <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
               <Button
                 onClick={handleAbrirModalEmail}
-                disabled={isLoading || requerimentosSelecionados.length === 0}
+                disabled={(abaAtiva === 'para_faturar' ? isLoading : isLoadingFaturados) || requerimentosSelecionados.length === 0}
+                size="sm"
                 title={requerimentosSelecionados.length === 0 ? 'Selecione requerimentos para disparar faturamento' : `Disparar faturamento de ${requerimentosSelecionados.length} requerimento(s) selecionado(s)`}
               >
                 <Send className="h-4 w-4 mr-2" />
@@ -673,7 +743,8 @@ export default function FaturarRequerimentos() {
                 >
                   <Filter className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
                   <span className="hidden sm:inline">Filtros</span>
-                  {(filtroTipo.length > 0 || filtroModulo.length > 0) && (
+                  {((abaAtiva === 'para_faturar' && (filtroTipo.length > 0 || filtroModulo.length > 0)) || 
+                    (abaAtiva === 'faturados' && (filtroTipoHistorico.length > 0 || filtroModuloHistorico.length > 0))) && (
                     <Badge variant="secondary" className="ml-0.5 xl:ml-1 text-[10px] xl:text-xs px-1 xl:px-1.5">
                       {filtroTipo.length + filtroModulo.length}
                     </Badge>
@@ -905,109 +976,192 @@ export default function FaturarRequerimentos() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Filter className="h-5 w-5" />
-                Filtros de Período, Tipo e Módulo
+                {abaAtiva === 'para_faturar' ? 'Filtros de Período, Tipo e Módulo' : 'Filtros de Tipo e Módulo'}
                 <div className="flex gap-2">
-                  {filtroTipo.length > 0 && (
-                    <Badge variant="secondary">
-                      {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  {filtroModulo.length > 0 && (
-                    <Badge variant="secondary">
-                      {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
-                    </Badge>
+                  {abaAtiva === 'para_faturar' ? (
+                    <>
+                      {filtroTipo.length > 0 && (
+                        <Badge variant="secondary">
+                          {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                      {filtroModulo.length > 0 && (
+                        <Badge variant="secondary">
+                          {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {filtroTipoHistorico.length > 0 && (
+                        <Badge variant="secondary">
+                          {filtroTipoHistorico.length} tipo{filtroTipoHistorico.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                      {filtroModuloHistorico.length > 0 && (
+                        <Badge variant="secondary">
+                          {filtroModuloHistorico.length} módulo{filtroModuloHistorico.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </>
                   )}
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
-                  <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nomesMeses.map((nome, index) => (
-                        <SelectItem key={index + 1} value={(index + 1).toString()}>
-                          {nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {abaAtiva === 'para_faturar' ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
+                      <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {nomesMeses.map((nome, index) => (
+                            <SelectItem key={index + 1} value={(index + 1).toString()}>
+                              {nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
-                  <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
-                        <SelectItem key={ano} value={ano.toString()}>
-                          {ano}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
+                      <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
+                            <SelectItem key={ano} value={ano.toString()}>
+                              {ano}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
-                  <div className="h-10">
-                    <MultiSelect
-                      options={tipoCobrancaOptions}
-                      selected={filtroTipo}
-                      onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
-                      placeholder="Selecione os tipos..."
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
+                      <div className="h-10">
+                        <MultiSelect
+                          options={tipoCobrancaOptions}
+                          selected={filtroTipo}
+                          onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
+                          placeholder="Selecione os tipos..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="modulo" className="text-sm font-medium">Módulos</Label>
+                      <div className="h-10">
+                        <MultiSelect
+                          options={moduloOptions}
+                          selected={filtroModulo}
+                          onChange={(values) => setFiltroModulo(values as ModuloType[])}
+                          placeholder="Selecione os módulos..."
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tipo-historico" className="text-sm font-medium">Tipos de Cobrança</Label>
+                      <div className="h-10">
+                        <MultiSelect
+                          options={tipoCobrancaOptions}
+                          selected={filtroTipoHistorico}
+                          onChange={(values) => setFiltroTipoHistorico(values as TipoCobrancaType[])}
+                          placeholder="Selecione os tipos..."
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="modulo" className="text-sm font-medium">Módulos</Label>
-                  <div className="h-10">
-                    <MultiSelect
-                      options={moduloOptions}
-                      selected={filtroModulo}
-                      onChange={(values) => setFiltroModulo(values as ModuloType[])}
-                      placeholder="Selecione os módulos..."
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="modulo-historico" className="text-sm font-medium">Módulos</Label>
+                      <div className="h-10">
+                        <MultiSelect
+                          options={moduloOptions}
+                          selected={filtroModuloHistorico}
+                          onChange={(values) => setFiltroModuloHistorico(values as ModuloType[])}
+                          placeholder="Selecione os módulos..."
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* Botões de ação rápida */}
               <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFiltroTipo([]);
-                    setFiltroModulo([]);
-                  }}
-                  disabled={filtroTipo.length === 0 && filtroModulo.length === 0}
-                >
-                  Limpar Filtros
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
-                  disabled={filtroTipo.length === tipoCobrancaOptions.length}
-                >
-                  Todos os Tipos
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFiltroModulo(moduloOptions.map(opt => opt.value as ModuloType))}
-                  disabled={filtroModulo.length === moduloOptions.length}
-                >
-                  Todos os Módulos
-                </Button>
+                {abaAtiva === 'para_faturar' ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFiltroTipo([]);
+                        setFiltroModulo([]);
+                      }}
+                      disabled={filtroTipo.length === 0 && filtroModulo.length === 0}
+                    >
+                      Limpar Filtros
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
+                      disabled={filtroTipo.length === tipoCobrancaOptions.length}
+                    >
+                      Todos os Tipos
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltroModulo(moduloOptions.map(opt => opt.value as ModuloType))}
+                      disabled={filtroModulo.length === moduloOptions.length}
+                    >
+                      Todos os Módulos
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFiltroTipoHistorico([]);
+                        setFiltroModuloHistorico([]);
+                      }}
+                      disabled={filtroTipoHistorico.length === 0 && filtroModuloHistorico.length === 0}
+                    >
+                      Limpar Filtros
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltroTipoHistorico(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
+                      disabled={filtroTipoHistorico.length === tipoCobrancaOptions.length}
+                    >
+                      Todos os Tipos
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltroModuloHistorico(moduloOptions.map(opt => opt.value as ModuloType))}
+                      disabled={filtroModuloHistorico.length === moduloOptions.length}
+                    >
+                      Todos os Módulos
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1345,6 +1499,30 @@ export default function FaturarRequerimentos() {
                     </div>
                   </CardContent>
                 </Card>
+              ) : dadosFaturadosFiltrados.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-gray-500">
+                      <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">
+                        Nenhum requerimento encontrado
+                      </h3>
+                      <p>
+                        Não há requerimentos que correspondam aos filtros selecionados.
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          setFiltroTipoHistorico([]);
+                          setFiltroModuloHistorico([]);
+                        }}
+                        className="mt-4"
+                        variant="outline"
+                      >
+                        Limpar Filtros
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
                 <Card>
                     <CardHeader>
@@ -1354,7 +1532,7 @@ export default function FaturarRequerimentos() {
                           Requerimentos Enviados
                         </CardTitle>
                         <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          {dadosFaturados.length} faturado{dadosFaturados.length !== 1 ? 's' : ''}
+                          {dadosFaturadosFiltrados.length} faturado{dadosFaturadosFiltrados.length !== 1 ? 's' : ''}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -1365,8 +1543,8 @@ export default function FaturarRequerimentos() {
                           <TableRow>
                             <TableHead className="w-10 text-sm py-2 px-3">
                               <Checkbox
-                                checked={dadosFaturados.length > 0 && dadosFaturados.every(req => requerimentosSelecionados.includes(req.id))}
-                                onCheckedChange={(checked) => handleSelecionarTodos(dadosFaturados, checked as boolean)}
+                                checked={dadosFaturadosFiltrados.length > 0 && dadosFaturadosFiltrados.every(req => requerimentosSelecionados.includes(req.id))}
+                                onCheckedChange={(checked) => handleSelecionarTodos(dadosFaturadosFiltrados, checked as boolean)}
                                 aria-label="Selecionar todos os requerimentos faturados"
                               />
                             </TableHead>
@@ -1382,7 +1560,7 @@ export default function FaturarRequerimentos() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {dadosFaturados.map(req => (
+                          {dadosFaturadosFiltrados.map(req => (
                             <TableRow key={req.id}>
                               <TableCell className="py-3 px-3">
                                 <Checkbox
