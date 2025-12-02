@@ -257,8 +257,21 @@ export default function FaturarRequerimentos() {
       });
     }
 
-    // Ordenar grupos alfabeticamente por tipo de cobrança
-    grupos = grupos.sort((a, b) => a.tipo.localeCompare(b.tipo, 'pt-BR'));
+    // Ordenar grupos: tipos com valor primeiro (em ordem alfabética), depois os outros (em ordem alfabética)
+    const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    
+    grupos = grupos.sort((a, b) => {
+      const aTemValor = tiposComValor.includes(a.tipo);
+      const bTemValor = tiposComValor.includes(b.tipo);
+      
+      // Se ambos têm valor ou ambos não têm, ordenar alfabeticamente
+      if (aTemValor === bTemValor) {
+        return a.tipo.localeCompare(b.tipo, 'pt-BR');
+      }
+      
+      // Tipos com valor vêm primeiro
+      return aTemValor ? -1 : 1;
+    });
 
     return grupos;
   }, [requerimentosAgrupados, filtroTipo, filtroModulo]);
@@ -534,6 +547,18 @@ export default function FaturarRequerimentos() {
     }
   };
 
+  // Função para arquivar requerimento reprovado
+  const handleArquivarRequerimento = async (requerimento: Requerimento) => {
+    try {
+      await marcarComoFaturados.mutateAsync([requerimento.id]);
+      toast.success('Requerimento arquivado com sucesso!');
+      refetch(); // Atualizar a lista
+    } catch (error) {
+      console.error('Erro ao arquivar requerimento:', error);
+      toast.error('Erro ao arquivar requerimento');
+    }
+  };
+
   // Funções de controle de seleção
   const handleSelecionarRequerimento = (id: string, selecionado: boolean) => {
     if (selecionado) {
@@ -661,8 +686,9 @@ export default function FaturarRequerimentos() {
 
 
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Estatísticas - Ocultar quando estiver na aba Histórico */}
+        {abaAtiva !== 'faturados' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -749,8 +775,129 @@ export default function FaturarRequerimentos() {
             </CardContent>
           </Card>
         </div>
+        )}
 
+        {/* Cards para aba Histórico de Enviados - Aparecem no lugar dos cards superiores */}
+        {abaAtiva === 'faturados' && dadosFaturados && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {(() => {
+              const requerimentosSemReprovados = dadosFaturados.filter(req => req.tipo_cobranca !== 'Reprovado');
+              const requerimentosReprovados = dadosFaturados.filter(req => req.tipo_cobranca === 'Reprovado');
+              
+              let totalHoras = '0:00';
+              requerimentosSemReprovados.forEach(req => {
+                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+                totalHoras = somarHoras(totalHoras, horas.toString());
+              });
+              
+              let horasReprovadas = '0:00';
+              requerimentosReprovados.forEach(req => {
+                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+                horasReprovadas = somarHoras(horasReprovadas, horas.toString());
+              });
+              
+              const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
+                if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca)) {
+                  return acc + (req.valor_total_geral || 0);
+                }
+                return acc;
+              }, 0);
+              
+              const tiposAtivos = [...new Set(requerimentosSemReprovados.map(req => req.tipo_cobranca))].length;
+              
+              return (
+                <>
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                            Total de Requerimentos
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                            {requerimentosSemReprovados.length}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Excluindo reprovados</p>
+                        </div>
+                        <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+                      </div>
+                    </CardContent>
+                  </Card>
 
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                            Total de Horas
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold text-green-600">
+                            {formatarHoras(totalHoras)}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Excluindo reprovados</p>
+                        </div>
+                        <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                            Horas Reprovadas
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold text-red-600">
+                            {formatarHoras(horasReprovadas)}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{requerimentosReprovados.length} reprovado{requerimentosReprovados.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 flex-shrink-0" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                            Tipos Ativos
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                            {tiposAtivos}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Tipos de cobrança</p>
+                        </div>
+                        <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                            Valor Total Faturável
+                          </p>
+                          <p className="text-lg sm:text-2xl font-bold text-orange-600">
+                            R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1 truncate">
+                            Faturado + Hora Extra + Sobreaviso + Bolsão Enel
+                          </p>
+                        </div>
+                        <Calculator className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Filtros */}
         {filtrosExpandidos && (
@@ -1116,19 +1263,37 @@ export default function FaturarRequerimentos() {
 
                                 {/* Coluna Ações */}
                                 <TableCell className="text-center py-3 px-3">
-                                  <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleAbrirConfirmacaoRejeicao(req)}
-                                      disabled={rejeitarRequerimento.isPending}
-                                      className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs whitespace-nowrap"
-                                      title="Rejeitar requerimento"
-                                    >
-                                      <X className="h-4 w-4 mr-1" />
-                                      Rejeitar
-                                    </Button>
-                                  </ProtectedAction>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleAbrirConfirmacaoRejeicao(req)}
+                                        disabled={rejeitarRequerimento.isPending}
+                                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs whitespace-nowrap"
+                                        title="Rejeitar requerimento"
+                                      >
+                                        <X className="h-4 w-4 mr-1" />
+                                        Rejeitar
+                                      </Button>
+                                    </ProtectedAction>
+                                    
+                                    {req.tipo_cobranca === 'Reprovado' && (
+                                      <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleArquivarRequerimento(req)}
+                                          disabled={marcarComoFaturados.isPending}
+                                          className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs whitespace-nowrap"
+                                          title="Arquivar requerimento"
+                                        >
+                                          <Check className="h-4 w-4 mr-1" />
+                                          Arquivar
+                                        </Button>
+                                      </ProtectedAction>
+                                    )}
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
@@ -1182,17 +1347,17 @@ export default function FaturarRequerimentos() {
                 </Card>
               ) : (
                 <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl flex items-center gap-2">
-                        <Check className="h-5 w-5 text-green-600" />
-                        Requerimentos Enviados
-                      </CardTitle>
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        {dadosFaturados.length} faturado{dadosFaturados.length !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                  </CardHeader>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          Requerimentos Enviados
+                        </CardTitle>
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          {dadosFaturados.length} faturado{dadosFaturados.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
                       <Table>
@@ -1212,7 +1377,7 @@ export default function FaturarRequerimentos() {
                             <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Data Faturamento</TableHead>
                             <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Período</TableHead>
                             <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Valor Total</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Autor</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Observação</TableHead>
                             <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1246,9 +1411,20 @@ export default function FaturarRequerimentos() {
 
                               {/* Coluna Módulo */}
                               <TableCell className="text-center py-3 px-3">
-                                <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 px-2 py-0.5 whitespace-nowrap">
-                                  {req.modulo}
-                                </Badge>
+                                <div className="flex flex-col items-center gap-1">
+                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-600 px-2 py-0.5 whitespace-nowrap">
+                                    {req.modulo}
+                                  </Badge>
+                                  {req.autor_nome && (
+                                    <span className="text-[10px] text-gray-500 truncate max-w-[100px]" title={req.autor_nome}>
+                                      {(() => {
+                                        const nomes = req.autor_nome.split(' ');
+                                        if (nomes.length === 1) return nomes[0];
+                                        return `${nomes[0]} ${nomes[nomes.length - 1]}`;
+                                      })()}
+                                    </span>
+                                  )}
+                                </div>
                               </TableCell>
 
                               {/* Coluna Horas */}
@@ -1308,11 +1484,15 @@ export default function FaturarRequerimentos() {
                                 ) : '-'}
                               </TableCell>
 
-                              {/* Coluna Autor */}
-                              <TableCell className="text-center text-sm text-gray-500 py-3 px-3">
-                                <span className="truncate block max-w-[120px] mx-auto" title={req.autor_nome}>
-                                  {req.autor_nome || '-'}
-                                </span>
+                              {/* Coluna Observação */}
+                              <TableCell className="text-center py-3 px-3">
+                                {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(req.tipo_cobranca) ? (
+                                  <span className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 max-w-[200px] mx-auto" title={req.observacao}>
+                                    {req.observacao || '-'}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )}
                               </TableCell>
 
                               {/* Coluna Ações */}
