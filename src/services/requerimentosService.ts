@@ -684,10 +684,12 @@ export class RequerimentosService {
         .map(req => req.autor_id)
         .filter((id): id is string => !!id);
 
+      let requerimentosFinais = requerimentosComNomes;
+
       if (autoresIds.length > 0) {
         const usersMap = await this.resolverNomesUsuarios(autoresIds);
         
-        return requerimentosComNomes.map(req => ({
+        requerimentosFinais = requerimentosComNomes.map(req => ({
           ...req,
           autor_nome: req.autor_id && usersMap[req.autor_id] 
             ? usersMap[req.autor_id] 
@@ -695,7 +697,8 @@ export class RequerimentosService {
         }));
       }
 
-      return requerimentosComNomes;
+      // Formatar requerimentos para converter horas decimais para HH:MM
+      return requerimentosFinais.map(req => this.formatarRequerimento(req));
     } catch (error) {
       console.error('Erro ao buscar requerimentos enviados:', error);
       return [];

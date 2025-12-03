@@ -191,7 +191,7 @@ export default function EnviarElogios() {
     }
 
     const htmlTemplate = gerarRelatorioElogios();
-    setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})`);
+    setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})wwwwwwwwwwwwdddddddd`);
     setCorpoEmail(htmlTemplate);
     setDestinatarios([]);
     setDestinatariosCC([]);

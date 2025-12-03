@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Adição do arquivo `install-windows-service.bat` como wrapper simplificado para instalação do serviço Windows, com validação automática de diretório.
+**Última atualização**: Documentação do serviço `requerimentosService.ts` com detalhamento da formatação automática de horas decimais para formato HH:MM na busca de requerimentos enviados.
 
 ---
 
@@ -128,4 +128,135 @@ Servidor Express principal com endpoints para sincronização de pesquisas.
 
 ---
 
-[O restante do conteúdo permanece inalterado - apenas atualizando as linhas específicas relacionadas ao faturamentoExportUtils.ts]
+## Diretório Principal do Projeto
+
+### `src/pages/admin/`
+
+Páginas administrativas do sistema Books SND.
+
+#### `EnviarElogios.tsx`
+Página para envio de elogios por email, permitindo seleção e disparo de relatórios de elogios recebidos.
+
+**Funcionalidades:**
+- Navegação por período (mês/ano) para visualizar elogios
+- Seleção individual ou em massa de elogios
+- Geração automática de relatório HTML formatado
+- Interface para configuração de email (destinatários, CC, assunto)
+- Suporte a anexos (limite de 25MB total)
+- Preview do relatório antes do envio
+- Validação de emails com regex
+- Extração inteligente de emails de texto colado
+- Estatísticas do período (total, registrados, compartilhados)
+- Integração com sistema de permissões via `ProtectedAction`
+- Confirmação antes do envio
+
+**Hooks utilizados:**
+- `useElogios`: Busca elogios filtrados por período
+- `useEstatisticasElogios`: Obtém estatísticas agregadas
+
+**Componentes principais:**
+- Tabela de elogios com checkbox para seleção
+- Modal de configuração de email
+- Dialog de confirmação de envio
+- Cards de estatísticas do período
+
+**Estados gerenciados:**
+- Filtros de período (mês/ano)
+- Seleção de elogios
+- Dados do email (destinatários, CC, assunto, corpo, anexos)
+- Estados de loading e modais
+
+**Formato do relatório:**
+- HTML estilizado com cores da marca Sonda (verde)
+- Resumo do período e total de elogios
+- Detalhamento individual de cada elogio com empresa, cliente, chamado, resposta e comentários
+- Rodapé com informações do sistema
+
+---
+
+
+## Diretório `src/services/`
+
+Serviços de lógica de negócio e integração com APIs.
+
+### `requerimentosService.ts`
+Serviço principal para gerenciamento completo de requerimentos, incluindo CRUD, validações de negócio e formatação de dados.
+
+**Funcionalidades principais:**
+- CRUD completo de requerimentos (criar, buscar, atualizar, deletar)
+- Validações de negócio e integridade de dados
+- Conversão automática de horas entre formatos decimal e HH:MM
+- Resolução de nomes de usuários (autores) a partir de IDs
+- Formatação de requerimentos para exibição
+- Busca de requerimentos enviados com filtros
+- Integração com tabelas relacionadas (empresas_clientes, profiles)
+- Cálculo de estatísticas de requerimentos
+
+**Métodos principais:**
+- `criarRequerimento(data: RequerimentoFormData): Promise<Requerimento>` - Cria novo requerimento com validações
+- `buscarRequerimentosEnviados()` - Busca requerimentos com formatação automática de horas
+- `formatarRequerimento(req)` - Converte horas decimais para formato HH:MM para exibição
+- `resolverNomesUsuarios(userIds: string[])` - Resolve nomes de autores a partir de IDs
+- `validarDadosRequerimento(data)` - Valida dados antes de salvar
+- `verificarClienteExiste(clienteId)` - Verifica existência de cliente
+
+**Integração com utilitários:**
+- Utiliza `horasUtils.ts` para conversão entre formatos de horas (decimal ↔ HH:MM)
+- Utiliza `mesCobrancaUtils.ts` para conversão de mês de cobrança
+
+**Melhorias recentes:**
+- Adicionada formatação automática de horas na busca de requerimentos enviados
+- Implementada conversão de horas decimais para formato HH:MM antes de retornar dados
+- Garantia de que todos os requerimentos retornados têm horas no formato correto para exibição
+- Refatoração para aplicar `formatarRequerimento()` em todos os requerimentos buscados
+
+**Fluxo de formatação:**
+1. Busca requerimentos do banco (horas em formato decimal)
+2. Resolve nomes dos autores via IDs
+3. Aplica `formatarRequerimento()` para converter horas decimais → HH:MM
+4. Retorna dados formatados prontos para exibição
+
+**Tipos utilizados:**
+- `Requerimento` - Tipo completo do requerimento
+- `RequerimentoFormData` - Dados do formulário de criação/edição
+- `FiltrosRequerimentos` - Filtros para busca
+- `StatusRequerimento` - Status possíveis do requerimento
+
+---
+
+## Diretório `src/utils/`
+
+Utilitários e funções auxiliares utilizadas em todo o projeto.
+
+### `horasUtils.ts`
+Utilitário para conversão e manipulação de valores de horas em diferentes formatos (decimal, HH:MM, minutos).
+
+**Funcionalidades:**
+- Conversão de horas decimais para formato HH:MM
+- Conversão de formato HH:MM para horas decimais
+- Conversão de minutos para formato HH:MM
+- Validação de formato de horas
+- Arredondamento inteligente com precisão configurável
+- Logs de debug para valores entre 0 e 10 horas (útil para troubleshooting)
+
+**Funções principais:**
+- `converterDeHorasDecimal(horasDecimal: number): string` - Converte número decimal para formato HH:MM com precisão aprimorada e logging de debug
+- `converterParaHorasDecimal(horasString: string): number` - Converte string HH:MM para número decimal
+- `converterMinutosParaHoras(minutos: number): string` - Converte minutos totais para formato HH:MM
+- `validarFormatoHoras(valor: string): boolean` - Valida se string está no formato HH:MM correto
+
+**Melhorias recentes:**
+- Adicionado logging de debug para conversões de valores pequenos (0-10 horas)
+- Melhorada precisão no arredondamento usando `Math.round` com multiplicação por 60
+- Comentários explicativos sobre precisão de cálculo
+
+**Uso típico:**
+```typescript
+// Converter 7.5 horas para "07:30"
+const horasFormatadas = converterDeHorasDecimal(7.5);
+
+// Converter "08:45" para 8.75
+const horasDecimal = converterParaHorasDecimal("08:45");
+```
+
+---
