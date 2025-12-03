@@ -87,9 +87,17 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
 
   // Preencher formulário ao editar
   useEffect(() => {
-    if (pesquisa) {
+    if (pesquisa && empresas.length > 0) {
+      // Tentar encontrar a empresa pelo nome completo ou abreviado
+      const empresaEncontrada = empresas.find(
+        e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
+      );
+      
+      // Usar o nome_abreviado se encontrou, senão usar o valor original
+      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_abreviado : pesquisa.empresa;
+      
       form.reset({
-        empresa: pesquisa.empresa,
+        empresa: empresaValue || '',
         cliente: pesquisa.cliente,
         categoria: pesquisa.categoria || '',
         grupo: pesquisa.grupo || '',
@@ -105,7 +113,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         cliente_id: pesquisa.cliente_id || undefined
       });
     }
-  }, [pesquisa, form]);
+  }, [pesquisa, form, empresas]);
 
   const handleSubmit = (dados: PesquisaFormData) => {
     onSubmit(dados);
@@ -118,22 +126,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Indicador de origem */}
-        {pesquisa && (
-          <div className={cn(
-            "p-3 rounded-lg border text-sm",
-            isOrigemSqlServer 
-              ? "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-200"
-              : "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200"
-          )}>
-            <strong>Origem:</strong> {isOrigemSqlServer ? 'SQL Server (Sincronizado)' : 'Manual'}
-            {isOrigemSqlServer && (
-              <p className="text-xs mt-1">
-                Alguns campos podem ter restrições de edição
-              </p>
-            )}
-          </div>
-        )}
 
         {/* Seção: Dados Principais */}
         <div className="space-y-4">
@@ -147,7 +139,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Empresa *</FormLabel>
                   <Select
-                    value={field.value}
+                    value={field.value || ''}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
