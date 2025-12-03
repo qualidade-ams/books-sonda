@@ -1,0 +1,1 @@
+export { ElogioForm } from './ElogioForm';

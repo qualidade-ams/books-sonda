@@ -27,6 +27,10 @@ export async function buscarElogios(
         id,
         empresa,
         cliente,
+        email_cliente,
+        prestador,
+        categoria,
+        grupo,
         tipo_caso,
         nro_caso,
         comentario_pesquisa,
@@ -118,6 +122,10 @@ export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | nu
         id,
         empresa,
         cliente,
+        email_cliente,
+        prestador,
+        categoria,
+        grupo,
         tipo_caso,
         nro_caso,
         comentario_pesquisa,
@@ -142,10 +150,39 @@ export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | nu
 export async function criarElogio(dados: ElogioFormData): Promise<Elogio> {
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Primeiro, criar a pesquisa de satisfação
+  const { data: pesquisa, error: pesquisaError } = await supabase
+    .from('pesquisas_satisfacao')
+    .insert({
+      empresa: dados.empresa,
+      cliente: dados.cliente,
+      email_cliente: dados.email_cliente,
+      prestador: dados.prestador,
+      categoria: dados.categoria,
+      grupo: dados.grupo,
+      tipo_caso: dados.tipo_caso,
+      nro_caso: dados.nro_caso,
+      resposta: dados.resposta,
+      comentario_pesquisa: dados.comentario_pesquisa,
+      data_resposta: dados.data_resposta,
+      origem: 'manual'
+    })
+    .select()
+    .single();
+
+  if (pesquisaError) {
+    console.error('Erro ao criar pesquisa:', pesquisaError);
+    throw new Error('Erro ao criar pesquisa de satisfação');
+  }
+
+  // Depois, criar o elogio vinculado à pesquisa
   const { data, error } = await supabase
     .from('elogios')
     .insert({
-      ...dados,
+      pesquisa_id: pesquisa.id,
+      chamado: dados.nro_caso,
+      observacao: dados.observacao,
+      data_resposta: dados.data_resposta,
       criado_por: user?.id,
       status: dados.status || 'registrado',
     })
@@ -167,9 +204,57 @@ export async function atualizarElogio(
   id: string,
   dados: Partial<ElogioFormData>
 ): Promise<Elogio> {
+  // Buscar o elogio para obter o pesquisa_id
+  const { data: elogioAtual, error: elogioError } = await supabase
+    .from('elogios')
+    .select('pesquisa_id')
+    .eq('id', id)
+    .single();
+
+  if (elogioError || !elogioAtual) {
+    console.error('Erro ao buscar elogio:', elogioError);
+    throw new Error('Elogio não encontrado');
+  }
+
+  // Atualizar a pesquisa vinculada se houver dados de pesquisa
+  if (elogioAtual.pesquisa_id) {
+    const dadosPesquisa: any = {};
+    
+    if (dados.empresa) dadosPesquisa.empresa = dados.empresa;
+    if (dados.cliente) dadosPesquisa.cliente = dados.cliente;
+    if (dados.email_cliente !== undefined) dadosPesquisa.email_cliente = dados.email_cliente;
+    if (dados.prestador !== undefined) dadosPesquisa.prestador = dados.prestador;
+    if (dados.categoria !== undefined) dadosPesquisa.categoria = dados.categoria;
+    if (dados.grupo !== undefined) dadosPesquisa.grupo = dados.grupo;
+    if (dados.tipo_caso !== undefined) dadosPesquisa.tipo_caso = dados.tipo_caso;
+    if (dados.nro_caso !== undefined) dadosPesquisa.nro_caso = dados.nro_caso;
+    if (dados.resposta) dadosPesquisa.resposta = dados.resposta;
+    if (dados.comentario_pesquisa !== undefined) dadosPesquisa.comentario_pesquisa = dados.comentario_pesquisa;
+    if (dados.data_resposta !== undefined) dadosPesquisa.data_resposta = dados.data_resposta;
+
+    if (Object.keys(dadosPesquisa).length > 0) {
+      const { error: pesquisaError } = await supabase
+        .from('pesquisas_satisfacao')
+        .update(dadosPesquisa)
+        .eq('id', elogioAtual.pesquisa_id);
+
+      if (pesquisaError) {
+        console.error('Erro ao atualizar pesquisa:', pesquisaError);
+        throw new Error('Erro ao atualizar pesquisa de satisfação');
+      }
+    }
+  }
+
+  // Atualizar o elogio
+  const dadosElogio: any = {};
+  if (dados.observacao !== undefined) dadosElogio.observacao = dados.observacao;
+  if (dados.nro_caso !== undefined) dadosElogio.chamado = dados.nro_caso;
+  if (dados.data_resposta !== undefined) dadosElogio.data_resposta = dados.data_resposta;
+  if (dados.status) dadosElogio.status = dados.status;
+
   const { data, error } = await supabase
     .from('elogios')
-    .update(dados)
+    .update(dadosElogio)
     .eq('id', id)
     .select()
     .single();

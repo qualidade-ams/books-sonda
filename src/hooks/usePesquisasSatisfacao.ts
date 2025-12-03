@@ -215,6 +215,8 @@ export function useEnviarParaElogios() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
       queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
+      queryClient.invalidateQueries({ queryKey: ['elogios'] });
+      queryClient.invalidateQueries({ queryKey: ['estatisticas-elogios'] });
       toast.success('Pesquisa enviada para Elogios!');
     },
     onError: (error: Error) => {

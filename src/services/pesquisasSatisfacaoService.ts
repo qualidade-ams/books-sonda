@@ -475,6 +475,47 @@ export async function enviarParaPlanoAcao(id: string): Promise<void> {
  * Enviar pesquisa para Elogios
  */
 export async function enviarParaElogios(id: string): Promise<void> {
+  // Buscar dados da pesquisa
+  const pesquisa = await buscarPesquisaPorId(id);
+  
+  if (!pesquisa) {
+    throw new Error('Pesquisa não encontrada');
+  }
+
+  // Verificar se já existe um elogio para esta pesquisa
+  const { data: elogioExistente } = await supabase
+    .from('elogios')
+    .select('id')
+    .eq('pesquisa_id', pesquisa.id)
+    .single();
+
+  // Se já existe, não criar novamente
+  if (elogioExistente) {
+    console.log('Elogio já existe para esta pesquisa');
+    return;
+  }
+
+  // Buscar dados do usuário autenticado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Criar elogio vinculado à pesquisa
+  const { error: elogioError } = await supabase
+    .from('elogios')
+    .insert({
+      pesquisa_id: pesquisa.id,
+      chamado: pesquisa.nro_caso,
+      data_resposta: pesquisa.data_resposta,
+      observacao: null,
+      status: 'registrado',
+      criado_por: user?.id || null
+    });
+
+  if (elogioError) {
+    console.error('Erro ao criar elogio:', elogioError);
+    throw new Error('Erro ao criar elogio');
+  }
+
+  // Atualizar status da pesquisa
   const { error } = await supabase
     .from('pesquisas_satisfacao')
     .update({ 

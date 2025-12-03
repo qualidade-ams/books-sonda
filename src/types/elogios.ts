@@ -39,6 +39,10 @@ export interface ElogioCompleto extends Elogio {
     id: string;
     empresa: string;
     cliente: string;
+    email_cliente?: string;
+    prestador?: string;
+    categoria?: string;
+    grupo?: string;
     tipo_caso?: string;
     nro_caso?: string;
     comentario_pesquisa?: string;
@@ -49,9 +53,20 @@ export interface ElogioCompleto extends Elogio {
 
 // Interface para formulário de criação
 export interface ElogioFormData {
-  pesquisa_id: string;
-  chamado?: string;
-  empresa_id?: string;
+  // Campos da pesquisa de satisfação
+  empresa: string;
+  cliente: string;
+  email_cliente?: string;
+  prestador?: string;
+  categoria?: string;
+  grupo?: string;
+  tipo_caso?: string;
+  nro_caso?: string;
+  data_resposta?: Date | string;
+  resposta: string;
+  comentario_pesquisa?: string;
+  
+  // Campos específicos do elogio
   observacao?: string;
   acao_tomada?: string;
   compartilhado_com?: string;

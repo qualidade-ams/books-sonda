@@ -129,6 +129,14 @@ ALTER TABLE elogios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE elogios_historico ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (ajustar conforme necessário)
+-- Remover políticas existentes antes de recriar
+DROP POLICY IF EXISTS "Permitir leitura de elogios para usuários autenticados" ON elogios;
+DROP POLICY IF EXISTS "Permitir inserção de elogios para usuários autenticados" ON elogios;
+DROP POLICY IF EXISTS "Permitir atualização de elogios para usuários autenticados" ON elogios;
+DROP POLICY IF EXISTS "Permitir exclusão de elogios para usuários autenticados" ON elogios;
+DROP POLICY IF EXISTS "Permitir leitura de histórico para usuários autenticados" ON elogios_historico;
+DROP POLICY IF EXISTS "Permitir inserção de histórico para usuários autenticados" ON elogios_historico;
+
 CREATE POLICY "Permitir leitura de elogios para usuários autenticados"
   ON elogios FOR SELECT
   TO authenticated

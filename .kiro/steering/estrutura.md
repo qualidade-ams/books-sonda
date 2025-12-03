@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Componente `PesquisaForm.tsx` - implementado mapeamento inteligente de empresas para compatibilidade entre nome completo e abreviado durante edição de pesquisas.
+**Última atualização**: Serviço `elogiosService.ts` - adicionados campos `email_cliente`, `prestador`, `categoria` e `grupo` na busca de elogios para suportar formulário completo de cadastro/edição.
 
 ---
 
@@ -134,6 +134,121 @@ Servidor Express principal com endpoints para sincronização de pesquisas.
 
 Páginas administrativas do sistema Books SND.
 
+#### `LancarElogios.tsx`
+Página principal para gerenciamento e visualização de elogios (pesquisas de satisfação positivas), com funcionalidades de listagem, filtros, paginação, navegação temporal e CRUD completo.
+
+**Funcionalidades principais:**
+- **Navegação temporal**: Navegação por período (mês/ano) com botões anterior/próximo para visualizar elogios de diferentes períodos
+- **Listagem completa**: Tabela com todos os elogios do período selecionado, exibindo empresa, cliente, chamado, data resposta, comentário e resposta
+- **Filtros avançados**: Sistema de filtros expansível com busca por empresa e cliente
+- **Seleção múltipla**: Checkboxes para seleção individual ou em massa de elogios
+- **Paginação flexível**: Controle de itens por página (25, 50, 100, 500, Todos) com navegação entre páginas
+- **Estatísticas visuais**: Cards com estatísticas do período (total, registrados, compartilhados, arquivados)
+- **Modal de edição**: Dialog para visualização detalhada dos dados do elogio organizado em seções
+- **CRUD completo**: Criação, edição e exclusão de elogios via modais com formulário dedicado (ElogioForm)
+- **Integração com envio**: Botão de ação rápida para navegar para a página de envio de elogios
+- **Limpeza de cache**: Limpa cache de pesquisas ao entrar na tela para garantir dados atualizados
+
+**Hooks utilizados:**
+- `useElogios(filtros)`: Busca elogios filtrados por período (mês/ano) e busca textual
+- `useEstatisticasElogios(filtros)`: Obtém estatísticas agregadas do período
+- `useCacheManager()`: Gerencia limpeza de cache de pesquisas
+- `useEmpresas()`: Busca lista de empresas disponíveis no sistema
+- `useCriarElogio()`: Hook para criação de novos elogios
+- `useAtualizarElogio()`: Hook para atualização de elogios existentes
+- `useDeletarElogio()`: Hook para exclusão de elogios
+
+**Componentes UI principais:**
+- **Tabela de elogios**: Exibição com colunas (checkbox, chamado, empresa, data resposta, cliente, comentário, resposta, ações)
+- **Cards de navegação**: Card com navegação de período e exibição do mês/ano atual
+- **Cards de estatísticas**: 4 cards exibindo total, registrados, compartilhados e arquivados
+- **Painel de filtros**: Área expansível com campo de busca e botão de limpar filtros
+- **Modal de visualização**: Dialog grande (max-w-4xl) com layout organizado em seções:
+  - **Dados Principais**: Empresa e Cliente (campos desabilitados)
+  - **Informações do Caso**: Tipo do chamado e número do chamado (campos desabilitados)
+  - **Feedback do Cliente**: Resposta, data da resposta, comentário da pesquisa e observação (campos desabilitados)
+- **Modal de criação/edição**: Dialog com formulário completo usando componente `ElogioForm`
+- **Botão de adicionar**: Botão flutuante com ícone Plus para criar novo elogio
+- **Controles de paginação**: Select de itens por página, navegação entre páginas e contador de registros
+
+**Estados gerenciados:**
+- `mesSelecionado`, `anoSelecionado`: Controle do período visualizado
+- `filtros`: Objeto com filtros aplicados (busca, mes, ano)
+- `selecionados`: Array de IDs dos elogios selecionados
+- `elogioVisualizando`: Elogio atualmente sendo visualizado no modal
+- `modalVisualizarAberto`: Controle de abertura do modal de edição
+- `paginaAtual`, `itensPorPagina`: Controle de paginação
+- `mostrarFiltros`: Controle de expansão do painel de filtros
+
+**Funções principais:**
+- `navegarMesAnterior()`, `navegarMesProximo()`: Navegação entre períodos com ajuste automático de ano
+- `handleVisualizar(elogio)`: Abre modal de edição com dados do elogio selecionado
+- `handleSelecionarTodos(selecionado)`: Seleciona ou desmarca todos os elogios da página
+- `handleSelecionarItem(id)`: Alterna seleção de um elogio específico
+- `handleFiltroChange(campo, valor)`: Atualiza filtros e reseta paginação
+- `limparFiltros()`: Remove todos os filtros aplicados
+- `handleAlterarItensPorPagina(valor)`: Ajusta quantidade de itens por página
+- `handlePaginaAnterior()`, `handleProximaPagina()`: Navegação entre páginas
+- `obterDadosEmpresa(nomeCompleto)`: Busca empresa pelo nome completo ou abreviado e retorna objeto com `{ nome: string, encontrada: boolean }` para exibição e validação visual
+
+**Estrutura da tabela:**
+- **Coluna Checkbox**: Seleção individual com checkbox no cabeçalho para selecionar todos
+- **Coluna Chamado**: Exibe ícone Database, tipo do caso (IM/PR/RF) e número do chamado em fonte mono
+- **Coluna Empresa**: Nome da empresa com validação visual - exibe em vermelho se a empresa não for encontrada no cadastro (usando `obterDadosEmpresa()`)
+- **Coluna Data Resposta**: Data e hora formatadas em pt-BR (DD/MM/YYYY HH:MM)
+- **Coluna Cliente**: Nome do cliente com truncamento
+- **Coluna Comentário**: Comentário da pesquisa com line-clamp-2 (máximo 2 linhas)
+- **Coluna Resposta**: Badge verde com nível de satisfação
+- **Coluna Ações**: Botões de editar (abre modal), excluir (TODO) e ir para enviar elogios
+
+**Modal de edição (estrutura):**
+- **Seção Dados Principais**: Grid 2 colunas com campos Empresa e Cliente
+- **Seção Informações do Caso**: Grid 2 colunas com Tipo do Chamado e Número do Chamado
+- **Seção Feedback do Cliente**: Grid 2 colunas com Resposta e Data da Resposta, seguido de textareas para Comentário da Pesquisa e Observação (exibidos condicionalmente)
+- Todos os campos são desabilitados (disabled) para visualização apenas
+- Textareas com altura mínima de 100px e fundo cinza claro
+
+**Paginação:**
+- Select com opções: 25, 50, 100, 500, Todos
+- Navegação com botões anterior/próximo
+- Indicador de página atual e total de páginas
+- Contador de registros exibidos (ex: "1-25 de 150 elogios")
+- Botões desabilitados quando não há mais páginas
+
+**Formatação de dados:**
+- Datas formatadas em pt-BR com hora (DD/MM/YYYY HH:MM)
+- Ajuste de timezone adicionando 'T00:00:00' à data antes de converter
+- Truncamento de textos longos com classes Tailwind (truncate, line-clamp-2)
+- Badge verde para resposta de satisfação
+
+**Integrações:**
+- Sistema de cache (limpeza ao montar componente)
+- Navegação para página de envio de elogios via React Router
+- Componentes UI do shadcn/ui (Table, Card, Dialog, Badge, Checkbox, Select)
+
+**Tipos utilizados:**
+- `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa relacionada
+- `FiltrosElogio`: Filtros para busca (busca, mes, ano)
+
+**Componentes importados:**
+- `ElogioForm` - Formulário de cadastro/edição de elogios importado de `@/components/admin/elogios`
+- Ícone `Plus` do lucide-react para botão de adicionar
+
+**Melhorias recentes:**
+- Modal de visualização transformado em modal de edição com layout organizado em seções
+- Campos agrupados logicamente (Dados Principais, Informações do Caso, Feedback do Cliente)
+- Todos os campos desabilitados para visualização apenas
+- Textareas para comentários e observações com melhor legibilidade
+- Labels descritivas para cada campo
+- Layout responsivo com grid adaptativo (1 coluna em mobile, 2 em desktop)
+- Altura máxima do modal (90vh) com scroll interno
+- **Importados hooks de CRUD**: `useCriarElogio`, `useAtualizarElogio`, `useDeletarElogio` para operações completas
+- **Importado componente ElogioForm**: Formulário dedicado para criação e edição de elogios
+- **Preparação para CRUD completo**: Estrutura pronta para implementar criação, edição e exclusão de elogios
+- **Validação visual de empresas**: Implementada função `obterDadosEmpresa()` que retorna objeto com nome da empresa e flag `encontrada`, permitindo destacar em vermelho empresas não cadastradas no sistema
+
+---
+
 #### `EnviarElogios.tsx`
 Página completa para gerenciamento e envio de elogios por email, permitindo seleção, visualização e disparo de relatórios formatados de elogios recebidos de clientes.
 
@@ -153,9 +268,20 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 **Hooks utilizados:**
 - `useElogios(filtros)`: Busca elogios filtrados por período (mês/ano)
 - `useEstatisticasElogios(filtros)`: Obtém estatísticas agregadas do período
+- `useEmpresas()`: Busca lista de empresas disponíveis no sistema para validação e exibição
+
+**Ícones utilizados (lucide-react):**
+- `Mail`, `Send`, `Paperclip`, `X`, `FileText`, `Calendar`, `ChevronLeft`, `ChevronRight`, `CheckSquare`, `Square`, `TrendingUp`, `Database`
 
 **Componentes UI principais:**
-- **Tabela de elogios**: Exibição de elogios com colunas (empresa, cliente, chamado, data resposta, resposta, comentário) e checkboxes para seleção
+- **Tabela de elogios**: Exibição de elogios com colunas otimizadas e checkboxes para seleção:
+  - **Coluna Checkbox**: Seleção individual com checkbox no cabeçalho para selecionar todos
+  - **Coluna Chamado** (120px): Exibe ícone Database, tipo do caso (IM/PR/RF) e número do chamado em fonte mono com fundo cinza
+  - **Coluna Empresa** (180px): Nome da empresa com validação visual - exibe em vermelho se não encontrada no cadastro (usando `obterDadosEmpresa()`)
+  - **Coluna Data Resposta** (120px): Data formatada em pt-BR (DD/MM/YYYY) com estilo muted
+  - **Coluna Cliente** (150px): Nome do cliente com truncamento
+  - **Coluna Comentário** (200px): Comentário da pesquisa com line-clamp-2 (máximo 2 linhas)
+  - **Coluna Resposta** (140px): Badge verde com nível de satisfação e whitespace-nowrap
 - **Cards de navegação**: Card com navegação de período e exibição do mês/ano atual
 - **Cards de estatísticas**: 4 cards exibindo total, registrados, compartilhados e período
 - **Modal de email**: Dialog grande (max-w-7xl) com formulário completo de configuração de email, incluindo:
@@ -191,6 +317,7 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - `navegarMesAnterior()`, `navegarMesProximo()`: Navegação entre períodos
 - `handleSelecionarElogio()`, `handleSelecionarTodos()`: Gerenciamento de seleção
 - `formatarData(data)`: Formata datas para exibição em formato brasileiro (DD/MM/YYYY)
+- `obterDadosEmpresa(nomeCompleto)`: Busca empresa pelo nome completo ou abreviado e retorna objeto com `{ nome: string, encontrada: boolean }` para exibição e validação visual
 
 **Formato do relatório HTML (Design Moderno Sonda):**
 - **Estrutura completa HTML5** com DOCTYPE e meta charset UTF-8
@@ -234,6 +361,17 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 **Tipos utilizados:**
 - `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa
 - `FiltrosElogio`: Filtros para busca (mês, ano)
+
+**Melhorias recentes:**
+- **Reorganização de colunas**: Ordem otimizada para melhor fluxo de leitura (Chamado → Empresa → Data → Cliente → Comentário → Resposta)
+- **Larguras fixas**: Colunas com larguras definidas para melhor controle de layout e responsividade
+- **Validação visual de empresas**: Implementada função `obterDadosEmpresa()` que destaca em vermelho empresas não cadastradas no sistema
+- **Formatação aprimorada**: 
+  - Chamado exibido com tipo do caso (IM/PR/RF) em fonte mono com fundo cinza
+  - Data com estilo muted para melhor hierarquia visual
+  - Badge de resposta com whitespace-nowrap para evitar quebra de linha
+  - Textos responsivos com classes sm:text-sm para adaptação mobile
+- **Melhor truncamento**: Cliente e comentário com truncamento apropriado para evitar overflow
 
 **Melhorias futuras (TODOs):**
 - Implementar serviço real de envio de email para elogios
@@ -359,6 +497,134 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 
 ---
 
+### `src/components/admin/elogios/`
+
+Componentes relacionados ao gerenciamento de elogios (pesquisas de satisfação positivas).
+
+#### `ElogioForm.tsx`
+Formulário completo de cadastro e edição de elogios, baseado na estrutura do `PesquisaForm.tsx` mas adaptado para o contexto de elogios (pesquisas de satisfação positivas).
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de elogios com todos os campos necessários
+- **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
+- **Seleção de datas**: Calendário interativo para seleção de data/hora de resposta
+- **Categorização**: Campos para categoria, grupo e tipo de chamado
+- **Feedback do cliente**: Campos para resposta (satisfação) e comentários
+- **Organização em seções**: Interface dividida em 4 seções lógicas (Dados Principais, Categorização, Informações do Caso, Feedback do Cliente)
+- **Mapeamento inteligente de empresas**: Busca automática da empresa pelo nome completo ou abreviado ao editar elogio
+
+**Props do componente:**
+- `elogio?: ElogioCompleto | null` - Elogio existente para edição (opcional)
+- `onSubmit: (dados: ElogioFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Interface ElogioFormData:**
+```typescript
+{
+  empresa: string;              // Obrigatório
+  cliente: string;              // Obrigatório
+  email_cliente?: string;       // Opcional
+  prestador?: string;           // Opcional (consultor/prestador)
+  categoria?: string;           // Opcional
+  grupo?: string;               // Opcional
+  tipo_caso?: string;           // Opcional (IM/PR/RF)
+  nro_caso?: string;            // Opcional (número do chamado)
+  data_resposta?: Date;         // Opcional
+  resposta: string;             // Obrigatório (nível de satisfação)
+  comentario_pesquisa?: string; // Opcional
+  observacao?: string;          // Opcional
+}
+```
+
+**Campos do formulário:**
+
+**Seção: Dados Principais**
+- `empresa` (obrigatório) - Select com empresas ordenadas alfabeticamente
+- `cliente` (obrigatório) - Nome do cliente
+- `email_cliente` - Email do cliente
+- `prestador` - Nome do consultor/prestador
+
+**Seção: Categorização**
+- `categoria` - Categoria do atendimento
+- `grupo` - Grupo responsável
+
+**Seção: Informações do Caso**
+- `tipo_caso` - Select com tipos de chamado (IM - Incidente, PR - Problema, RF - Requisição)
+- `nro_caso` - Número do chamado
+
+**Seção: Feedback do Cliente**
+- `resposta` - Select com níveis de satisfação positivos (Muito Satisfeito, Satisfeito)
+- `data_resposta` - Calendário para seleção de data/hora da resposta
+- `comentario_pesquisa` - Textarea para comentários da pesquisa
+- `observacao` - Textarea para observações internas
+
+**Hooks utilizados:**
+- `useForm` (React Hook Form) - Gerenciamento do estado do formulário
+- `useEmpresas()` - Busca lista de empresas para o select
+
+**Componentes UI utilizados:**
+- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
+- `Input` - Campos de texto
+- `Textarea` - Campos de texto multilinha (4 linhas)
+- `Select` - Seleção de opções
+- `Calendar` - Seletor de data com locale pt-BR
+- `Popover` - Container para o calendário
+- `Button` - Botões de ação
+
+**Opções de tipo de chamado:**
+```typescript
+[
+  { value: 'IM', label: 'IM - Incidente' },
+  { value: 'PR', label: 'PR - Problema' },
+  { value: 'RF', label: 'RF - Requisição' }
+]
+```
+
+**Opções de resposta (satisfação):**
+```typescript
+[
+  { value: 'Muito Satisfeito', label: 'Muito Satisfeito' },
+  { value: 'Satisfeito', label: 'Satisfeito' }
+]
+```
+
+**Comportamento:**
+- **Modo criação**: Formulário em branco para novo elogio com resposta padrão "Muito Satisfeito"
+- **Modo edição**: Formulário preenchido com dados do elogio existente via `useEffect`
+- **Reset automático**: Formulário é resetado quando a prop `elogio` ou lista de `empresas` muda
+- **Desabilitação durante loading**: Botões desabilitados durante operações assíncronas
+- **Mapeamento de empresas**: Ao editar, busca empresa por nome completo ou abreviado para compatibilidade com dados do SQL Server
+
+**Tipos utilizados:**
+- `ElogioCompleto` - Tipo completo do elogio importado de `@/types/elogios`
+- `ElogioFormData` - Interface local para dados do formulário
+
+**Bibliotecas utilizadas:**
+- `react-hook-form` - Gerenciamento de formulários
+- `date-fns` - Manipulação de datas com locale pt-BR
+- `lucide-react` - Ícones (CalendarIcon)
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de elogios (LancarElogios.tsx)
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Validação consistente com tipos definidos em `@/types/elogios`
+- Exportado via `src/components/admin/elogios/index.ts`
+
+**Diferenças em relação ao PesquisaForm:**
+- Opções de resposta limitadas a níveis positivos (Muito Satisfeito, Satisfeito)
+- Resposta padrão definida como "Muito Satisfeito"
+- Focado em elogios (pesquisas de satisfação positivas)
+- Sem validação Zod (validação básica via React Hook Form)
+
+#### `index.ts`
+Arquivo de exportação dos componentes do diretório de elogios.
+
+**Exportações:**
+- `ElogioForm` - Formulário de cadastro/edição de elogios
+
+---
+
 
 ## Diretório `src/services/`
 
@@ -406,6 +672,79 @@ Serviço principal para gerenciamento completo de requerimentos, incluindo CRUD,
 - `RequerimentoFormData` - Dados do formulário de criação/edição
 - `FiltrosRequerimentos` - Filtros para busca
 - `StatusRequerimento` - Status possíveis do requerimento
+
+---
+
+### `elogiosService.ts`
+Serviço completo para gerenciamento de elogios (pesquisas de satisfação positivas), incluindo CRUD, filtros avançados e estatísticas.
+
+**Funcionalidades principais:**
+- CRUD completo de elogios (criar, buscar, atualizar, deletar)
+- Busca de elogios com filtros avançados (status, período, busca textual)
+- Integração com tabela de pesquisas de satisfação
+- Cálculo de estatísticas de elogios por status
+- Filtros por mês/ano da data de resposta
+- Busca textual em múltiplos campos (empresa, cliente, número do caso, observação)
+
+**Métodos principais:**
+- `buscarElogios(filtros?: FiltrosElogio): Promise<ElogioCompleto[]>` - Busca elogios com filtros opcionais, retorna dados completos incluindo pesquisa relacionada
+- `buscarElogioPorId(id: string): Promise<ElogioCompleto | null>` - Busca elogio específico por ID com dados da pesquisa
+- `criarElogio(dados: ElogioFormData): Promise<Elogio>` - Cria novo elogio e pesquisa de satisfação vinculada
+- `atualizarElogio(id: string, dados: Partial<ElogioFormData>): Promise<Elogio>` - Atualiza elogio e pesquisa relacionada
+- `deletarElogio(id: string): Promise<void>` - Remove elogio do sistema
+- `obterEstatisticas(filtros?: FiltrosElogio): Promise<EstatisticasElogio>` - Calcula estatísticas agregadas (total, registrados, compartilhados, arquivados)
+
+**Campos da pesquisa vinculada:**
+- `empresa` - Nome da empresa
+- `cliente` - Nome do cliente
+- `email_cliente` - Email do cliente
+- `prestador` - Nome do consultor/prestador
+- `categoria` - Categoria do atendimento
+- `grupo` - Grupo responsável
+- `tipo_caso` - Tipo do chamado (IM/PR/RF)
+- `nro_caso` - Número do chamado
+- `comentario_pesquisa` - Comentário da pesquisa
+- `resposta` - Nível de satisfação
+- `data_resposta` - Data/hora da resposta
+
+**Filtros disponíveis (FiltrosElogio):**
+- `status` - Array de status para filtrar (registrado, compartilhado, arquivado)
+- `dataInicio` - Data inicial do período
+- `dataFim` - Data final do período
+- `busca` - Busca textual em empresa, cliente, número do caso e observação
+- `empresa` - Filtro específico por nome da empresa
+- `mes` - Mês da data de resposta (1-12)
+- `ano` - Ano da data de resposta
+
+**Fluxo de criação:**
+1. Cria pesquisa de satisfação com origem 'manual'
+2. Vincula elogio à pesquisa criada
+3. Define status inicial como 'registrado'
+4. Registra usuário criador (criado_por)
+5. Retorna elogio criado
+
+**Fluxo de atualização:**
+1. Busca elogio atual para obter pesquisa_id
+2. Atualiza campos da pesquisa vinculada (se fornecidos)
+3. Atualiza campos do elogio (observação, chamado, data_resposta, status)
+4. Retorna elogio atualizado
+
+**Tipos utilizados:**
+- `Elogio` - Tipo base do elogio
+- `ElogioCompleto` - Elogio com dados da pesquisa relacionada
+- `ElogioFormData` - Dados do formulário de criação/edição
+- `FiltrosElogio` - Filtros para busca
+- `EstatisticasElogio` - Estatísticas agregadas (total, registrados, compartilhados, arquivados)
+
+**Integração:**
+- Utilizado pelos hooks `useElogios`, `useCriarElogio`, `useAtualizarElogio`, `useDeletarElogio`
+- Integra-se com tabela `elogios` e `pesquisas_satisfacao` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+
+**Melhorias recentes:**
+- Adicionados campos `email_cliente`, `prestador`, `categoria` e `grupo` na busca de elogios para suportar formulário completo
+- Implementada atualização completa de todos os campos da pesquisa vinculada
+- Melhorada sincronização entre elogio e pesquisa de satisfação
 
 ---
 

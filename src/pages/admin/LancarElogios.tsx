@@ -35,12 +35,16 @@ import {
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { useCacheManager } from '@/hooks/useCacheManager';
-import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
+import { useElogios, useEstatisticasElogios, useCriarElogio, useAtualizarElogio, useDeletarElogio } from '@/hooks/useElogios';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
+import { ElogioForm } from '@/components/admin/elogios';
+import { Plus } from 'lucide-react';
+import { useEmpresas } from '@/hooks/useEmpresas';
 
 function LancarElogios() {
   const navigate = useNavigate();
   const { clearFeatureCache } = useCacheManager();
+  const { empresas } = useEmpresas();
   
   // Limpar cache ao entrar na tela
   useEffect(() => {
@@ -61,9 +65,15 @@ function LancarElogios() {
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [elogioVisualizando, setElogioVisualizando] = useState<ElogioCompleto | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
+  const [modalCriarAberto, setModalCriarAberto] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  // Mutations
+  const criarElogio = useCriarElogio();
+  const atualizarElogio = useAtualizarElogio();
+  const deletarElogio = useDeletarElogio();
 
   // Nomes dos meses
   const nomesMeses = [
@@ -101,12 +111,46 @@ function LancarElogios() {
   };
 
   // Queries
-  const { data: elogios = [], isLoading } = useElogios(filtros);
+  const { data: elogios = [], isLoading, refetch } = useElogios(filtros);
   const { data: estatisticas } = useEstatisticasElogios(filtros);
 
   const handleVisualizar = (elogio: ElogioCompleto) => {
     setElogioVisualizando(elogio);
     setModalVisualizarAberto(true);
+  };
+
+  const handleCriarElogio = async (dados: any) => {
+    try {
+      await criarElogio.mutateAsync(dados);
+      setModalCriarAberto(false);
+      // Recarregar dados
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao criar elogio:', error);
+    }
+  };
+
+  const handleAtualizarElogio = async (dados: any) => {
+    if (!elogioVisualizando) return;
+    try {
+      await atualizarElogio.mutateAsync({ id: elogioVisualizando.id, dados });
+      setModalVisualizarAberto(false);
+      setElogioVisualizando(null);
+      // Recarregar dados
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao atualizar elogio:', error);
+    }
+  };
+
+  const handleDeletarElogio = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este elogio?')) {
+      try {
+        await deletarElogio.mutateAsync(id);
+      } catch (error) {
+        console.error('Erro ao deletar elogio:', error);
+      }
+    }
   };
 
   const handleSelecionarTodos = (selecionado: boolean) => {
@@ -158,6 +202,22 @@ function LancarElogios() {
     setPaginaAtual(prev => Math.min(totalPaginas, prev + 1));
   };
 
+  // Função para obter nome abreviado da empresa e verificar se existe no cadastro
+  const obterDadosEmpresa = (nomeCompleto: string | undefined): { nome: string; encontrada: boolean } => {
+    if (!nomeCompleto) return { nome: '-', encontrada: false };
+    
+    // Buscar empresa correspondente pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      e => e.nome_completo === nomeCompleto || e.nome_abreviado === nomeCompleto
+    );
+    
+    // Retornar nome abreviado se encontrado, senão retornar o nome original
+    return {
+      nome: empresaEncontrada ? empresaEncontrada.nome_abreviado : nomeCompleto,
+      encontrada: !!empresaEncontrada
+    };
+  };
+
   return (
     <LayoutAdmin>
       <div className="space-y-6">
@@ -171,6 +231,10 @@ function LancarElogios() {
               Gerenciamento de elogios de clientes
             </p>
           </div>
+          <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Elogio
+          </Button>
         </div>
 
         {/* Navegação de Período */}
@@ -358,7 +422,14 @@ function LancarElogios() {
                           )}
                         </TableCell>
                         <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
-                          <span className="text-red-600 font-semibold">{elogio.pesquisa?.empresa}</span>
+                          {(() => {
+                            const { nome, encontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
+                            return (
+                              <span className={`font-semibold ${!encontrada ? 'text-red-600' : ''}`}>
+                                {nome}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm text-muted-foreground">
                           {elogio.data_resposta ? new Date(elogio.data_resposta + 'T00:00:00').toLocaleString('pt-BR', {
@@ -398,10 +469,7 @@ function LancarElogios() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                // TODO: Implementar exclusão
-                                console.log('Excluir elogio:', elogio.id);
-                              }}
+                              onClick={() => handleDeletarElogio(elogio.id)}
                               title="Excluir"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -483,49 +551,37 @@ function LancarElogios() {
           </CardContent>
         </Card>
 
-        {/* Modal de Visualização */}
+        {/* Modal de Edição */}
         <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-green-600" />
-                Detalhes do Elogio
-              </DialogTitle>
+              <DialogTitle>Editar Elogio</DialogTitle>
             </DialogHeader>
             {elogioVisualizando && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Empresa</p>
-                    <p className="text-base">{elogioVisualizando.pesquisa?.empresa}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Cliente</p>
-                    <p className="text-base">{elogioVisualizando.pesquisa?.cliente}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Resposta</p>
-                    <p className="text-base font-semibold text-green-600">{elogioVisualizando.pesquisa?.resposta}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Chamado</p>
-                    <p className="text-base">{elogioVisualizando.pesquisa?.nro_caso || elogioVisualizando.chamado || '-'}</p>
-                  </div>
-                </div>
-                {elogioVisualizando.pesquisa?.comentario_pesquisa && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Comentário</p>
-                    <p className="text-base whitespace-pre-wrap">{elogioVisualizando.pesquisa.comentario_pesquisa}</p>
-                  </div>
-                )}
-                {elogioVisualizando.observacao && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Observação</p>
-                    <p className="text-base whitespace-pre-wrap">{elogioVisualizando.observacao}</p>
-                  </div>
-                )}
-              </div>
+              <ElogioForm
+                elogio={elogioVisualizando}
+                onSubmit={handleAtualizarElogio}
+                onCancel={() => {
+                  setModalVisualizarAberto(false);
+                  setElogioVisualizando(null);
+                }}
+                isLoading={atualizarElogio.isPending}
+              />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Criar */}
+        <Dialog open={modalCriarAberto} onOpenChange={setModalCriarAberto}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Novo Elogio</DialogTitle>
+            </DialogHeader>
+            <ElogioForm
+              onSubmit={handleCriarElogio}
+              onCancel={() => setModalCriarAberto(false)}
+              isLoading={criarElogio.isPending}
+            />
           </DialogContent>
         </Dialog>
       </div>

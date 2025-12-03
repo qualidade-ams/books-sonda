@@ -17,7 +17,8 @@ import {
   ChevronRight,
   CheckSquare,
   Square,
-  TrendingUp
+  TrendingUp,
+  Database
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import ProtectedAction from '@/components/auth/ProtectedAction';
 import { toast } from 'sonner';
 
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
+import { useEmpresas } from '@/hooks/useEmpresas';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 
 export default function EnviarElogios() {
@@ -89,6 +91,23 @@ export default function EnviarElogios() {
   // Hooks
   const { data: elogios = [], isLoading, error, refetch } = useElogios(filtros);
   const { data: estatisticas } = useEstatisticasElogios(filtros);
+  const { empresas } = useEmpresas();
+
+  // Função para obter nome abreviado da empresa e verificar se existe no cadastro
+  const obterDadosEmpresa = (nomeCompleto: string | undefined): { nome: string; encontrada: boolean } => {
+    if (!nomeCompleto) return { nome: '-', encontrada: false };
+    
+    // Buscar empresa correspondente pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      e => e.nome_completo === nomeCompleto || e.nome_abreviado === nomeCompleto
+    );
+    
+    // Retornar nome abreviado se encontrado, senão retornar o nome original
+    return {
+      nome: empresaEncontrada ? empresaEncontrada.nome_abreviado : nomeCompleto,
+      encontrada: !!empresaEncontrada
+    };
+  };
 
   // Nomes dos meses
   const nomesMeses = [
@@ -153,7 +172,7 @@ export default function EnviarElogios() {
     let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:0;font-family:Arial,sans-serif}.container{max-width:1000px;margin:0 auto;background:#fff}.header{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative}.header::before{content:'';position:absolute;bottom:-30px;left:0;right:0;height:60px;background:#fff;border-radius:50% 50% 0 0/100% 100% 0 0}.logo{background:white;width:60px;height:60px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:#0066FF;margin-bottom:20px}.title-box{background:white;color:#333;padding:20px 40px;margin:40px auto;max-width:600px;border:4px solid #E91E63;border-radius:8px;text-align:center}.title-box h1{margin:0;font-size:20px;font-weight:bold;text-transform:uppercase}.title-box p{margin:10px 0 0 0;font-size:14px;color:#666}.colaboradores{text-align:center;color:#0066FF;font-weight:bold;font-size:14px;padding:20px;text-transform:uppercase}.content{padding:20px 40px}.elogios-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:30px 0}.elogio-card{background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #0066FF}.elogio-card h3{color:#0066FF;font-size:14px;margin:0 0 10px 0;text-transform:uppercase;font-weight:bold}.elogio-card .resposta{font-size:13px;margin:8px 0;font-weight:600;color:#333}.elogio-card .comentario{font-size:12px;line-height:1.6;color:#555;margin:10px 0}.elogio-card .info{font-size:11px;color:#666;margin-top:12px;border-top:1px solid #ddd;padding-top:8px}.elogio-card .info strong{color:#333}.quote-left{color:#E91E63;font-size:48px;line-height:1;margin:20px 0 -10px 20px}.quote-right{color:#0066FF;font-size:48px;line-height:1;margin:-10px 20px 20px 0;text-align:right}.cta-box{background:white;border:3px solid #E91E63;border-radius:12px;padding:30px;margin:40px auto;max-width:600px;text-align:center}.cta-box h2{color:#333;font-size:18px;margin:0 0 15px 0}.cta-box p{color:#666;font-size:14px;line-height:1.6;margin:0}.footer{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative;margin-top:60px}.footer::before{content:'';position:absolute;top:-30px;left:0;right:0;height:60px;background:#0066FF;border-radius:0 0 50% 50%/0 0 100% 100%}.footer-logo{font-size:32px;font-weight:bold;margin-bottom:5px}.footer-tagline{font-size:12px;opacity:0.9}@media (max-width:768px){.elogios-grid{grid-template-columns:1fr}.content{padding:20px}}</style></head><body><div class="container"><div class="header"><div class="logo">N</div></div><div class="title-box"><h1>Elogios aos Colaboradores<br>de Soluções de Negócios</h1><p>${nomesMeses[mesSelecionado - 1].toUpperCase()}</p></div>${colaboradores ? `<div class="colaboradores">${colaboradores}</div>` : ''}<div class="content"><div class="quote-left">"</div><div class="elogios-grid">`;
 
     elogiosSelecionadosData.forEach((elogio) => {
-      const nomeColaborador = elogio.pesquisa?.consultor || 'Colaborador';
+      const nomeColaborador = elogio.pesquisa?.cliente || 'Colaborador';
       const comentario = elogio.pesquisa?.comentario_pesquisa || '';
       const cliente = elogio.pesquisa?.cliente || 'N/A';
       const empresa = elogio.pesquisa?.empresa || 'N/A';
@@ -557,48 +576,68 @@ export default function EnviarElogios() {
                           aria-label="Selecionar todos"
                         />
                       </TableHead>
-                      <TableHead className="text-center">Empresa</TableHead>
-                      <TableHead className="text-center">Cliente</TableHead>
-                      <TableHead className="text-center">Chamado</TableHead>
-                      <TableHead className="text-center">Data Resposta</TableHead>
-                      <TableHead className="text-center">Resposta</TableHead>
-                      <TableHead className="text-center">Comentário</TableHead>
+                      <TableHead className="w-[120px] text-center">Chamado</TableHead>
+                      <TableHead className="w-[180px] text-center">Empresa</TableHead>
+                      <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
+                      <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                      <TableHead className="w-[200px] text-center">Comentário</TableHead>
+                      <TableHead className="w-[140px] text-center">Resposta</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {elogios.map((elogio) => (
-                      <TableRow key={elogio.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={elogiosSelecionados.includes(elogio.id)}
-                            onCheckedChange={(checked) => handleSelecionarElogio(elogio.id, checked as boolean)}
-                            aria-label={`Selecionar ${elogio.pesquisa?.cliente}`}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-red-600 font-semibold">{elogio.pesquisa?.empresa || 'N/A'}</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {elogio.pesquisa?.cliente || 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
-                            {elogio.pesquisa?.nro_caso || elogio.chamado || '-'}
-                          </code>
-                        </TableCell>
-                        <TableCell className="text-center text-sm text-gray-500">
-                          {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-green-600 hover:bg-green-700">
-                            {elogio.pesquisa?.resposta || 'Muito Satisfeito'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center text-sm max-w-[300px]">
-                          <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {elogios.map((elogio) => {
+                      const { nome: nomeEmpresa, encontrada: empresaEncontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
+                      
+                      return (
+                        <TableRow key={elogio.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={elogiosSelecionados.includes(elogio.id)}
+                              onCheckedChange={(checked) => handleSelecionarElogio(elogio.id, checked as boolean)}
+                              aria-label={`Selecionar ${elogio.pesquisa?.cliente}`}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {elogio.pesquisa?.nro_caso ? (
+                              <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                                <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
+                                  <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <Database className="h-4 w-4 text-blue-600" />
+                                <span>-</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
+                            <span className={`font-semibold ${!empresaEncontrada ? 'text-red-600' : ''}`}>
+                              {nomeEmpresa}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs sm:text-sm text-muted-foreground">
+                            {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">{elogio.pesquisa?.cliente || 'N/A'}</span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
+                            <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant="default"
+                              className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 whitespace-nowrap"
+                            >
+                              {elogio.pesquisa?.resposta || 'Muito Satisfeito'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
