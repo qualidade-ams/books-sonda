@@ -144,41 +144,24 @@ export default function EnviarElogios() {
   const gerarRelatorioElogios = () => {
     const elogiosSelecionadosData = elogios.filter(e => elogiosSelecionados.includes(e.id));
     
-    let html = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-        <h2 style="color: #16a34a; border-bottom: 3px solid #16a34a; padding-bottom: 10px;">
-          Relatório de Elogios - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}
-        </h2>
-        
-        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #15803d; margin-top: 0;">Resumo</h3>
-          <p><strong>Total de Elogios:</strong> ${elogiosSelecionadosData.length}</p>
-          <p><strong>Período:</strong> ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}</p>
-        </div>
+    // Extrair nomes únicos dos colaboradores
+    const colaboradores = elogiosSelecionadosData
+      .map(e => e.pesquisa?.cliente)
+      .filter((nome, index, self) => nome && self.indexOf(nome) === index)
+      .join(' | ');
+    
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:0;font-family:Arial,sans-serif}.container{max-width:1000px;margin:0 auto;background:#fff}.header{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative}.header::before{content:'';position:absolute;bottom:-30px;left:0;right:0;height:60px;background:#fff;border-radius:50% 50% 0 0/100% 100% 0 0}.logo{background:white;width:60px;height:60px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:#0066FF;margin-bottom:20px}.title-box{background:white;color:#333;padding:20px 40px;margin:40px auto;max-width:600px;border:4px solid #E91E63;border-radius:8px;text-align:center}.title-box h1{margin:0;font-size:20px;font-weight:bold;text-transform:uppercase}.title-box p{margin:10px 0 0 0;font-size:14px;color:#666}.colaboradores{text-align:center;color:#0066FF;font-weight:bold;font-size:14px;padding:20px;text-transform:uppercase}.content{padding:20px 40px}.elogios-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:30px 0}.elogio-card{background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #0066FF}.elogio-card h3{color:#0066FF;font-size:14px;margin:0 0 10px 0;text-transform:uppercase;font-weight:bold}.elogio-card .resposta{font-size:13px;margin:8px 0;font-weight:600;color:#333}.elogio-card .comentario{font-size:12px;line-height:1.6;color:#555;margin:10px 0}.elogio-card .info{font-size:11px;color:#666;margin-top:12px;border-top:1px solid #ddd;padding-top:8px}.elogio-card .info strong{color:#333}.quote-left{color:#E91E63;font-size:48px;line-height:1;margin:20px 0 -10px 20px}.quote-right{color:#0066FF;font-size:48px;line-height:1;margin:-10px 20px 20px 0;text-align:right}.cta-box{background:white;border:3px solid #E91E63;border-radius:12px;padding:30px;margin:40px auto;max-width:600px;text-align:center}.cta-box h2{color:#333;font-size:18px;margin:0 0 15px 0}.cta-box p{color:#666;font-size:14px;line-height:1.6;margin:0}.footer{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative;margin-top:60px}.footer::before{content:'';position:absolute;top:-30px;left:0;right:0;height:60px;background:#0066FF;border-radius:0 0 50% 50%/0 0 100% 100%}.footer-logo{font-size:32px;font-weight:bold;margin-bottom:5px}.footer-tagline{font-size:12px;opacity:0.9}@media (max-width:768px){.elogios-grid{grid-template-columns:1fr}.content{padding:20px}}</style></head><body><div class="container"><div class="header"><div class="logo">N</div></div><div class="title-box"><h1>Elogios aos Colaboradores<br>de Soluções de Negócios</h1><p>${nomesMeses[mesSelecionado - 1].toUpperCase()}</p></div>${colaboradores ? `<div class="colaboradores">${colaboradores}</div>` : ''}<div class="content"><div class="quote-left">"</div><div class="elogios-grid">`;
 
-        <h3 style="color: #15803d; margin-top: 30px;">Detalhamento dos Elogios</h3>
-    `;
-
-    elogiosSelecionadosData.forEach((elogio, index) => {
-      html += `
-        <div style="border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin: 15px 0; background-color: #f7fee7;">
-          <h4 style="color: #16a34a; margin-top: 0;">Elogio ${index + 1}</h4>
-          <p><strong>Empresa:</strong> ${elogio.pesquisa?.empresa || 'N/A'}</p>
-          <p><strong>Cliente:</strong> ${elogio.pesquisa?.cliente || 'N/A'}</p>
-          <p><strong>Chamado:</strong> ${elogio.pesquisa?.nro_caso || elogio.chamado || 'N/A'}</p>
-          <p><strong>Resposta:</strong> <span style="color: #16a34a; font-weight: bold;">${elogio.pesquisa?.resposta || 'Muito Satisfeito'}</span></p>
-          ${elogio.pesquisa?.comentario_pesquisa ? `<p><strong>Comentário:</strong> ${elogio.pesquisa.comentario_pesquisa}</p>` : ''}
-          ${elogio.observacao ? `<p><strong>Observação:</strong> ${elogio.observacao}</p>` : ''}
-        </div>
-      `;
+    elogiosSelecionadosData.forEach((elogio) => {
+      const nomeColaborador = elogio.pesquisa?.consultor || 'Colaborador';
+      const comentario = elogio.pesquisa?.comentario_pesquisa || '';
+      const cliente = elogio.pesquisa?.cliente || 'N/A';
+      const empresa = elogio.pesquisa?.empresa || 'N/A';
+      
+      html += `<div class="elogio-card"><h3>${nomeColaborador}</h3>${comentario ? `<div class="comentario">${comentario}</div>` : ''}<div class="info"><strong>Cliente:</strong> ${cliente}<br><strong>Empresa:</strong> ${empresa}</div></div>`;
     });
 
-    html += `
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #d1d5db; text-align: center; color: #6b7280;">
-          <p>Relatório gerado automaticamente pelo sistema de Elogios</p>
-        </div>
-      </div>
-    `;
+    html += `</div><div class="quote-right">"</div><div class="cta-box"><h2>Como enviar meu elogio?</h2><p>Caro(a) colaborador(a), ao receber um elogio, pedimos que o encaminhe ao seu gestor. Será uma grande alegria para nós poder compartilhar esse reconhecimento com toda a equipe!</p></div></div><div class="footer"><div class="footer-logo">SONDA</div><div class="footer-tagline">make it easy</div></div></div></body></html>`;
 
     return html;
   };
@@ -191,7 +174,7 @@ export default function EnviarElogios() {
     }
 
     const htmlTemplate = gerarRelatorioElogios();
-    setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})wwwwwwwwwwwwdddddddd`);
+    setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})`);
     setCorpoEmail(htmlTemplate);
     setDestinatarios([]);
     setDestinatariosCC([]);
