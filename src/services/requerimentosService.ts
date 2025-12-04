@@ -32,6 +32,24 @@ export class RequerimentosService {
     // Verificar se cliente existe
     await this.verificarClienteExiste(data.cliente_id);
 
+    // Verificar se precisa criar requerimento adicional de análise EF
+    console.log('🔍 Verificando criação de requerimento de análise EF:');
+    console.log('  - Tipo de cobrança:', data.tipo_cobranca);
+    console.log('  - Horas análise EF:', data.horas_analise_ef);
+    console.log('  - Tipo de horas_analise_ef:', typeof data.horas_analise_ef);
+    
+    const criarRequerimentoAnaliseEF = data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef;
+    let horasAnaliseEFDecimal = 0;
+    
+    if (criarRequerimentoAnaliseEF) {
+      horasAnaliseEFDecimal = typeof data.horas_analise_ef === 'string' 
+        ? converterParaHorasDecimal(data.horas_analise_ef) 
+        : data.horas_analise_ef || 0;
+      
+      console.log('  - Horas análise EF (decimal):', horasAnaliseEFDecimal);
+      console.log('  - Vai criar segundo requerimento?', horasAnaliseEFDecimal > 0);
+    }
+
     // Preparar dados para inserção (converter horas para decimal se necessário)
     const horasFuncionalDecimal = typeof data.horas_funcional === 'string' 
       ? converterParaHorasDecimal(data.horas_funcional)
@@ -57,6 +75,8 @@ export class RequerimentosService {
       // Campos de valor/hora (incluir apenas se fornecidos)
       valor_hora_funcional: data.valor_hora_funcional || null,
       valor_hora_tecnico: data.valor_hora_tecnico || null,
+      // Campo de tipo de hora extra (para tipo Hora Extra)
+      tipo_hora_extra: data.tipo_hora_extra || null,
       // Campos de ticket (para Banco de Horas - automático baseado na empresa)
       quantidade_tickets: data.quantidade_tickets || null,
       // Campos de autor (preenchidos pelo frontend)
@@ -64,8 +84,10 @@ export class RequerimentosService {
       autor_nome: data.autor_nome || 'Sistema',
       status: 'lancado' as StatusRequerimento,
       enviado_faturamento: false
+      // Nota: horas_analise_ef NÃO é salvo no banco - é apenas para controle do formulário
     };
 
+    // Criar requerimento principal
     const { data: requerimento, error } = await supabase
       .from('requerimentos')
       .insert(requerimentoData)
@@ -80,6 +102,59 @@ export class RequerimentosService {
 
     if (error) {
       throw new Error(`Erro ao criar requerimento: ${error.message}`);
+    }
+
+    // Se tipo é "Reprovado" e há horas de análise EF, criar segundo requerimento
+    console.log('🔍 Verificando condições para criar segundo requerimento:');
+    console.log('  - criarRequerimentoAnaliseEF:', criarRequerimentoAnaliseEF);
+    console.log('  - horasAnaliseEFDecimal:', horasAnaliseEFDecimal);
+    console.log('  - horasAnaliseEFDecimal > 0:', horasAnaliseEFDecimal > 0);
+    
+    if (criarRequerimentoAnaliseEF && horasAnaliseEFDecimal > 0) {
+      console.log('✅ Criando requerimento adicional de Banco de Horas para análise EF...');
+      
+      const requerimentoAnaliseEFData = {
+        chamado: data.chamado.trim().toUpperCase(),
+        cliente_id: data.cliente_id,
+        modulo: data.modulo,
+        descricao: data.descricao.trim(),
+        data_envio: data.data_envio,
+        data_aprovacao: data.data_aprovacao?.trim() || null,
+        horas_funcional: horasAnaliseEFDecimal, // Usar horas de análise EF
+        horas_tecnico: 0,
+        linguagem: data.linguagem,
+        tipo_cobranca: 'Banco de Horas',
+        mes_cobranca: data.mes_cobranca?.trim() || null,
+        observacao: 'Horas referentes a análise e elaboração da EF',
+        // Não incluir campos de valor/hora para Banco de Horas
+        valor_hora_funcional: null,
+        valor_hora_tecnico: null,
+        tipo_hora_extra: null,
+        // Manter tickets se houver
+        quantidade_tickets: data.quantidade_tickets || null,
+        // Campos de autor
+        autor_id: data.autor_id || null,
+        autor_nome: data.autor_nome || 'Sistema',
+        status: 'lancado' as StatusRequerimento,
+        enviado_faturamento: false
+      };
+
+      console.log('📝 Dados do segundo requerimento:', requerimentoAnaliseEFData);
+
+      const { data: requerimentoAnaliseEF, error: errorAnaliseEF } = await supabase
+        .from('requerimentos')
+        .insert(requerimentoAnaliseEFData)
+        .select()
+        .single();
+
+      if (errorAnaliseEF) {
+        console.error('❌ Erro ao criar requerimento de análise EF:', errorAnaliseEF);
+        // Não falhar a operação principal, apenas logar o erro
+      } else {
+        console.log('✅ Requerimento adicional de análise EF criado com sucesso:', requerimentoAnaliseEF);
+      }
+    } else {
+      console.log('⏭️ Não vai criar segundo requerimento (condições não atendidas)');
     }
 
     return this.formatarRequerimento(requerimento);

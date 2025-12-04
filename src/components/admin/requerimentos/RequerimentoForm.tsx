@@ -19,7 +19,9 @@ import {
   Requerimento,
   MODULO_OPTIONS,
   TIPO_COBRANCA_OPTIONS,
-  requerValorHora
+  TIPO_HORA_EXTRA_OPTIONS,
+  requerValorHora,
+  TipoHoraExtraType
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,10 @@ import { LoadingSpinner } from '@/components/admin/requerimentos/LoadingStates';
 import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { somarHoras, formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
+import { buscarTaxaVigente } from '@/services/taxasClientesService';
+import type { TaxaClienteCompleta, TipoFuncao } from '@/types/taxasClientes';
+import { calcularValores } from '@/types/taxasClientes';
+import { useState } from 'react';
 
 interface RequerimentoFormProps {
   requerimento?: Requerimento;
@@ -47,6 +53,10 @@ export function RequerimentoForm({
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
   const { form: responsiveForm, modal: responsiveModal } = useResponsive();
   const { screenReader, focusManagement } = useAccessibility();
+  
+  // Estado para taxa vigente do cliente
+  const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
+  const [carregandoTaxa, setCarregandoTaxa] = useState(false);
 
   const form = useForm<RequerimentoFormData>({
     resolver: zodResolver(requerimentoFormSchema),
@@ -66,8 +76,12 @@ export function RequerimentoForm({
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
+      // Campo de tipo de hora extra
+      tipo_hora_extra: requerimento?.tipo_hora_extra || undefined,
       // Campos de ticket
-      quantidade_tickets: requerimento?.quantidade_tickets || undefined
+      quantidade_tickets: requerimento?.quantidade_tickets || undefined,
+      // Campo de horas de análise EF (para tipo Reprovado)
+      horas_analise_ef: 0
     }
   });
 
@@ -78,6 +92,8 @@ export function RequerimentoForm({
   const clienteId = form.watch('cliente_id');
   const valorHoraFuncional = form.watch('valor_hora_funcional');
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
+  const tipoHoraExtra = form.watch('tipo_hora_extra');
+  const horasAnaliseEF = form.watch('horas_analise_ef');
   
   // Watch para campos obrigatórios
   const chamado = form.watch('chamado');
@@ -120,6 +136,127 @@ export function RequerimentoForm({
   const mostrarCamposValor = useMemo(() => {
     return tipoCobranca && requerValorHora(tipoCobranca);
   }, [tipoCobranca]);
+
+  // Verificar se deve mostrar campo de tipo de hora extra
+  const mostrarTipoHoraExtra = useMemo(() => {
+    return tipoCobranca === 'Hora Extra';
+  }, [tipoCobranca]);
+
+  // Verificar se deve mostrar campo de horas de análise EF
+  const mostrarCampoAnaliseEF = useMemo(() => {
+    return tipoCobranca === 'Reprovado';
+  }, [tipoCobranca]);
+
+  // useEffect para buscar taxa vigente quando cliente mudar
+  useEffect(() => {
+    if (!clienteId) {
+      setTaxaVigente(null);
+      return;
+    }
+
+    const buscarTaxa = async () => {
+      setCarregandoTaxa(true);
+      try {
+        const taxa = await buscarTaxaVigente(clienteId);
+        setTaxaVigente(taxa);
+      } catch (error) {
+        console.error('Erro ao buscar taxa vigente:', error);
+        setTaxaVigente(null);
+      } finally {
+        setCarregandoTaxa(false);
+      }
+    };
+
+    buscarTaxa();
+  }, [clienteId]);
+
+  // useEffect para preencher valores automaticamente baseado na taxa vigente
+  useEffect(() => {
+    if (!taxaVigente || !linguagem || !tipoCobranca) return;
+    if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) return;
+
+    const tipoProduto = taxaVigente.tipo_produto;
+    
+    // Valor/Hora Funcional SEMPRE usa a linha "Funcional"
+    const funcaoFuncional: TipoFuncao = 'Funcional';
+    
+    // Valor/Hora Técnico usa a linha correspondente à LINGUAGEM selecionada
+    // Quando linguagem é "Funcional", SEMPRE usa linha "Técnico" para o campo Valor/Hora Técnico
+    const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
+      // Se linguagem é Funcional, usar linha Técnico para o campo Valor/Hora Técnico
+      if (ling === 'Funcional') {
+        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
+      }
+      
+      if (ling === 'Técnico') {
+        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
+      }
+      
+      if (ling === 'ABAP' || ling === 'PL/SQL') {
+        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
+      }
+      
+      if (ling === 'DBA') {
+        return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
+      }
+      
+      return null;
+    };
+
+    const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
+    if (!funcaoTecnico) return;
+
+    // Buscar valores das funções na taxa (remota por padrão)
+    const valorFuncaoFuncional = taxaVigente.valores_remota?.find(v => v.funcao === funcaoFuncional);
+    const valorFuncaoTecnico = taxaVigente.valores_remota?.find(v => v.funcao === funcaoTecnico);
+
+    if (!valorFuncaoFuncional || !valorFuncaoTecnico) return;
+
+    // Preparar array com todas as funções para cálculos
+    const todasFuncoes = taxaVigente.valores_remota?.map(v => ({
+      funcao: v.funcao,
+      valor_base: v.valor_base
+    })) || [];
+
+    // Calcular valores para Funcional
+    const valoresCalculadosFuncional = calcularValores(valorFuncaoFuncional.valor_base, funcaoFuncional, todasFuncoes);
+    
+    // Calcular valores para Técnico (baseado na linguagem)
+    const valoresCalculadosTecnico = calcularValores(valorFuncaoTecnico.valor_base, funcaoTecnico, todasFuncoes);
+
+    let valorHoraFuncional = 0;
+    let valorHoraTecnico = 0;
+
+    if (tipoCobranca === 'Faturado') {
+      // Usar valor base
+      valorHoraFuncional = valoresCalculadosFuncional.valor_base;
+      valorHoraTecnico = valoresCalculadosTecnico.valor_base;
+    } else if (tipoCobranca === 'Hora Extra') {
+      // Usar valor baseado no tipo de hora extra selecionado
+      if (tipoHoraExtra === '17h30-19h30') {
+        valorHoraFuncional = valoresCalculadosFuncional.valor_17h30_19h30;
+        valorHoraTecnico = valoresCalculadosTecnico.valor_17h30_19h30;
+      } else if (tipoHoraExtra === 'apos_19h30') {
+        valorHoraFuncional = valoresCalculadosFuncional.valor_apos_19h30;
+        valorHoraTecnico = valoresCalculadosTecnico.valor_apos_19h30;
+      } else if (tipoHoraExtra === 'fim_semana') {
+        valorHoraFuncional = valoresCalculadosFuncional.valor_fim_semana;
+        valorHoraTecnico = valoresCalculadosTecnico.valor_fim_semana;
+      }
+    } else if (tipoCobranca === 'Sobreaviso') {
+      // Usar valor de stand by
+      valorHoraFuncional = valoresCalculadosFuncional.valor_standby;
+      valorHoraTecnico = valoresCalculadosTecnico.valor_standby;
+    }
+
+    // Arredondar para 2 casas decimais
+    const valorHoraFuncionalArredondado = Math.round(valorHoraFuncional * 100) / 100;
+    const valorHoraTecnicoArredondado = Math.round(valorHoraTecnico * 100) / 100;
+
+    // Preencher os campos com os valores correspondentes
+    form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado);
+    form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado);
+  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, horasTecnico, form]);
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
@@ -269,21 +406,28 @@ export function RequerimentoForm({
   };
 
   const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
-    console.log('Dados do formulário antes da validação:', data);
-    console.log('Tipo de cobrança:', data.tipo_cobranca);
-    console.log('Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
-    console.log('Quantidade tickets:', data.quantidade_tickets);
-    console.log('Mostrar campo tickets:', mostrarCampoTickets);
+    console.log('📋 FORMULÁRIO - Dados completos recebidos:', data);
+    console.log('📋 FORMULÁRIO - Tipo de cobrança:', data.tipo_cobranca);
+    console.log('📋 FORMULÁRIO - Horas análise EF:', data.horas_analise_ef);
+    console.log('📋 FORMULÁRIO - Tipo de horas_analise_ef:', typeof data.horas_analise_ef);
+    console.log('📋 FORMULÁRIO - Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
+    console.log('📋 FORMULÁRIO - Quantidade tickets:', data.quantidade_tickets);
+    console.log('📋 FORMULÁRIO - Mostrar campo tickets:', mostrarCampoTickets);
     
     screenReader.announceLoading('Salvando requerimento...');
     
     try {
+      // Criar o requerimento (o serviço já gerencia a criação do segundo requerimento se necessário)
       await onSubmit(data);
       
       // ✅ Só reseta o formulário se for criação E teve sucesso
       if (!requerimento) {
         form.reset();
-        screenReader.announceSuccess('Requerimento criado com sucesso');
+        const mensagemSucesso = data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef && 
+          (typeof data.horas_analise_ef === 'string' ? converterParaHorasDecimal(data.horas_analise_ef) : data.horas_analise_ef) > 0
+          ? 'Requerimentos criados com sucesso (principal + análise EF)'
+          : 'Requerimento criado com sucesso';
+        screenReader.announceSuccess(mensagemSucesso);
       } else {
         screenReader.announceSuccess('Requerimento atualizado com sucesso');
       }
@@ -668,6 +812,67 @@ export function RequerimentoForm({
                     </FormItem>
                   )}
                 />
+
+                {/* Tipo de Hora Extra - Aparece apenas quando tipo_cobranca === 'Hora Extra' */}
+                {mostrarTipoHoraExtra && (
+                  <FormField
+                    control={form.control}
+                    name="tipo_hora_extra"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Tipo de Hora Extra <span className="text-gray-700 dark:text-gray-300">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o tipo de hora extra" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {TIPO_HORA_EXTRA_OPTIONS.map((tipo) => (
+                              <SelectItem key={tipo.value} value={tipo.value}>
+                                {tipo.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        {!taxaVigente && (
+                          <FormDescription className="text-amber-600 dark:text-amber-400">
+                            ⚠️ Cliente não possui taxa vigente cadastrada
+                          </FormDescription>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Horas de Análise EF - Aparece apenas quando tipo_cobranca === 'Reprovado' */}
+                {mostrarCampoAnaliseEF && (
+                  <FormField
+                    control={form.control}
+                    name="horas_analise_ef"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Horas de Análise EF
+                        </FormLabel>
+                        <FormControl>
+                          <InputHoras
+                            value={field.value}
+                            onChange={(valorString) => {
+                              field.onChange(valorString);
+                            }}
+                            placeholder="Ex: 8:00 ou 8"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Mês de Cobrança */}
                 <FormField

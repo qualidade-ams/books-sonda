@@ -22,6 +22,8 @@ export interface Requerimento {
   valor_total_funcional?: number;
   valor_total_tecnico?: number;
   valor_total_geral?: number;
+  // Campo para tipo de hora extra (quando tipo_cobranca === 'Hora Extra')
+  tipo_hora_extra?: TipoHoraExtraType;
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets?: number;
   // Campos de anexo
@@ -41,6 +43,7 @@ export interface Requerimento {
 export type ModuloType = 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
 export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
 export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
+export type TipoHoraExtraType = '17h30-19h30' | 'apos_19h30' | 'fim_semana';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
 
 // Constantes para opções de select
@@ -71,6 +74,12 @@ export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[]
   { value: 'Sobreaviso', label: 'Sobreaviso' },
   { value: 'Reprovado', label: 'Reprovado' },
   { value: 'Bolsão Enel', label: 'Bolsão Enel' }
+];
+
+export const TIPO_HORA_EXTRA_OPTIONS: { value: TipoHoraExtraType; label: string }[] = [
+  { value: '17h30-19h30', label: 'Seg-Sex 17h30-19h30' },
+  { value: 'apos_19h30', label: 'Seg-Sex Após 19h30' },
+  { value: 'fim_semana', label: 'Sáb/Dom/Feriados' }
 ];
 
 // Tipos de cobrança que requerem campos de valor/hora
@@ -105,8 +114,12 @@ export interface RequerimentoFormData {
   // Campos de valor/hora (condicionais)
   valor_hora_funcional?: number;
   valor_hora_tecnico?: number;
+  // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
+  tipo_hora_extra?: TipoHoraExtraType;
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets?: number;
+  // Campo de horas de análise EF (para tipo Reprovado - opcional)
+  horas_analise_ef?: number | string; // Suporta formato HH:MM
   // Campos de autor (preenchidos automaticamente)
   autor_id?: string;
   autor_nome?: string;

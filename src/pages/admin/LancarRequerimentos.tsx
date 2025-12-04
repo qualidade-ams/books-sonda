@@ -13,7 +13,7 @@ import { MultiSelect, Option } from '@/components/ui/multi-select';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InputHoras } from '@/components/ui/input-horas';
-import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
+import { formatarHorasParaExibicao, somarHoras, converterParaHorasDecimal } from '@/utils/horasUtils';
 import {
     Dialog,
     DialogContent,
@@ -73,16 +73,11 @@ const LancarRequerimentos = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
-    const [showReprovadoModal, setShowReprovadoModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
 
     // Estado para controlar a aba ativa
     const [activeTab, setActiveTab] = useState('nao-enviados');
-
-    // Estados para modal de Reprovado
-    const [reprovadoData, setReprovadoData] = useState<RequerimentoFormData | null>(null);
-    const [horasReprovado, setHorasReprovado] = useState('');
 
     // Hooks de responsividade e acessibilidade
     const { grid, form, navigation, cards } = useResponsive();
@@ -374,20 +369,19 @@ const LancarRequerimentos = () => {
 
     // Handlers para ações
     const handleCreate = useCallback(async (data: RequerimentoFormData) => {
+        console.log('🏠 PÁGINA - handleCreate recebeu:', data);
+        console.log('🏠 PÁGINA - Tipo de cobrança:', data.tipo_cobranca);
+        console.log('🏠 PÁGINA - Horas análise EF:', data.horas_analise_ef);
+        
         try {
-            // Se o tipo de cobrança for "Reprovado", abrir modal para definir horas
-            if (data.tipo_cobranca === 'Reprovado') {
-                setReprovadoData(data);
-                setHorasReprovado('');
-                setShowCreateModal(false);
-                setShowReprovadoModal(true);
-                return;
-            }
-
+            // Criar o requerimento (o formulário já gerencia a criação do segundo requerimento se necessário)
+            console.log('🏠 PÁGINA - Chamando createRequerimento.mutateAsync...');
             await createRequerimento.mutateAsync(data);
+            console.log('🏠 PÁGINA - createRequerimento.mutateAsync concluído');
             setShowCreateModal(false);
             screenReader.announceSuccess('Requerimento criado com sucesso');
         } catch (error) {
+            console.error('🏠 PÁGINA - Erro ao criar:', error);
             screenReader.announceError('Erro ao criar requerimento');
         }
     }, [createRequerimento, screenReader]);
@@ -403,47 +397,64 @@ const LancarRequerimentos = () => {
     };
 
     const handleUpdate = async (data: RequerimentoFormData) => {
+        console.log('🏠 PÁGINA - handleUpdate recebeu:', data);
+        console.log('🏠 PÁGINA - Tipo de cobrança:', data.tipo_cobranca);
+        console.log('🏠 PÁGINA - Horas análise EF:', data.horas_analise_ef);
+        
         if (!selectedRequerimento) return;
-        await updateRequerimento.mutateAsync({
-            id: selectedRequerimento.id,
-            data
-        });
-        setShowEditModal(false);
-        setSelectedRequerimento(null);
+        
+        try {
+            // Atualizar o requerimento principal
+            console.log('🏠 PÁGINA - Atualizando requerimento principal...');
+            await updateRequerimento.mutateAsync({
+                id: selectedRequerimento.id,
+                data
+            });
+            console.log('🏠 PÁGINA - Requerimento principal atualizado');
+            
+            // Se mudou para "Reprovado" E há horas de análise EF, criar segundo requerimento
+            if (data.tipo_cobranca === 'Reprovado' && data.horas_analise_ef) {
+                const horasAnaliseNum = typeof data.horas_analise_ef === 'string' 
+                    ? converterParaHorasDecimal(data.horas_analise_ef) 
+                    : data.horas_analise_ef || 0;
+                
+                if (horasAnaliseNum > 0) {
+                    console.log('🏠 PÁGINA - Criando requerimento adicional de Banco de Horas...');
+                    
+                    const requerimentoAnaliseEF: RequerimentoFormData = {
+                        chamado: data.chamado,
+                        cliente_id: data.cliente_id,
+                        modulo: data.modulo,
+                        descricao: data.descricao,
+                        data_envio: data.data_envio,
+                        data_aprovacao: data.data_aprovacao,
+                        horas_funcional: data.horas_analise_ef,
+                        horas_tecnico: 0,
+                        linguagem: data.linguagem,
+                        tipo_cobranca: 'Banco de Horas',
+                        mes_cobranca: data.mes_cobranca,
+                        observacao: 'Horas referentes a análise e elaboração da EF',
+                        valor_hora_funcional: undefined,
+                        valor_hora_tecnico: undefined,
+                        tipo_hora_extra: undefined,
+                        quantidade_tickets: data.quantidade_tickets
+                    };
+                    
+                    await createRequerimento.mutateAsync(requerimentoAnaliseEF);
+                    console.log('🏠 PÁGINA - Requerimento adicional criado com sucesso');
+                    screenReader.announceSuccess('Requerimento atualizado e requerimento de análise EF criado');
+                }
+            }
+            
+            setShowEditModal(false);
+            setSelectedRequerimento(null);
+        } catch (error) {
+            console.error('🏠 PÁGINA - Erro ao atualizar:', error);
+            screenReader.announceError('Erro ao atualizar requerimento');
+        }
     };
 
     // Handler para confirmar modal de Reprovado
-    const handleConfirmReprovado = useCallback(async () => {
-        if (!reprovadoData || !horasReprovado) return;
-
-        try {
-            // 1. Criar o requerimento "Reprovado" original
-            await createRequerimento.mutateAsync(reprovadoData);
-
-            // 2. Criar automaticamente um requerimento "Banco de Horas" com as horas especificadas
-            const bancoHorasData: RequerimentoFormData = {
-                ...reprovadoData,
-                tipo_cobranca: 'Banco de Horas',
-                horas_funcional: horasReprovado,
-                horas_tecnico: '0',
-                descricao: `Banco de horas referente ao chamado reprovado ${reprovadoData.chamado}`,
-                observacao: `Gerado automaticamente a partir do requerimento reprovado ${reprovadoData.chamado}`
-            };
-
-            await createRequerimento.mutateAsync(bancoHorasData);
-
-            // Fechar modal e limpar estados
-            setShowReprovadoModal(false);
-            setReprovadoData(null);
-            setHorasReprovado('');
-
-            screenReader.announceSuccess('Requerimento reprovado criado e banco de horas gerado automaticamente');
-        } catch (error) {
-            console.error('Erro ao processar requerimento reprovado:', error);
-            screenReader.announceError('Erro ao processar requerimento reprovado');
-        }
-    }, [reprovadoData, horasReprovado, createRequerimento, screenReader]);
-
     const handleDelete = (requerimento: Requerimento) => {
         setSelectedRequerimento(requerimento);
         setShowDeleteModal(true);
@@ -1182,73 +1193,7 @@ const LancarRequerimentos = () => {
                     </AlertDialogContent>
                 </AlertDialog>
 
-                {/* Modal de Horas para Reprovado */}
-                <Dialog open={showReprovadoModal} onOpenChange={setShowReprovadoModal}>
-                    <DialogContent className="max-w-md">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <Clock className="h-5 w-5 text-slate-600" />
-                                Requerimento Reprovado
-                            </DialogTitle>
-                        </DialogHeader>
 
-                        <div className="space-y-4">
-                            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                                    O requerimento será criado como <strong>Reprovado</strong> e automaticamente será gerado um requerimento de <strong>Banco de Horas</strong> com as horas especificadas abaixo.
-                                </p>
-                                <div className="text-xs text-slate-500">
-                                    <strong>Chamado:</strong> {reprovadoData?.chamado}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="horas-reprovado">
-                                    Horas para Banco de Horas <span className="text-red-500">*</span>
-                                </Label>
-                                <InputHoras
-                                    id="horas-reprovado"
-                                    value={horasReprovado}
-                                    onChange={setHorasReprovado}
-                                    placeholder="Ex: 8 ou 8:30"
-                                    className="w-full"
-                                />
-                                <p className="text-xs text-slate-500">
-                                    Informe as horas que serão creditadas no banco de horas (formato: HH:MM ou número inteiro)
-                                </p>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setShowReprovadoModal(false);
-                                        setReprovadoData(null);
-                                        setHorasReprovado('');
-                                        setShowCreateModal(true); // Reabrir modal de criação
-                                    }}
-                                    disabled={createRequerimento.isPending}
-                                >
-                                    Voltar
-                                </Button>
-                                <Button
-                                    onClick={handleConfirmReprovado}
-                                    disabled={!horasReprovado || createRequerimento.isPending}
-                                    className="bg-slate-600 hover:bg-slate-700"
-                                >
-                                    {createRequerimento.isPending ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                            Processando...
-                                        </>
-                                    ) : (
-                                        'Confirmar e Criar'
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
             </div>
         </AdminLayout>
     );

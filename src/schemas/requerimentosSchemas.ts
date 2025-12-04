@@ -150,6 +150,8 @@ export const requerimentoFormSchema = z.object({
   // Campos de valor/hora (condicionais)
   valor_hora_funcional: valorHoraSchema,
   valor_hora_tecnico: valorHoraSchema,
+  // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
+  tipo_hora_extra: z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const).optional(),
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets: z
     .union([
@@ -167,6 +169,8 @@ export const requerimentoFormSchema = z.object({
     .refine((val) => val === undefined || val === null || (val >= 1 && val <= 9999), {
       message: 'Quantidade deve ser entre 1 e 9999'
     }),
+  // Campo de horas de análise EF (para tipo Reprovado - opcional)
+  horas_analise_ef: horasSchema.optional(),
   // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
   empresa_tipo_cobranca: z.string().optional()
 }).refine((data) => {
