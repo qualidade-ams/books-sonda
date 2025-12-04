@@ -135,6 +135,10 @@ export function useCreateRequerimento() {
 
   return useMutation({
     mutationFn: async (data: RequerimentoFormData) => {
+      console.log('🎣 HOOK - Dados recebidos:', data);
+      console.log('🎣 HOOK - Tipo de cobrança:', data.tipo_cobranca);
+      console.log('🎣 HOOK - Horas análise EF:', data.horas_analise_ef);
+      
       // Obter dados do usuário autenticado do Supabase
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -144,6 +148,10 @@ export function useCreateRequerimento() {
         autor_id: user?.id || undefined,
         autor_nome: user?.user_metadata?.full_name || user?.email || 'Usuário não identificado'
       };
+      
+      console.log('🎣 HOOK - Dados com autor:', dataComAutor);
+      console.log('🎣 HOOK - Tipo de cobrança (com autor):', dataComAutor.tipo_cobranca);
+      console.log('🎣 HOOK - Horas análise EF (com autor):', dataComAutor.horas_analise_ef);
       
       return requerimentosService.criarRequerimento(dataComAutor);
     },

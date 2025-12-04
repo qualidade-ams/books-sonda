@@ -302,6 +302,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Cadastro E-mails Clientes',
           path: '/admin/clientes',
           screenKey: 'clientes'
+        },
+        {
+          icon: DollarSign,
+          label: 'Cadastro Taxas Clientes',
+          path: '/admin/cadastro-taxas-clientes',
+          screenKey: 'cadastro_taxas_clientes'
         }
       ]
     },

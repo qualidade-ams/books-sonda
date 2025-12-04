@@ -33,6 +33,7 @@ import LancarPesquisas from "./pages/admin/LancarPesquisas";
 import LancarElogios from "./pages/admin/LancarElogios";
 import EnviarElogios from "./pages/admin/EnviarElogios";
 import PlanoAcao from "./pages/admin/PlanoAcao";
+import CadastroTaxasClientes from "./pages/admin/CadastroTaxasClientes";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -79,6 +80,7 @@ const App = () => (
                   <Route path="/admin/lancar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><LancarElogios /></ProtectedRoute>} />
                   <Route path="/admin/enviar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><EnviarElogios /></ProtectedRoute>} />
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
+                  <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
