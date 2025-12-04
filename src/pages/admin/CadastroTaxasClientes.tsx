@@ -24,10 +24,13 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
-import { TaxaForm } from '@/components/admin/taxas';
+import { TaxaForm, TaxaPadraoForm, TaxaPadraoHistorico } from '@/components/admin/taxas';
+import type { TaxaPadraoData } from '@/components/admin/taxas/TaxaPadraoForm';
 import { useTaxas, useCriarTaxa, useAtualizarTaxa, useDeletarTaxa } from '@/hooks/useTaxasClientes';
+import { useCriarTaxaPadrao } from '@/hooks/useTaxasPadrao';
 import type { TaxaClienteCompleta, TaxaFormData } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
 
@@ -36,16 +39,28 @@ function CadastroTaxasClientes() {
   const [taxaEditando, setTaxaEditando] = useState<TaxaClienteCompleta | null>(null);
   const [taxaVisualizando, setTaxaVisualizando] = useState<TaxaClienteCompleta | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
+  const [modalTaxaPadraoAberto, setModalTaxaPadraoAberto] = useState(false);
+  const [tipoProdutoTaxaPadrao, setTipoProdutoTaxaPadrao] = useState<'GALLERY' | 'OUTROS'>('GALLERY');
 
   // Queries e mutations
   const { data: taxas = [], isLoading, refetch } = useTaxas();
   const criarTaxa = useCriarTaxa();
   const atualizarTaxa = useAtualizarTaxa();
   const deletarTaxa = useDeletarTaxa();
+  const criarTaxaPadrao = useCriarTaxaPadrao();
 
   const handleNovaTaxa = () => {
     setTaxaEditando(null);
     setModalAberto(true);
+  };
+
+  const handleAbrirTaxaPadrao = () => {
+    setModalTaxaPadraoAberto(true);
+  };
+
+  const handleSalvarTaxaPadrao = async (dados: TaxaPadraoData) => {
+    await criarTaxaPadrao.mutateAsync(dados);
+    setModalTaxaPadraoAberto(false);
   };
 
   const handleEditarTaxa = (taxa: TaxaClienteCompleta) => {
@@ -104,10 +119,15 @@ function CadastroTaxasClientes() {
               Gerenciamento de taxas por cliente e vigência
             </p>
           </div>
-          <Button onClick={handleNovaTaxa} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Taxa
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleAbrirTaxaPadrao} variant="outline" className="flex items-center gap-2">
+              Taxa Padrão
+            </Button>
+            <Button onClick={handleNovaTaxa} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nova Taxa
+            </Button>
+          </div>
         </div>
 
         {/* Tabela de Taxas */}
@@ -145,14 +165,32 @@ function CadastroTaxasClientes() {
                     taxas.map((taxa) => {
                       const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
                       
+                      // Obter nomes dos produtos do cliente
+                      const cliente = taxa.cliente as TaxaClienteCompleta['cliente'];
+                      const produtosCliente = cliente?.produtos?.map((p) => p.produto) || [];
+                      
+                      // Determinar o texto a exibir para tipo_produto
+                      let tipoProdutoTexto: string = taxa.tipo_produto;
+                      if (taxa.tipo_produto === 'OUTROS') {
+                        // Filtrar produtos que não são GALLERY
+                        const produtosOutros = produtosCliente.filter((p) => p !== 'GALLERY');
+                        tipoProdutoTexto = produtosOutros.length > 0 ? produtosOutros.join(', ') : 'OUTROS';
+                      }
+                      
                       return (
                         <TableRow key={taxa.id}>
                           <TableCell className="font-medium">
                             {taxa.cliente?.nome_abreviado || '-'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={taxa.tipo_produto === 'GALLERY' ? 'default' : 'secondary'}>
-                              {taxa.tipo_produto}
+                            <Badge 
+                              variant={taxa.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
+                              className={taxa.tipo_produto === 'GALLERY' 
+                                ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
+                                : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
+                              }
+                            >
+                              {tipoProdutoTexto}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -233,7 +271,20 @@ function CadastroTaxasClientes() {
             <DialogHeader>
               <DialogTitle>Detalhes da Taxa</DialogTitle>
             </DialogHeader>
-            {taxaVisualizando && (
+            {taxaVisualizando && (() => {
+              // Obter nomes dos produtos do cliente
+              const cliente = taxaVisualizando.cliente as TaxaClienteCompleta['cliente'];
+              const produtosCliente = cliente?.produtos?.map((p) => p.produto) || [];
+              
+              // Determinar o texto a exibir para tipo_produto
+              let tipoProdutoTexto: string = taxaVisualizando.tipo_produto;
+              if (taxaVisualizando.tipo_produto === 'OUTROS') {
+                // Filtrar produtos que não são GALLERY
+                const produtosOutros = produtosCliente.filter((p) => p !== 'GALLERY');
+                tipoProdutoTexto = produtosOutros.length > 0 ? produtosOutros.join(', ') : 'OUTROS';
+              }
+              
+              return (
               <div className="space-y-6">
                 {/* Informações Gerais */}
                 <div className="grid grid-cols-2 gap-4">
@@ -243,8 +294,14 @@ function CadastroTaxasClientes() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">Tipo de Produto</p>
-                    <Badge variant={taxaVisualizando.tipo_produto === 'GALLERY' ? 'default' : 'secondary'}>
-                      {taxaVisualizando.tipo_produto}
+                    <Badge 
+                      variant={taxaVisualizando.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
+                      className={taxaVisualizando.tipo_produto === 'GALLERY' 
+                        ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
+                        : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
+                      }
+                    >
+                      {tipoProdutoTexto}
                     </Badge>
                   </div>
                   <div>
@@ -397,7 +454,48 @@ function CadastroTaxasClientes() {
                   </Button>
                 </div>
               </div>
-            )}
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Taxa Padrão */}
+        <Dialog open={modalTaxaPadraoAberto} onOpenChange={setModalTaxaPadraoAberto}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Configurar Taxa Padrão</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Configure as taxas padrão que serão aplicadas automaticamente para clientes sem AMS
+              </p>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Formulário de Nova Taxa */}
+              <TaxaPadraoForm
+                onSubmit={handleSalvarTaxaPadrao}
+                onCancel={() => setModalTaxaPadraoAberto(false)}
+                isLoading={criarTaxaPadrao.isPending}
+              />
+              
+              {/* Histórico de Parametrizações */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Histórico de Parametrizações</h3>
+                <Tabs value={tipoProdutoTaxaPadrao} onValueChange={(value) => setTipoProdutoTaxaPadrao(value as 'GALLERY' | 'OUTROS')} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="GALLERY">GALLERY</TabsTrigger>
+                    <TabsTrigger value="OUTROS">COMEX, FISCAL</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="GALLERY" className="mt-4">
+                    <TaxaPadraoHistorico tipoProduto="GALLERY" />
+                  </TabsContent>
+                  
+                  <TabsContent value="OUTROS" className="mt-4">
+                    <TaxaPadraoHistorico tipoProduto="OUTROS" />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

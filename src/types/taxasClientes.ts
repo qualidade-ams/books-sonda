@@ -4,6 +4,7 @@
 
 export type TipoProduto = 'GALLERY' | 'OUTROS';
 export type TipoFuncao = 'Funcional' | 'Técnico / ABAP' | 'DBA / Basis' | 'Gestor' | 'Técnico (Instalação / Atualização)' | 'ABAP - PL/SQL' | 'DBA';
+export type TipoCalculoAdicional = 'normal' | 'media';
 
 // Interface principal da Taxa
 export interface TaxaCliente {
@@ -12,6 +13,7 @@ export interface TaxaCliente {
   vigencia_inicio: string;
   vigencia_fim?: string;
   tipo_produto: TipoProduto;
+  tipo_calculo_adicional: TipoCalculoAdicional;
   criado_por?: string;
   criado_em: string;
   atualizado_em: string;
@@ -34,6 +36,7 @@ export interface TaxaClienteCompleta extends TaxaCliente {
     id: string;
     nome_completo: string;
     nome_abreviado: string;
+    produtos?: { produto: string }[];
   };
   valores_remota?: ValorTaxaCalculado[];
   valores_local?: ValorTaxaCalculado[];
@@ -56,6 +59,8 @@ export interface TaxaFormData {
   vigencia_inicio: Date | string;
   vigencia_fim?: Date | string;
   tipo_produto: TipoProduto;
+  tipo_calculo_adicional: TipoCalculoAdicional;
+  taxa_reajuste?: number; // Percentual de reajuste (opcional)
   valores_remota: {
     funcional: number;
     tecnico: number;
@@ -80,7 +85,13 @@ export interface FiltrosTaxa {
 }
 
 // Funções auxiliares para cálculos
-export const calcularValores = (valorBase: number, funcao: TipoFuncao, todasFuncoes?: { funcao: TipoFuncao; valor_base: number }[]): ValorTaxaCalculado => {
+export const calcularValores = (
+  valorBase: number, 
+  funcao: TipoFuncao, 
+  todasFuncoes?: { funcao: TipoFuncao; valor_base: number }[],
+  tipoCalculo: TipoCalculoAdicional = 'media',
+  tipoProduto?: TipoProduto
+): ValorTaxaCalculado => {
   const valor_17h30_19h30 = valorBase + (valorBase * 0.75);
   const valor_apos_19h30 = valorBase + (valorBase * 1.0);
   const valor_fim_semana = valorBase + (valorBase * 1.0);
@@ -89,7 +100,30 @@ export const calcularValores = (valorBase: number, funcao: TipoFuncao, todasFunc
   // Cálculo do valor adicional
   let valor_adicional: number;
   
-  if (funcao === 'DBA / Basis' || funcao === 'DBA' || funcao === 'Gestor') {
+  // REGRA ESPECIAL PARA GALLERY: Funcional e Técnico / ABAP quando tipo de cálculo for 'media'
+  if (tipoProduto === 'GALLERY' && (funcao === 'Funcional' || funcao === 'Técnico / ABAP') && tipoCalculo === 'media') {
+    // Média de (Funcional + 15%) e (Técnico + 15%) - APENAS 2 LINHAS
+    if (todasFuncoes && todasFuncoes.length >= 2) {
+      const funcional = todasFuncoes.find(f => f.funcao === 'Funcional');
+      const tecnico = todasFuncoes.find(f => f.funcao === 'Técnico / ABAP');
+      
+      if (funcional && tecnico) {
+        const resultado1 = funcional.valor_base + (funcional.valor_base * 0.15);
+        const resultado2 = tecnico.valor_base + (tecnico.valor_base * 0.15);
+        valor_adicional = (resultado1 + resultado2) / 2;
+      } else {
+        valor_adicional = valorBase + (valorBase * 0.15);
+      }
+    } else {
+      valor_adicional = valorBase + (valorBase * 0.15);
+    }
+  }
+  // Se tipo de cálculo for 'normal', todas as funções usam valor base + 15%
+  else if (tipoCalculo === 'normal') {
+    valor_adicional = valorBase + (valorBase * 0.15);
+  } 
+  // Se tipo de cálculo for 'media', usa a lógica antiga
+  else if (funcao === 'DBA / Basis' || funcao === 'DBA' || funcao === 'Gestor') {
     // Para DBA e Gestor: valor base + 15%
     valor_adicional = valorBase + (valorBase * 0.15);
   } else if (funcao === 'Funcional' || funcao === 'Técnico (Instalação / Atualização)' || funcao === 'ABAP - PL/SQL') {
@@ -116,7 +150,7 @@ export const calcularValores = (valorBase: number, funcao: TipoFuncao, todasFunc
       valor_adicional = valorBase + (valorBase * 0.15);
     }
   } else {
-    // Para Técnico/ABAP (produtos GALLERY)
+    // Para Técnico/ABAP (produtos GALLERY) - fallback caso não tenha tipoProduto
     // Média dos valores base + 15% das funções Funcional, Técnico e DBA
     if (todasFuncoes && todasFuncoes.length >= 3) {
       const funcoesParaMedia = todasFuncoes.filter(f => 

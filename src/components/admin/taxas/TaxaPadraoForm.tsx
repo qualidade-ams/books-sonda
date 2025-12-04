@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,23 +27,40 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useEmpresas } from '@/hooks/useEmpresas';
-import type { TaxaClienteCompleta, TaxaFormData, TipoProduto } from '@/types/taxasClientes';
+import type { TipoProduto } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
 
-interface TaxaFormProps {
-  taxa?: TaxaClienteCompleta | null;
-  onSubmit: (dados: TaxaFormData) => void;
+export interface TaxaPadraoData {
+  tipo_produto: TipoProduto;
+  vigencia_inicio: Date | string;
+  vigencia_fim?: Date | string;
+  tipo_calculo_adicional?: 'normal' | 'media';
+  valores_remota: {
+    funcional: number;
+    tecnico: number;
+    abap?: number;
+    dba: number;
+    gestor: number;
+  };
+  valores_local: {
+    funcional: number;
+    tecnico: number;
+    abap?: number;
+    dba: number;
+    gestor: number;
+  };
+}
+
+interface TaxaPadraoFormProps {
+  taxaPadrao?: TaxaPadraoData | null;
+  onSubmit: (dados: TaxaPadraoData) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
-export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps) {
-  const { empresas } = useEmpresas();
-  const [tipoProdutoSelecionado, setTipoProdutoSelecionado] = useState<TipoProduto | ''>(taxa?.tipo_produto || '');
-  const [tipoCalculoAdicional, setTipoCalculoAdicional] = useState<'normal' | 'media'>(taxa?.tipo_calculo_adicional || 'media');
-  const [produtosCliente, setProdutosCliente] = useState<string[]>([]);
-  const [clienteSelecionado, setClienteSelecionado] = useState<string>('');
+export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: TaxaPadraoFormProps) {
+  const [tipoProdutoSelecionado, setTipoProdutoSelecionado] = useState<TipoProduto>(taxaPadrao?.tipo_produto || 'GALLERY');
+  const [tipoCalculoAdicional, setTipoCalculoAdicional] = useState<'normal' | 'media'>(taxaPadrao?.tipo_calculo_adicional || 'media');
   const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({});
   const [valoresOriginais, setValoresOriginais] = useState<any>(null);
   
@@ -58,7 +74,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
 
   // Função para converter moeda para número
   const converterMoedaParaNumero = (valor: string): number => {
-    // Remove tudo exceto números, vírgula e ponto
     const limpo = valor.replace(/[^\d,]/g, '');
     const numero = limpo.replace(',', '.');
     return parseFloat(numero) || 0;
@@ -66,10 +81,9 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   
   const form = useForm<any>({
     defaultValues: {
-      cliente_id: '',
+      tipo_produto: 'GALLERY',
       vigencia_inicio: undefined,
       vigencia_fim: undefined,
-      tipo_produto: '',
       tipo_calculo_adicional: 'media',
       taxa_reajuste: undefined,
       valores_remota: {
@@ -89,133 +103,35 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
     },
   });
 
-  // Buscar produtos do cliente selecionado
-  useEffect(() => {
-    if (clienteSelecionado && !taxa) {
-      const empresa = empresas.find(e => e.nome_abreviado === clienteSelecionado);
-      if (empresa && empresa.produtos) {
-        // Extrair lista de produtos da empresa
-        const produtos = empresa.produtos.map((p: any) => p.produto);
-        setProdutosCliente(produtos);
-        
-        // Se houver apenas um produto, selecionar automaticamente
-        if (produtos.length === 1) {
-          const produtoUnico = produtos[0];
-          const tipoProduto = produtoUnico === 'GALLERY' ? 'GALLERY' : 'OUTROS';
-          form.setValue('tipo_produto', tipoProduto);
-          setTipoProdutoSelecionado(tipoProduto);
-        }
-
-        // Se cliente não tem AMS, preencher com taxa padrão
-        if (empresa.tem_ams === false) {
-          import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
-            // Determinar tipo de produto baseado nos produtos do cliente
-            let tipoProduto: 'GALLERY' | 'OUTROS' = 'GALLERY';
-            if (produtos.includes('GALLERY')) {
-              tipoProduto = 'GALLERY';
-            } else if (produtos.length > 0) {
-              tipoProduto = 'OUTROS';
-            }
-
-            const taxaPadrao = await buscarTaxaPadrao(tipoProduto);
-            if (taxaPadrao) {
-              form.setValue('tipo_produto', taxaPadrao.tipo_produto);
-              form.setValue('valores_remota', taxaPadrao.valores_remota);
-              form.setValue('valores_local', taxaPadrao.valores_local);
-              setTipoProdutoSelecionado(taxaPadrao.tipo_produto);
-            }
-          });
-        }
-      } else {
-        setProdutosCliente([]);
-      }
-    }
-  }, [clienteSelecionado, empresas, form, taxa]);
-
   // Preencher formulário ao editar
   useEffect(() => {
-    if (taxa && empresas.length > 0) {
-      const empresa = empresas.find(e => e.id === taxa.cliente_id);
+    if (taxaPadrao) {
+      const valoresIniciais = {
+        tipo_produto: taxaPadrao.tipo_produto,
+        vigencia_inicio: taxaPadrao.vigencia_inicio ? new Date(taxaPadrao.vigencia_inicio) : undefined,
+        vigencia_fim: taxaPadrao.vigencia_fim ? new Date(taxaPadrao.vigencia_fim) : undefined,
+        tipo_calculo_adicional: taxaPadrao.tipo_calculo_adicional || 'media',
+        taxa_reajuste: undefined,
+        valores_remota: taxaPadrao.valores_remota,
+        valores_local: taxaPadrao.valores_local,
+      };
       
-      if (empresa) {
-        // Carregar produtos do cliente PRIMEIRO
-        if (empresa.produtos) {
-          const produtos = empresa.produtos.map((p: any) => p.produto);
-          setProdutosCliente(produtos);
-        }
-        setClienteSelecionado(empresa.nome_abreviado);
-        
-        // Aguardar um tick para garantir que os estados foram atualizados
-        setTimeout(() => {
-          const valoresIniciais = {
-            cliente_id: empresa.nome_abreviado,
-            vigencia_inicio: taxa.vigencia_inicio ? new Date(taxa.vigencia_inicio + 'T00:00:00') : undefined,
-            vigencia_fim: taxa.vigencia_fim ? new Date(taxa.vigencia_fim + 'T00:00:00') : undefined,
-            tipo_produto: taxa.tipo_produto,
-            tipo_calculo_adicional: taxa.tipo_calculo_adicional || 'media',
-            taxa_reajuste: undefined,
-            valores_remota: {
-              funcional: taxa.valores_remota?.find(v => v.funcao === 'Funcional')?.valor_base || 0,
-              tecnico: taxa.valores_remota?.find(v => 
-                v.funcao === 'Técnico / ABAP' || v.funcao === 'Técnico (Instalação / Atualização)'
-              )?.valor_base || 0,
-              abap: taxa.valores_remota?.find(v => v.funcao === 'ABAP - PL/SQL')?.valor_base || 0,
-              dba: taxa.valores_remota?.find(v => 
-                v.funcao === 'DBA / Basis' || v.funcao === 'DBA'
-              )?.valor_base || 0,
-              gestor: taxa.valores_remota?.find(v => v.funcao === 'Gestor')?.valor_base || 0,
-            },
-            valores_local: {
-              funcional: taxa.valores_local?.find(v => v.funcao === 'Funcional')?.valor_base || 0,
-              tecnico: taxa.valores_local?.find(v => 
-                v.funcao === 'Técnico / ABAP' || v.funcao === 'Técnico (Instalação / Atualização)'
-              )?.valor_base || 0,
-              abap: taxa.valores_local?.find(v => v.funcao === 'ABAP - PL/SQL')?.valor_base || 0,
-              dba: taxa.valores_local?.find(v => 
-                v.funcao === 'DBA / Basis' || v.funcao === 'DBA'
-              )?.valor_base || 0,
-              gestor: taxa.valores_local?.find(v => v.funcao === 'Gestor')?.valor_base || 0,
-            },
-          };
-          
-          // Salvar valores originais para referência
-          setValoresOriginais({
-            valores_remota: { ...valoresIniciais.valores_remota },
-            valores_local: { ...valoresIniciais.valores_local },
-            vigencia_inicio: valoresIniciais.vigencia_inicio,
-            vigencia_fim: valoresIniciais.vigencia_fim,
-          });
-          
-          form.reset(valoresIniciais);
-          
-          setTipoProdutoSelecionado(taxa.tipo_produto);
-          setTipoCalculoAdicional(taxa.tipo_calculo_adicional || 'media');
-        }, 0);
-      }
+      // Salvar valores originais para referência
+      setValoresOriginais({
+        valores_remota: { ...valoresIniciais.valores_remota },
+        valores_local: { ...valoresIniciais.valores_local },
+        vigencia_inicio: valoresIniciais.vigencia_inicio,
+        vigencia_fim: valoresIniciais.vigencia_fim,
+      });
+      
+      form.reset(valoresIniciais);
+      setTipoProdutoSelecionado(taxaPadrao.tipo_produto);
+      setTipoCalculoAdicional(taxaPadrao.tipo_calculo_adicional || 'media');
     }
-  }, [taxa, empresas, form]);
+  }, [taxaPadrao, form]);
 
   const handleSubmit = (data: any) => {
-    // Encontrar ID da empresa pelo nome abreviado
-    const empresa = empresas.find(e => e.nome_abreviado === data.cliente_id);
-    
-    if (!empresa) {
-      form.setError('cliente_id', { message: 'Cliente não encontrado' });
-      return;
-    }
-
-    const dadosFormatados: TaxaFormData = {
-      cliente_id: empresa.id,
-      vigencia_inicio: data.vigencia_inicio,
-      vigencia_fim: data.vigencia_fim || undefined,
-      tipo_produto: data.tipo_produto,
-      tipo_calculo_adicional: data.tipo_calculo_adicional,
-      taxa_reajuste: data.taxa_reajuste,
-      valores_remota: data.valores_remota,
-      valores_local: data.valores_local,
-    };
-
-    onSubmit(dadosFormatados);
+    onSubmit(data);
   };
 
   // Calcular valores em tempo real
@@ -225,14 +141,14 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
 
   // Recalcular valores e vigências quando taxa de reajuste mudar (apenas em edição)
   useEffect(() => {
-    if (taxa && valoresOriginais && taxaReajuste && taxaReajuste > 0) {
+    if (taxaPadrao && valoresOriginais && taxaReajuste && taxaReajuste > 0) {
       const percentual = taxaReajuste / 100;
       
       // Recalcular valores remotos
       const novosValoresRemota = {
         funcional: valoresOriginais.valores_remota.funcional + (valoresOriginais.valores_remota.funcional * percentual),
         tecnico: valoresOriginais.valores_remota.tecnico + (valoresOriginais.valores_remota.tecnico * percentual),
-        abap: valoresOriginais.valores_remota.abap + (valoresOriginais.valores_remota.abap * percentual),
+        abap: (valoresOriginais.valores_remota.abap || 0) + ((valoresOriginais.valores_remota.abap || 0) * percentual),
         dba: valoresOriginais.valores_remota.dba + (valoresOriginais.valores_remota.dba * percentual),
         gestor: valoresOriginais.valores_remota.gestor + (valoresOriginais.valores_remota.gestor * percentual),
       };
@@ -241,7 +157,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       const novosValoresLocal = {
         funcional: valoresOriginais.valores_local.funcional + (valoresOriginais.valores_local.funcional * percentual),
         tecnico: valoresOriginais.valores_local.tecnico + (valoresOriginais.valores_local.tecnico * percentual),
-        abap: valoresOriginais.valores_local.abap + (valoresOriginais.valores_local.abap * percentual),
+        abap: (valoresOriginais.valores_local.abap || 0) + ((valoresOriginais.valores_local.abap || 0) * percentual),
         dba: valoresOriginais.valores_local.dba + (valoresOriginais.valores_local.dba * percentual),
         gestor: valoresOriginais.valores_local.gestor + (valoresOriginais.valores_local.gestor * percentual),
       };
@@ -262,17 +178,17 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       // Atualizar valores no formulário
       form.setValue('valores_remota', novosValoresRemota);
       form.setValue('valores_local', novosValoresLocal);
-    } else if (taxa && valoresOriginais && (!taxaReajuste || taxaReajuste === 0)) {
+    } else if (taxaPadrao && valoresOriginais && (!taxaReajuste || taxaReajuste === 0)) {
       // Se taxa de reajuste for zerada, restaurar valores originais
       form.setValue('valores_remota', valoresOriginais.valores_remota);
       form.setValue('valores_local', valoresOriginais.valores_local);
       form.setValue('vigencia_inicio', valoresOriginais.vigencia_inicio);
       form.setValue('vigencia_fim', valoresOriginais.vigencia_fim);
     }
-  }, [taxaReajuste, taxa, valoresOriginais, form]);
+  }, [taxaReajuste, taxaPadrao, valoresOriginais, form]);
 
-  const calcularValoresExibicao = (valores: any, tipo: 'remota' | 'local') => {
-    const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado || 'GALLERY');
+  const calcularValoresExibicao = (valores: any) => {
+    const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado);
     const resultado: any = {};
 
     funcoes.forEach(funcao => {
@@ -290,7 +206,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         valorBase = valores.gestor || 0;
       }
 
-      // Preparar array com todas as funções para cálculo da média
       const todasFuncoes = funcoes.map(f => {
         let vb = 0;
         if (f === 'Funcional') vb = valores.funcional || 0;
@@ -301,61 +216,25 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         return { funcao: f, valor_base: vb };
       });
 
-      resultado[funcao] = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado || 'GALLERY');
+      resultado[funcao] = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado);
     });
 
     return resultado;
   };
 
-  const valoresCalculadosRemota = calcularValoresExibicao(valoresRemota, 'remota');
-  const valoresCalculadosLocal = calcularValoresExibicao(valoresLocal, 'local');
+  const valoresCalculadosRemota = calcularValoresExibicao(valoresRemota);
+  const valoresCalculadosLocal = calcularValoresExibicao(valoresLocal);
 
-  const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado || 'GALLERY');
+  const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado);
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Dados Principais */}
+        {/* Configuração */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Dados Principais</h3>
+          <h3 className="text-lg font-semibold">Configuração</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="cliente_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      setClienteSelecionado(value);
-                    }}
-                    value={field.value}
-                    disabled={!!taxa}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente">
-                          {field.value || "Selecione o cliente"}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {empresas
-                        .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado))
-                        .map((empresa) => (
-                          <SelectItem key={empresa.id} value={empresa.nome_abreviado}>
-                            {empresa.nome_abreviado}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="tipo_produto"
@@ -368,34 +247,46 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                       setTipoProdutoSelecionado(value as TipoProduto);
                     }}
                     value={field.value}
-                    disabled={!clienteSelecionado || produtosCliente.length === 0}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={
-                          !clienteSelecionado 
-                            ? "Selecione um cliente primeiro" 
-                            : produtosCliente.length === 0 
-                              ? "Cliente sem produtos cadastrados"
-                              : "Selecione um Tipo de Produto"
-                        }>
-                          {field.value === 'GALLERY' 
-                            ? 'GALLERY' 
-                            : field.value === 'OUTROS' 
-                              ? produtosCliente.filter(p => p !== 'GALLERY').join(', ')
-                              : field.value || undefined}
+                        <SelectValue placeholder="Selecione o tipo de produto" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="GALLERY">GALLERY</SelectItem>
+                      <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tipo_calculo_adicional"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cálculo - Hora Adicional</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setTipoCalculoAdicional(value as 'normal' | 'media');
+                    }}
+                    value={field.value}
+                    defaultValue="media"
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue>
+                          {field.value === 'normal' ? 'Normal (Valor Base + 15%)' : 'Média (Cálculo por Média)'}
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {produtosCliente.includes('GALLERY') && (
-                        <SelectItem value="GALLERY">GALLERY</SelectItem>
-                      )}
-                      {produtosCliente.some(p => p !== 'GALLERY') && (
-                        <SelectItem value="OUTROS">
-                          {produtosCliente.filter(p => p !== 'GALLERY').join(', ')}
-                        </SelectItem>
-                      )}
+                      <SelectItem value="normal">Normal (Valor Base + 15%)</SelectItem>
+                      <SelectItem value="media">Média (Cálculo por Média)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -488,40 +379,9 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
             />
           </div>
 
-          <div className={`grid grid-cols-1 ${taxa ? 'md:grid-cols-2' : ''} gap-4`}>
-            <FormField
-              control={form.control}
-              name="tipo_calculo_adicional"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Cálculo - Hora Adicional</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      setTipoCalculoAdicional(value as 'normal' | 'media');
-                    }}
-                    value={field.value}
-                    defaultValue="media"
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue>
-                          {field.value === 'normal' ? 'Normal (Valor Base + 15%)' : 'Média (Cálculo por Média)'}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal (Valor Base + 15%)</SelectItem>
-                      <SelectItem value="media">Média (Cálculo por Média)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Campo de Taxa de Reajuste - Apenas visível ao editar */}
-            {taxa && (
+          {/* Campo de Taxa de Reajuste - Apenas ao editar */}
+          {taxaPadrao && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="taxa_reajuste"
@@ -533,16 +393,22 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                         type="number"
                         step="0.01"
                         placeholder="Ex: 5.5"
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        {...field}
+                        onChange={(e) => {
+                          const valor = e.target.value ? parseFloat(e.target.value) : undefined;
+                          field.onChange(valor);
+                        }}
                       />
                     </FormControl>
+                    <p className="text-sm text-muted-foreground">
+                      Ao preencher, os valores e vigências serão recalculados automaticamente
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Tabela de Valores Remotos */}
@@ -730,7 +596,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
             Cancelar
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Salvando...' : taxa ? 'Atualizar' : 'Criar'}
+            {isLoading ? 'Salvando...' : 'Salvar Taxa Padrão'}
           </Button>
         </div>
       </form>

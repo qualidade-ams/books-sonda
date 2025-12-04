@@ -25,7 +25,8 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
       cliente:empresas_clientes(
         id,
         nome_completo,
-        nome_abreviado
+        nome_abreviado,
+        produtos:empresa_produtos(produto)
       )
     `)
     .order('vigencia_inicio', { ascending: false });
@@ -78,7 +79,8 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
       cliente:empresas_clientes(
         id,
         nome_completo,
-        nome_abreviado
+        nome_abreviado,
+        produtos:empresa_produtos(produto)
       )
     `)
     .eq('id', id)
@@ -116,18 +118,20 @@ async function buscarValoresTaxa(taxaId: string): Promise<ValorTaxaFuncao[]> {
 }
 
 /**
- * Verificar se já existe taxa para o cliente na mesma vigência
+ * Verificar se já existe taxa para o cliente na mesma vigência e mesmo tipo de produto
  */
 export async function verificarVigenciaConflitante(
   clienteId: string,
   vigenciaInicio: string,
   vigenciaFim: string | undefined,
+  tipoProduto: TipoProduto,
   taxaIdExcluir?: string
 ): Promise<boolean> {
   let query = supabase
     .from('taxas_clientes')
     .select('id')
-    .eq('cliente_id', clienteId);
+    .eq('cliente_id', clienteId)
+    .eq('tipo_produto', tipoProduto); // Adicionar filtro por tipo de produto
 
   if (taxaIdExcluir) {
     query = query.neq('id', taxaIdExcluir);
@@ -208,11 +212,12 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   const temConflito = await verificarVigenciaConflitante(
     dados.cliente_id,
     vigenciaInicio,
-    vigenciaFim
+    vigenciaFim,
+    dados.tipo_produto
   );
 
   if (temConflito) {
-    throw new Error('Já existe uma taxa cadastrada para este cliente neste período de vigência');
+    throw new Error(`Já existe uma taxa cadastrada para este cliente e produto (${dados.tipo_produto}) neste período de vigência`);
   }
 
   // Criar taxa
@@ -223,6 +228,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       vigencia_inicio: vigenciaInicio,
       vigencia_fim: vigenciaFim,
       tipo_produto: dados.tipo_produto,
+      tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
       criado_por: user?.id
     })
     .select()
@@ -287,16 +293,114 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     throw new Error('Erro ao criar valores da taxa');
   }
 
+  // Se houver taxa de reajuste, criar segunda taxa automaticamente
+  if (dados.taxa_reajuste && dados.taxa_reajuste > 0) {
+    // Calcular nova vigência (início = fim da primeira + 1 dia, fim = início + 1 ano)
+    const dataFimPrimeira = vigenciaFim ? new Date(vigenciaFim) : new Date(vigenciaInicio);
+    if (!vigenciaFim) {
+      dataFimPrimeira.setFullYear(dataFimPrimeira.getFullYear() + 1);
+    }
+    
+    const novaVigenciaInicio = new Date(dataFimPrimeira);
+    novaVigenciaInicio.setDate(novaVigenciaInicio.getDate() + 1);
+    
+    const novaVigenciaFim = new Date(novaVigenciaInicio);
+    novaVigenciaFim.setFullYear(novaVigenciaFim.getFullYear() + 1);
+
+    // Calcular valores reajustados
+    const percentualReajuste = dados.taxa_reajuste / 100;
+    const valoresReajustadosRemota = {
+      funcional: dados.valores_remota.funcional + (dados.valores_remota.funcional * percentualReajuste),
+      tecnico: dados.valores_remota.tecnico + (dados.valores_remota.tecnico * percentualReajuste),
+      abap: ((dados.valores_remota as any).abap || 0) + (((dados.valores_remota as any).abap || 0) * percentualReajuste),
+      dba: dados.valores_remota.dba + (dados.valores_remota.dba * percentualReajuste),
+      gestor: dados.valores_remota.gestor + (dados.valores_remota.gestor * percentualReajuste)
+    };
+
+    const valoresReajustadosLocal = {
+      funcional: dados.valores_local.funcional + (dados.valores_local.funcional * percentualReajuste),
+      tecnico: dados.valores_local.tecnico + (dados.valores_local.tecnico * percentualReajuste),
+      abap: ((dados.valores_local as any).abap || 0) + (((dados.valores_local as any).abap || 0) * percentualReajuste),
+      dba: dados.valores_local.dba + (dados.valores_local.dba * percentualReajuste),
+      gestor: dados.valores_local.gestor + (dados.valores_local.gestor * percentualReajuste)
+    };
+
+    // Criar segunda taxa com valores reajustados
+    const { data: taxaReajustada, error: taxaReajustadaError } = await supabase
+      .from('taxas_clientes')
+      .insert({
+        cliente_id: dados.cliente_id,
+        vigencia_inicio: novaVigenciaInicio.toISOString().split('T')[0],
+        vigencia_fim: novaVigenciaFim.toISOString().split('T')[0],
+        tipo_produto: dados.tipo_produto,
+        tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
+        criado_por: user?.id
+      })
+      .select()
+      .single();
+
+    if (taxaReajustadaError) {
+      console.error('Erro ao criar taxa reajustada:', taxaReajustadaError);
+      // Não reverter a primeira taxa, apenas logar o erro
+    } else {
+      // Criar valores para a taxa reajustada
+      const valoresReajustadosParaInserir: any[] = [];
+
+      funcoes.forEach(funcao => {
+        let valorRemota = 0;
+        let valorLocal = 0;
+        
+        if (funcao === 'Funcional') {
+          valorRemota = valoresReajustadosRemota.funcional;
+          valorLocal = valoresReajustadosLocal.funcional;
+        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+          valorRemota = valoresReajustadosRemota.tecnico;
+          valorLocal = valoresReajustadosLocal.tecnico;
+        } else if (funcao === 'ABAP - PL/SQL') {
+          valorRemota = valoresReajustadosRemota.abap;
+          valorLocal = valoresReajustadosLocal.abap;
+        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+          valorRemota = valoresReajustadosRemota.dba;
+          valorLocal = valoresReajustadosLocal.dba;
+        } else if (funcao === 'Gestor') {
+          valorRemota = valoresReajustadosRemota.gestor;
+          valorLocal = valoresReajustadosLocal.gestor;
+        }
+
+        valoresReajustadosParaInserir.push({
+          taxa_id: taxaReajustada.id,
+          funcao,
+          tipo_hora: 'remota',
+          valor_base: valorRemota
+        });
+
+        valoresReajustadosParaInserir.push({
+          taxa_id: taxaReajustada.id,
+          funcao,
+          tipo_hora: 'local',
+          valor_base: valorLocal
+        });
+      });
+
+      await supabase
+        .from('valores_taxas_funcoes')
+        .insert(valoresReajustadosParaInserir);
+    }
+  }
+
   return taxa as TaxaCliente;
 }
 
 /**
  * Atualizar taxa
+ * Se houver taxa_reajuste, cria uma nova taxa ao invés de atualizar
  */
 export async function atualizarTaxa(
   id: string,
   dados: Partial<TaxaFormData>
 ): Promise<TaxaCliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
   // Buscar taxa atual
   const { data: taxaAtual, error: taxaError } = await supabase
     .from('taxas_clientes')
@@ -306,6 +410,97 @@ export async function atualizarTaxa(
 
   if (taxaError || !taxaAtual) {
     throw new Error('Taxa não encontrada');
+  }
+
+  // Se houver taxa de reajuste, criar nova taxa ao invés de atualizar
+  if (dados.taxa_reajuste && dados.taxa_reajuste > 0) {
+    // Criar nova taxa com os dados reajustados
+    const vigenciaInicio = typeof dados.vigencia_inicio === 'string' 
+      ? dados.vigencia_inicio 
+      : dados.vigencia_inicio?.toISOString().split('T')[0];
+    
+    const vigenciaFim = dados.vigencia_fim 
+      ? (typeof dados.vigencia_fim === 'string' 
+          ? dados.vigencia_fim 
+          : dados.vigencia_fim.toISOString().split('T')[0])
+      : undefined;
+
+    if (!vigenciaInicio) {
+      throw new Error('Vigência início é obrigatória');
+    }
+
+    // Criar nova taxa
+    const { data: novaTaxa, error: novaTaxaError } = await supabase
+      .from('taxas_clientes')
+      .insert({
+        cliente_id: taxaAtual.cliente_id,
+        vigencia_inicio: vigenciaInicio,
+        vigencia_fim: vigenciaFim,
+        tipo_produto: dados.tipo_produto || taxaAtual.tipo_produto,
+        tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtual.tipo_calculo_adicional,
+        criado_por: user?.id
+      })
+      .select()
+      .single();
+
+    if (novaTaxaError) {
+      console.error('Erro ao criar nova taxa:', novaTaxaError);
+      throw new Error('Erro ao criar nova taxa com reajuste');
+    }
+
+    // Criar valores para a nova taxa
+    const funcoes = getFuncoesPorProduto(dados.tipo_produto || taxaAtual.tipo_produto);
+    const valoresParaInserir: any[] = [];
+
+    funcoes.forEach(funcao => {
+      let valorRemota = 0;
+      let valorLocal = 0;
+      
+      if (funcao === 'Funcional') {
+        valorRemota = dados.valores_remota?.funcional || 0;
+        valorLocal = dados.valores_local?.funcional || 0;
+      } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+        valorRemota = dados.valores_remota?.tecnico || 0;
+        valorLocal = dados.valores_local?.tecnico || 0;
+      } else if (funcao === 'ABAP - PL/SQL') {
+        valorRemota = (dados.valores_remota as any)?.abap || 0;
+        valorLocal = (dados.valores_local as any)?.abap || 0;
+      } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+        valorRemota = dados.valores_remota?.dba || 0;
+        valorLocal = dados.valores_local?.dba || 0;
+      } else if (funcao === 'Gestor') {
+        valorRemota = dados.valores_remota?.gestor || 0;
+        valorLocal = dados.valores_local?.gestor || 0;
+      }
+
+      valoresParaInserir.push({
+        taxa_id: novaTaxa.id,
+        funcao,
+        tipo_hora: 'remota',
+        valor_base: valorRemota
+      });
+
+      valoresParaInserir.push({
+        taxa_id: novaTaxa.id,
+        funcao,
+        tipo_hora: 'local',
+        valor_base: valorLocal
+      });
+    });
+
+    const { error: valoresError } = await supabase
+      .from('valores_taxas_funcoes')
+      .insert(valoresParaInserir);
+
+    if (valoresError) {
+      console.error('Erro ao criar valores da nova taxa:', valoresError);
+      // Reverter criação da nova taxa
+      await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
+      throw new Error('Erro ao criar valores da nova taxa');
+    }
+
+    // Retornar a nova taxa criada
+    return novaTaxa as TaxaCliente;
   }
 
   // Verificar conflito de vigência se as datas foram alteradas
@@ -324,15 +519,18 @@ export async function atualizarTaxa(
           : undefined)
       : taxaAtual.vigencia_fim;
 
+    const tipoProduto = dados.tipo_produto || taxaAtual.tipo_produto;
+    
     const temConflito = await verificarVigenciaConflitante(
       taxaAtual.cliente_id,
       vigenciaInicio,
       vigenciaFim,
+      tipoProduto,
       id
     );
 
     if (temConflito) {
-      throw new Error('Já existe uma taxa cadastrada para este cliente neste período de vigência');
+      throw new Error(`Já existe uma taxa cadastrada para este cliente e produto (${tipoProduto}) neste período de vigência`);
     }
   }
 
@@ -355,6 +553,10 @@ export async function atualizarTaxa(
 
   if (dados.tipo_produto) {
     dadosAtualizacao.tipo_produto = dados.tipo_produto;
+  }
+
+  if (dados.tipo_calculo_adicional) {
+    dadosAtualizacao.tipo_calculo_adicional = dados.tipo_calculo_adicional;
   }
 
   const { data: taxaAtualizada, error: updateError } = await supabase
