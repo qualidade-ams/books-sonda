@@ -331,14 +331,12 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                       field.onChange(value);
                       setClienteSelecionado(value);
                     }}
-                    value={field.value}
+                    value={field.value || ""}
                     disabled={!!taxa}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente">
-                          {field.value || "Selecione o cliente"}
-                        </SelectValue>
+                        <SelectValue placeholder="Selecione o cliente" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -367,7 +365,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                       field.onChange(value);
                       setTipoProdutoSelecionado(value as TipoProduto);
                     }}
-                    value={field.value}
+                    value={field.value || ""}
                     disabled={!clienteSelecionado || produtosCliente.length === 0}
                   >
                     <FormControl>
@@ -378,13 +376,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                             : produtosCliente.length === 0 
                               ? "Cliente sem produtos cadastrados"
                               : "Selecione um Tipo de Produto"
-                        }>
-                          {field.value === 'GALLERY' 
-                            ? 'GALLERY' 
-                            : field.value === 'OUTROS' 
-                              ? produtosCliente.filter(p => p !== 'GALLERY').join(', ')
-                              : field.value || undefined}
-                        </SelectValue>
+                        } />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -500,14 +492,12 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                       field.onChange(value);
                       setTipoCalculoAdicional(value as 'normal' | 'media');
                     }}
-                    value={field.value}
+                    value={field.value || "media"}
                     defaultValue="media"
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue>
-                          {field.value === 'normal' ? 'Normal (Valor Base + 15%)' : 'Média (Cálculo por Média)'}
-                        </SelectValue>
+                        <SelectValue placeholder="Selecione o tipo de cálculo" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
