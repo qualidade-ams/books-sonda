@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,12 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import type { TipoProduto } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
 
@@ -301,43 +293,28 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
               control={form.control}
               name="vigencia_inicio"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem>
                   <FormLabel>Vigência Início *</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className="w-full pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, 'dd/MM/yyyy', { locale: ptBR })
-                          ) : (
-                            <span>Selecione a data</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          // Se data foi selecionada e não há data fim ainda, preencher com 1 ano à frente menos 1 dia
-                          if (date && !form.getValues('vigencia_fim')) {
-                            const dataFim = new Date(date);
-                            dataFim.setFullYear(dataFim.getFullYear() + 1);
-                            dataFim.setDate(dataFim.getDate() - 1);
-                            form.setValue('vigencia_fim', dataFim);
-                          }
-                        }}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
+                        field.onChange(date);
+                        // Se data foi selecionada e não há data fim ainda, preencher com 1 ano à frente menos 1 dia
+                        if (date && !form.getValues('vigencia_fim')) {
+                          const dataFim = new Date(date);
+                          dataFim.setFullYear(dataFim.getFullYear() + 1);
+                          dataFim.setDate(dataFim.getDate() - 1);
+                          form.setValue('vigencia_fim', dataFim);
+                        }
+                      }}
+                      disabled={isLoading}
+                      min="2020-01-01"
+                      max="2030-12-31"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -347,34 +324,21 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
               control={form.control}
               name="vigencia_fim"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem>
                   <FormLabel>Vigência Fim</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className="w-full pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, 'dd/MM/yyyy', { locale: ptBR })
-                          ) : (
-                            <span>Sem data fim (vigência indefinida)</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
+                        field.onChange(date);
+                      }}
+                      disabled={isLoading}
+                      min="2020-01-01"
+                      max="2030-12-31"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

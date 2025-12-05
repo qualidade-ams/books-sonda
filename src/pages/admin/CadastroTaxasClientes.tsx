@@ -236,7 +236,8 @@ function CadastroTaxasClientes() {
       
       const XLSX = await import('xlsx');
       
-      const dadosExportacao = taxasOrdenadas.map(taxa => ({
+      // Aba 1: Resumo das Taxas
+      const dadosResumo = taxasOrdenadas.map(taxa => ({
         'Cliente': taxa.cliente?.nome_abreviado || '-',
         'Tipo de Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
         'Vigência Início': format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
@@ -245,9 +246,75 @@ function CadastroTaxasClientes() {
         'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'
       }));
 
-      const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+      // Aba 2: Detalhes das Taxas (Valores por Função)
+      const dadosDetalhes: any[] = [];
+      
+      taxasOrdenadas.forEach(taxa => {
+        const funcoes = getFuncoesPorProduto(taxa.tipo_produto);
+        
+        // Adicionar valores remotos
+        funcoes.forEach(funcao => {
+          const valorRemoto = taxa.valores_remota?.find(v => v.funcao === funcao);
+          if (valorRemoto) {
+            const valoresCalculados = calcularValores(
+              valorRemoto.valor_base,
+              funcao,
+              taxa.valores_remota?.map(v => ({ funcao: v.funcao, valor_base: v.valor_base })) || [],
+              taxa.tipo_calculo_adicional,
+              taxa.tipo_produto
+            );
+            
+            dadosDetalhes.push({
+              'Cliente': taxa.cliente?.nome_abreviado || '-',
+              'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+              'Tipo Hora': 'Remota',
+              'Função': funcao,
+              'Valor Base': parseFloat(valorRemoto.valor_base.toFixed(2)),
+              'Seg-Sex 17h30-19h30': parseFloat(valoresCalculados.valor_17h30_19h30.toFixed(2)),
+              'Seg-Sex Após 19h30': parseFloat(valoresCalculados.valor_apos_19h30.toFixed(2)),
+              'Sáb/Dom/Feriados': parseFloat(valoresCalculados.valor_fim_semana.toFixed(2)),
+              'Hora Adicional': parseFloat(valoresCalculados.valor_adicional.toFixed(2)),
+              'Stand By': parseFloat(valoresCalculados.valor_standby.toFixed(2))
+            });
+          }
+        });
+        
+        // Adicionar valores locais
+        funcoes.forEach(funcao => {
+          const valorLocal = taxa.valores_local?.find(v => v.funcao === funcao);
+          if (valorLocal) {
+            const valoresCalculados = calcularValores(
+              valorLocal.valor_base,
+              funcao,
+              taxa.valores_local?.map(v => ({ funcao: v.funcao, valor_base: v.valor_base })) || [],
+              taxa.tipo_calculo_adicional,
+              taxa.tipo_produto
+            );
+            
+            dadosDetalhes.push({
+              'Cliente': taxa.cliente?.nome_abreviado || '-',
+              'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+              'Tipo Hora': 'Local',
+              'Função': funcao,
+              'Valor Base': parseFloat(valorLocal.valor_base.toFixed(2)),
+              'Seg-Sex 17h30-19h30': parseFloat(valoresCalculados.valor_17h30_19h30.toFixed(2)),
+              'Seg-Sex Após 19h30': parseFloat(valoresCalculados.valor_apos_19h30.toFixed(2)),
+              'Sáb/Dom/Feriados': parseFloat(valoresCalculados.valor_fim_semana.toFixed(2)),
+              'Hora Adicional': parseFloat(valoresCalculados.valor_adicional.toFixed(2)),
+              'Stand By': parseFloat(valoresCalculados.valor_standby.toFixed(2))
+            });
+          }
+        });
+      });
+
+      // Criar workbook com duas abas
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Taxas');
+      
+      const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+      
+      const wsDetalhes = XLSX.utils.json_to_sheet(dadosDetalhes);
+      XLSX.utils.book_append_sheet(wb, wsDetalhes, 'Detalhes das Taxas');
 
       const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       XLSX.writeFile(wb, `taxas-clientes-${dataAtual}.xlsx`);
@@ -266,60 +333,61 @@ function CadastroTaxasClientes() {
       setExportando(true);
       
       const jsPDF = (await import('jspdf')).default;
-      const doc = new jsPDF();
+      const doc = new jsPDF('landscape'); // Modo paisagem para mais espaço
 
       // Configurações
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 15;
+      const margin = 10;
 
       // Cabeçalho
       doc.setFillColor(0, 102, 255);
-      doc.rect(0, 0, pageWidth, 30, 'F');
+      doc.rect(0, 0, pageWidth, 25, 'F');
       
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(18);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       const titulo = 'Taxas de Clientes';
       const tituloWidth = doc.getTextWidth(titulo);
-      doc.text(titulo, (pageWidth - tituloWidth) / 2, 20);
+      doc.text(titulo, (pageWidth - tituloWidth) / 2, 16);
 
       // Informações do relatório
       doc.setTextColor(100, 100, 100);
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       const dataAtual = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-      doc.text(`Gerado em: ${dataAtual}`, margin, 40);
-      doc.text(`Total de registros: ${taxasOrdenadas.length}`, margin, 46);
+      doc.text(`Gerado em: ${dataAtual}`, margin, 35);
+      doc.text(`Total de registros: ${taxasOrdenadas.length}`, margin, 40);
 
-      // Tabela
-      let yPos = 56;
-      const lineHeight = 8;
-      const colWidths = [60, 40, 35, 35, 25];
+      // Tabela Resumo
+      let yPos = 48;
+      const lineHeight = 7;
+      const colWidths = [45, 35, 28, 28, 22, 22]; // Ajustado para incluir Tipo de Cálculo
 
       // Cabeçalho da tabela
       doc.setFillColor(0, 102, 255);
       doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
       
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(9);
+      doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
       doc.text('Cliente', margin + 2, yPos + 5);
       doc.text('Tipo Produto', margin + colWidths[0] + 2, yPos + 5);
       doc.text('Vigência Início', margin + colWidths[0] + colWidths[1] + 2, yPos + 5);
       doc.text('Vigência Fim', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 5);
       doc.text('Status', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
+      doc.text('Tipo Cálculo', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 5);
 
       yPos += lineHeight;
 
-      // Dados
+      // Dados do resumo
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
+      doc.setFontSize(7);
       
       taxasOrdenadas.forEach((taxa, index) => {
-        if (yPos > pageHeight - 20) {
+        if (yPos > pageHeight - 15) {
           doc.addPage();
-          yPos = 20;
+          yPos = 15;
         }
 
         doc.setTextColor(0, 0, 0);
@@ -327,13 +395,137 @@ function CadastroTaxasClientes() {
         doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
         doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
 
-        doc.text(taxa.cliente?.nome_abreviado || '-', margin + 2, yPos + 5);
-        doc.text(taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL', margin + colWidths[0] + 2, yPos + 5);
-        doc.text(format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy'), margin + colWidths[0] + colWidths[1] + 2, yPos + 5);
-        doc.text(taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy') : 'Indefinida', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 5);
-        doc.text(verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
+        doc.text(taxa.cliente?.nome_abreviado || '-', margin + 2, yPos + 4.5);
+        doc.text(taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL', margin + colWidths[0] + 2, yPos + 4.5);
+        doc.text(format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy'), margin + colWidths[0] + colWidths[1] + 2, yPos + 4.5);
+        doc.text(taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy') : 'Indefinida', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 4.5);
+        doc.text(verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 4.5);
+        doc.text(taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 4.5);
 
         yPos += lineHeight;
+      });
+
+      // Adicionar página com detalhes das taxas
+      doc.addPage();
+      yPos = 15;
+
+      doc.setFillColor(0, 102, 255);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      const tituloDetalhes = 'Detalhes das Taxas por Função';
+      const tituloDetalhesWidth = doc.getTextWidth(tituloDetalhes);
+      doc.text(tituloDetalhes, (pageWidth - tituloDetalhesWidth) / 2, 16);
+
+      yPos = 30;
+
+      // Para cada taxa, adicionar detalhes
+      taxasOrdenadas.forEach((taxa) => {
+        const funcoes = getFuncoesPorProduto(taxa.tipo_produto);
+        
+        // Cabeçalho da taxa
+        if (yPos > pageHeight - 60) {
+          doc.addPage();
+          yPos = 15;
+        }
+
+        doc.setFillColor(0, 102, 255);
+        doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${taxa.cliente?.nome_abreviado || '-'} - ${taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL'}`, margin + 2, yPos + 5.5);
+        yPos += 12; // Aumentado de 10 para 12 para dar mais espaço
+
+        // Tabela de valores remotos
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(8);
+        doc.text('Valores Hora Remota:', margin + 2, yPos);
+        yPos += 6; // Aumentado de 5 para 6 para dar mais espaço
+
+        const colWidthsDetalhes = [35, 20, 20, 20, 20, 20, 20];
+        
+        // Cabeçalho
+        doc.setFillColor(200, 200, 200);
+        doc.rect(margin, yPos, pageWidth - 2 * margin, 6, 'F');
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Função', margin + 1, yPos + 4);
+        doc.text('Base', margin + colWidthsDetalhes[0], yPos + 4);
+        doc.text('17h30-19h30', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1], yPos + 4);
+        doc.text('Após 19h30', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2], yPos + 4);
+        doc.text('Fim Semana', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3], yPos + 4);
+        doc.text('Adicional', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3] + colWidthsDetalhes[4], yPos + 4);
+        doc.text('Stand By', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3] + colWidthsDetalhes[4] + colWidthsDetalhes[5], yPos + 4);
+        yPos += 6;
+
+        // Dados remotos
+        doc.setFont('helvetica', 'normal');
+        funcoes.forEach((funcao) => {
+          const valorRemoto = taxa.valores_remota?.find(v => v.funcao === funcao);
+          if (valorRemoto) {
+            const valoresCalculados = calcularValores(
+              valorRemoto.valor_base,
+              funcao,
+              taxa.valores_remota?.map(v => ({ funcao: v.funcao, valor_base: v.valor_base })) || [],
+              taxa.tipo_calculo_adicional,
+              taxa.tipo_produto
+            );
+
+            doc.text(funcao, margin + 1, yPos + 4);
+            doc.text(valorRemoto.valor_base.toFixed(2), margin + colWidthsDetalhes[0], yPos + 4);
+            doc.text(valoresCalculados.valor_17h30_19h30.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1], yPos + 4);
+            doc.text(valoresCalculados.valor_apos_19h30.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2], yPos + 4);
+            doc.text(valoresCalculados.valor_fim_semana.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3], yPos + 4);
+            doc.text(valoresCalculados.valor_adicional.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3] + colWidthsDetalhes[4], yPos + 4);
+            doc.text(valoresCalculados.valor_standby.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3] + colWidthsDetalhes[4] + colWidthsDetalhes[5], yPos + 4);
+            yPos += 5;
+          }
+        });
+
+        yPos += 5; // Aumentado de 3 para 5 para dar mais espaço entre tabelas
+
+        // Tabela de valores locais
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Valores Hora Local:', margin + 2, yPos);
+        yPos += 6; // Aumentado de 5 para 6 para dar mais espaço
+
+        // Cabeçalho
+        doc.setFillColor(200, 200, 200);
+        doc.rect(margin, yPos, pageWidth - 2 * margin, 6, 'F');
+        doc.setFontSize(6);
+        doc.text('Função', margin + 1, yPos + 4);
+        doc.text('Base', margin + colWidthsDetalhes[0], yPos + 4);
+        doc.text('17h30-19h30', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1], yPos + 4);
+        doc.text('Após 19h30', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2], yPos + 4);
+        doc.text('Fim Semana', margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3], yPos + 4);
+        yPos += 6;
+
+        // Dados locais
+        doc.setFont('helvetica', 'normal');
+        funcoes.forEach((funcao) => {
+          const valorLocal = taxa.valores_local?.find(v => v.funcao === funcao);
+          if (valorLocal) {
+            const valoresCalculados = calcularValores(
+              valorLocal.valor_base,
+              funcao,
+              taxa.valores_local?.map(v => ({ funcao: v.funcao, valor_base: v.valor_base })) || [],
+              taxa.tipo_calculo_adicional,
+              taxa.tipo_produto
+            );
+
+            doc.text(funcao, margin + 1, yPos + 4);
+            doc.text(valorLocal.valor_base.toFixed(2), margin + colWidthsDetalhes[0], yPos + 4);
+            doc.text(valoresCalculados.valor_17h30_19h30.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1], yPos + 4);
+            doc.text(valoresCalculados.valor_apos_19h30.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2], yPos + 4);
+            doc.text(valoresCalculados.valor_fim_semana.toFixed(2), margin + colWidthsDetalhes[0] + colWidthsDetalhes[1] + colWidthsDetalhes[2] + colWidthsDetalhes[3], yPos + 4);
+            yPos += 5;
+          }
+        });
+
+        yPos += 8;
       });
 
       const dataArquivo = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
@@ -405,87 +597,73 @@ function CadastroTaxasClientes() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg lg:text-xl">Taxas Cadastradas ({taxasOrdenadas.length})</CardTitle>
               {/* Botão de Filtros */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filtros
-              </Button>
-            </div>
-          </CardHeader>
-
-          {/* Painel de Filtros dentro do Card */}
-          {mostrarFiltros && (
-            <div className="px-6 pb-4 bg-gray-50 dark:bg-gray-800 border-b">
-              <div className="flex flex-wrap items-end gap-4">
-                {/* Filtro por Cliente */}
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    Buscar
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar por chamado, cliente ou descrição..."
-                      value={filtroCliente}
-                      onChange={(e) => setFiltroCliente(e.target.value)}
-                      className="pl-10 bg-white dark:bg-gray-900"
-                    />
-                  </div>
-                </div>
-
-                {/* Filtro por Tipo de Produto */}
-                <div className="w-[200px]">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    Tipo de Produto
-                  </label>
-                  <Select value={filtroTipoProduto} onValueChange={setFiltroTipoProduto}>
-                    <SelectTrigger className="bg-white dark:bg-gray-900">
-                      <SelectValue placeholder="Todos os tipos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os tipos</SelectItem>
-                      <SelectItem value="GALLERY">GALLERY</SelectItem>
-                      <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filtro por Status */}
-                <div className="w-[200px]">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    Status
-                  </label>
-                  <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                    <SelectTrigger className="bg-white dark:bg-gray-900">
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os status</SelectItem>
-                      <SelectItem value="vigente">Vigente</SelectItem>
-                      <SelectItem value="nao_vigente">Não Vigente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Botão Selecionar Todos */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setFiltroCliente('');
-                    setFiltroTipoProduto('todos');
-                    setFiltroStatus('todos');
-                  }}
-                  className="bg-white dark:bg-gray-900"
+                  size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center justify-center space-x-2"
                 >
-                  Selecionar Todos
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
                 </Button>
               </div>
             </div>
-          )}
+            {/* Filtros */}
+            {mostrarFiltros && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+              {/* Filtro por Cliente */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Buscar
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por cliente..."
+                    value={filtroCliente}
+                    onChange={(e) => setFiltroCliente(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Filtro por Tipo de Produto */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Tipo de Produto
+                </label>
+                <Select value={filtroTipoProduto} onValueChange={setFiltroTipoProduto}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os tipos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os tipos</SelectItem>
+                    <SelectItem value="GALLERY">GALLERY</SelectItem>
+                    <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro por Status */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Status
+                </label>
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os status</SelectItem>
+                    <SelectItem value="vigente">Vigente</SelectItem>
+                    <SelectItem value="nao_vigente">Não Vigente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              </div>
+            )}
+          </CardHeader>
 
           <CardContent>
             <div className="rounded-md overflow-x-auto">
