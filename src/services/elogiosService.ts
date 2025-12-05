@@ -20,7 +20,7 @@ export async function buscarElogios(
   console.log('🔍 buscarElogios chamado com filtros:', filtros);
   
   let query = supabase
-    .from('elogios')
+    .from('elogios' as any)
     .select(`
       *,
       pesquisa:pesquisas_satisfacao(
@@ -107,7 +107,7 @@ export async function buscarElogios(
   }
 
   console.log('🎯 Retornando', resultado.length, 'elogios');
-  return resultado as ElogioCompleto[];
+  return resultado as unknown as ElogioCompleto[];
 }
 
 /**
@@ -115,7 +115,7 @@ export async function buscarElogios(
  */
 export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | null> {
   const { data, error } = await supabase
-    .from('elogios')
+    .from('elogios' as any)
     .select(`
       *,
       pesquisa:pesquisas_satisfacao(
@@ -141,7 +141,7 @@ export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | nu
     return null;
   }
 
-  return data as ElogioCompleto;
+  return data as unknown as ElogioCompleto;
 }
 
 /**
@@ -164,9 +164,11 @@ export async function criarElogio(dados: ElogioFormData): Promise<Elogio> {
       nro_caso: dados.nro_caso,
       resposta: dados.resposta,
       comentario_pesquisa: dados.comentario_pesquisa,
-      data_resposta: dados.data_resposta,
+      data_resposta: dados.data_resposta 
+        ? (dados.data_resposta instanceof Date ? dados.data_resposta.toISOString() : dados.data_resposta)
+        : undefined,
       origem: 'manual'
-    })
+    } as any)
     .select()
     .single();
 
@@ -177,7 +179,7 @@ export async function criarElogio(dados: ElogioFormData): Promise<Elogio> {
 
   // Depois, criar o elogio vinculado à pesquisa
   const { data, error } = await supabase
-    .from('elogios')
+    .from('elogios' as any)
     .insert({
       pesquisa_id: pesquisa.id,
       chamado: dados.nro_caso,
@@ -194,7 +196,7 @@ export async function criarElogio(dados: ElogioFormData): Promise<Elogio> {
     throw new Error('Erro ao criar elogio');
   }
 
-  return data as Elogio;
+  return data as unknown as Elogio;
 }
 
 /**
@@ -206,7 +208,7 @@ export async function atualizarElogio(
 ): Promise<Elogio> {
   // Buscar o elogio para obter o pesquisa_id
   const { data: elogioAtual, error: elogioError } = await supabase
-    .from('elogios')
+    .from('elogios' as any)
     .select('pesquisa_id')
     .eq('id', id)
     .single();
@@ -216,8 +218,10 @@ export async function atualizarElogio(
     throw new Error('Elogio não encontrado');
   }
 
+  const elogioData = elogioAtual as any;
+
   // Atualizar a pesquisa vinculada se houver dados de pesquisa
-  if (elogioAtual.pesquisa_id) {
+  if (elogioData.pesquisa_id) {
     const dadosPesquisa: any = {};
     
     if (dados.empresa) dadosPesquisa.empresa = dados.empresa;
@@ -236,7 +240,7 @@ export async function atualizarElogio(
       const { error: pesquisaError } = await supabase
         .from('pesquisas_satisfacao')
         .update(dadosPesquisa)
-        .eq('id', elogioAtual.pesquisa_id);
+        .eq('id', elogioData.pesquisa_id);
 
       if (pesquisaError) {
         console.error('Erro ao atualizar pesquisa:', pesquisaError);
@@ -253,7 +257,7 @@ export async function atualizarElogio(
   if (dados.status) dadosElogio.status = dados.status;
 
   const { data, error } = await supabase
-    .from('elogios')
+    .from('elogios' as any)
     .update(dadosElogio)
     .eq('id', id)
     .select()
@@ -264,7 +268,7 @@ export async function atualizarElogio(
     throw new Error('Erro ao atualizar elogio');
   }
 
-  return data as Elogio;
+  return data as unknown as Elogio;
 }
 
 /**
@@ -272,7 +276,7 @@ export async function atualizarElogio(
  */
 export async function deletarElogio(id: string): Promise<void> {
   const { error } = await supabase
-    .from('elogios')
+    .from('elogios' as any)
     .delete()
     .eq('id', id);
 

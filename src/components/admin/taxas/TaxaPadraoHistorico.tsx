@@ -103,13 +103,6 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
     }
   };
 
-  const formatarMoeda = (valor: number): string => {
-    return valor.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  };
-
   const formatarData = (data: Date | string | undefined): string => {
     if (!data) return 'Indefinida';
     

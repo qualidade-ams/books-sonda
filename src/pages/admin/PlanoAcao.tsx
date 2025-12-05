@@ -160,7 +160,7 @@ export default function PlanoAcao() {
               Gerenciamento de planos de ação para pesquisas de satisfação
           </p>
         </div>
-        <Button onClick={handleNovo}>
+        <Button onClick={handleNovo} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Novo Plano
         </Button>

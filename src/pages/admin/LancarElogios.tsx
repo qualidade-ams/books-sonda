@@ -231,7 +231,7 @@ function LancarElogios() {
               Gerenciamento de elogios de clientes
             </p>
           </div>
-          <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2">
+          <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
             <Plus className="h-4 w-4" />
             Novo Elogio
           </Button>
@@ -329,7 +329,7 @@ function LancarElogios() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>
+              <CardTitle className="text-lg lg:text-xl">
                 Elogios ({elogios.length})
               </CardTitle>
               <Button

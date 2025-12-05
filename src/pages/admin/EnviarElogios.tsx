@@ -556,7 +556,7 @@ export default function EnviarElogios() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2">
+                <CardTitle className="text-lg lg:text-xl">
                   Elogios Disponíveis
                 </CardTitle>
                 <Badge variant="secondary" className="bg-green-100 text-green-800">

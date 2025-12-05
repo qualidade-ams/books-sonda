@@ -309,6 +309,37 @@ export class AuditService {
         }
         return `Requerimento criado: Chamado ${reqChamado} - Cliente: ${clienteReqNome} - Tipo: ${this.formatTipoCobranca(reqTipoCobranca)}`;
       
+      // Taxas de Clientes
+      case 'taxas_clientes':
+        const taxaClienteId = this.getValueFromJson(values, 'cliente_id');
+        const taxaTipoProduto = this.getValueFromJson(values, 'tipo_produto') || 'Não especificado';
+        const taxaVigenciaInicio = this.getValueFromJson(values, 'vigencia_inicio');
+        const taxaVigenciaFim = this.getValueFromJson(values, 'vigencia_fim');
+        const taxaClienteNome = taxaClienteId ? await this.getEmpresaNameById(taxaClienteId) : 'Cliente não identificado';
+        const vigenciaTexto = taxaVigenciaFim 
+          ? `${this.formatDate(taxaVigenciaInicio)} a ${this.formatDate(taxaVigenciaFim)}`
+          : `a partir de ${this.formatDate(taxaVigenciaInicio)}`;
+        return `Taxa criada para cliente "${taxaClienteNome}" - Produto: ${this.formatTipoProduto(taxaTipoProduto)} - Vigência: ${vigenciaTexto}`;
+      
+      // Taxas Padrão
+      case 'taxas_padrao':
+        const taxaPadraoTipoProduto = this.getValueFromJson(values, 'tipo_produto') || 'Não especificado';
+        const taxaPadraoVigenciaInicio = this.getValueFromJson(values, 'vigencia_inicio');
+        const taxaPadraoVigenciaFim = this.getValueFromJson(values, 'vigencia_fim');
+        const vigenciaPadraoTexto = taxaPadraoVigenciaFim 
+          ? `${this.formatDate(taxaPadraoVigenciaInicio)} a ${this.formatDate(taxaPadraoVigenciaFim)}`
+          : `a partir de ${this.formatDate(taxaPadraoVigenciaInicio)}`;
+        return `Taxa padrão criada para produto ${this.formatTipoProduto(taxaPadraoTipoProduto)} - Vigência: ${vigenciaPadraoTexto}`;
+      
+      // Valores de Taxas
+      case 'valores_taxas_funcoes':
+        const valorFuncao = this.getValueFromJson(values, 'funcao') || 'Função não especificada';
+        const valorTipoHora = this.getValueFromJson(values, 'tipo_hora') || 'remota';
+        const valorBase = this.getValueFromJson(values, 'valor_base');
+        const valorTaxaId = this.getValueFromJson(values, 'taxa_id');
+        const tipoHoraTexto = valorTipoHora === 'remota' ? 'Remota' : 'Local';
+        return `Valor ${tipoHoraTexto} adicionado para função "${valorFuncao}": R$ ${this.formatarMoeda(parseFloat(valorBase || '0'))}`;
+      
       default:
         return `Registro criado - ${this.getRecordIdentifier(values)}`;
     }
@@ -395,6 +426,28 @@ export class AuditService {
           delClienteReqNome = nomeDelCliente || '(não identificado)';
         }
         return `Requerimento excluído: Chamado ${delReqChamado} - Cliente: ${delClienteReqNome}`;
+      
+      // Taxas de Clientes excluídas
+      case 'taxas_clientes':
+        const delTaxaClienteId = this.getValueFromJson(values, 'cliente_id');
+        const delTaxaTipoProduto = this.getValueFromJson(values, 'tipo_produto') || 'Não especificado';
+        const delTaxaVigenciaInicio = this.getValueFromJson(values, 'vigencia_inicio');
+        const delTaxaClienteNome = delTaxaClienteId ? await this.getEmpresaNameById(delTaxaClienteId) : 'Cliente não identificado';
+        return `Taxa excluída do cliente "${delTaxaClienteNome}" - Produto: ${this.formatTipoProduto(delTaxaTipoProduto)} - Vigência: ${this.formatDate(delTaxaVigenciaInicio)}`;
+      
+      // Taxas Padrão excluídas
+      case 'taxas_padrao':
+        const delTaxaPadraoTipoProduto = this.getValueFromJson(values, 'tipo_produto') || 'Não especificado';
+        const delTaxaPadraoVigenciaInicio = this.getValueFromJson(values, 'vigencia_inicio');
+        return `Taxa padrão excluída do produto ${this.formatTipoProduto(delTaxaPadraoTipoProduto)} - Vigência: ${this.formatDate(delTaxaPadraoVigenciaInicio)}`;
+      
+      // Valores de Taxas excluídos
+      case 'valores_taxas_funcoes':
+        const delValorFuncao = this.getValueFromJson(values, 'funcao') || 'Função não especificada';
+        const delValorTipoHora = this.getValueFromJson(values, 'tipo_hora') || 'remota';
+        const delValorBase = this.getValueFromJson(values, 'valor_base');
+        const delTipoHoraTexto = delValorTipoHora === 'remota' ? 'Remota' : 'Local';
+        return `Valor ${delTipoHoraTexto} removido da função "${delValorFuncao}": R$ ${this.formatarMoeda(parseFloat(delValorBase || '0'))}`;
       
       default:
         return `Registro excluído - ${this.getRecordIdentifier(values)}`;
@@ -523,6 +576,29 @@ export class AuditService {
         'observacao': 'Observação',
         'autor_id': 'Autor',
         'autor_nome': 'Autor'
+      },
+      'taxas_clientes': {
+        'cliente_id': 'Cliente',
+        'tipo_produto': 'Tipo de Produto',
+        'vigencia_inicio': 'Vigência Início',
+        'vigencia_fim': 'Vigência Fim',
+        'tipo_calculo_adicional': 'Tipo de Cálculo Adicional',
+        'valores_remota': 'Valores Hora Remota',
+        'valores_local': 'Valores Hora Local'
+      },
+      'taxas_padrao': {
+        'tipo_produto': 'Tipo de Produto',
+        'vigencia_inicio': 'Vigência Início',
+        'vigencia_fim': 'Vigência Fim',
+        'tipo_calculo_adicional': 'Tipo de Cálculo Adicional',
+        'valores_remota': 'Valores Hora Remota',
+        'valores_local': 'Valores Hora Local'
+      },
+      'valores_taxas_funcoes': {
+        'taxa_id': 'Taxa',
+        'funcao': 'Função',
+        'tipo_hora': 'Tipo de Hora',
+        'valor_base': 'Valor Base'
       }
     };
     
@@ -585,6 +661,28 @@ export class AuditService {
 
     if (fieldName === 'tipo_cobranca' && typeof value === 'string') {
       return this.formatTipoCobranca(value);
+    }
+
+    if (fieldName === 'tipo_produto' && typeof value === 'string') {
+      return this.formatTipoProduto(value);
+    }
+
+    if (fieldName === 'tipo_calculo_adicional' && typeof value === 'string') {
+      return value === 'normal' ? 'Normal (Valor Base + 15%)' : 'Média (Cálculo por Média)';
+    }
+
+    // Format valores_remota and valores_local (JSON objects)
+    if ((fieldName === 'valores_remota' || fieldName === 'valores_local') && typeof value === 'object' && value !== null) {
+      const valores = value as Record<string, number>;
+      const partes: string[] = [];
+      
+      if (valores.funcional !== undefined) partes.push(`Funcional: R$ ${this.formatarMoeda(valores.funcional)}`);
+      if (valores.tecnico !== undefined) partes.push(`Técnico: R$ ${this.formatarMoeda(valores.tecnico)}`);
+      if (valores.abap !== undefined) partes.push(`ABAP: R$ ${this.formatarMoeda(valores.abap)}`);
+      if (valores.dba !== undefined) partes.push(`DBA: R$ ${this.formatarMoeda(valores.dba)}`);
+      if (valores.gestor !== undefined) partes.push(`Gestor: R$ ${this.formatarMoeda(valores.gestor)}`);
+      
+      return partes.join(', ');
     }
 
     // Format enviado_faturamento (boolean to text)
@@ -653,6 +751,11 @@ export class AuditService {
           currency: 'BRL'
         }).format(numValue);
       }
+    }
+
+    // Format tipo_hora
+    if (fieldName === 'tipo_hora' && typeof value === 'string') {
+      return value === 'remota' ? 'Remota' : 'Local';
     }
 
     // Format dates
@@ -728,6 +831,15 @@ export class AuditService {
       case 'requerimentos':
         const chamado = this.getValueFromJson(values, 'chamado');
         return chamado ? `Requerimento "${chamado}"` : 'Requerimento';
+      
+      case 'taxas_clientes':
+        const taxaClienteId = this.getValueFromJson(values, 'cliente_id');
+        const taxaClienteNome = taxaClienteId ? await this.getEmpresaNameById(taxaClienteId) : null;
+        return taxaClienteNome ? `Taxa do cliente "${taxaClienteNome}"` : 'Taxa de cliente';
+      
+      case 'taxas_padrao':
+        const taxaPadraoTipo = this.getValueFromJson(values, 'tipo_produto');
+        return taxaPadraoTipo ? `Taxa padrão ${this.formatTipoProduto(taxaPadraoTipo)}` : 'Taxa padrão';
       
       default:
         return '';
@@ -989,6 +1101,39 @@ export class AuditService {
   }
 
   /**
+   * Format tipo de produto for display
+   */
+  private formatTipoProduto(tipo: string | null): string {
+    if (!tipo) return 'Não especificado';
+    if (tipo === 'GALLERY') return 'GALLERY';
+    if (tipo === 'OUTROS') return 'COMEX, FISCAL';
+    return tipo;
+  }
+
+  /**
+   * Format date for display
+   */
+  private formatDate(date: string | null): string {
+    if (!date) return 'Não informada';
+    try {
+      const dateObj = new Date(date + 'T00:00:00');
+      return dateObj.toLocaleDateString('pt-BR');
+    } catch {
+      return date;
+    }
+  }
+
+  /**
+   * Format monetary value for display
+   */
+  private formatarMoeda(valor: number): string {
+    return valor.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  /**
    * Get table display name
    */
   getTableDisplayName(tableName: string): string {
@@ -1002,7 +1147,10 @@ export class AuditService {
       'grupos_responsaveis': 'Grupos Responsáveis',
       'email_templates': 'Templates de Email',
       'historico_disparos': 'Disparos de Books',
-      'requerimentos': 'Requerimentos'
+      'requerimentos': 'Requerimentos',
+      'taxas_clientes': 'Taxas de Clientes',
+      'taxas_padrao': 'Taxas Padrão',
+      'valores_taxas_funcoes': 'Valores de Taxas'
     };
     
     return tableNames[tableName] || tableName;

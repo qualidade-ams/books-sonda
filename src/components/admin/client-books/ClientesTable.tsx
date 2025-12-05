@@ -248,7 +248,9 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5">
                         {cliente.principal_contato && (
-                          <Star className="h-4 w-4 text-blue-600 fill-current flex-shrink-0" title="Contato Principal" />
+                          <span title="Contato Principal">
+                            <Star className="h-4 w-4 text-blue-600 fill-current flex-shrink-0" />
+                          </span>
                         )}
                         <span className="truncate">
                           {cliente.nome_completo}

@@ -3,9 +3,10 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,20 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { TaxaForm, TaxaPadraoForm, TaxaPadraoHistorico } from '@/components/admin/taxas';
@@ -46,6 +61,13 @@ function CadastroTaxasClientes() {
   const [tipoProdutoTaxaPadrao, setTipoProdutoTaxaPadrao] = useState<'GALLERY' | 'OUTROS'>('GALLERY');
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>('cliente');
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc');
+  
+  // Estados de filtro
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [filtroTipoProduto, setFiltroTipoProduto] = useState<string>('todos');
+  const [filtroStatus, setFiltroStatus] = useState<string>('todos');
+  const [exportando, setExportando] = useState(false);
 
   // Queries e mutations
   const { data: taxas = [], isLoading, refetch } = useTaxas();
@@ -140,11 +162,39 @@ function CadastroTaxasClientes() {
       : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
-  // Ordenar taxas
-  const taxasOrdenadas = useMemo(() => {
-    if (!direcaoOrdenacao) return taxas;
+  // Filtrar e ordenar taxas
+  const taxasFiltradas = useMemo(() => {
+    let resultado = [...taxas];
 
-    return [...taxas].sort((a, b) => {
+    // Filtro por cliente
+    if (filtroCliente) {
+      resultado = resultado.filter(taxa =>
+        taxa.cliente?.nome_abreviado?.toLowerCase().includes(filtroCliente.toLowerCase()) ||
+        taxa.cliente?.nome_completo?.toLowerCase().includes(filtroCliente.toLowerCase())
+      );
+    }
+
+    // Filtro por tipo de produto
+    if (filtroTipoProduto !== 'todos') {
+      resultado = resultado.filter(taxa => taxa.tipo_produto === filtroTipoProduto);
+    }
+
+    // Filtro por status
+    if (filtroStatus !== 'todos') {
+      resultado = resultado.filter(taxa => {
+        const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
+        return filtroStatus === 'vigente' ? vigente : !vigente;
+      });
+    }
+
+    return resultado;
+  }, [taxas, filtroCliente, filtroTipoProduto, filtroStatus]);
+
+  // Ordenar taxas filtradas
+  const taxasOrdenadas = useMemo(() => {
+    if (!direcaoOrdenacao) return taxasFiltradas;
+
+    return [...taxasFiltradas].sort((a, b) => {
       let valorA: any;
       let valorB: any;
 
@@ -177,7 +227,126 @@ function CadastroTaxasClientes() {
       if (valorA > valorB) return direcaoOrdenacao === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [taxas, colunaOrdenacao, direcaoOrdenacao]);
+  }, [taxasFiltradas, colunaOrdenacao, direcaoOrdenacao]);
+
+  // Funções de exportação
+  const exportarParaExcel = async () => {
+    try {
+      setExportando(true);
+      
+      const XLSX = await import('xlsx');
+      
+      const dadosExportacao = taxasOrdenadas.map(taxa => ({
+        'Cliente': taxa.cliente?.nome_abreviado || '-',
+        'Tipo de Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+        'Vigência Início': format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
+        'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Indefinida',
+        'Status': verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente',
+        'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Taxas');
+
+      const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      XLSX.writeFile(wb, `taxas-clientes-${dataAtual}.xlsx`);
+
+      toast.success(`${taxasOrdenadas.length} taxas exportadas para Excel com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao exportar para Excel:', error);
+      toast.error('Erro ao exportar para Excel');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const exportarParaPDF = async () => {
+    try {
+      setExportando(true);
+      
+      const jsPDF = (await import('jspdf')).default;
+      const doc = new jsPDF();
+
+      // Configurações
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 15;
+
+      // Cabeçalho
+      doc.setFillColor(0, 102, 255);
+      doc.rect(0, 0, pageWidth, 30, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      const titulo = 'Taxas de Clientes';
+      const tituloWidth = doc.getTextWidth(titulo);
+      doc.text(titulo, (pageWidth - tituloWidth) / 2, 20);
+
+      // Informações do relatório
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const dataAtual = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      doc.text(`Gerado em: ${dataAtual}`, margin, 40);
+      doc.text(`Total de registros: ${taxasOrdenadas.length}`, margin, 46);
+
+      // Tabela
+      let yPos = 56;
+      const lineHeight = 8;
+      const colWidths = [60, 40, 35, 35, 25];
+
+      // Cabeçalho da tabela
+      doc.setFillColor(0, 102, 255);
+      doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cliente', margin + 2, yPos + 5);
+      doc.text('Tipo Produto', margin + colWidths[0] + 2, yPos + 5);
+      doc.text('Vigência Início', margin + colWidths[0] + colWidths[1] + 2, yPos + 5);
+      doc.text('Vigência Fim', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 5);
+      doc.text('Status', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
+
+      yPos += lineHeight;
+
+      // Dados
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      taxasOrdenadas.forEach((taxa, index) => {
+        if (yPos > pageHeight - 20) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setTextColor(0, 0, 0);
+        const bgColor = index % 2 === 0 ? [245, 245, 245] : [255, 255, 255];
+        doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+        doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
+
+        doc.text(taxa.cliente?.nome_abreviado || '-', margin + 2, yPos + 5);
+        doc.text(taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL', margin + colWidths[0] + 2, yPos + 5);
+        doc.text(format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy'), margin + colWidths[0] + colWidths[1] + 2, yPos + 5);
+        doc.text(taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy') : 'Indefinida', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 5);
+        doc.text(verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
+
+        yPos += lineHeight;
+      });
+
+      const dataArquivo = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      doc.save(`taxas-clientes-${dataArquivo}.pdf`);
+
+      toast.success(`Relatório PDF gerado com ${taxasOrdenadas.length} taxas!`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar relatório PDF');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   return (
     <LayoutAdmin>
@@ -193,10 +362,37 @@ function CadastroTaxasClientes() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleAbrirTaxaPadrao} variant="outline" className="flex items-center gap-2">
+            <Button onClick={handleAbrirTaxaPadrao} variant="outline" size="sm" className="flex items-center gap-2">
               Taxa Padrão
             </Button>
-            <Button onClick={handleNovaTaxa} className="flex items-center gap-2">
+            
+            {/* Botão de Exportação */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exportando || taxasOrdenadas.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarParaExcel} disabled={exportando}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Exportar para Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarParaPDF} disabled={exportando}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Exportar para PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button onClick={handleNovaTaxa} className="flex items-center gap-2" size="sm">
               <Plus className="h-4 w-4" />
               Nova Taxa
             </Button>
@@ -206,8 +402,91 @@ function CadastroTaxasClientes() {
         {/* Tabela de Taxas */}
         <Card>
           <CardHeader>
-            <CardTitle>Taxas Cadastradas ({taxas.length})</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg lg:text-xl">Taxas Cadastradas ({taxasOrdenadas.length})</CardTitle>
+              {/* Botão de Filtros */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filtros
+              </Button>
+            </div>
           </CardHeader>
+
+          {/* Painel de Filtros dentro do Card */}
+          {mostrarFiltros && (
+            <div className="px-6 pb-4 bg-gray-50 dark:bg-gray-800 border-b">
+              <div className="flex flex-wrap items-end gap-4">
+                {/* Filtro por Cliente */}
+                <div className="flex-1 min-w-[200px]">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                    Buscar
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por chamado, cliente ou descrição..."
+                      value={filtroCliente}
+                      onChange={(e) => setFiltroCliente(e.target.value)}
+                      className="pl-10 bg-white dark:bg-gray-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro por Tipo de Produto */}
+                <div className="w-[200px]">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                    Tipo de Produto
+                  </label>
+                  <Select value={filtroTipoProduto} onValueChange={setFiltroTipoProduto}>
+                    <SelectTrigger className="bg-white dark:bg-gray-900">
+                      <SelectValue placeholder="Todos os tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os tipos</SelectItem>
+                      <SelectItem value="GALLERY">GALLERY</SelectItem>
+                      <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Status */}
+                <div className="w-[200px]">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                    Status
+                  </label>
+                  <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                    <SelectTrigger className="bg-white dark:bg-gray-900">
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="vigente">Vigente</SelectItem>
+                      <SelectItem value="nao_vigente">Não Vigente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Botão Selecionar Todos */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFiltroCliente('');
+                    setFiltroTipoProduto('todos');
+                    setFiltroStatus('todos');
+                  }}
+                  className="bg-white dark:bg-gray-900"
+                >
+                  Selecionar Todos
+                </Button>
+              </div>
+            </div>
+          )}
+
           <CardContent>
             <div className="rounded-md overflow-x-auto">
               <Table>

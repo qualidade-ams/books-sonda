@@ -372,6 +372,8 @@ export default function AuditLogs() {
                     <SelectItem value="email_templates">Templates de Email</SelectItem>
                     <SelectItem value="historico_disparos">Disparos de Books</SelectItem>
                     <SelectItem value="requerimentos">Requerimentos</SelectItem>
+                    <SelectItem value="taxas_clientes">Taxas de Clientes</SelectItem>
+                    <SelectItem value="taxas_padrao">Taxas Padrão</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

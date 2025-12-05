@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Componente `TaxaPadraoHistorico.tsx` - simplificada interface da tabela de histórico, removendo colunas de valores específicos e mantendo apenas informações essenciais (Cliente, Tipo Produto, Vigências, Status, Ações) para melhor navegação e usabilidade.
+**Última atualização**: Serviço `taxaPadraoService.ts` - implementada lógica inteligente de reajuste que cria nova taxa padrão ao invés de atualizar quando há `taxa_reajuste > 0`, preservando histórico completo de parametrizações. Documentação completa do serviço incluída com detalhes de CRUD, lógica de reajuste, estrutura de dados e fluxos de criação/atualização.
 
 ---
 
@@ -537,6 +537,169 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - Valores base em negrito para destaque
 - Bordas arredondadas nas tabelas
 - Layout responsivo com scroll horizontal quando necessário
+
+---
+
+#### `AuditLogs.tsx`
+Página completa para visualização e análise de logs de auditoria do sistema, com filtros avançados, busca textual, paginação e exportação para Excel/PDF.
+
+**Funcionalidades principais:**
+- **Visualização de logs**: Listagem completa de todas as alterações no sistema com detalhes
+- **Filtros avançados**: Sistema de filtros por tabela, ação, período e busca textual
+- **Estatísticas visuais**: Cards com resumo de alterações dos últimos 30 dias
+- **Paginação inteligente**: Navegação por páginas com indicadores visuais e elipses
+- **Exportação de dados**: Exportação de logs para Excel e PDF com formatação
+- **Busca em tempo real**: Busca textual em múltiplos campos (tabela, ação, usuário, email)
+- **Formatação assíncrona**: Renderização otimizada de alterações usando componente assíncrono
+- **Badges coloridos**: Indicadores visuais para tipos de ação (Criado, Atualizado, Excluído)
+
+**Hooks utilizados:**
+- `useState` - Gerenciamento de estado local (logs, filtros, paginação, loading)
+- `useEffect` - Carregamento de dados ao montar e quando filtros mudam
+- `useToast` - Notificações de sucesso/erro nas exportações
+
+**Ícones utilizados (lucide-react):**
+- `Filter`, `RefreshCw`, `User`, `Clock`, `Database`, `Search`, `Download`, `FileText`, `FileSpreadsheet`, `ChevronDown`
+
+**Componentes principais:**
+
+**AuditLogChanges (componente interno):**
+- Renderiza alterações de forma assíncrona para melhor performance
+- Carrega formatação de alterações via `auditService.formatChanges()`
+- Exibe estado de loading e tratamento de erros
+
+**AuditLogExportButtons (componente interno):**
+- Dropdown menu com opções de exportação (Excel e PDF)
+- Validação de dados antes de exportar
+- Estados de loading durante exportação
+- Notificações via toast para feedback ao usuário
+- Importação dinâmica de utilitários de exportação
+
+**Cards de estatísticas:**
+- **Total de Alterações**: Contador geral de mudanças nos últimos 30 dias
+- **Grupos Alterados**: Alterações na tabela `user_groups`
+- **Permissões Alteradas**: Alterações na tabela `screen_permissions`
+- **Atribuições Alteradas**: Alterações na tabela `user_group_assignments`
+
+**Painel de filtros (expansível):**
+- **Buscar**: Campo de busca textual com ícone
+- **Tabela**: Select com todas as tabelas auditadas:
+  - Grupos de Usuários (`user_groups`)
+  - Permissões de Tela (`screen_permissions`)
+  - Atribuições de Usuários (`user_group_assignments`)
+  - Usuários do Sistema (`profiles`)
+  - Empresas Clientes (`empresas_clientes`)
+  - Cadastro de Clientes (`clientes`)
+  - Grupos Responsáveis (`grupos_responsaveis`)
+  - Templates de Email (`email_templates`)
+  - Disparos de Books (`historico_disparos`)
+  - Requerimentos (`requerimentos`)
+  - **Taxas de Clientes** (`taxas_clientes`) - NOVO
+  - **Taxas Padrão** (`taxas_padrao`) - NOVO
+- **Ação**: Select com tipos de ação (Criado, Atualizado, Excluído)
+- **Período**: Dois campos de data (de/até) para filtrar por intervalo
+
+**Estados gerenciados:**
+- `logs`: Array de logs de auditoria com dados do usuário
+- `summary`: Resumo estatístico de alterações
+- `loading`: Estado de carregamento de dados
+- `filters`: Objeto com filtros aplicados (table_name, action, date_from, date_to)
+- `currentPage`: Página atual da paginação
+- `totalCount`: Total de registros encontrados
+- `showFilters`: Controle de expansão do painel de filtros
+- `searchTerm`: Termo de busca textual
+
+**Funções principais:**
+- `loadAuditLogs()`: Carrega logs com filtros e paginação aplicados
+- `loadSummary()`: Carrega estatísticas de auditoria
+- `handleFilterChange(key, value)`: Atualiza filtros e reseta paginação
+- `clearFilters()`: Remove todos os filtros aplicados
+- `getActionBadgeVariant(action)`: Retorna variante do badge baseado na ação
+- `getActionLabel(action)`: Converte ação técnica para label amigável
+
+**Estrutura dos logs:**
+Cada log exibe:
+- **Badge de ação**: Colorido conforme tipo (INSERT=azul, UPDATE=cinza, DELETE=vermelho)
+- **Nome da tabela**: Nome amigável em português via `auditService.getTableDisplayName()`
+- **Data/hora**: Formatada em pt-BR (DD/MM/YYYY HH:mm:ss)
+- **Alterações**: Descrição formatada das mudanças (renderizada assincronamente)
+- **Usuário**: Nome e email do usuário que executou a ação
+
+**Sistema de paginação:**
+- Exibição de 20 logs por página
+- Navegação com botões Anterior/Próxima
+- Números de página clicáveis com elipses para muitas páginas
+- Lógica inteligente de exibição:
+  - Sempre mostra primeira e última página
+  - Mostra páginas ao redor da página atual
+  - Usa elipses (...) quando há muitas páginas
+  - Destaca página atual com variant "default"
+
+**Busca textual:**
+Busca em tempo real nos seguintes campos:
+- Nome técnico da tabela
+- Tipo de ação
+- Nome do usuário
+- Email do usuário
+- Nome amigável da tabela (em português)
+
+**Exportação de dados:**
+
+**Exportação para Excel:**
+- Exporta até 1000 logs com filtros aplicados
+- Utiliza `exportAuditLogsToExcel()` de `@/utils/auditLogsExportUtils`
+- Formatação automática de colunas e dados
+- Notificação de sucesso com quantidade exportada
+
+**Exportação para PDF:**
+- Gera relatório detalhado com até 1000 logs
+- Utiliza `exportAuditLogsToPDF()` de `@/utils/auditLogsExportUtils`
+- Inclui estatísticas do resumo no relatório
+- Formatação profissional para impressão
+
+**Validações:**
+- Verifica se há dados antes de exportar
+- Notifica usuário se não houver logs para exportar
+- Tratamento de erros com mensagens específicas
+
+**Tratamento de erros:**
+- Try-catch em todas as operações assíncronas
+- Logs de erro no console para debugging
+- Notificações via toast para feedback ao usuário
+- Estados de loading durante operações
+
+**Integrações:**
+- `auditService` - Serviço principal de auditoria
+- `@/utils/auditLogsExportUtils` - Utilitários de exportação (importação dinâmica)
+- Componentes UI do shadcn/ui (Card, Button, Input, Select, Badge, DropdownMenu)
+- Sistema de notificações via toast
+
+**Tipos utilizados:**
+- `AuditLogWithUser` - Log de auditoria com dados do usuário
+- `AuditLogFilters` - Filtros para busca de logs
+- `AuditLogSummary` - Resumo estatístico de alterações
+- `PermissionAuditLog` - Log de auditoria de permissões
+
+**Melhorias recentes:**
+- **Adicionados filtros para taxas**: Incluídas opções "Taxas de Clientes" e "Taxas Padrão" no select de tabelas para permitir auditoria completa do módulo de taxas
+- **Mapeamento de nomes amigáveis**: Integração com `auditService.getTableDisplayName()` para exibir nomes em português
+- **Suporte completo a auditoria de taxas**: Rastreamento de todas as operações CRUD em taxas de clientes e taxas padrão
+
+**Estilo visual:**
+- Cards de estatísticas com ícones e cores consistentes
+- Badges coloridos para tipos de ação (azul, cinza, vermelho)
+- Bordas arredondadas nos logs individuais
+- Layout responsivo com grid adaptativo
+- Botões de paginação com destaque para página atual
+- Dropdown menu para exportação com ícones
+
+**Uso típico:**
+1. Usuário acessa a página de logs de auditoria
+2. Visualiza estatísticas gerais nos cards superiores
+3. Expande filtros para buscar logs específicos
+4. Aplica filtros por tabela (ex: "Taxas de Clientes"), ação e período
+5. Navega entre páginas de resultados
+6. Exporta logs filtrados para Excel ou PDF
 
 ---
 
@@ -1191,6 +1354,273 @@ Serviço completo para gerenciamento de elogios (pesquisas de satisfação posit
 
 ---
 
+### `auditService.ts`
+Serviço completo para gerenciamento de logs de auditoria do sistema, incluindo registro, busca, exportação e mapeamento de nomes de tabelas.
+
+**Funcionalidades principais:**
+- Registro automático de operações CRUD em todas as tabelas auditadas
+- Busca de logs com filtros avançados (tabela, operação, usuário, período)
+- Exportação de logs para Excel com formatação
+- Mapeamento de nomes técnicos de tabelas para nomes amigáveis em português
+- Rastreamento de alterações com dados antes/depois (old_data/new_data)
+- Integração com sistema de autenticação para identificar usuários
+
+**Métodos principais:**
+- `registrarLog(params)` - Registra nova entrada de auditoria com dados da operação
+- `buscarLogs(filtros)` - Busca logs com filtros opcionais (tabela, operação, usuário, período)
+- `exportarLogs(filtros)` - Exporta logs filtrados para arquivo Excel
+- `obterNomeTabela(tableName)` - Converte nome técnico da tabela para nome amigável em português
+- `obterEstatisticas()` - Calcula estatísticas de auditoria (total de logs, por operação, por tabela)
+
+**Métodos privados de formatação:**
+- `formatTipoProduto(tipo)` - Formata tipo de produto para exibição (GALLERY, COMEX/FISCAL, ou valor original)
+- `formatDate(date)` - Formata data para exibição em formato brasileiro (DD/MM/YYYY)
+- `formatarMoeda(valor)` - Formata valores numéricos para formato monetário brasileiro (R$ 0,00)
+- `formatTipoHora(tipo)` - Formata tipo de hora para exibição (remota → Remota, local → Local)
+- Formatação de `valores_remota` e `valores_local` - Converte objetos JSON de valores em strings legíveis com todas as funções e seus respectivos valores monetários formatados (ex: "Funcional: R$ 150,00, Técnico: R$ 180,00, ABAP: R$ 200,00, DBA: R$ 220,00, Gestor: R$ 250,00")
+
+**Tabelas auditadas (mapeamento de nomes):**
+- `profiles` → "Perfis de Usuário"
+- `empresas_clientes` → "Empresas Clientes"
+- `grupos_responsaveis` → "Grupos Responsáveis"
+- `email_templates` → "Templates de Email"
+- `historico_disparos` → "Disparos de Books"
+- `requerimentos` → "Requerimentos"
+- `taxas_clientes` → "Taxas de Clientes"
+- `taxas_padrao` → "Taxas Padrão"
+
+**Tipos de operações auditadas:**
+- `INSERT` - Criação de novos registros
+- `UPDATE` - Atualização de registros existentes
+- `DELETE` - Exclusão de registros
+
+**Estrutura do log de auditoria:**
+- `id` - Identificador único do log
+- `table_name` - Nome da tabela afetada
+- `record_id` - ID do registro afetado
+- `operation` - Tipo de operação (INSERT/UPDATE/DELETE)
+- `old_data` - Dados antes da alteração (JSON)
+- `new_data` - Dados após a alteração (JSON)
+- `user_id` - ID do usuário que executou a operação
+- `user_email` - Email do usuário
+- `created_at` - Data/hora da operação
+
+**Filtros disponíveis:**
+- `tabela` - Filtrar por tabela específica
+- `operacao` - Filtrar por tipo de operação (INSERT/UPDATE/DELETE)
+- `usuario` - Filtrar por ID do usuário
+- `dataInicio` - Data inicial do período
+- `dataFim` - Data final do período
+- `recordId` - Filtrar por ID do registro específico
+
+**Integração:**
+- Utilizado pela página `AuditLogs.tsx` para exibição de logs
+- Triggers automáticos no banco de dados registram operações
+- Integra-se com tabela `audit_logs` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+
+**Melhorias recentes:**
+- **Adicionado mapeamento de tabelas de taxas**: Incluídos nomes amigáveis para `taxas_clientes` ("Taxas de Clientes") e `taxas_padrao` ("Taxas Padrão") no método `obterNomeTabela()`
+- **Adicionadas funções privadas de formatação**: Implementados métodos `formatTipoProduto()`, `formatDate()`, `formatarMoeda()` e `formatTipoHora()` para formatação consistente de dados de taxas nos logs de auditoria
+- **Formatação de valores monetários**: Implementada formatação automática dos campos `valores_remota` e `valores_local` (objetos JSON) para strings legíveis com todas as funções e valores em formato monetário brasileiro
+- **Formatação de tipo de hora**: Adicionada formatação do campo `tipo_hora` para exibição amigável (remota → Remota, local → Local)
+- Melhorada legibilidade dos logs com nomes em português e valores formatados
+- Suporte completo para auditoria do módulo de taxas com formatação adequada de tipos de produto, datas, valores monetários e tipos de hora
+
+**Uso típico:**
+```typescript
+// Registrar operação de criação
+await auditService.registrarLog({
+  table_name: 'taxas_clientes',
+  record_id: '123',
+  operation: 'INSERT',
+  new_data: { cliente_id: 'abc', tipo_produto: 'GALLERY' }
+});
+
+// Buscar logs de uma tabela
+const logs = await auditService.buscarLogs({
+  tabela: 'taxas_clientes',
+  dataInicio: new Date('2024-01-01'),
+  dataFim: new Date('2024-12-31')
+});
+
+// Obter nome amigável da tabela
+const nomeAmigavel = auditService.obterNomeTabela('taxas_clientes');
+// Retorna: "Taxas de Clientes"
+```
+
+---
+
+### `taxaPadraoService.ts`
+Serviço completo para gerenciamento de taxas padrão, incluindo CRUD, histórico de parametrizações e lógica de reajuste com criação de novas vigências.
+
+**Funcionalidades principais:**
+- CRUD completo de taxas padrão (criar, buscar, atualizar, deletar)
+- Busca de histórico de taxas padrão filtrado por tipo de produto
+- Lógica inteligente de reajuste: cria nova taxa ao invés de atualizar quando há taxa_reajuste
+- Gestão de vigências com controle de períodos (início e fim)
+- Suporte a dois tipos de produto: GALLERY e OUTROS (COMEX, FISCAL)
+- Valores separados para hora remota e hora local
+- Tipo de cálculo adicional configurável (normal ou média)
+- Integração com sistema de autenticação para rastreamento de criador
+
+**Métodos principais:**
+- `criarTaxaPadrao(dados: TaxaPadraoData): Promise<void>` - Cria nova taxa padrão com validações
+- `buscarTaxasPadrao(): Promise<TaxaPadraoCompleta[]>` - Busca todas as taxas padrão cadastradas
+- `buscarTaxaPadraoPorId(id: string): Promise<TaxaPadraoCompleta | null>` - Busca taxa padrão específica por ID
+- `buscarHistoricoTaxasPadrao(tipoProduto: 'GALLERY' | 'OUTROS'): Promise<TaxaPadraoCompleta[]>` - Busca histórico de taxas padrão filtrado por tipo de produto, ordenado por vigência (mais recente primeiro)
+- `atualizarTaxaPadrao(id: string, dados: Partial<TaxaPadraoData>): Promise<void>` - Atualiza taxa padrão existente OU cria nova taxa se houver reajuste
+- `deletarTaxaPadrao(id: string): Promise<void>` - Remove taxa padrão do sistema
+
+**Lógica de reajuste (comportamento especial):**
+Quando o método `atualizarTaxaPadrao()` recebe `taxa_reajuste > 0`, ao invés de atualizar a taxa existente, o serviço:
+1. Busca a taxa atual para obter os dados base
+2. Cria uma **nova taxa padrão** com os valores reajustados
+3. Define nova vigência (início e fim) conforme fornecido
+4. Mantém a taxa antiga no histórico (não é excluída)
+5. Registra o usuário criador da nova taxa
+
+**Motivo da lógica de reajuste:**
+- Preserva histórico completo de parametrizações
+- Permite rastreamento de todas as vigências anteriores
+- Facilita auditoria e análise de evolução de valores
+- Evita perda de dados históricos
+
+**Estrutura de dados (TaxaPadraoData):**
+```typescript
+{
+  tipo_produto: 'GALLERY' | 'OUTROS';
+  vigencia_inicio: Date | string;
+  vigencia_fim?: Date | string | null;
+  tipo_calculo_adicional?: 'normal' | 'media';
+  taxa_reajuste?: number;  // Percentual de reajuste (ex: 5 para 5%)
+  valores_remota: {
+    funcional: number;
+    tecnico: number;
+    abap?: number;
+    dba: number;
+    gestor: number;
+  };
+  valores_local: {
+    funcional: number;
+    tecnico: number;
+    abap?: number;
+    dba: number;
+    gestor: number;
+  };
+}
+```
+
+**Campos do banco de dados:**
+- `id` - UUID da taxa padrão
+- `tipo_produto` - Tipo de produto (GALLERY ou OUTROS)
+- `vigencia_inicio` - Data de início da vigência (obrigatório)
+- `vigencia_fim` - Data de fim da vigência (opcional, null = indefinida)
+- `tipo_calculo_adicional` - Tipo de cálculo para hora adicional (normal ou media)
+- `valor_remota_funcional` - Valor base remoto para função Funcional
+- `valor_remota_tecnico` - Valor base remoto para função Técnico
+- `valor_remota_abap` - Valor base remoto para função ABAP (apenas OUTROS)
+- `valor_remota_dba` - Valor base remoto para função DBA
+- `valor_remota_gestor` - Valor base remoto para função Gestor
+- `valor_local_funcional` - Valor base local para função Funcional
+- `valor_local_tecnico` - Valor base local para função Técnico
+- `valor_local_abap` - Valor base local para função ABAP (apenas OUTROS)
+- `valor_local_dba` - Valor base local para função DBA
+- `valor_local_gestor` - Valor base local para função Gestor
+- `criado_por` - UUID do usuário que criou a taxa
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**Fluxo de criação:**
+1. Obtém usuário autenticado via `supabase.auth.getUser()`
+2. Valida vigência_inicio (obrigatório)
+3. Prepara dados para inserção no banco
+4. Mapeia valores_remota e valores_local para campos individuais
+5. Insere taxa padrão na tabela `taxas_padrao`
+6. Registra usuário criador (criado_por)
+
+**Fluxo de atualização (sem reajuste):**
+1. Prepara dados para atualização
+2. Converte datas para formato ISO se necessário
+3. Mapeia valores_remota e valores_local para campos individuais
+4. Atualiza taxa padrão existente na tabela `taxas_padrao`
+
+**Fluxo de atualização (com reajuste):**
+1. Obtém usuário autenticado
+2. Busca taxa atual para obter dados base
+3. Valida vigência_inicio (obrigatório para nova taxa)
+4. Prepara dados da nova taxa com valores reajustados
+5. **Cria nova taxa padrão** (INSERT) ao invés de atualizar (UPDATE)
+6. Registra usuário criador da nova taxa
+7. Taxa antiga permanece no histórico
+
+**Validações:**
+- Vigência início obrigatória
+- Tipo de produto obrigatório (GALLERY ou OUTROS)
+- Valores monetários devem ser números positivos
+- Taxa de reajuste deve ser maior que 0 para acionar lógica especial
+
+**Tratamento de erros:**
+- Try-catch em todas as operações assíncronas
+- Logs de erro no console para debugging
+- Mensagens de erro específicas para cada tipo de falha
+- Validação de existência de taxa antes de atualizar/deletar
+
+**Integração:**
+- Utilizado pelos hooks `useTaxasPadrao`, `useHistoricoTaxasPadrao`, `useCriarTaxaPadrao`, `useAtualizarTaxaPadrao`, `useDeletarTaxaPadrao`
+- Integra-se com tabela `taxas_padrao` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+- Utilizado pelos componentes `TaxaPadraoForm` e `TaxaPadraoHistorico`
+
+**Tipos utilizados:**
+- `TaxaPadraoData` - Dados do formulário de criação/edição
+- `TaxaPadraoCompleta` - Tipo completo da taxa padrão com todos os campos
+
+**Melhorias recentes:**
+- **Implementada lógica de reajuste**: Quando há `taxa_reajuste > 0`, cria nova taxa ao invés de atualizar, preservando histórico completo
+- **Preservação de histórico**: Taxa antiga não é excluída, permitindo rastreamento de todas as parametrizações
+- **Validação de vigência**: Garantia de que vigência_inicio é obrigatória ao criar nova taxa por reajuste
+- **Mapeamento de valores**: Conversão automática entre estrutura de objetos (valores_remota/valores_local) e campos individuais do banco
+
+**Uso típico:**
+```typescript
+// Criar nova taxa padrão
+await taxaPadraoService.criarTaxaPadrao({
+  tipo_produto: 'GALLERY',
+  vigencia_inicio: '2024-01-01',
+  vigencia_fim: '2024-12-31',
+  tipo_calculo_adicional: 'media',
+  valores_remota: {
+    funcional: 150,
+    tecnico: 180,
+    dba: 220,
+    gestor: 250
+  },
+  valores_local: {
+    funcional: 180,
+    tecnico: 210,
+    dba: 250,
+    gestor: 280
+  }
+});
+
+// Atualizar com reajuste (cria nova taxa)
+await taxaPadraoService.atualizarTaxaPadrao('uuid-da-taxa', {
+  taxa_reajuste: 5,  // 5% de reajuste
+  vigencia_inicio: '2025-01-01',
+  vigencia_fim: '2025-12-31',
+  valores_remota: { /* valores reajustados */ },
+  valores_local: { /* valores reajustados */ }
+});
+// Resultado: Nova taxa criada, taxa antiga preservada no histórico
+
+// Buscar histórico por tipo de produto
+const historico = await taxaPadraoService.buscarHistoricoTaxasPadrao('GALLERY');
+// Retorna todas as taxas GALLERY ordenadas por vigência (mais recente primeiro)
+```
+
+---
+
 ## Diretório `src/utils/`
 
 Utilitários e funções auxiliares utilizadas em todo o projeto.
@@ -1225,5 +1655,386 @@ const horasFormatadas = converterDeHorasDecimal(7.5);
 // Converter "08:45" para 8.75
 const horasDecimal = converterParaHorasDecimal("08:45");
 ```
+
+---
+
+
+---
+
+## Diretório `supabase/migration/`
+
+Arquivos de migração SQL para o banco de dados Supabase.
+
+### `add_taxas_audit_triggers.sql`
+Migração SQL para adicionar triggers de auditoria automática nas tabelas de taxas de clientes e taxas padrão, permitindo rastreamento completo de todas as operações CRUD.
+
+**Funcionalidades principais:**
+- **Trigger para taxas_clientes**: Registra automaticamente todas as operações (INSERT, UPDATE, DELETE) na tabela `taxas_clientes`
+- **Trigger para taxas_padrao**: Registra automaticamente todas as operações (INSERT, UPDATE, DELETE) na tabela `taxas_padrao`
+- **Verificação de dependências**: Valida se a função `audit_trigger_function()` existe antes de criar os triggers
+- **Log da migração**: Registra a própria execução da migração na tabela `permission_audit_logs`
+- **Verificação automática**: Conta e valida se os 2 triggers foram criados com sucesso
+
+**Triggers criados:**
+- `audit_taxas_clientes_trigger` - Trigger AFTER INSERT OR UPDATE OR DELETE na tabela `taxas_clientes`
+- `audit_taxas_padrao_trigger` - Trigger AFTER INSERT OR UPDATE OR DELETE na tabela `taxas_padrao`
+
+**Estrutura da migração:**
+1. **Verificação de pré-requisitos**: Valida existência da função `audit_trigger_function()`
+2. **Criação de triggers para taxas_clientes**:
+   - Remove trigger existente se houver
+   - Cria novo trigger vinculado à função de auditoria
+3. **Criação de triggers para taxas_padrao**:
+   - Remove trigger existente se houver
+   - Cria novo trigger vinculado à função de auditoria
+4. **Verificação**: Conta triggers criados e exibe mensagem de sucesso/warning
+5. **Log da migração**: Insere registro na tabela de auditoria documentando a execução
+
+**Dependências:**
+- Requer função `audit_trigger_function()` criada pela migração `grups_and_profile_migration.sql`
+- Requer tabela `permission_audit_logs` para armazenar os logs
+- Requer tabelas `taxas_clientes` e `taxas_padrao` já existentes
+
+**Logs gerados automaticamente:**
+- **Criação**: "Taxa criada para cliente [nome] - Produto: [tipo] - Vigência: [início] a [fim]"
+- **Edição**: "Taxa do cliente [nome] - [campo]: [valor antigo] → [valor novo]"
+- **Exclusão**: "Taxa excluída do cliente [nome] - Produto: [tipo] - Vigência: [data]"
+
+**Como executar:**
+
+**Opção 1: Via Supabase Dashboard (Recomendado)**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Opção 2: Via CLI do Supabase**
+```bash
+supabase db push --file supabase/migration/add_taxas_audit_triggers.sql
+```
+
+**Opção 3: Via psql**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/add_taxas_audit_triggers.sql
+```
+
+**Verificação pós-execução:**
+```sql
+-- Verificar se os triggers foram criados
+SELECT 
+  tgname as trigger_name,
+  tgrelid::regclass as table_name,
+  tgenabled as enabled
+FROM pg_trigger
+WHERE tgname IN ('audit_taxas_clientes_trigger', 'audit_taxas_padrao_trigger');
+```
+
+**Rollback (se necessário):**
+```sql
+DROP TRIGGER IF EXISTS audit_taxas_clientes_trigger ON taxas_clientes;
+DROP TRIGGER IF EXISTS audit_taxas_padrao_trigger ON taxas_padrao;
+```
+
+**Integração:**
+- Logs visualizados na página `AuditLogs.tsx` com filtros específicos para "Taxas de Clientes" e "Taxas Padrão"
+- Formatação de logs via `auditService.ts` com nomes amigáveis em português
+- Exportação de logs para Excel/PDF via utilitários de exportação
+
+**Melhorias recentes:**
+- **Remoção de RAISE NOTICE redundantes**: Removidos comandos `RAISE NOTICE` individuais após criação de cada trigger, mantendo apenas a verificação consolidada no final
+- **Código mais limpo**: Migração simplificada com mensagens de feedback centralizadas na seção de verificação
+- **Melhor organização**: Estrutura mais clara com seções bem definidas e comentários explicativos
+
+**Notas importantes:**
+- Triggers executados automaticamente após cada operação
+- Sem impacto significativo na performance
+- Logs armazenados na tabela `permission_audit_logs`
+- Apenas administradores podem visualizar logs de auditoria
+- Documentação completa disponível em `README_TAXAS_AUDIT.md`
+
+---
+
+### `test_taxas_audit.sql`
+Script SQL de teste e verificação para validar a criação e funcionamento dos triggers de auditoria nas tabelas de taxas. Útil para troubleshooting e validação da configuração de auditoria.
+
+**Funcionalidades principais:**
+- **Verificação de tabelas**: Valida se as tabelas `taxas_clientes` e `taxas_padrao` existem no banco
+- **Verificação de função**: Valida se a função `audit_trigger_function()` está disponível
+- **Remoção segura**: Remove triggers existentes antes de recriar (idempotente)
+- **Criação de triggers**: Cria os triggers de auditoria para ambas as tabelas
+- **Verificação de criação**: Conta e valida se os 2 triggers foram criados com sucesso
+- **Listagem detalhada**: Exibe informações completas dos triggers criados (nome, tabela, status)
+
+**Estrutura do script:**
+1. **Verificação de tabelas**: Valida existência de `taxas_clientes` e `taxas_padrao`
+2. **Verificação de função**: Valida existência de `audit_trigger_function()`
+3. **Remoção de triggers**: Remove triggers existentes para evitar conflitos
+4. **Criação de triggers**: Cria `audit_taxas_clientes_trigger` e `audit_taxas_padrao_trigger`
+5. **Verificação de criação**: Conta triggers criados e exibe mensagem de sucesso/warning
+6. **Listagem de triggers**: Exibe tabela com nome, tabela associada e status de cada trigger
+
+**Mensagens de feedback:**
+- `✓ Tabelas taxas_clientes e taxas_padrao existem` - Tabelas encontradas
+- `✓ Função audit_trigger_function existe` - Função de auditoria disponível
+- `✓ Ambos os triggers foram criados com sucesso!` - Triggers criados corretamente
+- `⚠ Apenas X de 2 triggers foram criados` - Problema na criação de triggers
+
+**Quando usar:**
+- Após executar `add_taxas_audit_triggers.sql` para validar a instalação
+- Para troubleshooting de problemas com auditoria de taxas
+- Para recriar triggers em caso de problemas
+- Para verificar o status atual dos triggers de auditoria
+
+**Como executar:**
+
+**Via Supabase Dashboard:**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/test_taxas_audit.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/test_taxas_audit.sql
+```
+
+**Saída esperada:**
+```
+NOTICE:  ✓ Tabelas taxas_clientes e taxas_padrao existem
+NOTICE:  ✓ Função audit_trigger_function existe
+NOTICE:  ✓ Ambos os triggers foram criados com sucesso!
+
+ Nome do Trigger              | Tabela          | Status
+------------------------------+-----------------+--------
+ audit_taxas_clientes_trigger | taxas_clientes  | Ativo
+ audit_taxas_padrao_trigger   | taxas_padrao    | Ativo
+```
+
+**Diferenças em relação ao add_taxas_audit_triggers.sql:**
+- **Propósito**: Teste e validação vs. Migração de produção
+- **Log de migração**: Não registra na tabela `permission_audit_logs`
+- **Idempotência**: Pode ser executado múltiplas vezes sem efeitos colaterais
+- **Feedback detalhado**: Exibe mais informações sobre o status dos triggers
+- **Uso**: Desenvolvimento e troubleshooting vs. Deploy em produção
+
+**Integração:**
+- Complementa o arquivo `add_taxas_audit_triggers.sql`
+- Útil para validar a configuração de auditoria
+- Pode ser usado em ambientes de desenvolvimento e teste
+
+---
+
+### `fix_taxas_audit_triggers.sql`
+Script SQL de correção para criar triggers de auditoria funcionais nas tabelas de taxas, com função específica para garantir compatibilidade e funcionamento correto.
+
+**Funcionalidades principais:**
+- **Remoção de triggers antigos**: Remove triggers existentes que possam estar com problemas
+- **Função específica de auditoria**: Cria função `audit_taxas_trigger_function()` dedicada para taxas
+- **Suporte a usuário nulo**: Trata casos onde não há usuário autenticado (auth.uid() retorna NULL)
+- **Registro completo**: Captura operações INSERT, UPDATE e DELETE com dados completos
+- **Verificação automática**: Valida se os 2 triggers foram criados com sucesso
+- **Feedback detalhado**: Mensagens de sucesso e instruções para teste
+
+**Estrutura do script:**
+1. **Remoção de triggers antigos**: Remove `audit_taxas_clientes_trigger` e `audit_taxas_padrao_trigger` existentes
+2. **Criação de função específica**: Cria `audit_taxas_trigger_function()` com lógica robusta:
+   - Obtém ID do usuário atual via `auth.uid()`
+   - Trata casos de usuário NULL
+   - Registra operações DELETE com `old_values`
+   - Registra operações UPDATE com `old_values` e `new_values`
+   - Registra operações INSERT com `new_values`
+   - Usa `SECURITY DEFINER` para garantir permissões adequadas
+3. **Criação de triggers**: Cria triggers para ambas as tabelas usando a função específica
+4. **Verificação**: Conta triggers criados e exibe mensagem de sucesso/warning
+
+**Diferenças em relação ao add_taxas_audit_triggers.sql:**
+- **Função dedicada**: Cria função específica `audit_taxas_trigger_function()` ao invés de usar a genérica
+- **Tratamento de NULL**: Lida explicitamente com casos onde `auth.uid()` retorna NULL
+- **Propósito**: Correção de problemas vs. Instalação inicial
+- **Uso**: Quando a função genérica não funciona ou há problemas com triggers existentes
+
+**Quando usar:**
+- Quando os triggers criados por `add_taxas_audit_triggers.sql` não estão funcionando
+- Quando há erros relacionados à função `audit_trigger_function()` genérica
+- Para criar uma implementação independente e robusta de auditoria para taxas
+- Em ambientes onde a função genérica não está disponível ou tem problemas
+
+**Como executar:**
+
+**Via Supabase Dashboard (Recomendado):**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/fix_taxas_audit_triggers.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/fix_taxas_audit_triggers.sql
+```
+
+**Saída esperada:**
+```
+NOTICE:  === TRIGGERS CRIADOS: 2 ===
+NOTICE:  ✓ Triggers de auditoria criados com sucesso!
+NOTICE:  Agora crie/edite uma taxa para testar
+```
+
+**Teste após execução:**
+```sql
+-- Criar uma taxa de teste
+INSERT INTO taxas_clientes (cliente_id, tipo_produto, vigencia_inicio)
+VALUES ('uuid-do-cliente', 'GALLERY', '2024-01-01');
+
+-- Verificar se o log foi criado
+SELECT * FROM permission_audit_logs 
+WHERE table_name = 'taxas_clientes' 
+ORDER BY created_at DESC 
+LIMIT 1;
+```
+
+**Rollback (se necessário):**
+```sql
+DROP TRIGGER IF EXISTS audit_taxas_clientes_trigger ON taxas_clientes;
+DROP TRIGGER IF EXISTS audit_taxas_padrao_trigger ON taxas_padrao;
+DROP FUNCTION IF EXISTS audit_taxas_trigger_function();
+```
+
+**Vantagens da função específica:**
+- **Independência**: Não depende de outras funções do sistema
+- **Robustez**: Tratamento explícito de casos especiais (usuário NULL)
+- **Manutenibilidade**: Código isolado e fácil de debugar
+- **Segurança**: Usa `SECURITY DEFINER` para garantir permissões adequadas
+
+**Integração:**
+- Alternativa ao `add_taxas_audit_triggers.sql` quando há problemas
+- Pode ser usado em conjunto com `test_taxas_audit.sql` para validação
+- Logs visualizados na página `AuditLogs.tsx` normalmente
+- Formatação via `auditService.ts` funciona da mesma forma
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Remove triggers antigos antes de criar novos
+- Função específica não interfere com outras funções de auditoria do sistema
+- Recomendado testar após execução criando/editando uma taxa
+
+---
+
+### `add_valores_taxas_audit_triggers.sql`
+Script SQL para adicionar trigger de auditoria na tabela de valores de taxas por função, permitindo rastreamento de alterações nos valores específicos de cada função (Funcional, Técnico, ABAP, DBA, Gestor).
+
+**Funcionalidades principais:**
+- **Trigger para valores_taxas_funcoes**: Registra automaticamente todas as operações (INSERT, UPDATE, DELETE) na tabela `valores_taxas_funcoes`
+- **Reutilização de função**: Utiliza a função `audit_taxas_trigger_function()` já existente (criada por `fix_taxas_audit_triggers.sql`)
+- **Verificação automática**: Valida se o trigger foi criado com sucesso
+- **Feedback claro**: Mensagens de sucesso ou warning sobre a criação do trigger
+
+**Trigger criado:**
+- `audit_valores_taxas_funcoes_trigger` - Trigger AFTER INSERT OR UPDATE OR DELETE na tabela `valores_taxas_funcoes`
+
+**Estrutura do script:**
+1. **Remoção de trigger antigo**: Remove `audit_valores_taxas_funcoes_trigger` se existir
+2. **Criação de trigger**: Cria novo trigger vinculado à função `audit_taxas_trigger_function()`
+3. **Verificação**: Valida se o trigger foi criado e exibe mensagem de sucesso/warning
+
+**Dependências:**
+- Requer função `audit_taxas_trigger_function()` criada pela migração `fix_taxas_audit_triggers.sql`
+- Requer tabela `permission_audit_logs` para armazenar os logs
+- Requer tabela `valores_taxas_funcoes` já existente
+
+**Logs gerados automaticamente:**
+- **Criação**: "Valor criado para função [nome] - Taxa: [taxa_id] - Tipo: [remota/local] - Valor: R$ [valor]"
+- **Edição**: "Valor da função [nome] - [campo]: [valor antigo] → [valor novo]"
+- **Exclusão**: "Valor excluído da função [nome] - Taxa: [taxa_id] - Tipo: [remota/local]"
+
+**Quando usar:**
+- Após executar `fix_taxas_audit_triggers.sql` para estender auditoria aos valores por função
+- Para rastrear alterações específicas nos valores de cada função (Funcional, Técnico, etc.)
+- Para complementar a auditoria das tabelas principais de taxas
+
+**Como executar:**
+
+**Via Supabase Dashboard (Recomendado):**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/add_valores_taxas_audit_triggers.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/add_valores_taxas_audit_triggers.sql
+```
+
+**Saída esperada:**
+```
+NOTICE:  ✓ Trigger de auditoria criado para valores_taxas_funcoes
+```
+
+**Verificação pós-execução:**
+```sql
+-- Verificar se o trigger foi criado
+SELECT 
+  tgname as trigger_name,
+  tgrelid::regclass as table_name,
+  tgenabled as enabled
+FROM pg_trigger
+WHERE tgname = 'audit_valores_taxas_funcoes_trigger';
+```
+
+**Teste após execução:**
+```sql
+-- Criar um valor de teste
+INSERT INTO valores_taxas_funcoes (taxa_id, funcao, tipo_valor, valor_base)
+VALUES ('uuid-da-taxa', 'Funcional', 'remota', 150.00);
+
+-- Verificar se o log foi criado
+SELECT * FROM permission_audit_logs 
+WHERE table_name = 'valores_taxas_funcoes' 
+ORDER BY created_at DESC 
+LIMIT 1;
+```
+
+**Rollback (se necessário):**
+```sql
+DROP TRIGGER IF EXISTS audit_valores_taxas_funcoes_trigger ON valores_taxas_funcoes;
+```
+
+**Integração:**
+- Complementa os triggers de `taxas_clientes` e `taxas_padrao`
+- Logs visualizados na página `AuditLogs.tsx` (pode requerer adição de filtro específico)
+- Formatação via `auditService.ts` (pode requerer mapeamento de nome amigável)
+- Utiliza a mesma função de auditoria das tabelas principais
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Remove trigger antigo antes de criar novo
+- Requer que `fix_taxas_audit_triggers.sql` tenha sido executado primeiro
+- Permite rastreamento granular de alterações em valores por função
 
 ---

@@ -178,10 +178,80 @@ export async function criarTaxaPadrao(dados: TaxaPadraoData): Promise<void> {
 
 /**
  * Atualizar taxa padrão existente
+ * Se houver taxa_reajuste, cria uma nova taxa ao invés de atualizar
  */
 export async function atualizarTaxaPadrao(id: string, dados: Partial<TaxaPadraoData>): Promise<void> {
   try {
-    // Preparar dados para atualização
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Buscar taxa atual
+    const { data: taxaAtual, error: taxaError } = await supabase
+      .from('taxas_padrao')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (taxaError || !taxaAtual) {
+      throw new Error('Taxa padrão não encontrada');
+    }
+
+    // Se houver taxa de reajuste, criar nova taxa ao invés de atualizar
+    if (dados.taxa_reajuste && dados.taxa_reajuste > 0) {
+      // Criar nova taxa com os dados reajustados
+      const vigenciaInicio = typeof dados.vigencia_inicio === 'string' 
+        ? dados.vigencia_inicio 
+        : dados.vigencia_inicio?.toISOString().split('T')[0];
+      
+      const vigenciaFim = dados.vigencia_fim 
+        ? (typeof dados.vigencia_fim === 'string' 
+            ? dados.vigencia_fim 
+            : dados.vigencia_fim.toISOString().split('T')[0])
+        : undefined;
+
+      if (!vigenciaInicio) {
+        throw new Error('Vigência início é obrigatória');
+      }
+
+      // Preparar valores reajustados
+      const dadosNovaTaxa: any = {
+        tipo_produto: dados.tipo_produto || taxaAtual.tipo_produto,
+        vigencia_inicio: vigenciaInicio,
+        vigencia_fim: vigenciaFim || null,
+        tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtual.tipo_calculo_adicional,
+        criado_por: user?.id
+      };
+
+      // Adicionar valores reajustados
+      if (dados.valores_remota) {
+        dadosNovaTaxa.valor_remota_funcional = dados.valores_remota.funcional;
+        dadosNovaTaxa.valor_remota_tecnico = dados.valores_remota.tecnico;
+        dadosNovaTaxa.valor_remota_abap = dados.valores_remota.abap || 0;
+        dadosNovaTaxa.valor_remota_dba = dados.valores_remota.dba;
+        dadosNovaTaxa.valor_remota_gestor = dados.valores_remota.gestor;
+      }
+
+      if (dados.valores_local) {
+        dadosNovaTaxa.valor_local_funcional = dados.valores_local.funcional;
+        dadosNovaTaxa.valor_local_tecnico = dados.valores_local.tecnico;
+        dadosNovaTaxa.valor_local_abap = dados.valores_local.abap || 0;
+        dadosNovaTaxa.valor_local_dba = dados.valores_local.dba;
+        dadosNovaTaxa.valor_local_gestor = dados.valores_local.gestor;
+      }
+
+      // Criar nova taxa
+      const { error: novaTaxaError } = await supabase
+        .from('taxas_padrao')
+        .insert(dadosNovaTaxa);
+
+      if (novaTaxaError) {
+        console.error('Erro ao criar nova taxa padrão:', novaTaxaError);
+        throw new Error('Erro ao criar nova taxa padrão com reajuste');
+      }
+
+      return;
+    }
+
+    // Se não houver reajuste, apenas atualizar a taxa existente
     const dadosDB: any = {};
 
     if (dados.vigencia_inicio) {
