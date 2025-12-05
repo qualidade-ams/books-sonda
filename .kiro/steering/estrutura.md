@@ -379,6 +379,149 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 
 ---
 
+#### `CadastroTaxasClientes.tsx`
+Página completa para gerenciamento de taxas de clientes, incluindo cadastro, edição, visualização e configuração de taxas padrão com histórico de parametrizações.
+
+**Funcionalidades principais:**
+- **CRUD completo de taxas**: Criação, edição, visualização e exclusão de taxas por cliente
+- **Gestão de vigências**: Controle de períodos de vigência (início e fim) com validação de status
+- **Taxas por tipo de produto**: Suporte a GALLERY e OUTROS (COMEX, FISCAL)
+- **Valores diferenciados**: Tabelas separadas para hora remota e hora local
+- **Cálculo automático**: Valores calculados automaticamente com base em regras de negócio (horários, dias da semana, stand-by)
+- **Taxa padrão**: Configuração de taxas padrão para clientes sem AMS
+- **Histórico de parametrizações**: Visualização do histórico de taxas padrão por tipo de produto
+- **Interface com abas**: Organização em abas para melhor navegação (Configuração e Histórico)
+
+**Hooks utilizados:**
+- `useTaxas()`: Busca todas as taxas cadastradas
+- `useCriarTaxa()`: Hook para criação de novas taxas
+- `useAtualizarTaxa()`: Hook para atualização de taxas existentes
+- `useDeletarTaxa()`: Hook para exclusão de taxas
+- `useCriarTaxaPadrao()`: Hook para criação de taxas padrão
+
+**Ícones utilizados (lucide-react):**
+- `Plus`, `Edit`, `Trash2`, `Eye`
+
+**Componentes UI principais:**
+- **Tabela de taxas**: Listagem com colunas (Cliente, Tipo Produto, Vigência Início, Vigência Fim, Status, Ações)
+- **Modal de criação/edição**: Dialog grande (max-w-7xl) com formulário completo usando componente `TaxaForm`
+- **Modal de visualização**: Dialog com tabelas detalhadas de valores remotos e locais
+- **Modal de taxa padrão**: Dialog com sistema de abas duplo:
+  - **Aba Configuração**: Formulário para criar nova taxa padrão usando `TaxaPadraoForm`
+  - **Aba Histórico**: Visualização do histórico com sub-abas por tipo de produto (GALLERY / COMEX, FISCAL) usando `TaxaPadraoHistorico`
+
+**Estados gerenciados:**
+- `modalAberto`: Controle do modal de criação/edição
+- `taxaEditando`: Taxa sendo editada (null para criação)
+- `taxaVisualizando`: Taxa sendo visualizada
+- `modalVisualizarAberto`: Controle do modal de visualização
+- `modalTaxaPadraoAberto`: Controle do modal de taxa padrão
+- `tipoProdutoTaxaPadrao`: Tipo de produto selecionado no histórico ('GALLERY' | 'OUTROS')
+
+**Funções principais:**
+- `handleNovaTaxa()`: Abre modal para criar nova taxa
+- `handleAbrirTaxaPadrao()`: Abre modal de configuração de taxa padrão
+- `handleSalvarTaxaPadrao(dados)`: Salva nova taxa padrão
+- `handleEditarTaxa(taxa)`: Abre modal de edição com dados da taxa
+- `handleVisualizarTaxa(taxa)`: Abre modal de visualização com detalhes completos
+- `handleDeletarTaxa(id)`: Exclui taxa com confirmação
+- `handleSubmit(dados)`: Salva taxa (criação ou edição)
+- `verificarVigente(vigenciaInicio, vigenciaFim)`: Verifica se taxa está vigente na data atual
+
+**Estrutura da tabela principal:**
+- **Coluna Cliente**: Nome abreviado do cliente
+- **Coluna Tipo Produto**: Badge azul para GALLERY, outline para OUTROS (exibe nomes dos produtos quando OUTROS)
+- **Coluna Vigência Início**: Data formatada em pt-BR (DD/MM/YYYY)
+- **Coluna Vigência Fim**: Data formatada ou "Indefinida"
+- **Coluna Status**: Badge verde para "Vigente", cinza para "Não Vigente"
+- **Coluna Ações**: Botões de visualizar, editar e excluir
+
+**Modal de visualização (estrutura):**
+- **Informações Gerais**: Grid 2x2 com Cliente, Tipo de Produto, Vigência Início e Vigência Fim
+- **Tabela de Valores Remotos**: Tabela completa com 7 colunas:
+  - Função
+  - Seg-Sex 08h30-17h30 (valor base)
+  - Seg-Sex 17h30-19h30 (calculado)
+  - Seg-Sex Após 19h30 (calculado)
+  - Sáb/Dom/Feriados (calculado)
+  - Hora Adicional - Excedente do Banco (calculado)
+  - Stand By (calculado)
+- **Tabela de Valores Locais**: Tabela com 5 colunas (sem Hora Adicional e Stand By):
+  - Função
+  - Seg-Sex 08h30-17h30 (valor base)
+  - Seg-Sex 17h30-19h30 (calculado)
+  - Seg-Sex Após 19h30 (calculado)
+  - Sáb/Dom/Feriados (calculado)
+
+**Modal de taxa padrão (estrutura com abas):**
+- **Aba Configuração**: 
+  - Formulário completo para criar nova taxa padrão
+  - Componente `TaxaPadraoForm` com todos os campos necessários
+- **Aba Histórico de Parametrizações**:
+  - Sub-abas por tipo de produto (GALLERY / COMEX, FISCAL)
+  - Componente `TaxaPadraoHistorico` exibindo histórico filtrado por tipo
+  - Visualização de todas as parametrizações anteriores
+
+**Cálculo de valores:**
+- Utiliza função `calcularValores()` de `@/types/taxasClientes`
+- Valores calculados automaticamente com base no valor base e função
+- Regras de negócio aplicadas para diferentes horários e dias
+- Valores formatados em pt-BR com 2 casas decimais
+
+**Funções por tipo de produto:**
+- Utiliza função `getFuncoesPorProduto()` de `@/types/taxasClientes`
+- GALLERY: Funções específicas para produto Gallery
+- OUTROS: Funções para COMEX e FISCAL
+
+**Formatação de dados:**
+- Datas formatadas em pt-BR (DD/MM/YYYY) usando date-fns
+- Valores monetários formatados com `toLocaleString('pt-BR')`
+- Ajuste de timezone adicionando 'T00:00:00' às datas
+- Badges coloridos para status e tipos de produto
+
+**Validações:**
+- Confirmação antes de excluir taxa
+- Verificação de vigência baseada na data atual
+- Validação de campos obrigatórios via formulário
+
+**Tratamento de erros:**
+- Try-catch em operações assíncronas
+- Logs de erro no console
+- Refetch automático após operações bem-sucedidas
+
+**Integrações:**
+- Sistema de taxas via hooks customizados
+- Componentes de formulário (`TaxaForm`, `TaxaPadraoForm`, `TaxaPadraoHistorico`)
+- Componentes UI do shadcn/ui (Table, Card, Dialog, Badge, Tabs, Button)
+- Integração com tipos e funções de cálculo de `@/types/taxasClientes`
+
+**Tipos utilizados:**
+- `TaxaClienteCompleta`: Tipo completo da taxa com dados do cliente
+- `TaxaFormData`: Dados do formulário de taxa
+- `TaxaPadraoData`: Dados do formulário de taxa padrão
+
+**Componentes importados:**
+- `TaxaForm` - Formulário de cadastro/edição de taxas
+- `TaxaPadraoForm` - Formulário de configuração de taxa padrão
+- `TaxaPadraoHistorico` - Componente de visualização do histórico de taxas padrão
+
+**Melhorias recentes:**
+- **Reorganização do modal de taxa padrão**: Implementado sistema de abas duplo para separar Configuração e Histórico
+- **Aba de Configuração**: Formulário isolado para criar nova taxa padrão sem poluição visual do histórico
+- **Aba de Histórico**: Visualização dedicada do histórico com sub-abas por tipo de produto (GALLERY / COMEX, FISCAL)
+- **Melhor UX**: Separação clara entre ação de configurar (criar nova) e consultar histórico
+- **Navegação intuitiva**: Abas principais (Configuração/Histórico) e sub-abas (GALLERY/OUTROS) para organização hierárquica
+
+**Estilo visual:**
+- Tabelas com cabeçalho azul Sonda (#0066FF)
+- Linhas alternadas (zebra striping) para melhor legibilidade
+- Células calculadas com fundo azul claro (bg-blue-50)
+- Valores base em negrito para destaque
+- Bordas arredondadas nas tabelas
+- Layout responsivo com scroll horizontal quando necessário
+
+---
+
 ### `src/components/admin/pesquisas-satisfacao/`
 
 Componentes relacionados ao gerenciamento de pesquisas de satisfação.

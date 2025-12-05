@@ -469,17 +469,24 @@ function CadastroTaxasClientes() {
               </p>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {/* Formulário de Nova Taxa */}
-              <TaxaPadraoForm
-                onSubmit={handleSalvarTaxaPadrao}
-                onCancel={() => setModalTaxaPadraoAberto(false)}
-                isLoading={criarTaxaPadrao.isPending}
-              />
+            {/* Abas principais: Configuração e Histórico */}
+            <Tabs defaultValue="configuracao" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="configuracao">Configuração</TabsTrigger>
+                <TabsTrigger value="historico">Histórico de Parametrizações</TabsTrigger>
+              </TabsList>
               
-              {/* Histórico de Parametrizações */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Histórico de Parametrizações</h3>
+              {/* Aba de Configuração */}
+              <TabsContent value="configuracao" className="mt-6">
+                <TaxaPadraoForm
+                  onSubmit={handleSalvarTaxaPadrao}
+                  onCancel={() => setModalTaxaPadraoAberto(false)}
+                  isLoading={criarTaxaPadrao.isPending}
+                />
+              </TabsContent>
+              
+              {/* Aba de Histórico */}
+              <TabsContent value="historico" className="mt-6">
                 <Tabs value={tipoProdutoTaxaPadrao} onValueChange={(value) => setTipoProdutoTaxaPadrao(value as 'GALLERY' | 'OUTROS')} className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="GALLERY">GALLERY</TabsTrigger>
@@ -494,8 +501,8 @@ function CadastroTaxasClientes() {
                     <TaxaPadraoHistorico tipoProduto="OUTROS" />
                   </TabsContent>
                 </Tabs>
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
