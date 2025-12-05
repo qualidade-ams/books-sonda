@@ -48,6 +48,8 @@ interface ClientesTableProps {
   onEdit: (cliente: ClienteCompleto) => void;
   onDelete: (cliente: ClienteCompleto) => void;
   showEmpresaColumn?: boolean; // Para quando não estiver filtrado por empresa específica
+  // Props de paginação
+  paginationControls?: React.ReactNode;
 }
 
 const ClientesTable: React.FC<ClientesTableProps> = ({
@@ -58,6 +60,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   onFiltrosChange,
   onEdit,
   onDelete,
+  paginationControls,
   showEmpresaColumn = true,
 }) => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -326,6 +329,9 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
           </Table>
           </div>
         )}
+        
+        {/* Controles de Paginação */}
+        {paginationControls}
       </CardContent>
     </Card>
   );

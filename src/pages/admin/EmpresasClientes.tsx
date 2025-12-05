@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Filter, Search } from 'lucide-react';
+import { Plus, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useEmpresasStats } from '@/hooks/useEmpresasStats';
+import { useVirtualPagination } from '@/utils/requerimentosPerformance';
 
 import { EmpresaForm, EmpresasTable, EmpresaImportExportButtons } from '@/components/admin/client-books';
 import ProtectedAction from '@/components/auth/ProtectedAction';
@@ -63,6 +64,10 @@ const EmpresasClientes = () => {
 
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [buscaLocal, setBuscaLocal] = useState(filtros.busca || '');
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Estados para empresa selecionada
   const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaClienteCompleta | null>(null);
@@ -98,6 +103,9 @@ const EmpresasClientes = () => {
 
   // Garantir que empresas é sempre um array
   const empresasArray = Array.isArray(empresas) ? empresas : [];
+  
+  // Paginação
+  const paginatedData = useVirtualPagination(empresasArray, itemsPerPage, currentPage);
 
   const { grupos } = useGrupos();
 
@@ -402,11 +410,71 @@ const EmpresasClientes = () => {
 
           <CardContent>
             <EmpresasTable
-              empresas={empresasArray}
+              empresas={paginatedData.items}
               loading={isLoading}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
+
+            {/* Controles de Paginação */}
+            {!isLoading && empresasArray.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      const newValue = value === 'todos' ? empresasArray.length : parseInt(value);
+                      setItemsPerPage(newValue);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="500">500</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Navegação de páginas */}
+                {paginatedData.totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={!paginatedData.hasPrevPage}
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                      Página {currentPage} de {paginatedData.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
+                      disabled={!paginatedData.hasNextPage}
+                      aria-label="Próxima página"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Contador de registros */}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} empresas
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

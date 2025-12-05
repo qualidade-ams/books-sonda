@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -48,6 +48,7 @@ import { useTaxas, useCriarTaxa, useAtualizarTaxa, useDeletarTaxa } from '@/hook
 import { useCriarTaxaPadrao } from '@/hooks/useTaxasPadrao';
 import type { TaxaClienteCompleta, TaxaFormData } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
+import { useVirtualPagination } from '@/utils/requerimentosPerformance';
 
 type OrdenacaoColuna = 'cliente' | 'tipo_produto' | 'vigencia_inicio' | 'vigencia_fim' | 'status';
 type DirecaoOrdenacao = 'asc' | 'desc' | null;
@@ -68,6 +69,10 @@ function CadastroTaxasClientes() {
   const [filtroTipoProduto, setFiltroTipoProduto] = useState<string>('todos');
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [exportando, setExportando] = useState(false);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Queries e mutations
   const { data: taxas = [], isLoading, refetch } = useTaxas();
@@ -228,6 +233,9 @@ function CadastroTaxasClientes() {
       return 0;
     });
   }, [taxasFiltradas, colunaOrdenacao, direcaoOrdenacao]);
+
+  // Paginação
+  const paginatedData = useVirtualPagination(taxasOrdenadas, itemsPerPage, currentPage);
 
   // Funções de exportação
   const exportarParaExcel = async () => {
@@ -732,7 +740,7 @@ function CadastroTaxasClientes() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    taxasOrdenadas.map((taxa) => {
+                    paginatedData.items.map((taxa) => {
                       const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
                       
                       // Obter nomes dos produtos do cliente
@@ -814,6 +822,66 @@ function CadastroTaxasClientes() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Controles de Paginação */}
+            {!isLoading && taxasOrdenadas.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      const newValue = value === 'todos' ? taxasOrdenadas.length : parseInt(value);
+                      setItemsPerPage(newValue);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="500">500</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Navegação de páginas */}
+                {paginatedData.totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={!paginatedData.hasPrevPage}
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                      Página {currentPage} de {paginatedData.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
+                      disabled={!paginatedData.hasNextPage}
+                      aria-label="Próxima página"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Contador de registros */}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} taxas
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
