@@ -153,14 +153,11 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Tipo Produto</TableHead>
               <TableHead>Vigência Início</TableHead>
               <TableHead>Vigência Fim</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Tipo Cálculo</TableHead>
-              <TableHead className="text-right">Funcional (Remota)</TableHead>
-              <TableHead className="text-right">Técnico (Remota)</TableHead>
-              <TableHead className="text-right">DBA (Remota)</TableHead>
-              <TableHead className="text-right">Gestor (Remota)</TableHead>
               <TableHead className="text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -170,6 +167,20 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
               
               return (
                 <TableRow key={taxa.id}>
+                  <TableCell className="font-medium">
+                    Taxa Padrão
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={taxa.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
+                      className={taxa.tipo_produto === 'GALLERY' 
+                        ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
+                        : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
+                      }
+                    >
+                      {taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {formatarData(taxa.vigencia_inicio)}
                   </TableCell>
@@ -177,20 +188,19 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
                     {formatarData(taxa.vigencia_fim)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={status.variant}>{status.label}</Badge>
+                    <Badge 
+                      variant={status.variant}
+                      className={status.label === 'Vigente' ? 'bg-green-600' : ''}
+                    >
+                      {status.label}
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    {taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'}
-                  </TableCell>
-                  <TableCell className="text-right">R$ {formatarMoeda(taxa.valores_remota.funcional)}</TableCell>
-                  <TableCell className="text-right">R$ {formatarMoeda(taxa.valores_remota.tecnico)}</TableCell>
-                  <TableCell className="text-right">R$ {formatarMoeda(taxa.valores_remota.dba)}</TableCell>
-                  <TableCell className="text-right">R$ {formatarMoeda(taxa.valores_remota.gestor)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleVisualizar(taxa)}
                         title="Visualizar"
                       >
@@ -199,6 +209,7 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleEditar(taxa)}
                         title="Editar"
                       >
@@ -207,10 +218,11 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleDeletar(taxa.id)}
                         title="Excluir"
                       >
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -243,33 +255,37 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
       <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Visualizar Taxa Padrão</DialogTitle>
+            <DialogTitle>Detalhes da Taxa</DialogTitle>
           </DialogHeader>
           {taxaVisualizando && (
             <div className="space-y-6">
               {/* Informações Gerais */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Tipo de Produto</label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">Cliente</p>
+                  <p className="text-lg font-semibold">Taxa Padrão</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tipo de Produto</p>
+                  <Badge 
+                    variant={taxaVisualizando.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
+                    className={taxaVisualizando.tipo_produto === 'GALLERY' 
+                      ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
+                      : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
+                    }
+                  >
                     {taxaVisualizando.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL'}
-                  </p>
+                  </Badge>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Tipo de Cálculo</label>
-                  <p className="text-sm text-muted-foreground">
-                    {taxaVisualizando.tipo_calculo_adicional === 'normal' ? 'Normal (Valor Base + 15%)' : 'Média (Cálculo por Média)'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Vigência Início</label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">Vigência Início</p>
+                  <p className="text-lg">
                     {formatarData(taxaVisualizando.vigencia_inicio)}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Vigência Fim</label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-gray-500">Vigência Fim</p>
+                  <p className="text-lg">
                     {formatarData(taxaVisualizando.vigencia_fim)}
                   </p>
                 </div>
@@ -277,84 +293,182 @@ export function TaxaPadraoHistorico({ tipoProduto }: TaxaPadraoHistoricoProps) {
 
               {/* Tabela de Valores Remotos */}
               <div>
-                <h3 className="text-base font-semibold mb-3">Valores Hora Remota</h3>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Função</TableHead>
-                        <TableHead className="text-right">Valor Base</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>Funcional</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_remota.funcional)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Técnico</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_remota.tecnico)}</TableCell>
-                      </TableRow>
-                      {taxaVisualizando.tipo_produto === 'OUTROS' && (
-                        <TableRow>
-                          <TableCell>ABAP - PL/SQL</TableCell>
-                          <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_remota.abap || 0)}</TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow>
-                        <TableCell>DBA</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_remota.dba)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Gestor</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_remota.gestor)}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white">Valores Hora Remota</h3>
+                <div className="overflow-x-auto rounded-lg border-gray-200 dark:border-gray-700">
+                  <table className="w-full border-collapse table-fixed">
+                    <colgroup>
+                      <col style={{ width: '200px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '130px' }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="bg-[#0066FF] text-white">
+                        <th className="border-r border-white/20 px-3 py-2.5 text-left text-xs font-semibold">Função</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>08h30-17h30</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>17h30-19h30</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>Após 19h30</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Sáb/Dom/<br/>Feriados</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Hora Adicional <br/>(Excedente do Banco)</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold">Stand<br/>By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800">
+                      {getFuncoesPorProduto(taxaVisualizando.tipo_produto).map((funcao, index) => {
+                        // Mapear função para o campo correto
+                        let valorBase = 0;
+                        if (funcao === 'Funcional') {
+                          valorBase = taxaVisualizando.valores_remota.funcional;
+                        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+                          valorBase = taxaVisualizando.valores_remota.tecnico;
+                        } else if (funcao === 'ABAP - PL/SQL') {
+                          valorBase = taxaVisualizando.valores_remota.abap || 0;
+                        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+                          valorBase = taxaVisualizando.valores_remota.dba;
+                        } else if (funcao === 'Gestor') {
+                          valorBase = taxaVisualizando.valores_remota.gestor;
+                        }
+
+                        // Preparar array com todas as funções para cálculo
+                        const todasFuncoes = getFuncoesPorProduto(taxaVisualizando.tipo_produto).map(f => {
+                          let vb = 0;
+                          if (f === 'Funcional') vb = taxaVisualizando.valores_remota.funcional;
+                          else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = taxaVisualizando.valores_remota.tecnico;
+                          else if (f === 'ABAP - PL/SQL') vb = taxaVisualizando.valores_remota.abap || 0;
+                          else if (f === 'DBA / Basis' || f === 'DBA') vb = taxaVisualizando.valores_remota.dba;
+                          else if (f === 'Gestor') vb = taxaVisualizando.valores_remota.gestor;
+                          return { funcao: f, valor_base: vb };
+                        });
+
+                        const valores = calcularValores(
+                          valorBase, 
+                          funcao, 
+                          todasFuncoes, 
+                          taxaVisualizando.tipo_calculo_adicional || 'media',
+                          taxaVisualizando.tipo_produto
+                        );
+
+                        return (
+                          <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-900 dark:text-white">{funcao}</td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs font-semibold text-gray-900 dark:text-white">
+                              R$ {valores.valor_base.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_17h30_19h30.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_apos_19h30.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_fim_semana.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_adicional.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_standby.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
               {/* Tabela de Valores Locais */}
               <div>
-                <h3 className="text-base font-semibold mb-3">Valores Hora Local</h3>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Função</TableHead>
-                        <TableHead className="text-right">Valor Base</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>Funcional</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_local.funcional)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Técnico</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_local.tecnico)}</TableCell>
-                      </TableRow>
-                      {taxaVisualizando.tipo_produto === 'OUTROS' && (
-                        <TableRow>
-                          <TableCell>ABAP - PL/SQL</TableCell>
-                          <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_local.abap || 0)}</TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow>
-                        <TableCell>DBA</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_local.dba)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Gestor</TableCell>
-                        <TableCell className="text-right">R$ {formatarMoeda(taxaVisualizando.valores_local.gestor)}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white">Valores Hora Local</h3>
+                <div className="rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <table className="w-full border-collapse table-fixed">
+                    <colgroup>
+                      <col style={{ width: '200px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '130px' }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="bg-[#0066FF] text-white">
+                        <th className="border-r border-white/20 px-3 py-2.5 text-left text-xs font-semibold rounded-tl-lg">Função</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>08h30-17h30</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>17h30-19h30</th>
+                        <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>Após 19h30</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold rounded-tr-lg">Sáb/Dom/<br/>Feriados</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold invisible"></th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold invisible"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800">
+                      {getFuncoesPorProduto(taxaVisualizando.tipo_produto).map((funcao, index) => {
+                        // Mapear função para o campo correto
+                        let valorBase = 0;
+                        if (funcao === 'Funcional') {
+                          valorBase = taxaVisualizando.valores_local.funcional;
+                        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+                          valorBase = taxaVisualizando.valores_local.tecnico;
+                        } else if (funcao === 'ABAP - PL/SQL') {
+                          valorBase = taxaVisualizando.valores_local.abap || 0;
+                        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+                          valorBase = taxaVisualizando.valores_local.dba;
+                        } else if (funcao === 'Gestor') {
+                          valorBase = taxaVisualizando.valores_local.gestor;
+                        }
+
+                        // Preparar array com todas as funções para cálculo
+                        const todasFuncoes = getFuncoesPorProduto(taxaVisualizando.tipo_produto).map(f => {
+                          let vb = 0;
+                          if (f === 'Funcional') vb = taxaVisualizando.valores_local.funcional;
+                          else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = taxaVisualizando.valores_local.tecnico;
+                          else if (f === 'ABAP - PL/SQL') vb = taxaVisualizando.valores_local.abap || 0;
+                          else if (f === 'DBA / Basis' || f === 'DBA') vb = taxaVisualizando.valores_local.dba;
+                          else if (f === 'Gestor') vb = taxaVisualizando.valores_local.gestor;
+                          return { funcao: f, valor_base: vb };
+                        });
+
+                        const valores = calcularValores(
+                          valorBase, 
+                          funcao, 
+                          todasFuncoes, 
+                          taxaVisualizando.tipo_calculo_adicional || 'media',
+                          taxaVisualizando.tipo_produto
+                        );
+
+                        return (
+                          <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-900 dark:text-white">{funcao}</td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs font-semibold text-gray-900 dark:text-white">
+                              R$ {valores.valor_base.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_17h30_19h30.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
+                              R$ {valores.valor_apos_19h30.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className={`px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 ${index === getFuncoesPorProduto(taxaVisualizando.tipo_produto).length - 1 ? 'rounded-br-lg' : ''}`}>
+                              R$ {valores.valor_fim_semana.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-3 py-2 invisible"></td>
+                            <td className="px-3 py-2 invisible"></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={() => setModalVisualizarAberto(false)}>Fechar</Button>
+                <Button onClick={() => setModalVisualizarAberto(false)}>
+                  Fechar
+                </Button>
               </div>
             </div>
           )}

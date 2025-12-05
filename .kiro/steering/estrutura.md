@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Serviço `elogiosService.ts` - adicionados campos `email_cliente`, `prestador`, `categoria` e `grupo` na busca de elogios para suportar formulário completo de cadastro/edição.
+**Última atualização**: Componente `TaxaPadraoHistorico.tsx` - simplificada interface da tabela de histórico, removendo colunas de valores específicos e mantendo apenas informações essenciais (Cliente, Tipo Produto, Vigências, Status, Ações) para melhor navegação e usabilidade.
 
 ---
 
@@ -391,6 +391,7 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - **Taxa padrão**: Configuração de taxas padrão para clientes sem AMS
 - **Histórico de parametrizações**: Visualização do histórico de taxas padrão por tipo de produto
 - **Interface com abas**: Organização em abas para melhor navegação (Configuração e Histórico)
+- **Ordenação de colunas**: Sistema de ordenação clicável em todas as colunas da tabela com indicadores visuais (setas)
 
 **Hooks utilizados:**
 - `useTaxas()`: Busca todas as taxas cadastradas
@@ -398,9 +399,10 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - `useAtualizarTaxa()`: Hook para atualização de taxas existentes
 - `useDeletarTaxa()`: Hook para exclusão de taxas
 - `useCriarTaxaPadrao()`: Hook para criação de taxas padrão
+- `useMemo`: Otimização de performance para ordenação de dados
 
 **Ícones utilizados (lucide-react):**
-- `Plus`, `Edit`, `Trash2`, `Eye`
+- `Plus`, `Edit`, `Trash2`, `Eye`, `ArrowUpDown`, `ArrowUp`, `ArrowDown`
 
 **Componentes UI principais:**
 - **Tabela de taxas**: Listagem com colunas (Cliente, Tipo Produto, Vigência Início, Vigência Fim, Status, Ações)
@@ -417,6 +419,7 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - `modalVisualizarAberto`: Controle do modal de visualização
 - `modalTaxaPadraoAberto`: Controle do modal de taxa padrão
 - `tipoProdutoTaxaPadrao`: Tipo de produto selecionado no histórico ('GALLERY' | 'OUTROS')
+- `ordenacao`: Estado de ordenação contendo campo e direção ('asc' | 'desc')
 
 **Funções principais:**
 - `handleNovaTaxa()`: Abre modal para criar nova taxa
@@ -427,14 +430,28 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - `handleDeletarTaxa(id)`: Exclui taxa com confirmação
 - `handleSubmit(dados)`: Salva taxa (criação ou edição)
 - `verificarVigente(vigenciaInicio, vigenciaFim)`: Verifica se taxa está vigente na data atual
+- `handleOrdenar(campo)`: Alterna ordenação da coluna clicada (ascendente → descendente → neutro)
+- `taxasOrdenadas`: Computed value (useMemo) que retorna taxas ordenadas conforme estado de ordenação
 
 **Estrutura da tabela principal:**
-- **Coluna Cliente**: Nome abreviado do cliente
-- **Coluna Tipo Produto**: Badge azul para GALLERY, outline para OUTROS (exibe nomes dos produtos quando OUTROS)
-- **Coluna Vigência Início**: Data formatada em pt-BR (DD/MM/YYYY)
-- **Coluna Vigência Fim**: Data formatada ou "Indefinida"
-- **Coluna Status**: Badge verde para "Vigente", cinza para "Não Vigente"
+- **Coluna Cliente**: Nome abreviado do cliente (ordenável)
+- **Coluna Tipo Produto**: Badge azul para GALLERY, outline para OUTROS (exibe nomes dos produtos quando OUTROS) (ordenável)
+- **Coluna Vigência Início**: Data formatada em pt-BR (DD/MM/YYYY) (ordenável)
+- **Coluna Vigência Fim**: Data formatada ou "Indefinida" (ordenável)
+- **Coluna Status**: Badge verde para "Vigente", cinza para "Não Vigente" (ordenável)
 - **Coluna Ações**: Botões de visualizar, editar e excluir
+
+**Sistema de ordenação:**
+- Todas as colunas (exceto Ações) possuem ordenação clicável
+- Indicadores visuais de ordenação:
+  - `ArrowUpDown`: Coluna não ordenada (estado neutro)
+  - `ArrowUp`: Ordenação ascendente ativa
+  - `ArrowDown`: Ordenação descendente ativa
+- Ordenação por cliente: alfabética (A-Z / Z-A)
+- Ordenação por tipo de produto: alfabética (GALLERY antes de OUTROS)
+- Ordenação por datas: cronológica (mais antiga → mais recente / mais recente → mais antiga)
+- Ordenação por status: alfabética (Não Vigente antes de Vigente)
+- Implementação otimizada com `useMemo` para evitar re-renderizações desnecessárias
 
 **Modal de visualização (estrutura):**
 - **Informações Gerais**: Grid 2x2 com Cliente, Tipo de Produto, Vigência Início e Vigência Fim
@@ -511,6 +528,7 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - **Aba de Histórico**: Visualização dedicada do histórico com sub-abas por tipo de produto (GALLERY / COMEX, FISCAL)
 - **Melhor UX**: Separação clara entre ação de configurar (criar nova) e consultar histórico
 - **Navegação intuitiva**: Abas principais (Configuração/Histórico) e sub-abas (GALLERY/OUTROS) para organização hierárquica
+- **Sistema de ordenação completo**: Implementada ordenação clicável em todas as colunas da tabela com indicadores visuais (setas) e otimização de performance via `useMemo`
 
 **Estilo visual:**
 - Tabelas com cabeçalho azul Sonda (#0066FF)
@@ -519,6 +537,288 @@ Página completa para gerenciamento de taxas de clientes, incluindo cadastro, ed
 - Valores base em negrito para destaque
 - Bordas arredondadas nas tabelas
 - Layout responsivo com scroll horizontal quando necessário
+
+---
+
+### `src/components/admin/taxas/`
+
+Componentes relacionados ao gerenciamento de taxas de clientes.
+
+#### `TaxaForm.tsx`
+Formulário completo para cadastro e edição de taxas de clientes, com cálculo automático de valores, gestão de vigências e suporte a reajustes.
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de taxas com todos os campos necessários
+- **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
+- **Gestão de produtos**: Carregamento automático dos produtos do cliente selecionado
+- **Seleção de datas**: Calendários interativos para vigência início e fim
+- **Cálculo automático**: Valores calculados em tempo real com base em regras de negócio
+- **Suporte a reajuste**: Campo de taxa de reajuste (%) disponível apenas em modo edição
+- **Tabelas interativas**: Edição inline de valores base com formatação monetária
+- **Taxa padrão automática**: Preenchimento automático com taxa padrão para clientes sem AMS
+- **Vigência automática**: Sugestão de vigência de 1 ano menos 1 dia ao selecionar data início (ex: início 01/01/2024 → fim 31/12/2024)
+
+**Props do componente:**
+- `taxa?: TaxaClienteCompleta | null` - Taxa existente para edição (opcional)
+- `onSubmit: (dados: TaxaFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Hooks utilizados:**
+- `useForm` (React Hook Form) - Gerenciamento do estado do formulário
+- `useEmpresas()` - Busca lista de empresas para o select
+
+**Campos do formulário:**
+
+**Seção: Dados Principais**
+- `cliente_id` (obrigatório) - Select com empresas ordenadas alfabeticamente (desabilitado em edição)
+- `tipo_produto` (obrigatório) - Select com tipos de produto baseado nos produtos do cliente (GALLERY ou OUTROS)
+- `vigencia_inicio` (obrigatório) - Calendário para data de início da vigência
+- `vigencia_fim` - Calendário para data de fim da vigência (opcional, indefinida se não preenchido)
+- `tipo_calculo_adicional` - Select com tipo de cálculo para hora adicional (Normal ou Média)
+- `taxa_reajuste` - Campo numérico para percentual de reajuste (visível apenas em edição)
+
+**Seção: Valores Hora Remota**
+Tabela com 7 colunas para edição de valores remotos:
+- **Função**: Nome da função (Funcional, Técnico, ABAP, DBA, Gestor)
+- **Seg-Sex 08h30-17h30**: Valor base editável com formatação monetária
+- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente
+- **Seg-Sex Após 19h30**: Valor calculado automaticamente
+- **Sáb/Dom/Feriados**: Valor calculado automaticamente
+- **Hora Adicional (Excedente do Banco)**: Valor calculado automaticamente
+- **Stand By**: Valor calculado automaticamente
+
+**Seção: Valores Hora Local**
+Tabela com 5 colunas para edição de valores locais:
+- **Função**: Nome da função (Funcional, Técnico, ABAP, DBA, Gestor)
+- **Seg-Sex 08h30-17h30**: Valor base editável com formatação monetária
+- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente
+- **Seg-Sex Após 19h30**: Valor calculado automaticamente
+- **Sáb/Dom/Feriados**: Valor calculado automaticamente
+
+**Estados gerenciados:**
+- `tipoProdutoSelecionado`: Tipo de produto selecionado (GALLERY ou OUTROS)
+- `tipoCalculoAdicional`: Tipo de cálculo para hora adicional ('normal' ou 'media')
+- `produtosCliente`: Array de produtos do cliente selecionado
+- `clienteSelecionado`: Nome abreviado do cliente selecionado
+- `valoresEditando`: Objeto com valores sendo editados (para formatação inline)
+- `valoresOriginais`: Valores originais da taxa (para cálculo de reajuste)
+
+**Comportamento:**
+- **Modo criação**: Formulário em branco para nova taxa
+- **Modo edição**: Formulário preenchido com dados da taxa existente
+- **Carregamento de produtos**: Ao selecionar cliente, carrega produtos automaticamente
+- **Seleção automática**: Se cliente tem apenas um produto, seleciona automaticamente
+- **Taxa padrão**: Se cliente não tem AMS, preenche com taxa padrão do tipo de produto
+- **Cálculo de reajuste**: Ao informar taxa de reajuste, recalcula valores e vigências automaticamente
+- **Vigência sugerida**: Ao selecionar data início, sugere data fim 1 ano à frente
+- **Edição inline**: Campos de valor base com formatação monetária e seleção automática ao focar
+
+**Funções principais:**
+- `formatarMoeda(valor)`: Formata número para formato monetário brasileiro (0,00)
+- `converterMoedaParaNumero(valor)`: Converte string monetária para número
+- `calcularValoresExibicao(valores, tipo)`: Calcula todos os valores derivados para exibição
+- `handleSubmit(data)`: Processa e submete dados do formulário
+
+**Cálculo automático de valores:**
+- Utiliza função `calcularValores()` de `@/types/taxasClientes`
+- Valores calculados em tempo real conforme usuário edita valores base
+- Regras de negócio aplicadas para diferentes horários e dias
+- Suporte a dois tipos de cálculo para hora adicional (normal ou média)
+
+**Funções por tipo de produto:**
+- Utiliza função `getFuncoesPorProduto()` de `@/types/taxasClientes`
+- GALLERY: Funções específicas para produto Gallery
+- OUTROS: Funções para COMEX e FISCAL
+
+**Formatação de dados:**
+- Valores monetários formatados em pt-BR com 2 casas decimais
+- Datas formatadas em pt-BR (DD/MM/YYYY) usando date-fns
+- Ajuste de timezone adicionando 'T00:00:00' às datas
+- Edição inline com formatação automática ao focar/desfocar
+
+**Validações:**
+- Cliente obrigatório
+- Tipo de produto obrigatório
+- Vigência início obrigatória
+- Validação de formato de valores monetários
+
+**Integração:**
+- Utilizado na página `CadastroTaxasClientes.tsx`
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Integra-se com serviço de taxas padrão para preenchimento automático
+- Validação consistente com tipos definidos em `@/types/taxasClientes`
+- Exportado via `src/components/admin/taxas/index.ts`
+
+**Componentes UI utilizados:**
+- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
+- `Input` - Campos de texto e numéricos
+- `Select` - Seleção de opções
+- `Calendar` - Seletor de data com locale pt-BR
+- `Popover` - Container para o calendário
+- `Button` - Botões de ação
+
+**Tipos utilizados:**
+- `TaxaClienteCompleta` - Tipo completo da taxa com dados do cliente
+- `TaxaFormData` - Dados do formulário validados
+- `TipoProduto` - Tipo de produto ('GALLERY' | 'OUTROS')
+
+**Melhorias recentes:**
+- **Correção no Select de cliente**: Adicionado fallback para string vazia (`value={field.value || ""}`) para evitar warning de componente não controlado
+- **Simplificação do SelectValue**: Removida exibição manual do valor selecionado, deixando o componente gerenciar automaticamente a substituição do placeholder
+- **Melhor controle de estado**: Garantia de que o Select sempre tem um valor válido (string vazia quando não selecionado)
+
+**Estilo visual:**
+- Tabelas com cabeçalho azul Sonda (#0066FF)
+- Linhas alternadas (zebra striping) para melhor legibilidade
+- Células calculadas com fundo azul claro (bg-blue-50)
+- Valores base editáveis com destaque
+- Bordas arredondadas nas tabelas
+- Layout responsivo com larguras fixas de colunas
+- Inputs de valor com alinhamento à direita
+
+---
+
+#### `TaxaPadraoHistorico.tsx`
+Componente para visualização e gerenciamento do histórico de taxas padrão, com funcionalidades de listagem, edição, visualização e exclusão de parametrizações anteriores.
+
+**Funcionalidades principais:**
+- **Listagem de histórico**: Exibição de todas as taxas padrão cadastradas filtradas por tipo de produto
+- **Visualização detalhada**: Modal com visualização completa dos valores remotos e locais
+- **Edição de taxas**: Modal de edição com formulário completo usando `TaxaPadraoForm`
+- **Exclusão de taxas**: Remoção de taxas padrão com confirmação
+- **Status de vigência**: Cálculo automático do status (Vigente, Futura, Expirada, Indefinido)
+- **Formatação de dados**: Datas e valores monetários formatados em pt-BR
+- **Interface compacta**: Tabela simplificada com colunas essenciais (Cliente, Tipo Produto, Vigências, Status, Ações)
+
+**Props do componente:**
+- `tipoProduto: 'GALLERY' | 'OUTROS'` - Tipo de produto para filtrar o histórico
+
+**Hooks utilizados:**
+- `useHistoricoTaxasPadrao(tipoProduto)` - Busca histórico de taxas padrão filtrado por tipo
+- `useAtualizarTaxaPadrao()` - Hook para atualização de taxas padrão
+- `useDeletarTaxaPadrao()` - Hook para exclusão de taxas padrão
+
+**Ícones utilizados (lucide-react):**
+- `Eye` - Visualizar taxa
+- `Edit` - Editar taxa
+- `Trash2` - Excluir taxa
+
+**Componentes UI principais:**
+- **Tabela de histórico**: Listagem compacta com 6 colunas:
+  - **Cliente**: Exibe "Taxa Padrão" em negrito
+  - **Tipo Produto**: Badge azul para GALLERY, outline para OUTROS (exibe "COMEX, FISCAL")
+  - **Vigência Início**: Data formatada em pt-BR (DD/MM/YYYY)
+  - **Vigência Fim**: Data formatada ou "Indefinida"
+  - **Status**: Badge colorido (verde para Vigente, cinza para Expirada, secondary para Futura)
+  - **Ações**: Botões compactos (8x8) de visualizar, editar e excluir
+- **Modal de edição**: Dialog grande (max-w-7xl) com formulário completo usando `TaxaPadraoForm`
+- **Modal de visualização**: Dialog grande com informações gerais e tabelas de valores
+
+**Estados gerenciados:**
+- `taxaEditando`: Taxa sendo editada (null quando não há edição)
+- `taxaVisualizando`: Taxa sendo visualizada (null quando modal fechado)
+- `modalEditarAberto`: Controle de abertura do modal de edição
+- `modalVisualizarAberto`: Controle de abertura do modal de visualização
+
+**Funções principais:**
+- `handleEditar(taxa)`: Abre modal de edição com dados da taxa selecionada
+- `handleVisualizar(taxa)`: Abre modal de visualização com detalhes completos
+- `handleDeletar(id)`: Exclui taxa com confirmação via `window.confirm`
+- `handleSubmitEdicao(dados)`: Salva alterações da taxa editada
+- `getStatusVigencia(inicio, fim)`: Calcula status da vigência baseado nas datas
+- `formatarMoeda(valor)`: Formata número para formato monetário brasileiro (0,00)
+- `formatarData(data)`: Formata data para exibição em pt-BR (DD/MM/YYYY)
+
+**Estrutura da tabela:**
+- **Coluna Cliente**: Exibe "Taxa Padrão" em negrito para todas as linhas (cabeçalho atualizado de "Tipo" para "Cliente")
+- **Coluna Tipo Produto**: Badge com cores da marca Sonda:
+  - GALLERY: Badge azul (#0066FF) com texto branco
+  - OUTROS: Badge outline com borda azul e texto azul, exibe "COMEX, FISCAL"
+- **Coluna Vigência Início**: Data formatada com tratamento de timezone
+- **Coluna Vigência Fim**: Data formatada ou "Indefinida" se não houver
+- **Coluna Status**: Badge colorido baseado no status calculado:
+  - Vigente: Badge verde (bg-green-600)
+  - Futura: Badge secondary
+  - Expirada: Badge outline
+  - Indefinido: Badge outline
+- **Coluna Ações**: Três botões compactos (h-8 w-8) com gap reduzido (gap-1):
+  - Visualizar: Botão ghost com ícone Eye
+  - Editar: Botão ghost com ícone Edit
+  - Excluir: Botão ghost vermelho (text-red-600 hover:text-red-700 hover:bg-red-50) com ícone Trash2
+
+**Modal de visualização (estrutura):**
+- **Informações Gerais**: Grid 2x2 com:
+  - Tipo (exibe "Taxa Padrão")
+  - Tipo de Produto (GALLERY ou COMEX, FISCAL)
+  - Vigência Início
+  - Vigência Fim
+- **Tabela de Valores Remotos**: Tabela com 2 colunas (Função e Valor Base):
+  - Funcional
+  - Técnico
+  - ABAP - PL/SQL (apenas para OUTROS)
+  - DBA
+  - Gestor
+- **Tabela de Valores Locais**: Tabela com 2 colunas (Função e Valor Base):
+  - Funcional
+  - Técnico
+  - ABAP - PL/SQL (apenas para OUTROS)
+  - DBA
+  - Gestor
+
+**Cálculo de status de vigência:**
+- **Vigente**: Data início <= hoje E (sem data fim OU data fim >= hoje)
+- **Futura**: Data início > hoje
+- **Expirada**: Data fim < hoje
+- **Indefinido**: Datas inválidas ou não fornecidas
+
+**Formatação de dados:**
+- Datas formatadas em pt-BR (DD/MM/YYYY) usando date-fns com locale ptBR
+- Valores monetários formatados com `toLocaleString('pt-BR')` com 2 casas decimais
+- Ajuste de timezone adicionando 'T00:00:00' às datas string
+- Tratamento de erros com fallbacks ("Data inválida", "Indefinida")
+
+**Validações:**
+- Confirmação antes de excluir taxa via `window.confirm`
+- Verificação de datas válidas antes de calcular status
+- Tratamento de erros em formatação de datas e cálculos
+
+**Tratamento de erros:**
+- Try-catch em cálculo de status de vigência
+- Try-catch em formatação de datas
+- Logs de erro no console para debugging
+- Fallbacks para valores inválidos
+
+**Estados de carregamento:**
+- Exibe "Carregando histórico..." durante busca de dados
+- Exibe mensagem quando não há taxas cadastradas para o tipo de produto
+- Loading state nos botões durante operações assíncronas
+
+**Integrações:**
+- Utilizado na página `CadastroTaxasClientes.tsx` dentro da aba "Histórico de Parametrizações"
+- Integra-se com hooks de taxas padrão (`useHistoricoTaxasPadrao`, `useAtualizarTaxaPadrao`, `useDeletarTaxaPadrao`)
+- Utiliza componente `TaxaPadraoForm` para edição
+- Componentes UI do shadcn/ui (Table, Dialog, Badge, Button)
+- Exportado via `src/components/admin/taxas/index.ts`
+
+**Tipos utilizados:**
+- `TaxaPadraoCompleta` - Tipo completo da taxa padrão com todos os campos
+- `TaxaPadraoData` - Dados do formulário de taxa padrão
+
+**Melhorias recentes:**
+- **Simplificação da tabela**: Removidas colunas de valores específicos, mantendo apenas informações essenciais (Cliente, Tipo Produto, Vigências, Status, Ações)
+- **Interface mais limpa**: Tabela compacta focada em navegação e ações rápidas
+- **Botões compactos**: Reduzido tamanho dos botões de ação (h-8 w-8) e gap entre eles (gap-1)
+- **Melhor hierarquia visual**: Cliente em negrito, badges coloridos para tipo de produto e status
+- **Estilo consistente**: Badges com cores da marca Sonda (#0066FF) para melhor identidade visual
+- **Botão de exclusão destacado**: Cor vermelha com hover states apropriados para ação destrutiva
+
+**Estilo visual:**
+- Tabela com bordas arredondadas (rounded-md border)
+- Badges coloridos com cores da marca Sonda
+- Botões de ação compactos e alinhados ao centro
+- Modal de visualização com seções bem definidas
+- Layout responsivo com scroll vertical quando necessário (max-h-[90vh])
 
 ---
 

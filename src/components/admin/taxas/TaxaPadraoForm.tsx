@@ -170,6 +170,7 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
         
         const novaDataFim = new Date(novaDataInicio);
         novaDataFim.setFullYear(novaDataFim.getFullYear() + 1);
+        novaDataFim.setDate(novaDataFim.getDate() - 1);
         
         form.setValue('vigencia_inicio', novaDataInicio);
         form.setValue('vigencia_fim', novaDataFim);
@@ -324,10 +325,11 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
                         selected={field.value}
                         onSelect={(date) => {
                           field.onChange(date);
-                          // Se data foi selecionada e não há data fim ainda, preencher com 1 ano à frente
+                          // Se data foi selecionada e não há data fim ainda, preencher com 1 ano à frente menos 1 dia
                           if (date && !form.getValues('vigencia_fim')) {
                             const dataFim = new Date(date);
                             dataFim.setFullYear(dataFim.getFullYear() + 1);
+                            dataFim.setDate(dataFim.getDate() - 1);
                             form.setValue('vigencia_fim', dataFim);
                           }
                         }}
@@ -400,9 +402,6 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
                         }}
                       />
                     </FormControl>
-                    <p className="text-sm text-muted-foreground">
-                      Ao preencher, os valores e vigências serão recalculados automaticamente
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

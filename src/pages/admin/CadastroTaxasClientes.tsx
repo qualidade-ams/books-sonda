@@ -2,8 +2,8 @@
  * Página para gerenciamento de taxas de clientes
  */
 
-import { useState } from 'react';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -34,6 +34,9 @@ import { useCriarTaxaPadrao } from '@/hooks/useTaxasPadrao';
 import type { TaxaClienteCompleta, TaxaFormData } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
 
+type OrdenacaoColuna = 'cliente' | 'tipo_produto' | 'vigencia_inicio' | 'vigencia_fim' | 'status';
+type DirecaoOrdenacao = 'asc' | 'desc' | null;
+
 function CadastroTaxasClientes() {
   const [modalAberto, setModalAberto] = useState(false);
   const [taxaEditando, setTaxaEditando] = useState<TaxaClienteCompleta | null>(null);
@@ -41,6 +44,8 @@ function CadastroTaxasClientes() {
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
   const [modalTaxaPadraoAberto, setModalTaxaPadraoAberto] = useState(false);
   const [tipoProdutoTaxaPadrao, setTipoProdutoTaxaPadrao] = useState<'GALLERY' | 'OUTROS'>('GALLERY');
+  const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>('cliente');
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc');
 
   // Queries e mutations
   const { data: taxas = [], isLoading, refetch } = useTaxas();
@@ -106,6 +111,74 @@ function CadastroTaxasClientes() {
     return inicioValido && fimValido;
   };
 
+  // Função para alternar ordenação
+  const handleOrdenar = (coluna: OrdenacaoColuna) => {
+    if (colunaOrdenacao === coluna) {
+      // Se já está ordenando por esta coluna, alternar direção
+      if (direcaoOrdenacao === 'asc') {
+        setDirecaoOrdenacao('desc');
+      } else if (direcaoOrdenacao === 'desc') {
+        setDirecaoOrdenacao(null);
+        setColunaOrdenacao('cliente'); // Voltar para ordenação padrão
+      } else {
+        setDirecaoOrdenacao('asc');
+      }
+    } else {
+      // Nova coluna, começar com ascendente
+      setColunaOrdenacao(coluna);
+      setDirecaoOrdenacao('asc');
+    }
+  };
+
+  // Renderizar ícone de ordenação
+  const renderIconeOrdenacao = (coluna: OrdenacaoColuna) => {
+    if (colunaOrdenacao !== coluna || !direcaoOrdenacao) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return direcaoOrdenacao === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  // Ordenar taxas
+  const taxasOrdenadas = useMemo(() => {
+    if (!direcaoOrdenacao) return taxas;
+
+    return [...taxas].sort((a, b) => {
+      let valorA: any;
+      let valorB: any;
+
+      switch (colunaOrdenacao) {
+        case 'cliente':
+          valorA = a.cliente?.nome_abreviado || '';
+          valorB = b.cliente?.nome_abreviado || '';
+          break;
+        case 'tipo_produto':
+          valorA = a.tipo_produto;
+          valorB = b.tipo_produto;
+          break;
+        case 'vigencia_inicio':
+          valorA = a.vigencia_inicio;
+          valorB = b.vigencia_inicio;
+          break;
+        case 'vigencia_fim':
+          valorA = a.vigencia_fim || '9999-12-31'; // Indefinida vai para o final
+          valorB = b.vigencia_fim || '9999-12-31';
+          break;
+        case 'status':
+          valorA = verificarVigente(a.vigencia_inicio, a.vigencia_fim) ? 1 : 0;
+          valorB = verificarVigente(b.vigencia_inicio, b.vigencia_fim) ? 1 : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (valorA < valorB) return direcaoOrdenacao === 'asc' ? -1 : 1;
+      if (valorA > valorB) return direcaoOrdenacao === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [taxas, colunaOrdenacao, direcaoOrdenacao]);
+
   return (
     <LayoutAdmin>
       <div className="space-y-6">
@@ -140,11 +213,51 @@ function CadastroTaxasClientes() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Tipo Produto</TableHead>
-                    <TableHead>Vigência Início</TableHead>
-                    <TableHead>Vigência Fim</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+                      onClick={() => handleOrdenar('cliente')}
+                    >
+                      <div className="flex items-center">
+                        Cliente
+                        {renderIconeOrdenacao('cliente')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+                      onClick={() => handleOrdenar('tipo_produto')}
+                    >
+                      <div className="flex items-center">
+                        Tipo Produto
+                        {renderIconeOrdenacao('tipo_produto')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+                      onClick={() => handleOrdenar('vigencia_inicio')}
+                    >
+                      <div className="flex items-center">
+                        Vigência Início
+                        {renderIconeOrdenacao('vigencia_inicio')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+                      onClick={() => handleOrdenar('vigencia_fim')}
+                    >
+                      <div className="flex items-center">
+                        Vigência Fim
+                        {renderIconeOrdenacao('vigencia_fim')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+                      onClick={() => handleOrdenar('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {renderIconeOrdenacao('status')}
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -155,14 +268,14 @@ function CadastroTaxasClientes() {
                         Carregando...
                       </TableCell>
                     </TableRow>
-                  ) : taxas.length === 0 ? (
+                  ) : taxasOrdenadas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                         Nenhuma taxa cadastrada
                       </TableCell>
                     </TableRow>
                   ) : (
-                    taxas.map((taxa) => {
+                    taxasOrdenadas.map((taxa) => {
                       const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
                       
                       // Obter nomes dos produtos do cliente
