@@ -716,8 +716,9 @@ Formulário completo para cadastro e edição de taxas de clientes, com cálculo
 - **Gestão de produtos**: Carregamento automático dos produtos do cliente selecionado
 - **Seleção de datas**: Calendários interativos para vigência início e fim
 - **Cálculo automático**: Valores calculados em tempo real com base em regras de negócio
-- **Suporte a reajuste**: Campo de taxa de reajuste (%) disponível apenas em modo edição
-- **Tabelas interativas**: Edição inline de valores base com formatação monetária
+- **Modo Personalizado**: Flag "Personalizado" que permite edição manual de TODOS os campos das tabelas (valores calculados tornam-se editáveis)
+- **Suporte a reajuste**: Campo de taxa de reajuste (%) disponível apenas em modo edição e quando não estiver em modo personalizado
+- **Tabelas interativas**: Edição inline de valores base com formatação monetária (todos os campos editáveis em modo personalizado)
 - **Taxa padrão automática**: Preenchimento automático com taxa padrão para clientes sem AMS
 - **Vigência automática**: Sugestão de vigência de 1 ano menos 1 dia ao selecionar data início (ex: início 01/01/2024 → fim 31/12/2024)
 
@@ -739,25 +740,26 @@ Formulário completo para cadastro e edição de taxas de clientes, com cálculo
 - `vigencia_inicio` (obrigatório) - Calendário para data de início da vigência
 - `vigencia_fim` - Calendário para data de fim da vigência (opcional, indefinida se não preenchido)
 - `tipo_calculo_adicional` - Select com tipo de cálculo para hora adicional (Normal ou Média)
-- `taxa_reajuste` - Campo numérico para percentual de reajuste (visível apenas em edição)
+- `personalizado` - Checkbox para habilitar modo personalizado (edição manual de todos os campos)
+- `taxa_reajuste` - Campo numérico para percentual de reajuste (visível apenas em edição e quando não estiver em modo personalizado)
 
 **Seção: Valores Hora Remota**
 Tabela com 7 colunas para edição de valores remotos:
 - **Função**: Nome da função (Funcional, Técnico, ABAP, DBA, Gestor)
 - **Seg-Sex 08h30-17h30**: Valor base editável com formatação monetária
-- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente
-- **Seg-Sex Após 19h30**: Valor calculado automaticamente
-- **Sáb/Dom/Feriados**: Valor calculado automaticamente
-- **Hora Adicional (Excedente do Banco)**: Valor calculado automaticamente
-- **Stand By**: Valor calculado automaticamente
+- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente (editável em modo personalizado)
+- **Seg-Sex Após 19h30**: Valor calculado automaticamente (editável em modo personalizado)
+- **Sáb/Dom/Feriados**: Valor calculado automaticamente (editável em modo personalizado)
+- **Hora Adicional (Excedente do Banco)**: Valor calculado automaticamente (editável em modo personalizado)
+- **Stand By**: Valor calculado automaticamente (editável em modo personalizado)
 
 **Seção: Valores Hora Local**
 Tabela com 5 colunas para edição de valores locais:
 - **Função**: Nome da função (Funcional, Técnico, ABAP, DBA, Gestor)
 - **Seg-Sex 08h30-17h30**: Valor base editável com formatação monetária
-- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente
-- **Seg-Sex Após 19h30**: Valor calculado automaticamente
-- **Sáb/Dom/Feriados**: Valor calculado automaticamente
+- **Seg-Sex 17h30-19h30**: Valor calculado automaticamente (editável em modo personalizado)
+- **Seg-Sex Após 19h30**: Valor calculado automaticamente (editável em modo personalizado)
+- **Sáb/Dom/Feriados**: Valor calculado automaticamente (editável em modo personalizado)
 
 **Estados gerenciados:**
 - `tipoProdutoSelecionado`: Tipo de produto selecionado (GALLERY ou OUTROS)
@@ -766,16 +768,22 @@ Tabela com 5 colunas para edição de valores locais:
 - `clienteSelecionado`: Nome abreviado do cliente selecionado
 - `valoresEditando`: Objeto com valores sendo editados (para formatação inline)
 - `valoresOriginais`: Valores originais da taxa (para cálculo de reajuste)
+- `personalizado`: Flag booleana indicando se o modo personalizado está ativo
 
 **Comportamento:**
 - **Modo criação**: Formulário em branco para nova taxa
 - **Modo edição**: Formulário preenchido com dados da taxa existente
+- **Modo personalizado**: Quando checkbox "Personalizado" está marcado:
+  - Todos os campos das tabelas (incluindo calculados) tornam-se editáveis
+  - Campo de taxa de reajuste fica desabilitado
+  - Valores não são calculados automaticamente
+  - Usuário tem controle total sobre todos os valores
 - **Carregamento de produtos**: Ao selecionar cliente, carrega produtos automaticamente
 - **Seleção automática**: Se cliente tem apenas um produto, seleciona automaticamente
 - **Taxa padrão**: Se cliente não tem AMS, preenche com taxa padrão do tipo de produto
-- **Cálculo de reajuste**: Ao informar taxa de reajuste, recalcula valores e vigências automaticamente
+- **Cálculo de reajuste**: Ao informar taxa de reajuste, recalcula valores e vigências automaticamente (não disponível em modo personalizado)
 - **Vigência sugerida**: Ao selecionar data início, sugere data fim 1 ano à frente
-- **Edição inline**: Campos de valor base com formatação monetária e seleção automática ao focar
+- **Edição inline**: Campos de valor base com formatação monetária e seleção automática ao focar (todos os campos em modo personalizado)
 
 **Funções principais:**
 - `formatarMoeda(valor)`: Formata número para formato monetário brasileiro (0,00)
@@ -814,8 +822,9 @@ Tabela com 5 colunas para edição de valores locais:
 - Exportado via `src/components/admin/taxas/index.ts`
 
 **Componentes UI utilizados:**
-- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
+- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage`, `FormDescription` - Componentes de formulário do shadcn/ui
 - `Input` - Campos de texto e numéricos
+- `Checkbox` - Checkbox para modo personalizado
 - `Select` - Seleção de opções
 - `Calendar` - Seletor de data com locale pt-BR
 - `Popover` - Container para o calendário
@@ -827,6 +836,11 @@ Tabela com 5 colunas para edição de valores locais:
 - `TipoProduto` - Tipo de produto ('GALLERY' | 'OUTROS')
 
 **Melhorias recentes:**
+- **Modo Personalizado implementado**: Adicionado checkbox "Personalizado" que permite edição manual de todos os campos das tabelas
+  - Quando marcado, todos os valores (incluindo calculados) tornam-se editáveis
+  - Campo de taxa de reajuste desabilitado em modo personalizado
+  - Valores personalizados salvos em campos separados (`valores_remota_personalizados`, `valores_local_personalizados`)
+- **Migração de banco de dados**: Criada migração `add_personalizado_field_taxas.sql` para adicionar coluna `personalizado` (boolean) na tabela `taxas_clientes`
 - **Correção no Select de cliente**: Adicionado fallback para string vazia (`value={field.value || ""}`) para evitar warning de componente não controlado
 - **Simplificação do SelectValue**: Removida exibição manual do valor selecionado, deixando o componente gerenciar automaticamente a substituição do placeholder
 - **Melhor controle de estado**: Garantia de que o Select sempre tem um valor válido (string vazia quando não selecionado)

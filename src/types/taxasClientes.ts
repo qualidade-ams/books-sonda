@@ -14,6 +14,7 @@ export interface TaxaCliente {
   vigencia_fim?: string;
   tipo_produto: TipoProduto;
   tipo_calculo_adicional: TipoCalculoAdicional;
+  personalizado?: boolean; // Flag para indicar se os valores são personalizados
   criado_por?: string;
   criado_em: string;
   atualizado_em: string;
@@ -60,6 +61,7 @@ export interface TaxaFormData {
   vigencia_fim?: Date | string;
   tipo_produto: TipoProduto;
   tipo_calculo_adicional: TipoCalculoAdicional;
+  personalizado?: boolean; // Flag para permitir edição manual de todos os campos
   taxa_reajuste?: number; // Percentual de reajuste (opcional)
   valores_remota: {
     funcional: number;
@@ -74,6 +76,25 @@ export interface TaxaFormData {
     abap?: number;
     dba: number;
     gestor: number;
+  };
+  // Valores personalizados (quando personalizado = true)
+  valores_remota_personalizados?: {
+    [funcao: string]: {
+      valor_base: number;
+      valor_17h30_19h30: number;
+      valor_apos_19h30: number;
+      valor_fim_semana: number;
+      valor_adicional: number;
+      valor_standby: number;
+    };
+  };
+  valores_local_personalizados?: {
+    [funcao: string]: {
+      valor_base: number;
+      valor_17h30_19h30: number;
+      valor_apos_19h30: number;
+      valor_fim_semana: number;
+    };
   };
 }
 

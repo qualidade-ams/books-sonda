@@ -6,6 +6,7 @@ import { CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -47,6 +48,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   const [clienteSelecionado, setClienteSelecionado] = useState<string>('');
   const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({});
   const [valoresOriginais, setValoresOriginais] = useState<any>(null);
+  const [personalizado, setPersonalizado] = useState<boolean>(taxa?.personalizado || false);
   
   // Função para formatar valor como moeda
   const formatarMoeda = (valor: number): string => {
@@ -71,6 +73,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       vigencia_fim: undefined,
       tipo_produto: '',
       tipo_calculo_adicional: 'media',
+      personalizado: false,
       taxa_reajuste: undefined,
       valores_remota: {
         funcional: 0,
@@ -210,9 +213,12 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       vigencia_fim: data.vigencia_fim || undefined,
       tipo_produto: data.tipo_produto,
       tipo_calculo_adicional: data.tipo_calculo_adicional,
+      personalizado: data.personalizado || false,
       taxa_reajuste: data.taxa_reajuste,
       valores_remota: data.valores_remota,
       valores_local: data.valores_local,
+      valores_remota_personalizados: data.personalizado ? data.valores_remota_personalizados : undefined,
+      valores_local_personalizados: data.personalizado ? data.valores_local_personalizados : undefined,
     };
 
     onSubmit(dadosFormatados);
@@ -484,8 +490,8 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
               )}
             />
 
-            {/* Campo de Taxa de Reajuste - Apenas visível ao editar */}
-            {taxa && (
+            {/* Campo de Taxa de Reajuste - Apenas visível ao editar e quando não for personalizado */}
+            {taxa && !personalizado && (
               <FormField
                 control={form.control}
                 name="taxa_reajuste"
@@ -506,6 +512,33 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                 )}
               />
             )}
+          </div>
+
+          {/* Checkbox Personalizado */}
+          <div className='grid grid-cols-1 md:grid-cols-2'>
+          <FormField
+            control={form.control}
+            name="personalizado"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      setPersonalizado(checked as boolean);
+                    }}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="font-semibold">
+                    Personalizado
+                  </FormLabel>
+                </div>
+              </FormItem>
+              
+            )}
+          />
           </div>
         </div>
 
@@ -580,20 +613,214 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                           }}
                         />
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_17h30_19h30 || 0)}
+                      {/* Valor 17h30-19h30 - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_remota_personalizados.${funcao}.valor_17h30_19h30`}
+                            render={({ field }) => {
+                              const fieldKey = `remota_${campoNome}_17h30`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_17h30_19h30 || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_17h30_19h30 || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_apos_19h30 || 0)}
+                      
+                      {/* Valor Após 19h30 - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_remota_personalizados.${funcao}.valor_apos_19h30`}
+                            render={({ field }) => {
+                              const fieldKey = `remota_${campoNome}_apos19h30`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_apos_19h30 || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_apos_19h30 || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_fim_semana || 0)}
+                      
+                      {/* Valor Fim de Semana - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_remota_personalizados.${funcao}.valor_fim_semana`}
+                            render={({ field }) => {
+                              const fieldKey = `remota_${campoNome}_fimsemana`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_fim_semana || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_fim_semana || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_adicional || 0)}
+                      
+                      {/* Valor Adicional - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_remota_personalizados.${funcao}.valor_adicional`}
+                            render={({ field }) => {
+                              const fieldKey = `remota_${campoNome}_adicional`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_adicional || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_adicional || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_standby || 0)}
+                      
+                      {/* Valor Stand By - Editável se personalizado */}
+                      <td className="px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_remota_personalizados.${funcao}.valor_standby`}
+                            render={({ field }) => {
+                              const fieldKey = `remota_${campoNome}_standby`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_standby || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_standby || 0)}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -671,14 +898,130 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                           }}
                         />
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_17h30_19h30 || 0)}
+                      {/* Valor 17h30-19h30 - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_local_personalizados.${funcao}.valor_17h30_19h30`}
+                            render={({ field }) => {
+                              const fieldKey = `local_${campoNome}_17h30`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_17h30_19h30 || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_17h30_19h30 || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className="border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                        R$ {formatarMoeda(valores?.valor_apos_19h30 || 0)}
+                      
+                      {/* Valor Após 19h30 - Editável se personalizado */}
+                      <td className="border-r border-gray-200 dark:border-gray-700 px-2 py-2 bg-blue-50 dark:bg-blue-900/20">
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_local_personalizados.${funcao}.valor_apos_19h30`}
+                            render={({ field }) => {
+                              const fieldKey = `local_${campoNome}_apos19h30`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_apos_19h30 || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_apos_19h30 || 0)}
+                          </div>
+                        )}
                       </td>
-                      <td className={`px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 ${index === funcoes.length - 1 ? 'rounded-br-lg' : ''}`}>
-                        R$ {formatarMoeda(valores?.valor_fim_semana || 0)}
+                      
+                      {/* Valor Fim de Semana - Editável se personalizado */}
+                      <td className={`px-2 py-2 bg-blue-50 dark:bg-blue-900/20 ${index === funcoes.length - 1 ? 'rounded-br-lg' : ''}`}>
+                        {personalizado ? (
+                          <FormField
+                            control={form.control}
+                            name={`valores_local_personalizados.${funcao}.valor_fim_semana`}
+                            render={({ field }) => {
+                              const fieldKey = `local_${campoNome}_fimsemana`;
+                              const isEditing = valoresEditando[fieldKey] !== undefined;
+                              const valorAtual = field.value !== undefined ? field.value : valores?.valor_fim_semana || 0;
+                              
+                              return (
+                                <Input
+                                  type="text"
+                                  value={isEditing ? valoresEditando[fieldKey] : formatarMoeda(valorAtual)}
+                                  onChange={(e) => {
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.select();
+                                    setValoresEditando({ ...valoresEditando, [fieldKey]: formatarMoeda(valorAtual) });
+                                  }}
+                                  onBlur={(e) => {
+                                    const valor = converterMoedaParaNumero(e.target.value);
+                                    field.onChange(valor);
+                                    const newValues = { ...valoresEditando };
+                                    delete newValues[fieldKey];
+                                    setValoresEditando(newValues);
+                                  }}
+                                  className="text-right text-xs h-8 pr-3"
+                                  placeholder="0,00"
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-gray-700 dark:text-gray-300">
+                            R$ {formatarMoeda(valores?.valor_fim_semana || 0)}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

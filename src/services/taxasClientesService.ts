@@ -229,6 +229,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       vigencia_fim: vigenciaFim,
       tipo_produto: dados.tipo_produto,
       tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
+      personalizado: dados.personalizado || false,
       criado_por: user?.id
     })
     .select()
@@ -438,6 +439,7 @@ export async function atualizarTaxa(
         vigencia_fim: vigenciaFim,
         tipo_produto: dados.tipo_produto || taxaAtual.tipo_produto,
         tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtual.tipo_calculo_adicional,
+        personalizado: dados.personalizado !== undefined ? dados.personalizado : taxaAtual.personalizado,
         criado_por: user?.id
       })
       .select()
@@ -557,6 +559,10 @@ export async function atualizarTaxa(
 
   if (dados.tipo_calculo_adicional) {
     dadosAtualizacao.tipo_calculo_adicional = dados.tipo_calculo_adicional;
+  }
+
+  if (dados.personalizado !== undefined) {
+    dadosAtualizacao.personalizado = dados.personalizado;
   }
 
   const { data: taxaAtualizada, error: updateError } = await supabase
