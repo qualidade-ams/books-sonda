@@ -302,9 +302,11 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
                       onChange={(e) => {
                         const date = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
                         field.onChange(date);
-                        // Se data foi selecionada e não há data fim ainda, preencher com 1 ano à frente menos 1 dia
-                        if (date && !form.getValues('vigencia_fim')) {
-                          const dataFim = new Date(date);
+                        // Sempre que a data início mudar, atualizar a data fim para 1 ano - 1 dia
+                        if (date) {
+                          // Criar nova data para data fim
+                          const dataFim = new Date(date.getTime());
+                          // Adicionar 1 ano e subtrair 1 dia
                           dataFim.setFullYear(dataFim.getFullYear() + 1);
                           dataFim.setDate(dataFim.getDate() - 1);
                           form.setValue('vigencia_fim', dataFim);

@@ -659,9 +659,11 @@ export default function EnviarElogios() {
               {/* Destinatários */}
               <div>
                 <Label className="text-base font-medium">Destinatários</Label>
+                
+                {/* Campo único para emails separados por ponto e vírgula */}
                 <div className="mt-2">
                   <textarea
-                    placeholder="Cole ou digite emails separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com"
+                    placeholder="Cole ou digite emails separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
                     className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
                     value={destinatariosTexto}
                     onChange={(e) => handleAtualizarDestinatariosTexto(e.target.value)}
@@ -679,13 +681,15 @@ export default function EnviarElogios() {
                 </div>
               </div>
 
-              {/* CC */}
+              {/* Campo CC */}
               <div>
-                <Label className="text-base font-medium">CC (Cópia)</Label>
+                <Label className="text-base font-medium">Destinatários em Cópia (CC) - Opcional</Label>
+                
+                {/* Campo único para emails CC separados por ponto e vírgula */}
                 <div className="mt-2">
                   <textarea
-                    placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;)"
-                    className="w-full p-3 border rounded-md text-sm min-h-[80px] bg-white dark:bg-gray-800 font-mono"
+                    placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                    className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
                     value={destinatariosCCTexto}
                     onChange={(e) => handleAtualizarCCTexto(e.target.value)}
                     onPaste={(e) => {
@@ -720,6 +724,7 @@ export default function EnviarElogios() {
               <div>
                 <Label className="text-base font-medium">Anexos</Label>
                 <div className="mt-2">
+                  {/* Botão para adicionar anexos */}
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
@@ -744,6 +749,7 @@ export default function EnviarElogios() {
                     </span>
                   </div>
 
+                  {/* Lista de anexos */}
                   {anexos.length > 0 && (
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -786,12 +792,16 @@ export default function EnviarElogios() {
               {/* Preview do Relatório */}
               <div>
                 <Label className="text-base font-medium">Preview do Relatório</Label>
+                {/* Preview do Relatório */}
                 <div className="mt-2">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Preview do Relatório
+                  </h4>
                   <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
                     <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
-                        <strong> Elogios Selecionados:</strong> {elogiosSelecionados.length}
+                        <strong> Elogios:</strong> {elogiosSelecionados.length}
                       </div>
                     </div>
                     <div
