@@ -35,7 +35,8 @@ export async function buscarElogios(
         nro_caso,
         comentario_pesquisa,
         resposta,
-        data_resposta
+        data_resposta,
+        origem
       )
     `)
     .order('criado_em', { ascending: false });
@@ -130,7 +131,8 @@ export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | nu
         nro_caso,
         comentario_pesquisa,
         resposta,
-        data_resposta
+        data_resposta,
+        origem
       )
     `)
     .eq('id', id)

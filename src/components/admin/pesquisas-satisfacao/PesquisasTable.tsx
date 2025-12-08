@@ -250,6 +250,9 @@ export function PesquisasTable({
                 <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
                   {(() => {
                     const validacao = validarEmpresa(pesquisa.empresa);
+                    const isOrigemSqlServer = pesquisa.origem === 'sql_server';
+                    // Só exibe em vermelho se for do SQL Server E não encontrada
+                    const deveExibirVermelho = isOrigemSqlServer && !validacao.encontrada;
                     
                     if (validacao.encontrada) {
                       return (
@@ -266,7 +269,7 @@ export function PesquisasTable({
                           </Tooltip>
                         </TooltipProvider>
                       );
-                    } else {
+                    } else if (deveExibirVermelho) {
                       return (
                         <TooltipProvider>
                           <Tooltip>
@@ -282,6 +285,13 @@ export function PesquisasTable({
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                      );
+                    } else {
+                      // Lançamento manual - exibe normalmente sem vermelho
+                      return (
+                        <span>
+                          {validacao.nomeExibir}
+                        </span>
                       );
                     }
                   })()}

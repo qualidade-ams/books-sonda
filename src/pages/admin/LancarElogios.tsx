@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { useCacheManager } from '@/hooks/useCacheManager';
@@ -60,12 +71,14 @@ function LancarElogios() {
   const [filtros, setFiltros] = useState<FiltrosElogio>({
     busca: '',
     mes: mesAtual,
-    ano: anoAtual
+    ano: anoAtual,
+    status: ['registrado'] // Mostrar apenas elogios registrados (não compartilhados)
   });
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [elogioVisualizando, setElogioVisualizando] = useState<ElogioCompleto | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
+  const [modalConfirmacaoEnvioAberto, setModalConfirmacaoEnvioAberto] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -153,6 +166,60 @@ function LancarElogios() {
     }
   };
 
+  // Função para enviar elogio individual para "Enviar Elogios" (atualizar status para compartilhado)
+  const handleEnviarElogioIndividual = async (id: string) => {
+    try {
+      await atualizarElogio.mutateAsync({
+        id,
+        dados: { status: 'compartilhado' }
+      });
+      toast.success('Elogio enviado para "Enviar Elogios" com sucesso!');
+      // Recarregar dados
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao enviar elogio:', error);
+      toast.error('Erro ao enviar elogio. Tente novamente.');
+    }
+  };
+
+  // Função para abrir modal de confirmação de envio em lote
+  const handleAbrirConfirmacaoEnvio = () => {
+    if (selecionados.length === 0) {
+      toast.warning('Selecione pelo menos um elogio para enviar');
+      return;
+    }
+    setModalConfirmacaoEnvioAberto(true);
+  };
+
+  // Função para enviar elogios em lote
+  const handleConfirmarEnvioLote = async () => {
+    try {
+      // Atualizar status de todos os elogios selecionados para "compartilhado"
+      await Promise.all(
+        selecionados.map(id =>
+          atualizarElogio.mutateAsync({
+            id,
+            dados: { status: 'compartilhado' }
+          })
+        )
+      );
+      
+      // Limpar seleção
+      setSelecionados([]);
+      
+      // Fechar modal
+      setModalConfirmacaoEnvioAberto(false);
+      
+      // Recarregar dados
+      await refetch();
+      
+      toast.success(`${selecionados.length} elogio(s) enviado(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao enviar elogios em lote:', error);
+      toast.error('Erro ao enviar elogios. Tente novamente.');
+    }
+  };
+
   const handleSelecionarTodos = (selecionado: boolean) => {
     if (selecionado) {
       setSelecionados(elogios.map(e => e.id));
@@ -231,10 +298,23 @@ function LancarElogios() {
               Gerenciamento de elogios de clientes
             </p>
           </div>
-          <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
-            <Plus className="h-4 w-4" />
-            Novo Elogio
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Botão de envio em lote - aparece quando há seleções */}
+            {selecionados.length > 0 && (
+              <Button 
+                onClick={handleAbrirConfirmacaoEnvio} 
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700" 
+                size="sm"
+              >
+                <Send className="h-4 w-4" />
+                Enviar {selecionados.length} Elogio{selecionados.length > 1 ? 's' : ''}
+              </Button>
+            )}
+            <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
+              <Plus className="h-4 w-4" />
+              Novo Elogio
+            </Button>
+          </div>
         </div>
 
         {/* Navegação de Período */}
@@ -424,8 +504,11 @@ function LancarElogios() {
                         <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
                           {(() => {
                             const { nome, encontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
+                            const isOrigemSqlServer = elogio.pesquisa?.origem === 'sql_server';
+                            // Só exibe em vermelho se for do SQL Server E não encontrada
+                            const deveExibirVermelho = isOrigemSqlServer && !encontrada;
                             return (
-                              <span className={`font-semibold ${!encontrada ? 'text-red-600' : ''}`}>
+                              <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
                                 {nome}
                               </span>
                             );
@@ -478,10 +561,8 @@ function LancarElogios() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => {
-                                navigate('/admin/enviar-elogios');
-                              }}
-                              title="Ir para Enviar Elogios"
+                              onClick={() => handleEnviarElogioIndividual(elogio.id)}
+                              title="Enviar para Enviar Elogios"
                             >
                               <Send className="h-4 w-4" />
                             </Button>
@@ -584,6 +665,27 @@ function LancarElogios() {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Confirmação de Envio em Lote */}
+        <AlertDialog open={modalConfirmacaoEnvioAberto} onOpenChange={setModalConfirmacaoEnvioAberto}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Envio de Elogios</AlertDialogTitle>
+              <AlertDialogDescription>
+                Deseja enviar {selecionados.length} elogio{selecionados.length > 1 ? 's' : ''} para a tela de Enviar Elogios?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmarEnvioLote}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </LayoutAdmin>
   );

@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Serviço `taxaPadraoService.ts` - implementada lógica inteligente de reajuste que cria nova taxa padrão ao invés de atualizar quando há `taxa_reajuste > 0`, preservando histórico completo de parametrizações. Documentação completa do serviço incluída com detalhes de CRUD, lógica de reajuste, estrutura de dados e fluxos de criação/atualização.
+**Última atualização**: Página `EnviarElogios.tsx` - adicionada importação do serviço `emailService` de `@/services/emailService` para preparar integração com funcionalidade de envio real de emails de elogios.
 
 ---
 
@@ -168,6 +168,11 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
   - **Informações do Caso**: Tipo do chamado e número do chamado (campos desabilitados)
   - **Feedback do Cliente**: Resposta, data da resposta, comentário da pesquisa e observação (campos desabilitados)
 - **Modal de criação/edição**: Dialog com formulário completo usando componente `ElogioForm`
+- **Modal de confirmação de envio em lote**: AlertDialog para confirmar operação de envio em lote de elogios, exibindo:
+  - Título: "Confirmar Envio de Elogios"
+  - Descrição: Quantidade de elogios selecionados (ex: "Deseja enviar 5 elogios para a tela de Enviar Elogios?")
+  - Botões: Cancelar e OK (azul Sonda: bg-blue-600 hover:bg-blue-700)
+  - Acionado antes de executar `handleConfirmarEnvioLote()`
 - **Botão de adicionar**: Botão flutuante com ícone Plus para criar novo elogio
 - **Controles de paginação**: Select de itens por página, navegação entre páginas e contador de registros
 
@@ -177,6 +182,7 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - `selecionados`: Array de IDs dos elogios selecionados
 - `elogioVisualizando`: Elogio atualmente sendo visualizado no modal
 - `modalVisualizarAberto`: Controle de abertura do modal de edição
+- `modalConfirmacaoEnvioAberto`: Controle de abertura do modal de confirmação de envio em lote
 - `paginaAtual`, `itensPorPagina`: Controle de paginação
 - `mostrarFiltros`: Controle de expansão do painel de filtros
 
@@ -190,6 +196,9 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - `handleAlterarItensPorPagina(valor)`: Ajusta quantidade de itens por página
 - `handlePaginaAnterior()`, `handleProximaPagina()`: Navegação entre páginas
 - `obterDadosEmpresa(nomeCompleto)`: Busca empresa pelo nome completo ou abreviado e retorna objeto com `{ nome: string, encontrada: boolean }` para exibição e validação visual
+- `handleEnviarElogioIndividual(id)`: Atualiza status de um elogio individual para "compartilhado" e recarrega dados
+- `handleEnviarElogiosLote()`: Abre modal de confirmação para envio em lote de elogios selecionados
+- `handleConfirmarEnvioLote()`: Atualiza status de múltiplos elogios selecionados para "compartilhado" em lote após confirmação do usuário
 
 **Estrutura da tabela:**
 - **Coluna Checkbox**: Seleção individual com checkbox no cabeçalho para selecionar todos
@@ -227,7 +236,7 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - Componentes UI do shadcn/ui (Table, Card, Dialog, Badge, Checkbox, Select)
 
 **Tipos utilizados:**
-- `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa relacionada
+- `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa relacionada (inclui campo `origem` para identificar fonte dos dados: 'sql_server' ou 'manual')
 - `FiltrosElogio`: Filtros para busca (busca, mes, ano)
 
 **Componentes importados:**
@@ -246,6 +255,15 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - **Importado componente ElogioForm**: Formulário dedicado para criação e edição de elogios
 - **Preparação para CRUD completo**: Estrutura pronta para implementar criação, edição e exclusão de elogios
 - **Validação visual de empresas**: Implementada função `obterDadosEmpresa()` que retorna objeto com nome da empresa e flag `encontrada`, permitindo destacar em vermelho empresas não cadastradas no sistema
+- **Funcionalidade de envio individual**: Implementada função `handleEnviarElogioIndividual()` que atualiza o status de um elogio para "compartilhado" e recarrega os dados automaticamente
+- **Funcionalidade de envio em lote**: Implementada função `handleEnviarElogiosLote()` que abre modal de confirmação, e `handleConfirmarEnvioLote()` que executa o envio múltiplo de elogios selecionados, atualizando todos para status "compartilhado" com feedback de sucesso/erro
+- **Feedback aprimorado ao usuário**: Substituídos `alert()` por notificações toast (sonner) para melhor experiência:
+  - Toast de sucesso ao enviar elogio individual com mensagem específica
+  - Toast de erro ao falhar envio individual
+  - Toast de warning ao tentar enviar sem seleção
+  - Toast de sucesso ao enviar em lote com contador de elogios enviados
+  - Toast de erro ao falhar envio em lote
+- **Estilo visual consistente**: Botão de envio em lote atualizado para usar estilo azul Sonda (bg-blue-600 hover:bg-blue-700) ao invés de verde, mantendo consistência com a identidade visual da marca e alinhamento com outros botões de ação do sistema
 
 ---
 
@@ -254,6 +272,7 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 
 **Funcionalidades principais:**
 - **Navegação temporal**: Navegação por período (mês/ano) com botões anterior/próximo para visualizar elogios de diferentes períodos
+- **Filtro automático por status**: Exibe apenas elogios com status "compartilhado" (já enviados da página LancarElogios)
 - **Seleção de elogios**: Seleção individual ou em massa (selecionar todos) de elogios via checkboxes
 - **Geração de relatório**: Geração automática de relatório HTML formatado com estilo da marca Sonda
 - **Configuração de email**: Interface completa para configuração de email (destinatários, CC, assunto, corpo, anexos)
@@ -270,10 +289,14 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - `useEstatisticasElogios(filtros)`: Obtém estatísticas agregadas do período
 - `useEmpresas()`: Busca lista de empresas disponíveis no sistema para validação e exibição
 
+**Serviços utilizados:**
+- `emailService`: Serviço para envio de emails (importado de `@/services/emailService`)
+
 **Ícones utilizados (lucide-react):**
 - `Mail`, `Send`, `Paperclip`, `X`, `FileText`, `Calendar`, `ChevronLeft`, `ChevronRight`, `CheckSquare`, `Square`, `TrendingUp`, `Database`
 
 **Componentes UI principais:**
+- **Botão Disparar Elogios**: Botão azul Sonda (bg-blue-600 hover:bg-blue-700) no cabeçalho da página que exibe contador de elogios selecionados e abre modal de configuração de email
 - **Tabela de elogios**: Exibição de elogios com colunas otimizadas e checkboxes para seleção:
   - **Coluna Checkbox**: Seleção individual com checkbox no cabeçalho para selecionar todos
   - **Coluna Chamado** (120px): Exibe ícone Database, tipo do caso (IM/PR/RF) e número do chamado em fonte mono com fundo cinza
@@ -291,6 +314,7 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
   - Seção de anexos com botão de adicionar arquivos e lista de arquivos anexados
   - Preview do relatório HTML com scroll independente (max-height: 600px)
   - Informações do período e quantidade de elogios selecionados no preview
+  - Botão "Enviar" azul Sonda (bg-blue-600 hover:bg-blue-700) no rodapé do modal
 - **Dialog de confirmação**: AlertDialog com resumo do envio (destinatários, período, quantidade) e botão de confirmação final
 
 **Estados gerenciados:**
@@ -304,7 +328,7 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - `enviandoEmail`: Estado de loading durante envio
 
 **Funções principais:**
-- `gerarRelatorioElogios()`: Gera HTML formatado do relatório com todos os elogios selecionados
+- `gerarRelatorioElogios()`: Gera HTML formatado do relatório com todos os elogios selecionados, organizando em linhas de 4 cards com divisores decorativos entre linhas
 - `handleAbrirModalEmail()`: Valida seleção e abre modal com relatório pré-gerado
 - `extrairEmails(texto)`: Extrai emails de texto usando regex avançado
 - `handleColarEmails(texto, tipo)`: Processa texto colado e extrai emails automaticamente
@@ -320,22 +344,24 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - `obterDadosEmpresa(nomeCompleto)`: Busca empresa pelo nome completo ou abreviado e retorna objeto com `{ nome: string, encontrada: boolean }` para exibição e validação visual
 
 **Formato do relatório HTML (Design Moderno Sonda):**
-- **Estrutura completa HTML5** com DOCTYPE e meta charset UTF-8
-- **Cabeçalho azul gradiente** (#0066FF → #0052CC) com logo "N" branco em destaque
-- **Efeito de onda** no cabeçalho e rodapé usando border-radius avançado
-- **Caixa de título centralizada** com borda rosa (#E91E63) e texto em caixa alta
-- **Lista de colaboradores** em destaque (nomes únicos dos clientes separados por "|") em azul e caixa alta
-- **Grid responsivo 4 colunas** (1 coluna em mobile) para cards de elogios
-- **Aspas decorativas** grandes em rosa (#E91E63) e azul (#0066FF) envolvendo os elogios
-- **Cards de elogios** com fundo cinza claro (#f8f9fa), borda esquerda azul, contendo:
-  - Nome do consultor/prestador em azul e caixa alta (campo `consultor` da pesquisa)
+- **Estrutura completa HTML5** com DOCTYPE, meta charset UTF-8 e viewport para responsividade
+- **Imagem de cabeçalho**: Banner superior com referência relativa `/header-elogios.png` (deve ser anexado ao email)
+- **Container principal**: Max-width 1200px com fundo branco e padding de 40px 48px
+- **Layout em linhas**: Elogios organizados em linhas de 4 cards cada usando `display: table`
+- **Cards de elogios** com estrutura vertical:
+  - Nome do consultor/prestador em azul (#0066FF), negrito e caixa alta (campo `prestador` da pesquisa)
+  - Resposta de satisfação (se houver)
   - Comentário da pesquisa (se houver)
-  - Informações do cliente e empresa
-- **CTA Box** com borda rosa explicando como enviar elogios
-- **Rodapé azul gradiente** com logo "SONDA" e tagline "make it easy"
-- **CSS inline minificado** para compatibilidade máxima com clientes de email
-- **Layout responsivo** com max-width de 1000px e adaptação mobile
-- **Paleta de cores Sonda**: Azul (#0066FF, #0052CC), Rosa (#E91E63), Cinza (#f8f9fa)
+  - Informações do cliente e empresa em negrito preto
+- **Divisores entre linhas**: Linha horizontal preta (1px) com aspas decorativas alternadas:
+  - Linhas pares: Aspas azuis (#0066FF) à direita
+  - Linhas ímpares: Aspas rosas (#FF0066) à esquerda
+  - Aspas grandes (40px) posicionadas sobre a linha divisória
+- **Imagem de rodapé**: Banner inferior com referência relativa `.png` (deve ser anexado ao email)
+- **CSS inline otimizado** para compatibilidade com clientes de email
+- **Layout responsivo**: Adapta para 1 coluna em mobile (max-width: 600px)
+- **Paleta de cores Sonda**: Azul (#0066FF), Rosa (#FF0066), Preto (#000000), Cinza (#f3f4f6)
+- **Imagens**: Header e Footer com referências relativas (ambos devem ser anexados ao email)
 
 **Validações implementadas:**
 - Pelo menos um destinatário obrigatório
@@ -359,10 +385,11 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - Componentes UI do shadcn/ui
 
 **Tipos utilizados:**
-- `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa
+- `ElogioCompleto`: Tipo completo do elogio com dados da pesquisa (inclui campo `origem` para identificar fonte dos dados: 'sql_server' ou 'manual')
 - `FiltrosElogio`: Filtros para busca (mês, ano)
 
 **Melhorias recentes:**
+- **Estilo visual consistente**: Aplicado estilo azul Sonda (bg-blue-600 hover:bg-blue-700 rounded-2xl) em todos os botões de ação principais (Disparar Elogios, Enviar e Confirmar Envio) para manter consistência com a identidade visual da marca
 - **Reorganização de colunas**: Ordem otimizada para melhor fluxo de leitura (Chamado → Empresa → Data → Cliente → Comentário → Resposta)
 - **Larguras fixas**: Colunas com larguras definidas para melhor controle de layout e responsividade
 - **Validação visual de empresas**: Implementada função `obterDadosEmpresa()` que destaca em vermelho empresas não cadastradas no sistema
@@ -372,6 +399,18 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
   - Badge de resposta com whitespace-nowrap para evitar quebra de linha
   - Textos responsivos com classes sm:text-sm para adaptação mobile
 - **Melhor truncamento**: Cliente e comentário com truncamento apropriado para evitar overflow
+- **Redesign completo do relatório HTML**: 
+  - Substituído design inline por layout com imagens de header/footer
+  - Implementado sistema de linhas com 4 cards por linha usando `display: table`
+  - Adicionados divisores decorativos entre linhas com aspas alternadas (azul/rosa)
+  - Alterado campo exibido de `cliente` para `prestador` (consultor que recebeu o elogio)
+  - Melhorada estrutura dos cards com nome do prestador, resposta, comentário e informações do cliente/empresa
+  - Layout mais limpo e profissional compatível com clientes de email
+- **Otimização de imagens no email**: 
+  - Header e Footer alterados para referências relativas (`.png`) para serem anexados ao email
+  - Melhor compatibilidade com clientes de email que bloqueiam imagens externas
+  - Ambas as imagens (header e footer) devem ser anexadas ao email para exibição correta
+  - Nome específico do arquivo de header para contexto de elogios (`header-elogios.png`)
 
 **Melhorias futuras (TODOs):**
 - Implementar serviço real de envio de email para elogios
@@ -1117,6 +1156,148 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 
 ---
 
+#### `PesquisasTable.tsx`
+Componente de tabela para listagem e gerenciamento de pesquisas de satisfação, com funcionalidades de seleção múltipla, validação visual de empresas e ações CRUD.
+
+**Funcionalidades principais:**
+- **Listagem completa**: Exibição de todas as pesquisas com dados formatados e organizados
+- **Seleção múltipla**: Checkboxes para seleção individual ou em massa de pesquisas
+- **Validação visual de empresas**: Destaque em vermelho para empresas não cadastradas (apenas para pesquisas do SQL Server)
+- **Indicadores de origem**: Ícones visuais diferenciando pesquisas do SQL Server (Database) e manuais (FileEdit)
+- **Badges coloridos**: Indicadores visuais para níveis de satisfação (do pior ao melhor)
+- **Tooltips informativos**: Informações adicionais ao passar o mouse sobre empresas e comentários
+- **Ações CRUD**: Botões para editar, excluir e enviar pesquisas
+- **Dialog de confirmação**: Confirmação antes de excluir pesquisa
+
+**Props do componente:**
+- `pesquisas: Pesquisa[]` - Array de pesquisas a serem exibidas
+- `selecionados: string[]` - Array de IDs das pesquisas selecionadas
+- `onSelecionarTodos: (selecionado: boolean) => void` - Callback para selecionar/desmarcar todas
+- `onSelecionarItem: (id: string) => void` - Callback para alternar seleção de item individual
+- `onEditar: (pesquisa: Pesquisa) => void` - Callback para editar pesquisa
+- `onExcluir: (id: string) => void` - Callback para excluir pesquisa
+- `onEnviar: (pesquisa: Pesquisa) => void` - Callback para enviar pesquisa
+- `isLoading?: boolean` - Estado de loading durante operações
+
+**Hooks utilizados:**
+- `useState` - Gerenciamento de estado local (pesquisa para excluir)
+- `useMemo` - Otimização de performance para mapa de empresas
+- `useEmpresas()` - Busca lista de empresas cadastradas no sistema
+
+**Ícones utilizados (lucide-react):**
+- `Database` - Indica pesquisa sincronizada do SQL Server
+- `FileEdit` - Indica pesquisa cadastrada manualmente
+- `Edit` - Botão de editar
+- `Trash2` - Botão de excluir
+- `Send` - Botão de enviar
+
+**Estrutura da tabela:**
+- **Coluna Checkbox**: Seleção individual com checkbox no cabeçalho para selecionar todos
+- **Coluna Chamado** (120px): Exibe ícone de origem (Database/FileEdit), tipo do caso (IM/PR/RF) e número do chamado em fonte mono
+- **Coluna Empresa** (180px): Nome da empresa com validação visual:
+  - **Empresas cadastradas**: Exibe nome abreviado com tooltip mostrando nome completo
+  - **Empresas não cadastradas (SQL Server)**: Exibe em vermelho com tooltip de alerta
+  - **Empresas não cadastradas (Manual)**: Exibe normalmente sem destaque vermelho
+- **Coluna Data Resposta** (120px): Data e hora formatadas em pt-BR (DD/MM/YYYY às HH:mm)
+- **Coluna Cliente** (150px): Nome do cliente com quebra de linha automática
+- **Coluna Comentário** (200px): Comentário da pesquisa com line-clamp-2 e tooltip com texto completo
+- **Coluna Resposta** (140px): Badge colorido com nível de satisfação:
+  - Muito Insatisfeito: Badge vermelho (bg-red-600)
+  - Insatisfeito: Badge laranja (bg-orange-500)
+  - Neutro: Badge amarelo (bg-yellow-500)
+  - Satisfeito: Badge azul (bg-blue-500)
+  - Muito Satisfeito: Badge verde (bg-green-600)
+- **Coluna Ações** (120px): Três botões compactos (8x8):
+  - Editar: Botão outline com ícone Edit
+  - Excluir: Botão outline vermelho com ícone Trash2
+  - Enviar: Botão outline azul com ícone Send (desabilitado se não houver resposta)
+
+**Validação visual de empresas:**
+A função `validarEmpresa()` implementa lógica inteligente para destacar empresas não cadastradas:
+1. Normaliza nome da empresa (trim + uppercase) para comparação
+2. Busca empresa no mapa de empresas cadastradas
+3. Retorna objeto com:
+   - `encontrada`: boolean indicando se empresa existe no cadastro
+   - `nomeExibir`: nome abreviado (se encontrada) ou nome original
+   - `nomeCompleto`: nome completo da empresa
+4. **Lógica de exibição**:
+   - Se empresa encontrada: exibe nome abreviado com tooltip do nome completo
+   - Se não encontrada E origem SQL Server: exibe em vermelho com tooltip de alerta
+   - Se não encontrada E origem manual: exibe normalmente sem destaque
+
+**Mapa de empresas (otimização):**
+- Criado via `useMemo` para evitar recálculos desnecessários
+- Estrutura: `Map<string, { nomeCompleto: string; nomeAbreviado: string }>`
+- Chave: nome completo normalizado (trim + uppercase)
+- Permite busca rápida O(1) ao validar empresas
+
+**Estados gerenciados:**
+- `pesquisaParaExcluir`: ID da pesquisa selecionada para exclusão (controla dialog de confirmação)
+
+**Funções principais:**
+- `validarEmpresa(nomeEmpresa)`: Valida e formata nome da empresa, retornando objeto com status e nomes
+- `formatarData(data)`: Formata data para exibição em pt-BR (DD/MM/YYYY às HH:mm)
+- `getBadgeResposta(resposta)`: Retorna badge colorido baseado no nível de satisfação
+- `handleExcluirClick(id)`: Abre dialog de confirmação de exclusão
+- `handleConfirmarExclusao()`: Executa exclusão após confirmação
+
+**Badges de resposta (hierarquia de cores):**
+```typescript
+// Do pior para o melhor:
+Muito Insatisfeito → Vermelho (bg-red-600)
+Insatisfeito → Laranja (bg-orange-500)
+Neutro → Amarelo (bg-yellow-500)
+Satisfeito → Azul (bg-blue-500)
+Muito Satisfeito → Verde (bg-green-600)
+```
+
+**Componentes UI utilizados:**
+- `Table`, `TableBody`, `TableCell`, `TableHead`, `TableHeader`, `TableRow` - Componentes de tabela do shadcn/ui
+- `Checkbox` - Seleção de pesquisas
+- `Badge` - Indicadores de resposta
+- `Button` - Botões de ação
+- `AlertDialog` - Confirmação de exclusão
+- `Tooltip` - Informações adicionais
+
+**Tratamento de casos especiais:**
+- **Sem pesquisas**: Exibe mensagem "Nenhum pesquisa encontrado"
+- **Sem chamado**: Exibe apenas ícone de origem + traço (-)
+- **Sem comentário**: Exibe traço (-)
+- **Sem resposta**: Exibe traço (-) e desabilita botão de enviar
+- **Resposta não reconhecida**: Exibe badge outline com texto original
+
+**Melhorias recentes:**
+- **Validação inteligente de empresas**: Implementada lógica que só destaca em vermelho empresas não cadastradas quando a origem é SQL Server, evitando alertas desnecessários para lançamentos manuais
+- **Diferenciação visual de origem**: Adicionados ícones Database (SQL Server) e FileEdit (Manual) para identificar rapidamente a fonte dos dados
+- **Tooltips informativos**: Empresas cadastradas mostram nome completo no tooltip, empresas não cadastradas (SQL Server) mostram alerta
+- **Mapa de empresas otimizado**: Uso de `useMemo` para criar mapa de busca rápida, melhorando performance
+- **Badges hierárquicos**: Sistema de cores consistente do pior (vermelho) ao melhor (verde) nível de satisfação
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de pesquisas de satisfação
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Recebe callbacks para operações CRUD da página pai
+- Exportado via `src/components/admin/pesquisas-satisfacao/index.ts`
+
+**Tipos utilizados:**
+- `Pesquisa` - Tipo completo da pesquisa de satisfação (inclui campo `origem`)
+
+**Uso típico:**
+```typescript
+<PesquisasTable
+  pesquisas={pesquisas}
+  selecionados={selecionados}
+  onSelecionarTodos={handleSelecionarTodos}
+  onSelecionarItem={handleSelecionarItem}
+  onEditar={handleEditar}
+  onExcluir={handleExcluir}
+  onEnviar={handleEnviar}
+  isLoading={isLoading}
+/>
+```
+
+---
+
 ### `src/components/admin/elogios/`
 
 Componentes relacionados ao gerenciamento de elogios (pesquisas de satisfação positivas).
@@ -1217,7 +1398,7 @@ Formulário completo de cadastro e edição de elogios, baseado na estrutura do 
 - **Mapeamento de empresas**: Ao editar, busca empresa por nome completo ou abreviado para compatibilidade com dados do SQL Server
 
 **Tipos utilizados:**
-- `ElogioCompleto` - Tipo completo do elogio importado de `@/types/elogios`
+- `ElogioCompleto` - Tipo completo do elogio importado de `@/types/elogios` (inclui campo `origem` para identificar fonte dos dados: 'sql_server' ou 'manual')
 - `ElogioFormData` - Interface local para dados do formulário
 
 **Bibliotecas utilizadas:**
@@ -1326,6 +1507,7 @@ Serviço completo para gerenciamento de elogios (pesquisas de satisfação posit
 - `comentario_pesquisa` - Comentário da pesquisa
 - `resposta` - Nível de satisfação
 - `data_resposta` - Data/hora da resposta
+- `origem` - Origem dos dados ('sql_server' para sincronização ou 'manual' para cadastro manual)
 
 **Filtros disponíveis (FiltrosElogio):**
 - `status` - Array de status para filtrar (registrado, compartilhado, arquivado)
@@ -1365,6 +1547,7 @@ Serviço completo para gerenciamento de elogios (pesquisas de satisfação posit
 - Adicionados campos `email_cliente`, `prestador`, `categoria` e `grupo` na busca de elogios para suportar formulário completo
 - Implementada atualização completa de todos os campos da pesquisa vinculada
 - Melhorada sincronização entre elogio e pesquisa de satisfação
+- **Campo origem adicionado**: Novo campo `origem` ('sql_server' | 'manual') permite identificar a fonte dos dados da pesquisa, facilitando rastreamento e tratamento diferenciado entre pesquisas sincronizadas do SQL Server e cadastradas manualmente
 
 ---
 
@@ -1632,6 +1815,159 @@ await taxaPadraoService.atualizarTaxaPadrao('uuid-da-taxa', {
 const historico = await taxaPadraoService.buscarHistoricoTaxasPadrao('GALLERY');
 // Retorna todas as taxas GALLERY ordenadas por vigência (mais recente primeiro)
 ```
+
+---
+
+## Diretório `src/types/`
+
+Definições de tipos TypeScript utilizadas em todo o projeto.
+
+### `elogios.ts`
+Definições de tipos e interfaces para o sistema de elogios (pesquisas de satisfação positivas).
+
+**Tipos principais:**
+
+**StatusElogio**
+```typescript
+type StatusElogio = 'registrado' | 'compartilhado' | 'arquivado';
+```
+Status possíveis de um elogio no sistema:
+- `registrado` - Elogio cadastrado mas ainda não compartilhado
+- `compartilhado` - Elogio enviado/compartilhado com stakeholders
+- `arquivado` - Elogio arquivado (não mais ativo)
+
+**TipoAtualizacaoElogio**
+```typescript
+type TipoAtualizacaoElogio = 'criacao' | 'atualizacao' | 'compartilhamento' | 'arquivamento';
+```
+Tipos de atualização registrados no histórico de elogios.
+
+**Interfaces principais:**
+
+**Elogio**
+Interface base do elogio com campos principais:
+- `id` - UUID do elogio
+- `pesquisa_id` - UUID da pesquisa de satisfação vinculada
+- `chamado` - Número do chamado (opcional)
+- `empresa_id` - UUID da empresa (opcional)
+- `data_resposta` - Data da resposta do cliente (opcional)
+- `observacao` - Observações internas (opcional)
+- `acao_tomada` - Ações tomadas com base no elogio (opcional)
+- `compartilhado_com` - Lista de pessoas/grupos com quem foi compartilhado (opcional)
+- `status` - Status atual do elogio (registrado/compartilhado/arquivado)
+- `criado_por` - UUID do usuário que criou (opcional)
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**ElogioHistorico**
+Interface para histórico de alterações do elogio:
+- `id` - UUID do registro de histórico
+- `elogio_id` - UUID do elogio relacionado
+- `data_atualizacao` - Data/hora da atualização
+- `usuario_id` - UUID do usuário que fez a atualização (opcional)
+- `usuario_nome` - Nome do usuário (opcional)
+- `descricao_atualizacao` - Descrição da alteração realizada
+- `tipo_atualizacao` - Tipo da atualização (opcional)
+- `criado_em` - Data/hora de criação do registro
+
+**ElogioCompleto**
+Interface estendida que inclui dados da pesquisa de satisfação vinculada:
+- Herda todos os campos de `Elogio`
+- `pesquisa` - Objeto com dados da pesquisa relacionada:
+  - `id` - UUID da pesquisa
+  - `empresa` - Nome da empresa
+  - `cliente` - Nome do cliente
+  - `email_cliente` - Email do cliente (opcional)
+  - `prestador` - Nome do consultor/prestador (opcional)
+  - `categoria` - Categoria do atendimento (opcional)
+  - `grupo` - Grupo responsável (opcional)
+  - `tipo_caso` - Tipo do chamado: IM/PR/RF (opcional)
+  - `nro_caso` - Número do chamado (opcional)
+  - `comentario_pesquisa` - Comentário da pesquisa (opcional)
+  - `resposta` - Nível de satisfação (opcional)
+  - `data_resposta` - Data/hora da resposta (opcional)
+  - `origem` - **NOVO**: Origem dos dados ('sql_server' | 'manual') - identifica se a pesquisa foi sincronizada do SQL Server ou cadastrada manualmente no sistema (opcional)
+
+**ElogioFormData**
+Interface para dados do formulário de criação/edição:
+- Campos da pesquisa de satisfação:
+  - `empresa` - Nome da empresa (obrigatório)
+  - `cliente` - Nome do cliente (obrigatório)
+  - `email_cliente` - Email do cliente (opcional)
+  - `prestador` - Nome do consultor/prestador (opcional)
+  - `categoria` - Categoria do atendimento (opcional)
+  - `grupo` - Grupo responsável (opcional)
+  - `tipo_caso` - Tipo do chamado (opcional)
+  - `nro_caso` - Número do chamado (opcional)
+  - `data_resposta` - Data da resposta (Date ou string, opcional)
+  - `resposta` - Nível de satisfação (obrigatório)
+  - `comentario_pesquisa` - Comentário da pesquisa (opcional)
+- Campos específicos do elogio:
+  - `observacao` - Observações internas (opcional)
+  - `acao_tomada` - Ações tomadas (opcional)
+  - `compartilhado_com` - Compartilhado com (opcional)
+  - `status` - Status do elogio (opcional)
+
+**FiltrosElogio**
+Interface para filtros de busca:
+- `busca` - Busca textual (opcional)
+- `status` - Array de status para filtrar (opcional)
+- `empresa` - Filtro por empresa (opcional)
+- `dataInicio` - Data inicial do período (opcional)
+- `dataFim` - Data final do período (opcional)
+- `mes` - Mês da data de resposta (1-12, opcional)
+- `ano` - Ano da data de resposta (opcional)
+
+**EstatisticasElogio**
+Interface para estatísticas agregadas:
+- `total` - Total de elogios
+- `registrados` - Quantidade de elogios registrados
+- `compartilhados` - Quantidade de elogios compartilhados
+- `arquivados` - Quantidade de elogios arquivados
+
+**Constantes:**
+
+**STATUS_ELOGIO_OPTIONS**
+Array de opções para selects de status:
+```typescript
+[
+  { value: 'registrado', label: 'Registrado' },
+  { value: 'compartilhado', label: 'Compartilhado' },
+  { value: 'arquivado', label: 'Arquivado' },
+]
+```
+
+**Uso típico:**
+```typescript
+import { ElogioCompleto, FiltrosElogio, StatusElogio } from '@/types/elogios';
+
+// Buscar elogios com filtros
+const filtros: FiltrosElogio = {
+  mes: 12,
+  ano: 2024,
+  status: ['compartilhado']
+};
+
+// Trabalhar com elogio completo
+const elogio: ElogioCompleto = {
+  id: 'uuid',
+  pesquisa_id: 'uuid-pesquisa',
+  status: 'compartilhado',
+  criado_em: '2024-12-01',
+  atualizado_em: '2024-12-01',
+  pesquisa: {
+    id: 'uuid-pesquisa',
+    empresa: 'Empresa XYZ',
+    cliente: 'Cliente ABC',
+    prestador: 'João Silva',
+    resposta: 'Muito Satisfeito',
+    origem: 'sql_server' // Indica que veio da sincronização
+  }
+};
+```
+
+**Melhorias recentes:**
+- **Campo origem adicionado**: Novo campo `origem` ('sql_server' | 'manual') na interface da pesquisa vinculada permite identificar a fonte dos dados, facilitando rastreamento e tratamento diferenciado entre pesquisas sincronizadas do SQL Server e cadastradas manualmente no sistema
 
 ---
 

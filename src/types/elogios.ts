@@ -48,6 +48,7 @@ export interface ElogioCompleto extends Elogio {
     comentario_pesquisa?: string;
     resposta?: string;
     data_resposta?: string;
+    origem?: 'sql_server' | 'manual';
   };
 }
 

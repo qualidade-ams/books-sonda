@@ -58,6 +58,7 @@ import { toast } from 'sonner';
 
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { emailService } from '@/services/emailService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 
 export default function EnviarElogios() {
@@ -82,10 +83,11 @@ export default function EnviarElogios() {
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
   const [elogiosSelecionados, setElogiosSelecionados] = useState<string[]>([]);
 
-  // Filtros
+  // Filtros - Buscar apenas elogios com status "compartilhado"
   const [filtros, setFiltros] = useState<FiltrosElogio>({
     mes: mesAtual,
-    ano: anoAtual
+    ano: anoAtual,
+    status: ['compartilhado'] // Filtrar apenas elogios compartilhados
   });
 
   // Hooks
@@ -121,11 +123,11 @@ export default function EnviarElogios() {
       const novoAno = anoSelecionado - 1;
       setMesSelecionado(12);
       setAnoSelecionado(novoAno);
-      setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno }));
+      setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno, status: ['compartilhado'] }));
     } else {
       const novoMes = mesSelecionado - 1;
       setMesSelecionado(novoMes);
-      setFiltros(prev => ({ ...prev, mes: novoMes }));
+      setFiltros(prev => ({ ...prev, mes: novoMes, status: ['compartilhado'] }));
     }
   };
 
@@ -134,11 +136,11 @@ export default function EnviarElogios() {
       const novoAno = anoSelecionado + 1;
       setMesSelecionado(1);
       setAnoSelecionado(novoAno);
-      setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno }));
+      setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno, status: ['compartilhado'] }));
     } else {
       const novoMes = mesSelecionado + 1;
       setMesSelecionado(novoMes);
-      setFiltros(prev => ({ ...prev, mes: novoMes }));
+      setFiltros(prev => ({ ...prev, mes: novoMes, status: ['compartilhado'] }));
     }
   };
 
@@ -165,22 +167,120 @@ export default function EnviarElogios() {
     
     // Extrair nomes únicos dos colaboradores
     const colaboradores = elogiosSelecionadosData
-      .map(e => e.pesquisa?.cliente)
+      .map(e => e.pesquisa?.prestador)
       .filter((nome, index, self) => nome && self.indexOf(nome) === index)
       .join(' | ');
     
-    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:0;font-family:Arial,sans-serif}.container{max-width:1000px;margin:0 auto;background:#fff}.header{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative}.header::before{content:'';position:absolute;bottom:-30px;left:0;right:0;height:60px;background:#fff;border-radius:50% 50% 0 0/100% 100% 0 0}.logo{background:white;width:60px;height:60px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:#0066FF;margin-bottom:20px}.title-box{background:white;color:#333;padding:20px 40px;margin:40px auto;max-width:600px;border:4px solid #E91E63;border-radius:8px;text-align:center}.title-box h1{margin:0;font-size:20px;font-weight:bold;text-transform:uppercase}.title-box p{margin:10px 0 0 0;font-size:14px;color:#666}.colaboradores{text-align:center;color:#0066FF;font-weight:bold;font-size:14px;padding:20px;text-transform:uppercase}.content{padding:20px 40px}.elogios-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:30px 0}.elogio-card{background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #0066FF}.elogio-card h3{color:#0066FF;font-size:14px;margin:0 0 10px 0;text-transform:uppercase;font-weight:bold}.elogio-card .resposta{font-size:13px;margin:8px 0;font-weight:600;color:#333}.elogio-card .comentario{font-size:12px;line-height:1.6;color:#555;margin:10px 0}.elogio-card .info{font-size:11px;color:#666;margin-top:12px;border-top:1px solid #ddd;padding-top:8px}.elogio-card .info strong{color:#333}.quote-left{color:#E91E63;font-size:48px;line-height:1;margin:20px 0 -10px 20px}.quote-right{color:#0066FF;font-size:48px;line-height:1;margin:-10px 20px 20px 0;text-align:right}.cta-box{background:white;border:3px solid #E91E63;border-radius:12px;padding:30px;margin:40px auto;max-width:600px;text-align:center}.cta-box h2{color:#333;font-size:18px;margin:0 0 15px 0}.cta-box p{color:#666;font-size:14px;line-height:1.6;margin:0}.footer{background:linear-gradient(135deg,#0066FF 0%,#0052CC 100%);padding:40px 20px;text-align:center;color:white;position:relative;margin-top:60px}.footer::before{content:'';position:absolute;top:-30px;left:0;right:0;height:60px;background:#0066FF;border-radius:0 0 50% 50%/0 0 100% 100%}.footer-logo{font-size:32px;font-weight:bold;margin-bottom:5px}.footer-tagline{font-size:12px;opacity:0.9}@media (max-width:768px){.elogios-grid{grid-template-columns:1fr}.content{padding:20px}}</style></head><body><div class="container"><div class="header"><div class="logo">N</div></div><div class="title-box"><h1>Elogios aos Colaboradores<br>de Soluções de Negócios</h1><p>${nomesMeses[mesSelecionado - 1].toUpperCase()}</p></div>${colaboradores ? `<div class="colaboradores">${colaboradores}</div>` : ''}<div class="content"><div class="quote-left">"</div><div class="elogios-grid">`;
+    // Dividir elogios em grupos de 4 para criar linhas
+    const elogiosPorLinha: typeof elogiosSelecionadosData[] = [];
+    for (let i = 0; i < elogiosSelecionadosData.length; i += 4) {
+      elogiosPorLinha.push(elogiosSelecionadosData.slice(i, i + 4));
+    }
+    
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
+    .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; }
+    .header-image { width: 100%; height: auto; display: block; }
+    .main-content { padding: 40px 48px; background-color: #ffffff; }
+    .elogios-row { display: table; width: 100%; margin-bottom: 40px; }
+    .elogio-card { display: table-cell; width: 25%; padding: 8px; vertical-align: top; }
+    .elogio-inner { height: 100%; text-align: left; }
+    .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; line-height: 1.3; }
+    .elogio-feedback { flex-grow: 1; margin-bottom: 16px; }
+    .elogio-feedback p { color: #1f2937; font-size: 12px; margin-bottom: 8px; line-height: 1.5; }
+    .elogio-info { margin-top: auto; }
+    .elogio-info p { font-size: 12px; color: #000000; font-weight: bold; margin-bottom: 2px; }
+    .elogio-info span { font-weight: bold; }
+    .divider-container { width: 100%; position: relative; margin: 48px 0; }
+    .divider-line { width: 100%; height: 1px; background-color: #000000; }
+    .quote-icon { position: absolute; top: -16px; background-color: #ffffff; padding: 0 8px; }
+    .quote-right { right: 0; }
+    .quote-left { left: 0; }
+    .quote-blue { color: #0066FF; font-size: 40px; line-height: 1; }
+    .quote-pink { color: #FF0066; font-size: 40px; line-height: 1; }
+    .footer-image { width: 100%; height: auto; display: block; margin-top: auto; }
+    @media only screen and (max-width: 600px) {
+      .main-content { padding: 20px 16px; }
+      .elogios-row { display: block; }
+      .elogio-card { display: block; width: 100%; margin-bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- HEADER IMAGE -->
+    <img src="/images/header-elogios.png" alt="Sonda Header" class="header-image" />
+    
+    <!-- MAIN CONTENT -->
+    <div class="main-content">`;
 
-    elogiosSelecionadosData.forEach((elogio) => {
-      const nomeColaborador = elogio.pesquisa?.cliente || 'Colaborador';
-      const comentario = elogio.pesquisa?.comentario_pesquisa || '';
-      const cliente = elogio.pesquisa?.cliente || 'N/A';
-      const empresa = elogio.pesquisa?.empresa || 'N/A';
+    // Gerar linhas de elogios com divisores
+    elogiosPorLinha.forEach((linha, linhaIndex) => {
+      // Adicionar linha de elogios
+      html += `<div class="elogios-row">`;
       
-      html += `<div class="elogio-card"><h3>${nomeColaborador}</h3>${comentario ? `<div class="comentario">${comentario}</div>` : ''}<div class="info"><strong>Cliente:</strong> ${cliente}<br><strong>Empresa:</strong> ${empresa}</div></div>`;
+      linha.forEach((elogio) => {
+        const nomeColaborador = elogio.pesquisa?.prestador || 'Colaborador';
+        const comentario = elogio.pesquisa?.comentario_pesquisa || '';
+        const resposta = elogio.pesquisa?.resposta || '';
+        const cliente = elogio.pesquisa?.cliente || 'N/A';
+        const empresa = elogio.pesquisa?.empresa || 'N/A';
+        
+        html += `
+        <div class="elogio-card">
+          <div class="elogio-inner">
+            <h3 class="elogio-name">${nomeColaborador}</h3>
+            <div class="elogio-feedback">`;
+        
+        if (resposta) {
+          html += `<p>${resposta}</p>`;
+        }
+        if (comentario) {
+          html += `<p>${comentario}</p>`;
+        }
+        
+        html += `
+            </div>
+            <div class="elogio-info">
+              <p>Cliente: <span>${cliente}</span></p>
+              <p>Empresa: <span>${empresa}</span></p>
+            </div>
+          </div>
+        </div>`;
+      });
+      
+      html += `</div>`;
+      
+      // Adicionar divisor entre linhas (exceto após a última linha)
+      if (linhaIndex < elogiosPorLinha.length - 1) {
+        const isEven = linhaIndex % 2 === 0;
+        const quotePosition = isEven ? 'quote-right' : 'quote-left';
+        const quoteColor = isEven ? 'quote-blue' : 'quote-pink';
+        
+        html += `
+        <div class="divider-container">
+          <div class="divider-line"></div>
+          <div class="quote-icon ${quotePosition}">
+            <span class="${quoteColor}">"</span>
+          </div>
+        </div>`;
+      }
     });
 
-    html += `</div><div class="quote-right">"</div><div class="cta-box"><h2>Como enviar meu elogio?</h2><p>Caro(a) colaborador(a), ao receber um elogio, pedimos que o encaminhe ao seu gestor. Será uma grande alegria para nós poder compartilhar esse reconhecimento com toda a equipe!</p></div></div><div class="footer"><div class="footer-logo">SONDA</div><div class="footer-tagline">make it easy</div></div></div></body></html>`;
+    html += `
+    </div>
+    
+    <!-- FOOTER IMAGE -->
+    <img src="/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
+  </div>
+</body>
+</html>`;
 
     return html;
   };
@@ -344,29 +444,52 @@ export default function EnviarElogios() {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
 
-      // TODO: Implementar serviço de envio de email para elogios
-      console.log('Enviando email com:', {
-        destinatarios: emailsValidos,
-        cc: emailsCCValidos,
-        assunto: assuntoEmail,
-        corpo: corpoEmail,
-        anexos: anexos.length
+      // Converter anexos File[] para base64
+      const anexosBase64 = await Promise.all(
+        anexos.map(async (file) => {
+          return new Promise<{ filename: string; content: string; contentType: string }>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = (reader.result as string).split(',')[1]; // Remover prefixo data:...;base64,
+              resolve({
+                filename: file.name,
+                content: base64,
+                contentType: file.type
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      // Enviar email usando o serviço
+      const resultado = await emailService.sendEmail({
+        to: emailsValidos,
+        cc: emailsCCValidos.length > 0 ? emailsCCValidos : undefined,
+        subject: assuntoEmail,
+        html: corpoEmail,
+        attachments: anexosBase64.length > 0 ? anexosBase64 : undefined
       });
 
-      toast.success(`Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`);
-      
-      setModalEmailAberto(false);
-      setConfirmacaoAberta(false);
-      setElogiosSelecionados([]);
-      setDestinatarios([]);
-      setDestinatariosCC([]);
-      setDestinatariosTexto('');
-      setDestinatariosCCTexto('');
-      setAssuntoEmail('');
-      setAnexos([]);
+      if (resultado.success) {
+        toast.success(`Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`);
+        
+        setModalEmailAberto(false);
+        setConfirmacaoAberta(false);
+        setElogiosSelecionados([]);
+        setDestinatarios([]);
+        setDestinatariosCC([]);
+        setDestinatariosTexto('');
+        setDestinatariosCCTexto('');
+        setAssuntoEmail('');
+        setAnexos([]);
+      } else {
+        toast.error(`Erro ao enviar email: ${resultado.error || 'Erro desconhecido'}`);
+      }
     } catch (error) {
       console.error('Erro ao enviar email:', error);
-      toast.error('Erro ao enviar email');
+      toast.error('Erro ao enviar email: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setEnviandoEmail(false);
     }
@@ -614,9 +737,16 @@ export default function EnviarElogios() {
                             )}
                           </TableCell>
                           <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
-                            <span className={`font-semibold ${!empresaEncontrada ? 'text-red-600' : ''}`}>
-                              {nomeEmpresa}
-                            </span>
+                            {(() => {
+                              const isOrigemSqlServer = elogio.pesquisa?.origem === 'sql_server';
+                              // Só exibe em vermelho se for do SQL Server E não encontrada
+                              const deveExibirVermelho = isOrigemSqlServer && !empresaEncontrada;
+                              return (
+                                <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
+                                  {nomeEmpresa}
+                                </span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-center text-xs sm:text-sm text-muted-foreground">
                             {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
