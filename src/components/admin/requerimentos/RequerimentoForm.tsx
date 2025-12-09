@@ -76,8 +76,8 @@ export function RequerimentoForm({
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
-      // Campo de tipo de hora extra - mantém o valor existente ao editar
-      tipo_hora_extra: requerimento?.tipo_hora_extra as TipoHoraExtraType | undefined,
+      // Campo de tipo de hora extra - mantém o valor existente ao editar (converter null para undefined)
+      tipo_hora_extra: (requerimento?.tipo_hora_extra || undefined) as TipoHoraExtraType | undefined,
       // Campos de ticket
       quantidade_tickets: requerimento?.quantidade_tickets || undefined,
       // Campo de horas de análise EF (para tipo Reprovado)
@@ -149,18 +149,32 @@ export function RequerimentoForm({
 
   // useEffect para buscar taxa vigente quando cliente mudar
   useEffect(() => {
-    if (!clienteId) {
+    // Só buscar taxa se o tipo de cobrança requer valores
+    const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    const precisaTaxa = tipoCobranca && tiposComValorHora.includes(tipoCobranca);
+    
+    console.log('🔍 Verificando necessidade de buscar taxa:', {
+      clienteId,
+      tipoCobranca,
+      precisaTaxa
+    });
+    
+    if (!clienteId || !precisaTaxa) {
+      console.log('❌ Não precisa buscar taxa - limpando estado');
       setTaxaVigente(null);
+      setCarregandoTaxa(false);
       return;
     }
 
+    console.log('✅ Buscando taxa vigente...');
     const buscarTaxa = async () => {
       setCarregandoTaxa(true);
       try {
         const taxa = await buscarTaxaVigente(clienteId);
+        console.log('✅ Taxa encontrada:', taxa);
         setTaxaVigente(taxa);
       } catch (error) {
-        console.error('Erro ao buscar taxa vigente:', error);
+        console.error('❌ Erro ao buscar taxa vigente:', error);
         setTaxaVigente(null);
       } finally {
         setCarregandoTaxa(false);
@@ -168,7 +182,42 @@ export function RequerimentoForm({
     };
 
     buscarTaxa();
-  }, [clienteId]);
+  }, [clienteId, tipoCobranca]);
+
+  // useEffect para limpar campos quando tipo de cobrança não requer
+  useEffect(() => {
+    const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    
+    // Se o tipo de cobrança NÃO requer valor/hora, zerar os campos
+    if (tipoCobranca && !tiposComValorHora.includes(tipoCobranca)) {
+      const valorAtualFuncional = form.getValues('valor_hora_funcional');
+      const valorAtualTecnico = form.getValues('valor_hora_tecnico');
+      
+      // Zerar valores se estiverem preenchidos
+      if (valorAtualFuncional !== undefined && valorAtualFuncional !== null && valorAtualFuncional !== 0) {
+        form.setValue('valor_hora_funcional', 0, { shouldValidate: true, shouldDirty: true });
+      }
+      if (valorAtualTecnico !== undefined && valorAtualTecnico !== null && valorAtualTecnico !== 0) {
+        form.setValue('valor_hora_tecnico', 0, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+    
+    // Se o tipo de cobrança NÃO é Hora Extra, limpar tipo_hora_extra
+    if (tipoCobranca && tipoCobranca !== 'Hora Extra') {
+      const tipoHoraExtraAtual = form.getValues('tipo_hora_extra');
+      if (tipoHoraExtraAtual !== undefined && tipoHoraExtraAtual !== null) {
+        form.setValue('tipo_hora_extra', undefined, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+    
+    // Se o tipo de cobrança NÃO é Reprovado, limpar horas_analise_ef
+    if (tipoCobranca && tipoCobranca !== 'Reprovado') {
+      const horasAnaliseAtual = form.getValues('horas_analise_ef');
+      if (horasAnaliseAtual !== undefined && horasAnaliseAtual !== null && horasAnaliseAtual !== 0) {
+        form.setValue('horas_analise_ef', 0, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+  }, [tipoCobranca, form]);
 
   // useEffect para preencher valores automaticamente baseado na taxa vigente
   useEffect(() => {
@@ -253,10 +302,18 @@ export function RequerimentoForm({
     const valorHoraFuncionalArredondado = Math.round(valorHoraFuncional * 100) / 100;
     const valorHoraTecnicoArredondado = Math.round(valorHoraTecnico * 100) / 100;
 
-    // Preencher os campos com os valores correspondentes
-    form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado);
-    form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado);
-  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, horasTecnico, form]);
+    // Preencher os campos com os valores correspondentes apenas se estiverem vazios ou zerados
+    const valorAtualFuncional = form.getValues('valor_hora_funcional');
+    const valorAtualTecnico = form.getValues('valor_hora_tecnico');
+    
+    // Só preencher se os valores estiverem vazios, zerados ou undefined
+    if (!valorAtualFuncional || valorAtualFuncional === 0) {
+      form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
+    }
+    if (!valorAtualTecnico || valorAtualTecnico === 0) {
+      form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
+    }
+  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, form]);
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
@@ -391,41 +448,8 @@ export function RequerimentoForm({
   }, [tipoCobrancaOptionsFiltradas, form]);
 
   // Resetar formulário quando requerimento mudar (modo edição)
-  useEffect(() => {
-    if (requerimento) {
-      const tipoHoraExtraValue = requerimento.tipo_hora_extra as TipoHoraExtraType | undefined;
-      
-      form.reset({
-        chamado: requerimento.chamado || '',
-        cliente_id: requerimento.cliente_id || '',
-        modulo: requerimento.modulo || 'Comply',
-        descricao: requerimento.descricao || '',
-        data_envio: requerimento.data_envio || '',
-        data_aprovacao: requerimento.data_aprovacao || '',
-        horas_funcional: requerimento.horas_funcional || 0,
-        horas_tecnico: requerimento.horas_tecnico || 0,
-        linguagem: requerimento.linguagem || 'Funcional',
-        tipo_cobranca: requerimento.tipo_cobranca || 'Banco de Horas',
-        mes_cobranca: requerimento.mes_cobranca || '',
-        observacao: requerimento.observacao || '',
-        valor_hora_funcional: requerimento.valor_hora_funcional || undefined,
-        valor_hora_tecnico: requerimento.valor_hora_tecnico || undefined,
-        tipo_hora_extra: tipoHoraExtraValue,
-        quantidade_tickets: requerimento.quantidade_tickets || undefined,
-        horas_analise_ef: 0
-      });
-      
-      // Aguardar um tick para garantir que o reset foi aplicado
-      setTimeout(() => {
-        const valorAposReset = form.getValues('tipo_hora_extra');
-        
-        // Se ainda estiver vazio e deveria ter valor, forçar setValue
-        if (!valorAposReset && tipoHoraExtraValue && requerimento.tipo_cobranca === 'Hora Extra') {
-          form.setValue('tipo_hora_extra', tipoHoraExtraValue);
-        }
-      }, 100);
-    }
-  }, [requerimento, form]);
+  // REMOVIDO: Este useEffect estava causando reset indesejado do formulário
+  // Os valores iniciais já são definidos nos defaultValues do useForm
 
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
@@ -443,13 +467,13 @@ export function RequerimentoForm({
   };
 
   const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
-    console.log('📋 FORMULÁRIO - Dados completos recebidos:', data);
-    console.log('📋 FORMULÁRIO - Tipo de cobrança:', data.tipo_cobranca);
-    console.log('📋 FORMULÁRIO - Horas análise EF:', data.horas_analise_ef);
-    console.log('📋 FORMULÁRIO - Tipo de horas_analise_ef:', typeof data.horas_analise_ef);
-    console.log('📋 FORMULÁRIO - Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
-    console.log('📋 FORMULÁRIO - Quantidade tickets:', data.quantidade_tickets);
-    console.log('📋 FORMULÁRIO - Mostrar campo tickets:', mostrarCampoTickets);
+    console.log('✅ FORMULÁRIO SUBMETIDO - Dados completos recebidos:', data);
+    console.log('📋 Tipo de cobrança:', data.tipo_cobranca);
+    console.log('💰 Valor/Hora Funcional:', data.valor_hora_funcional);
+    console.log('💰 Valor/Hora Técnico:', data.valor_hora_tecnico);
+    console.log('⏰ Horas análise EF:', data.horas_analise_ef);
+    console.log('🏢 Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
+    console.log('🎫 Quantidade tickets:', data.quantidade_tickets);
     
     screenReader.announceLoading('Salvando requerimento...');
     
@@ -515,7 +539,15 @@ export function RequerimentoForm({
       </CardHeader>
       <CardContent className={responsiveModal.padding}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className={responsiveForm.spacing}>
+          <form onSubmit={form.handleSubmit(
+            handleSubmit,
+            (errors) => {
+              console.error('❌ ERROS DE VALIDAÇÃO:');
+              console.error(JSON.stringify(errors, null, 2));
+              console.log('📋 Valores atuais do formulário:');
+              console.log(JSON.stringify(form.getValues(), null, 2));
+            }
+          )} className={responsiveForm.spacing}>
             {/* Seção: Informações Básicas */}
             <div className={responsiveForm.spacing}>
               <h3 className="text-lg font-semibold flex items-center gap-2">

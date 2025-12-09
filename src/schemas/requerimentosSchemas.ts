@@ -151,7 +151,12 @@ export const requerimentoFormSchema = z.object({
   valor_hora_funcional: valorHoraSchema,
   valor_hora_tecnico: valorHoraSchema,
   // Campo de tipo de hora extra (para tipo Hora Extra - opcional)
-  tipo_hora_extra: z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const).optional(),
+  // Aceita null do banco e converte para undefined
+  tipo_hora_extra: z.union([
+    z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const),
+    z.null(),
+    z.undefined()
+  ]).optional().transform(val => val === null ? undefined : val),
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets: z
     .union([

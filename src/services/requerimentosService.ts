@@ -414,8 +414,11 @@ export class RequerimentosService {
     // Campos de valor/hora
     if (data.valor_hora_funcional !== undefined) updateData.valor_hora_funcional = data.valor_hora_funcional || null;
     if (data.valor_hora_tecnico !== undefined) updateData.valor_hora_tecnico = data.valor_hora_tecnico || null;
+    // Campo de tipo de hora extra
+    if (data.tipo_hora_extra !== undefined) updateData.tipo_hora_extra = data.tipo_hora_extra || null;
     // Campos de ticket (automático baseado na empresa)
     if (data.quantidade_tickets !== undefined) updateData.quantidade_tickets = data.quantidade_tickets || null;
+    // NOTA: Campo horas_analise_ef não é atualizado aqui pois é usado apenas na criação de requerimentos de análise EF
 
     const { error } = await supabase
       .from('requerimentos')

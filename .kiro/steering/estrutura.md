@@ -1473,20 +1473,30 @@ Serviço principal para gerenciamento completo de requerimentos, incluindo CRUD,
 - Busca de requerimentos enviados com filtros
 - Integração com tabelas relacionadas (empresas_clientes, profiles)
 - Cálculo de estatísticas de requerimentos
+- Suporte a campos condicionais (tipo_hora_extra, horas_analise_ef)
 
 **Métodos principais:**
 - `criarRequerimento(data: RequerimentoFormData): Promise<Requerimento>` - Cria novo requerimento com validações
+- `atualizarRequerimento(id: string, data: Partial<RequerimentoFormData>): Promise<Requerimento>` - Atualiza requerimento existente com suporte a campos condicionais
 - `buscarRequerimentosEnviados()` - Busca requerimentos com formatação automática de horas
 - `formatarRequerimento(req)` - Converte horas decimais para formato HH:MM para exibição
 - `resolverNomesUsuarios(userIds: string[])` - Resolve nomes de autores a partir de IDs
 - `validarDadosRequerimento(data)` - Valida dados antes de salvar
 - `verificarClienteExiste(clienteId)` - Verifica existência de cliente
 
+**Campos condicionais suportados:**
+- `tipo_hora_extra` - Tipo de hora extra (Simples/Dobrada) quando tipo_cobranca = "Hora Extra"
+- `quantidade_tickets` - Quantidade de tickets relacionados (automático baseado na empresa)
+- **NOTA**: `horas_analise_ef` é usado apenas na criação de requerimentos de análise EF, não sendo atualizado posteriormente
+
 **Integração com utilitários:**
 - Utiliza `horasUtils.ts` para conversão entre formatos de horas (decimal ↔ HH:MM)
 - Utiliza `mesCobrancaUtils.ts` para conversão de mês de cobrança
 
 **Melhorias recentes:**
+- **Suporte a tipo_hora_extra**: Adicionado tratamento do campo `tipo_hora_extra` na atualização de requerimentos, permitindo salvar tipo de hora extra (Simples/Dobrada) com valor null quando não aplicável
+- **Suporte a quantidade_tickets**: Adicionado tratamento do campo `quantidade_tickets` na atualização, permitindo salvar quantidade de tickets com valor null quando não aplicável
+- **Simplificação do método de atualização**: Removida lógica de conversão de `horas_analise_ef` do método `atualizarRequerimento()` pois este campo é usado apenas na criação de requerimentos de análise EF, não sendo atualizado posteriormente
 - Adicionada formatação automática de horas na busca de requerimentos enviados
 - Implementada conversão de horas decimais para formato HH:MM antes de retornar dados
 - Garantia de que todos os requerimentos retornados têm horas no formato correto para exibição
@@ -1497,6 +1507,12 @@ Serviço principal para gerenciamento completo de requerimentos, incluindo CRUD,
 2. Resolve nomes dos autores via IDs
 3. Aplica `formatarRequerimento()` para converter horas decimais → HH:MM
 4. Retorna dados formatados prontos para exibição
+
+**Fluxo de atualização com campos condicionais:**
+1. Recebe dados do formulário (pode incluir tipo_hora_extra e quantidade_tickets)
+2. Permite valores null para campos condicionais quando não aplicáveis
+3. Atualiza requerimento no banco com todos os campos fornecidos
+4. **NOTA**: Campo `horas_analise_ef` não é atualizado via este método pois é usado apenas na criação de requerimentos de análise EF
 
 **Tipos utilizados:**
 - `Requerimento` - Tipo completo do requerimento
@@ -2501,5 +2517,383 @@ DROP TRIGGER IF EXISTS audit_valores_taxas_funcoes_trigger ON valores_taxas_func
 - Remove trigger antigo antes de criar novo
 - Requer que `fix_taxas_audit_triggers.sql` tenha sido executado primeiro
 - Permite rastreamento granular de alterações em valores por função
+
+---
+
+
+---
+
+### `src/components/admin/requerimentos/`
+
+Componentes relacionados ao gerenciamento de requerimentos.
+
+#### `RequerimentoForm.tsx`
+Formulário completo para cadastro e edição de requerimentos, com validação via Zod, cálculo automático de valores e integração com taxas de clientes.
+
+**Última atualização**: Corrigida inicialização do campo `tipo_hora_extra` para converter valores `null` em `undefined`, garantindo compatibilidade com o tipo TypeScript e evitando warnings de componente não controlado.
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de requerimentos com todos os campos necessários
+- **Validação robusta**: Validação de dados usando Zod schema (`RequerimentoFormSchema`)
+- **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
+- **Busca automática de taxas**: Carrega taxa vigente do cliente selecionado automaticamente
+- **Preenchimento automático de valores**: Preenche valores/hora baseado na taxa vigente, linguagem e tipo de cobrança
+- **Cálculo automático de totais**: Calcula valor total baseado em horas e valores/hora
+- **Limpeza automática de campos condicionais**: Remove valores de campos não aplicáveis ao tipo de cobrança selecionado
+- **Conversão de horas**: Suporte a formato HH:MM e decimal para horas
+- **Campos condicionais**: Exibe campos específicos baseados no tipo de cobrança (ex: tipo_hora_extra para Hora Extra)
+- **Seleção de datas**: Calendários interativos para datas de envio e aprovação
+
+**Props do componente:**
+- `requerimento?: Requerimento | null` - Requerimento existente para edição (opcional)
+- `onSubmit: (dados: RequerimentoFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Hooks utilizados:**
+- `useForm` (React Hook Form) - Gerenciamento do estado do formulário com validação Zod
+- `useEmpresas()` - Busca lista de empresas para o select
+- `useWatch` - Observa mudanças em campos específicos (cliente_id, linguagem, tipoCobranca)
+
+**useEffects implementados:**
+
+**1. useEffect de busca de taxa vigente:**
+- Dispara quando `clienteId` ou `tipoCobranca` mudam
+- **Validação inteligente**: Só busca taxa se o tipo de cobrança requer valores/hora (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+- **Logging detalhado**: Console logs para debug da lógica de busca:
+  - 🔍 Verificação de necessidade de buscar taxa (clienteId, tipoCobranca, precisaTaxa)
+  - ❌ Quando não precisa buscar taxa (limpa estado)
+  - ✅ Quando inicia busca de taxa vigente
+  - ✅ Taxa encontrada com sucesso
+  - ❌ Erro ao buscar taxa vigente
+- Busca taxa vigente do cliente no Supabase
+- Armazena taxa encontrada no estado `taxaVigente`
+- Limpa taxa e estado de carregamento quando tipo de cobrança não requer valores
+- Usado para preenchimento automático de valores/hora
+
+**2. useEffect de limpeza de campos condicionais:**
+- Dispara quando `tipoCobranca` muda
+- **Limpeza de valores/hora**: Zera `valor_hora_funcional` e `valor_hora_tecnico` para 0 quando tipo de cobrança NÃO requer valores (tipos válidos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+  - Verifica se valores estão preenchidos antes de zerar (evita operações desnecessárias)
+  - Usa `shouldValidate: true` e `shouldDirty: true` para marcar formulário como modificado e validar
+- **Limpeza de tipo_hora_extra**: Remove `tipo_hora_extra` (undefined) quando tipo de cobrança NÃO é "Hora Extra"
+  - Verifica se campo está preenchido antes de limpar
+  - Usa `shouldValidate: true` e `shouldDirty: true` para feedback adequado ao usuário
+- **Limpeza de horas_analise_ef**: Zera `horas_analise_ef` para 0 quando tipo de cobrança NÃO é "Reprovado"
+  - Verifica se valor está preenchido antes de zerar
+  - Usa `shouldValidate: true` e `shouldDirty: true` para marcar formulário como modificado
+- **Objetivo**: Evitar dados inconsistentes no banco e melhorar UX ao trocar tipo de cobrança, garantindo que usuário seja notificado das mudanças
+
+**3. useEffect de filtragem de opções de tipo de cobrança:**
+- Dispara quando `empresaSelecionada` muda
+- Filtra opções de tipo de cobrança baseado no tipo de cobrança da empresa
+- Se empresa tem tipo "Outros", remove opção "Bolsão Enel" das opções disponíveis
+- Mantém todas as opções para empresas com tipo "Banco de Horas"
+- Atualiza estado `tipoCobrancaOptionsFiltradas` com opções filtradas
+
+**4. useEffect de preenchimento automático de valores:**
+- Dispara quando `taxaVigente`, `linguagem` ou `tipoCobranca` mudam
+- Preenche automaticamente `valor_hora_funcional` e `valor_hora_tecnico` baseado na taxa vigente
+- Considera linguagem selecionada (Funcional, Técnico, ABAP, DBA, Gestor)
+- Considera tipo de cobrança (Faturado, Hora Extra, Sobreaviso)
+- Usa valores remotos ou locais conforme configuração da taxa
+
+**Logging de debug implementado:**
+- Logs detalhados no `handleSubmit` para troubleshooting:
+  - ✅ Dados completos recebidos do formulário (emoji de sucesso)
+  - 📋 Tipo de cobrança selecionado
+  - 💰 Valor/Hora Funcional
+  - 💰 Valor/Hora Técnico
+  - ⏰ Horas análise EF
+  - 🏢 Tipo de cobrança da empresa selecionada
+  - 🎫 Quantidade de tickets
+- **Logs otimizados**: Removidos logs redundantes (tipo de horas_analise_ef, mostrarCampoTickets)
+- **Emojis visuais**: Facilita identificação rápida de cada tipo de informação no console
+- **Logs de validação formatados**: Erros de validação e valores do formulário exibidos em formato JSON com indentação (2 espaços) para melhor legibilidade no console
+- Facilita identificação de problemas com valores/hora e campos condicionais
+
+**Campos do formulário:**
+
+**Seção: Dados Principais**
+- `chamado` (obrigatório) - Número do chamado
+- `cliente_id` (obrigatório) - Select com empresas ordenadas alfabeticamente
+- `modulo` (obrigatório) - Módulo do sistema
+- `descricao` (obrigatório) - Descrição do requerimento
+- `linguagem` (obrigatório) - Select com linguagens (Funcional, Técnico, ABAP, DBA, Gestor)
+
+**Seção: Valores e Horas**
+- `valor_hora_funcional` - Valor/hora funcional (preenchido automaticamente)
+- `valor_hora_tecnico` - Valor/hora técnico (preenchido automaticamente)
+- `horas_funcional` (obrigatório) - Horas funcionais (formato HH:MM ou decimal)
+- `horas_tecnico` (obrigatório) - Horas técnicas (formato HH:MM ou decimal)
+- `valor_total` - Valor total calculado automaticamente
+
+**Seção: Datas e Aprovação**
+- `data_envio` - Data de envio do requerimento
+- `data_aprovacao` - Data de aprovação
+- `periodo_cobranca` - Período de cobrança (MM/YYYY)
+
+**Seção: Tipo de Cobrança**
+- `tipo_cobranca` (obrigatório) - Select com tipos (Faturado, Hora Extra, Sobreaviso, Bolsão Enel, Reprovado, Outros)
+- `tipo_hora_extra` (condicional) - Select com tipos de hora extra (Simples, Dobrada) - exibido apenas quando tipo_cobranca = "Hora Extra" (valores `null` do banco são convertidos para `undefined` na inicialização)
+- `horas_analise_ef` (condicional) - Horas de análise EF - exibido apenas quando tipo_cobranca = "Reprovado"
+
+**Seção: Informações Adicionais**
+- `tickets` - Tickets relacionados
+- `observacao` - Observações gerais
+
+**Componentes UI utilizados:**
+- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
+- `Input` - Campos de texto e numéricos
+- `Textarea` - Campos de texto multilinha
+- `Select` - Seleção de opções
+- `Calendar` - Seletor de data
+- `Popover` - Container para o calendário
+- `Button` - Botões de ação
+
+**Validação:**
+- Schema Zod (`RequerimentoFormSchema`) aplicado via `zodResolver`
+- Validação automática de campos obrigatórios
+- Validação de formato de horas (HH:MM ou decimal)
+- Validação de valores numéricos
+- Mensagens de erro contextuais via `FormMessage`
+
+**Comportamento:**
+- **Modo criação**: Formulário em branco para novo requerimento
+- **Modo edição**: Formulário preenchido com dados do requerimento via `defaultValues` do useForm (valores iniciais definidos na criação do formulário)
+- **Busca automática de taxa**: Ao selecionar cliente, busca taxa vigente automaticamente
+- **Preenchimento automático**: Valores/hora preenchidos baseado em taxa, linguagem e tipo de cobrança
+- **Limpeza automática**: Campos condicionais limpos quando tipo de cobrança muda para tipo incompatível
+- **Cálculo automático**: Valor total calculado em tempo real conforme horas e valores/hora mudam
+- **Desabilitação durante loading**: Botões desabilitados durante operações assíncronas
+
+**Opções de linguagem:**
+```typescript
+[
+  { value: 'Funcional', label: 'Funcional' },
+  { value: 'Técnico', label: 'Técnico' },
+  { value: 'ABAP', label: 'ABAP' },
+  { value: 'DBA', label: 'DBA' },
+  { value: 'Gestor', label: 'Gestor' }
+]
+```
+
+**Opções de tipo de cobrança:**
+```typescript
+[
+  { value: 'Faturado', label: 'Faturado - Hora Normal' },
+  { value: 'Hora Extra', label: 'Faturado - Hora Extra' },
+  { value: 'Sobreaviso', label: 'Faturado - Sobreaviso' },
+  { value: 'Bolsão Enel', label: 'Bolsão Enel' },
+  { value: 'Reprovado', label: 'Reprovado' },
+  { value: 'Outros', label: 'Outros' }
+]
+```
+
+**Opções de tipo de hora extra:**
+```typescript
+[
+  { value: 'Simples', label: 'Simples' },
+  { value: 'Dobrada', label: 'Dobrada' }
+]
+```
+
+**Tipos utilizados:**
+- `Requerimento` - Tipo completo do requerimento
+- `RequerimentoFormData` - Dados do formulário validados pelo schema Zod
+- `RequerimentoFormSchema` - Schema de validação Zod
+
+**Melhorias recentes:**
+- **Simplificação da inicialização do formulário**: Removido useEffect de reset do formulário que causava comportamento indesejado:
+  - Valores iniciais agora são definidos exclusivamente nos `defaultValues` do useForm
+  - Eliminado uso de `useRef` e lógica complexa de controle de inicialização
+  - Formulário mais estável e previsível em modo edição
+  - Reduzida complexidade do código e possíveis bugs relacionados a re-renderizações
+  - **Resultado**: Inicialização mais simples e confiável do formulário
+- **Formatação aprimorada de logs de validação**: Implementada formatação JSON com indentação para erros de validação e valores do formulário:
+  - Erros de validação exibidos com `JSON.stringify(errors, null, 2)` para melhor legibilidade
+  - Valores do formulário exibidos com `JSON.stringify(form.getValues(), null, 2)` para estrutura clara
+  - Facilita debug de problemas de validação com visualização hierárquica dos dados
+  - Melhora experiência de desenvolvimento ao identificar campos com erro
+- **Logging otimizado e limpo**: Refinados console logs para melhor legibilidade:
+  - Emojis visuais consistentes em todos os logs (🔍 verificação, ✅ sucesso, ❌ erro, 📋 dados, 💰 valores, ⏰ tempo, 🏢 empresa, 🎫 tickets, 🔄 inicialização)
+  - Removidos logs redundantes e desnecessários (tipo de horas_analise_ef, mostrarCampoTickets)
+  - Logs mais concisos e focados em informações essenciais
+  - Facilita troubleshooting e identificação de problemas com busca de taxas
+- **Logging aprimorado para debug**: Console logs detalhados no useEffect de busca de taxa vigente:
+  - Log de verificação mostrando clienteId, tipoCobranca e flag precisaTaxa
+  - Log quando não precisa buscar taxa (evita requisições desnecessárias)
+  - Log quando inicia busca de taxa vigente
+  - Log da taxa encontrada com todos os dados
+  - Log de erro detalhado em caso de falha
+- **Otimização de busca de taxa**: Implementada validação inteligente no useEffect de busca de taxa vigente:
+  - Só busca taxa quando tipo de cobrança requer valores/hora (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+  - Evita requisições desnecessárias ao banco quando tipo de cobrança não usa valores (Reprovado, Outros)
+  - Limpa estado de taxa e carregamento quando tipo não requer valores
+  - Melhora performance e reduz carga no banco de dados
+- **Limpeza automática de campos condicionais**: Implementado useEffect que remove valores de campos não aplicáveis ao tipo de cobrança selecionado:
+  - Zera `valor_hora_funcional` e `valor_hora_tecnico` para 0 quando tipo de cobrança não requer valores (mantém apenas para: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+  - Remove `tipo_hora_extra` quando tipo de cobrança não é "Hora Extra"
+  - Zera `horas_analise_ef` quando tipo de cobrança não é "Reprovado"
+- **Limpeza inteligente com validação**: Refinado useEffect de limpeza para melhor feedback ao usuário:
+  - Verifica valores atuais antes de limpar (evita operações desnecessárias quando campos já estão vazios)
+  - Usa `shouldValidate: true` e `shouldDirty: true` para marcar formulário como modificado e validar
+  - Garante que usuário seja notificado das mudanças automáticas
+  - Valores/hora zerados para 0 ao invés de undefined (melhor para cálculos)
+- **Melhor consistência de dados**: Evita salvar valores inconsistentes no banco de dados
+- **UX aprimorada**: Usuário é notificado quando campos são limpos automaticamente ao trocar tipo de cobrança, permitindo desfazer se necessário
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de requerimentos
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Integra-se com sistema de taxas para busca de taxa vigente
+- Validação consistente com schemas definidos em `src/schemas/requerimentosSchemas.ts`
+- Exportado via `src/components/admin/requerimentos/index.ts`
+
+**Fluxo de preenchimento automático:**
+1. Usuário seleciona cliente → busca taxa vigente
+2. Usuário seleciona linguagem → identifica função correspondente
+3. Usuário seleciona tipo de cobrança → identifica tipo de valor (remota/local)
+4. Sistema preenche automaticamente valor_hora_funcional e valor_hora_tecnico
+5. Usuário informa horas → sistema calcula valor_total automaticamente
+
+**Fluxo de limpeza automática (NOVO):**
+1. Usuário seleciona tipo de cobrança
+2. Sistema verifica se tipo requer valores/hora
+3. Se não requer, limpa `valor_hora_funcional` e `valor_hora_tecnico`
+4. Sistema verifica se tipo é "Hora Extra"
+5. Se não é, limpa `tipo_hora_extra`
+6. Sistema verifica se tipo é "Reprovado"
+7. Se não é, zera `horas_analise_ef`
+
+**Tipos de cobrança que requerem valores/hora:**
+- Faturado
+- Hora Extra
+- Sobreaviso
+- Bolsão Enel
+
+**Tipos de cobrança que NÃO requerem valores/hora:**
+- Reprovado
+- Outros
+
+
+---
+
+## Diretório `src/schemas/`
+
+Schemas de validação Zod para formulários do sistema, garantindo integridade e consistência dos dados.
+
+### `requerimentosSchemas.ts`
+Schema de validação Zod para formulários de requerimentos, garantindo integridade e consistência dos dados antes de salvar no banco.
+
+**Última atualização**: Aprimorada validação do campo `tipo_hora_extra` para aceitar valores `null` do banco de dados e convertê-los automaticamente para `undefined`, garantindo compatibilidade com o tipo TypeScript e evitando warnings de componente não controlado.
+
+**Funcionalidades principais:**
+- Validação completa de todos os campos do formulário de requerimentos
+- Conversão automática de tipos (strings para números, datas, etc.)
+- Validação de formato de horas (HH:MM ou decimal)
+- Validação de valores monetários
+- Validação de campos condicionais (tipo_hora_extra, horas_analise_ef, quantidade_tickets)
+- Mensagens de erro personalizadas em português
+- **Tratamento especial de null**: Campo `tipo_hora_extra` aceita `null` do banco e converte para `undefined` via transform
+
+**Schemas exportados:**
+
+**RequerimentoFormSchema**
+Schema principal para validação do formulário de requerimentos com todos os campos:
+
+**Campos obrigatórios:**
+- `chamado` - String não vazia (número do chamado)
+- `cliente_id` - UUID do cliente
+- `modulo` - String não vazia (módulo do sistema)
+- `descricao` - String não vazia (descrição do requerimento)
+- `linguagem` - Enum com opções: Funcional, Técnico, ABAP, DBA, Gestor
+- `horas_funcional` - Número positivo (horas funcionais)
+- `horas_tecnico` - Número positivo (horas técnicas)
+- `tipo_cobranca` - Enum com opções: Faturado, Hora Extra, Sobreaviso, Bolsão Enel, Reprovado, Outros
+
+**Campos opcionais:**
+- `valor_hora_funcional` - Número positivo (valor/hora funcional)
+- `valor_hora_tecnico` - Número positivo (valor/hora técnico)
+- `tipo_hora_extra` - Enum com opções: 17h30-19h30, apos_19h30, fim_semana (aceita null e converte para undefined)
+- `quantidade_tickets` - Número inteiro positivo ou null
+- `horas_analise_ef` - Número positivo (horas de análise EF para tipo Reprovado)
+- `data_envio` - Data de envio
+- `data_aprovacao` - Data de aprovação
+- `periodo_cobranca` - String no formato MM/YYYY
+- `tickets` - String (tickets relacionados)
+- `observacao` - String (observações gerais)
+
+**Validações especiais:**
+
+**Campo tipo_hora_extra:**
+```typescript
+tipo_hora_extra: z.union([
+  z.enum(['17h30-19h30', 'apos_19h30', 'fim_semana'] as const),
+  z.null(),
+  z.undefined()
+]).optional().transform(val => val === null ? undefined : val)
+```
+- Aceita valores do enum, null ou undefined
+- Converte automaticamente `null` (do banco) para `undefined` (TypeScript)
+- Evita warnings de componente não controlado no React
+- Garante compatibilidade entre banco de dados e formulário
+
+**Campo quantidade_tickets:**
+```typescript
+quantidade_tickets: z.union([
+  z.number().int().positive(),
+  z.null()
+]).optional()
+```
+- Aceita número inteiro positivo ou null
+- Usado para empresas com tipo de cobrança "Banco de Horas"
+
+**Campo horas_analise_ef:**
+```typescript
+horas_analise_ef: z.number().positive().optional()
+```
+- Usado apenas quando tipo_cobranca = "Reprovado"
+- Registra horas de análise de engenharia fiscal
+
+**Conversões automáticas:**
+- Strings de horas (HH:MM) convertidas para números decimais
+- Strings de valores monetários convertidas para números
+- Datas string convertidas para objetos Date
+- Valores null convertidos para undefined quando apropriado
+
+**Mensagens de erro personalizadas:**
+- "Campo obrigatório" para campos required
+- "Deve ser um número positivo" para valores numéricos
+- "Formato inválido" para formatos específicos (horas, datas)
+- Mensagens contextuais em português para melhor UX
+
+**Integração:**
+- Utilizado pelo componente `RequerimentoForm.tsx` via `zodResolver`
+- Validação aplicada automaticamente no submit do formulário
+- Erros exibidos via `FormMessage` do shadcn/ui
+- Garante dados consistentes antes de enviar ao banco
+
+**Melhorias recentes:**
+- **Tratamento robusto de null**: Campo `tipo_hora_extra` agora aceita `null` do banco e converte automaticamente para `undefined`, eliminando warnings de componente não controlado
+- **Union type completo**: Implementado `z.union([enum, null, undefined])` para cobrir todos os casos possíveis
+- **Transform function**: Adicionada transformação que converte `null` em `undefined` de forma transparente
+- **Melhor compatibilidade**: Garante que valores do banco (null) sejam compatíveis com tipos TypeScript (undefined)
+
+**Uso típico:**
+```typescript
+import { RequerimentoFormSchema } from '@/schemas/requerimentosSchemas';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const form = useForm({
+  resolver: zodResolver(RequerimentoFormSchema),
+  defaultValues: {
+    chamado: '',
+    cliente_id: '',
+    tipo_hora_extra: undefined, // Será null no banco, undefined no form
+    // ... outros campos
+  }
+});
+```
 
 ---
