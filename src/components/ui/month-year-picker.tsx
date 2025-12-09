@@ -57,10 +57,14 @@ export function MonthYearPicker({
     { value: '12', label: 'Dezembro' },
   ];
 
-  // Gerar anos (5 anos atrás até 5 anos à frente)
+  // Gerar anos (a partir de 2024 até 5 anos à frente do ano atual)
   const currentYear = new Date().getFullYear();
-  const anos = Array.from({ length: 11 }, (_, i) => {
-    const year = currentYear - 5 + i;
+  const startYear = 2024; // Ano inicial fixo
+  const endYear = currentYear + 5; // 5 anos à frente do ano atual
+  const totalYears = endYear - startYear + 1;
+  
+  const anos = Array.from({ length: totalYears }, (_, i) => {
+    const year = startYear + i;
     return { value: year.toString(), label: year.toString() };
   });
 

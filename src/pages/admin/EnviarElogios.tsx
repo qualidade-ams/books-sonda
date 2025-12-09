@@ -185,12 +185,13 @@ export default function EnviarElogios() {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
-    .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; }
+    .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; width: 100%; }
     .header-image { width: 100%; display: block; }
     .pink-shadow {
   width: max-content; 
   margin: 0 auto;
-  box-shadow: 5px 20px #ff0278;
+  box-shadow: 5px 10px #ff0278;
+  margin-bottom: 20px;
 }
 
 .title-box {
@@ -203,9 +204,9 @@ export default function EnviarElogios() {
 
     .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; }
     .title-month { font-size: 14px; font-weight: bold; margin: 0; color: #000000; }
-    .main-content { padding: 40px 48px; background-color: #ffffff; }
-    table.elogios-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-    table.elogios-table td { width: 33.33%; padding: 8px; vertical-align: top; }
+    .main-content { padding: 40px 48px; background-color: #ffffff; margin: 0 auto; }
+    table.elogios-table { width: 100%; border-collapse: collapse; margin: 0 auto 40px auto; }
+    table.elogios-table td { width: 33.33%; padding: 8px; vertical-align: top; text-align: left; }
     .elogio-inner { height: 100%; text-align: left; }
     .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; line-height: 1.3; }
     .elogio-feedback { margin-bottom: 16px; }
@@ -213,7 +214,7 @@ export default function EnviarElogios() {
     .elogio-info { margin-top: auto; }
     .elogio-info p { font-size: 12px; color: #000000; font-weight: bold; margin-bottom: 2px; }
     .elogio-info span { font-weight: bold; }
-    table.divider-table { width: 100%; border-collapse: collapse; margin: 48px 0; }
+    table.divider-table { width: 100%; border-collapse: collapse; margin: 48px auto; }
     table.divider-table td { padding: 0; }
     .divider-line { height: 2px; background-color: #000000; }
     .quote-cell { width: 60px; text-align: center; vertical-align: middle; }
@@ -230,17 +231,21 @@ export default function EnviarElogios() {
     }
   </style>
 </head>
-<body>
-  <div class="email-container">
-    <!-- HEADER IMAGE -->
-    <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Sonda Header" class="header-image" />
+<body style="margin: 0; padding: 0;">
+  <center>
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 1200px; margin: 0 auto;">
+      <tr>
+        <td>
+          <div class="email-container">
+            <!-- HEADER IMAGE -->
+            <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Sonda Header" class="header-image" />
     
     <!-- TITLE BOX -->
-    <div class="pink-shadow">
-    <div class="title-box">
-      <h1 class="title-main">ELOGIOS AOS COLABORADORES<br/>DE SOLUÇÕES DE NEGÓCIOS</h1>
-      <p class="title-month">${nomesMeses[mesSelecionado - 1].toUpperCase()}</p>
-    </div>
+    <div class="pink-shadow" style="width: max-content; margin: 0 auto; box-shadow: 5px 10px #ff0278; margin-bottom: 20px;">
+      <div class="title-box" style="background-color: #ffffff; border: 2px solid #ff0278; padding: 15px 20px; text-align: center; width: 455px;">
+        <h1 class="title-main" style="font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; text-align: center;">ELOGIOS AOS COLABORADORES<br/>DE SOLUÇÕES DE NEGÓCIOS</h1>
+        <p class="title-month" style="font-size: 14px; font-weight: bold; margin: 0; color: #000000; text-align: center;">${nomesMeses[mesSelecionado - 1].toUpperCase()}</p>
+      </div>
     </div>
     
     <!-- MAIN CONTENT -->
@@ -313,9 +318,13 @@ export default function EnviarElogios() {
     html += `
     </div>
     
-    <!-- FOOTER IMAGE -->
-    <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
-  </div>
+            <!-- FOOTER IMAGE -->
+            <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
+          </div>
+        </td>
+      </tr>
+    </table>
+  </center>
 </body>
 </html>`;
 

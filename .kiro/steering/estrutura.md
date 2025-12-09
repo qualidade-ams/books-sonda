@@ -2,7 +2,12 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Componente `RequerimentoForm.tsx` - corrigido erro de digitação no useEffect de preenchimento automático de valores, onde estava `'Faturado '` (com espaço no final) e foi corrigido para `'Faturado'` (sem espaço), garantindo correspondência exata com o valor definido em `TIPO_COBRANCA_OPTIONS` e funcionamento correto do preenchimento automático de valores/hora para requerimentos do tipo "Faturado".
+**Última atualização**: Arquivo `src/types/requerimentos.ts` - atualizados labels das opções de tipo de cobrança em `TIPO_COBRANCA_OPTIONS` para melhor clareza e agrupamento visual:
+- `'Faturado'` → `'Faturado - Hora Normal'`
+- `'Hora Extra'` → `'Faturado - Hora Extra'`
+- `'Sobreaviso'` → `'Faturado - Sobreaviso'`
+
+Esta alteração melhora a compreensão do usuário ao agrupar visualmente os três tipos de cobrança faturados, mantendo os valores técnicos inalterados para compatibilidade com o banco de dados.
 
 ---
 

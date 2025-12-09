@@ -39,6 +39,7 @@ import { PesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
 import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
 import { MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
 
 interface PesquisaFormProps {
   pesquisa?: Pesquisa | null;
@@ -50,6 +51,9 @@ interface PesquisaFormProps {
 export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: PesquisaFormProps) {
   // Buscar empresas para o select
   const { empresas } = useEmpresas();
+  
+  // Buscar categorias e grupos da tabela DE-PARA
+  const { data: categorias = [] } = useCategorias();
 
   const form = useForm<PesquisaFormData>({
     resolver: zodResolver(PesquisaFormSchema),
@@ -68,6 +72,12 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       observacao: ''
     }
   });
+
+  // Observar mudanças na categoria selecionada
+  const categoriaSelecionada = form.watch('categoria');
+  
+  // Buscar grupos baseado na categoria selecionada
+  const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
 
   // Opções de tipo de chamado
   const tiposChamado = [
@@ -114,6 +124,27 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       });
     }
   }, [pesquisa, form, empresas]);
+
+  // Preencher grupo automaticamente quando categoria for selecionada
+  useEffect(() => {
+    if (categoriaSelecionada && grupos.length > 0) {
+      // Se há apenas um grupo para a categoria, seleciona automaticamente
+      if (grupos.length === 1) {
+        form.setValue('grupo', grupos[0].value);
+      }
+      // Se o grupo atual não está na lista de grupos válidos, limpa o campo
+      else {
+        const grupoAtual = form.getValues('grupo');
+        const grupoValido = grupos.find(g => g.value === grupoAtual);
+        if (!grupoValido) {
+          form.setValue('grupo', '');
+        }
+      }
+    } else if (!categoriaSelecionada) {
+      // Se categoria foi limpa, limpa o grupo também
+      form.setValue('grupo', '');
+    }
+  }, [categoriaSelecionada, grupos, form]);
 
   const handleSubmit = (dados: PesquisaFormData) => {
     onSubmit(dados);
@@ -228,13 +259,23 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Ex: Atendimento"
-                      value={field.value || ''}
-                    />
-                  </FormControl>
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categorias.map(categoria => (
+                        <SelectItem key={categoria.value} value={categoria.value}>
+                          {categoria.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -246,13 +287,30 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Grupo</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Grupo responsável"
-                      value={field.value || ''}
-                    />
-                  </FormControl>
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                    disabled={!categoriaSelecionada || grupos.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          !categoriaSelecionada 
+                            ? "Selecione uma categoria primeiro" 
+                            : grupos.length === 0 
+                            ? "Nenhum grupo disponível" 
+                            : "Selecione o grupo"
+                        } />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {grupos.map(grupo => (
+                        <SelectItem key={grupo.value} value={grupo.value}>
+                          {grupo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
