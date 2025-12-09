@@ -171,10 +171,10 @@ export default function EnviarElogios() {
       .filter((nome, index, self) => nome && self.indexOf(nome) === index)
       .join(' | ');
     
-    // Dividir elogios em grupos de 4 para criar linhas
+    // Dividir elogios em grupos de 3 para criar linhas
     const elogiosPorLinha: typeof elogiosSelecionadosData[] = [];
-    for (let i = 0; i < elogiosSelecionadosData.length; i += 4) {
-      elogiosPorLinha.push(elogiosSelecionadosData.slice(i, i + 4));
+    for (let i = 0; i < elogiosSelecionadosData.length; i += 3) {
+      elogiosPorLinha.push(elogiosSelecionadosData.slice(i, i + 3));
     }
     
     let html = `<!DOCTYPE html>
@@ -186,44 +186,70 @@ export default function EnviarElogios() {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
     .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; }
-    .header-image { width: 100%; height: auto; display: block; }
+    .header-image { width: 100%; display: block; }
+    .pink-shadow {
+  width: max-content; 
+  margin: 0 auto;
+  box-shadow: 5px 20px #ff0278;
+}
+
+.title-box {
+  background-color: #ffffff;
+  border: 2px solid #ff0278;
+  padding: 15px 20px;
+  text-align: center;
+  width: 455px;      /* sua largura original */
+}
+
+    .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; }
+    .title-month { font-size: 14px; font-weight: bold; margin: 0; color: #000000; }
     .main-content { padding: 40px 48px; background-color: #ffffff; }
-    .elogios-row { display: table; width: 100%; margin-bottom: 40px; }
-    .elogio-card { display: table-cell; width: 25%; padding: 8px; vertical-align: top; }
+    table.elogios-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+    table.elogios-table td { width: 33.33%; padding: 8px; vertical-align: top; }
     .elogio-inner { height: 100%; text-align: left; }
     .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; line-height: 1.3; }
-    .elogio-feedback { flex-grow: 1; margin-bottom: 16px; }
+    .elogio-feedback { margin-bottom: 16px; }
     .elogio-feedback p { color: #1f2937; font-size: 12px; margin-bottom: 8px; line-height: 1.5; }
     .elogio-info { margin-top: auto; }
     .elogio-info p { font-size: 12px; color: #000000; font-weight: bold; margin-bottom: 2px; }
     .elogio-info span { font-weight: bold; }
-    .divider-container { width: 100%; position: relative; margin: 48px 0; }
-    .divider-line { width: 100%; height: 1px; background-color: #000000; }
-    .quote-icon { position: absolute; top: -16px; background-color: #ffffff; padding: 0 8px; }
-    .quote-right { right: 0; }
-    .quote-left { left: 0; }
-    .quote-blue { color: #0066FF; font-size: 40px; line-height: 1; }
-    .quote-pink { color: #FF0066; font-size: 40px; line-height: 1; }
+    table.divider-table { width: 100%; border-collapse: collapse; margin: 48px 0; }
+    table.divider-table td { padding: 0; }
+    .divider-line { height: 2px; background-color: #000000; }
+    .quote-cell { width: 60px; text-align: center; vertical-align: middle; }
+    .quote-text { font-size: 40px; line-height: 1; font-weight: bold; }
+    .quote-blue { color: #0066FF; }
+    .quote-pink { color: #FF0066; }
     .footer-image { width: 100%; height: auto; display: block; margin-top: auto; }
     @media only screen and (max-width: 600px) {
+      .title-box { padding: 16px; border-width: 4px; }
+      .title-main { font-size: 16px; }
+      .title-month { font-size: 14px; }
       .main-content { padding: 20px 16px; }
-      .elogios-row { display: block; }
-      .elogio-card { display: block; width: 100%; margin-bottom: 24px; }
+      table.elogios-table td { display: block; width: 100% !important; margin-bottom: 24px; }
     }
   </style>
 </head>
 <body>
   <div class="email-container">
     <!-- HEADER IMAGE -->
-    <img src="/images/header-elogios.png" alt="Sonda Header" class="header-image" />
+    <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Sonda Header" class="header-image" />
+    
+    <!-- TITLE BOX -->
+    <div class="pink-shadow">
+    <div class="title-box">
+      <h1 class="title-main">ELOGIOS AOS COLABORADORES<br/>DE SOLUÇÕES DE NEGÓCIOS</h1>
+      <p class="title-month">${nomesMeses[mesSelecionado - 1].toUpperCase()}</p>
+    </div>
+    </div>
     
     <!-- MAIN CONTENT -->
     <div class="main-content">`;
 
     // Gerar linhas de elogios com divisores
     elogiosPorLinha.forEach((linha, linhaIndex) => {
-      // Adicionar linha de elogios
-      html += `<div class="elogios-row">`;
+      // Adicionar linha de elogios usando tabela HTML real
+      html += `<table class="elogios-table" cellpadding="0" cellspacing="0" border="0"><tr>`;
       
       linha.forEach((elogio) => {
         const nomeColaborador = elogio.pesquisa?.prestador || 'Colaborador';
@@ -233,7 +259,7 @@ export default function EnviarElogios() {
         const empresa = elogio.pesquisa?.empresa || 'N/A';
         
         html += `
-        <div class="elogio-card">
+        <td>
           <div class="elogio-inner">
             <h3 class="elogio-name">${nomeColaborador}</h3>
             <div class="elogio-feedback">`;
@@ -252,24 +278,35 @@ export default function EnviarElogios() {
               <p>Empresa: <span>${empresa}</span></p>
             </div>
           </div>
-        </div>`;
+        </td>`;
       });
       
-      html += `</div>`;
+      html += `</tr></table>`;
       
       // Adicionar divisor entre linhas (exceto após a última linha)
       if (linhaIndex < elogiosPorLinha.length - 1) {
         const isEven = linhaIndex % 2 === 0;
-        const quotePosition = isEven ? 'quote-right' : 'quote-left';
         const quoteColor = isEven ? 'quote-blue' : 'quote-pink';
         
-        html += `
-        <div class="divider-container">
-          <div class="divider-line"></div>
-          <div class="quote-icon ${quotePosition}">
-            <span class="${quoteColor}">"</span>
-          </div>
-        </div>`;
+        if (isEven) {
+          // Aspas à direita (azul)
+          html += `
+          <table class="divider-table" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td><div class="divider-line"></div></td>
+              <td class="quote-cell"><span class="quote-text ${quoteColor}">"</span></td>
+            </tr>
+          </table>`;
+        } else {
+          // Aspas à esquerda (rosa)
+          html += `
+          <table class="divider-table" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td class="quote-cell"><span class="quote-text ${quoteColor}">"</span></td>
+              <td><div class="divider-line"></div></td>
+            </tr>
+          </table>`;
+        }
       }
     });
 
@@ -277,7 +314,7 @@ export default function EnviarElogios() {
     </div>
     
     <!-- FOOTER IMAGE -->
-    <img src="/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
+    <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
   </div>
 </body>
 </html>`;

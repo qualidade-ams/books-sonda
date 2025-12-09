@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Página `EnviarElogios.tsx` - adicionada importação do serviço `emailService` de `@/services/emailService` para preparar integração com funcionalidade de envio real de emails de elogios.
+**Última atualização**: Componente `RequerimentoForm.tsx` - corrigido erro de digitação no useEffect de preenchimento automático de valores, onde estava `'Faturado '` (com espaço no final) e foi corrigido para `'Faturado'` (sem espaço), garantindo correspondência exata com o valor definido em `TIPO_COBRANCA_OPTIONS` e funcionamento correto do preenchimento automático de valores/hora para requerimentos do tipo "Faturado".
 
 ---
 
@@ -345,7 +345,16 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 
 **Formato do relatório HTML (Design Moderno Sonda):**
 - **Estrutura completa HTML5** com DOCTYPE, meta charset UTF-8 e viewport para responsividade
-- **Imagem de cabeçalho**: Banner superior com referência relativa `/header-elogios.png` (deve ser anexado ao email)
+- **Imagem de cabeçalho**: Banner superior com URL absoluta `http://books-sonda.vercel.app/images/header-elogios.png` (carregada diretamente do servidor)
+- **Seção de título**: Área dedicada após o header com:
+  - Título principal: "ELOGIOS AOS COLABORADORES DE SOLUÇÕES DE NEGÓCIOS" em duas linhas
+  - Subtítulo com mês em caixa alta (ex: "DEZEMBRO")
+  - Estilização com cores e tipografia da marca Sonda
+  - **Espaçamento otimizado**: Padding de 24px 48px (reduzido de 40px para melhor proporção)
+  - **Tipografia ajustada**: 
+    - Título principal: 16px (reduzido de 22px para melhor proporção visual) com letter-spacing 0.5px
+    - Mês: 18px (reduzido de 24px) com letter-spacing 1px
+    - Margem entre título e mês: 8px (reduzido de 16px)
 - **Container principal**: Max-width 1200px com fundo branco e padding de 40px 48px
 - **Layout em linhas**: Elogios organizados em linhas de 4 cards cada usando `display: table`
 - **Cards de elogios** com estrutura vertical:
@@ -357,11 +366,11 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
   - Linhas pares: Aspas azuis (#0066FF) à direita
   - Linhas ímpares: Aspas rosas (#FF0066) à esquerda
   - Aspas grandes (40px) posicionadas sobre a linha divisória
-- **Imagem de rodapé**: Banner inferior com referência relativa `.png` (deve ser anexado ao email)
+- **Imagem de rodapé**: Banner inferior com URL absoluta `http://books-sonda.vercel.app/images/rodape-elogios.png` (carregada diretamente do servidor)
 - **CSS inline otimizado** para compatibilidade com clientes de email
 - **Layout responsivo**: Adapta para 1 coluna em mobile (max-width: 600px)
 - **Paleta de cores Sonda**: Azul (#0066FF), Rosa (#FF0066), Preto (#000000), Cinza (#f3f4f6)
-- **Imagens**: Header e Footer com referências relativas (ambos devem ser anexados ao email)
+- **Imagens**: Header e Footer com URLs absolutas (carregadas diretamente do servidor Vercel)
 
 **Validações implementadas:**
 - Pelo menos um destinatário obrigatório
@@ -407,10 +416,26 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
   - Melhorada estrutura dos cards com nome do prestador, resposta, comentário e informações do cliente/empresa
   - Layout mais limpo e profissional compatível com clientes de email
 - **Otimização de imagens no email**: 
-  - Header e Footer alterados para referências relativas (`.png`) para serem anexados ao email
-  - Melhor compatibilidade com clientes de email que bloqueiam imagens externas
-  - Ambas as imagens (header e footer) devem ser anexadas ao email para exibição correta
-  - Nome específico do arquivo de header para contexto de elogios (`header-elogios.png`)
+  - **Header e Footer**: URLs absolutas apontando para servidor Vercel (`http://books-sonda.vercel.app/images/`)
+  - Imagens carregadas diretamente do servidor para reduzir tamanho do email
+  - Melhor compatibilidade com clientes de email modernos que permitem imagens externas HTTPS
+- **Seção de título adicionada**: 
+  - Nova seção após o header com título principal e mês em destaque
+  - Melhora a apresentação visual e contexto do relatório
+  - Título em duas linhas: "ELOGIOS AOS COLABORADORES" / "DE SOLUÇÕES DE NEGÓCIOS"
+  - Mês exibido em caixa alta (ex: "DEZEMBRO") para fácil identificação do período
+- **Responsividade aprimorada no relatório HTML**:
+  - Adicionados estilos responsivos para a seção de título em dispositivos móveis (max-width: 600px)
+  - Redução de padding (24px 16px) e tamanho de fonte (título: 20px, mês: 16px) em telas pequenas
+  - Melhor adaptação do layout para visualização em smartphones e tablets
+  - Garantia de legibilidade e usabilidade em todos os dispositivos
+- **Otimização da seção de título (Desktop)**:
+  - **Espaçamento reduzido**: Padding ajustado de 40px para 24px (vertical) mantendo 48px (horizontal) para melhor proporção visual
+  - **Tipografia refinada**: 
+    - Título principal reduzido de 32px para 16px com letter-spacing de 0.5px para melhor proporção visual
+    - Mês reduzido de 24px para 18px com letter-spacing de 1px (antes 2px)
+    - Margem entre título e mês reduzida de 16px para 8px
+  - **Resultado**: Seção de título mais compacta e elegante, melhor integração visual com o restante do email
 
 **Melhorias futuras (TODOs):**
 - Implementar serviço real de envio de email para elogios
@@ -2004,6 +2029,91 @@ const horasFormatadas = converterDeHorasDecimal(7.5);
 
 // Converter "08:45" para 8.75
 const horasDecimal = converterParaHorasDecimal("08:45");
+```
+
+---
+
+### `requerimentosExportUtils.ts`
+Utilitário para exportação de requerimentos em formatos Excel e PDF, com formatação profissional e totalizadores.
+
+**Funcionalidades:**
+- Exportação de requerimentos para Excel com duas abas (Não Enviados e Histórico)
+- Exportação de requerimentos para PDF com layout profissional
+- Formatação automática de horas, datas e valores monetários
+- Totalizadores de valores por aba e geral
+- Respeita filtros aplicados na interface (aba ativa, filtros de busca, período)
+
+**Funções principais:**
+- `exportarRequerimentosExcel(requerimentosNaoEnviados, requerimentosEnviados, estatisticas)` - Gera arquivo Excel com duas abas
+- `exportarRequerimentosPDF(requerimentosNaoEnviados, requerimentosEnviados, estatisticas)` - Gera arquivo PDF com layout profissional
+
+**Estrutura do Excel:**
+- **Aba "Não Enviados"**: Requerimentos pendentes de envio
+- **Aba "Histórico Enviados"**: Requerimentos já enviados
+- **Colunas**: Chamado, Cliente, Módulo, Descrição, Linguagem, Valor/Hora Funcional, Valor/Hora Técnico, H.Func, H.Téc, Total, Data Envio, Data Aprov., Valor Total, Período Cobrança, Autor, Tipo Cobrança, Tickets, Observação
+- **Formatação automática**:
+  - Colunas de horas formatadas como `[h]:mm`
+  - Colunas de valores formatadas como `R$ #,##0.00`
+  - Larguras de colunas otimizadas para legibilidade
+- **Totalizador**: Linha final com "TOTAL GERAL" e soma de valores
+
+**Estrutura do PDF:**
+- **Cabeçalho**: Título "Gerenciamento de Requerimentos" com data de geração
+- **Caixa de resumo** (altura: 42mm): Estatísticas gerais no início do relatório:
+  - Total de requerimentos
+  - Requerimentos não enviados
+  - Requerimentos enviados
+  - Total de horas
+  - Valor não enviados (R$)
+  - Valor enviados (R$)
+  - VALOR TOTAL destacado em azul Sonda (R$)
+- **Seção "Requerimentos Não Enviados"**: Cards com dados completos de cada requerimento
+- **Seção "Histórico - Requerimentos Enviados"**: Cards com dados completos de cada requerimento
+- **Cards de requerimento** (altura: 50mm):
+  - Linha 1: Chamado (título) + Tipo de cobrança (badge colorido)
+  - Linha 2: Cliente + Módulo
+  - Linha 2.5: Descrição
+  - Linha 3: Linguagem + Valor/Hora Funcional + Valor/Hora Técnico
+  - Linha 3.5: Horas (Funcional, Técnico, Total)
+  - Linha 4: Data Envio + Data Aprovação + Valor Total + Tickets + Autor
+  - Barra lateral colorida baseada no tipo de cobrança
+
+**Formatação de dados:**
+- Datas formatadas em pt-BR (DD/MM/YYYY)
+- Horas formatadas em HH:MM
+- Valores monetários formatados em R$ #.##0,00
+- Cores do tema Sonda aplicadas (azul #2563eb)
+
+**Melhorias recentes:**
+- **Adicionadas colunas de Valor/Hora**: Incluídas colunas "Valor/Hora Funcional" e "Valor/Hora Técnico" nos relatórios Excel e PDF
+- **Totalizador implementado**: Adicionada linha de totalizador no Excel e totalizadores de valores na caixa de resumo do PDF (início do relatório)
+- **Respeita filtros**: Exportação agora considera a aba ativa e os filtros aplicados na interface
+- **Layout aprimorado no PDF**: 
+  - Aumentada altura do card de 45mm para 50mm para acomodar linha de valores/hora
+  - Aumentada altura da caixa de resumo de 30mm para 42mm para incluir totalizadores de valores
+  - Totalizadores movidos para o início do relatório (caixa de resumo) para melhor visualização
+
+**Integração:**
+- Utilizado pelo componente `RequerimentosExportButtons.tsx`
+- Recebe dados filtrados da página `LancarRequerimentos.tsx`
+- Utiliza `horasUtils.ts` para formatação de horas
+- Utiliza `requerimentosColors.ts` para cores dos tipos de cobrança
+
+**Uso típico:**
+```typescript
+// Exportar para Excel
+const resultado = await exportarRequerimentosExcel(
+  requerimentosNaoEnviados,
+  requerimentosEnviados,
+  estatisticas
+);
+
+// Exportar para PDF
+const resultado = await exportarRequerimentosPDF(
+  requerimentosNaoEnviados,
+  requerimentosEnviados,
+  estatisticas
+);
 ```
 
 ---
