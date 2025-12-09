@@ -217,6 +217,14 @@ const LancarRequerimentos = () => {
             }
         });
 
+        // Calcular valor total de todos os requerimentos
+        let valorTotal = 0;
+        requerimentosFiltrados.forEach(req => {
+            if (req.valor_total_geral && typeof req.valor_total_geral === 'number') {
+                valorTotal += req.valor_total_geral;
+            }
+        });
+
         // Somar horas e valores dos selecionados
         let horasSelecionados = '0:00';
         let valorSelecionados = 0;
@@ -254,6 +262,7 @@ const LancarRequerimentos = () => {
             totalHoras: totalHorasString,
             horasSelecionados,
             valorSelecionados,
+            valorTotal,
             selecionados: currentSelected.length,
             porTipo
         };
@@ -521,8 +530,8 @@ const LancarRequerimentos = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <RequerimentosExportButtons
-                            requerimentos={requerimentos}
-                            requerimentosEnviados={requerimentosEnviados}
+                            requerimentos={activeTab === 'nao-enviados' ? requerimentosFiltrados : []}
+                            requerimentosEnviados={activeTab === 'enviados' ? requerimentosFiltrados : []}
                             estatisticas={statsRequerimentos}
                             disabled={isLoading || isLoadingEnviados}
                         />
@@ -577,13 +586,24 @@ const LancarRequerimentos = () => {
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                                        Selecionados
+                                        Valor Total
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                     <div className="text-xl lg:text-2xl font-bold text-green-600">
-                                        {statsRequerimentos.selecionados}
+                                        R$ {(statsRequerimentos.selecionados > 0 
+                                            ? statsRequerimentos.valorSelecionados 
+                                            : statsRequerimentos.valorTotal
+                                        ).toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </div>
+                                    {statsRequerimentos.selecionados > 0 && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {statsRequerimentos.selecionados} selecionado{statsRequerimentos.selecionados > 1 ? 's' : ''}
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                             <Card>

@@ -69,9 +69,9 @@ export const TIPO_COBRANCA_OPTIONS: { value: TipoCobrancaType; label: string }[]
   { value: 'Banco de Horas', label: 'Banco de Horas' },
   { value: 'Cobro Interno', label: 'Cobro Interno' },
   { value: 'Contrato', label: 'Contrato' },
-  { value: 'Faturado', label: 'Faturado' },
-  { value: 'Hora Extra', label: 'Hora Extra' },
-  { value: 'Sobreaviso', label: 'Sobreaviso' },
+  { value: 'Faturado', label: 'Faturado - Hora Normal' },
+  { value: 'Hora Extra', label: 'Faturado - Hora Extra' },
+  { value: 'Sobreaviso', label: 'Faturado - Sobreaviso' },
   { value: 'Reprovado', label: 'Reprovado' },
   { value: 'Bolsão Enel', label: 'Bolsão Enel' }
 ];

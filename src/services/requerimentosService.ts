@@ -1058,6 +1058,8 @@ export class RequerimentosService {
       valor_total_funcional: data.valor_total_funcional,
       valor_total_tecnico: data.valor_total_tecnico,
       valor_total_geral: data.valor_total_geral,
+      // Campo de tipo de hora extra
+      tipo_hora_extra: data.tipo_hora_extra,
       // Campos de ticket
       quantidade_tickets: data.quantidade_tickets,
       // Campos de autor (podem não existir na tabela ainda)

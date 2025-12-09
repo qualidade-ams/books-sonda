@@ -76,8 +76,8 @@ export function RequerimentoForm({
       // Campos de valor/hora
       valor_hora_funcional: requerimento?.valor_hora_funcional || undefined,
       valor_hora_tecnico: requerimento?.valor_hora_tecnico || undefined,
-      // Campo de tipo de hora extra
-      tipo_hora_extra: requerimento?.tipo_hora_extra || undefined,
+      // Campo de tipo de hora extra - mantém o valor existente ao editar
+      tipo_hora_extra: requerimento?.tipo_hora_extra as TipoHoraExtraType | undefined,
       // Campos de ticket
       quantidade_tickets: requerimento?.quantidade_tickets || undefined,
       // Campo de horas de análise EF (para tipo Reprovado)
@@ -389,6 +389,43 @@ export function RequerimentoForm({
       form.setValue('tipo_cobranca', valorPadrao as any);
     }
   }, [tipoCobrancaOptionsFiltradas, form]);
+
+  // Resetar formulário quando requerimento mudar (modo edição)
+  useEffect(() => {
+    if (requerimento) {
+      const tipoHoraExtraValue = requerimento.tipo_hora_extra as TipoHoraExtraType | undefined;
+      
+      form.reset({
+        chamado: requerimento.chamado || '',
+        cliente_id: requerimento.cliente_id || '',
+        modulo: requerimento.modulo || 'Comply',
+        descricao: requerimento.descricao || '',
+        data_envio: requerimento.data_envio || '',
+        data_aprovacao: requerimento.data_aprovacao || '',
+        horas_funcional: requerimento.horas_funcional || 0,
+        horas_tecnico: requerimento.horas_tecnico || 0,
+        linguagem: requerimento.linguagem || 'Funcional',
+        tipo_cobranca: requerimento.tipo_cobranca || 'Banco de Horas',
+        mes_cobranca: requerimento.mes_cobranca || '',
+        observacao: requerimento.observacao || '',
+        valor_hora_funcional: requerimento.valor_hora_funcional || undefined,
+        valor_hora_tecnico: requerimento.valor_hora_tecnico || undefined,
+        tipo_hora_extra: tipoHoraExtraValue,
+        quantidade_tickets: requerimento.quantidade_tickets || undefined,
+        horas_analise_ef: 0
+      });
+      
+      // Aguardar um tick para garantir que o reset foi aplicado
+      setTimeout(() => {
+        const valorAposReset = form.getValues('tipo_hora_extra');
+        
+        // Se ainda estiver vazio e deveria ter valor, forçar setValue
+        if (!valorAposReset && tipoHoraExtraValue && requerimento.tipo_cobranca === 'Hora Extra') {
+          form.setValue('tipo_hora_extra', tipoHoraExtraValue);
+        }
+      }, 100);
+    }
+  }, [requerimento, form]);
 
   // Cores para tipos de cobrança
   const getCorTipoCobranca = (tipo: string) => {
@@ -823,7 +860,10 @@ export function RequerimentoForm({
                         <FormLabel>
                           Tipo de Hora Extra <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ''}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione o tipo de hora extra" />

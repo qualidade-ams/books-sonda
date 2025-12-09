@@ -32,7 +32,7 @@ export const exportarRequerimentosExcel = (
         ['Data de Geração:', new Date().toLocaleDateString('pt-BR')],
         ['Total de Requerimentos:', requerimentos.length],
         [''],
-        ['Chamado', 'Cliente', 'Módulo', 'Descrição', 'Linguagem', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Autor', 'Tipo Cobrança', 'Tickets', 'Observação']
+        ['Chamado', 'Cliente', 'Módulo', 'Descrição', 'Linguagem', 'Valor/Hora Funcional', 'Valor/Hora Técnico', 'H.Func', 'H.Téc', 'Total', 'Data Envio', 'Data Aprov.', 'Valor Total', 'Período Cobrança', 'Autor', 'Tipo Cobrança', 'Tickets', 'Observação']
       ];
 
       requerimentos.forEach(req => {
@@ -70,6 +70,8 @@ export const exportarRequerimentosExcel = (
           req.modulo,
           req.descricao || '-',
           req.linguagem,
+          req.valor_hora_funcional || 0, // Valor/Hora Funcional
+          req.valor_hora_tecnico || 0,   // Valor/Hora Técnico
           converterHorasParaExcel(req.horas_funcional),
           converterHorasParaExcel(req.horas_tecnico),
           converterHorasParaExcel(req.horas_total),
@@ -83,6 +85,11 @@ export const exportarRequerimentosExcel = (
           req.observacao || '-'
         ]);
       });
+
+      // Adicionar linha de totalizador
+      const totalValor = requerimentos.reduce((acc, req) => acc + (req.valor_total_geral || 0), 0);
+      dados.push(['']); // Linha vazia
+      dados.push(['', '', '', '', '', '', '', '', '', '', '', 'TOTAL GERAL:', totalValor]); // Movido uma célula para a esquerda
 
       return dados;
     };
@@ -98,6 +105,8 @@ export const exportarRequerimentosExcel = (
       { width: 12 }, // Módulo
       { width: 30 }, // Descrição
       { width: 12 }, // Linguagem
+      { width: 15 }, // Valor/Hora Funcional
+      { width: 15 }, // Valor/Hora Técnico
       { width: 10 }, // H.Func
       { width: 10 }, // H.Téc
       { width: 10 }, // Total
@@ -111,11 +120,11 @@ export const exportarRequerimentosExcel = (
       { width: 30 }  // Observação
     ];
 
-    // Aplicar formatação às células de horas (colunas F, G, H) e valores (coluna K)
+    // Aplicar formatação às células de horas (colunas H, I, J) e valores (colunas F, G, M)
     const rangeNaoEnviados = XLSX.utils.decode_range(sheetNaoEnviados['!ref'] || 'A1');
     for (let row = 6; row <= rangeNaoEnviados.e.r; row++) { // Começar após cabeçalhos
-      // Formatar colunas de horas (F=5, G=6, H=7)
-      ['F', 'G', 'H'].forEach(col => {
+      // Formatar colunas de horas (H=7, I=8, J=9)
+      ['H', 'I', 'J'].forEach(col => {
         const cellAddress = `${col}${row}`;
         if (sheetNaoEnviados[cellAddress] && typeof sheetNaoEnviados[cellAddress].v === 'number') {
           sheetNaoEnviados[cellAddress].t = 'n';
@@ -123,12 +132,22 @@ export const exportarRequerimentosExcel = (
         }
       });
       
-      // Formatar coluna de valor (K=10)
-      const valorCell = `K${row}`;
-      if (sheetNaoEnviados[valorCell] && typeof sheetNaoEnviados[valorCell].v === 'number') {
-        sheetNaoEnviados[valorCell].t = 'n';
-        sheetNaoEnviados[valorCell].z = 'R$ #,##0.00'; // Formato de moeda brasileira
-      }
+      // Formatar colunas de valor/hora (F=5, G=6) e valor total (M=12)
+      ['F', 'G', 'M'].forEach(col => {
+        const cellAddress = `${col}${row}`;
+        if (sheetNaoEnviados[cellAddress] && typeof sheetNaoEnviados[cellAddress].v === 'number') {
+          sheetNaoEnviados[cellAddress].t = 'n';
+          sheetNaoEnviados[cellAddress].z = 'R$ #,##0.00'; // Formato de moeda brasileira
+        }
+      });
+    }
+    
+    // Formatar célula do totalizador (última linha, coluna M=12)
+    const ultimaLinha = rangeNaoEnviados.e.r;
+    const cellTotalizador = `M${ultimaLinha}`;
+    if (sheetNaoEnviados[cellTotalizador] && typeof sheetNaoEnviados[cellTotalizador].v === 'number') {
+      sheetNaoEnviados[cellTotalizador].t = 'n';
+      sheetNaoEnviados[cellTotalizador].z = 'R$ #,##0.00';
     }
 
     XLSX.utils.book_append_sheet(workbook, sheetNaoEnviados, 'Não Enviados');
@@ -144,6 +163,8 @@ export const exportarRequerimentosExcel = (
       { width: 12 }, // Módulo
       { width: 30 }, // Descrição
       { width: 12 }, // Linguagem
+      { width: 15 }, // Valor/Hora Funcional
+      { width: 15 }, // Valor/Hora Técnico
       { width: 10 }, // H.Func
       { width: 10 }, // H.Téc
       { width: 10 }, // Total
@@ -157,11 +178,11 @@ export const exportarRequerimentosExcel = (
       { width: 30 }  // Observação
     ];
 
-    // Aplicar formatação às células de horas (colunas F, G, H) e valores (coluna K)
+    // Aplicar formatação às células de horas (colunas H, I, J) e valores (colunas F, G, M)
     const rangeEnviados = XLSX.utils.decode_range(sheetEnviados['!ref'] || 'A1');
     for (let row = 6; row <= rangeEnviados.e.r; row++) { // Começar após cabeçalhos
-      // Formatar colunas de horas (F=5, G=6, H=7)
-      ['F', 'G', 'H'].forEach(col => {
+      // Formatar colunas de horas (H=7, I=8, J=9)
+      ['H', 'I', 'J'].forEach(col => {
         const cellAddress = `${col}${row}`;
         if (sheetEnviados[cellAddress] && typeof sheetEnviados[cellAddress].v === 'number') {
           sheetEnviados[cellAddress].t = 'n';
@@ -169,12 +190,22 @@ export const exportarRequerimentosExcel = (
         }
       });
       
-      // Formatar coluna de valor (K=10)
-      const valorCell = `K${row}`;
-      if (sheetEnviados[valorCell] && typeof sheetEnviados[valorCell].v === 'number') {
-        sheetEnviados[valorCell].t = 'n';
-        sheetEnviados[valorCell].z = 'R$ #,##0.00'; // Formato de moeda brasileira
-      }
+      // Formatar colunas de valor/hora (F=5, G=6) e valor total (M=12)
+      ['F', 'G', 'M'].forEach(col => {
+        const cellAddress = `${col}${row}`;
+        if (sheetEnviados[cellAddress] && typeof sheetEnviados[cellAddress].v === 'number') {
+          sheetEnviados[cellAddress].t = 'n';
+          sheetEnviados[cellAddress].z = 'R$ #,##0.00'; // Formato de moeda brasileira
+        }
+      });
+    }
+    
+    // Formatar célula do totalizador (última linha, coluna M=12)
+    const ultimaLinhaEnviados = rangeEnviados.e.r;
+    const cellTotalizadorEnviados = `M${ultimaLinhaEnviados}`;
+    if (sheetEnviados[cellTotalizadorEnviados] && typeof sheetEnviados[cellTotalizadorEnviados].v === 'number') {
+      sheetEnviados[cellTotalizadorEnviados].t = 'n';
+      sheetEnviados[cellTotalizadorEnviados].z = 'R$ #,##0.00';
     }
 
     XLSX.utils.book_append_sheet(workbook, sheetEnviados, 'Histórico Enviados');
@@ -241,9 +272,14 @@ export const exportarRequerimentosPDF = (
       doc.text(subtitulo, (pageWidth - subtituloWidth) / 2, 28);
     };
 
+    // Calcular totalizadores de valores
+    const totalValorNaoEnviados = requerimentosNaoEnviados.reduce((acc, req) => acc + (req.valor_total_geral || 0), 0);
+    const totalValorEnviados = requerimentosEnviados.reduce((acc, req) => acc + (req.valor_total_geral || 0), 0);
+    const totalValorGeral = totalValorNaoEnviados + totalValorEnviados;
+
     // Função para desenhar caixa de resumo
     const drawSummaryBox = (y: number) => {
-      const boxHeight = 30;
+      const boxHeight = 42; // Aumentado de 30 para 42 para acomodar linhas de valores
       const boxY = y;
 
       // Fundo da caixa de resumo
@@ -271,12 +307,23 @@ export const exportarRequerimentosPDF = (
       doc.text(`Requerimentos enviados: ${totalEnviados}`, 25, resumoY + 12);
       doc.text(`Total de horas: ${formatarHorasParaExibicao(estatisticas.totalHoras, 'completo')}`, 25, resumoY + 18);
 
+      // Adicionar totalizadores de valores
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Valor não enviados: R$ ${totalValorNaoEnviados.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 25, resumoY + 24);
+      doc.text(`Valor enviados: R$ ${totalValorEnviados.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 25, resumoY + 30);
+
+      // Total geral em destaque
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...colors.primary);
+      doc.text(`VALOR TOTAL: R$ ${totalValorGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 85, resumoY + 27);
+
       return boxY + boxHeight + 10;
     };
 
     // Função para desenhar card de requerimento seguindo padrão dos demais relatórios
     const drawRequerimentoCard = (req: Requerimento, y: number) => {
-      const cardHeight = 45;
+      const cardHeight = 50; // Aumentado de 45 para 50 para acomodar linha de valores/hora
       const cardMargin = 15;
       const cardWidth = pageWidth - (cardMargin * 2);
 
@@ -345,7 +392,18 @@ export const exportarRequerimentosPDF = (
 
       contentY += 6;
 
-      // Linha 3: Linguagem + Horas
+      // Linha 3: Linguagem + Valores/Hora
+      doc.setTextColor(...colors.dark);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      const valorFuncional = req.valor_hora_funcional ? `R$ ${req.valor_hora_funcional.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A';
+      const valorTecnico = req.valor_hora_tecnico ? `R$ ${req.valor_hora_tecnico.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A';
+      const valoresText = `${req.linguagem} | Valor/H Func: ${valorFuncional} | Valor/H Téc: ${valorTecnico}`;
+      doc.text(valoresText, contentX, contentY);
+
+      contentY += 5;
+
+      // Linha 3.5: Horas
       const formatarHoras = (horas: string | number): string => {
         if (typeof horas === 'string') {
           // Se já está no formato HH:MM, retornar diretamente
@@ -363,10 +421,9 @@ export const exportarRequerimentosPDF = (
         return '00:00';
       };
 
-      doc.setTextColor(...colors.dark);
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      const horasText = `${req.linguagem} | F:${formatarHoras(req.horas_funcional)} | T:${formatarHoras(req.horas_tecnico)} | Total:${formatarHoras(req.horas_total)}`;
+      doc.setFont('helvetica', 'normal');
+      const horasText = `Horas - F:${formatarHoras(req.horas_funcional)} | T:${formatarHoras(req.horas_tecnico)} | Total:${formatarHoras(req.horas_total)}`;
       doc.text(horasText, contentX, contentY);
 
       contentY += 6;
