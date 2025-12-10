@@ -55,6 +55,18 @@ export function TipoCobrancaBloco({
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
   const [carregandoTaxa, setCarregandoTaxa] = useState(false);
   
+  // Ref para controlar se valores foram editados manualmente (não causa re-render)
+  const valoresEditadosManualmenteRef = useRef({
+    funcional: false,
+    tecnico: false
+  });
+  
+  // Estado para controlar indicadores visuais de edição manual
+  const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
+    funcional: false,
+    tecnico: false
+  });
+  
   // Ref para rastrear valores anteriores e evitar loop infinito
   const valoresAnterioresRef = useRef<{
     funcional: number | undefined;
@@ -105,35 +117,45 @@ export function TipoCobrancaBloco({
 
   // useEffect para preencher valores automaticamente baseado na taxa vigente
   useEffect(() => {
-    console.log('='.repeat(80));
-    console.log('🔄 INÍCIO DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
-    console.log('='.repeat(80));
-    console.log('📊 Estado atual:', {
-      taxaVigente: !!taxaVigente,
-      linguagem,
-      tipoCobranca: bloco.tipo_cobranca,
-      tipoHoraExtra: bloco.tipo_hora_extra,
-      valorAtualFuncional: bloco.valor_hora_funcional,
-      valorAtualTecnico: bloco.valor_hora_tecnico,
-      refFuncional: valoresAnterioresRef.current.funcional,
-      refTecnico: valoresAnterioresRef.current.tecnico
-    });
-    
-    if (!taxaVigente || !linguagem || !bloco.tipo_cobranca) {
-      console.log('❌ Faltam dados para preencher valores automaticamente');
-      // Resetar ref quando não há dados
-      valoresAnterioresRef.current = { funcional: undefined, tecnico: undefined };
-      return;
-    }
-    
-    if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(bloco.tipo_cobranca)) {
-      console.log('❌ Tipo de cobrança não requer preenchimento automático:', bloco.tipo_cobranca);
-      return;
-    }
+    // Usar setTimeout para garantir que a edição manual seja processada primeiro
+    const timeoutId = setTimeout(() => {
+      console.log('='.repeat(80));
+      console.log('🔄 INÍCIO DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
+      console.log('='.repeat(80));
+      console.log('📊 Estado atual:', {
+        taxaVigente: !!taxaVigente,
+        linguagem,
+        tipoCobranca: bloco.tipo_cobranca,
+        tipoHoraExtra: bloco.tipo_hora_extra,
+        valorAtualFuncional: bloco.valor_hora_funcional,
+        valorAtualTecnico: bloco.valor_hora_tecnico,
+        refFuncional: valoresAnterioresRef.current.funcional,
+        refTecnico: valoresAnterioresRef.current.tecnico,
+        editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
+        editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
+      });
+      
+      if (!taxaVigente || !linguagem || !bloco.tipo_cobranca) {
+        console.log('❌ Faltam dados para preencher valores automaticamente');
+        // Resetar ref quando não há dados
+        valoresAnterioresRef.current = { funcional: undefined, tecnico: undefined };
+        return;
+      }
+      
+      if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(bloco.tipo_cobranca)) {
+        console.log('❌ Tipo de cobrança não requer preenchimento automático:', bloco.tipo_cobranca);
+        return;
+      }
 
-    console.log('✅ Iniciando preenchimento automático de valores');
+      // Verificar se algum valor foi editado manualmente
+      if (valoresEditadosManualmenteRef.current.funcional && valoresEditadosManualmenteRef.current.tecnico) {
+        console.log('⏭️ Ambos os valores foram editados manualmente, pulando preenchimento automático');
+        return;
+      }
+
+      console.log('✅ Iniciando preenchimento automático de valores');
     
-    const tipoProduto = taxaVigente.tipo_produto;
+      const tipoProduto = taxaVigente.tipo_produto;
     console.log('📦 Tipo de produto:', tipoProduto);
     
     // REGRA CORRETA:
@@ -266,49 +288,85 @@ export function TipoCobrancaBloco({
       valorHoraTecnico: valorHoraTecnicoArredondado
     });
 
-    // Verificar se valores realmente mudaram
-    const valoresAnteriores = valoresAnterioresRef.current;
+    // Preencher os campos apenas se não foram editados manualmente
     const valorAtualFuncional = bloco.valor_hora_funcional;
     const valorAtualTecnico = bloco.valor_hora_tecnico;
     
-    console.log('🔍 COMPARAÇÃO DE VALORES:');
-    console.log('   Ref Funcional:', valoresAnteriores.funcional, '| Calculado:', valorHoraFuncionalArredondado, '| Atual no bloco:', valorAtualFuncional);
-    console.log('   Ref Técnico:', valoresAnteriores.tecnico, '| Calculado:', valorHoraTecnicoArredondado, '| Atual no bloco:', valorAtualTecnico);
+    console.log('📝 Valores atuais no bloco:', {
+      valorAtualFuncional,
+      valorAtualTecnico,
+      editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
+      editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
+    });
     
-    // Se o valor atual no bloco é diferente do calculado, precisamos atualizar
-    const precisaAtualizarFuncional = valorAtualFuncional !== valorHoraFuncionalArredondado;
-    const precisaAtualizarTecnico = valorAtualTecnico !== valorHoraTecnicoArredondado;
-    
-    if (precisaAtualizarFuncional || precisaAtualizarTecnico) {
-      console.log('✅ VALORES PRECISAM SER ATUALIZADOS');
-      console.log('   Funcional precisa atualizar?', precisaAtualizarFuncional);
-      console.log('   Técnico precisa atualizar?', precisaAtualizarTecnico);
-      
-      // Atualizar ref ANTES de chamar onUpdate para evitar loop
-      valoresAnterioresRef.current = {
-        funcional: valorHoraFuncionalArredondado,
-        tecnico: valorHoraTecnicoArredondado
-      };
-      
-      // Atualizar valores
-      if (precisaAtualizarFuncional) {
-        console.log('📝 Atualizando valor_hora_funcional:', valorHoraFuncionalArredondado);
+      // Preencher valor funcional se não foi editado manualmente
+      if (!valoresEditadosManualmenteRef.current.funcional) {
+        console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
         onUpdate(bloco.id, 'valor_hora_funcional', valorHoraFuncionalArredondado);
+        console.log('✅ Valor funcional preenchido com sucesso!');
+      } else {
+        console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
       }
       
-      if (precisaAtualizarTecnico) {
-        console.log('📝 Atualizando valor_hora_tecnico:', valorHoraTecnicoArredondado);
+      // Preencher valor técnico se não foi editado manualmente
+      if (!valoresEditadosManualmenteRef.current.tecnico) {
+        console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
         onUpdate(bloco.id, 'valor_hora_tecnico', valorHoraTecnicoArredondado);
+        console.log('✅ Valor técnico preenchido com sucesso!');
+      } else {
+        console.log('⏭️ Valor técnico editado manualmente, mantendo:', valorAtualTecnico);
       }
-    } else {
-      console.log('⏭️ Valores já estão corretos - Pulando atualização');
-      console.log('   (Ref e valores atuais no bloco coincidem com os calculados)');
-    }
     
-    console.log('='.repeat(80));
-    console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
-    console.log('='.repeat(80));
-  }, [taxaVigente, linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.id, onUpdate]);
+      console.log('='.repeat(80));
+      console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO (TipoCobrancaBloco)');
+      console.log('='.repeat(80));
+    }, 100); // Delay de 100ms para garantir que edição manual seja processada primeiro
+
+    // Cleanup do timeout
+    return () => clearTimeout(timeoutId);
+  }, [taxaVigente, linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra]); // Removido bloco.id e onUpdate das dependências
+
+  // Função para marcar valor como editado manualmente
+  const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico') => {
+    console.log('🔥🔥🔥 VALOR EDITADO MANUALMENTE NO BLOCO 🔥🔥🔥');
+    console.log('   Campo:', campo);
+    console.log('   Bloco ID:', bloco.id);
+    console.log('   Estado anterior da ref:', valoresEditadosManualmenteRef.current);
+    
+    // Atualizar ref IMEDIATAMENTE (não causa re-render)
+    valoresEditadosManualmenteRef.current = {
+      ...valoresEditadosManualmenteRef.current,
+      [campo]: true
+    };
+    
+    console.log('   Estado novo da ref:', valoresEditadosManualmenteRef.current);
+    console.log('   🚨 BLOQUEANDO PREENCHIMENTO AUTOMÁTICO PARA:', campo);
+    
+    // Atualizar estado para indicadores visuais
+    setValoresEditadosManualmente(prev => {
+      const novoEstado = {
+        ...prev,
+        [campo]: true
+      };
+      console.log('   Estado visual atualizado:', novoEstado);
+      return novoEstado;
+    });
+  };
+
+  // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
+  useEffect(() => {
+    console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (TipoCobrancaBloco)');
+    // Resetar ref
+    valoresEditadosManualmenteRef.current = {
+      funcional: false,
+      tecnico: false
+    };
+    // Resetar estado para indicadores visuais
+    setValoresEditadosManualmente({
+      funcional: false,
+      tecnico: false
+    });
+  }, [clienteId, linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
 
   // Verificar se tipo de cobrança requer valores/hora
   const mostrarCamposValor = bloco.tipo_cobranca && 
@@ -530,6 +588,9 @@ export function TipoCobrancaBloco({
             <div className="space-y-2">
               <Label>
                 Valor/Hora Funcional <span className="text-red-500">*</span>
+                {valoresEditadosManualmente.funcional && (
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                )}
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
@@ -542,7 +603,12 @@ export function TipoCobrancaBloco({
                   placeholder="0,00"
                   className="pl-8"
                   value={bloco.valor_hora_funcional || ''}
-                  onChange={(e) => onUpdate(bloco.id, 'valor_hora_funcional', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    // Marcar como editado manualmente PRIMEIRO
+                    handleValorEditadoManualmente('funcional');
+                    // Depois atualizar o valor
+                    onUpdate(bloco.id, 'valor_hora_funcional', parseFloat(e.target.value) || 0);
+                  }}
                 />
               </div>
             </div>
@@ -550,6 +616,9 @@ export function TipoCobrancaBloco({
             <div className="space-y-2">
               <Label>
                 Valor/Hora Técnico <span className="text-red-500">*</span>
+                {valoresEditadosManualmente.tecnico && (
+                  <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                )}
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
@@ -562,7 +631,12 @@ export function TipoCobrancaBloco({
                   placeholder="0,00"
                   className="pl-8"
                   value={bloco.valor_hora_tecnico || ''}
-                  onChange={(e) => onUpdate(bloco.id, 'valor_hora_tecnico', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    // Marcar como editado manualmente PRIMEIRO
+                    handleValorEditadoManualmente('tecnico');
+                    // Depois atualizar o valor
+                    onUpdate(bloco.id, 'valor_hora_tecnico', parseFloat(e.target.value) || 0);
+                  }}
                 />
               </div>
             </div>

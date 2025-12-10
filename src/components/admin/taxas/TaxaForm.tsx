@@ -31,7 +31,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { TaxaClienteCompleta, TaxaFormData, TipoProduto } from '@/types/taxasClientes';
-import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
+import { calcularValores, getFuncoesPorProduto, calcularValoresLocaisAutomaticos } from '@/types/taxasClientes';
 
 interface TaxaFormProps {
   taxa?: TaxaClienteCompleta | null;
@@ -228,6 +228,71 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   const valoresRemota = form.watch('valores_remota');
   const valoresLocal = form.watch('valores_local');
   const taxaReajuste = form.watch('taxa_reajuste');
+  
+  // Monitorar campos específicos para garantir reatividade
+  const funcionalRemoto = form.watch('valores_remota.funcional');
+  const tecnicoRemoto = form.watch('valores_remota.tecnico');
+  const abapRemoto = form.watch('valores_remota.abap');
+  const dbaRemoto = form.watch('valores_remota.dba');
+  const gestorRemoto = form.watch('valores_remota.gestor');
+  
+  // Debug: Log dos valores observados
+  console.log('🔍 [DEBUG] Valores observados:', {
+    funcionalRemoto,
+    tecnicoRemoto,
+    abapRemoto,
+    dbaRemoto,
+    gestorRemoto,
+    personalizado,
+    valoresRemota
+  });
+
+  // NOVO: Calcular automaticamente valores locais quando valores remotos mudarem (10% a mais)
+  useEffect(() => {
+    if (valoresRemota && !personalizado) {
+      // Verificar se há valores válidos
+      const temValores = valoresRemota.funcional > 0 || valoresRemota.tecnico > 0 || 
+                        valoresRemota.dba > 0 || valoresRemota.gestor > 0 ||
+                        (valoresRemota.abap && valoresRemota.abap > 0);
+      
+      if (temValores) {
+        // Só calcula automaticamente se não estiver em modo personalizado
+        const valoresLocaisCalculados = calcularValoresLocaisAutomaticos(valoresRemota);
+        
+        // Atualizar valores locais no formulário
+        form.setValue('valores_local', valoresLocaisCalculados);
+        
+        console.log('🔄 Valores remotos:', valoresRemota);
+        console.log('🔄 Valores locais calculados automaticamente:', valoresLocaisCalculados);
+      }
+    }
+  }, [valoresRemota, personalizado, form]);
+
+  // ADICIONAL: Monitorar campos específicos para garantir cálculo em tempo real
+  useEffect(() => {
+    if (!personalizado && (funcionalRemoto || tecnicoRemoto || abapRemoto || dbaRemoto || gestorRemoto)) {
+      const valoresAtuais = {
+        funcional: funcionalRemoto || 0,
+        tecnico: tecnicoRemoto || 0,
+        abap: abapRemoto || 0,
+        dba: dbaRemoto || 0,
+        gestor: gestorRemoto || 0,
+      };
+      
+      // Verificar se há valores válidos
+      const temValores = valoresAtuais.funcional > 0 || valoresAtuais.tecnico > 0 || 
+                        valoresAtuais.dba > 0 || valoresAtuais.gestor > 0 ||
+                        valoresAtuais.abap > 0;
+      
+      if (temValores) {
+        const valoresLocaisCalculados = calcularValoresLocaisAutomaticos(valoresAtuais);
+        form.setValue('valores_local', valoresLocaisCalculados);
+        
+        console.log('🔄 [CAMPOS ESPECÍFICOS] Valores remotos atuais:', valoresAtuais);
+        console.log('🔄 [CAMPOS ESPECÍFICOS] Valores locais calculados:', valoresLocaisCalculados);
+      }
+    }
+  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, personalizado, form]);
 
   // Recalcular valores e vigências quando taxa de reajuste mudar (apenas em edição)
   useEffect(() => {
@@ -243,14 +308,8 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         gestor: valoresOriginais.valores_remota.gestor + (valoresOriginais.valores_remota.gestor * percentual),
       };
       
-      // Recalcular valores locais
-      const novosValoresLocal = {
-        funcional: valoresOriginais.valores_local.funcional + (valoresOriginais.valores_local.funcional * percentual),
-        tecnico: valoresOriginais.valores_local.tecnico + (valoresOriginais.valores_local.tecnico * percentual),
-        abap: valoresOriginais.valores_local.abap + (valoresOriginais.valores_local.abap * percentual),
-        dba: valoresOriginais.valores_local.dba + (valoresOriginais.valores_local.dba * percentual),
-        gestor: valoresOriginais.valores_local.gestor + (valoresOriginais.valores_local.gestor * percentual),
-      };
+      // ATUALIZADO: Recalcular valores locais usando a nova função (10% a mais dos novos valores remotos)
+      const novosValoresLocal = calcularValoresLocaisAutomaticos(novosValoresRemota);
       
       // Recalcular vigências
       const dataFimOriginal = valoresOriginais.vigencia_fim || valoresOriginais.vigencia_inicio;
@@ -308,7 +367,9 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         return { funcao: f, valor_base: vb };
       });
 
-      resultado[funcao] = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado || 'GALLERY');
+      // ATUALIZADO: Usar parâmetro isLocal para aplicar 10% a mais nos valores locais
+      const isLocal = tipo === 'local';
+      resultado[funcao] = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado || 'GALLERY', isLocal);
     });
 
     return resultado;
@@ -607,6 +668,18 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                                   const newValues = { ...valoresEditando };
                                   delete newValues[fieldKey];
                                   setValoresEditando(newValues);
+                                  
+                                  // NOVO: Calcular valores locais automaticamente após editar valor remoto
+                                  if (!personalizado) {
+                                    setTimeout(() => {
+                                      const valoresRemotosAtuais = form.getValues('valores_remota');
+                                      if (valoresRemotosAtuais) {
+                                        const valoresLocaisCalculados = calcularValoresLocaisAutomaticos(valoresRemotosAtuais);
+                                        form.setValue('valores_local', valoresLocaisCalculados);
+                                        console.log('🔄 [ON BLUR] Valores locais recalculados:', valoresLocaisCalculados);
+                                      }
+                                    }, 100);
+                                  }
                                 }}
                                 className="text-right text-xs h-8 pr-3"
                                 placeholder="0,00"
@@ -834,7 +907,9 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
 
         {/* Tabela de Valores Locais */}
         <div className="space-y-3">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Valores Hora Local</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Valores Hora Local</h3>
+          </div>
           
           <div className="rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full border-collapse table-fixed">

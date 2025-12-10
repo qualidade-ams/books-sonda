@@ -88,6 +88,7 @@ export function RequerimentoMultiploForm({
 
   // Atualizar campo de um bloco
   const handleAtualizarBloco = (id: string, campo: string, valor: any) => {
+    console.log('🔄 Atualizando bloco:', { id, campo, valor });
     setBlocos(blocos.map(b => {
       if (b.id === id) {
         const blocoAtualizado = { ...b, [campo]: valor };
@@ -102,11 +103,10 @@ export function RequerimentoMultiploForm({
             blocoAtualizado.valor_hora_tecnico = undefined;
           }
           
-          // Se mudou PARA "Hora Extra", limpar valores até que tipo de hora extra seja selecionado
+          // Se mudou PARA "Hora Extra", apenas limpar tipo_hora_extra para forçar seleção
           if (valor === 'Hora Extra') {
-            blocoAtualizado.valor_hora_funcional = 0;
-            blocoAtualizado.valor_hora_tecnico = 0;
             blocoAtualizado.tipo_hora_extra = undefined;
+            // Não limpar valores/hora - deixar o TipoCobrancaBloco gerenciar isso
           }
           
           // Se mudou DE "Hora Extra" para outro tipo, limpar tipo_hora_extra

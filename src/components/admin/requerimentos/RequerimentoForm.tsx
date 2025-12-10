@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Calculator, HelpCircle, AlertCircle } from 'lucide-react';
@@ -59,6 +59,18 @@ export function RequerimentoForm({
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
   const [carregandoTaxa, setCarregandoTaxa] = useState(false);
+  
+  // Ref para controlar se valores foram editados manualmente (não causa re-render)
+  const valoresEditadosManualmenteRef = useRef({
+    funcional: false,
+    tecnico: false
+  });
+  
+  // Estado para controlar indicadores visuais de edição manual
+  const [valoresEditadosManualmente, setValoresEditadosManualmente] = useState({
+    funcional: false,
+    tecnico: false
+  });
   
   console.log('📊 Estados iniciais:', {
     taxaVigente: !!taxaVigente,
@@ -403,27 +415,66 @@ export function RequerimentoForm({
       valorAtualTecnico
     });
     
-    // Só preencher se os valores estiverem vazios, zerados ou undefined
-    if (!valorAtualFuncional || valorAtualFuncional === 0) {
-      console.log('✅ PREENCHENDO valor_hora_funcional:', valorHoraFuncionalArredondado);
+    // Preencher os campos apenas se não foram editados manualmente
+    console.log('📝 Valores atuais no formulário:', {
+      valorAtualFuncional,
+      valorAtualTecnico,
+      editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
+      editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
+    });
+    
+    // Preencher valor funcional se não foi editado manualmente
+    if (!valoresEditadosManualmenteRef.current.funcional) {
+      console.log('✅ PREENCHENDO valor_hora_funcional (automático):', valorHoraFuncionalArredondado);
       form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
       console.log('✅ Valor preenchido com sucesso!');
     } else {
-      console.log('⏭️ Valor funcional já preenchido:', valorAtualFuncional);
+      console.log('⏭️ Valor funcional editado manualmente, mantendo:', valorAtualFuncional);
     }
     
-    if (!valorAtualTecnico || valorAtualTecnico === 0) {
-      console.log('✅ PREENCHENDO valor_hora_tecnico:', valorHoraTecnicoArredondado);
+    // Preencher valor técnico se não foi editado manualmente
+    if (!valoresEditadosManualmenteRef.current.tecnico) {
+      console.log('✅ PREENCHENDO valor_hora_tecnico (automático):', valorHoraTecnicoArredondado);
       form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
       console.log('✅ Valor preenchido com sucesso!');
     } else {
-      console.log('⏭️ Valor técnico já preenchido:', valorAtualTecnico);
+      console.log('⏭️ Valor técnico editado manualmente, mantendo:', valorAtualTecnico);
     }
     
     console.log('='.repeat(80));
     console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO');
     console.log('='.repeat(80));
-  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, form]);
+  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, form]); // Removido valoresEditadosManualmente das dependências
+
+  // Função para marcar valor como editado manualmente
+  const handleValorEditadoManualmente = useCallback((campo: 'funcional' | 'tecnico') => {
+    console.log('✏️ Valor editado manualmente:', campo);
+    // Atualizar ref (não causa re-render)
+    valoresEditadosManualmenteRef.current = {
+      ...valoresEditadosManualmenteRef.current,
+      [campo]: true
+    };
+    // Atualizar estado para indicadores visuais
+    setValoresEditadosManualmente(prev => ({
+      ...prev,
+      [campo]: true
+    }));
+  }, []);
+
+  // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
+  useEffect(() => {
+    console.log('🔄 Resetando flags de edição manual devido a mudança de contexto');
+    // Resetar ref
+    valoresEditadosManualmenteRef.current = {
+      funcional: false,
+      tecnico: false
+    };
+    // Resetar estado para indicadores visuais
+    setValoresEditadosManualmente({
+      funcional: false,
+      tecnico: false
+    });
+  }, [clienteId, linguagem, tipoCobranca]); // Removido tipoHoraExtra para evitar reset desnecessário
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
@@ -1114,6 +1165,9 @@ export function RequerimentoForm({
                         <FormItem>
                           <FormLabel>
                             Valor/Hora Funcional <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {valoresEditadosManualmente.funcional && (
+                              <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                            )}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -1131,6 +1185,8 @@ export function RequerimentoForm({
                                 onChange={(e) => {
                                   const value = e.target.value;
                                   field.onChange(value === '' ? undefined : parseFloat(value) || 0);
+                                  // Marcar como editado manualmente
+                                  handleValorEditadoManualmente('funcional');
                                 }}
                               />
                             </div>
@@ -1148,6 +1204,9 @@ export function RequerimentoForm({
                         <FormItem>
                           <FormLabel>
                             Valor/Hora Técnico <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {valoresEditadosManualmente.tecnico && (
+                              <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                            )}
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -1165,6 +1224,8 @@ export function RequerimentoForm({
                                 onChange={(e) => {
                                   const value = e.target.value;
                                   field.onChange(value === '' ? undefined : parseFloat(value) || 0);
+                                  // Marcar como editado manualmente
+                                  handleValorEditadoManualmente('tecnico');
                                 }}
                               />
                             </div>

@@ -111,12 +111,18 @@ export const calcularValores = (
   funcao: TipoFuncao, 
   todasFuncoes?: { funcao: TipoFuncao; valor_base: number }[],
   tipoCalculo: TipoCalculoAdicional = 'media',
-  tipoProduto?: TipoProduto
+  tipoProduto?: TipoProduto,
+  isLocal: boolean = false // NOVO: indica se é cálculo para valores locais
 ): ValorTaxaCalculado => {
-  const valor_17h30_19h30 = valorBase + (valorBase * 0.75);
-  const valor_apos_19h30 = valorBase + (valorBase * 1.0);
-  const valor_fim_semana = valorBase + (valorBase * 1.0);
-  const valor_standby = valorBase * 0.30;
+  // CORREÇÃO: Não aplicar 10% aqui pois os valores locais já vêm com 10% a mais
+  // O parâmetro isLocal é mantido para compatibilidade futura, mas não altera o cálculo
+  const valorBaseAjustado = valorBase;
+  
+  // ATUALIZADO: Usar multiplicação direta para maior clareza
+  const valor_17h30_19h30 = valorBaseAjustado * 1.75;  // Seg-Sex 17h30-19h30: valor base × 1,75
+  const valor_apos_19h30 = valorBaseAjustado * 2.0;    // Seg-Sex Após 19h30: valor base × 2,0
+  const valor_fim_semana = valorBaseAjustado * 2.0;    // Sáb/Dom/Feriados: valor base × 2,0
+  const valor_standby = valorBaseAjustado * 0.30;      // Stand By: valor base × 0,30
   
   // Cálculo do valor adicional
   let valor_adicional: number;
@@ -129,24 +135,27 @@ export const calcularValores = (
       const tecnico = todasFuncoes.find(f => f.funcao === 'Técnico / ABAP');
       
       if (funcional && tecnico) {
-        const resultado1 = funcional.valor_base + (funcional.valor_base * 0.15);
-        const resultado2 = tecnico.valor_base + (tecnico.valor_base * 0.15);
+        // CORREÇÃO: Não aplicar 10% aqui pois os valores locais já vêm com 10% a mais
+        const valorFuncionalAjustado = funcional.valor_base;
+        const valorTecnicoAjustado = tecnico.valor_base;
+        const resultado1 = valorFuncionalAjustado + (valorFuncionalAjustado * 0.15);
+        const resultado2 = valorTecnicoAjustado + (valorTecnicoAjustado * 0.15);
         valor_adicional = (resultado1 + resultado2) / 2;
       } else {
-        valor_adicional = valorBase + (valorBase * 0.15);
+        valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
       }
     } else {
-      valor_adicional = valorBase + (valorBase * 0.15);
+      valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
     }
   }
   // Se tipo de cálculo for 'normal', todas as funções usam valor base + 15%
   else if (tipoCalculo === 'normal') {
-    valor_adicional = valorBase + (valorBase * 0.15);
+    valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
   } 
   // Se tipo de cálculo for 'media', usa a lógica antiga
   else if (funcao === 'DBA / Basis' || funcao === 'DBA' || funcao === 'Gestor') {
     // Para DBA e Gestor: valor base + 15%
-    valor_adicional = valorBase + (valorBase * 0.15);
+    valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
   } else if (funcao === 'Funcional' || funcao === 'Técnico (Instalação / Atualização)' || funcao === 'ABAP - PL/SQL') {
     // Para Funcional, Técnico (Instalação/Atualização) e ABAP-PL/SQL (produtos OUTROS)
     // Média dos valores base + 15% de cada um
@@ -158,17 +167,18 @@ export const calcularValores = (
       );
       
       if (tresPrimeirasFuncoes.length === 3) {
-        // Cada valor base + 15%, depois média dos três
+        // CORREÇÃO: Não aplicar 10% aqui pois os valores locais já vêm com 10% a mais
         const somaValores = tresPrimeirasFuncoes.reduce((acc, f) => {
-          const valorCom15 = f.valor_base + (f.valor_base * 0.15);
+          const valorAjustado = f.valor_base;
+          const valorCom15 = valorAjustado + (valorAjustado * 0.15);
           return acc + valorCom15;
         }, 0);
         valor_adicional = somaValores / 3;
       } else {
-        valor_adicional = valorBase + (valorBase * 0.15);
+        valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
       }
     } else {
-      valor_adicional = valorBase + (valorBase * 0.15);
+      valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
     }
   } else {
     // Para Técnico/ABAP (produtos GALLERY) - fallback caso não tenha tipoProduto
@@ -181,19 +191,23 @@ export const calcularValores = (
       );
       
       if (funcoesParaMedia.length === 3) {
-        const somaValores = funcoesParaMedia.reduce((acc, f) => acc + (f.valor_base + (f.valor_base * 0.15)), 0);
+        // CORREÇÃO: Não aplicar 10% aqui pois os valores locais já vêm com 10% a mais
+        const somaValores = funcoesParaMedia.reduce((acc, f) => {
+          const valorAjustado = f.valor_base;
+          return acc + (valorAjustado + (valorAjustado * 0.15));
+        }, 0);
         valor_adicional = somaValores / funcoesParaMedia.length;
       } else {
-        valor_adicional = valorBase + (valorBase * 0.15);
+        valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
       }
     } else {
-      valor_adicional = valorBase + (valorBase * 0.15);
+      valor_adicional = valorBaseAjustado + (valorBaseAjustado * 0.15);
     }
   }
   
   return {
     funcao,
-    valor_base: valorBase,
+    valor_base: valorBaseAjustado, // Retorna valor base sem alteração (10% já aplicado nos valores locais)
     valor_17h30_19h30,
     valor_apos_19h30,
     valor_fim_semana,
@@ -209,4 +223,26 @@ export const getFuncoesPorProduto = (tipoProduto: TipoProduto): TipoFuncao[] => 
   } else {
     return ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL', 'DBA', 'Gestor'];
   }
+};
+
+// NOVA FUNÇÃO: Calcula automaticamente valores locais baseados nos remotos (10% a mais)
+export const calcularValoresLocaisAutomaticos = (valoresRemotos: {
+  funcional: number;
+  tecnico: number;
+  abap?: number;
+  dba: number;
+  gestor: number;
+}) => {
+  console.log('🔄 [FUNÇÃO] Calculando valores locais para:', valoresRemotos);
+  
+  const resultado = {
+    funcional: (valoresRemotos.funcional || 0) * 1.10,
+    tecnico: (valoresRemotos.tecnico || 0) * 1.10,
+    abap: valoresRemotos.abap ? valoresRemotos.abap * 1.10 : 0,
+    dba: (valoresRemotos.dba || 0) * 1.10,
+    gestor: (valoresRemotos.gestor || 0) * 1.10,
+  };
+  
+  console.log('🔄 [FUNÇÃO] Resultado calculado:', resultado);
+  return resultado;
 };

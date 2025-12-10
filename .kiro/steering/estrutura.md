@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Refinamento visual no componente `src/components/admin/requerimentos/RequerimentoForm.tsx` - removido label "Observação" do campo de observações para interface mais limpa, mantendo apenas o placeholder descritivo.
+**Última atualização**: Corrigida função `calcularValores()` em `src/types/taxasClientes.ts` - removida aplicação dupla de 10% nos valores locais na lógica de cálculo de média das três primeiras funções (Funcional, Técnico, ABAP). O parâmetro `isLocal` foi mantido para compatibilidade futura, mas não altera mais o cálculo pois os valores locais já chegam com 10% a mais aplicado anteriormente no fluxo.
 
 ---
 
@@ -785,6 +785,7 @@ Formulário completo para cadastro e edição de taxas de clientes, com cálculo
 - **Tabelas interativas**: Edição inline de valores base com formatação monetária (todos os campos editáveis em modo personalizado)
 - **Taxa padrão automática**: Preenchimento automático com taxa padrão para clientes sem AMS
 - **Vigência automática**: Sugestão de vigência de 1 ano menos 1 dia ao selecionar data início (ex: início 01/01/2024 → fim 31/12/2024)
+- **Interface limpa**: Visual simplificado sem indicadores redundantes de cálculo automático
 
 **Props do componente:**
 - `taxa?: TaxaClienteCompleta | null` - Taxa existente para edição (opcional)
@@ -834,6 +835,12 @@ Tabela com 5 colunas para edição de valores locais:
 - `valoresOriginais`: Valores originais da taxa (para cálculo de reajuste)
 - `personalizado`: Flag booleana indicando se o modo personalizado está ativo
 
+**Valores observados (form.watch):**
+- `funcionalRemoto`, `tecnicoRemoto`, `abapRemoto`, `dbaRemoto`, `gestorRemoto`: Valores remotos por função observados em tempo real
+- `personalizado`: Flag de modo personalizado observada para controle de comportamento
+- `valoresRemota`: Objeto completo de valores remotos observado
+- **Debug logging**: Console logs detalhados (🔍 [DEBUG]) dos valores observados para facilitar troubleshooting e desenvolvimento
+
 **Comportamento:**
 - **Modo criação**: Formulário em branco para nova taxa
 - **Modo edição**: Formulário preenchido com dados da taxa existente
@@ -848,15 +855,18 @@ Tabela com 5 colunas para edição de valores locais:
 - **Cálculo de reajuste**: Ao informar taxa de reajuste, recalcula valores e vigências automaticamente (não disponível em modo personalizado)
 - **Vigência sugerida**: Ao selecionar data início, sugere data fim 1 ano à frente
 - **Edição inline**: Campos de valor base com formatação monetária e seleção automática ao focar (todos os campos em modo personalizado)
+- **Recálculo automático de valores locais**: Quando não está em modo personalizado, ao editar um valor remoto (onBlur), recalcula automaticamente os valores locais correspondentes usando `calcularValoresLocaisAutomaticos()` com delay de 100ms
 
 **Funções principais:**
 - `formatarMoeda(valor)`: Formata número para formato monetário brasileiro (0,00)
 - `converterMoedaParaNumero(valor)`: Converte string monetária para número
-- `calcularValoresExibicao(valores, tipo)`: Calcula todos os valores derivados para exibição
+- `calcularValoresExibicao(valores, tipo)`: Calcula todos os valores derivados para exibição com diferenciação automática entre valores remotos e locais
 - `handleSubmit(data)`: Processa e submete dados do formulário
 
 **Cálculo automático de valores:**
-- Utiliza função `calcularValores()` de `@/types/taxasClientes`
+- Utiliza função `calcularValores()` de `@/types/taxasClientes` com parâmetro `isLocal` para diferenciação entre valores remotos e locais
+- **Cálculo diferenciado por tipo**: Valores locais calculados automaticamente com 10% a mais que os remotos usando parâmetro `isLocal = true`
+- Utiliza função `calcularValoresLocaisAutomaticos()` de `@/types/taxasClientes` para cálculo automático de valores locais (10% a mais dos valores remotos)
 - Valores calculados em tempo real conforme usuário edita valores base
 - Regras de negócio aplicadas para diferentes horários e dias
 - Suporte a dois tipos de cálculo para hora adicional (normal ou média)
@@ -882,6 +892,7 @@ Tabela com 5 colunas para edição de valores locais:
 - Utilizado na página `CadastroTaxasClientes.tsx`
 - Integra-se com o sistema de empresas via hook `useEmpresas()`
 - Integra-se com serviço de taxas padrão para preenchimento automático
+- Utiliza funções de cálculo de `@/types/taxasClientes` (`calcularValores`, `getFuncoesPorProduto`, `calcularValoresLocaisAutomaticos`)
 - Validação consistente com tipos definidos em `@/types/taxasClientes`
 - Exportado via `src/components/admin/taxas/index.ts`
 
@@ -900,6 +911,34 @@ Tabela com 5 colunas para edição de valores locais:
 - `TipoProduto` - Tipo de produto ('GALLERY' | 'OUTROS')
 
 **Melhorias recentes:**
+- **Interface visual simplificada**: Removido indicador visual redundante "🔄 Calculado automaticamente (+10%)" da seção de Valores Hora Local para interface mais limpa e menos poluída visualmente, mantendo funcionalidade de cálculo automático intacta
+- **Recálculo automático de valores locais no onBlur**: Implementada funcionalidade que recalcula automaticamente os valores locais quando usuário edita um valor remoto:
+  - Dispara no evento `onBlur` dos campos de valor base remoto
+  - Só executa quando não está em modo personalizado
+  - Usa `setTimeout` com delay de 100ms para garantir que o valor foi salvo no formulário
+  - Obtém valores remotos atuais via `form.getValues('valores_remota')`
+  - Calcula novos valores locais usando `calcularValoresLocaisAutomaticos()`
+  - Atualiza formulário via `form.setValue('valores_local', valoresLocaisCalculados)`
+  - Logging detalhado (🔄 [ON BLUR]) para debug do processo
+  - Melhora UX ao manter sincronização automática entre valores remotos e locais durante edição
+- **Debug logging de valores observados**: Adicionado console log detalhado (🔍 [DEBUG]) dos valores observados via form.watch para facilitar troubleshooting:
+  - Log de todos os valores remotos por função (funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto)
+  - Log da flag personalizado para rastrear mudanças de modo
+  - Log do objeto completo valoresRemota para debug de estrutura
+  - Facilita identificação de problemas com reatividade do formulário e cálculos automáticos
+- **Correção de typo em variável**: Corrigido nome da variável de `abaprRemoto` para `abapRemoto` no monitoramento de campos específicos para garantir consistência e legibilidade do código
+- **Validação de valores antes do cálculo automático**: Implementada verificação inteligente no useEffect de cálculo automático de valores locais:
+  - Verifica se há valores válidos (> 0) em pelo menos uma função antes de calcular valores locais
+  - Evita cálculos desnecessários quando todos os valores remotos estão zerados
+  - Logging aprimorado mostrando valores remotos e locais calculados para debug
+  - Melhora performance ao evitar operações desnecessárias
+  - Garante que valores locais só sejam calculados quando há dados válidos para processar
+- **Cálculo diferenciado de valores locais implementado**: Atualizada função `calcularValoresExibicao()` para usar parâmetro `isLocal` na função `calcularValores()`:
+  - Valores remotos calculados com `isLocal = false` (comportamento padrão)
+  - Valores locais calculados com `isLocal = true` (aplica automaticamente 10% a mais no valor base)
+  - Elimina necessidade de cálculo manual separado para valores locais
+  - Garante consistência na aplicação da regra de 10% a mais para valores locais
+  - Simplifica lógica de cálculo usando função unificada
 - **Modo Personalizado implementado**: Adicionado checkbox "Personalizado" que permite edição manual de todos os campos das tabelas
   - Quando marcado, todos os valores (incluindo calculados) tornam-se editáveis
   - Campo de taxa de reajuste desabilitado em modo personalizado
@@ -1696,6 +1735,8 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 - CRUD completo de taxas de clientes (criar, buscar, atualizar, deletar)
 - Busca de taxa vigente por cliente e data específica
 - Cálculo automático de valores derivados (hora extra, sobreaviso, etc.)
+- **Cálculo automático de valores locais**: Calcula automaticamente valores locais (10% a mais dos valores remotos) durante a criação de taxas
+- **Cálculo completo na busca**: Ao buscar uma taxa, calcula automaticamente TODOS os valores derivados para cada função (remota e local)
 - Gestão de vigências com controle de períodos (início e fim)
 - Suporte a dois tipos de produto: GALLERY e OUTROS (COMEX, FISCAL)
 - Valores separados para hora remota e hora local
@@ -1710,8 +1751,12 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 - `atualizarTaxaCliente(id: string, dados: Partial<TaxaFormData>): Promise<void>` - Atualiza taxa existente
 - `deletarTaxaCliente(id: string): Promise<void>` - Remove taxa do sistema
 
-**Cálculo automático de valores:**
-- Ao buscar uma taxa, o serviço calcula automaticamente todos os valores derivados (hora extra, sobreaviso, etc.)
+**Cálculo automático de valores (APRIMORADO):**
+- **Cálculo completo na busca**: Ao buscar uma taxa, o serviço calcula automaticamente TODOS os valores derivados para cada função
+- **Separação inteligente**: Separa valores por tipo (remota/local) e prepara arrays para cálculo da média
+- **Arrays para cálculo**: Cria arrays `todasFuncoesRemota` e `todasFuncoesLocal` com todas as funções e valores base para cálculos de média
+- **Cálculo diferenciado**: Usa parâmetro `isLocal` (false para remota, true para local) na função `calcularValores()`
+- **Retorno padronizado**: Todas as funções de busca retornam `TaxaClienteCompleta` com `valores_remota` e `valores_local` já calculados
 - Utiliza função `calcularValores()` de `@/types/taxasClientes` para cálculos
 - Valores calculados incluem:
   - Seg-Sex 17h30-19h30
@@ -1753,12 +1798,22 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 }
 ```
 
-**Fluxo de busca com cálculo:**
+**Fluxo de criação com cálculo automático:**
+1. Recebe dados do formulário com valores remotos
+2. Calcula automaticamente valores locais (10% a mais) usando `calcularValoresLocaisAutomaticos()`
+3. Cria taxa na tabela `taxas_clientes`
+4. Insere valores remotos (fornecidos) e locais (calculados) na tabela `valores_taxas_funcoes`
+5. Registra usuário criador e timestamps
+
+**Fluxo de busca com cálculo (APRIMORADO):**
 1. Busca dados da taxa na tabela `taxas_clientes`
 2. Busca valores base na tabela `valores_taxas_funcoes`
-3. Separa valores em remota e local
-4. Para cada função, calcula todos os valores derivados usando `calcularValores()`
-5. Retorna taxa completa com arrays de valores calculados
+3. **Separação inteligente**: Separa valores por tipo (remota/local) usando `filter()`
+4. **Preparação para cálculo**: Cria arrays `todasFuncoesRemota` e `todasFuncoesLocal` com estrutura `{ funcao, valor_base }`
+5. **Cálculo completo**: Para cada função, calcula TODOS os valores derivados usando `calcularValores()`:
+   - Valores remotos: `calcularValores(valor_base, funcao, todasFuncoesRemota, tipo_calculo, tipo_produto, false)`
+   - Valores locais: `calcularValores(valor_base, funcao, todasFuncoesLocal, tipo_calculo, tipo_produto, true)`
+6. **Retorno padronizado**: Taxa completa com `valores_remota` e `valores_local` como arrays de `ValorTaxaCalculado`
 
 **Integração:**
 - Utilizado pelos hooks `useTaxas`, `useCriarTaxa`, `useAtualizarTaxa`, `useDeletarTaxa`
@@ -1767,12 +1822,74 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 - Utilizado pelos componentes `TaxaForm` e página `CadastroTaxasClientes`
 
 **Melhorias recentes:**
+- **Cálculo completo na busca implementado**: Refatorado método `buscarTaxaClientePorId()` para calcular automaticamente TODOS os valores derivados:
+  - **Separação inteligente**: Valores separados por tipo (remota/local) usando `filter()`
+  - **Arrays para cálculo de média**: Criados `todasFuncoesRemota` e `todasFuncoesLocal` com estrutura `{ funcao, valor_base }`
+  - **Cálculo diferenciado**: Usa parâmetro `isLocal` correto (false para remota, true para local)
+  - **Retorno completo**: `valores_remota` e `valores_local` retornados como arrays de `ValorTaxaCalculado` com todos os campos calculados
+- **Eliminação de cálculos no frontend**: Frontend agora recebe valores já calculados, melhorando performance
+- **Consistência garantida**: Todos os valores calculados usando a mesma lógica centralizada no backend
+- **Compatibilidade mantida**: Interface `TaxaClienteCompleta` preservada, mudança transparente para componentes
 - **Cálculo automático de valores derivados**: Implementado cálculo automático de todos os valores derivados ao buscar uma taxa, eliminando necessidade de cálculos no frontend
 - **Retorno padronizado**: Todas as funções de busca retornam `TaxaClienteCompleta` com valores já calculados
 - **Performance otimizada**: Cálculos realizados uma vez no backend ao invés de múltiplas vezes no frontend
 - **Consistência de dados**: Garante que valores calculados sejam sempre consistentes usando a mesma lógica de cálculo
+- **Cálculo automático em reajustes**: Implementado cálculo automático de valores locais durante reajustes quando não estiver em modo personalizado, garantindo que valores locais sejam sempre 10% maiores que os remotos mesmo em atualizações com reajuste
 
 ---
+
+### `taxasClientesService.ts`
+Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca de taxas vigentes, cálculo automático de valores derivados e lógica de reajuste com criação de novas vigências.
+
+**Funcionalidades principais:**
+- CRUD completo de taxas de clientes (criar, buscar, atualizar, deletar)
+- Busca de taxa vigente por cliente e data específica
+- Cálculo automático de valores derivados (hora extra, sobreaviso, etc.)
+- **Cálculo automático de valores locais**: Calcula automaticamente valores locais (10% a mais dos valores remotos) durante a criação e atualização de taxas
+- Gestão de vigências com controle de períodos (início e fim) e verificação de conflitos
+- Suporte a dois tipos de produto: GALLERY e OUTROS (COMEX, FISCAL)
+- Valores separados para hora remota e hora local
+- Tipo de cálculo adicional configurável (normal ou média)
+- **Lógica de reajuste**: Quando há taxa_reajuste > 0, cria nova taxa automaticamente com valores reajustados ao invés de atualizar a existente
+- **Cálculo automático em reajustes**: Durante reajustes, valores locais são calculados automaticamente (10% a mais dos remotos) quando não estiver em modo personalizado
+- Integração com sistema de autenticação para rastreamento de criador
+- Verificação de conflitos de vigência para evitar sobreposição de períodos
+
+**Métodos principais:**
+- `buscarTaxas(filtros?)` - Busca todas as taxas com filtros opcionais
+- `buscarTaxaPorId(id)` - Busca taxa específica por ID com valores calculados
+- `buscarTaxaVigente(clienteId, data?)` - Busca taxa vigente do cliente em uma data específica
+- `criarTaxa(dados)` - Cria nova taxa com cálculo automático de valores locais e suporte a reajuste
+- `atualizarTaxa(id, dados)` - Atualiza taxa existente OU cria nova taxa se houver reajuste
+- `deletarTaxa(id)` - Remove taxa do sistema
+- `verificarVigenciaConflitante()` - Verifica conflitos de vigência entre taxas
+- `calcularValoresTaxa()` - Calcula valores derivados com regras de negócio
+
+**Estrutura de retorno (TaxaClienteCompleta):**
+- Dados da taxa com informações do cliente
+- `valores_remota` - Array de valores remotos calculados automaticamente
+- `valores_local` - Array de valores locais calculados automaticamente (10% a mais)
+- Cada valor inclui: valor_base, valor_17h30_19h30, valor_apos_19h30, valor_fim_semana, valor_adicional, valor_standby
+
+**Fluxo de criação com cálculo automático:**
+1. Recebe dados do formulário com valores remotos
+2. Calcula automaticamente valores locais (10% a mais) usando `calcularValoresLocaisAutomaticos()`
+3. Cria taxa na tabela `taxas_clientes`
+4. Insere valores remotos (fornecidos) e locais (calculados) na tabela `valores_taxas_funcoes`
+5. Se há taxa_reajuste, cria automaticamente segunda taxa com valores reajustados e nova vigência
+
+**Fluxo de atualização com reajuste e cálculo automático:**
+1. Quando há `taxa_reajuste > 0`, busca taxa atual para obter dados base
+2. **Cálculo automático de valores locais**: Se não estiver em modo personalizado e houver valores remotos, calcula automaticamente valores locais (10% a mais dos remotos) usando `calcularValoresLocaisAutomaticos()`
+3. Cria nova taxa com valores reajustados ao invés de atualizar a existente
+4. Insere valores remotos (reajustados) e locais (calculados automaticamente ou fornecidos) na tabela `valores_taxas_funcoes`
+5. Preserva taxa anterior no histórico para auditoria
+
+**Integração:**
+- Utilizado pelos hooks `useTaxas`, `useCriarTaxa`, `useAtualizarTaxa`, `useDeletarTaxa`
+- Integra-se com tabelas `taxas_clientes` e `valores_taxas_funcoes` do Supabase
+- Utilizado pelos componentes `TaxaForm` e página `CadastroTaxasClientes`
+- Utiliza função `calcularValores()` de `@/types/taxasClientes` para cálculos
 
 ### `taxaPadraoService.ts`
 Serviço completo para gerenciamento de taxas padrão, incluindo CRUD, histórico de parametrizações e lógica de reajuste com criação de novas vigências.
@@ -2094,6 +2211,195 @@ const elogio: ElogioCompleto = {
 
 **Melhorias recentes:**
 - **Campo origem adicionado**: Novo campo `origem` ('sql_server' | 'manual') na interface da pesquisa vinculada permite identificar a fonte dos dados, facilitando rastreamento e tratamento diferenciado entre pesquisas sincronizadas do SQL Server e cadastradas manualmente no sistema
+
+---
+
+### `taxasClientes.ts`
+Definições de tipos e funções para o sistema de taxas de clientes, incluindo cálculo automático de valores derivados e gestão de vigências.
+
+**Tipos principais:**
+
+**TipoProduto**
+```typescript
+type TipoProduto = 'GALLERY' | 'OUTROS';
+```
+Tipos de produto suportados:
+- `GALLERY` - Produto Gallery com funções específicas
+- `OUTROS` - Produtos COMEX e FISCAL
+
+**TipoFuncao**
+```typescript
+type TipoFuncao = 'Funcional' | 'Técnico / ABAP' | 'DBA / Basis' | 'Gestor' | 
+                  'Técnico (Instalação / Atualização)' | 'ABAP - PL/SQL' | 'DBA';
+```
+Funções disponíveis por tipo de produto:
+- **GALLERY**: Funcional, Técnico / ABAP, DBA / Basis, Gestor
+- **OUTROS**: Funcional, Técnico (Instalação / Atualização), ABAP - PL/SQL, DBA, Gestor
+
+**TipoCalculoAdicional**
+```typescript
+type TipoCalculoAdicional = 'normal' | 'media';
+```
+Tipos de cálculo para hora adicional:
+- `normal` - Valor base + 15% para todas as funções
+- `media` - Média dos valores base + 15% das funções relacionadas
+
+**Interfaces principais:**
+
+**TaxaCliente**
+Interface base da taxa de cliente:
+- `id` - UUID da taxa
+- `cliente_id` - UUID do cliente
+- `vigencia_inicio` - Data de início da vigência (string)
+- `vigencia_fim` - Data de fim da vigência (opcional)
+- `tipo_produto` - Tipo de produto (GALLERY ou OUTROS)
+- `tipo_calculo_adicional` - Tipo de cálculo para hora adicional
+- `personalizado` - Flag para valores personalizados (opcional)
+- `criado_por` - UUID do usuário criador (opcional)
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**ValorTaxaFuncao**
+Interface para valores de taxa por função:
+- `id` - UUID do valor
+- `taxa_id` - UUID da taxa relacionada
+- `funcao` - Função (TipoFuncao)
+- `tipo_hora` - Tipo de hora ('remota' | 'local')
+- `valor_base` - Valor base (Seg-Sex 08h30-17h30)
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**TaxaClienteCompleta**
+Interface estendida com dados do cliente e valores calculados:
+- Herda todos os campos de `TaxaCliente`
+- `cliente` - Dados do cliente (id, nome_completo, nome_abreviado, produtos)
+- `valores_remota` - Array de valores remotos calculados
+- `valores_local` - Array de valores locais calculados
+
+**ValorTaxaCalculado**
+Interface para valores calculados automaticamente:
+- `funcao` - Função (TipoFuncao)
+- `valor_base` - Valor base (Seg-Sex 08h30-17h30)
+- `valor_17h30_19h30` - Valor calculado (Seg-Sex 17h30-19h30)
+- `valor_apos_19h30` - Valor calculado (Seg-Sex Após 19h30)
+- `valor_fim_semana` - Valor calculado (Sáb/Dom/Feriados)
+- `valor_adicional` - Valor adicional (Excedente do Banco)
+- `valor_standby` - Valor de sobreaviso (Stand By)
+
+**TaxaFormData**
+Interface para dados do formulário de criação/edição:
+- Campos básicos: cliente_id, vigencia_inicio, vigencia_fim, tipo_produto, tipo_calculo_adicional
+- `personalizado` - Flag para permitir edição manual de todos os campos
+- `taxa_reajuste` - Percentual de reajuste (opcional)
+- `valores_remota` - Valores base remotos por função
+- `valores_local` - Valores base locais por função
+- `valores_remota_personalizados` - Valores personalizados remotos (quando personalizado = true)
+- `valores_local_personalizados` - Valores personalizados locais (quando personalizado = true)
+
+**Funções principais:**
+
+**calcularValores()**
+```typescript
+calcularValores(
+  valorBase: number, 
+  funcao: TipoFuncao, 
+  todasFuncoes?: { funcao: TipoFuncao; valor_base: number }[],
+  tipoCalculo: TipoCalculoAdicional = 'media',
+  tipoProduto?: TipoProduto,
+  isLocal: boolean = false // NOVO: indica se é cálculo para valores locais
+): ValorTaxaCalculado
+```
+
+Calcula automaticamente todos os valores derivados baseado no valor base e regras de negócio.
+
+**Parâmetros:**
+- `valorBase` - Valor base da função (Seg-Sex 08h30-17h30)
+- `funcao` - Função para a qual calcular os valores
+- `todasFuncoes` - Array com todas as funções para cálculos de média (opcional)
+- `tipoCalculo` - Tipo de cálculo adicional ('normal' ou 'media')
+- `tipoProduto` - Tipo de produto para regras específicas (opcional)
+- `isLocal` - **CORREÇÃO**: Parâmetro mantido para compatibilidade futura, mas não altera o cálculo pois valores locais já vêm com 10% a mais
+
+**Cálculos realizados:**
+- **Valor base**: Usado diretamente sem ajuste adicional (valores locais já chegam com 10% a mais aplicado anteriormente)
+- **Seg-Sex 17h30-19h30**: Valor base ajustado × 1,75 (multiplicação direta otimizada)
+- **Seg-Sex Após 19h30**: Valor base ajustado × 2,0 (multiplicação direta otimizada)
+- **Sáb/Dom/Feriados**: Valor base ajustado × 2,0 (multiplicação direta otimizada)
+- **Stand By**: Valor base ajustado × 0,30
+- **Hora Adicional**: Cálculo complexo baseado no tipo de cálculo e produto
+
+**Regras de cálculo da Hora Adicional:**
+- **Tipo 'normal'**: Valor base + 15% para todas as funções
+- **Tipo 'media'**: Média dos valores base + 15% das funções relacionadas
+- **GALLERY (Funcional/Técnico)**: Média apenas de Funcional e Técnico + 15%
+- **OUTROS (3 primeiras funções)**: Média de Funcional, Técnico e ABAP + 15%
+
+**getFuncoesPorProduto()**
+```typescript
+getFuncoesPorProduto(tipoProduto: TipoProduto): TipoFuncao[]
+```
+
+Retorna array de funções disponíveis por tipo de produto:
+- **GALLERY**: ['Funcional', 'Técnico / ABAP', 'DBA / Basis', 'Gestor']
+- **OUTROS**: ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL', 'DBA', 'Gestor']
+
+**calcularValoresLocaisAutomaticos()**
+```typescript
+calcularValoresLocaisAutomaticos(valoresRemotos): valoresLocais
+```
+
+Calcula automaticamente valores locais baseados nos remotos aplicando 10% a mais em cada função.
+
+**Melhorias recentes:**
+- **Tratamento robusto de valores nulos**: Implementada proteção contra valores `null` ou `undefined` usando operador `||` com fallback para 0
+- **Logging detalhado**: Adicionados console logs para debug:
+  - 🔄 Log dos valores remotos recebidos como entrada
+  - 🔄 Log do resultado calculado antes de retornar
+- **Consistência de dados**: Campo `abap` agora retorna 0 ao invés de `undefined` quando não fornecido, garantindo melhor compatibilidade com cálculos
+- **Robustez aprimorada**: Função agora é mais resiliente a dados incompletos ou malformados
+
+**Uso típico:**
+```typescript
+import { calcularValores, TipoProduto, TipoFuncao } from '@/types/taxasClientes';
+
+// Calcular valores remotos
+const valoresRemotos = calcularValores(
+  150, // valor base
+  'Funcional', // função
+  todasFuncoes, // array com todas as funções
+  'media', // tipo de cálculo
+  'GALLERY', // tipo de produto
+  false // valores remotos
+);
+
+// Calcular valores locais (10% a mais)
+const valoresLocais = calcularValores(
+  150, // valor base
+  'Funcional', // função
+  todasFuncoes, // array com todas as funções
+  'media', // tipo de cálculo
+  'GALLERY', // tipo de produto
+  true // valores locais (aplica 10% a mais)
+);
+```
+
+**Melhorias recentes:**
+- **Correção final de aplicação dupla de 10%**: Removida aplicação de 10% a mais na lógica de cálculo de média das três primeiras funções (Funcional, Técnico (Instalação / Atualização), ABAP - PL/SQL) para produtos OUTROS, completando a correção da aplicação dupla de 10% nos valores locais
+- **Parâmetro isLocal mantido**: Preservado parâmetro `isLocal` para compatibilidade futura, mas sem alterar o cálculo atual
+- **Comentário explicativo atualizado**: Comentário corrigido para "CORREÇÃO: Não aplicar 10% aqui pois os valores locais já vêm com 10% a mais"
+- **Otimização de cálculos**: Refatorados cálculos de valores derivados para usar multiplicação direta ao invés de soma com percentual:
+  - `valor_17h30_19h30 = valorBaseAjustado * 1.75` (antes: `valorBaseAjustado + (valorBaseAjustado * 0.75)`)
+  - `valor_apos_19h30 = valorBaseAjustado * 2.0` (antes: `valorBaseAjustado + (valorBaseAjustado * 1.0)`)
+  - `valor_fim_semana = valorBaseAjustado * 2.0` (antes: `valorBaseAjustado + (valorBaseAjustado * 1.0)`)
+- **Melhor clareza**: Comentários explicativos adicionados para cada cálculo (ex: "Seg-Sex 17h30-19h30: valor base × 1,75")
+- **Performance aprimorada**: Eliminada operação de soma desnecessária, usando multiplicação direta mais eficiente
+- **Compatibilidade mantida**: Parâmetro opcional com valor padrão `false` mantém compatibilidade com código existente
+
+**Integração:**
+- Utilizado pelos serviços `taxasClientesService.ts` e `taxaPadraoService.ts`
+- Integra-se com componentes `TaxaForm.tsx` e `TipoCobrancaBloco.tsx`
+- Usado para preenchimento automático de valores em formulários de requerimentos
+- Suporta tanto modo automático quanto personalizado de valores
 
 ---
 
@@ -2610,7 +2916,7 @@ Componentes relacionados ao gerenciamento de requerimentos.
 #### `TipoCobrancaBloco.tsx`
 Componente de bloco reutilizável para gerenciamento de tipos de cobrança em requerimentos, permitindo múltiplos tipos de cobrança em um único requerimento com busca automática de taxas e preenchimento de valores.
 
-**Última atualização**: Implementada limpeza automática de campos de valores/hora quando tipo de hora extra não está selecionado, garantindo que campos fiquem vazios até que o usuário selecione o tipo específico de hora extra, melhorando consistência de dados e UX.
+**Última atualização**: Corrigida indentação do código de preenchimento automático de valores/hora para melhor legibilidade e manutenibilidade do código, mantendo a funcionalidade de controle de edição manual vs. preenchimento automático intacta.
 
 **Funcionalidades principais:**
 - **Bloco de tipo de cobrança**: Seção individual representando um tipo de cobrança específico
@@ -2763,6 +3069,13 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
   - **Logging detalhado de estado**: Console logs mostrando valores atuais, valores na ref e estado da taxa para facilitar debug
   - **Reset de ref**: Limpa valores anteriores quando não há dados suficientes para preencher
   - **Prevenção de loops**: Só preenche valores quando realmente necessário, comparando com valores anteriores armazenados na ref
+  - **Otimização de dependências**: Removido `valoresEditadosManualmente` das dependências do useEffect de preenchimento para evitar loops infinitos desnecessários
+- **Controle de edição manual**: Sistema que detecta quando usuário edita valores manualmente e preserva essas alterações:
+  - **Estado `valoresEditadosManualmente`**: Rastreia se campos funcional e técnico foram editados pelo usuário (para indicadores visuais)
+  - **Ref `valoresEditadosManualmenteRef`**: Referência mutável que controla o preenchimento automático sem causar re-renderizações
+  - **Função `handleValorEditadoManualmente()`**: Marca campo como editado manualmente quando usuário altera valor (atualiza tanto estado quanto ref)
+  - **Preservação de valores personalizados**: Preenchimento automático verifica `valoresEditadosManualmenteRef.current` antes de preencher
+  - **Reset automático**: Flags de edição manual são resetadas apenas quando contexto principal muda (cliente, linguagem, tipo de cobrança) - removido `tipo_hora_extra` das dependências para evitar reset desnecessário
 - **Limpeza automática para Hora Extra**: Quando tipo de cobrança é "Hora Extra" mas tipo de hora extra não está selecionado:
   - Limpa automaticamente os campos `valor_hora_funcional` e `valor_hora_tecnico` (define como undefined)
   - Reseta `valoresAnterioresRef` para permitir novo preenchimento quando tipo for selecionado
@@ -2803,6 +3116,24 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
 ```
 
 **Melhorias recentes:**
+- **Sistema de controle de edição manual otimizado**: Refinado sistema para detectar e preservar valores editados manualmente pelo usuário:
+  - **Estado `valoresEditadosManualmente`**: Objeto com flags `{ funcional: boolean; tecnico: boolean }` que rastreia se cada campo foi editado pelo usuário (usado para indicadores visuais)
+  - **Ref `valoresEditadosManualmenteRef`**: Referência mutável `{ funcional: boolean; tecnico: boolean }` que controla o preenchimento automático sem causar re-renderizações
+  - **Função `handleValorEditadoManualmente(campo)` aprimorada**: Callback que marca campo específico como editado manualmente quando usuário altera valor:
+    - **Logging detalhado e estruturado**: Console logs organizados com emojis destacados (🔥🔥🔥) e informações completas:
+      - Campo sendo editado
+      - ID do bloco para rastreamento
+      - Estado anterior da ref (antes da alteração)
+      - Estado novo da ref (após alteração)
+      - Estado visual atualizado para indicadores
+    - **Atualização dupla**: Atualiza tanto ref (controle de preenchimento) quanto estado (indicadores visuais)
+    - **Debug facilitado**: Logging estruturado permite rastrear facilmente quando e como valores são marcados como editados manualmente
+  - **Integração nos inputs**: Ambos os campos de valor/hora (funcional e técnico) agora chamam `handleValorEditadoManualmente()` no onChange
+  - **Preservação inteligente**: Preenchimento automático verifica `valoresEditadosManualmenteRef.current` antes de preencher, não sobrescrevendo valores personalizados
+  - **Reset contextual**: Flags são resetadas automaticamente apenas quando cliente, linguagem ou tipo de cobrança principal mudam (novo contexto = permite novo preenchimento automático) - removido `tipo_hora_extra` para evitar reset desnecessário
+  - **Logging aprimorado**: Console logs indicam quando valores são mantidos por terem sido editados manualmente
+  - **UX melhorada**: Usuário pode personalizar valores sem medo de serem sobrescritos pelo sistema
+  - **Performance otimizada**: Uso de ref para controle de preenchimento evita loops infinitos e re-renderizações desnecessárias
 - **Limpeza aprimorada de campos para Hora Extra com logging otimizado**: Refinada validação e logging que limpa automaticamente os campos de valores/hora quando tipo de cobrança é "Hora Extra" mas o tipo específico de hora extra não foi selecionado:
   - Verifica se `tipo_hora_extra` está vazio antes de preencher valores
   - **Limpeza para zero**: Campos `valor_hora_funcional` e `valor_hora_tecnico` agora são zerados (0) ao invés de undefined
@@ -2823,11 +3154,17 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
   - **Debug facilitado**: Logging estruturado permite rastrear facilmente o fluxo de limpeza e identificar quando campos já estão no estado correto
 - **Sistema de controle de preenchimento automático implementado**: Adicionado `useRef` para rastrear valores anteriores e evitar loops infinitos:
   - `valoresAnterioresRef` armazena últimos valores de funcional e técnico preenchidos
+  - **setTimeout implementado**: Usa `setTimeout` no useEffect para garantir que edições manuais sejam processadas antes do preenchimento automático
+  - **Controle de timing aprimorado**: Evita conflitos entre atualizações de estado (`valoresEditadosManualmente`) e ref (`valoresEditadosManualmenteRef`)
   - Logging detalhado mostrando valores atuais do bloco, valores na ref e estado da taxa
   - Reset automático da ref quando não há dados suficientes para preencher valores
   - Previne re-preenchimentos desnecessários comparando valores atuais com valores anteriores
   - Melhora estabilidade do componente eliminando loops infinitos de atualização
   - Facilita debug com logs estruturados mostrando estado completo do controle de preenchimento
+- **Correção de indentação no código de preenchimento**: Corrigida indentação do bloco de preenchimento automático de valores/hora para melhor legibilidade:
+  - Código de preenchimento de `valor_hora_funcional` e `valor_hora_tecnico` agora com indentação consistente
+  - Melhora manutenibilidade e legibilidade do código sem alterar funcionalidade
+  - Facilita leitura e debug do fluxo de preenchimento automático
 - **Logging granular de valores base**: Adicionados console logs específicos para valores base no tipo de cobrança "Faturado":
   - 📊 Log do valor base funcional (`valorFuncaoFuncional.valor_base`)
   - 📊 Log do valor base técnico (`valorFuncaoTecnico.valor_base`)
@@ -2884,6 +3221,26 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
 - **Agrupamento lógico**: Campos condicionais agrupados na seção "Informações de Cobrança" para melhor organização
 - **Separação visual clara**: Seção de Valores/Hora com borda superior (border-t) para delimitar visualmente do restante do formulário
 - **Melhor usabilidade**: Fluxo de preenchimento mais intuitivo (horas → tipo de cobrança → valores) seguindo ordem lógica de trabalho
+- **Otimização do reset de flags de edição manual**: Refinado useEffect que controla quando as flags de edição manual são resetadas:
+  - Removido `bloco.tipo_hora_extra` das dependências do useEffect para evitar reset desnecessário
+  - Agora só reseta flags quando cliente, linguagem ou tipo de cobrança principal mudam
+  - Evita reset desnecessário quando usuário apenas seleciona tipo de hora extra
+  - Melhora UX ao preservar valores editados manualmente durante seleção de tipo de hora extra
+  - Permite que usuário personalize valores e depois selecione tipo de hora extra sem perder alterações
+  - **Comentário atualizado**: "Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar"
+- **Otimização de dependências do useEffect de preenchimento**: Removido `valoresEditadosManualmente` das dependências do useEffect de preenchimento automático para evitar loops infinitos:
+  - Estado `valoresEditadosManualmente` não precisa disparar novo preenchimento automático
+  - Preenchimento é controlado pelos dados principais (taxa, linguagem, tipo de cobrança)
+  - Flags de edição manual são verificadas dentro do useEffect sem precisar ser dependência
+  - Melhora estabilidade do componente eliminando re-execuções desnecessárias
+  - **Comentário explicativo**: "Removido valoresEditadosManualmente das dependências" para documentar a otimização
+- **Otimização final de dependências implementada**: Aplicada otimização definitiva no useEffect de preenchimento automático:
+  - Removido `valoresEditadosManualmente` do array de dependências do useEffect principal
+  - Comentário explicativo adicionado na linha do useEffect para documentar a mudança
+  - Elimina loops infinitos causados por mudanças no estado de edição manual
+  - Preenchimento automático agora é disparado apenas por mudanças nos dados essenciais (taxa, linguagem, tipo de cobrança, tipo de hora extra)
+  - Flags de edição manual são consultadas dentro do useEffect sem causar re-execuções
+  - **Resultado**: Componente mais estável e performático, sem re-renderizações desnecessárias
 
 **Notas:**
 - Componente em desenvolvimento (implementação parcial)
@@ -3119,7 +3476,7 @@ import {
 #### `RequerimentoForm.tsx`
 Formulário completo para cadastro e edição de requerimentos, com validação via Zod, cálculo automático de valores e integração com taxas de clientes.
 
-**Última atualização**: Adicionados console logs de debug para rastreamento de renderizações e estados iniciais do componente, facilitando troubleshooting de problemas com inicialização do formulário e carregamento de dados.
+**Última atualização**: Adicionado indicador visual (✏️) no label do campo "Valor/Hora Funcional" que aparece quando o valor foi editado manualmente pelo usuário, complementando o sistema de controle de edição manual já existente e melhorando feedback visual sobre o estado do preenchimento automático vs. manual.
 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de requerimentos com todos os campos necessários
@@ -3150,7 +3507,19 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
   - Campos de valores: horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico
   - Campos condicionais: tipoHoraExtra, horasAnaliseEF
   - Campos obrigatórios: chamado, descricao, dataEnvio, modulo, linguagem, quantidadeTickets
-- `useState` - Gerenciamento de estados locais (taxaVigente, carregandoTaxa)
+- `useState` - Gerenciamento de estados locais (taxaVigente, carregandoTaxa, valoresEditadosManualmente)
+- `useRef` - Referências mutáveis para controle de preenchimento automático sem re-renderizações
+
+**Estados gerenciados:**
+- `taxaVigente: TaxaClienteCompleta | null` - Taxa vigente do cliente selecionado, carregada automaticamente
+- `carregandoTaxa: boolean` - Estado de loading durante busca de taxa vigente
+- `valoresEditadosManualmente: { funcional: boolean; tecnico: boolean }` - Estado para indicadores visuais de edição manual
+- `valoresEditadosManualmenteRef: { funcional: boolean; tecnico: boolean }` - Referência mutável que controla preenchimento automático sem causar re-renderizações
+
+**Referências (useRef):**
+- `valoresEditadosManualmenteRef` - Controla se valores foram editados manualmente sem causar re-renderizações
+- Permite rastreamento de estado de edição manual sem disparar useEffects desnecessários
+- Evita loops infinitos no sistema de preenchimento automático de valores/hora
 
 **useEffects implementados:**
 
@@ -3171,6 +3540,7 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 
 **2. useEffect de preenchimento automático de valores:**
 - Dispara quando `taxaVigente`, `linguagem`, `tipoCobranca` ou `tipoHoraExtra` mudam
+- **setTimeout para controle de timing**: Usa `setTimeout` para garantir que edições manuais sejam processadas antes do preenchimento automático, evitando conflitos de timing entre estado e ref
 - **Logging detalhado com separadores visuais**: Console logs para debug do preenchimento:
   - 🔄 Separador visual (80 caracteres '=') marcando INÍCIO DO PREENCHIMENTO AUTOMÁTICO
   - 📊 Estado atual dos dados necessários (taxaVigente, linguagem, tipoCobranca, tipoHoraExtra)
@@ -3288,7 +3658,7 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 
 **Seção: Valores/Hora**
 - Título: "Valores/Hora" (h4 text-sm font-semibold mb-3 com ícone DollarSign h-4 w-4, tag de fechamento corrigida de `</h3>` para `</h4>`)
-- `valor_hora_funcional` - Valor/hora funcional (preenchido automaticamente)
+- `valor_hora_funcional` - Valor/hora funcional (preenchido automaticamente) com indicador visual (✏️) quando editado manualmente
 - `valor_hora_tecnico` - Valor/hora técnico (preenchido automaticamente)
 
 **Seção: Datas e Aprovação**
@@ -3367,6 +3737,13 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `RequerimentoFormSchema` - Schema de validação Zod
 
 **Melhorias recentes:**
+- **Indicador visual de edição manual**: Adicionado ícone ✏️ no label do campo "Valor/Hora Funcional" que aparece quando o valor foi editado manualmente pelo usuário:
+  - Ícone exibido condicionalmente baseado no estado `valoresEditadosManualmente.funcional`
+  - Posicionado após o asterisco obrigatório com `ml-1 text-xs text-blue-600`
+  - Tooltip explicativo "Editado manualmente" ao passar o mouse
+  - Melhora transparência sobre origem dos valores (automático vs. manual)
+  - Facilita identificação de campos personalizados pelo usuário
+  - Complementa sistema de controle de edição manual existente
 - **Logs de preenchimento detalhados e rastreáveis**: Aprimorados console logs no processo de preenchimento de valores/hora:
   - Mensagens em MAIÚSCULAS (PREENCHENDO) para destacar ações de preenchimento
   - Confirmação explícita "Valor preenchido com sucesso!" após cada setValue

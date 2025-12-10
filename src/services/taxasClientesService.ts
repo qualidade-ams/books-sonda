@@ -13,7 +13,7 @@ import type {
   TipoFuncao,
   TipoProduto
 } from '@/types/taxasClientes';
-import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
+import { calcularValores, getFuncoesPorProduto, calcularValoresLocaisAutomaticos } from '@/types/taxasClientes';
 
 /**
  * Buscar todas as taxas com filtros
@@ -48,10 +48,35 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
   const taxasCompletas = await Promise.all(
     (data || []).map(async (taxa) => {
       const valores = await buscarValoresTaxa(taxa.id);
+      
+      // Separar valores por tipo
+      const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
+      const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
+      
+      // Preparar arrays para cálculo da média
+      const todasFuncoesRemota = valoresRemota.map(v => ({
+        funcao: v.funcao,
+        valor_base: v.valor_base
+      }));
+      
+      const todasFuncoesLocal = valoresLocal.map(v => ({
+        funcao: v.funcao,
+        valor_base: v.valor_base
+      }));
+      
+      // Calcular valores completos
+      const valoresRemotaCalculados = valoresRemota.map(v => 
+        calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, taxa.tipo_calculo_adicional, taxa.tipo_produto, false)
+      );
+      
+      const valoresLocalCalculados = valoresLocal.map(v => 
+        calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, taxa.tipo_calculo_adicional, taxa.tipo_produto, true)
+      );
+      
       return {
         ...taxa,
-        valores_remota: valores.filter(v => v.tipo_hora === 'remota'),
-        valores_local: valores.filter(v => v.tipo_hora === 'local')
+        valores_remota: valoresRemotaCalculados,
+        valores_local: valoresLocalCalculados
       } as TaxaClienteCompleta;
     })
   );
@@ -94,10 +119,34 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
 
   const valores = await buscarValoresTaxa(data.id);
   
+  // Separar valores por tipo
+  const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
+  const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
+  
+  // Preparar arrays para cálculo da média
+  const todasFuncoesRemota = valoresRemota.map(v => ({
+    funcao: v.funcao,
+    valor_base: v.valor_base
+  }));
+  
+  const todasFuncoesLocal = valoresLocal.map(v => ({
+    funcao: v.funcao,
+    valor_base: v.valor_base
+  }));
+  
+  // Calcular valores completos
+  const valoresRemotaCalculados = valoresRemota.map(v => 
+    calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto, false)
+  );
+  
+  const valoresLocalCalculados = valoresLocal.map(v => 
+    calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto, true)
+  );
+  
   return {
     ...data,
-    valores_remota: valores.filter(v => v.tipo_hora === 'remota'),
-    valores_local: valores.filter(v => v.tipo_hora === 'local')
+    valores_remota: valoresRemotaCalculados,
+    valores_local: valoresLocalCalculados
   } as TaxaClienteCompleta;
 }
 
@@ -241,6 +290,14 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     throw new Error('Erro ao criar taxa de cliente');
   }
 
+  // NOVO: Calcular automaticamente valores locais se não fornecidos (10% a mais dos remotos)
+  let valoresLocaisFinais = dados.valores_local;
+  if (!dados.personalizado) {
+    // Se não for personalizado, calcular automaticamente valores locais
+    valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
+    console.log('🔄 Valores locais calculados automaticamente no serviço:', valoresLocaisFinais);
+  }
+
   // Criar valores para cada função
   const funcoes = getFuncoesPorProduto(dados.tipo_produto);
   const valoresParaInserir: any[] = [];
@@ -252,19 +309,19 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     
     if (funcao === 'Funcional') {
       valorRemota = dados.valores_remota.funcional;
-      valorLocal = dados.valores_local.funcional;
+      valorLocal = valoresLocaisFinais.funcional;
     } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
       valorRemota = dados.valores_remota.tecnico;
-      valorLocal = dados.valores_local.tecnico;
+      valorLocal = valoresLocaisFinais.tecnico;
     } else if (funcao === 'ABAP - PL/SQL') {
       valorRemota = (dados.valores_remota as any).abap || 0;
-      valorLocal = (dados.valores_local as any).abap || 0;
+      valorLocal = (valoresLocaisFinais as any).abap || 0;
     } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
       valorRemota = dados.valores_remota.dba;
-      valorLocal = dados.valores_local.dba;
+      valorLocal = valoresLocaisFinais.dba;
     } else if (funcao === 'Gestor') {
       valorRemota = dados.valores_remota.gestor;
-      valorLocal = dados.valores_local.gestor;
+      valorLocal = valoresLocaisFinais.gestor;
     }
 
     // Valor remota
@@ -319,13 +376,8 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       gestor: dados.valores_remota.gestor + (dados.valores_remota.gestor * percentualReajuste)
     };
 
-    const valoresReajustadosLocal = {
-      funcional: dados.valores_local.funcional + (dados.valores_local.funcional * percentualReajuste),
-      tecnico: dados.valores_local.tecnico + (dados.valores_local.tecnico * percentualReajuste),
-      abap: ((dados.valores_local as any).abap || 0) + (((dados.valores_local as any).abap || 0) * percentualReajuste),
-      dba: dados.valores_local.dba + (dados.valores_local.dba * percentualReajuste),
-      gestor: dados.valores_local.gestor + (dados.valores_local.gestor * percentualReajuste)
-    };
+    // ATUALIZADO: Calcular valores locais automaticamente (10% a mais dos remotos reajustados)
+    const valoresReajustadosLocal = calcularValoresLocaisAutomaticos(valoresReajustadosRemota);
 
     // Criar segunda taxa com valores reajustados
     const { data: taxaReajustada, error: taxaReajustadaError } = await supabase
@@ -451,6 +503,13 @@ export async function atualizarTaxa(
       throw new Error('Erro ao criar nova taxa com reajuste');
     }
 
+    // NOVO: Calcular automaticamente valores locais se não fornecidos (10% a mais dos remotos)
+    let valoresLocaisFinais = dados.valores_local;
+    if (!dados.personalizado && dados.valores_remota) {
+      valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
+      console.log('🔄 Valores locais calculados automaticamente na atualização:', valoresLocaisFinais);
+    }
+
     // Criar valores para a nova taxa
     const funcoes = getFuncoesPorProduto(dados.tipo_produto || taxaAtual.tipo_produto);
     const valoresParaInserir: any[] = [];
@@ -461,19 +520,19 @@ export async function atualizarTaxa(
       
       if (funcao === 'Funcional') {
         valorRemota = dados.valores_remota?.funcional || 0;
-        valorLocal = dados.valores_local?.funcional || 0;
+        valorLocal = valoresLocaisFinais?.funcional || 0;
       } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
         valorRemota = dados.valores_remota?.tecnico || 0;
-        valorLocal = dados.valores_local?.tecnico || 0;
+        valorLocal = valoresLocaisFinais?.tecnico || 0;
       } else if (funcao === 'ABAP - PL/SQL') {
         valorRemota = (dados.valores_remota as any)?.abap || 0;
-        valorLocal = (dados.valores_local as any)?.abap || 0;
+        valorLocal = (valoresLocaisFinais as any)?.abap || 0;
       } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
         valorRemota = dados.valores_remota?.dba || 0;
-        valorLocal = dados.valores_local?.dba || 0;
+        valorLocal = valoresLocaisFinais?.dba || 0;
       } else if (funcao === 'Gestor') {
         valorRemota = dados.valores_remota?.gestor || 0;
-        valorLocal = dados.valores_local?.gestor || 0;
+        valorLocal = valoresLocaisFinais?.gestor || 0;
       }
 
       valoresParaInserir.push({
@@ -580,6 +639,13 @@ export async function atualizarTaxa(
 
   // Atualizar valores se fornecidos
   if (dados.valores_remota || dados.valores_local) {
+    // NOVO: Calcular automaticamente valores locais se não fornecidos (10% a mais dos remotos)
+    let valoresLocaisFinais = dados.valores_local;
+    if (!dados.personalizado && dados.valores_remota) {
+      valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
+      console.log('🔄 Valores locais calculados automaticamente na atualização normal:', valoresLocaisFinais);
+    }
+
     // Deletar valores antigos
     await supabase
       .from('valores_taxas_funcoes')
@@ -596,19 +662,19 @@ export async function atualizarTaxa(
       
       if (funcao === 'Funcional') {
         valorRemota = dados.valores_remota?.funcional || 0;
-        valorLocal = dados.valores_local?.funcional || 0;
+        valorLocal = valoresLocaisFinais?.funcional || 0;
       } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
         valorRemota = dados.valores_remota?.tecnico || 0;
-        valorLocal = dados.valores_local?.tecnico || 0;
+        valorLocal = valoresLocaisFinais?.tecnico || 0;
       } else if (funcao === 'ABAP - PL/SQL') {
         valorRemota = (dados.valores_remota as any)?.abap || 0;
-        valorLocal = (dados.valores_local as any)?.abap || 0;
+        valorLocal = (valoresLocaisFinais as any)?.abap || 0;
       } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
         valorRemota = dados.valores_remota?.dba || 0;
-        valorLocal = dados.valores_local?.dba || 0;
+        valorLocal = valoresLocaisFinais?.dba || 0;
       } else if (funcao === 'Gestor') {
         valorRemota = dados.valores_remota?.gestor || 0;
-        valorLocal = dados.valores_local?.gestor || 0;
+        valorLocal = valoresLocaisFinais?.gestor || 0;
       }
 
       valoresParaInserir.push({
@@ -725,12 +791,12 @@ export async function buscarTaxaVigente(
   
   // Calcular valores completos para remota
   const valoresRemotaCalculados = valoresRemota.map(v => 
-    calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto)
+    calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto, false)
   );
   
-  // Calcular valores completos para local
+  // Calcular valores completos para local (com parâmetro isLocal = true)
   const valoresLocalCalculados = valoresLocal.map(v => 
-    calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto)
+    calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto, true)
   );
   
   return {
