@@ -316,6 +316,10 @@ export function RequerimentoForm({
         return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
       }
       
+      if (ling === 'Gestor') {
+        return 'Gestor';
+      }
+      
       return null;
     };
 
@@ -518,30 +522,148 @@ export function RequerimentoForm({
     }
   }, [tipoHoraExtra]); // Só dispara quando tipoHoraExtra mudar
 
-  // CORREÇÃO: Marcar valores como editados manualmente quando carregar requerimento existente
+  // CORREÇÃO: Marcar valores como editados manualmente APENAS se forem diferentes da taxa vigente
   useEffect(() => {
-    if (requerimento && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
-      console.log('🔒 PRESERVANDO VALORES SALVOS - Marcando como editados manualmente');
+    if (requerimento && taxaVigente && linguagem && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
+      console.log('� ANALISVANDO VALORES SALVOS vs TAXA VIGENTE');
       console.log('💰 Valores do requerimento:', {
         valor_hora_funcional: requerimento.valor_hora_funcional,
-        valor_hora_tecnico: requerimento.valor_hora_tecnico
+        valor_hora_tecnico: requerimento.valor_hora_tecnico,
+        tipo_cobranca: requerimento.tipo_cobranca,
+        tipo_hora_extra: requerimento.tipo_hora_extra,
+        atendimento_presencial: requerimento.atendimento_presencial
       });
       
-      // Marcar como editados manualmente para preservar valores salvos
-      valoresEditadosManualmenteRef.current = {
-        funcional: !!requerimento.valor_hora_funcional,
-        tecnico: !!requerimento.valor_hora_tecnico
+      // Calcular valores esperados da taxa vigente
+      const tipoProduto = taxaVigente.tipo_produto;
+      const funcaoFuncional: TipoFuncao = 'Funcional';
+      
+      const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
+        if (ling === 'Funcional') {
+          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
+        }
+        if (ling === 'Técnico') {
+          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
+        }
+        if (ling === 'ABAP' || ling === 'PL/SQL') {
+          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'ABAP - PL/SQL';
+        }
+        if (ling === 'DBA') {
+          return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
+        }
+        if (ling === 'Gestor') {
+          return 'Gestor';
+        }
+        return null;
       };
+
+      const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
       
-      // Atualizar estado visual
+      if (funcaoTecnico && ['Faturado', 'Hora Extra', 'Sobreaviso'].includes(requerimento.tipo_cobranca)) {
+        const usarValoresLocais = requerimento.atendimento_presencial || false;
+        const valoresParaUsar = usarValoresLocais ? taxaVigente.valores_local : taxaVigente.valores_remota;
+        
+        const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
+        const valorFuncaoTecnico = valoresParaUsar?.find(v => v.funcao === funcaoTecnico);
+
+        if (valorFuncaoFuncional && valorFuncaoTecnico) {
+          let valorEsperadoFuncional = 0;
+          let valorEsperadoTecnico = 0;
+
+          if (requerimento.tipo_cobranca === 'Faturado') {
+            valorEsperadoFuncional = valorFuncaoFuncional.valor_base;
+            valorEsperadoTecnico = valorFuncaoTecnico.valor_base;
+          } else if (requerimento.tipo_cobranca === 'Hora Extra' && requerimento.tipo_hora_extra) {
+            if (requerimento.tipo_hora_extra === '17h30-19h30') {
+              valorEsperadoFuncional = valorFuncaoFuncional.valor_17h30_19h30;
+              valorEsperadoTecnico = valorFuncaoTecnico.valor_17h30_19h30;
+            } else if (requerimento.tipo_hora_extra === 'apos_19h30') {
+              valorEsperadoFuncional = valorFuncaoFuncional.valor_apos_19h30;
+              valorEsperadoTecnico = valorFuncaoTecnico.valor_apos_19h30;
+            } else if (requerimento.tipo_hora_extra === 'fim_semana') {
+              valorEsperadoFuncional = valorFuncaoFuncional.valor_fim_semana;
+              valorEsperadoTecnico = valorFuncaoTecnico.valor_fim_semana;
+            }
+          } else if (requerimento.tipo_cobranca === 'Sobreaviso') {
+            valorEsperadoFuncional = valorFuncaoFuncional.valor_standby;
+            valorEsperadoTecnico = valorFuncaoTecnico.valor_standby;
+          }
+
+          // Arredondar valores esperados
+          valorEsperadoFuncional = Math.round(valorEsperadoFuncional * 100) / 100;
+          valorEsperadoTecnico = Math.round(valorEsperadoTecnico * 100) / 100;
+
+          // Comparar valores salvos com valores esperados da taxa
+          const valorSalvoFuncional = Math.round((requerimento.valor_hora_funcional || 0) * 100) / 100;
+          const valorSalvoTecnico = Math.round((requerimento.valor_hora_tecnico || 0) * 100) / 100;
+
+          // ANÁLISE APRIMORADA: Tolerância adequada para cálculos de ponto flutuante e validação de valores significativos
+          const tolerancia = 0.01; // Tolerância de 1 centavo para evitar problemas de precisão de ponto flutuante
+          const valorMinimoSignificativo = 1.0; // Valores abaixo de R$ 1,00 são considerados não significativos
+          
+          // Só considera como editado manualmente se:
+          // 1. O valor salvo é significativo (> R$ 1,00)
+          // 2. A diferença é maior que a tolerância
+          // 3. O valor esperado também é significativo (evita comparações com valores zerados)
+          const funcionalEditado = valorSalvoFuncional >= valorMinimoSignificativo && 
+                                   valorEsperadoFuncional >= valorMinimoSignificativo &&
+                                   Math.abs(valorSalvoFuncional - valorEsperadoFuncional) > tolerancia;
+                                   
+          const tecnicoEditado = valorSalvoTecnico >= valorMinimoSignificativo && 
+                                 valorEsperadoTecnico >= valorMinimoSignificativo &&
+                                 Math.abs(valorSalvoTecnico - valorEsperadoTecnico) > tolerancia;
+
+          console.log('� COMPAcRAÇÃO INDIVIDUAL DE VALORES:');
+          console.log('📊 Funcional:');
+          console.log('   - Salvo:', valorSalvoFuncional);
+          console.log('   - Esperado:', valorEsperadoFuncional);
+          console.log('   - Diferença:', Math.abs(valorSalvoFuncional - valorEsperadoFuncional));
+          console.log('   - Editado manualmente:', funcionalEditado);
+          console.log('📊 Técnico:');
+          console.log('   - Salvo:', valorSalvoTecnico);
+          console.log('   - Esperado:', valorEsperadoTecnico);
+          console.log('   - Diferença:', Math.abs(valorSalvoTecnico - valorEsperadoTecnico));
+          console.log('   - Editado manualmente:', tecnicoEditado);
+
+          // Marcar como editados manualmente APENAS os que foram realmente alterados
+          valoresEditadosManualmenteRef.current = {
+            funcional: funcionalEditado,
+            tecnico: tecnicoEditado
+          };
+          
+          // Atualizar estado visual
+          setValoresEditadosManualmente({
+            funcional: funcionalEditado,
+            tecnico: tecnicoEditado
+          });
+          
+          console.log('✅ FLAGS INTELIGENTES DEFINIDAS (ANÁLISE APRIMORADA):', valoresEditadosManualmenteRef.current);
+        }
+      }
+    } else if (requerimento && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
+      // Fallback aprimorado: análise mais criteriosa mesmo sem taxa vigente
+      console.log('⚠️ Sem taxa vigente - usando fallback aprimorado');
+      const valorMinimoSignificativo = 1.0;
+      
+      const funcionalEditado = (requerimento.valor_hora_funcional || 0) >= valorMinimoSignificativo;
+      const tecnicoEditado = (requerimento.valor_hora_tecnico || 0) >= valorMinimoSignificativo;
+      
+      console.log('📊 Fallback - Valores significativos:');
+      console.log('   - Funcional:', requerimento.valor_hora_funcional, '≥', valorMinimoSignificativo, '=', funcionalEditado);
+      console.log('   - Técnico:', requerimento.valor_hora_tecnico, '≥', valorMinimoSignificativo, '=', tecnicoEditado);
+      
+      valoresEditadosManualmenteRef.current = {
+        funcional: funcionalEditado,
+        tecnico: tecnicoEditado
+      };
       setValoresEditadosManualmente({
-        funcional: !!requerimento.valor_hora_funcional,
-        tecnico: !!requerimento.valor_hora_tecnico
+        funcional: funcionalEditado,
+        tecnico: tecnicoEditado
       });
       
-      console.log('✅ Flags definidas:', valoresEditadosManualmenteRef.current);
+      console.log('✅ FLAGS FALLBACK DEFINIDAS (APRIMORADO):', valoresEditadosManualmenteRef.current);
     }
-  }, [requerimento]); // Só executa quando requerimento mudar
+  }, [requerimento, taxaVigente, linguagem]); // Dependências necessárias para comparação
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {
@@ -918,6 +1040,7 @@ export function RequerimentoForm({
                           <SelectItem value="ABAP">ABAP</SelectItem>
                           <SelectItem value="DBA">DBA</SelectItem>
                           <SelectItem value="Funcional">Funcional</SelectItem>
+                          <SelectItem value="Gestor">Gestor</SelectItem>
                           <SelectItem value="PL/SQL">PL/SQL</SelectItem>
                           <SelectItem value="Técnico">Técnico</SelectItem>
                         </SelectContent>

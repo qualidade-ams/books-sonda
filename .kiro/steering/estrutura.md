@@ -3446,13 +3446,21 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
 - **Agrupamento lógico**: Campos condicionais agrupados na seção "Informações de Cobrança" para melhor organização
 - **Separação visual clara**: Seção de Valores/Hora com borda superior (border-t) para delimitar visualmente do restante do formulário
 - **Melhor usabilidade**: Fluxo de preenchimento mais intuitivo (horas → tipo de cobrança → valores) seguindo ordem lógica de trabalho
-- **Otimização do reset de flags de edição manual**: Refinado useEffect que controla quando as flags de edição manual são resetadas:
+- **Reset inteligente de flags aprimorado**: Refinado sistema de reset de flags de edição manual com lógica mais conservadora e logging detalhado:
+  - **Validação de valores significativos**: Agora considera valores > 1 como "significativos" ao invés de > 0, evitando reset quando há valores reais preenchidos
+  - **Logging estruturado e detalhado**: Console logs organizados mostrando:
+    - 🔄 Avaliação da necessidade de reset com dados do contexto (clienteId, linguagem, tipo_cobranca)
+    - Valores atuais dos campos (funcional, tecnico) para análise
+    - Flags atuais de edição manual para comparação
+    - ✅ Confirmação quando reseta flags com justificativa
+    - ⏭️ Explicação quando mantém flags com detalhes dos valores significativos
+  - **Lógica mais conservadora**: Reset só ocorre quando não há valores significativos (> 1) preenchidos
+  - **Preservação inteligente**: Mantém flags quando há valores reais, evitando perda de personalizações do usuário
+  - **Debug facilitado**: Logging estruturado permite rastrear facilmente quando e por que flags são resetadas ou mantidas
+  - **UX aprimorada**: Comportamento mais previsível ao preservar valores editados manualmente mesmo com mudanças menores de contexto
   - Removido `bloco.tipo_hora_extra` das dependências do useEffect para evitar reset desnecessário
-  - Agora só reseta flags quando cliente, linguagem ou tipo de cobrança principal mudam
   - Evita reset desnecessário quando usuário apenas seleciona tipo de hora extra
-  - Melhora UX ao preservar valores editados manualmente durante seleção de tipo de hora extra
   - Permite que usuário personalize valores e depois selecione tipo de hora extra sem perder alterações
-  - **Comentário atualizado**: "Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar"
 - **Otimização de dependências do useEffect de preenchimento**: Removido `valoresEditadosManualmente` das dependências do useEffect de preenchimento automático para evitar loops infinitos:
   - Estado `valoresEditadosManualmente` não precisa disparar novo preenchimento automático
   - Preenchimento é controlado pelos dados principais (taxa, linguagem, tipo de cobrança)
@@ -3848,6 +3856,30 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - **UX aprimorada**: Garante que valores sejam atualizados instantaneamente quando usuário muda tipo de hora extra
 - **Dependências completas**: Array de dependências inclui todas as variáveis necessárias para o cálculo
 
+**5. useEffect de análise inteligente de valores salvos:**
+- Dispara quando `requerimento`, `taxaVigente` ou `linguagem` mudam
+- **Análise comparativa**: Compara valores salvos no requerimento com valores esperados da taxa vigente atual
+- **Cálculo de valores esperados**: Recalcula valores que deveriam estar no requerimento baseado na taxa vigente:
+  - Mapeia linguagem para função correspondente na taxa
+  - Calcula valores esperados baseado no tipo de cobrança e tipo de hora extra
+  - Aplica mesmo arredondamento usado no preenchimento automático (2 casas decimais)
+- **Comparação inteligente com tolerância**: Compara valores salvos com valores esperados da taxa:
+  - **Tolerância de arredondamento**: Usa `Math.abs(valorSalvo - valorEsperado) > 0.01` para evitar problemas de precisão de ponto flutuante
+  - Considera valor como "editado manualmente" apenas se diferença for maior que 0.01 E valor salvo > 0
+  - Análise individual e precisa para cada campo (funcional e técnico)
+- **Flags inteligentes**: Define flags de edição manual apenas para valores realmente personalizados:
+  - `funcionalEditado`: true apenas se valor salvo > 0 E diferença absoluta > 0.01
+  - `tecnicoEditado`: true apenas se valor salvo > 0 E diferença absoluta > 0.01
+- **Logging detalhado e estruturado**: Console logs para debug da análise:
+  - ? Log de início da análise comparativa
+  - 💰 Valores do requerimento (funcional, técnico, tipo_cobranca, tipo_hora_extra, atendimento_presencial)
+  - ? Comparação individual detalhada para cada campo:
+    - 📊 Funcional: Valor salvo, Valor esperado, Diferença absoluta, Flag de edição manual
+    - 📊 Técnico: Valor salvo, Valor esperado, Diferença absoluta, Flag de edição manual
+  - ✅ Flags inteligentes definidas baseadas na comparação
+- **Fallback robusto**: Se não há taxa vigente mas há valores salvos, marca como editado (comportamento anterior)
+- **Resultado**: Permite preenchimento automático quando valores salvos coincidem com taxa vigente (dentro da tolerância), preserva apenas valores realmente personalizados
+
 **Logging de debug implementado:**
 - **Logs de renderização**: Console log no início do componente rastreando cada renderização:
   - 🎨🎨🎨 Log de renderização destacado com emojis triplos e flag indicando se há requerimento para edição
@@ -3957,11 +3989,12 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 **Opções de linguagem:**
 ```typescript
 [
-  { value: 'Funcional', label: 'Funcional' },
-  { value: 'Técnico', label: 'Técnico' },
   { value: 'ABAP', label: 'ABAP' },
   { value: 'DBA', label: 'DBA' },
-  { value: 'Gestor', label: 'Gestor' }
+  { value: 'Funcional', label: 'Funcional' },
+  { value: 'Gestor', label: 'Gestor' },
+  { value: 'PL/SQL', label: 'PL/SQL' },
+  { value: 'Técnico', label: 'Técnico' }
 ]
 ```
 
@@ -3991,6 +4024,46 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `RequerimentoFormSchema` - Schema de validação Zod
 
 **Melhorias recentes:**
+- **Suporte completo à linguagem "Gestor" implementado**: Finalizada implementação completa do suporte à linguagem "Gestor" no mapeamento de funções:
+  - **Mapeamento direto**: Adicionado caso específico `if (ling === 'Gestor') { return 'Gestor'; }` na função `mapearLinguagemParaFuncao()`
+  - **Funcionalidade completa**: Quando linguagem "Gestor" é selecionada, usa diretamente a linha "Gestor" da taxa vigente para preenchimento automático de valores/hora
+  - **Cobertura total**: Todas as linguagens (Funcional, Técnico, ABAP, PL/SQL, DBA, Gestor) agora têm mapeamento explícito e funcional
+  - **Consistência garantida**: Interface do formulário totalmente alinhada com mapeamento de linguagem implementado no backend
+  - **Preenchimento automático**: Valores/hora são preenchidos corretamente para perfil de Gestor baseado na taxa vigente do cliente
+- **Correção de caracteres especiais nos logs**: Corrigidos caracteres especiais inválidos (`�`) para caracteres válidos (`?`) nos console logs de análise de valores salvos:
+  - Log "? ANALISVANDO VALORES SALVOS vs TAXA VIGENTE" corrigido
+  - Log "? COMPAcRAÇÃO INDIVIDUAL DE VALORES:" corrigido
+  - Melhorada legibilidade dos logs de debug durante desenvolvimento
+  - Eliminados problemas de codificação de caracteres nos console logs
+- **Opção "Gestor" adicionada ao Select de linguagem**: Incluída opção "Gestor" no Select de linguagens do formulário, completando a implementação do suporte à linguagem "Gestor":
+  - **Interface completa**: Select agora inclui todas as linguagens suportadas (ABAP, DBA, Funcional, Gestor, PL/SQL, Técnico)
+  - **Ordem alfabética**: Opção "Gestor" posicionada corretamente na ordem alfabética entre "Funcional" e "PL/SQL"
+  - **Funcionalidade completa**: Usuários podem agora selecionar "Gestor" como linguagem e ter valores/hora preenchidos automaticamente
+  - **Consistência**: Interface do formulário alinhada com mapeamento de linguagem implementado no backend
+- **Suporte completo à linguagem "Gestor"**: Implementado mapeamento específico para linguagem "Gestor" → linha "Gestor" na taxa:
+  - **Mapeamento direto**: Quando linguagem selecionada é "Gestor", usa diretamente a linha "Gestor" da taxa vigente
+  - **Cobertura completa**: Todas as linguagens (Funcional, Técnico, ABAP, PL/SQL, DBA, Gestor) agora têm mapeamento explícito
+  - **Consistência**: Garante que valores/hora sejam preenchidos corretamente para perfil de Gestor
+  - **Funcionalidade completa**: Permite criação de requerimentos com linguagem "Gestor" e preenchimento automático de valores
+- **Correção de caracteres nos logs**: Corrigidos caracteres especiais (`�`) para caracteres válidos (`?`) nos console logs de análise de valores salvos, melhorando legibilidade dos logs de debug
+- **Fallback aprimorado para análise de valores**: Refinado sistema de fallback quando não há taxa vigente disponível:
+  - **Critério mais rigoroso**: Agora considera valores ≥ R$ 1,00 como "significativos" ao invés de > R$ 0,00
+  - **Logging detalhado**: Console logs estruturados mostrando análise individual de cada campo:
+    - Valor atual do campo
+    - Valor mínimo significativo (R$ 1,00)
+    - Resultado da comparação (boolean)
+    - Conclusão sobre edição manual
+  - **Melhor precisão**: Evita marcar como "editado manualmente" valores muito baixos que podem ser resíduos de cálculos automáticos
+  - **Debug aprimorado**: Mensagens mais claras indicando "fallback aprimorado" ao invés de "fallback individual"
+  - **Consistência**: Aplica mesmo critério de valor mínimo significativo usado na análise com taxa vigente
+- **Análise inteligente de valores salvos com tolerância de arredondamento**: Implementado sistema avançado que compara valores salvos com taxa vigente para determinar se foram realmente editados manualmente:
+  - **Comparação precisa com tolerância**: Calcula valores esperados baseado na taxa vigente atual e compara com valores salvos usando tolerância de 0.01 para evitar problemas de precisão de ponto flutuante
+  - **Flags inteligentes**: Marca como "editado manualmente" apenas valores que realmente diferem da taxa vigente (diferença > 0.01) e são maiores que 0
+  - **Análise individual**: Cada campo (funcional e técnico) é analisado separadamente com logging detalhado mostrando valor salvo, esperado, diferença absoluta e flag resultante
+  - **Arredondamento consistente**: Aplica mesmo arredondamento (2 casas decimais) usado no preenchimento automático para comparação precisa
+  - **Mapeamento completo**: Recria todo o processo de mapeamento de linguagem para função e cálculo de valores por tipo de cobrança
+  - **Logging estruturado**: Console logs organizados por campo com indentação para melhor legibilidade durante debug
+  - **Resultado**: Permite preenchimento automático quando valores coincidem com taxa vigente (dentro da tolerância), preserva apenas personalizações reais
 - **Preenchimento imediato para mudanças de tipo de hora extra**: Implementado sistema de preenchimento instantâneo quando tipo de hora extra muda:
   - **Execução imediata**: Não espera próximo useEffect, executa cálculo e preenchimento imediatamente quando tipo de hora extra é selecionado
   - **Validação robusta**: Só executa quando todos os dados necessários estão disponíveis (tipoCobranca = "Hora Extra", tipoHoraExtra selecionado, taxaVigente carregada, linguagem definida)

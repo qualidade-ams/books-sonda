@@ -371,20 +371,40 @@ export function TipoCobrancaBloco({
     });
   };
 
-  // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
-  // CORREÇÃO: Não resetar flags ao editar registros existentes - só resetar quando contexto realmente mudar
+  // CORREÇÃO APRIMORADA: Reset inteligente de flags - só resetar quando contexto principal mudar
   useEffect(() => {
-    console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (TipoCobrancaBloco)');
-    // Resetar ref
-    valoresEditadosManualmenteRef.current = {
-      funcional: false,
-      tecnico: false
-    };
-    // Resetar estado para indicadores visuais
-    setValoresEditadosManualmente({
-      funcional: false,
-      tecnico: false
+    console.log('🔄 Avaliando necessidade de reset de flags de edição manual');
+    console.log('   Cliente ID:', clienteId);
+    console.log('   Linguagem:', linguagem);
+    console.log('   Tipo de cobrança:', bloco.tipo_cobranca);
+    console.log('   Valores atuais:', {
+      funcional: bloco.valor_hora_funcional,
+      tecnico: bloco.valor_hora_tecnico
     });
+    console.log('   Flags atuais:', valoresEditadosManualmenteRef.current);
+    
+    // Só resetar se há mudança significativa no contexto E não há valores significativos preenchidos
+    const temValorFuncionalSignificativo = bloco.valor_hora_funcional && bloco.valor_hora_funcional > 1;
+    const temValorTecnicoSignificativo = bloco.valor_hora_tecnico && bloco.valor_hora_tecnico > 1;
+    
+    // Reset mais conservador: só resetar se realmente não há valores ou se são valores muito baixos (provavelmente automáticos)
+    if (!temValorFuncionalSignificativo && !temValorTecnicoSignificativo) {
+      console.log('✅ RESETANDO FLAGS - Contexto mudou e não há valores significativos preenchidos');
+      // Resetar ref
+      valoresEditadosManualmenteRef.current = {
+        funcional: false,
+        tecnico: false
+      };
+      // Resetar estado para indicadores visuais
+      setValoresEditadosManualmente({
+        funcional: false,
+        tecnico: false
+      });
+    } else {
+      console.log('⏭️ MANTENDO FLAGS - Há valores significativos preenchidos, preservando estado de edição manual');
+      console.log('   Valor funcional significativo:', temValorFuncionalSignificativo, '(valor:', bloco.valor_hora_funcional, ')');
+      console.log('   Valor técnico significativo:', temValorTecnicoSignificativo, '(valor:', bloco.valor_hora_tecnico, ')');
+    }
   }, [clienteId, linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
 
   // CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em "Hora Extra"
