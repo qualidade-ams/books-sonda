@@ -2,12 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Arquivo `src/types/requerimentos.ts` - atualizados labels das opções de tipo de cobrança em `TIPO_COBRANCA_OPTIONS` para melhor clareza e agrupamento visual:
-- `'Faturado'` → `'Faturado - Hora Normal'`
-- `'Hora Extra'` → `'Faturado - Hora Extra'`
-- `'Sobreaviso'` → `'Faturado - Sobreaviso'`
-
-Esta alteração melhora a compreensão do usuário ao agrupar visualmente os três tipos de cobrança faturados, mantendo os valores técnicos inalterados para compatibilidade com o banco de dados.
+**Última atualização**: Refinamento visual no componente `src/components/admin/requerimentos/RequerimentoForm.tsx` - removido label "Observação" do campo de observações para interface mais limpa, mantendo apenas o placeholder descritivo.
 
 ---
 
@@ -1694,6 +1689,91 @@ const nomeAmigavel = auditService.obterNomeTabela('taxas_clientes');
 
 ---
 
+### `taxasClientesService.ts`
+Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca de taxas vigentes e cálculo automático de valores derivados.
+
+**Funcionalidades principais:**
+- CRUD completo de taxas de clientes (criar, buscar, atualizar, deletar)
+- Busca de taxa vigente por cliente e data específica
+- Cálculo automático de valores derivados (hora extra, sobreaviso, etc.)
+- Gestão de vigências com controle de períodos (início e fim)
+- Suporte a dois tipos de produto: GALLERY e OUTROS (COMEX, FISCAL)
+- Valores separados para hora remota e hora local
+- Tipo de cálculo adicional configurável (normal ou média)
+- Integração com sistema de autenticação para rastreamento de criador
+
+**Métodos principais:**
+- `criarTaxaCliente(dados: TaxaFormData): Promise<void>` - Cria nova taxa de cliente com validações
+- `buscarTaxasClientes(): Promise<TaxaClienteCompleta[]>` - Busca todas as taxas cadastradas com valores calculados
+- `buscarTaxaClientePorId(id: string): Promise<TaxaClienteCompleta | null>` - Busca taxa específica por ID com valores calculados
+- `buscarTaxaVigente(clienteId: string, data?: Date): Promise<TaxaClienteCompleta | null>` - Busca taxa vigente do cliente em uma data específica
+- `atualizarTaxaCliente(id: string, dados: Partial<TaxaFormData>): Promise<void>` - Atualiza taxa existente
+- `deletarTaxaCliente(id: string): Promise<void>` - Remove taxa do sistema
+
+**Cálculo automático de valores:**
+- Ao buscar uma taxa, o serviço calcula automaticamente todos os valores derivados (hora extra, sobreaviso, etc.)
+- Utiliza função `calcularValores()` de `@/types/taxasClientes` para cálculos
+- Valores calculados incluem:
+  - Seg-Sex 17h30-19h30
+  - Seg-Sex Após 19h30
+  - Sáb/Dom/Feriados
+  - Hora Adicional (Excedente do Banco)
+  - Stand By (apenas para remota)
+- Cálculo separado para valores remotos e locais
+- Suporte a dois tipos de cálculo adicional: normal (baseado no valor base) ou média (média de todas as funções)
+
+**Estrutura de retorno (TaxaClienteCompleta):**
+```typescript
+{
+  id: string;
+  cliente_id: string;
+  tipo_produto: 'GALLERY' | 'OUTROS';
+  vigencia_inicio: Date;
+  vigencia_fim?: Date | null;
+  tipo_calculo_adicional?: 'normal' | 'media';
+  personalizado: boolean;
+  valores_remota: ValorTaxaCalculado[];  // Array com valores calculados
+  valores_local: ValorTaxaCalculado[];   // Array com valores calculados
+  criado_por?: string;
+  criado_em: Date;
+  atualizado_em: Date;
+}
+```
+
+**Estrutura de ValorTaxaCalculado:**
+```typescript
+{
+  funcao: string;                    // Nome da função (Funcional, Técnico, etc.)
+  valor_base: number;                // Valor base (Seg-Sex 08h30-17h30)
+  valor_17h30_19h30: number;         // Calculado
+  valor_apos_19h30: number;          // Calculado
+  valor_fim_semana: number;          // Calculado
+  valor_hora_adicional: number;      // Calculado (apenas remota)
+  valor_standby: number;             // Calculado (apenas remota)
+}
+```
+
+**Fluxo de busca com cálculo:**
+1. Busca dados da taxa na tabela `taxas_clientes`
+2. Busca valores base na tabela `valores_taxas_funcoes`
+3. Separa valores em remota e local
+4. Para cada função, calcula todos os valores derivados usando `calcularValores()`
+5. Retorna taxa completa com arrays de valores calculados
+
+**Integração:**
+- Utilizado pelos hooks `useTaxas`, `useCriarTaxa`, `useAtualizarTaxa`, `useDeletarTaxa`
+- Integra-se com tabelas `taxas_clientes` e `valores_taxas_funcoes` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+- Utilizado pelos componentes `TaxaForm` e página `CadastroTaxasClientes`
+
+**Melhorias recentes:**
+- **Cálculo automático de valores derivados**: Implementado cálculo automático de todos os valores derivados ao buscar uma taxa, eliminando necessidade de cálculos no frontend
+- **Retorno padronizado**: Todas as funções de busca retornam `TaxaClienteCompleta` com valores já calculados
+- **Performance otimizada**: Cálculos realizados uma vez no backend ao invés de múltiplas vezes no frontend
+- **Consistência de dados**: Garante que valores calculados sejam sempre consistentes usando a mesma lógica de cálculo
+
+---
+
 ### `taxaPadraoService.ts`
 Serviço completo para gerenciamento de taxas padrão, incluindo CRUD, histórico de parametrizações e lógica de reajuste com criação de novas vigências.
 
@@ -2527,10 +2607,519 @@ DROP TRIGGER IF EXISTS audit_valores_taxas_funcoes_trigger ON valores_taxas_func
 
 Componentes relacionados ao gerenciamento de requerimentos.
 
+#### `TipoCobrancaBloco.tsx`
+Componente de bloco reutilizável para gerenciamento de tipos de cobrança em requerimentos, permitindo múltiplos tipos de cobrança em um único requerimento com busca automática de taxas e preenchimento de valores.
+
+**Última atualização**: Implementada limpeza automática de campos de valores/hora quando tipo de hora extra não está selecionado, garantindo que campos fiquem vazios até que o usuário selecione o tipo específico de hora extra, melhorando consistência de dados e UX.
+
+**Funcionalidades principais:**
+- **Bloco de tipo de cobrança**: Seção individual representando um tipo de cobrança específico
+- **Organização em seções**: Interface dividida em 3 seções lógicas com títulos descritivos
+- **Campos condicionais**: Exibe campos específicos baseados no tipo de cobrança selecionado
+- **Integração com InputHoras**: Suporte a formato HH:MM para entrada de horas
+- **Remoção de blocos**: Permite remover blocos quando há mais de um tipo de cobrança
+- **Validação de tipos disponíveis**: Filtra tipos de cobrança baseado na empresa selecionada
+- **Visual hierárquico**: Layout com seções bem definidas e espaçamento consistente (space-y-6)
+- **Indicadores visuais coloridos**: Cada tipo de cobrança exibe um círculo colorido no Select para identificação rápida
+- **Período de cobrança por bloco**: Campo de Mês/Ano de Cobrança permite especificar período específico para cada tipo de cobrança
+- **Busca automática de taxas**: Busca taxa vigente do cliente automaticamente quando cliente é selecionado
+- **Preenchimento automático de valores**: Preenche valores/hora baseado na taxa vigente, linguagem e tipo de cobrança
+
+**Interfaces exportadas:**
+
+**TipoCobrancaBlocoData**
+```typescript
+{
+  id: string;                      // Identificador único do bloco
+  tipo_cobranca: string;           // Tipo de cobrança selecionado
+  horas_funcional: string | number; // Horas funcionais (HH:MM ou decimal)
+  horas_tecnico: string | number;   // Horas técnicas (HH:MM ou decimal)
+  valor_hora_funcional?: number;    // Valor/hora funcional (opcional)
+  valor_hora_tecnico?: number;      // Valor/hora técnico (opcional)
+  tipo_hora_extra?: string;         // Tipo de hora extra (condicional)
+  quantidade_tickets?: number;      // Quantidade de tickets (condicional)
+  horas_analise_ef?: string | number; // Horas de análise EF (condicional)
+  mes_cobranca?: string;            // Mês de cobrança no formato MM/YYYY (opcional)
+}
+```
+
+**Props do componente:**
+- `bloco: TipoCobrancaBlocoData` - Dados do bloco de tipo de cobrança
+- `index: number` - Índice do bloco na lista
+- `tiposDisponiveis: typeof TIPO_COBRANCA_OPTIONS` - Tipos de cobrança disponíveis filtrados
+- `onUpdate: (id: string, campo: string, valor: any) => void` - Callback para atualizar campo do bloco
+- `onRemove: (id: string) => void` - Callback para remover bloco
+- `canRemove: boolean` - Flag indicando se o bloco pode ser removido
+- `empresaTipoCobranca?: string` - Tipo de cobrança da empresa selecionada
+- `clienteId?: string` - UUID do cliente selecionado (para busca de taxa vigente)
+- `linguagem?: string` - Linguagem selecionada (para mapeamento de função na taxa)
+
+**Hooks utilizados:**
+- `useEffect` - Busca automática de taxa vigente quando cliente ou tipo de cobrança mudam
+- `useState` - Gerenciamento de estado local (taxaVigente, carregandoTaxa)
+- `useRef` - Referências mutáveis para controle de preenchimento automático e prevenção de loops infinitos:
+  - `valoresAnterioresRef`: Armazena valores anteriores de funcional e técnico para comparação
+  - Permite detectar mudanças reais nos valores e evitar re-preenchimentos desnecessários
+  - Resetado quando não há dados suficientes para preencher valores
+
+**Serviços utilizados:**
+- `buscarTaxaVigente` - Serviço de `taxasClientesService` para buscar taxa vigente do cliente
+- `calcularValores` - Função de `@/types/taxasClientes` para cálculo de valores derivados
+
+**Estados gerenciados:**
+- `taxaVigente: TaxaClienteCompleta | null` - Taxa vigente do cliente selecionado
+- `carregandoTaxa: boolean` - Estado de loading durante busca de taxa
+- `valoresAnterioresRef.current`: Objeto ref com valores anteriores para controle de preenchimento:
+  - `funcional?: number` - Último valor funcional preenchido
+  - `tecnico?: number` - Último valor técnico preenchido
+
+**Estrutura visual em seções:**
+
+**1. Cabeçalho (condicional):**
+- Exibido apenas quando `canRemove = true`
+- Título: "📋 Tipo de Cobrança {index + 1}"
+- Botão de remover alinhado à direita (ghost, size sm, ícone Trash2)
+
+**2. Seção "Controle de Horas":**
+- Título: "📊 Controle de Horas" (h4 text-sm font-semibold mb-3 com ícone Calculator h-4 w-4)
+- Grid responsivo (1 coluna mobile, 3 colunas desktop)
+- Campos:
+  - **Horas Funcional**: InputHoras com formato HH:MM (obrigatório)
+  - **Horas Técnico**: InputHoras com formato HH:MM (obrigatório)
+  - **Total de Horas**: Campo calculado automaticamente (read-only) com texto auxiliar "Calculado automaticamente"
+    - **Cálculo dual**: Mantém dois valores calculados para diferentes propósitos:
+      - `horasTotalDecimal`: Soma em formato decimal (usado para cálculos de valor total)
+      - `horasTotalStr`: Soma em formato HH:MM (usado para exibição ao usuário)
+    - **Conversão inteligente**: Converte valores de entrada para string antes de somar:
+      - `horasFuncionalStr`: Mantém formato string se já for string, converte para string se for número
+      - `horasTecnicoStr`: Mantém formato string se já for string, converte para string se for número
+    - **Soma em HH:MM**: Utiliza função `somarHoras()` de `@/utils/horasUtils` para somar corretamente no formato HH:MM
+    - **Exibição formatada**: Usa `formatarHorasParaExibicao(horasTotalStr, 'completo')` para exibir total formatado
+    - **Suporte a múltiplos formatos**: Aceita entrada em formato HH:MM ou decimal, sempre exibe em HH:MM
+
+**3. Seção "Informações de Cobrança":**
+- Título: "Informações de Cobrança"
+- Grid responsivo (1 coluna mobile, 2 colunas desktop)
+- Campos:
+  - **Tipo de Cobrança**: Select com tipos disponíveis (obrigatório)
+    - Cada opção exibe círculo colorido (h-3 w-3 rounded-full) com cor específica do tipo
+    - Cores obtidas via função `getCorTipoCobranca()` importada de `@/utils/requerimentosColors`
+    - Layout: flex items-center gap-2 (círculo + texto)
+  - **Mês/Ano de Cobrança**: MonthYearPicker para seleção de período (opcional)
+    - Formato: MM/YYYY
+    - Permite datas futuras (allowFuture: true)
+    - Placeholder: "Selecione mês e ano (opcional)"
+  - **Tipo de Hora Extra**: Select condicional (exibido quando tipo_cobranca = "Hora Extra")
+  - **Quantidade de Tickets**: Input numérico condicional (exibido quando empresaTipoCobranca = "Banco de Horas")
+  - **Horas de Análise EF**: InputHoras condicional (exibido quando tipo_cobranca = "Reprovado")
+
+**4. Seção "Valores/Hora" (condicional):**
+- Exibida quando tipo de cobrança requer valores (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+- Grid responsivo (1 coluna mobile, 3 colunas desktop)
+- Borda superior (border-t) para separação visual
+- Campos:
+  - **Valor/Hora Funcional**: Input numérico com formatação monetária
+  - **Valor/Hora Técnico**: Input numérico com formatação monetária
+  - **Valor Total**: Campo calculado automaticamente (read-only)
+
+**Componentes UI utilizados:**
+- `div` - Containers com classes de espaçamento (space-y-6 no container principal, space-y-2 nos campos)
+- `h4` - Títulos de seção com estilo text-sm font-semibold (mb-3 para espaçamento)
+- `Select` - Seleção de tipo de cobrança e tipo de hora extra
+  - SelectItem customizado com indicador visual colorido (círculo + texto)
+- `Input` - Campos numéricos (valores/hora, quantidade de tickets)
+- `InputHoras` - Campos de horas com formato HH:MM
+- `MonthYearPicker` - Seletor de mês/ano para período de cobrança
+- `Button` - Botão de remoção do bloco (variant ghost, size sm)
+- `Label` - Labels dos campos
+- `p` - Texto auxiliar (text-xs text-muted-foreground)
+
+**Ícones utilizados (lucide-react):**
+- `Trash2` - Ícone do botão de remover bloco
+
+**Utilitários importados:**
+- `getCorTipoCobranca` - Função de `@/utils/requerimentosColors` que retorna classe CSS de cor baseada no tipo de cobrança
+- `cn` - Função de `@/lib/utils` para concatenação condicional de classes CSS
+
+**Campos exibidos condicionalmente:**
+- **tipo_hora_extra**: Exibido quando tipo_cobranca = "Hora Extra"
+- **quantidade_tickets**: Exibido quando empresaTipoCobranca = "Banco de Horas"
+- **horas_analise_ef**: Exibido quando tipo_cobranca = "Reprovado"
+- **Seção de Valores/Hora completa**: Exibida quando tipo de cobrança requer valores (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+
+**Integração:**
+- Utilizado em formulários de requerimentos que suportam múltiplos tipos de cobrança
+- Integra-se com constantes `TIPO_COBRANCA_OPTIONS` e `TIPO_HORA_EXTRA_OPTIONS` de `@/types/requerimentos`
+- Utiliza utilitários `formatarHorasParaExibicao` e `converterParaHorasDecimal` de `@/utils/horasUtils`
+- Integra-se com serviço `taxasClientesService` para busca de taxas vigentes
+- Utiliza tipos e funções de `@/types/taxasClientes` para cálculo de valores
+- Exportado via `src/components/admin/requerimentos/index.ts`
+
+**Funcionalidades de busca e preenchimento automático:**
+- **Busca de taxa vigente**: Ao receber `clienteId` via props, busca automaticamente a taxa vigente do cliente
+- **Validação de necessidade**: Só busca taxa quando tipo de cobrança requer valores/hora (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+- **Preenchimento automático inteligente**: Preenche `valor_hora_funcional` e `valor_hora_tecnico` baseado na taxa vigente e linguagem selecionada
+  - **Controle de preenchimento via useRef**: Utiliza `valoresAnterioresRef` para rastrear valores anteriores e evitar loops infinitos
+  - **Logging detalhado de estado**: Console logs mostrando valores atuais, valores na ref e estado da taxa para facilitar debug
+  - **Reset de ref**: Limpa valores anteriores quando não há dados suficientes para preencher
+  - **Prevenção de loops**: Só preenche valores quando realmente necessário, comparando com valores anteriores armazenados na ref
+- **Limpeza automática para Hora Extra**: Quando tipo de cobrança é "Hora Extra" mas tipo de hora extra não está selecionado:
+  - Limpa automaticamente os campos `valor_hora_funcional` e `valor_hora_tecnico` (define como undefined)
+  - Reseta `valoresAnterioresRef` para permitir novo preenchimento quando tipo for selecionado
+  - Logging claro indicando limpeza de campos (⚠️ e 🧹)
+  - Garante que valores só sejam preenchidos quando tipo de hora extra específico for selecionado
+  - Melhora consistência de dados evitando valores incorretos quando tipo não está definido
+- **Mapeamento inteligente de linguagem para função**: Sistema robusto que mapeia linguagem selecionada para linha correspondente na tabela de taxas:
+  - **REGRA FUNDAMENTAL**: 
+    - **Valor/Hora Funcional**: SEMPRE usa linha "Funcional" da taxa
+    - **Valor/Hora Técnico**: Usa linha correspondente à LINGUAGEM selecionada
+  - **Mapeamento por linguagem**:
+    - **Funcional** → Linha "Técnico / ABAP" (GALLERY) ou "Técnico (Instalação / Atualização)" (OUTROS)
+    - **Técnico** → Linha "Técnico / ABAP" (GALLERY) ou "Técnico (Instalação / Atualização)" (OUTROS)
+    - **ABAP ou PL/SQL** → Linha "Técnico / ABAP" (GALLERY) ou "ABAP - PL/SQL" (OUTROS)
+    - **DBA** → Linha "DBA / Basis" (GALLERY) ou "DBA" (OUTROS)
+    - **Gestor** → Linha "Gestor" (ambos os tipos de produto)
+  - **Logging detalhado e estruturado**: Console logs explicativos mostrando funções mapeadas e explicação do mapeamento para facilitar debug:
+    - 🔍 Buscando valores na taxa com lista de valores_remota disponíveis
+    - 📊 Funções disponíveis na taxa (array de nomes de funções)
+    - 🔍 Funções sendo procuradas (funcaoFuncional e funcaoTecnico)
+    - 💰 Valores encontrados para cada função
+    - ✅ Estrutura completa dos valores em formato JSON (indentação de 2 espaços)
+    - ❌ Mensagens de erro detalhadas quando valores não são encontrados, incluindo comparação entre funções procuradas e disponíveis
+- **Cálculo de valores**: Utiliza função `calcularValores` para obter valores derivados baseados no tipo de cobrança
+- **Atualização dinâmica controlada**: Atualiza valores quando tipo de cobrança ou tipo de hora extra mudam, mas com controle via ref para evitar loops infinitos
+
+**Uso típico:**
+```typescript
+<TipoCobrancaBloco
+  bloco={blocoData}
+  index={0}
+  tiposDisponiveis={tiposCobrancaFiltrados}
+  onUpdate={handleUpdateBloco}
+  onRemove={handleRemoveBloco}
+  canRemove={blocos.length > 1}
+  empresaTipoCobranca={empresaSelecionada?.tipo_cobranca}
+/>
+```
+
+**Melhorias recentes:**
+- **Limpeza aprimorada de campos para Hora Extra com logging otimizado**: Refinada validação e logging que limpa automaticamente os campos de valores/hora quando tipo de cobrança é "Hora Extra" mas o tipo específico de hora extra não foi selecionado:
+  - Verifica se `tipo_hora_extra` está vazio antes de preencher valores
+  - **Limpeza para zero**: Campos `valor_hora_funcional` e `valor_hora_tecnico` agora são zerados (0) ao invés de undefined
+  - **Validação inteligente refinada**: Usa operador `&&` para verificar se há valor preenchido (truthy check + diferente de 0)
+  - **Logging detalhado e estruturado**: Console logs organizados em níveis:
+    - ⚠️ Alerta inicial quando tipo de hora extra não está selecionado
+    - Exibição dos valores atuais de Funcional e Técnico (indentados com espaços)
+    - 🧹 Confirmação em MAIÚSCULAS quando inicia limpeza dos campos
+    - Exibição da transformação de valores (ex: "Funcional: 150 → 0")
+    - ✅ Mensagem de confirmação quando campos já estão limpos
+  - **Limpeza sempre em conjunto**: Ambos os campos (funcional e técnico) são sempre limpos juntos para consistência
+  - Reseta `valoresAnterioresRef` para `{ funcional: 0, tecnico: 0 }` permitindo novo preenchimento quando tipo for selecionado
+  - Retorna early do useEffect evitando preenchimento com valores incorretos
+  - Garante que usuário veja campos zerados até selecionar tipo específico (17h30-19h30, Após 19h30, Fim de Semana)
+  - Melhora UX ao fornecer feedback visual claro de que tipo de hora extra é obrigatório
+  - Previne inconsistências de dados ao evitar valores de hora extra sem tipo definido
+  - **Melhor compatibilidade**: Uso de 0 ao invés de undefined evita problemas com cálculos e validações
+  - **Debug facilitado**: Logging estruturado permite rastrear facilmente o fluxo de limpeza e identificar quando campos já estão no estado correto
+- **Sistema de controle de preenchimento automático implementado**: Adicionado `useRef` para rastrear valores anteriores e evitar loops infinitos:
+  - `valoresAnterioresRef` armazena últimos valores de funcional e técnico preenchidos
+  - Logging detalhado mostrando valores atuais do bloco, valores na ref e estado da taxa
+  - Reset automático da ref quando não há dados suficientes para preencher valores
+  - Previne re-preenchimentos desnecessários comparando valores atuais com valores anteriores
+  - Melhora estabilidade do componente eliminando loops infinitos de atualização
+  - Facilita debug com logs estruturados mostrando estado completo do controle de preenchimento
+- **Logging granular de valores base**: Adicionados console logs específicos para valores base no tipo de cobrança "Faturado":
+  - 📊 Log do valor base funcional (`valorFuncaoFuncional.valor_base`)
+  - 📊 Log do valor base técnico (`valorFuncaoTecnico.valor_base`)
+  - Facilita debug de problemas com valores específicos de hora normal
+  - Permite verificar valores exatos antes do arredondamento
+  - Complementa logging existente com informações mais detalhadas
+- **Logging detalhado de busca de valores**: Aprimorados console logs no processo de busca de valores na taxa:
+  - 🔍 Log de início da busca com valores_remota disponíveis
+  - 📊 Lista de funções disponíveis na taxa (array de nomes)
+  - 🔍 Funções sendo procuradas (funcaoFuncional e funcaoTecnico)
+  - 💰 Valores encontrados para cada função
+  - ✅ Estrutura completa dos valores em formato JSON com indentação (2 espaços)
+  - ❌ Mensagens de erro detalhadas quando valores não são encontrados, incluindo comparação entre funções procuradas e disponíveis
+  - Facilita troubleshooting de problemas com mapeamento de funções e valores da taxa
+  - Permite verificar estrutura exata dos dados retornados do banco
+- **Mapeamento de linguagem aprimorado com suporte completo**: Refinado sistema de mapeamento de linguagem para função na taxa:
+  - **Documentação detalhada**: Adicionados comentários explicativos em cada caso do mapeamento para facilitar manutenção
+  - **Suporte à linguagem Gestor**: Implementado mapeamento específico para linguagem "Gestor" → linha "Gestor" na taxa
+  - **Logging aprimorado**: Console log expandido mostrando explicação clara do mapeamento (ex: "Valor/Hora Funcional usa linha 'Funcional', Valor/Hora Técnico usa linha 'Técnico / ABAP'")
+  - **Regra fundamental documentada**: Comentário no código reforçando que Valor/Hora Funcional SEMPRE usa linha "Funcional" e Valor/Hora Técnico usa linha correspondente à linguagem
+  - **Cobertura completa**: Todos os tipos de linguagem (Funcional, Técnico, ABAP, PL/SQL, DBA, Gestor) agora têm mapeamento explícito
+- **Cálculo dual de horas totais implementado**: Refatorado cálculo de horas totais para manter dois valores distintos:
+  - `horasTotalDecimal`: Soma em formato decimal para cálculos de valor total (precisão matemática)
+  - `horasTotalStr`: Soma em formato HH:MM para exibição ao usuário (legibilidade)
+  - Conversão inteligente de valores de entrada para string antes de somar com `somarHoras()`
+  - Garante que soma de horas seja feita corretamente no formato HH:MM, evitando erros de arredondamento
+  - Melhora precisão ao calcular valores monetários usando formato decimal
+  - Melhora legibilidade ao exibir horas no formato HH:MM familiar ao usuário
+- **Atualização dinâmica de valores implementada**: Modificado comportamento do preenchimento automático para sempre atualizar valores quando tipo de cobrança ou tipo de hora extra mudam:
+  - Removida verificação de campos vazios (`!bloco.valor_hora_funcional || bloco.valor_hora_funcional === 0`)
+  - Valores agora são recalculados automaticamente ao trocar tipo de cobrança ou tipo de hora extra
+  - Melhora UX ao permitir que usuário veja valores atualizados imediatamente ao mudar configurações
+  - Comentários atualizados para refletir novo comportamento: "Sempre atualizar valores quando tipo de cobrança ou tipo de hora extra mudar"
+- **Busca automática de taxas implementada**: Adicionados imports de `useEffect`, `useState` e serviços de taxas para implementar funcionalidade completa de busca automática de taxas vigentes
+  - Import de `buscarTaxaVigente` de `@/services/taxasClientesService`
+  - Import de tipos `TaxaClienteCompleta` e `TipoFuncao` de `@/types/taxasClientes`
+  - Import de função `calcularValores` de `@/types/taxasClientes`
+  - Preparação para implementar preenchimento automático de valores/hora baseado na taxa do cliente
+- **Indicadores visuais coloridos no Select**: Adicionados círculos coloridos (h-3 w-3 rounded-full) em cada opção do Select de tipo de cobrança para identificação visual rápida
+  - Cores obtidas via função `getCorTipoCobranca()` de `@/utils/requerimentosColors`
+  - Layout flex com gap-2 entre círculo e texto
+  - Melhora significativa na usabilidade ao permitir identificação rápida por cor
+- **Campo de Mês/Ano de Cobrança adicionado**: Novo campo usando MonthYearPicker para especificar período de cobrança por bloco
+  - Formato MM/YYYY para consistência com outros campos de período
+  - Campo opcional (placeholder: "Selecione mês e ano (opcional)")
+  - Permite datas futuras (allowFuture: true)
+  - Posicionado após o campo de Tipo de Cobrança na seção "Informações de Cobrança"
+- **Reorganização em seções lógicas**: Interface dividida em 3 seções bem definidas (Controle de Horas, Informações de Cobrança, Valores/Hora) com títulos descritivos e emojis visuais
+- **Hierarquia visual aprimorada**: Espaçamento aumentado de space-y-4 para space-y-6 no container principal para melhor separação entre seções
+- **Títulos de seção consistentes**: Todos os títulos com estilo text-sm font-semibold e mb-3 para espaçamento uniforme
+- **Cabeçalho condicional**: Título e botão de remover exibidos apenas quando `canRemove = true`, reduzindo poluição visual quando há apenas um bloco
+- **Seção de horas destacada**: "Controle de Horas" como primeira seção com ícone 📊, enfatizando a entrada principal de dados
+- **Campo de total aprimorado**: Total de horas com texto auxiliar "Calculado automaticamente" para clareza
+- **Agrupamento lógico**: Campos condicionais agrupados na seção "Informações de Cobrança" para melhor organização
+- **Separação visual clara**: Seção de Valores/Hora com borda superior (border-t) para delimitar visualmente do restante do formulário
+- **Melhor usabilidade**: Fluxo de preenchimento mais intuitivo (horas → tipo de cobrança → valores) seguindo ordem lógica de trabalho
+
+**Notas:**
+- Componente em desenvolvimento (implementação parcial)
+- Projetado para suportar cenários onde um requerimento pode ter múltiplos tipos de cobrança
+- Facilita gerenciamento de horas e valores por tipo de cobrança
+
+---
+
+#### `RequerimentoMultiploForm.tsx`
+Formulário avançado para cadastro de requerimentos com suporte a múltiplos tipos de cobrança em um único requerimento, permitindo gerenciamento flexível de horas e valores por tipo.
+
+**Última atualização**: Adicionadas props `clienteId` e `linguagem` ao componente `TipoCobrancaBloco` para habilitar funcionalidade de busca automática de taxas vigentes e preenchimento automático de valores/hora em cada bloco de tipo de cobrança.
+
+**Funcionalidades principais:**
+- **Múltiplos tipos de cobrança**: Suporte a múltiplos blocos de tipos de cobrança em um único requerimento
+- **Gerenciamento de blocos**: Adicionar, remover e atualizar blocos de tipos de cobrança dinamicamente
+- **Limpeza automática de campos**: Remove valores de campos não aplicáveis quando tipo de cobrança muda
+- **Validação de blocos**: Garante pelo menos um bloco de tipo de cobrança presente
+- **Filtragem inteligente**: Filtra tipos de cobrança disponíveis baseado no tipo de cobrança da empresa
+- **Integração com TipoCobrancaBloco**: Utiliza componente reutilizável para renderizar cada bloco
+
+**Estados gerenciados:**
+- `chamado`: Número do chamado
+- `clienteId`: UUID do cliente selecionado
+- `modulo`: Módulo do sistema
+- `descricao`: Descrição do requerimento
+- `linguagem`: Linguagem selecionada (Funcional, Técnico, ABAP, DBA, Gestor)
+- `mesCobranca`: Mês de cobrança (MM/YYYY)
+- `observacao`: Observações gerais
+- `blocos`: Array de blocos de tipos de cobrança (`TipoCobrancaBlocoData[]`)
+
+**Estrutura de bloco inicial:**
+```typescript
+{
+  id: crypto.randomUUID(),
+  tipo_cobranca: 'Banco de Horas',
+  horas_funcional: 0,
+  horas_tecnico: 0
+}
+```
+
+**Hooks utilizados:**
+- `useState` - Gerenciamento de estado local (campos do formulário e blocos)
+- `useMemo` - Otimização de performance para cliente selecionado e filtragem de opções
+
+**Computed values (useMemo):**
+
+**clienteSelecionado:**
+- Busca dados completos do cliente selecionado na lista de clientes
+- Retorna `null` se não houver cliente selecionado ou lista vazia
+- Usado para acessar propriedades do cliente (ex: `tipo_cobranca`)
+
+**tipoCobrancaOptionsFiltradas:**
+- Filtra opções de tipo de cobrança baseado no tipo de cobrança da empresa
+- Se empresa tem tipo "outros", remove opção "Banco de Horas"
+- Mantém todas as opções para empresas com tipo "Banco de Horas"
+- Retorna `TIPO_COBRANCA_OPTIONS` completo se não houver cliente selecionado
+
+**Funções principais:**
+
+**handleAdicionarBloco():**
+- Cria novo bloco de tipo de cobrança com ID único (crypto.randomUUID())
+- Bloco inicial com tipo "Banco de Horas" e horas zeradas
+- Adiciona bloco ao array de blocos existentes
+
+**handleRemoverBloco(id: string):**
+- Remove bloco específico pelo ID
+- Valida se há pelo menos um bloco antes de remover
+- Exibe toast de erro se tentar remover o último bloco
+- Filtra array de blocos removendo o bloco com ID correspondente
+
+**handleAtualizarBloco(id: string, campo: string, valor: any):**
+- Atualiza campo específico de um bloco pelo ID
+- Implementa lógica de limpeza automática quando campo é `tipo_cobranca`:
+  - **Limpeza de valores/hora**: Remove `valor_hora_funcional` e `valor_hora_tecnico` quando tipo NÃO requer valores (tipos válidos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+  - **Limpeza de tipo_hora_extra**: Remove quando tipo NÃO é "Hora Extra"
+  - **Limpeza de quantidade_tickets**: Remove quando tipo NÃO é "Banco de Horas"
+  - **Limpeza de horas_analise_ef**: Remove quando tipo NÃO é "Reprovado"
+- Mapeia array de blocos atualizando apenas o bloco correspondente
+
+**Lógica de limpeza de campos condicionais:**
+```typescript
+if (campo === 'tipo_cobranca') {
+  const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+  
+  if (!tiposComValorHora.includes(valor)) {
+    blocoAtualizado.valor_hora_funcional = undefined;
+    blocoAtualizado.valor_hora_tecnico = undefined;
+  }
+  
+  if (valor !== 'Hora Extra') {
+    blocoAtualizado.tipo_hora_extra = undefined;
+  }
+  
+  if (valor !== 'Banco de Horas') {
+    blocoAtualizado.quantidade_tickets = undefined;
+  }
+  
+  if (valor !== 'Reprovado') {
+    blocoAtualizado.horas_analise_ef = undefined;
+  }
+}
+```
+
+**Tipos utilizados:**
+- `TipoCobrancaBlocoData` - Interface do bloco de tipo de cobrança (importada de `TipoCobrancaBloco.tsx`)
+- `TIPO_COBRANCA_OPTIONS` - Constante com opções de tipos de cobrança (importada de `@/types/requerimentos`)
+
+**Integração:**
+- Utiliza componente `TipoCobrancaBloco` para renderizar cada bloco
+- Passa `clienteId` e `linguagem` para cada bloco permitindo busca automática de taxas
+- Integra-se com constantes de tipos de cobrança de `@/types/requerimentos`
+- Utiliza sistema de notificações via toast (sonner)
+- Exportado via `src/components/admin/requerimentos/index.ts`
+
+**Validações:**
+- Pelo menos um bloco de tipo de cobrança obrigatório
+- Validação de campos condicionais por tipo de cobrança
+- Limpeza automática de campos não aplicáveis
+
+**Estrutura visual:**
+- **Card principal**: Envolve todo o formulário com CardHeader e CardContent
+  - **CardHeader refinado**: Padding reduzido (pb-3) para visual mais compacto
+  - **Título compacto**: text-base (reduzido do padrão) com ícone e badge de tipo de cobrança
+  - **CardContent otimizado**: Padding superior removido (pt-0) e espaçamento interno aumentado (space-y-6)
+  - **Visual minimalista**: Menos espaço desperdiçado, mais foco no conteúdo do formulário
+- **Seção Chamado e Cliente**: Grid responsivo (1 coluna mobile, 2 colunas desktop) com gap-4
+  - Comentário de seção simplificado: `{/* Chamado e Cliente */}`
+  - Comentários inline de campos removidos para código mais limpo
+- **Separador superior**: Separator com margem vertical (my-6) antes da seção de tipos de cobrança
+- **Container de blocos**: div com space-y-6 para espaçamento consistente entre elementos
+- **Título da seção**: h3 com "Tipos de Cobrança" em text-lg font-semibold
+- **Separadores entre blocos**: Separator com margem vertical (my-4) entre cada bloco (exceto antes do primeiro)
+- **Botão de adicionar**: Botão outline com borda tracejada (border-dashed border-2) em largura total
+- **Hierarquia clara**: Estrutura aninhada corretamente dentro do Card para melhor organização visual
+- **Totalizador Geral**: Card com estilo refinado e minimalista exibindo resumo dos blocos:
+  - **Estilo do Card**: Sem fundo colorido (removido bg-blue-50 border-blue-200), usando estilo padrão
+  - **CardHeader**: Padding reduzido (pb-3) com título em text-base e ícone Calculator (h-4 w-4)
+  - **CardContent**: Sem padding superior (pt-0) para melhor compactação
+  - **Grid responsivo**: 3 colunas (1 em mobile, 3 em desktop) com gap-4
+  - **Campos exibidos**:
+    - **Total de Horas**: Label em text-xs text-muted-foreground, valor em text-lg font-semibold
+    - **Total de Valores**: Label em text-xs text-muted-foreground, valor em text-lg font-semibold text-green-600
+    - **Requerimentos a Criar**: Label em text-xs text-muted-foreground, valor em text-lg font-semibold
+  - **Tipografia refinada**: Tamanhos reduzidos (text-xs para labels, text-lg para valores) para visual mais compacto e profissional
+  - **Cores sutis**: Removidas cores azuis fortes, usando text-muted-foreground para labels e mantendo apenas verde para valores monetários
+
+**Melhorias recentes:**
+- **Integração com busca automática de taxas**: Adicionadas props `clienteId` e `linguagem` ao componente `TipoCobrancaBloco` para habilitar:
+  - Busca automática de taxa vigente do cliente selecionado em cada bloco
+  - Preenchimento automático de valores/hora baseado na taxa, linguagem e tipo de cobrança
+  - Sincronização de dados entre formulário pai e blocos filhos
+  - Permite que cada bloco tenha acesso aos dados necessários para buscar e preencher valores automaticamente
+- **Refinamento visual do Totalizador Geral**: Aplicado estilo minimalista e compacto ao card de totalizador:
+  - Removido fundo colorido (bg-blue-50 border-blue-200) para visual mais limpo
+  - Reduzido padding do CardHeader (pb-3) e removido padding superior do CardContent (pt-0)
+  - Diminuído tamanho do ícone Calculator (h-4 w-4) e título (text-base)
+  - Reduzido tamanho das labels (text-xs text-muted-foreground) e valores (text-lg font-semibold)
+  - Mantida cor verde apenas para valores monetários (text-green-600)
+  - Visual mais profissional e menos chamativo, focando na informação essencial
+- **Correção estrutural crítica**: Removidos fechamentos duplicados de `</CardContent>` e `</Card>` que estavam causando erro de estrutura HTML
+  - Seção de Tipos de Cobrança agora está corretamente dentro do CardContent
+  - Hierarquia de elementos corrigida para estrutura HTML válida
+  - Fechamento do Card ocorre apenas no final do formulário
+- **Refinamento visual do Card principal**: 
+  - Título simplificado de "Informações Básicas (Compartilhadas)" para "Informações Básicas"
+  - Espaçamento do CardContent aumentado de space-y-4 para space-y-6 para melhor respiração visual
+  - Comentários de seção otimizados: mantido apenas `{/* Chamado e Cliente */}` no nível de seção
+  - Removidos comentários inline redundantes de campos individuais para código mais limpo
+- **Organização visual aprimorada**: Seção de tipos de cobrança agora está dentro do Card principal com CardContent, mantendo consistência visual com outras seções do formulário
+- **Separadores entre blocos**: Adicionados Separators com margem vertical (my-4) entre cada bloco de tipo de cobrança para melhor delimitação visual
+- **Espaçamento otimizado**: Container de blocos usa space-y-6 para espaçamento consistente entre título, blocos e botão de adicionar
+- **Separador superior destacado**: Separator antes da seção com margem vertical maior (my-6) para separação clara das seções anteriores
+- **Sistema de blocos implementado**: Estrutura completa para gerenciar múltiplos tipos de cobrança em um único requerimento
+- **Limpeza automática de campos**: Implementada lógica robusta que remove valores de campos não aplicáveis quando tipo de cobrança muda
+- **Filtragem inteligente**: Opções de tipo de cobrança filtradas baseado no tipo de cobrança da empresa selecionada
+- **Validação de blocos**: Garante que sempre haja pelo menos um bloco presente com feedback via toast
+
+**Uso típico:**
+```typescript
+// Renderizar blocos de tipos de cobrança
+{blocos.map((bloco, index) => (
+  <TipoCobrancaBloco
+    key={bloco.id}
+    bloco={bloco}
+    index={index}
+    tiposDisponiveis={tipoCobrancaOptionsFiltradas}
+    onUpdate={handleAtualizarBloco}
+    onRemove={handleRemoverBloco}
+    canRemove={blocos.length > 1}
+    empresaTipoCobranca={clienteSelecionado?.tipo_cobranca}
+    clienteId={clienteId}
+    linguagem={linguagem}
+  />
+))}
+```
+
+**Notas:**
+- Componente em desenvolvimento ativo
+- Projetado para cenários complexos onde um requerimento pode ter múltiplos tipos de cobrança
+- Facilita gerenciamento granular de horas e valores por tipo de cobrança
+- Lógica de limpeza automática garante consistência de dados
+
+---
+
+#### `index.ts`
+Arquivo de exportação centralizada dos componentes do diretório de requerimentos, facilitando importações em outras partes do projeto.
+
+**Exportações:**
+- `RequerimentoForm` - Formulário completo para cadastro e edição de requerimentos individuais
+- `RequerimentoMultiploForm` - Formulário avançado com suporte a múltiplos tipos de cobrança
+- `TipoCobrancaBloco` - Componente de bloco reutilizável para gerenciamento de tipos de cobrança
+- `RequerimentoCard` - Card de exibição de requerimento individual
+- `RequerimentosTable` - Tabela de listagem de requerimentos
+- `RequerimentosTableFaturamento` - Tabela especializada para faturamento
+- `RequerimentosExportButtons` - Botões de exportação (Excel/PDF)
+
+**Uso típico:**
+```typescript
+import { 
+  RequerimentoForm, 
+  RequerimentoMultiploForm,
+  TipoCobrancaBloco,
+  RequerimentosTable 
+} from '@/components/admin/requerimentos';
+```
+
+**Melhorias recentes:**
+- **Adicionadas novas exportações**: Incluídos `RequerimentoMultiploForm` e `TipoCobrancaBloco` para suportar funcionalidade de múltiplos tipos de cobrança em um único requerimento
+
+---
+
 #### `RequerimentoForm.tsx`
 Formulário completo para cadastro e edição de requerimentos, com validação via Zod, cálculo automático de valores e integração com taxas de clientes.
 
-**Última atualização**: Corrigida inicialização do campo `tipo_hora_extra` para converter valores `null` em `undefined`, garantindo compatibilidade com o tipo TypeScript e evitando warnings de componente não controlado.
+**Última atualização**: Adicionados console logs de debug para rastreamento de renderizações e estados iniciais do componente, facilitando troubleshooting de problemas com inicialização do formulário e carregamento de dados.
 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de requerimentos com todos os campos necessários
@@ -2543,6 +3132,7 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - **Conversão de horas**: Suporte a formato HH:MM e decimal para horas
 - **Campos condicionais**: Exibe campos específicos baseados no tipo de cobrança (ex: tipo_hora_extra para Hora Extra)
 - **Seleção de datas**: Calendários interativos para datas de envio e aprovação
+- **Debug logging**: Console logs detalhados para rastreamento de renderizações e estados
 
 **Props do componente:**
 - `requerimento?: Requerimento | null` - Requerimento existente para edição (opcional)
@@ -2552,8 +3142,15 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 
 **Hooks utilizados:**
 - `useForm` (React Hook Form) - Gerenciamento do estado do formulário com validação Zod
-- `useEmpresas()` - Busca lista de empresas para o select
-- `useWatch` - Observa mudanças em campos específicos (cliente_id, linguagem, tipoCobranca)
+- `useClientesRequerimentos()` - Busca lista de clientes para o select
+- `useResponsive()` - Hooks de responsividade para adaptação mobile/desktop
+- `useAccessibility()` - Hooks de acessibilidade (screenReader, focusManagement)
+- `useWatch` (form.watch) - Observa mudanças em campos específicos do formulário:
+  - Campos principais: cliente_id, linguagem, tipoCobranca
+  - Campos de valores: horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico
+  - Campos condicionais: tipoHoraExtra, horasAnaliseEF
+  - Campos obrigatórios: chamado, descricao, dataEnvio, modulo, linguagem, quantidadeTickets
+- `useState` - Gerenciamento de estados locais (taxaVigente, carregandoTaxa)
 
 **useEffects implementados:**
 
@@ -2561,7 +3158,8 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - Dispara quando `clienteId` ou `tipoCobranca` mudam
 - **Validação inteligente**: Só busca taxa se o tipo de cobrança requer valores/hora (Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
 - **Logging detalhado**: Console logs para debug da lógica de busca:
-  - 🔍 Verificação de necessidade de buscar taxa (clienteId, tipoCobranca, precisaTaxa)
+  - 🚀 Log de execução do useEffect (indica que o hook foi disparado)
+  - 🔍 Verificação de necessidade de buscar taxa (clienteId, tipoCobranca, precisaTaxa, tiposComValorHora)
   - ❌ Quando não precisa buscar taxa (limpa estado)
   - ✅ Quando inicia busca de taxa vigente
   - ✅ Taxa encontrada com sucesso
@@ -2571,7 +3169,46 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - Limpa taxa e estado de carregamento quando tipo de cobrança não requer valores
 - Usado para preenchimento automático de valores/hora
 
-**2. useEffect de limpeza de campos condicionais:**
+**2. useEffect de preenchimento automático de valores:**
+- Dispara quando `taxaVigente`, `linguagem`, `tipoCobranca` ou `tipoHoraExtra` mudam
+- **Logging detalhado com separadores visuais**: Console logs para debug do preenchimento:
+  - 🔄 Separador visual (80 caracteres '=') marcando INÍCIO DO PREENCHIMENTO AUTOMÁTICO
+  - 📊 Estado atual dos dados necessários (taxaVigente, linguagem, tipoCobranca, tipoHoraExtra)
+  - ❌ Quando faltam dados para preencher valores
+  - ❌ Quando tipo de cobrança não requer preenchimento automático
+  - ✅ Quando inicia preenchimento automático
+  - 📋 Taxa vigente completa
+  - 📦 Tipo de produto da taxa
+  - 🎯 Funções mapeadas (funcaoFuncional, funcaoTecnico, linguagem)
+  - 🔍 Buscando valores na taxa
+  - 📊 valores_remota disponíveis
+  - 💰 Valores encontrados (valorFuncaoFuncional, valorFuncaoTecnico)
+  - 📊 Tipo de valor sendo usado (Hora Normal, Hora Extra, Sobreaviso)
+  - 💵 Valores calculados (tipoCobranca, tipoHoraExtra, valorHoraFuncional, valorHoraTecnico)
+  - 📝 Valores atuais no formulário
+  - ✅ Preenchendo valores ou ⏭️ Valores já preenchidos
+  - **Separadores visuais**: Linhas de 80 caracteres '=' delimitam claramente o início do processo de preenchimento no console, facilitando identificação rápida durante debug
+- Preenche automaticamente `valor_hora_funcional` e `valor_hora_tecnico` baseado na taxa vigente
+- **Mapeamento inteligente de linguagem para função**:
+  - **Valor/Hora Funcional**: SEMPRE usa linha "Funcional" da taxa
+  - **Valor/Hora Técnico**: Usa linha correspondente à linguagem selecionada:
+    - Linguagem "Funcional" → Linha "Técnico" (ou "Técnico / ABAP" para GALLERY, "Técnico (Instalação / Atualização)" para OUTROS)
+    - Linguagem "Técnico" → Linha "Técnico / ABAP" (GALLERY) ou "Técnico (Instalação / Atualização)" (OUTROS)
+    - Linguagem "ABAP" ou "PL/SQL" → Linha "Técnico / ABAP" (GALLERY) ou "ABAP - PL/SQL" (OUTROS)
+    - Linguagem "DBA" → Linha "DBA / Basis" (GALLERY) ou "DBA" (OUTROS)
+- **Mapeamento inteligente por tipo de cobrança**:
+  - **Faturado (Hora Normal)**: Usa valor base (Seg-Sex 08h30-17h30)
+  - **Hora Extra**: Usa valor específico baseado no tipo selecionado:
+    - `17h30-19h30`: Seg-Sex 17h30-19h30
+    - `apos_19h30`: Seg-Sex Após 19h30
+    - `fim_semana`: Sáb/Dom/Feriados
+    - Se tipo não selecionado: Não preenche valores (retorna early)
+  - **Sobreaviso**: Usa valor de Stand By
+- **Preenchimento condicional**: Só preenche valores se campos estiverem vazios ou zerados (não sobrescreve valores já preenchidos)
+- Se não houver taxa cadastrada, campos ficam em branco para preenchimento manual
+- Usa valores remotos por padrão (valores_remota)
+
+**3. useEffect de limpeza de campos condicionais:**
 - Dispara quando `tipoCobranca` muda
 - **Limpeza de valores/hora**: Zera `valor_hora_funcional` e `valor_hora_tecnico` para 0 quando tipo de cobrança NÃO requer valores (tipos válidos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
   - Verifica se valores estão preenchidos antes de zerar (evita operações desnecessárias)
@@ -2584,21 +3221,41 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
   - Usa `shouldValidate: true` e `shouldDirty: true` para marcar formulário como modificado
 - **Objetivo**: Evitar dados inconsistentes no banco e melhorar UX ao trocar tipo de cobrança, garantindo que usuário seja notificado das mudanças
 
-**3. useEffect de filtragem de opções de tipo de cobrança:**
+**4. useEffect de filtragem de opções de tipo de cobrança:**
 - Dispara quando `empresaSelecionada` muda
 - Filtra opções de tipo de cobrança baseado no tipo de cobrança da empresa
 - Se empresa tem tipo "Outros", remove opção "Bolsão Enel" das opções disponíveis
 - Mantém todas as opções para empresas com tipo "Banco de Horas"
 - Atualiza estado `tipoCobrancaOptionsFiltradas` com opções filtradas
 
-**4. useEffect de preenchimento automático de valores:**
-- Dispara quando `taxaVigente`, `linguagem` ou `tipoCobranca` mudam
-- Preenche automaticamente `valor_hora_funcional` e `valor_hora_tecnico` baseado na taxa vigente
-- Considera linguagem selecionada (Funcional, Técnico, ABAP, DBA, Gestor)
-- Considera tipo de cobrança (Faturado, Hora Extra, Sobreaviso)
-- Usa valores remotos ou locais conforme configuração da taxa
-
 **Logging de debug implementado:**
+- **Logs de renderização**: Console log no início do componente rastreando cada renderização:
+  - 🎨🎨🎨 Log de renderização destacado com emojis triplos e flag indicando se há requerimento para edição
+  - Útil para identificar re-renderizações desnecessárias e facilitar localização visual no console
+- **Logs de estados iniciais**: Console log após declaração de estados:
+  - 📊 Estados iniciais do componente (taxaVigente, carregandoTaxa, totalClientes)
+  - Facilita debug de problemas com inicialização do formulário
+  - Permite verificar se dados estão sendo carregados corretamente
+- **Logs de watch values**: Console log após declaração dos watches:
+  - 👀 Valores observados em tempo real (clienteId, tipoCobranca, linguagem, horasFuncional, horasTecnico, valorHoraFuncional, valorHoraTecnico)
+  - Facilita debug de mudanças de estado e reatividade do formulário
+  - Permite rastrear valores que disparam useEffects
+- **Logs detalhados de busca de valores na taxa**: Console logs no useEffect de preenchimento automático:
+  - 📊 valores_remota disponíveis na taxa
+  - 📊 Estrutura completa da taxa em formato JSON (indentação de 2 espaços)
+  - 💰 Detalhes completos do valor funcional encontrado em formato JSON
+  - 💰 Detalhes completos do valor técnico encontrado em formato JSON
+  - Facilita debug de problemas com mapeamento de funções e valores
+  - Permite verificar estrutura exata dos dados retornados do banco
+- **Logs de preenchimento de valores aprimorados**: Console logs detalhados ao preencher valores/hora:
+  - ✅ PREENCHENDO valor_hora_funcional: [valor] - indica início do preenchimento
+  - ✅ Valor preenchido com sucesso! - confirma que setValue foi executado
+  - ⏭️ Valor funcional já preenchido: [valor] - mostra valor existente quando pula preenchimento
+  - ✅ PREENCHENDO valor_hora_tecnico: [valor] - indica início do preenchimento
+  - ✅ Valor preenchido com sucesso! - confirma que setValue foi executado
+  - ⏭️ Valor técnico já preenchido: [valor] - mostra valor existente quando pula preenchimento
+  - 🏁 FIM DO PREENCHIMENTO AUTOMÁTICO - separador visual marcando conclusão do processo
+  - Facilita rastreamento preciso do fluxo de preenchimento e identificação de problemas
 - Logs detalhados no `handleSubmit` para troubleshooting:
   - ✅ Dados completos recebidos do formulário (emoji de sucesso)
   - 📋 Tipo de cobrança selecionado
@@ -2610,7 +3267,9 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - **Logs otimizados**: Removidos logs redundantes (tipo de horas_analise_ef, mostrarCampoTickets)
 - **Emojis visuais**: Facilita identificação rápida de cada tipo de informação no console
 - **Logs de validação formatados**: Erros de validação e valores do formulário exibidos em formato JSON com indentação (2 espaços) para melhor legibilidade no console
-- Facilita identificação de problemas com valores/hora e campos condicionais
+- **Logs JSON estruturados**: Estruturas complexas (taxa completa, valores de funções) exibidas em formato JSON com indentação para melhor visualização e debug
+- **Separadores visuais de início e fim**: Linhas de 80 caracteres '=' delimitam claramente o início e fim do processo de preenchimento automático no console
+- Facilita identificação de problemas com valores/hora, campos condicionais, inicialização do componente e mapeamento de valores da taxa
 
 **Campos do formulário:**
 
@@ -2621,12 +3280,16 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `descricao` (obrigatório) - Descrição do requerimento
 - `linguagem` (obrigatório) - Select com linguagens (Funcional, Técnico, ABAP, DBA, Gestor)
 
-**Seção: Valores e Horas**
-- `valor_hora_funcional` - Valor/hora funcional (preenchido automaticamente)
-- `valor_hora_tecnico` - Valor/hora técnico (preenchido automaticamente)
+**Seção: Controle de Horas**
+- Título: "Controle de Horas" (h4 text-sm font-semibold mb-3 com ícone Calculator h-4 w-4)
 - `horas_funcional` (obrigatório) - Horas funcionais (formato HH:MM ou decimal)
 - `horas_tecnico` (obrigatório) - Horas técnicas (formato HH:MM ou decimal)
 - `valor_total` - Valor total calculado automaticamente
+
+**Seção: Valores/Hora**
+- Título: "Valores/Hora" (h4 text-sm font-semibold mb-3 com ícone DollarSign h-4 w-4, tag de fechamento corrigida de `</h3>` para `</h4>`)
+- `valor_hora_funcional` - Valor/hora funcional (preenchido automaticamente)
+- `valor_hora_tecnico` - Valor/hora técnico (preenchido automaticamente)
 
 **Seção: Datas e Aprovação**
 - `data_envio` - Data de envio do requerimento
@@ -2640,7 +3303,7 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 
 **Seção: Informações Adicionais**
 - `tickets` - Tickets relacionados
-- `observacao` - Observações gerais
+- `observacao` - Observações gerais (campo sem label visível, apenas placeholder)
 
 **Componentes UI utilizados:**
 - `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
@@ -2704,6 +3367,60 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `RequerimentoFormSchema` - Schema de validação Zod
 
 **Melhorias recentes:**
+- **Logs de preenchimento detalhados e rastreáveis**: Aprimorados console logs no processo de preenchimento de valores/hora:
+  - Mensagens em MAIÚSCULAS (PREENCHENDO) para destacar ações de preenchimento
+  - Confirmação explícita "Valor preenchido com sucesso!" após cada setValue
+  - Exibição do valor atual quando pula preenchimento (campo já preenchido)
+  - Separador visual de fim (🏁 FIM DO PREENCHIMENTO AUTOMÁTICO) para delimitar conclusão do processo
+  - Facilita rastreamento preciso do fluxo de preenchimento e identificação de problemas com setValue
+- **Separadores visuais nos logs de preenchimento**: Adicionadas linhas de 80 caracteres '=' delimitando o início e fim do processo de preenchimento automático no console:
+  - Separador superior com título "INÍCIO DO PREENCHIMENTO AUTOMÁTICO"
+  - Separador inferior com título "FIM DO PREENCHIMENTO AUTOMÁTICO"
+  - Facilita identificação rápida do início e fim do processo durante debug
+  - Melhora legibilidade ao separar visualmente diferentes execuções do useEffect
+  - Permite rastrear facilmente o fluxo de preenchimento em meio a outros logs
+- **Logs JSON estruturados para debug de taxa**: Adicionados console logs detalhados no useEffect de preenchimento automático:
+  - 📊 Estrutura completa da taxa em formato JSON com indentação (2 espaços)
+  - 💰 Detalhes completos do valor funcional encontrado em formato JSON
+  - 💰 Detalhes completos do valor técnico encontrado em formato JSON
+  - Facilita debug de problemas com mapeamento de funções e valores da taxa
+  - Permite verificar estrutura exata dos dados retornados do banco
+  - Melhora troubleshooting de problemas com preenchimento automático de valores/hora
+- **Reorganização de watches**: Movidos watches de campos obrigatórios para antes do console.log de watch values para melhor organização do código e facilitar debug
+- **Logs de debug de renderização e estados**: Adicionados console logs estratégicos para rastreamento:
+  - 🎨 Log de renderização no início do componente indicando se há requerimento para edição
+  - 📊 Log de estados iniciais (taxaVigente, carregandoTaxa, totalClientes) após declaração de estados
+  - 👀 Log de valores observados (watch values) para rastrear mudanças em tempo real
+  - Facilita identificação de problemas com inicialização do formulário e carregamento de dados
+  - Permite rastrear re-renderizações desnecessárias e verificar se dados estão sendo carregados corretamente
+- **Logging aprimorado no preenchimento automático**: Adicionados console logs detalhados no useEffect de preenchimento automático de valores:
+  - 🔄 Estado atual dos dados necessários (taxaVigente, linguagem, tipoCobranca)
+  - ❌ Mensagens claras quando faltam dados ou tipo não requer preenchimento
+  - ✅ Confirmação quando inicia preenchimento automático
+  - 📋 Taxa vigente completa para debug
+  - 📦 Tipo de produto da taxa
+  - Facilita troubleshooting de problemas com preenchimento automático de valores/hora
+- **Correções de tags HTML**: Corrigidas tags de fechamento dos títulos de seção para garantir HTML válido:
+  - Título "Controle de Horas": tag de fechamento corrigida de `</h3>` para `</h4>`
+  - Título "Valores/Hora": tag de fechamento corrigida de `</h3>` para `</h4>`
+  - Garante consistência com as tags de abertura (h4) e HTML válido
+- **Indicadores visuais coloridos no Select de tipo de cobrança**: Adicionados círculos coloridos (h-3 w-3 rounded-full) em cada opção do Select para identificação visual rápida
+  - Cores obtidas via função `getCorTipoCobranca()` de `@/utils/requerimentosColors`
+  - Layout flex com gap-2 entre círculo e texto usando tag `<span>` para o label
+  - Simplificação da aplicação de classes CSS: uso direto do retorno de `getCorTipoCobranca()` sem manipulação de string
+  - Melhora significativa na usabilidade ao permitir identificação rápida por cor
+  - Consistência visual com o componente `TipoCobrancaBloco`
+- **Refinamento visual dos títulos de seção**: Padronizado estilo dos títulos para melhor hierarquia visual:
+  - Títulos de seção agora usam h4 (text-sm font-semibold mb-3) ao invés de h3 (text-lg)
+  - Ícones reduzidos de h-5 w-5 para h-4 w-4 para melhor proporção
+  - Visual mais compacto e consistente com outros componentes do sistema
+  - Melhor hierarquia visual entre título do Card (text-base) e títulos de seção (text-sm)
+- **Refinamento visual do Card**: Aplicado estilo minimalista e compacto ao formulário:
+  - Reduzido padding do CardHeader (pb-3) para visual mais enxuto
+  - Diminuído tamanho do título (text-base) para melhor proporção
+  - Removido padding superior do CardContent (pt-0) para eliminar espaço desnecessário
+  - Aumentado espaçamento interno (space-y-6) para melhor respiração entre seções
+  - Visual mais profissional e focado no conteúdo essencial
 - **Simplificação da inicialização do formulário**: Removido useEffect de reset do formulário que causava comportamento indesejado:
   - Valores iniciais agora são definidos exclusivamente nos `defaultValues` do useForm
   - Eliminado uso de `useRef` e lógica complexa de controle de inicialização
@@ -2753,9 +3470,25 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 **Fluxo de preenchimento automático:**
 1. Usuário seleciona cliente → busca taxa vigente
 2. Usuário seleciona linguagem → identifica função correspondente
-3. Usuário seleciona tipo de cobrança → identifica tipo de valor (remota/local)
-4. Sistema preenche automaticamente valor_hora_funcional e valor_hora_tecnico
-5. Usuário informa horas → sistema calcula valor_total automaticamente
+3. Usuário seleciona tipo de cobrança → identifica tipo de valor
+4. **Para Hora Extra**: Usuário seleciona tipo de hora extra → identifica valor específico
+5. Sistema preenche automaticamente valor_hora_funcional e valor_hora_tecnico
+6. Usuário informa horas → sistema calcula valor_total automaticamente
+
+**Mapeamento de valores por tipo de cobrança:**
+
+| Tipo de Cobrança | Campo da Taxa | Descrição |
+|------------------|---------------|-----------|
+| **Faturado** | `valor_base` | Hora Normal - Seg-Sex 08h30-17h30 |
+| **Hora Extra** (17h30-19h30) | `valor_17h30_19h30` | Seg-Sex 17h30-19h30 |
+| **Hora Extra** (Após 19h30) | `valor_apos_19h30` | Seg-Sex Após 19h30 |
+| **Hora Extra** (Fim de Semana) | `valor_fim_semana` | Sáb/Dom/Feriados |
+| **Sobreaviso** | `valor_standby` | Stand By |
+
+**Comportamento quando não há taxa cadastrada:**
+- Campos de valor/hora ficam em branco
+- Usuário pode preencher manualmente os valores
+- Sistema não bloqueia a criação do requerimento
 
 **Fluxo de limpeza automática (NOVO):**
 1. Usuário seleciona tipo de cobrança

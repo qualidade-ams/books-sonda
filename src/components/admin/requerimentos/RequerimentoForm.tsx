@@ -50,6 +50,8 @@ export function RequerimentoForm({
   onCancel,
   isLoading = false
 }: RequerimentoFormProps) {
+  console.log('🎨🎨🎨 RequerimentoForm RENDERIZADO 🎨🎨🎨', { requerimento: !!requerimento });
+  
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
   const { form: responsiveForm, modal: responsiveModal } = useResponsive();
   const { screenReader, focusManagement } = useAccessibility();
@@ -57,6 +59,12 @@ export function RequerimentoForm({
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
   const [carregandoTaxa, setCarregandoTaxa] = useState(false);
+  
+  console.log('📊 Estados iniciais:', {
+    taxaVigente: !!taxaVigente,
+    carregandoTaxa,
+    totalClientes: clientes.length
+  });
 
   const form = useForm<RequerimentoFormData>({
     resolver: zodResolver(requerimentoFormSchema),
@@ -102,6 +110,15 @@ export function RequerimentoForm({
   const modulo = form.watch('modulo');
   const linguagem = form.watch('linguagem');
   const quantidadeTickets = form.watch('quantidade_tickets');
+  
+  console.log('👀 Watch values:', {
+    clienteId,
+    tipoCobranca,
+    linguagem,
+    tipoHoraExtra,
+    valorHoraFuncional,
+    valorHoraTecnico
+  });
 
   // Buscar dados do cliente selecionado para verificar tipo de cobrança da empresa
   const clienteSelecionado = useMemo(() => {
@@ -149,6 +166,8 @@ export function RequerimentoForm({
 
   // useEffect para buscar taxa vigente quando cliente mudar
   useEffect(() => {
+    console.log('🚀🚀🚀 useEffect de busca de taxa EXECUTADO 🚀🚀🚀');
+    
     // Só buscar taxa se o tipo de cobrança requer valores
     const tiposComValorHora = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
     const precisaTaxa = tipoCobranca && tiposComValorHora.includes(tipoCobranca);
@@ -156,7 +175,8 @@ export function RequerimentoForm({
     console.log('🔍 Verificando necessidade de buscar taxa:', {
       clienteId,
       tipoCobranca,
-      precisaTaxa
+      precisaTaxa,
+      tiposComValorHora
     });
     
     if (!clienteId || !precisaTaxa) {
@@ -166,12 +186,13 @@ export function RequerimentoForm({
       return;
     }
 
-    console.log('✅ Buscando taxa vigente...');
+    console.log('✅ Iniciando busca de taxa vigente para cliente:', clienteId);
     const buscarTaxa = async () => {
       setCarregandoTaxa(true);
       try {
         const taxa = await buscarTaxaVigente(clienteId);
-        console.log('✅ Taxa encontrada:', taxa);
+        console.log('✅ Taxa encontrada com sucesso!');
+        console.log('📋 Taxa completa:', JSON.stringify(taxa, null, 2));
         setTaxaVigente(taxa);
       } catch (error) {
         console.error('❌ Erro ao buscar taxa vigente:', error);
@@ -221,10 +242,31 @@ export function RequerimentoForm({
 
   // useEffect para preencher valores automaticamente baseado na taxa vigente
   useEffect(() => {
-    if (!taxaVigente || !linguagem || !tipoCobranca) return;
-    if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) return;
+    console.log('='.repeat(80));
+    console.log('🔄 INÍCIO DO PREENCHIMENTO AUTOMÁTICO');
+    console.log('='.repeat(80));
+    console.log('📊 Estado atual:', {
+      taxaVigente: !!taxaVigente,
+      linguagem,
+      tipoCobranca,
+      tipoHoraExtra
+    });
+    
+    if (!taxaVigente || !linguagem || !tipoCobranca) {
+      console.log('❌ Faltam dados para preencher valores automaticamente');
+      return;
+    }
+    
+    if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) {
+      console.log('❌ Tipo de cobrança não requer preenchimento automático:', tipoCobranca);
+      return;
+    }
 
+    console.log('✅ Iniciando preenchimento automático de valores');
+    console.log('📋 Taxa vigente completa:', taxaVigente);
+    
     const tipoProduto = taxaVigente.tipo_produto;
+    console.log('📦 Tipo de produto:', tipoProduto);
     
     // Valor/Hora Funcional SEMPRE usa a linha "Funcional"
     const funcaoFuncional: TipoFuncao = 'Funcional';
@@ -253,13 +295,43 @@ export function RequerimentoForm({
     };
 
     const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
-    if (!funcaoTecnico) return;
+    console.log('🎯 Funções mapeadas:', {
+      funcaoFuncional,
+      funcaoTecnico,
+      linguagem
+    });
+    
+    if (!funcaoTecnico) {
+      console.log('❌ Não foi possível mapear linguagem para função');
+      return;
+    }
 
     // Buscar valores das funções na taxa (remota por padrão)
+    console.log('🔍 Buscando valores na taxa...');
+    console.log('📊 valores_remota disponíveis:', taxaVigente.valores_remota);
+    console.log('📊 Estrutura completa da taxa:', JSON.stringify(taxaVigente, null, 2));
+    
     const valorFuncaoFuncional = taxaVigente.valores_remota?.find(v => v.funcao === funcaoFuncional);
     const valorFuncaoTecnico = taxaVigente.valores_remota?.find(v => v.funcao === funcaoTecnico);
 
-    if (!valorFuncaoFuncional || !valorFuncaoTecnico) return;
+    console.log('💰 Valores encontrados:', {
+      valorFuncaoFuncional,
+      valorFuncaoTecnico
+    });
+    
+    console.log('💰 Detalhes do valor funcional:', JSON.stringify(valorFuncaoFuncional, null, 2));
+    console.log('💰 Detalhes do valor técnico:', JSON.stringify(valorFuncaoTecnico, null, 2));
+
+    if (!valorFuncaoFuncional || !valorFuncaoTecnico) {
+      console.log('❌ ERRO: Valores não encontrados na taxa!');
+      console.log('❌ Funções procuradas:', { funcaoFuncional, funcaoTecnico });
+      console.log('❌ Funções disponíveis:', taxaVigente.valores_remota?.map(v => v.funcao));
+      return;
+    }
+    
+    console.log('✅ SUCESSO: Valores encontrados!');
+    console.log('✅ Valor Funcional completo:', valorFuncaoFuncional);
+    console.log('✅ Valor Técnico completo:', valorFuncaoTecnico);
 
     // Preparar array com todas as funções para cálculos
     const todasFuncoes = taxaVigente.valores_remota?.map(v => ({
@@ -276,43 +348,81 @@ export function RequerimentoForm({
     let valorHoraFuncional = 0;
     let valorHoraTecnico = 0;
 
+    // Determinar qual valor usar baseado no tipo de cobrança
     if (tipoCobranca === 'Faturado') {
-      // Usar valor base
+      // Hora Normal - Seg-Sex 08h30-17h30 (valor base)
       valorHoraFuncional = valoresCalculadosFuncional.valor_base;
       valorHoraTecnico = valoresCalculadosTecnico.valor_base;
+      console.log('📊 Usando valores de Hora Normal (Seg-Sex 08h30-17h30)');
     } else if (tipoCobranca === 'Hora Extra') {
-      // Usar valor baseado no tipo de hora extra selecionado
+      // Hora Extra - depende do tipo selecionado
       if (tipoHoraExtra === '17h30-19h30') {
+        // Seg-Sex 17h30-19h30
         valorHoraFuncional = valoresCalculadosFuncional.valor_17h30_19h30;
         valorHoraTecnico = valoresCalculadosTecnico.valor_17h30_19h30;
+        console.log('📊 Usando valores de Hora Extra (Seg-Sex 17h30-19h30)');
       } else if (tipoHoraExtra === 'apos_19h30') {
+        // Seg-Sex Após 19h30
         valorHoraFuncional = valoresCalculadosFuncional.valor_apos_19h30;
         valorHoraTecnico = valoresCalculadosTecnico.valor_apos_19h30;
+        console.log('📊 Usando valores de Hora Extra (Seg-Sex Após 19h30)');
       } else if (tipoHoraExtra === 'fim_semana') {
+        // Sáb/Dom/Feriados
         valorHoraFuncional = valoresCalculadosFuncional.valor_fim_semana;
         valorHoraTecnico = valoresCalculadosTecnico.valor_fim_semana;
+        console.log('📊 Usando valores de Hora Extra (Sáb/Dom/Feriados)');
+      } else {
+        console.log('⚠️ Tipo de hora extra não selecionado, deixando campos em branco');
+        // Não preencher valores se tipo de hora extra não foi selecionado
+        return;
       }
     } else if (tipoCobranca === 'Sobreaviso') {
-      // Usar valor de stand by
+      // Sobreaviso - Stand By
       valorHoraFuncional = valoresCalculadosFuncional.valor_standby;
       valorHoraTecnico = valoresCalculadosTecnico.valor_standby;
+      console.log('📊 Usando valores de Sobreaviso (Stand By)');
     }
 
     // Arredondar para 2 casas decimais
     const valorHoraFuncionalArredondado = Math.round(valorHoraFuncional * 100) / 100;
     const valorHoraTecnicoArredondado = Math.round(valorHoraTecnico * 100) / 100;
 
+    console.log('💵 Valores calculados:', {
+      tipoCobranca,
+      tipoHoraExtra: tipoCobranca === 'Hora Extra' ? tipoHoraExtra : 'N/A',
+      valorHoraFuncional: valorHoraFuncionalArredondado,
+      valorHoraTecnico: valorHoraTecnicoArredondado
+    });
+
     // Preencher os campos com os valores correspondentes apenas se estiverem vazios ou zerados
     const valorAtualFuncional = form.getValues('valor_hora_funcional');
     const valorAtualTecnico = form.getValues('valor_hora_tecnico');
     
+    console.log('📝 Valores atuais no formulário:', {
+      valorAtualFuncional,
+      valorAtualTecnico
+    });
+    
     // Só preencher se os valores estiverem vazios, zerados ou undefined
     if (!valorAtualFuncional || valorAtualFuncional === 0) {
+      console.log('✅ PREENCHENDO valor_hora_funcional:', valorHoraFuncionalArredondado);
       form.setValue('valor_hora_funcional', valorHoraFuncionalArredondado, { shouldValidate: false });
+      console.log('✅ Valor preenchido com sucesso!');
+    } else {
+      console.log('⏭️ Valor funcional já preenchido:', valorAtualFuncional);
     }
+    
     if (!valorAtualTecnico || valorAtualTecnico === 0) {
+      console.log('✅ PREENCHENDO valor_hora_tecnico:', valorHoraTecnicoArredondado);
       form.setValue('valor_hora_tecnico', valorHoraTecnicoArredondado, { shouldValidate: false });
+      console.log('✅ Valor preenchido com sucesso!');
+    } else {
+      console.log('⏭️ Valor técnico já preenchido:', valorAtualTecnico);
     }
+    
+    console.log('='.repeat(80));
+    console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO');
+    console.log('='.repeat(80));
   }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, form]);
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
@@ -451,8 +561,23 @@ export function RequerimentoForm({
   // REMOVIDO: Este useEffect estava causando reset indesejado do formulário
   // Os valores iniciais já são definidos nos defaultValues do useForm
 
-  // Cores para tipos de cobrança
+  // Cores para tipos de cobrança (bolinhas)
   const getCorTipoCobranca = (tipo: string) => {
+    const cores = {
+      'Banco de Horas': 'bg-blue-500',
+      'Cobro Interno': 'bg-green-500',
+      'Contrato': 'bg-gray-500',
+      'Faturado': 'bg-orange-500',
+      'Hora Extra': 'bg-red-500',
+      'Sobreaviso': 'bg-purple-500',
+      'Reprovado': 'bg-slate-500',
+      'Bolsão Enel': 'bg-yellow-500'
+    };
+    return cores[tipo as keyof typeof cores] || 'bg-gray-500';
+  };
+
+  // Cores para badges (fundo claro)
+  const getCorBadgeTipoCobranca = (tipo: string) => {
     const cores = {
       'Banco de Horas': 'bg-blue-100 text-blue-800 border-blue-300',
       'Cobro Interno': 'bg-green-100 text-green-800 border-green-300',
@@ -524,11 +649,11 @@ export function RequerimentoForm({
 
   return (
     <Card className={cn("w-full mx-auto", responsiveModal.maxWidth)}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
           {requerimento ? 'Editar Requerimento' : 'Novo Requerimento'}
           {tipoCobranca && (
-            <Badge className={cn('ml-2', getCorTipoCobranca(tipoCobranca))}>
+            <Badge className={cn('ml-2', getCorBadgeTipoCobranca(tipoCobranca))}>
               {tipoCobranca}
             </Badge>
           )}
@@ -537,7 +662,7 @@ export function RequerimentoForm({
           </OptimizedTooltip>
         </CardTitle>
       </CardHeader>
-      <CardContent className={responsiveModal.padding}>
+      <CardContent className={cn(responsiveModal.padding, "pt-0 space-y-6")}>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(
             handleSubmit,
@@ -550,12 +675,12 @@ export function RequerimentoForm({
           )} className={responsiveForm.spacing}>
             {/* Seção: Informações Básicas */}
             <div className={responsiveForm.spacing}>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 Informações Básicas
                 <OptimizedTooltip content="Dados principais do requerimento">
                   <HelpCircle className="h-4 w-4 text-gray-400" />
                 </OptimizedTooltip>
-              </h3>
+              </h4>
 
               <div className={cn("grid gap-4", responsiveForm.fieldLayout)}>
                 {/* Chamado */}
@@ -715,7 +840,7 @@ export function RequerimentoForm({
 
             {/* Seção: Datas */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Datas</h3>
+              <h4 className="text-sm font-semibold mb-3">Datas</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Data de Envio */}
@@ -769,10 +894,10 @@ export function RequerimentoForm({
 
             {/* Seção: Horas */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Calculator className="h-5 w-5" />
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
                 Controle de Horas
-              </h3>
+              </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Horas Funcionais */}
@@ -840,7 +965,7 @@ export function RequerimentoForm({
 
             {/* Seção: Cobrança */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Informações de Cobrança</h3>
+              <h4 className="text-sm font-semibold mb-3">Informações de Cobrança</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Tipo de Cobrança */}
@@ -862,11 +987,8 @@ export function RequerimentoForm({
                           {tipoCobrancaOptionsFiltradas.map((tipo) => (
                             <SelectItem key={tipo.value} value={tipo.value}>
                               <div className="flex items-center gap-2">
-                                <div className={cn(
-                                  "w-3 h-3 rounded-full",
-                                  getCorTipoCobranca(tipo.value).split(' ')[0].replace('bg-', 'bg-')
-                                )} />
-                                {tipo.label}
+                                <div className={cn("h-3 w-3 rounded-full", getCorTipoCobranca(tipo.value))} />
+                                <span>{tipo.label}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -976,12 +1098,12 @@ export function RequerimentoForm({
               <>
                 <Separator />
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     💰 Valores por Hora
                     <OptimizedTooltip content="Campos obrigatórios para tipos de cobrança com valor monetário">
                       <HelpCircle className="h-4 w-4 text-blue-500" />
                     </OptimizedTooltip>
-                  </h3>
+                  </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Valor Hora Funcional */}
@@ -1077,12 +1199,12 @@ export function RequerimentoForm({
               <>
                 <Separator />
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     🎫 Controle de Tickets
                     <OptimizedTooltip content="Campo automático para empresas do tipo 'ticket' quando selecionado 'Banco de Horas'">
                       <HelpCircle className="h-4 w-4 text-blue-500" />
                     </OptimizedTooltip>
-                  </h3>
+                  </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Quantidade de Tickets (sempre visível quando mostrarCampoTickets for true) */}
@@ -1126,14 +1248,14 @@ export function RequerimentoForm({
 
             {/* Seção: Observações */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Observações</h3>
+              <h4 className="text-sm font-semibold mb-3">Observações</h4>
 
               <FormField
                 control={form.control}
                 name="observacao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observação</FormLabel>
+                    
                     <FormControl>
                       <Textarea
                         placeholder="Observações adicionais (opcional)..."

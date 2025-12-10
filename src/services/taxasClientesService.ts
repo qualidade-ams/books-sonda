@@ -10,7 +10,8 @@ import type {
   TaxaFormData,
   FiltrosTaxa,
   ValorTaxaCalculado,
-  TipoFuncao
+  TipoFuncao,
+  TipoProduto
 } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
 
@@ -707,9 +708,34 @@ export async function buscarTaxaVigente(
 
   const valores = await buscarValoresTaxa(data.id);
   
+  // Calcular valores para remota e local
+  const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
+  const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
+  
+  // Preparar array com todas as funções para cálculo da média
+  const todasFuncoesRemota = valoresRemota.map(v => ({
+    funcao: v.funcao,
+    valor_base: v.valor_base
+  }));
+  
+  const todasFuncoesLocal = valoresLocal.map(v => ({
+    funcao: v.funcao,
+    valor_base: v.valor_base
+  }));
+  
+  // Calcular valores completos para remota
+  const valoresRemotaCalculados = valoresRemota.map(v => 
+    calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto)
+  );
+  
+  // Calcular valores completos para local
+  const valoresLocalCalculados = valoresLocal.map(v => 
+    calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto)
+  );
+  
   return {
     ...data,
-    valores_remota: valores.filter(v => v.tipo_hora === 'remota'),
-    valores_local: valores.filter(v => v.tipo_hora === 'local')
+    valores_remota: valoresRemotaCalculados,
+    valores_local: valoresLocalCalculados
   } as TaxaClienteCompleta;
 }

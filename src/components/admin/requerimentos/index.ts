@@ -1,5 +1,7 @@
 // Exportações centralizadas dos componentes de requerimentos
 export { RequerimentoForm } from './RequerimentoForm';
+export { RequerimentoMultiploForm } from './RequerimentoMultiploForm';
+export { TipoCobrancaBloco } from './TipoCobrancaBloco';
 export { RequerimentoCard } from './RequerimentoCard';
 export { default as RequerimentosTable } from './RequerimentosTable';
 export { default as RequerimentosTableFaturamento } from './RequerimentosTableFaturamento';

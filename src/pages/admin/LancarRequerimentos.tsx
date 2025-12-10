@@ -33,6 +33,7 @@ import {
 
 import {
     RequerimentoForm,
+    RequerimentoMultiploForm,
     RequerimentoCard,
     RequerimentosTable,
     RequerimentosExportButtons,
@@ -392,6 +393,26 @@ const LancarRequerimentos = () => {
         } catch (error) {
             console.error('🏠 PÁGINA - Erro ao criar:', error);
             screenReader.announceError('Erro ao criar requerimento');
+        }
+    }, [createRequerimento, screenReader]);
+
+    // Handler para criar múltiplos requerimentos
+    const handleCreateMultiplo = useCallback(async (requerimentos: RequerimentoFormData[]) => {
+        console.log('🏠 PÁGINA - handleCreateMultiplo recebeu:', requerimentos.length, 'requerimentos');
+        
+        try {
+            // Criar cada requerimento sequencialmente
+            for (const data of requerimentos) {
+                console.log('🏠 PÁGINA - Criando requerimento:', data.tipo_cobranca);
+                await createRequerimento.mutateAsync(data);
+            }
+            
+            setShowCreateModal(false);
+            screenReader.announceSuccess(`${requerimentos.length} requerimento(s) criado(s) com sucesso`);
+        } catch (error) {
+            console.error('🏠 PÁGINA - Erro ao criar requerimentos:', error);
+            screenReader.announceError('Erro ao criar requerimentos');
+            throw error; // Propagar erro para o formulário
         }
     }, [createRequerimento, screenReader]);
 
@@ -1148,12 +1169,12 @@ const LancarRequerimentos = () => {
 
                 {/* Modal de Criação */}
                 <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Novo Requerimento</DialogTitle>
                         </DialogHeader>
-                        <RequerimentoForm
-                            onSubmit={handleCreate}
+                        <RequerimentoMultiploForm
+                            onSubmit={handleCreateMultiplo}
                             onCancel={() => setShowCreateModal(false)}
                             isLoading={createRequerimento.isPending}
                         />
