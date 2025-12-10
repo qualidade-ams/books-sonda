@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Corrigida função `calcularValores()` em `src/types/taxasClientes.ts` - removida aplicação dupla de 10% nos valores locais na lógica de cálculo de média das três primeiras funções (Funcional, Técnico, ABAP). O parâmetro `isLocal` foi mantido para compatibilidade futura, mas não altera mais o cálculo pois os valores locais já chegam com 10% a mais aplicado anteriormente no fluxo.
+**Última atualização**: Removido campo `atendimento_presencial` do componente `TipoCobrancaBloco.tsx` - funcionalidade de seleção entre valores remotos e locais agora é gerenciada exclusivamente no formulário principal de requerimentos (`RequerimentoForm.tsx`).
 
 ---
 
@@ -2403,6 +2403,225 @@ const valoresLocais = calcularValores(
 
 ---
 
+### `requerimentos.ts`
+Definições de tipos e interfaces para o sistema de requerimentos, incluindo formulários, validações e constantes de opções.
+
+**Tipos principais:**
+
+**ModuloType**
+```typescript
+type ModuloType = 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
+```
+Módulos do sistema disponíveis para requerimentos.
+
+**LinguagemType**
+```typescript
+type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
+```
+Linguagens/perfis técnicos disponíveis para requerimentos.
+
+**TipoCobrancaType**
+```typescript
+type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
+```
+Tipos de cobrança disponíveis para requerimentos.
+
+**TipoHoraExtraType**
+```typescript
+type TipoHoraExtraType = '17h30-19h30' | 'apos_19h30' | 'fim_semana';
+```
+Tipos específicos de hora extra (usado quando tipo_cobranca = 'Hora Extra').
+
+**StatusRequerimento**
+```typescript
+type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
+```
+Status possíveis de um requerimento no sistema.
+
+**Interfaces principais:**
+
+**Requerimento**
+Interface completa do requerimento com todos os campos:
+- `id` - UUID do requerimento
+- `chamado` - Número do chamado
+- `cliente_id` - UUID do cliente
+- `cliente_nome` - Nome do cliente (join com empresas_clientes)
+- `modulo` - Módulo do sistema
+- `descricao` - Descrição do requerimento
+- `data_envio` - Data de envio
+- `data_aprovacao` - Data de aprovação (opcional)
+- `horas_funcional` - Horas funcionais (suporta formato HH:MM)
+- `horas_tecnico` - Horas técnicas (suporta formato HH:MM)
+- `horas_total` - Total de horas
+- `linguagem` - Linguagem/perfil técnico
+- `tipo_cobranca` - Tipo de cobrança
+- `mes_cobranca` - Mês de cobrança (formato MM/YYYY)
+- `observacao` - Observações (opcional)
+- `valor_hora_funcional` - Valor/hora funcional (opcional)
+- `valor_hora_tecnico` - Valor/hora técnico (opcional)
+- `valor_total_funcional` - Valor total funcional (opcional)
+- `valor_total_tecnico` - Valor total técnico (opcional)
+- `valor_total_geral` - Valor total geral (opcional)
+- `tipo_hora_extra` - Tipo de hora extra (opcional, para tipo_cobranca = 'Hora Extra')
+- `quantidade_tickets` - Quantidade de tickets (opcional, para Banco de Horas)
+- `atendimento_presencial` - **NOVO**: Flag para atendimento presencial (usa valores locais ao invés de remotos)
+- `anexos` - Anexos do requerimento (opcional)
+- `autor_id` - UUID do autor (opcional)
+- `autor_nome` - Nome do autor (opcional)
+- `status` - Status do requerimento
+- `enviado_faturamento` - Flag de envio para faturamento
+- `data_envio_faturamento` - Data de envio para faturamento (opcional)
+- `data_faturamento` - Data de faturamento (opcional)
+- `created_at` - Data/hora de criação
+- `updated_at` - Data/hora da última atualização
+
+**RequerimentoFormData**
+Interface para dados do formulário de criação/edição:
+- Campos básicos: chamado, cliente_id, modulo, descricao, data_envio, data_aprovacao
+- `horas_funcional` - Horas funcionais (suporta formato HH:MM)
+- `horas_tecnico` - Horas técnicas (suporta formato HH:MM)
+- `linguagem` - Linguagem/perfil técnico
+- `tipo_cobranca` - Tipo de cobrança
+- `mes_cobranca` - Mês de cobrança (formato MM/YYYY)
+- `observacao` - Observações (opcional)
+- `valor_hora_funcional` - Valor/hora funcional (condicional)
+- `valor_hora_tecnico` - Valor/hora técnico (condicional)
+- `tipo_hora_extra` - Tipo de hora extra (opcional, para tipo Hora Extra)
+- `quantidade_tickets` - Quantidade de tickets (opcional, para Banco de Horas)
+- `horas_analise_ef` - Horas de análise EF (opcional, para tipo Reprovado, suporta formato HH:MM)
+- `atendimento_presencial` - **NOVO**: Flag para atendimento presencial (usa valores locais ao invés de remotos)
+- `autor_id` - UUID do autor (preenchido automaticamente)
+- `autor_nome` - Nome do autor (preenchido automaticamente)
+
+**RequerimentoFaturamentoData**
+Interface estendida para dados de faturamento:
+- Herda todos os campos de `RequerimentoFormData`
+- `mes_cobranca` - Obrigatório para faturamento
+
+**ClienteRequerimento**
+Interface para dados do cliente (empresas_clientes):
+- `id` - UUID do cliente
+- `nome_abreviado` - Nome abreviado da empresa
+- `tipo_cobranca` - Tipo de cobrança da empresa ('banco_horas' | 'ticket' | 'outros')
+
+**FiltrosRequerimentos**
+Interface para filtros de busca:
+- `busca` - Busca textual (opcional)
+- `modulo` - Módulo ou array de módulos (suporte a múltipla seleção)
+- `status` - Status do requerimento (opcional)
+- `tipo_cobranca` - Tipo de cobrança ou array de tipos (suporte a múltipla seleção)
+- `mes_cobranca` - Mês de cobrança (formato MM/YYYY, opcional)
+- `cliente_id` - UUID do cliente (opcional)
+- `data_inicio` - Data inicial do período (opcional)
+- `data_fim` - Data final do período (opcional)
+
+**Constantes exportadas:**
+
+**MODULO_OPTIONS**
+Array de opções para select de módulos:
+```typescript
+[
+  { value: 'Comex', label: 'Comex' },
+  { value: 'Comply', label: 'Comply' },
+  { value: 'Comply e-DOCS', label: 'Comply e-DOCS' },
+  { value: 'Gallery', label: 'Gallery' },
+  { value: 'pw.SATI', label: 'pw.SATI' },
+  { value: 'pw.SPED', label: 'pw.SPED' },
+  { value: 'pw.SATI/pw.SPED', label: 'pw.SATI/pw.SPED' }
+]
+```
+
+**LINGUAGEM_OPTIONS**
+Array de opções para select de linguagens:
+```typescript
+[
+  { value: 'ABAP', label: 'ABAP' },
+  { value: 'DBA', label: 'DBA' },
+  { value: 'Funcional', label: 'Funcional' },
+  { value: 'PL/SQL', label: 'PL/SQL' },
+  { value: 'Técnico', label: 'Técnico' }
+]
+```
+
+**TIPO_COBRANCA_OPTIONS**
+Array de opções para select de tipos de cobrança:
+```typescript
+[
+  { value: 'Banco de Horas', label: 'Banco de Horas' },
+  { value: 'Cobro Interno', label: 'Cobro Interno' },
+  { value: 'Contrato', label: 'Contrato' },
+  { value: 'Faturado', label: 'Faturado - Hora Normal' },
+  { value: 'Hora Extra', label: 'Faturado - Hora Extra' },
+  { value: 'Sobreaviso', label: 'Faturado - Sobreaviso' },
+  { value: 'Reprovado', label: 'Reprovado' },
+  { value: 'Bolsão Enel', label: 'Bolsão Enel' }
+]
+```
+
+**TIPO_HORA_EXTRA_OPTIONS**
+Array de opções para select de tipos de hora extra:
+```typescript
+[
+  { value: '17h30-19h30', label: 'Seg-Sex 17h30-19h30' },
+  { value: 'apos_19h30', label: 'Seg-Sex Após 19h30' },
+  { value: 'fim_semana', label: 'Sáb/Dom/Feriados' }
+]
+```
+
+**TIPOS_COM_VALOR_HORA**
+Array com tipos de cobrança que requerem campos de valor/hora:
+```typescript
+['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel']
+```
+
+**Funções utilitárias:**
+
+**requerValorHora()**
+```typescript
+requerValorHora(tipoCobranca: TipoCobrancaType): boolean
+```
+Função utilitária para verificar se um tipo de cobrança requer campos de valor/hora.
+
+**Campo atendimento_presencial (NOVO):**
+- **Propósito**: Flag booleana que indica se o atendimento foi realizado presencialmente
+- **Comportamento**: Quando `true`, o sistema deve usar valores locais (ao invés de remotos) da tabela de taxas para cálculo de valores/hora
+- **Uso**: Permite diferenciação entre atendimentos remotos (valores padrão) e presenciais (valores com acréscimo de 10%)
+- **Integração**: Deve ser considerado nos serviços de busca de taxas e cálculo de valores automáticos
+- **Opcional**: Campo opcional (boolean | undefined) para manter compatibilidade com requerimentos existentes
+
+**Uso típico:**
+```typescript
+import { 
+  RequerimentoFormData, 
+  TIPO_COBRANCA_OPTIONS, 
+  requerValorHora 
+} from '@/types/requerimentos';
+
+// Verificar se tipo requer valor/hora
+const precisaValor = requerValorHora('Faturado'); // true
+
+// Usar em formulário
+const formData: RequerimentoFormData = {
+  chamado: 'INC123456',
+  cliente_id: 'uuid-cliente',
+  tipo_cobranca: 'Faturado',
+  atendimento_presencial: true, // Usar valores locais
+  // ... outros campos
+};
+```
+
+**Melhorias recentes:**
+- **Campo atendimento_presencial adicionado**: Novo campo booleano opcional que permite indicar quando um atendimento foi realizado presencialmente, fazendo com que o sistema use valores locais (com acréscimo de 10%) ao invés de valores remotos para cálculo de valores/hora
+
+**Integração:**
+- Utilizado pelos componentes de formulário de requerimentos
+- Integra-se com schemas de validação Zod
+- Usado pelos serviços de requerimentos para CRUD
+- Constantes utilizadas em selects e validações
+- Tipos utilizados para tipagem TypeScript em todo o sistema
+
+---
+
 ## Diretório `src/utils/`
 
 Utilitários e funções auxiliares utilizadas em todo o projeto.
@@ -2916,7 +3135,7 @@ Componentes relacionados ao gerenciamento de requerimentos.
 #### `TipoCobrancaBloco.tsx`
 Componente de bloco reutilizável para gerenciamento de tipos de cobrança em requerimentos, permitindo múltiplos tipos de cobrança em um único requerimento com busca automática de taxas e preenchimento de valores.
 
-**Última atualização**: Corrigida indentação do código de preenchimento automático de valores/hora para melhor legibilidade e manutenibilidade do código, mantendo a funcionalidade de controle de edição manual vs. preenchimento automático intacta.
+**Última atualização**: Removido campo `atendimento_presencial` do componente - funcionalidade de seleção entre valores remotos e locais agora é gerenciada exclusivamente no formulário principal de requerimentos (`RequerimentoForm.tsx`), simplificando a interface do bloco e evitando duplicação de controles.
 
 **Funcionalidades principais:**
 - **Bloco de tipo de cobrança**: Seção individual representando um tipo de cobrança específico
@@ -3116,6 +3335,12 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
 ```
 
 **Melhorias recentes:**
+- **Logging detalhado para debug de inputs**: Implementado logging consistente para ambos os campos de valor/hora (funcional e técnico):
+  - **Input Funcional**: Console logs com emoji 🔍 mostrando valor bruto, tipo e valor formatado
+  - **Input Técnico**: Console logs com emoji 🔍 mostrando valor bruto, tipo e valor formatado (NOVO)
+  - **Formatação robusta**: Tratamento de valores `undefined` e `null` convertendo para string vazia
+  - **Debug facilitado**: Permite rastrear problemas com formatação e exibição de valores nos inputs
+  - **Consistência**: Ambos os campos agora têm o mesmo padrão de logging para troubleshooting
 - **Sistema de controle de edição manual otimizado**: Refinado sistema para detectar e preservar valores editados manualmente pelo usuário:
   - **Estado `valoresEditadosManualmente`**: Objeto com flags `{ funcional: boolean; tecnico: boolean }` que rastreia se cada campo foi editado pelo usuário (usado para indicadores visuais)
   - **Ref `valoresEditadosManualmenteRef`**: Referência mutável `{ funcional: boolean; tecnico: boolean }` que controla o preenchimento automático sem causar re-renderizações
@@ -3252,7 +3477,7 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
 #### `RequerimentoMultiploForm.tsx`
 Formulário avançado para cadastro de requerimentos com suporte a múltiplos tipos de cobrança em um único requerimento, permitindo gerenciamento flexível de horas e valores por tipo.
 
-**Última atualização**: Adicionadas props `clienteId` e `linguagem` ao componente `TipoCobrancaBloco` para habilitar funcionalidade de busca automática de taxas vigentes e preenchimento automático de valores/hora em cada bloco de tipo de cobrança.
+**Última atualização**: Removido campo `atendimento_presencial` do componente `TipoCobrancaBloco` - funcionalidade de seleção entre valores remotos e locais agora é gerenciada exclusivamente no formulário principal (`RequerimentoForm.tsx`), simplificando a interface dos blocos.
 
 **Funcionalidades principais:**
 - **Múltiplos tipos de cobrança**: Suporte a múltiplos blocos de tipos de cobrança em um único requerimento
@@ -3313,12 +3538,13 @@ Formulário avançado para cadastro de requerimentos com suporte a múltiplos ti
 - Filtra array de blocos removendo o bloco com ID correspondente
 
 **handleAtualizarBloco(id: string, campo: string, valor: any):**
-- Atualiza campo específico de um bloco pelo ID
+- Atualiza campo específico de um bloco pelo ID usando função de callback para otimização de estado
 - Implementa lógica de limpeza automática quando campo é `tipo_cobranca`:
   - **Limpeza de valores/hora**: Remove `valor_hora_funcional` e `valor_hora_tecnico` quando tipo NÃO requer valores (tipos válidos: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
   - **Limpeza de tipo_hora_extra**: Remove quando tipo NÃO é "Hora Extra"
   - **Limpeza de quantidade_tickets**: Remove quando tipo NÃO é "Banco de Horas"
   - **Limpeza de horas_analise_ef**: Remove quando tipo NÃO é "Reprovado"
+- Usa `setBlocos(prevBlocos => ...)` para evitar dependências desnecessárias e melhorar performance
 - Mapeia array de blocos atualizando apenas o bloco correspondente
 
 **Lógica de limpeza de campos condicionais:**
@@ -3389,6 +3615,16 @@ if (campo === 'tipo_cobranca') {
   - **Cores sutis**: Removidas cores azuis fortes, usando text-muted-foreground para labels e mantendo apenas verde para valores monetários
 
 **Melhorias recentes:**
+- **Otimização de gerenciamento de estado**: Refatorada função `handleAtualizarBloco` para usar callback no `setBlocos`:
+  - Usa `setBlocos(prevBlocos => ...)` ao invés de acessar estado diretamente
+  - Evita dependências desnecessárias no array de dependências de useEffect
+  - Melhora performance ao evitar re-renderizações desnecessárias
+  - Segue melhores práticas do React para atualizações de estado baseadas no estado anterior
+- **Remoção do campo atendimento presencial**: Removido checkbox de atendimento presencial do componente para simplificar interface:
+  - Funcionalidade de seleção entre valores remotos/locais agora é gerenciada exclusivamente no formulário principal (`RequerimentoForm.tsx`)
+  - Evita duplicação de controles e confusão na interface
+  - Mantém funcionalidade centralizada no formulário principal de requerimentos
+  - Interface mais limpa e focada nos dados específicos do bloco de tipo de cobrança
 - **Integração com busca automática de taxas**: Adicionadas props `clienteId` e `linguagem` ao componente `TipoCobrancaBloco` para habilitar:
   - Busca automática de taxa vigente do cliente selecionado em cada bloco
   - Preenchimento automático de valores/hora baseado na taxa, linguagem e tipo de cobrança
@@ -3476,7 +3712,7 @@ import {
 #### `RequerimentoForm.tsx`
 Formulário completo para cadastro e edição de requerimentos, com validação via Zod, cálculo automático de valores e integração com taxas de clientes.
 
-**Última atualização**: Adicionado indicador visual (✏️) no label do campo "Valor/Hora Funcional" que aparece quando o valor foi editado manualmente pelo usuário, complementando o sistema de controle de edição manual já existente e melhorando feedback visual sobre o estado do preenchimento automático vs. manual.
+**Última atualização**: Movido campo `atendimento_presencial` para a seção "Tipo de Cobrança" e tornado condicional - agora é exibido apenas quando o tipo de cobrança requer valores/hora (Faturado, Hora Extra, Sobreaviso, Bolsão Enel), melhorando a relevância contextual do campo.
 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de requerimentos com todos os campos necessários
@@ -3576,7 +3812,7 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
   - **Sobreaviso**: Usa valor de Stand By
 - **Preenchimento condicional**: Só preenche valores se campos estiverem vazios ou zerados (não sobrescreve valores já preenchidos)
 - Se não houver taxa cadastrada, campos ficam em branco para preenchimento manual
-- Usa valores remotos por padrão (valores_remota)
+- Usa valores remotos por padrão (valores_remota) - seleção entre valores remotos/locais é gerenciada no formulário principal
 
 **3. useEffect de limpeza de campos condicionais:**
 - Dispara quando `tipoCobranca` muda
@@ -3666,8 +3902,11 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `data_aprovacao` - Data de aprovação
 - `periodo_cobranca` - Período de cobrança (MM/YYYY)
 
+
+
 **Seção: Tipo de Cobrança**
 - `tipo_cobranca` (obrigatório) - Select com tipos (Faturado, Hora Extra, Sobreaviso, Bolsão Enel, Reprovado, Outros)
+- `atendimento_presencial` (condicional) - Checkbox para indicar atendimento presencial (usa valores locais ao invés de remotos) - exibido apenas quando tipo de cobrança requer valores/hora
 - `tipo_hora_extra` (condicional) - Select com tipos de hora extra (Simples, Dobrada) - exibido apenas quando tipo_cobranca = "Hora Extra" (valores `null` do banco são convertidos para `undefined` na inicialização)
 - `horas_analise_ef` (condicional) - Horas de análise EF - exibido apenas quando tipo_cobranca = "Reprovado"
 
@@ -3693,9 +3932,10 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 
 **Comportamento:**
 - **Modo criação**: Formulário em branco para novo requerimento
-- **Modo edição**: Formulário preenchido com dados do requerimento via `defaultValues` do useForm (valores iniciais definidos na criação do formulário)
+- **Modo edição**: Formulário preenchido com dados do requerimento via `defaultValues` do useForm (valores iniciais definidos na criação do formulário, incluindo `atendimento_presencial` com valor padrão `false`)
 - **Busca automática de taxa**: Ao selecionar cliente, busca taxa vigente automaticamente
 - **Preenchimento automático**: Valores/hora preenchidos baseado em taxa, linguagem e tipo de cobrança
+- **Uso de valores remotos**: Utiliza valores remotos da taxa vigente por padrão (seleção entre valores remotos/locais é gerenciada no formulário principal)
 - **Limpeza automática**: Campos condicionais limpos quando tipo de cobrança muda para tipo incompatível
 - **Cálculo automático**: Valor total calculado em tempo real conforme horas e valores/hora mudam
 - **Desabilitação durante loading**: Botões desabilitados durante operações assíncronas
@@ -3737,6 +3977,13 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `RequerimentoFormSchema` - Schema de validação Zod
 
 **Melhorias recentes:**
+- **Campo atendimento presencial movido e tornado condicional**: Reorganizado campo `atendimento_presencial` para melhor contexto e relevância:
+  - **Nova localização**: Movido da seção "Informações Adicionais" para a seção "Tipo de Cobrança"
+  - **Exibição condicional**: Agora é exibido apenas quando `mostrarCamposValor` é true (tipos que requerem valores/hora: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
+  - **Melhor contexto**: Campo aparece próximo aos campos de valor/hora, onde sua funcionalidade é mais relevante
+  - **UX aprimorada**: Usuário só vê o campo quando ele realmente afeta o comportamento do sistema
+  - **Interface limpa**: Evita confusão ao ocultar campo quando tipo de cobrança não usa valores/hora
+  - **Funcionalidade mantida**: Quando marcado, usa valores locais (com acréscimo de 10%) ao invés de valores remotos
 - **Indicador visual de edição manual**: Adicionado ícone ✏️ no label do campo "Valor/Hora Funcional" que aparece quando o valor foi editado manualmente pelo usuário:
   - Ícone exibido condicionalmente baseado no estado `valoresEditadosManualmente.funcional`
   - Posicionado após o asterisco obrigatório com `ml-1 text-xs text-blue-600`
@@ -3928,6 +4175,7 @@ Schema principal para validação do formulário de requerimentos com todos os c
 - `tipo_hora_extra` - Enum com opções: 17h30-19h30, apos_19h30, fim_semana (aceita null e converte para undefined)
 - `quantidade_tickets` - Número inteiro positivo ou null
 - `horas_analise_ef` - Número positivo (horas de análise EF para tipo Reprovado)
+- `atendimento_presencial` - Boolean (flag para atendimento presencial, usa valores locais)
 - `data_envio` - Data de envio
 - `data_aprovacao` - Data de aprovação
 - `periodo_cobranca` - String no formato MM/YYYY
@@ -3985,6 +4233,7 @@ horas_analise_ef: z.number().positive().optional()
 - Garante dados consistentes antes de enviar ao banco
 
 **Melhorias recentes:**
+- **Campo atendimento_presencial adicionado**: Novo campo booleano opcional no schema de validação para indicar atendimento presencial, permitindo diferenciação entre valores remotos e locais no cálculo de valores/hora
 - **Tratamento robusto de null**: Campo `tipo_hora_extra` agora aceita `null` do banco e converte automaticamente para `undefined`, eliminando warnings de componente não controlado
 - **Union type completo**: Implementado `z.union([enum, null, undefined])` para cobrir todos os casos possíveis
 - **Transform function**: Adicionada transformação que converte `null` em `undefined` de forma transparente
@@ -4001,6 +4250,7 @@ const form = useForm({
     chamado: '',
     cliente_id: '',
     tipo_hora_extra: undefined, // Será null no banco, undefined no form
+    atendimento_presencial: false, // Valor padrão para atendimento remoto
     // ... outros campos
   }
 });

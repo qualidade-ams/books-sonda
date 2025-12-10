@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
@@ -101,7 +102,9 @@ export function RequerimentoForm({
       // Campos de ticket
       quantidade_tickets: requerimento?.quantidade_tickets || undefined,
       // Campo de horas de análise EF (para tipo Reprovado)
-      horas_analise_ef: 0
+      horas_analise_ef: 0,
+      // Campo de atendimento presencial (usa valores locais)
+      atendimento_presencial: requerimento?.atendimento_presencial || false
     }
   });
 
@@ -114,6 +117,7 @@ export function RequerimentoForm({
   const valorHoraTecnico = form.watch('valor_hora_tecnico');
   const tipoHoraExtra = form.watch('tipo_hora_extra');
   const horasAnaliseEF = form.watch('horas_analise_ef');
+  const atendimentoPresencial = form.watch('atendimento_presencial');
   
   // Watch para campos obrigatórios
   const chamado = form.watch('chamado');
@@ -318,13 +322,18 @@ export function RequerimentoForm({
       return;
     }
 
-    // Buscar valores das funções na taxa (remota por padrão)
+    // Determinar se deve usar valores locais ou remotos
+    const usarValoresLocais = atendimentoPresencial || false;
+    const valoresParaUsar = usarValoresLocais ? taxaVigente.valores_local : taxaVigente.valores_remota;
+    const tipoValor = usarValoresLocais ? 'locais' : 'remotos';
+    
     console.log('🔍 Buscando valores na taxa...');
-    console.log('📊 valores_remota disponíveis:', taxaVigente.valores_remota);
+    console.log('📊 Tipo de atendimento:', usarValoresLocais ? 'PRESENCIAL (valores locais)' : 'REMOTO (valores remotos)');
+    console.log('📊 Valores disponíveis:', valoresParaUsar);
     console.log('📊 Estrutura completa da taxa:', JSON.stringify(taxaVigente, null, 2));
     
-    const valorFuncaoFuncional = taxaVigente.valores_remota?.find(v => v.funcao === funcaoFuncional);
-    const valorFuncaoTecnico = taxaVigente.valores_remota?.find(v => v.funcao === funcaoTecnico);
+    const valorFuncaoFuncional = valoresParaUsar?.find(v => v.funcao === funcaoFuncional);
+    const valorFuncaoTecnico = valoresParaUsar?.find(v => v.funcao === funcaoTecnico);
 
     console.log('💰 Valores encontrados:', {
       valorFuncaoFuncional,
@@ -336,8 +345,9 @@ export function RequerimentoForm({
 
     if (!valorFuncaoFuncional || !valorFuncaoTecnico) {
       console.log('❌ ERRO: Valores não encontrados na taxa!');
+      console.log('❌ Tipo de valor:', tipoValor);
       console.log('❌ Funções procuradas:', { funcaoFuncional, funcaoTecnico });
-      console.log('❌ Funções disponíveis:', taxaVigente.valores_remota?.map(v => v.funcao));
+      console.log('❌ Funções disponíveis:', valoresParaUsar?.map(v => v.funcao));
       return;
     }
     
@@ -444,7 +454,7 @@ export function RequerimentoForm({
     console.log('='.repeat(80));
     console.log('🏁 FIM DO PREENCHIMENTO AUTOMÁTICO');
     console.log('='.repeat(80));
-  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, form]); // Removido valoresEditadosManualmente das dependências
+  }, [taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, atendimentoPresencial, form]); // Removido valoresEditadosManualmente das dependências
 
   // Função para marcar valor como editado manualmente
   const handleValorEditadoManualmente = useCallback((campo: 'funcional' | 'tecnico') => {
@@ -1017,8 +1027,8 @@ export function RequerimentoForm({
             {/* Seção: Cobrança */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold mb-3">Informações de Cobrança</h4>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 {/* Tipo de Cobrança */}
                 <FormField
                   control={form.control}
@@ -1055,6 +1065,29 @@ export function RequerimentoForm({
                   )}
                 />
 
+                {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores) */}
+                {mostrarCamposValor && (
+                  <FormField
+                    control={form.control}
+                    name="atendimento_presencial"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Atendimento presencial
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
                 {/* Tipo de Hora Extra - Aparece apenas quando tipo_cobranca === 'Hora Extra' */}
                 {mostrarTipoHoraExtra && (
                   <FormField
@@ -1139,6 +1172,8 @@ export function RequerimentoForm({
                     </FormItem>
                   )}
                 />
+
+
               </div>
             </div>
 

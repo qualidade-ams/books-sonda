@@ -26,6 +26,8 @@ export interface Requerimento {
   tipo_hora_extra?: TipoHoraExtraType;
   // Campos de ticket (para Banco de Horas - automático baseado na empresa)
   quantidade_tickets?: number;
+  // Campo de atendimento presencial (usa valores locais ao invés de remotos)
+  atendimento_presencial?: boolean;
   // Campos de anexo
   anexos?: any[];
   // Campos de autor
@@ -120,6 +122,8 @@ export interface RequerimentoFormData {
   quantidade_tickets?: number;
   // Campo de horas de análise EF (para tipo Reprovado - opcional)
   horas_analise_ef?: number | string; // Suporta formato HH:MM
+  // Campo de atendimento presencial (usa valores locais ao invés de remotos)
+  atendimento_presencial?: boolean;
   // Campos de autor (preenchidos automaticamente)
   autor_id?: string;
   autor_nome?: string;

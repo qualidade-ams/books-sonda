@@ -89,7 +89,8 @@ export function RequerimentoMultiploForm({
   // Atualizar campo de um bloco
   const handleAtualizarBloco = (id: string, campo: string, valor: any) => {
     console.log('🔄 Atualizando bloco:', { id, campo, valor });
-    setBlocos(blocos.map(b => {
+    setBlocos(prevBlocos => {
+      const novosBlocos = prevBlocos.map(b => {
       if (b.id === id) {
         const blocoAtualizado = { ...b, [campo]: valor };
         
@@ -123,10 +124,14 @@ export function RequerimentoMultiploForm({
           }
         }
         
+        console.log('📊 Bloco atualizado:', blocoAtualizado);
         return blocoAtualizado;
       }
       return b;
-    }));
+      });
+      console.log('📋 Todos os blocos após atualização:', novosBlocos);
+      return novosBlocos;
+    });
   };
 
   // Calcular totalizadores

@@ -176,6 +176,8 @@ export const requerimentoFormSchema = z.object({
     }),
   // Campo de horas de análise EF (para tipo Reprovado - opcional)
   horas_analise_ef: horasSchema.optional(),
+  // Campo de atendimento presencial (usa valores locais ao invés de remotos)
+  atendimento_presencial: z.boolean().optional(),
   // Campo auxiliar para validação condicional de tickets (não será salvo no banco)
   empresa_tipo_cobranca: z.string().optional()
 }).refine((data) => {
