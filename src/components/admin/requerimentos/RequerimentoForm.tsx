@@ -265,7 +265,8 @@ export function RequerimentoForm({
       taxaVigente: !!taxaVigente,
       linguagem,
       tipoCobranca,
-      tipoHoraExtra
+      tipoHoraExtra,
+      editandoRequerimento: !!requerimento
     });
     
     if (!taxaVigente || !linguagem || !tipoCobranca) {
@@ -275,6 +276,14 @@ export function RequerimentoForm({
     
     if (!['Faturado', 'Hora Extra', 'Sobreaviso'].includes(tipoCobranca)) {
       console.log('❌ Tipo de cobrança não requer preenchimento automático:', tipoCobranca);
+      return;
+    }
+
+    // CORREÇÃO CRÍTICA: Não preencher automaticamente quando editando requerimento existente
+    // EXCETO quando as flags de edição manual foram resetadas (mudança intencional do usuário)
+    if (requerimento && valoresEditadosManualmenteRef.current.funcional && valoresEditadosManualmenteRef.current.tecnico) {
+      console.log('⏭️ PULANDO PREENCHIMENTO - Editando requerimento existente com valores preservados');
+      console.log('📊 Flags de edição manual:', valoresEditadosManualmenteRef.current);
       return;
     }
 
@@ -472,19 +481,67 @@ export function RequerimentoForm({
   }, []);
 
   // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
+  // CORREÇÃO: Não resetar flags ao editar registros existentes - só resetar quando contexto realmente mudar
   useEffect(() => {
-    console.log('🔄 Resetando flags de edição manual devido a mudança de contexto');
-    // Resetar ref
-    valoresEditadosManualmenteRef.current = {
-      funcional: false,
-      tecnico: false
-    };
-    // Resetar estado para indicadores visuais
-    setValoresEditadosManualmente({
-      funcional: false,
-      tecnico: false
-    });
-  }, [clienteId, linguagem, tipoCobranca]); // Removido tipoHoraExtra para evitar reset desnecessário
+    // Só resetar se não estiver editando um requerimento existente
+    if (!requerimento) {
+      console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (novo requerimento)');
+      // Resetar ref
+      valoresEditadosManualmenteRef.current = {
+        funcional: false,
+        tecnico: false
+      };
+      // Resetar estado para indicadores visuais
+      setValoresEditadosManualmente({
+        funcional: false,
+        tecnico: false
+      });
+    } else {
+      console.log('⏭️ Mantendo flags de edição manual (editando requerimento existente)');
+    }
+  }, [clienteId, linguagem, tipoCobranca, requerimento]); // Adicionado requerimento para controlar comportamento
+
+  // CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em "Hora Extra"
+  useEffect(() => {
+    if (tipoCobranca === 'Hora Extra' && tipoHoraExtra) {
+      console.log('🔄 FORÇANDO SOBRESCRITA - Tipo de hora extra mudou:', tipoHoraExtra);
+      // Resetar flags para permitir preenchimento automático
+      valoresEditadosManualmenteRef.current = {
+        funcional: false,
+        tecnico: false
+      };
+      // Resetar estado visual
+      setValoresEditadosManualmente({
+        funcional: false,
+        tecnico: false
+      });
+    }
+  }, [tipoHoraExtra]); // Só dispara quando tipoHoraExtra mudar
+
+  // CORREÇÃO: Marcar valores como editados manualmente quando carregar requerimento existente
+  useEffect(() => {
+    if (requerimento && (requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico)) {
+      console.log('🔒 PRESERVANDO VALORES SALVOS - Marcando como editados manualmente');
+      console.log('💰 Valores do requerimento:', {
+        valor_hora_funcional: requerimento.valor_hora_funcional,
+        valor_hora_tecnico: requerimento.valor_hora_tecnico
+      });
+      
+      // Marcar como editados manualmente para preservar valores salvos
+      valoresEditadosManualmenteRef.current = {
+        funcional: !!requerimento.valor_hora_funcional,
+        tecnico: !!requerimento.valor_hora_tecnico
+      };
+      
+      // Atualizar estado visual
+      setValoresEditadosManualmente({
+        funcional: !!requerimento.valor_hora_funcional,
+        tecnico: !!requerimento.valor_hora_tecnico
+      });
+      
+      console.log('✅ Flags definidas:', valoresEditadosManualmenteRef.current);
+    }
+  }, [requerimento]); // Só executa quando requerimento mudar
 
   // Cálculo automático das horas totais (suporta formato HH:MM)
   const horasTotal = useMemo(() => {

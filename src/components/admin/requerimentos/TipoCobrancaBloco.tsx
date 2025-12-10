@@ -372,6 +372,7 @@ export function TipoCobrancaBloco({
   };
 
   // Resetar flags de edição manual apenas quando cliente, linguagem ou tipo de cobrança principal mudar
+  // CORREÇÃO: Não resetar flags ao editar registros existentes - só resetar quando contexto realmente mudar
   useEffect(() => {
     console.log('🔄 Resetando flags de edição manual devido a mudança de contexto (TipoCobrancaBloco)');
     // Resetar ref
@@ -385,6 +386,23 @@ export function TipoCobrancaBloco({
       tecnico: false
     });
   }, [clienteId, linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
+
+  // CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em "Hora Extra"
+  useEffect(() => {
+    if (bloco.tipo_cobranca === 'Hora Extra' && bloco.tipo_hora_extra) {
+      console.log('🔄 FORÇANDO SOBRESCRITA - Tipo de hora extra mudou:', bloco.tipo_hora_extra);
+      // Resetar flags para permitir preenchimento automático
+      valoresEditadosManualmenteRef.current = {
+        funcional: false,
+        tecnico: false
+      };
+      // Resetar estado visual
+      setValoresEditadosManualmente({
+        funcional: false,
+        tecnico: false
+      });
+    }
+  }, [bloco.tipo_hora_extra]); // Só dispara quando tipo_hora_extra mudar
 
   // Verificar se tipo de cobrança requer valores/hora
   const mostrarCamposValor = bloco.tipo_cobranca && 

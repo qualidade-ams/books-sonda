@@ -3466,6 +3466,15 @@ Componente de bloco reutilizável para gerenciamento de tipos de cobrança em re
   - Preenchimento automático agora é disparado apenas por mudanças nos dados essenciais (taxa, linguagem, tipo de cobrança, tipo de hora extra)
   - Flags de edição manual são consultadas dentro do useEffect sem causar re-execuções
   - **Resultado**: Componente mais estável e performático, sem re-renderizações desnecessárias
+- **Sobrescrita forçada para mudanças de tipo de hora extra**: Implementado useEffect específico que força recálculo de valores quando tipo de hora extra muda em requerimentos "Hora Extra":
+  - **Disparo específico**: Só executa quando `bloco.tipo_hora_extra` muda e tipo de cobrança é "Hora Extra"
+  - **Reset completo de flags**: Reseta tanto `valoresEditadosManualmenteRef` quanto `valoresEditadosManualmente` para permitir novo preenchimento automático
+  - **Logging claro**: Console log indicando "FORÇANDO SOBRESCRITA" com o novo tipo de hora extra selecionado
+  - **UX aprimorada**: Garante que valores sejam sempre atualizados quando usuário muda entre tipos de hora extra (17h30-19h30, Após 19h30, Fim de Semana)
+  - **Comportamento intuitivo**: Usuário vê valores corretos imediatamente ao selecionar tipo específico de hora extra
+  - **Dependência isolada**: Array de dependências contém apenas `[bloco.tipo_hora_extra]` para execução precisa
+  - **Comentário explicativo**: "CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em 'Hora Extra'"
+  - **Simplificação recente**: Removida lógica de preenchimento imediato inline, mantendo apenas reset de flags para permitir que o useEffect principal execute o preenchimento automático
 
 **Notas:**
 - Componente em desenvolvimento (implementação parcial)
@@ -3777,11 +3786,13 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 **2. useEffect de preenchimento automático de valores:**
 - Dispara quando `taxaVigente`, `linguagem`, `tipoCobranca` ou `tipoHoraExtra` mudam
 - **setTimeout para controle de timing**: Usa `setTimeout` para garantir que edições manuais sejam processadas antes do preenchimento automático, evitando conflitos de timing entre estado e ref
+- **CORREÇÃO CRÍTICA**: Não preenche automaticamente quando editando requerimento existente, EXCETO quando as flags de edição manual foram resetadas (mudança intencional do usuário)
 - **Logging detalhado com separadores visuais**: Console logs para debug do preenchimento:
   - 🔄 Separador visual (80 caracteres '=') marcando INÍCIO DO PREENCHIMENTO AUTOMÁTICO
-  - 📊 Estado atual dos dados necessários (taxaVigente, linguagem, tipoCobranca, tipoHoraExtra)
+  - 📊 Estado atual dos dados necessários (taxaVigente, linguagem, tipoCobranca, tipoHoraExtra, editandoRequerimento)
   - ❌ Quando faltam dados para preencher valores
   - ❌ Quando tipo de cobrança não requer preenchimento automático
+  - ⏭️ Quando pula preenchimento por estar editando requerimento existente com valores preservados
   - ✅ Quando inicia preenchimento automático
   - 📋 Taxa vigente completa
   - 📦 Tipo de produto da taxa
@@ -3827,12 +3838,15 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
   - Usa `shouldValidate: true` e `shouldDirty: true` para marcar formulário como modificado
 - **Objetivo**: Evitar dados inconsistentes no banco e melhorar UX ao trocar tipo de cobrança, garantindo que usuário seja notificado das mudanças
 
-**4. useEffect de filtragem de opções de tipo de cobrança:**
-- Dispara quando `empresaSelecionada` muda
-- Filtra opções de tipo de cobrança baseado no tipo de cobrança da empresa
-- Se empresa tem tipo "Outros", remove opção "Bolsão Enel" das opções disponíveis
-- Mantém todas as opções para empresas com tipo "Banco de Horas"
-- Atualiza estado `tipoCobrancaOptionsFiltradas` com opções filtradas
+**4. useEffect de sobrescrita forçada para mudanças de tipo de hora extra:**
+- Dispara quando `tipoHoraExtra`, `tipoCobranca`, `taxaVigente`, `linguagem` ou `atendimentoPresencial` mudam
+- **Preenchimento imediato**: Quando tipo de cobrança é "Hora Extra" e tipo de hora extra é selecionado, executa preenchimento imediato sem esperar próximo useEffect
+- **Validação completa**: Só executa quando todos os dados necessários estão disponíveis (tipoCobranca, tipoHoraExtra, taxaVigente, linguagem)
+- **Reset de flags**: Reseta `valoresEditadosManualmenteRef` e `valoresEditadosManualmente` para permitir novo preenchimento automático
+- **Cálculo completo inline**: Executa todo o processo de mapeamento de linguagem, busca de valores na taxa e cálculo de valores derivados
+- **Logging detalhado**: Console logs indicando "FORÇANDO SOBRESCRITA IMEDIATA" e "EXECUTANDO PREENCHIMENTO IMEDIATO"
+- **UX aprimorada**: Garante que valores sejam atualizados instantaneamente quando usuário muda tipo de hora extra
+- **Dependências completas**: Array de dependências inclui todas as variáveis necessárias para o cálculo
 
 **Logging de debug implementado:**
 - **Logs de renderização**: Console log no início do componente rastreando cada renderização:
@@ -3977,6 +3991,21 @@ Formulário completo para cadastro e edição de requerimentos, com validação 
 - `RequerimentoFormSchema` - Schema de validação Zod
 
 **Melhorias recentes:**
+- **Preenchimento imediato para mudanças de tipo de hora extra**: Implementado sistema de preenchimento instantâneo quando tipo de hora extra muda:
+  - **Execução imediata**: Não espera próximo useEffect, executa cálculo e preenchimento imediatamente quando tipo de hora extra é selecionado
+  - **Validação robusta**: Só executa quando todos os dados necessários estão disponíveis (tipoCobranca = "Hora Extra", tipoHoraExtra selecionado, taxaVigente carregada, linguagem definida)
+  - **Cálculo completo inline**: Duplica lógica do useEffect principal para garantir preenchimento imediato sem dependências externas
+  - **Reset automático de flags**: Reseta flags de edição manual para permitir novo preenchimento automático
+  - **Logging específico**: Console logs indicando "FORÇANDO SOBRESCRITA IMEDIATA" e "EXECUTANDO PREENCHIMENTO IMEDIATO" para debug
+  - **UX instantânea**: Usuário vê valores atualizados imediatamente ao selecionar tipo de hora extra (17h30-19h30, Após 19h30, Fim de Semana)
+  - **Dependências completas**: Array de dependências inclui todas as variáveis necessárias para garantir execução quando qualquer dado relevante muda
+- **CORREÇÃO CRÍTICA: Preservação de valores em modo edição**: Implementada lógica que evita sobrescrever valores quando editando requerimento existente:
+  - **Verificação de contexto**: Detecta quando está editando requerimento existente (`!!requerimento`)
+  - **Preservação inteligente**: Não preenche automaticamente quando ambas as flags de edição manual estão ativas (valores já foram definidos)
+  - **Exceção para mudanças intencionais**: Permite preenchimento automático quando flags foram resetadas (usuário mudou cliente/linguagem/tipo intencionalmente)
+  - **Logging específico**: Console logs indicando quando preenchimento é pulado por estar editando requerimento com valores preservados
+  - **UX aprimorada**: Evita sobrescrever valores já configurados ao editar requerimentos, mantendo dados originais intactos
+  - **Flexibilidade mantida**: Ainda permite preenchimento automático quando usuário faz mudanças intencionais no contexto
 - **Campo atendimento presencial movido e tornado condicional**: Reorganizado campo `atendimento_presencial` para melhor contexto e relevância:
   - **Nova localização**: Movido da seção "Informações Adicionais" para a seção "Tipo de Cobrança"
   - **Exibição condicional**: Agora é exibido apenas quando `mostrarCamposValor` é true (tipos que requerem valores/hora: Faturado, Hora Extra, Sobreaviso, Bolsão Enel)
