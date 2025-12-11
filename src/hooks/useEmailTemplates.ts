@@ -6,7 +6,6 @@ import type { FormularioType, ModalidadeType } from '@/types/formTypes';
 
 // Função helper para mapear dados do Supabase para EmailTemplate
 const mapSupabaseToEmailTemplate = (data: any): EmailTemplate => {
-
   const result = {
     id: data.id,
     nome: data.nome,
@@ -21,6 +20,15 @@ const mapSupabaseToEmailTemplate = (data: any): EmailTemplate => {
     created_at: data.created_at,
     updated_at: data.updated_at
   };
+  
+  // Debug: log mapeamento de template de elogios
+  if (data.tipo === 'elogios') {
+    console.log('📧 Mapeando template de elogios:', {
+      original: data,
+      mapped: result
+    });
+  }
+  
   return result;
 };
 
@@ -31,6 +39,7 @@ export const useEmailTemplates = () => {
 
   const fetchTemplates = async () => {
     try {
+      console.log('🔍 [DEBUG] Buscando templates no banco...');
       const { data, error } = await supabase
         .from('email_templates')
         .select('*')
@@ -42,21 +51,50 @@ export const useEmailTemplates = () => {
         return;
       }
 
-      // Filtrar apenas templates válidos (book) e atualizar templates antigos
+      console.log('📊 [DEBUG] Templates encontrados no banco:', data?.length || 0);
+      console.log('📋 [DEBUG] Todos os templates:', data?.map(t => ({ nome: t.nome, tipo: t.tipo, ativo: t.ativo })));
+
+      // Filtrar apenas templates válidos (book e elogios) e atualizar templates antigos
       const validTemplates = (data || []).filter(template => {
-        // Aceitar templates sem formulário definido (templates antigos) ou com formulário 'book'
-        return !template.formulario || template.formulario === 'book';
+        // Para templates de elogios, aceitar apenas se tipo for explicitamente 'elogios'
+        if (template.tipo === 'elogios') {
+          const isValidElogios = template.tipo === 'elogios';
+          console.log('📧 Template de elogios encontrado na filtragem:', {
+            nome: template.nome,
+            tipo: template.tipo,
+            formulario: template.formulario,
+            ativo: template.ativo,
+            isValidElogios
+          });
+          return isValidElogios;
+        }
+        
+        // Para templates de book, aceitar apenas se não for tipo 'elogios'
+        const isValidBook = template.tipo !== 'elogios' && (!template.formulario || template.formulario === 'book');
+        
+        return isValidBook;
       });
 
       const mappedTemplates = validTemplates.map(mapSupabaseToEmailTemplate);
 
-      // ✅ CORREÇÃO: Remover duplicatas por nome
-      const uniqueTemplates = mappedTemplates.filter((template, index, self) =>
-        index === self.findIndex(t => t.nome === template.nome)
-      );
+      // ✅ CORREÇÃO: Remover duplicatas por nome (mas preservar templates de elogios)
+      const uniqueTemplates = mappedTemplates.filter((template, index, self) => {
+        // Para templates de elogios, usar nome + tipo como chave única
+        const isDuplicate = template.tipo === 'elogios' 
+          ? index !== self.findIndex(t => t.nome === template.nome && t.tipo === template.tipo)
+          : index !== self.findIndex(t => t.nome === template.nome);
+        
+        // Debug: log se template de elogios está sendo removido como duplicata
+        if (template.tipo === 'elogios' && isDuplicate) {
+          console.warn('⚠️ Template de elogios sendo removido como duplicata:', template.nome);
+        }
+        
+        return !isDuplicate;
+      });
 
       console.log('📧 Templates antes da deduplicação:', mappedTemplates.length);
       console.log('📧 Templates após deduplicação:', uniqueTemplates.length);
+      console.log('📧 Templates de elogios no resultado final:', uniqueTemplates.filter(t => t.tipo === 'elogios').length);
 
       if (mappedTemplates.length !== uniqueTemplates.length) {
         console.warn('⚠️ Templates duplicados removidos:', mappedTemplates.length - uniqueTemplates.length);

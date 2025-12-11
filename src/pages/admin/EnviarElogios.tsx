@@ -54,15 +54,39 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { emailService } from '@/services/emailService';
+import { elogiosTemplateService } from '@/services/elogiosTemplateService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { getBadgeResposta } from '@/utils/badgeUtils';
+import SeletorTemplateElogios from '@/components/admin/elogios/SeletorTemplateElogios';
 
 export default function EnviarElogios() {
+  // Hook para toast
+  const { toast } = useToast();
+
+  // Função para regenerar template quando seleção mudar
+  const regenerarTemplate = async (templateId?: string) => {
+    try {
+      const templateParaUsar = templateId || templateSelecionado;
+      console.log('🔄 Regenerando template com seleção:', templateParaUsar);
+      
+      const htmlTemplate = await gerarRelatorioElogios(templateParaUsar);
+      setCorpoEmail(htmlTemplate);
+      console.log('✅ Template regenerado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao regenerar template:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar template. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+  
   // Estados
   const [mesAtual] = useState(new Date().getMonth() + 1);
   const [anoAtual] = useState(new Date().getFullYear());
@@ -83,6 +107,7 @@ export default function EnviarElogios() {
 
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
   const [elogiosSelecionados, setElogiosSelecionados] = useState<string[]>([]);
+  const [templateSelecionado, setTemplateSelecionado] = useState<string>('');
 
   // Filtros - Buscar apenas elogios com status "compartilhado"
   const [filtros, setFiltros] = useState<FiltrosElogio>({
@@ -162,20 +187,49 @@ export default function EnviarElogios() {
     }
   };
 
-  // Função para gerar HTML do relatório de elogios
-  const gerarRelatorioElogios = () => {
+  // Função para gerar HTML do relatório de elogios usando template dinâmico
+  const gerarRelatorioElogios = async (templateId?: string): Promise<string> => {
+    try {
+      const templateParaUsar = templateId || templateSelecionado;
+      console.log('🎨 Gerando relatório de elogios com template dinâmico:', templateParaUsar);
+      
+      const elogiosSelecionadosData = elogios.filter(e => elogiosSelecionados.includes(e.id));
+      
+      console.log(`📊 Processando ${elogiosSelecionadosData.length} elogios selecionados`);
+      console.log(`📅 Período: ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
+      
+      // Processar template com os dados dos elogios
+      const resultado = await elogiosTemplateService.processarTemplate(
+        elogiosSelecionadosData,
+        mesSelecionado,
+        anoSelecionado,
+        templateParaUsar || undefined
+      );
+      
+      console.log('✅ Template processado com sucesso:', {
+        elogiosProcessados: resultado.elogiosProcessados,
+        linhasGeradas: resultado.linhasGeradas,
+        variaveisUsadas: Object.keys(resultado.variables).length
+      });
+      
+      return resultado.html;
+    } catch (error) {
+      console.error('❌ Erro ao processar template de elogios:', error);
+      
+      // Fallback para template hardcoded em caso de erro
+      console.warn('🔄 Usando template hardcoded como fallback...');
+      return gerarRelatorioElogiosFallback();
+    }
+  };
+
+  // Função fallback com template hardcoded (mantida para emergências)
+  const gerarRelatorioElogiosFallback = (): string => {
     const elogiosSelecionadosData = elogios.filter(e => elogiosSelecionados.includes(e.id));
     
-    // Extrair nomes únicos dos colaboradores
-    const colaboradores = elogiosSelecionadosData
-      .map(e => e.pesquisa?.prestador)
-      .filter((nome, index, self) => nome && self.indexOf(nome) === index)
-      .join(' | ');
-    
-    // Dividir elogios em grupos de 3 para criar linhas
+    // Dividir elogios em grupos de 4 para criar linhas (atualizado para 4 como no template)
     const elogiosPorLinha: typeof elogiosSelecionadosData[] = [];
-    for (let i = 0; i < elogiosSelecionadosData.length; i += 3) {
-      elogiosPorLinha.push(elogiosSelecionadosData.slice(i, i + 3));
+    for (let i = 0; i < elogiosSelecionadosData.length; i += 4) {
+      elogiosPorLinha.push(elogiosSelecionadosData.slice(i, i + 4));
     }
     
     let html = `<!DOCTYPE html>
@@ -188,74 +242,51 @@ export default function EnviarElogios() {
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
     .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; width: 100%; }
     .header-image { width: 100%; display: block; }
-    .pink-shadow {
-  width: max-content; 
-  margin: 0 auto;
-  box-shadow: 5px 10px #ff0278;
-  margin-bottom: 20px;
-}
-
-.title-box {
-  background-color: #ffffff;
-  border: 2px solid #ff0278;
-  padding: 15px 20px;
-  text-align: center;
-  width: 455px;      /* sua largura original */
-}
-
+    .title-section { text-align: center; padding: 24px 48px; }
     .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; }
-    .title-month { font-size: 14px; font-weight: bold; margin: 0; color: #000000; }
-    .main-content { padding: 40px 48px; background-color: #ffffff; margin: 0 auto; }
-    table.elogios-table { width: 100%; border-collapse: collapse; margin: 0 auto 40px auto; }
-    table.elogios-table td { width: 33.33%; padding: 8px; vertical-align: top; text-align: left; }
-    .elogio-inner { height: 100%; text-align: left; }
-    .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; line-height: 1.3; }
-    .elogio-feedback { margin-bottom: 16px; }
-    .elogio-feedback p { color: #1f2937; font-size: 12px; margin-bottom: 8px; line-height: 1.5; }
-    .elogio-info { margin-top: auto; }
-    .elogio-info p { font-size: 12px; color: #000000; font-weight: bold; margin-bottom: 2px; }
-    .elogio-info span { font-weight: bold; }
-    table.divider-table { width: 100%; border-collapse: collapse; margin: 48px auto; }
-    table.divider-table td { padding: 0; }
+    .title-sub { font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #000000; }
+    .title-month { font-size: 18px; font-weight: bold; margin: 0; color: #000000; letter-spacing: 1px; }
+    .main-content { max-width: 1200px; margin: 0 auto; padding: 40px 48px; }
+    .elogios-row { display: table; width: 100%; margin-bottom: 40px; }
+    .elogio-cell { display: table-cell; width: 25%; padding: 10px; vertical-align: top; }
+    .elogio-card { border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; height: 100%; }
+    .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; }
+    .elogio-response { font-weight: bold; margin-bottom: 8px; }
+    .elogio-comment { margin-bottom: 16px; font-size: 12px; line-height: 1.5; }
+    .elogio-info { font-size: 12px; color: #000000; font-weight: bold; }
+    .divider-row { display: table; width: 100%; margin: 48px auto; }
     .divider-line { height: 2px; background-color: #000000; }
     .quote-cell { width: 60px; text-align: center; vertical-align: middle; }
     .quote-text { font-size: 40px; line-height: 1; font-weight: bold; }
     .quote-blue { color: #0066FF; }
     .quote-pink { color: #FF0066; }
-    .footer-image { width: 100%; height: auto; display: block; margin-top: auto; }
+    .footer-image { width: 100%; height: auto; display: block; }
     @media only screen and (max-width: 600px) {
-      .title-box { padding: 16px; border-width: 4px; }
-      .title-main { font-size: 16px; }
-      .title-month { font-size: 14px; }
+      .title-section { padding: 16px; }
       .main-content { padding: 20px 16px; }
-      table.elogios-table td { display: block; width: 100% !important; margin-bottom: 24px; }
+      .elogio-cell { display: block; width: 100% !important; margin-bottom: 24px; }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0;">
-  <center>
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 1200px; margin: 0 auto;">
-      <tr>
-        <td>
-          <div class="email-container">
-            <!-- HEADER IMAGE -->
-            <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Sonda Header" class="header-image" />
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Header" class="header-image">
     
-    <!-- TITLE BOX -->
-    <div class="pink-shadow" style="width: max-content; margin: 0 auto; box-shadow: 5px 10px #ff0278; margin-bottom: 20px;">
-      <div class="title-box" style="background-color: #ffffff; border: 2px solid #ff0278; padding: 15px 20px; text-align: center; width: 455px;">
-        <h1 class="title-main" style="font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; text-align: center;">ELOGIOS AOS COLABORADORES<br/>DE SOLUÇÕES DE NEGÓCIOS</h1>
-        <p class="title-month" style="font-size: 14px; font-weight: bold; margin: 0; color: #000000; text-align: center;">${nomesMeses[mesSelecionado - 1].toUpperCase()}</p>
-      </div>
+    <!-- Título -->
+    <div class="title-section">
+      <h1 class="title-main">ELOGIOS AOS COLABORADORES</h1>
+      <h2 class="title-sub">DE SOLUÇÕES DE NEGÓCIOS</h2>
+      <h3 class="title-month">${nomesMeses[mesSelecionado - 1].toUpperCase()}</h3>
     </div>
     
-    <!-- MAIN CONTENT -->
+    <!-- Container de Elogios -->
     <div class="main-content">`;
 
-    // Gerar linhas de elogios com divisores
+    // Gerar linhas de elogios com divisores (4 por linha)
     elogiosPorLinha.forEach((linha, linhaIndex) => {
-      // Adicionar linha de elogios usando tabela HTML real
-      html += `<table class="elogios-table" cellpadding="0" cellspacing="0" border="0"><tr>`;
+      // Linha de elogios
+      html += '<div class="elogios-row">';
       
       linha.forEach((elogio) => {
         const nomeColaborador = elogio.pesquisa?.prestador || 'Colaborador';
@@ -265,29 +296,27 @@ export default function EnviarElogios() {
         const empresa = elogio.pesquisa?.empresa || 'N/A';
         
         html += `
-        <td>
-          <div class="elogio-inner">
-            <h3 class="elogio-name">${nomeColaborador}</h3>
-            <div class="elogio-feedback">`;
+        <div class="elogio-cell">
+          <div class="elogio-card">
+            <h4 class="elogio-name">${nomeColaborador}</h4>`;
         
         if (resposta) {
-          html += `<p>${resposta}</p>`;
+          html += `<p class="elogio-response">${resposta}</p>`;
         }
         if (comentario) {
-          html += `<p>${comentario}</p>`;
+          html += `<p class="elogio-comment">${comentario}</p>`;
         }
         
         html += `
-            </div>
             <div class="elogio-info">
-              <p>Cliente: <span>${cliente}</span></p>
-              <p>Empresa: <span>${empresa}</span></p>
+              <p><strong>Cliente:</strong> ${cliente}</p>
+              <p><strong>Empresa:</strong> ${empresa}</p>
             </div>
           </div>
-        </td>`;
+        </div>`;
       });
       
-      html += `</tr></table>`;
+      html += '</div>';
       
       // Adicionar divisor entre linhas (exceto após a última linha)
       if (linhaIndex < elogiosPorLinha.length - 1) {
@@ -297,21 +326,17 @@ export default function EnviarElogios() {
         if (isEven) {
           // Aspas à direita (azul)
           html += `
-          <table class="divider-table" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td><div class="divider-line"></div></td>
-              <td class="quote-cell"><span class="quote-text ${quoteColor}">"</span></td>
-            </tr>
-          </table>`;
+          <div class="divider-row">
+            <div style="display: table-cell;"><div class="divider-line"></div></div>
+            <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
+          </div>`;
         } else {
           // Aspas à esquerda (rosa)
           html += `
-          <table class="divider-table" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td class="quote-cell"><span class="quote-text ${quoteColor}">"</span></td>
-              <td><div class="divider-line"></div></td>
-            </tr>
-          </table>`;
+          <div class="divider-row">
+            <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
+            <div style="display: table-cell;"><div class="divider-line"></div></div>
+          </div>`;
         }
       }
     });
@@ -319,13 +344,9 @@ export default function EnviarElogios() {
     html += `
     </div>
     
-            <!-- FOOTER IMAGE -->
-            <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Sonda Footer" class="footer-image" />
-          </div>
-        </td>
-      </tr>
-    </table>
-  </center>
+    <!-- Footer -->
+    <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Footer" class="footer-image">
+  </div>
 </body>
 </html>`;
 
@@ -333,21 +354,30 @@ export default function EnviarElogios() {
   };
 
   // Função para abrir modal de email
-  const handleAbrirModalEmail = () => {
+  const handleAbrirModalEmail = async () => {
     if (elogiosSelecionados.length === 0) {
-      toast.error('Selecione pelo menos um elogio para enviar');
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos um elogio para enviar",
+        variant: "destructive"
+      });
       return;
     }
 
-    const htmlTemplate = gerarRelatorioElogios();
+    // Limpar campos e abrir modal
     setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})`);
-    setCorpoEmail(htmlTemplate);
+    setCorpoEmail(''); // Será gerado quando template for selecionado
     setDestinatarios([]);
     setDestinatariosCC([]);
     setDestinatariosTexto('');
     setDestinatariosCCTexto('');
     setAnexos([]);
     setModalEmailAberto(true);
+    
+    // Gerar template inicial se já houver um selecionado
+    if (templateSelecionado) {
+      await regenerarTemplate();
+    }
   };
 
   // Função para extrair emails
@@ -390,7 +420,10 @@ export default function EnviarElogios() {
         setDestinatariosCCTexto(todosEmails.join('; '));
         setDestinatariosCC(todosEmails);
       }
-      toast.success(`${emailsUnicos.length} email(s) adicionado(s) com sucesso!`);
+      toast({
+        title: "Sucesso",
+        description: `${emailsUnicos.length} email(s) adicionado(s) com sucesso!`
+      });
     }
   };
 
@@ -416,18 +449,28 @@ export default function EnviarElogios() {
       const limiteBytes = 25 * 1024 * 1024;
       
       if (tamanhoTotal > limiteBytes) {
-        toast.error('O tamanho total dos anexos não pode exceder 25MB');
+        toast({
+          title: "Erro",
+          description: "O tamanho total dos anexos não pode exceder 25MB",
+          variant: "destructive"
+        });
         return;
       }
       
       setAnexos(prev => [...prev, ...novosAnexos]);
-      toast.success(`${novosAnexos.length} arquivo(s) adicionado(s)`);
+      toast({
+        title: "Sucesso",
+        description: `${novosAnexos.length} arquivo(s) adicionado(s)`
+      });
     }
   };
 
   const handleRemoverAnexo = (index: number) => {
     setAnexos(prev => prev.filter((_, i) => i !== index));
-    toast.success('Anexo removido');
+    toast({
+      title: "Sucesso",
+      description: "Anexo removido"
+    });
   };
 
   const formatarTamanhoArquivo = (bytes: number): string => {
@@ -458,7 +501,11 @@ export default function EnviarElogios() {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
 
     if (emailsValidos.length === 0) {
-      toast.error('É necessário informar pelo menos um destinatário');
+      toast({
+        title: "Erro",
+        description: "É necessário informar pelo menos um destinatário",
+        variant: "destructive"
+      });
       return false;
     }
 
@@ -469,12 +516,20 @@ export default function EnviarElogios() {
 
     if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
       const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
-      toast.error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
+      toast({
+        title: "Erro",
+        description: `E-mails inválidos: ${todosInvalidos.join(', ')}`,
+        variant: "destructive"
+      });
       return false;
     }
 
     if (!assuntoEmail.trim()) {
-      toast.error('É necessário informar o assunto do email');
+      toast({
+        title: "Erro",
+        description: "É necessário informar o assunto do email",
+        variant: "destructive"
+      });
       return false;
     }
 
@@ -520,7 +575,10 @@ export default function EnviarElogios() {
       });
 
       if (resultado.success) {
-        toast.success(`Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`);
+        toast({
+          title: "Sucesso",
+          description: `Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`
+        });
         
         setModalEmailAberto(false);
         setConfirmacaoAberta(false);
@@ -532,11 +590,19 @@ export default function EnviarElogios() {
         setAssuntoEmail('');
         setAnexos([]);
       } else {
-        toast.error(`Erro ao enviar email: ${resultado.error || 'Erro desconhecido'}`);
+        toast({
+          title: "Erro",
+          description: `Erro ao enviar email: ${resultado.error || 'Erro desconhecido'}`,
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Erro ao enviar email:', error);
-      toast.error('Erro ao enviar email: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+      toast({
+        title: "Erro",
+        description: 'Erro ao enviar email: ' + (error instanceof Error ? error.message : 'Erro desconhecido'),
+        variant: "destructive"
+      });
     } finally {
       setEnviandoEmail(false);
     }
@@ -685,6 +751,8 @@ export default function EnviarElogios() {
             </Card>
           </div>
         )}
+
+
 
         {/* Tabela de Elogios */}
         {isLoading ? (
@@ -965,9 +1033,23 @@ export default function EnviarElogios() {
                 </div>
               </div>
 
+              {/* Seletor de Template */}
+              <div className="w-1/4">
+                <SeletorTemplateElogios
+                  templateSelecionado={templateSelecionado}
+                  onTemplateChange={async (templateId) => {
+                    setTemplateSelecionado(templateId);
+                    // Regenerar template automaticamente quando seleção mudar
+                    if (templateId) {
+                      await regenerarTemplate(templateId);
+                    }
+                  }}
+                  disabled={isLoading || enviandoEmail}
+                />
+              </div>
+
               {/* Preview do Relatório */}
               <div>
-                <Label className="text-base font-medium">Preview do Relatório</Label>
                 {/* Preview do Relatório */}
                 <div className="mt-2">
                   <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
@@ -981,7 +1063,12 @@ export default function EnviarElogios() {
                       </div>
                     </div>
                     <div
-                      className="max-h-[600px] overflow-y-auto p-4"
+                      className="max-h-[600px] overflow-y-auto p-4 email-preview-container"
+                      style={{ 
+                        isolation: 'isolate',
+                        contain: 'style layout',
+                        position: 'relative'
+                      }}
                       dangerouslySetInnerHTML={{ __html: corpoEmail }}
                     />
                   </div>

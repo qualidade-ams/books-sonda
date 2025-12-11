@@ -90,6 +90,7 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
   const [formData, setFormData] = useState({
     nome: template.nome,
     descricao: template.descricao || '',
+    tipo: template.tipo || 'book' as 'book' | 'elogios',
     assunto: template.assunto,
     corpo: template.corpo
   });
@@ -98,10 +99,11 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
     setFormData({
       nome: template.nome,
       descricao: template.descricao || '',
+      tipo: template.tipo || 'book' as 'book' | 'elogios',
       assunto: template.assunto,
       corpo: template.corpo
     });
-  }, [template.id, template.nome, template.assunto, template.corpo, template.descricao]);
+  }, [template.id, template.nome, template.assunto, template.corpo, template.descricao, template.tipo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +126,7 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
       const result = await updateTemplate(template.id, {
         nome: formData.nome,
         descricao: formData.descricao || null,
+        tipo: formData.tipo,
         assunto: formData.assunto,
         corpo: formData.corpo
       });
@@ -182,6 +185,34 @@ const EditorTemplateCompleto: React.FC<EditorTemplateCompletoProps> = ({
               placeholder="Descrição opcional do template"
               rows={2}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tipo">Tipo de Template *</Label>
+            <Select
+              value={formData.tipo}
+              onValueChange={(value: 'book' | 'elogios') => {
+                setFormData(prev => ({ ...prev, tipo: value }))
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="book">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    <span>Book - Templates para cadastro de empresas</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="elogios">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>Elogios - Templates para disparo de elogios</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Exibir erro de validação */}

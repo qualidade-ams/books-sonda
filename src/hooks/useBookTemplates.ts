@@ -19,15 +19,52 @@ export const useBookTemplates = () => {
   useEffect(() => {
     const options: BookTemplateOption[] = [];
 
-    // Adicionar templates personalizados ativos para books
+    // Lista de palavras-chave que indicam templates de elogios (para exclusão)
+    const elogiosKeywords = ['elogios', 'elogio', 'praise', 'compliment'];
+    
+    // Lista de nomes válidos para templates de books (whitelist)
+    const validBookTemplateNames = [
+      'template book português',
+      'template book inglês', 
+      'template book novo nordisk',
+      'template book samarco',
+      'template book português',
+      'template book inglês'
+    ];
+
+    // Adicionar templates personalizados ativos para books (filtrar rigorosamente)
     const bookTemplates = templates.filter(
-      template =>
-        template.ativo &&
-        template.formulario === 'book'
+      template => {
+        // Verificar se contém palavras-chave de elogios
+        const nomeTemplate = template.nome?.toLowerCase() || '';
+        const isElogiosTemplate = elogiosKeywords.some(keyword => 
+          nomeTemplate.includes(keyword)
+        );
+        
+        // Se contém palavras de elogios, excluir imediatamente
+        if (isElogiosTemplate) {
+          console.warn('🚨 Template de elogios BLOQUEADO:', template.nome);
+          return false;
+        }
+        
+        // Verificar se é um template válido para books
+        const isValidBookTemplate = template.ativo &&
+          (template.tipo === 'book' || !template.tipo) && // Aceitar tipo 'book' ou sem tipo (compatibilidade)
+          template.tipo !== 'elogios' && // Nunca aceitar tipo 'elogios'
+          (template.formulario === 'book' || !template.formulario); // Compatibilidade com templates antigos
+        
+        // Log para debug
+        if (isValidBookTemplate) {
+          console.log('✅ Template válido para books:', template.nome);
+        }
+        
+        return isValidBookTemplate;
+      }
     );
 
     // ✅ DEBUG: Log para identificar duplicação
     console.log('📧 Templates encontrados:', templates);
+    console.log('📧 Templates de elogios encontrados:', templates.filter(t => t.tipo === 'elogios'));
     console.log('📧 Templates filtrados para books:', bookTemplates);
 
     // ✅ CORREÇÃO: Priorizar templates personalizados sobre padrão
@@ -62,6 +99,16 @@ export const useBookTemplates = () => {
 
     // Adicionar templates personalizados (sempre têm prioridade)
     bookTemplates.forEach(template => {
+      // Verificação adicional para garantir que não é template de elogios
+      const isElogiosTemplate = template.nome?.toLowerCase().includes('elogios') || 
+                               template.nome?.toLowerCase().includes('elogio') ||
+                               template.tipo === 'elogios';
+      
+      if (isElogiosTemplate) {
+        console.warn(`🚨 Template de elogios bloqueado: ${template.nome}`);
+        return; // Pular este template
+      }
+      
       if (!templateNames.has(template.nome)) {
         templateNames.add(template.nome);
         options.push({
@@ -76,7 +123,18 @@ export const useBookTemplates = () => {
     });
 
     console.log('📧 Templates personalizados encontrados:', Array.from(customTemplateNames));
-    console.log('📧 Opções finais de templates:', options);
+    console.log('📧 Opções finais de templates para books:', options);
+    
+    // Debug: verificar se há templates de elogios nas opções finais
+    const templatesElogiosNasOpcoes = options.filter(option => 
+      option.label?.toLowerCase().includes('elogios') || 
+      option.label?.toLowerCase().includes('elogio')
+    );
+    
+    if (templatesElogiosNasOpcoes.length > 0) {
+      console.error('🚨 ERRO: Templates de elogios encontrados nas opções de books:', templatesElogiosNasOpcoes);
+    }
+    
     setBookTemplateOptions(options);
   }, [templates]);
 

@@ -48,6 +48,7 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
+    tipo: 'book' as 'book' | 'elogios', // Tipo padrão: book
     assunto: 'Book | {{razaoSocial}} | {{mes}} - {{ano}}',
     corpo: `<!DOCTYPE html>
 	<html lang="pt-BR">
@@ -130,9 +131,9 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
         descricao: formData.descricao || null,
         assunto: formData.assunto,
         corpo: formData.corpo,
-        tipo: 'book',
+        tipo: formData.tipo,
         ativo: true,
-        vinculado_formulario: true
+        vinculado_formulario: formData.tipo === 'book' // Apenas templates de book são vinculados ao formulário
       });
 
       if (result.success) {
@@ -189,6 +190,129 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
               placeholder="Descrição opcional do template"
               rows={2}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tipo">Tipo de Template *</Label>
+            <Select
+              value={formData.tipo}
+              onValueChange={(value: 'book' | 'elogios') => {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  tipo: value,
+                  // Atualizar assunto padrão baseado no tipo
+                  assunto: value === 'book' 
+                    ? 'Book | {{razaoSocial}} | {{mes}} - {{ano}}'
+                    : '[ELOGIOS] - Colaboradores de Soluções de Negócios ({{sistema.mesNomeAtual}})',
+                  // Atualizar corpo padrão baseado no tipo
+                  corpo: value === 'book' 
+                    ? `<!DOCTYPE html>
+	<html lang="pt-BR">
+
+	<head>
+		<meta charset="UTF-8" />
+		<title>Book AMS</title>
+	</head>
+
+	<body style="margin: 0; padding: 0; background-color: #f4f6fb; font-family: Arial, sans-serif;">
+		<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6fb">
+			<tr>
+				<td align="center" style="padding: 20px 20px;">
+					<table width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); overflow: hidden;">
+						<tr>
+							<td align="center" bgcolor="#1a4eff" style="padding: 20px;">
+								<!--[if gte mso 9]>
+							<table width="150" border="0" cellspacing="0" cellpadding="0">
+							   <tr>
+								  <td>
+							<![endif]-->
+
+								<img src="http://books-sonda.vercel.app/images/logo-sonda.png" alt="Logo" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
+
+								<!--[if gte mso 9]>
+								  </td>
+							   </tr>
+							</table>
+							<![endif]-->
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 24px; font-size: 14px; color: #111; line-height: 1.5;">
+								<p>Prezados,</p>
+
+								<p>Informamos que está disponível o <strong>Book Mensal AMS</strong>,
+									<a href="#" style="color:#005baa; font-weight:bold; text-decoration:none;">CLIQUE AQUI</a>.
+								</p>
+
+								<p>Para visualizar o book, somente e-mails cadastrados vão conseguir ter acesso. Na tela de Login insira o seu e-mail corporativo e você receberá um código de autenticação. Copie o código e cole no campo indicado, para completar o Login.</p>
+
+								<p>Caso não esteja cadastrado, envie um e-mail para <a href=mailto:qualidadeams@sonda.com style="color:#005baa; text-decoration:none;">qualidadeams@sonda.com</a>.</p>
+
+								<p>Os dados sobre o fechamento do banco de horas serão enviados de forma separada dentro do mês corrente.</p>
+							</td>
+						</tr>
+						<tr>
+							<td align="center" style="padding: 16px; font-size: 12px; color: #777;">
+								© 2025 SONDA. Todos os direitos reservados.
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</body>
+	</html>`
+                    : `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITULO_PRINCIPAL}}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+    <!-- Header -->
+    <img src="{{HEADER_IMAGE_URL}}" alt="Header" style="width: 100%; max-width: 800px; height: auto; display: block; margin: 0 auto;">
+    
+    <!-- Título -->
+    <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 24px 48px; text-align: center;">
+        <h1 style="color: #0066FF; font-size: 16px; font-weight: bold; margin: 0 0 8px 0; letter-spacing: 0.5px; line-height: 1.2;">
+            ELOGIOS AOS COLABORADORES<br>DE SOLUÇÕES DE NEGÓCIOS
+        </h1>
+        <h2 style="color: #0066FF; font-size: 18px; font-weight: bold; margin: 0; letter-spacing: 1px;">
+            {{sistema.mesNomeAtual}}
+        </h2>
+    </div>
+    
+    <!-- Conteúdo Principal -->
+    <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 40px 48px;">
+        {{ELOGIOS_LOOP}}
+    </div>
+    
+    <!-- Footer -->
+    <img src="{{FOOTER_IMAGE_URL}}" alt="Footer" style="width: 100%; max-width: 800px; height: auto; display: block; margin: 0 auto;">
+</body>
+</html>`
+                }))
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="book">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    <span>Book - Templates para cadastro de empresas</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="elogios">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>Elogios - Templates para disparo de elogios</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Exibir erro de validação */}

@@ -3,6 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Plus,
   Edit,
   Trash2,
@@ -54,16 +61,47 @@ const EmailTemplateManager: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'book' | 'elogios'>('todos');
 
   const getModalidadeLabel = (modalidade: string | null) => {
     if (!modalidade || modalidade === 'mensal') return 'Mensal';
     return modalidade;
   };
 
-  const getFormularioLabel = (formulario: string | null) => {
-    if (!formulario || formulario === 'book') return 'Book';
-    return formulario;
+  const getFormularioLabel = (template: EmailTemplate) => {
+    // Para templates de elogios, mostrar o tipo ao invés do formulário
+    if (template.tipo === 'elogios') return 'Elogios';
+    if (!template.formulario || template.formulario === 'book') return 'Book';
+    return template.formulario;
   };
+
+  const getTipoLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'book':
+        return 'Book';
+      case 'elogios':
+        return 'Elogios';
+      default:
+        return 'Book'; // Padrão para templates antigos
+    }
+  };
+
+  const getTipoBadgeColor = (tipo: string) => {
+    switch (tipo) {
+      case 'book':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'elogios':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Filtrar templates baseado no tipo selecionado
+  const templatesFiltrados = templates.filter(template => {
+    if (filtroTipo === 'todos') return true;
+    return template.tipo === filtroTipo;
+  });
 
   const handleEdit = (template: EmailTemplate) => {
     setSelectedTemplate(template);
@@ -115,11 +153,11 @@ const EmailTemplateManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300">Templates de E-mail</h2>
-          <p className="text-gray-600">
-            Gerencie templates de e-mail. Use o ID do template na importação Excel de empresas.
+          <p className="text-gray-600 mb-4">
+            Gerencie templates de e-mail. Templates de <strong>Book</strong> são usados no cadastro de empresas. Templates de <strong>Elogios</strong> são usados no disparo de elogios.
           </p>
         </div>
 
@@ -149,15 +187,15 @@ const EmailTemplateManager: React.FC = () => {
         </ProtectedAction>
       </div>
 
-      {templates.length === 0 ? (
+      {templatesFiltrados.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nenhum template encontrado
+              {templates.length === 0 ? 'Nenhum template encontrado' : `Nenhum template do tipo "${getTipoLabel(filtroTipo)}" encontrado`}
             </h3>
             <p className="text-gray-600 mb-4">
-              Crie seu primeiro template de e-mail para começar
+              {templates.length === 0 ? 'Crie seu primeiro template de e-mail para começar' : `Crie um template do tipo "${getTipoLabel(filtroTipo)}" ou altere o filtro`}
             </p>
             <ProtectedAction screenKey="email-config" requiredLevel="edit">
               <Button onClick={handleOpenCreateDialog}>
@@ -169,7 +207,7 @@ const EmailTemplateManager: React.FC = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {templates.map((template) => (
+          {templatesFiltrados.map((template) => (
             <Card key={template.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -196,9 +234,9 @@ const EmailTemplateManager: React.FC = () => {
                     )}
 
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <Badge variant="outline" className="flex items-center gap-1">
+                      <Badge className={`flex items-center gap-1 ${getTipoBadgeColor(template.tipo || 'book')}`}>
                         <FileText className="h-3 w-3" />
-                        {getFormularioLabel(template.formulario)}
+                        {getTipoLabel(template.tipo || 'book')}
                       </Badge>
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Settings className="h-3 w-3" />
