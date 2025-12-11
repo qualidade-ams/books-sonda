@@ -1,10 +1,11 @@
 // =====================================================
-// COMPONENTE: FORMULÁRIO DE PLANO DE AÇÃO
+// COMPONENTE: FORMULÁRIO DE PLANO DE AÇÃO - VERSÃO CORRIGIDA
 // =====================================================
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { ContatosList } from './ContatosList';
 import type { PlanoAcaoFormData, PlanoAcaoCompleto } from '@/types/planoAcao';
 import {
   PRIORIDADE_OPTIONS,
@@ -38,16 +40,14 @@ const formSchema = z.object({
   pesquisa_id: z.string().min(1, 'Pesquisa é obrigatória'),
   chamado: z.string().optional(),
   empresa_id: z.string().optional(),
-  descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'),
+  // comentario_cliente: z.string().optional(), // DESABILITADO: Até migração ser executada
+  descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'), // NOVO: Descrição da ação corretiva
   acao_preventiva: z.string().optional(),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   status_plano: z.enum(['aberto', 'em_andamento', 'aguardando_retorno', 'concluido', 'cancelado']).optional(),
   data_inicio: z.string().min(1, 'Data de início é obrigatória'),
   data_conclusao: z.string().optional(),
-  data_primeiro_contato: z.string().optional(),
-  meio_contato: z.enum(['whatsapp', 'email', 'ligacao']).optional().nullable(),
-  resumo_comunicacao: z.string().optional(),
-  retorno_cliente: z.enum(['aguardando', 'respondeu', 'solicitou_mais_informacoes']).optional().nullable(),
+
   status_final: z.enum(['resolvido', 'nao_resolvido', 'resolvido_parcialmente']).optional().nullable(),
   justificativa_cancelamento: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -74,30 +74,7 @@ const formSchema = z.object({
     });
   }
   
-  // Se status_final for "resolvido" ou "resolvido_parcialmente", campos de contato são obrigatórios
-  if (data.status_final === 'resolvido' || data.status_final === 'resolvido_parcialmente') {
-    if (!data.data_primeiro_contato) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Data do primeiro contato é obrigatória para casos resolvidos',
-        path: ['data_primeiro_contato'],
-      });
-    }
-    if (!data.meio_contato) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Meio de contato é obrigatório para casos resolvidos',
-        path: ['meio_contato'],
-      });
-    }
-    if (!data.retorno_cliente) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Retorno do cliente é obrigatório para casos resolvidos',
-        path: ['retorno_cliente'],
-      });
-    }
-  }
+
 });
 
 interface PlanoAcaoFormProps {
@@ -127,22 +104,55 @@ export function PlanoAcaoForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       pesquisa_id: pesquisaId,
-      chamado: plano?.chamado || '',
-      empresa_id: plano?.empresa_id || '',
-      descricao_acao_corretiva: plano?.descricao_acao_corretiva || '',
+      chamado: plano?.chamado || plano?.pesquisa?.nro_caso || '', // CORREÇÃO: Buscar da pesquisa se não tiver no plano
+      empresa_id: plano?.empresa_id || '', // CORREÇÃO: Será preenchido via useEffect
+      comentario_cliente: plano?.pesquisa?.comentario_pesquisa || '', 
+      descricao_acao_corretiva: plano?.descricao_acao_corretiva || '', // NOVO: Campo em branco para ação corretiva
       acao_preventiva: plano?.acao_preventiva || '',
       prioridade: plano?.prioridade || 'media',
       status_plano: plano?.status_plano || 'aberto',
       data_inicio: plano?.data_inicio || format(new Date(), 'yyyy-MM-dd'),
       data_conclusao: plano?.data_conclusao || '',
-      data_primeiro_contato: plano?.data_primeiro_contato || '',
-      meio_contato: plano?.meio_contato,
-      resumo_comunicacao: plano?.resumo_comunicacao || '',
-      retorno_cliente: plano?.retorno_cliente,
       status_final: plano?.status_final,
       justificativa_cancelamento: plano?.justificativa_cancelamento || '',
     },
   });
+
+  // CORREÇÃO: Preencher campos automaticamente quando dados da pesquisa estiverem disponíveis
+  useEffect(() => {
+    if (plano?.pesquisa && empresas.length > 0) {
+      console.log('🔧 Preenchendo campos automaticamente:', {
+        pesquisa: plano.pesquisa,
+        empresas: empresas.length
+      });
+
+      // Preencher chamado se não estiver preenchido
+      if (!form.getValues('chamado') && plano.pesquisa.nro_caso) {
+        form.setValue('chamado', plano.pesquisa.nro_caso);
+      }
+
+      // Preencher empresa se não estiver preenchida
+      if (!form.getValues('empresa_id') && plano.pesquisa.empresa) {
+        // Buscar empresa pelo nome
+        const empresaEncontrada = empresas.find(
+          e => e.nome_completo === plano.pesquisa?.empresa || 
+               e.nome_abreviado === plano.pesquisa?.empresa
+        );
+        
+        if (empresaEncontrada) {
+          console.log('✅ Empresa encontrada:', empresaEncontrada.nome_abreviado);
+          form.setValue('empresa_id', empresaEncontrada.id);
+        } else {
+          console.log('❌ Empresa não encontrada:', plano.pesquisa.empresa);
+        }
+      }
+
+      
+      if (!form.getValues('comentario_cliente') && plano.pesquisa.comentario_pesquisa) {
+        form.setValue('comentario_cliente', plano.pesquisa.comentario_pesquisa);
+      }
+    }
+  }, [plano, empresas, form]);
 
   return (
     <Form {...form}>
@@ -204,6 +214,26 @@ export function PlanoAcaoForm({
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Ação Corretiva</h3>
           
+          <FormField
+            control={form.control}
+            name="comentario_cliente"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Comentário do Cliente</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Comentário ou feedback do cliente sobre o problema..."
+                    rows={3}
+                    disabled // Campo somente leitura, preenchido automaticamente
+                    className="bg-gray-50 dark:bg-gray-900"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />    
+
           <FormField
             control={form.control}
             name="descricao_acao_corretiva"
@@ -332,109 +362,13 @@ export function PlanoAcaoForm({
           />
         </div>
 
-        {/* Seção: Contato com Cliente */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Contato com Cliente</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="data_primeiro_contato"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Quando entrou em contato?
-                    {(form.watch('status_final') === 'resolvido' || form.watch('status_final') === 'resolvido_parcialmente') && (
-                      <span className="text-foreground ml-1">*</span>
-                    )}
-                  </FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="meio_contato"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Como entrou em contato?
-                    {(form.watch('status_final') === 'resolvido' || form.watch('status_final') === 'resolvido_parcialmente') && (
-                      <span className="text-foreground ml-1">*</span>
-                    )}
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o meio de contato" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {MEIO_CONTATO_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="retorno_cliente"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    O cliente respondeu?
-                    {(form.watch('status_final') === 'resolvido' || form.watch('status_final') === 'resolvido_parcialmente') && (
-                      <span className="text-foreground ml-1">*</span>
-                    )}
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o retorno" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {RETORNO_CLIENTE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {/* Seção: Histórico de Contatos */}
+        {plano?.id && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Contatos com Cliente</h3>
+            <ContatosList planoAcaoId={plano.id} />
           </div>
-
-          <FormField
-            control={form.control}
-            name="resumo_comunicacao"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Resumo da Comunicação</FormLabel>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    placeholder="Descreva o que foi conversado com o cliente..."
-                    rows={3}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        )}
 
         {/* Seção: Conclusão */}
         <div className="space-y-4">

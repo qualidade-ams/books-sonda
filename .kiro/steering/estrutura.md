@@ -2,7 +2,7 @@
 
 Documentação atualizada da estrutura completa do projeto, incluindo todos os arquivos, diretórios e suas respectivas funcionalidades.
 
-**Última atualização**: Removido campo `atendimento_presencial` do componente `TipoCobrancaBloco.tsx` - funcionalidade de seleção entre valores remotos e locais agora é gerenciada exclusivamente no formulário principal de requerimentos (`RequerimentoForm.tsx`).
+**Última atualização**: Implementado sistema completo de histórico de contatos múltiplos para planos de ação, substituindo o sistema de contato único. Criada tabela `plano_acao_contatos` com funcionalidades de CRUD completo, interface expansível e integração nas abas de visualização.
 
 ---
 
@@ -129,6 +129,185 @@ Servidor Express principal com endpoints para sincronização de pesquisas.
 ---
 
 ## Diretório Principal do Projeto
+
+### `RESUMO_IMPLEMENTACAO_CAMPOS_ESPECIFICOS.md`
+Documento de resumo completo da implementação de campos específicos por cliente no sistema de taxas, detalhando todas as etapas realizadas, correções aplicadas e status final da funcionalidade.
+
+**Funcionalidades documentadas:**
+- **Status da implementação**: Documentação completa do status "IMPLEMENTAÇÃO COMPLETA" com todos os requisitos atendidos
+- **Objetivo e escopo**: Descrição detalhada dos campos dinâmicos por cliente (VOTORANTIM, EXXONMOBIL, CHIESI, CSN, NIDEC)
+- **Implementações realizadas**: Lista completa de todas as implementações:
+  - Migração do banco de dados (`add_campos_especificos_clientes_taxas.sql`)
+  - Tipos TypeScript (`src/types/taxasClientes.ts`)
+  - Serviço de backend (`src/services/taxasClientesService.ts`)
+  - Interface frontend (`src/components/admin/taxas/TaxaForm.tsx`)
+- **Testes realizados**: Documentação dos testes executados incluindo correção de labels CHIESI
+- **Correções aplicadas**: Lista de problemas identificados e resolvidos:
+  - Erro `toISOString` corrigido com optional chaining
+  - Labels CHIESI corrigidos para "Ticket Base" e "Ticket Excedente"
+  - Validação robusta implementada
+  - CRUD completo implementado
+- **Próximos passos**: Instruções para execução da migração e testes de validação
+- **Mapeamento de campos**: Tabela completa com mapeamento de campos por cliente
+- **Arquivos modificados**: Lista de todos os arquivos alterados na implementação
+
+**Integração:**
+- Serve como documentação técnica completa da funcionalidade
+- Referência para manutenção futura e troubleshooting
+- Guia para validação e testes da implementação
+- Documentação de correções aplicadas durante o desenvolvimento
+
+### `test_campos_especificos.js`
+Script de teste JavaScript para verificar a implementação das funções utilitárias de campos específicos por cliente no sistema de taxas.
+
+**Funcionalidades principais:**
+- **Simulação de funções utilitárias**: Implementa versões de teste das funções `getCamposEspecificosPorCliente()` e `clienteTemCamposEspecificos()`
+- **Teste de mapeamento por cliente**: Valida configuração de campos específicos para cada cliente (VOTORANTIM, EXXONMOBIL, CHIESI, CSN, NIDEC)
+- **Validação de estrutura**: Verifica se cada cliente retorna os campos corretos com labels e placeholders apropriados
+- **Teste de fallback**: Confirma que clientes não configurados retornam array vazio
+- **Output formatado**: Exibe resultados de teste com emojis e formatação clara no console
+
+**Clientes testados:**
+- **VOTORANTIM**: `valor_ticket`, `valor_ticket_excedente`
+- **EXXONMOBIL**: `ticket_excedente_simples`, `ticket_excedente_complexo`
+- **CHIESI**: `ticket_excedente_1`, `ticket_excedente_2`
+- **CSN**: `valor_ticket`, `valor_ticket_excedente`
+- **NIDEC**: `ticket_excedente`
+- **OUTRO_CLIENTE**: Teste de fallback (sem campos específicos)
+
+**Estrutura de retorno testada:**
+```javascript
+{
+  campo: 'nome_do_campo',
+  label: 'Label Amigável',
+  placeholder: 'Ex: 150,00'
+}
+```
+
+**Como executar:**
+```bash
+node test_campos_especificos.js
+```
+
+**Integração:**
+- Complementa a migração `add_campos_especificos_clientes_taxas.sql`
+- Valida implementação das funções utilitárias antes da integração no frontend
+- Serve como documentação executável dos campos específicos por cliente
+
+### `test_taxa_validation.js`
+Script de teste JavaScript para validação do formulário de taxas de clientes, simulando o comportamento do React Hook Form e validações do componente `TaxaForm.tsx`.
+
+**Funcionalidades principais:**
+- **Simulação de handleSubmit**: Implementa versão de teste da função `handleSubmit` do formulário de taxas
+- **Validação de campos obrigatórios**: Testa validação de `vigencia_inicio` e `tipo_produto`
+- **Conversão de cliente**: Simula conversão de nome abreviado para UUID da empresa
+- **Formatação de dados**: Testa formatação completa dos dados como no formulário real
+- **Campos específicos por cliente**: Inclui campos condicionais (valor_ticket, ticket_excedente, etc.)
+- **Cenários de teste múltiplos**: 4 cenários de teste cobrindo casos válidos e inválidos
+
+**Dados de teste:**
+- **Dados completos válidos**: Formulário preenchido corretamente com cliente VOTORANTIM
+- **Cliente não encontrado**: Teste com cliente inexistente
+- **Vigência início undefined**: Teste de validação de campo obrigatório
+- **Tipo produto undefined**: Teste de validação de campo obrigatório
+
+**Estrutura de dados testada:**
+```javascript
+{
+  cliente_id: 'VOTORANTIM', // Nome abreviado (convertido para UUID)
+  vigencia_inicio: new Date('2024-01-01'),
+  vigencia_fim: new Date('2024-12-31'),
+  tipo_produto: 'GALLERY',
+  valores_remota: { funcional: 150, tecnico: 180, dba: 220, gestor: 250 },
+  valores_local: { funcional: 165, tecnico: 198, dba: 242, gestor: 275 },
+  valor_ticket: 100.50, // Campo específico VOTORANTIM
+  valor_ticket_excedente: 150.75 // Campo específico VOTORANTIM
+}
+```
+
+**Como executar:**
+```bash
+node test_taxa_validation.js
+```
+
+**Integração:**
+- Valida lógica de validação do componente `TaxaForm.tsx`
+- Testa conversão de dados antes do envio ao serviço `taxasClientesService.ts`
+- Complementa testes de campos específicos por cliente
+- Serve como documentação executável do fluxo de validação do formulário
+
+### `test_final_campos_especificos.js`
+Script de teste final JavaScript para verificar a implementação completa dos campos específicos por cliente no sistema de taxas, validando as funções utilitárias e mapeamento de campos condicionais.
+
+**Funcionalidades principais:**
+- **Simulação de funções utilitárias**: Implementa versões de teste das funções `getCamposEspecificosPorCliente()` e `clienteTemCamposEspecificos()`
+- **Teste completo de mapeamento**: Valida configuração de campos específicos para todos os clientes suportados (VOTORANTIM, EXXONMOBIL, CHIESI, CSN, NIDEC)
+- **Validação de estrutura de retorno**: Verifica se cada cliente retorna os campos corretos com labels e placeholders apropriados
+- **Teste de fallback**: Confirma que clientes não configurados retornam array vazio
+- **Output formatado com emojis**: Exibe resultados de teste com emojis visuais e formatação clara no console
+- **Resumo da implementação**: Lista todos os arquivos e componentes envolvidos na funcionalidade
+- **Guia de próximos passos**: Instruções claras para finalizar a implementação
+
+**Clientes testados e seus campos:**
+- **VOTORANTIM**: `valor_ticket`, `valor_ticket_excedente`
+- **EXXONMOBIL**: `ticket_excedente_simples`, `ticket_excedente_complexo`
+- **CHIESI**: `ticket_excedente_1`, `ticket_excedente_2`
+- **CSN**: `valor_ticket`, `valor_ticket_excedente`
+- **NIDEC**: `ticket_excedente`
+- **OUTRO_CLIENTE**: Teste de fallback (sem campos específicos)
+
+**Estrutura de retorno testada:**
+```javascript
+{
+  campo: 'nome_do_campo',
+  label: 'Label Amigável',
+  placeholder: 'Ex: 150,00'
+}
+```
+
+**Como executar:**
+```bash
+node test_final_campos_especificos.js
+```
+
+**Integração:**
+- Valida implementação completa das funções utilitárias de campos específicos
+- Complementa a migração `add_campos_especificos_clientes_taxas.sql`
+- Serve como documentação executável dos campos específicos por cliente
+- Fornece checklist completo para finalização da implementação
+- Guia para limpeza dos arquivos de teste após validação
+
+### `test_chiesi_labels.js`
+Script de teste JavaScript específico para verificar se as correções de labels para o cliente CHIESI foram implementadas corretamente no sistema de campos específicos por cliente.
+
+**Funcionalidades principais:**
+- **Teste focado em CHIESI**: Validação específica dos campos e labels do cliente CHIESI
+- **Simulação de funções utilitárias**: Implementa versões de teste das funções `getCamposEspecificosPorCliente()` e `clienteTemCamposEspecificos()`
+- **Validação de labels corretos**: Verifica se os labels foram corrigidos para "Ticket Base" e "Ticket Excedente"
+- **Teste de estrutura**: Confirma que os campos `ticket_excedente_1` e `ticket_excedente_2` estão mapeados corretamente
+- **Output detalhado**: Exibe resultados de teste com emojis visuais e feedback claro sobre sucesso/falha
+- **Guia de próximos passos**: Instruções para executar migração e testar no sistema
+
+**Campos testados para CHIESI:**
+- **ticket_excedente_1**: Label "Ticket Base" (corrigido)
+- **ticket_excedente_2**: Label "Ticket Excedente" (corrigido)
+
+**Validações realizadas:**
+- Verifica se os campos corretos são retornados
+- Valida se os labels estão com os nomes corretos
+- Confirma estrutura de retorno esperada
+- Testa função de verificação de existência de campos
+
+**Como executar:**
+```bash
+node test_chiesi_labels.js
+```
+
+**Integração:**
+- Complementa os testes gerais de campos específicos
+- Foca especificamente nas correções para CHIESI
+- Valida implementação antes da migração no banco
+- Serve como documentação das correções aplicadas
 
 ### `src/pages/admin/`
 
@@ -772,7 +951,7 @@ Busca em tempo real nos seguintes campos:
 Componentes relacionados ao gerenciamento de taxas de clientes.
 
 #### `TaxaForm.tsx`
-Formulário completo para cadastro e edição de taxas de clientes, com cálculo automático de valores, gestão de vigências e suporte a reajustes.
+Formulário completo para cadastro e edição de taxas de clientes, com cálculo automático de valores, gestão de vigências, suporte a reajustes e campos específicos por cliente.
 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de taxas com todos os campos necessários
@@ -786,6 +965,7 @@ Formulário completo para cadastro e edição de taxas de clientes, com cálculo
 - **Taxa padrão automática**: Preenchimento automático com taxa padrão para clientes sem AMS
 - **Vigência automática**: Sugestão de vigência de 1 ano menos 1 dia ao selecionar data início (ex: início 01/01/2024 → fim 31/12/2024)
 - **Interface limpa**: Visual simplificado sem indicadores redundantes de cálculo automático
+- **Campos específicos por cliente**: Suporte a campos condicionais que aparecem baseado no nome abreviado da empresa (ex: valor_ticket para VOTORANTIM, ticket_excedente_simples para EXXONMOBIL)
 
 **Props do componente:**
 - `taxa?: TaxaClienteCompleta | null` - Taxa existente para edição (opcional)
@@ -862,6 +1042,8 @@ Tabela com 5 colunas para edição de valores locais:
 - `converterMoedaParaNumero(valor)`: Converte string monetária para número
 - `calcularValoresExibicao(valores, tipo)`: Calcula todos os valores derivados para exibição com diferenciação automática entre valores remotos e locais
 - `handleSubmit(data)`: Processa e submete dados do formulário
+- `getCamposEspecificosPorCliente(nomeAbreviado)`: Retorna configuração de campos específicos baseado no nome abreviado do cliente
+- `clienteTemCamposEspecificos(nomeAbreviado)`: Verifica se cliente possui campos específicos configurados
 
 **Cálculo automático de valores:**
 - Utiliza função `calcularValores()` de `@/types/taxasClientes` com parâmetro `isLocal` para diferenciação entre valores remotos e locais
@@ -876,6 +1058,15 @@ Tabela com 5 colunas para edição de valores locais:
 - GALLERY: Funções específicas para produto Gallery
 - OUTROS: Funções para COMEX e FISCAL
 
+**Campos específicos por cliente:**
+- Utiliza função `getCamposEspecificosPorCliente()` para obter configuração de campos específicos baseado no nome abreviado do cliente
+- Utiliza função `clienteTemCamposEspecificos()` para verificar se cliente possui campos específicos configurados
+- Suporte a campos condicionais que aparecem baseado no cliente selecionado:
+  - **VOTORANTIM e CSN**: valor_ticket, valor_ticket_excedente
+  - **EXXONMOBIL**: ticket_excedente_simples, ticket_excedente_complexo
+  - **CHIESI**: ticket_excedente_1 (Ticket Base), ticket_excedente_2 (Ticket Excedente)
+  - **NIDEC**: ticket_excedente
+
 **Formatação de dados:**
 - Valores monetários formatados em pt-BR com 2 casas decimais
 - Datas formatadas em pt-BR (DD/MM/YYYY) usando date-fns
@@ -884,8 +1075,8 @@ Tabela com 5 colunas para edição de valores locais:
 
 **Validações:**
 - Cliente obrigatório
-- Tipo de produto obrigatório
-- Vigência início obrigatória
+- Tipo de produto obrigatório (validação explícita com setError)
+- Vigência início obrigatória (validação explícita com setError)
 - Validação de formato de valores monetários
 
 **Integração:**
@@ -911,6 +1102,12 @@ Tabela com 5 colunas para edição de valores locais:
 - `TipoProduto` - Tipo de produto ('GALLERY' | 'OUTROS')
 
 **Melhorias recentes:**
+- **Validação explícita de campos obrigatórios**: Implementada validação manual com `form.setError()` para campos críticos:
+  - **vigencia_inicio**: Validação explícita com mensagem "Vigência início é obrigatória" e retorno early para evitar processamento com dados inválidos
+  - **tipo_produto**: Validação explícita com mensagem "Tipo de produto é obrigatório" e retorno early para garantir integridade dos dados
+  - **Melhor UX**: Usuário recebe feedback específico sobre campos obrigatórios não preenchidos
+  - **Prevenção de erros**: Evita tentativas de processamento com dados incompletos
+  - **Validação robusta**: Complementa validação do schema Zod com verificações específicas no momento do submit
 - **Interface visual simplificada**: Removido indicador visual redundante "🔄 Calculado automaticamente (+10%)" da seção de Valores Hora Local para interface mais limpa e menos poluída visualmente, mantendo funcionalidade de cálculo automático intacta
 - **Recálculo automático de valores locais no onBlur**: Implementada funcionalidade que recalcula automaticamente os valores locais quando usuário edita um valor remoto:
   - Dispara no evento `onBlur` dos campos de valor base remoto
@@ -1102,6 +1299,327 @@ Componente para visualização e gerenciamento do histórico de taxas padrão, c
 
 ---
 
+### `src/components/admin/plano-acao/`
+
+Componentes relacionados ao gerenciamento de planos de ação.
+
+#### `PlanoAcaoForm.tsx`
+Formulário completo para cadastro e edição de planos de ação, com validação via Zod, integração com React Hook Form e sistema de histórico de contatos múltiplos.
+
+#### `ContatosList.tsx`
+Componente completo para listagem e gerenciamento de contatos com clientes em planos de ação, permitindo registro detalhado de comunicações e acompanhamento de retornos.
+
+**Funcionalidades principais:**
+- **Listagem de contatos**: Exibição de todos os contatos registrados para um plano de ação específico
+- **Interface expansível**: Cards colapsáveis com resumo na visualização compacta e detalhes completos na expansão
+- **CRUD completo**: Criação, edição e exclusão de contatos via modais
+- **Histórico cronológico**: Contatos ordenados por data com metadados de criação e atualização
+- **Indicadores visuais**: Ícones específicos por meio de contato (📱 WhatsApp, 📧 Email, 📞 Ligação)
+- **Estados vazios**: Mensagens informativas quando não há contatos registrados
+- **Confirmação de exclusão**: Dialog de confirmação antes de remover contatos
+
+**Props do componente:**
+- `planoAcaoId: string` - UUID do plano de ação para buscar contatos relacionados
+
+**Hooks utilizados:**
+- `useContatosPlanoAcao(planoAcaoId)` - Busca lista de contatos do plano
+- `useCriarContato()` - Hook para criação de novos contatos
+- `useAtualizarContato()` - Hook para atualização de contatos existentes
+- `useDeletarContato()` - Hook para exclusão de contatos
+
+**Estados gerenciados:**
+- `expandedContatos: Set<string>` - Controle de expansão de cards individuais
+- `modalNovoContato: boolean` - Controle do modal de criação
+- `contatoEditando: PlanoAcaoContato | null` - Contato sendo editado
+- `contatoParaDeletar: string | null` - ID do contato para confirmação de exclusão
+
+**Estrutura visual:**
+- **Cabeçalho**: Título com contador de contatos e botão "Novo Contato" (azul Sonda)
+- **Cards expansíveis**: Cada contato em card com Collapsible do shadcn/ui:
+  - **Header compacto**: Ícone do meio de contato, data, resumo truncado, badge de retorno e botões de ação
+  - **Conteúdo expandido**: Resumo completo, retorno do cliente, observações e metadados
+- **Estado vazio**: Card com ícone MessageSquare e mensagem explicativa
+- **Modais**: Dialog para criação/edição usando componente `ContatoForm`
+- **Confirmação**: AlertDialog para exclusão com botão vermelho
+
+**Integração:**
+- Utiliza componente `ContatoForm` para formulários de criação e edição
+- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData`
+- Utiliza funções utilitárias `getMeioContatoLabel()`, `getRetornoClienteLabel()` e `getMeioContatoIcon()`
+- Formatação de datas com date-fns e locale pt-BR
+
+#### `ContatoForm.tsx`
+Formulário completo para cadastro e edição de contatos com clientes em planos de ação, com validação via Zod e campos específicos para registro de comunicações.
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de contatos com validação robusta
+- **Validação via Zod**: Schema `contatoFormSchema` com validações específicas
+- **Campos organizados**: Layout responsivo com grid adaptativo
+- **Valores padrão inteligentes**: Data atual e WhatsApp como meio padrão
+- **Validação contextual**: Resumo obrigatório com mínimo de 10 caracteres
+
+**Props do componente:**
+- `contato?: PlanoAcaoContato` - Contato existente para edição (opcional)
+- `onSubmit: (dados: PlanoAcaoContatoFormData) => void` - Callback de submissão
+- `onCancel: () => void` - Callback de cancelamento
+- `isLoading?: boolean` - Estado de loading durante operações
+
+**Campos do formulário:**
+- `data_contato` (obrigatório) - Data do contato (input date)
+- `meio_contato` (obrigatório) - Select com opções: WhatsApp, E-mail, Ligação
+- `resumo_comunicacao` (obrigatório) - Textarea com mínimo 10 caracteres
+- `retorno_cliente` (opcional) - Select com status: Aguardando, Respondeu, Solicitou Mais Informações
+- `observacoes` (opcional) - Textarea para observações adicionais
+
+**Validações implementadas:**
+- Data do contato obrigatória
+- Meio de contato obrigatório (enum)
+- Resumo com mínimo de 10 caracteres
+- Retorno do cliente opcional mas tipado
+- Observações opcionais
+
+**Integração:**
+- Utilizado pelo componente `ContatosList` em modais de criação e edição
+- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData`
+- Utiliza constantes `MEIO_CONTATO_CONTATOS_OPTIONS` e `RETORNO_CLIENTE_CONTATOS_OPTIONS`
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de planos de ação com todos os campos necessários
+- **Validação robusta**: Validação de dados usando Zod schema com validação condicional
+- **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
+- **Inicialização inteligente**: Preenche campos iniciais com dados da pesquisa via defaultValues do useForm
+- **Campos condicionais**: Exibe campos específicos baseados no status do plano
+- **Validação contextual**: Campos obrigatórios mudam baseado no status final selecionado
+- **Organização em seções**: Interface dividida em seções lógicas (Informações Básicas, Ação Corretiva, Contato, Conclusão)
+
+**Props do componente:**
+- `plano?: PlanoAcaoCompleto` - Plano existente para edição (opcional)
+- `pesquisaId: string` - UUID da pesquisa de satisfação relacionada
+- `onSubmit: (dados: PlanoAcaoFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Campos do formulário:**
+
+**Seção: Informações Básicas**
+- `chamado` - Número do chamado (preenchido automaticamente da pesquisa)
+- `empresa_id` - Select com empresas ordenadas alfabeticamente
+
+**Seção: Ação Corretiva**
+- `comentario_cliente` - Comentário do cliente (campo habilitado, somente leitura, preenchido automaticamente da pesquisa)
+- `descricao_acao_corretiva` - Descrição da ação corretiva (obrigatório, mínimo 10 caracteres)
+- `acao_preventiva` - Ação preventiva para evitar recorrência
+
+**Seção: Prioridade e Status**
+- `prioridade` - Nível de prioridade (baixa, media, alta, critica)
+- `status_plano` - Status atual do plano
+- `data_inicio` - Data de início do plano (obrigatório)
+- `justificativa_cancelamento` - Justificativa quando status é "cancelado" (condicional)
+
+**Seção: Contato com Cliente**
+- `data_primeiro_contato` - Data do primeiro contato
+- `meio_contato` - Meio de contato utilizado (WhatsApp, Email, Ligação)
+- `retorno_cliente` - Status do retorno do cliente
+- `resumo_comunicacao` - Resumo da comunicação
+
+**Seção: Conclusão**
+- `data_conclusao` - Data de conclusão do plano
+- `status_final` - Status final da resolução (resolvido, não resolvido, parcialmente resolvido)
+
+**Validações condicionais:**
+- **Status cancelado**: Justificativa obrigatória
+- **Status final preenchido**: Data de conclusão obrigatória
+- **Casos resolvidos**: Campos de contato obrigatórios (data, meio, retorno)
+- **Mudança automática**: Status muda para "concluído" quando status final é definido
+
+**Comportamento:**
+- **Modo criação**: Formulário em branco com valores padrão
+- **Modo edição**: Formulário preenchido com dados do plano existente
+- **Inicialização automática**: Campos preenchidos via defaultValues com dados da pesquisa relacionada
+- **Validação em tempo real**: Campos obrigatórios mudam baseado no status selecionado
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de planos de ação
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Validação consistente com tipos definidos em `@/types/planoAcao`
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+**Melhorias recentes:**
+- **Sistema de contatos múltiplos implementado**: Substituído sistema de contato único por histórico completo de contatos múltiplos:
+  - **Seção de contatos removida**: Removida seção "Contato com Cliente" do formulário principal
+  - **Lista de contatos integrada**: Adicionado componente `ContatosList` que exibe histórico de contatos quando editando plano existente
+  - **Validações atualizadas**: Removidas validações condicionais de campos de contato único do schema Zod
+  - **Interface limpa**: Formulário mais focado nas informações principais do plano de ação
+- **Campo comentario_cliente habilitado**: Removido comentário temporário e habilitado campo `comentario_cliente` após execução da migração `add_comentario_cliente_simple.sql`, permitindo armazenamento de comentários específicos do cliente separadamente da descrição da ação corretiva
+- **Remoção do bloco informativo temporário**: Removido bloco azul que exibia o comentário da pesquisa como informação apenas, já que o campo `comentario_cliente` agora está funcional e pode ser editado diretamente no formulário
+- **Remoção do useEffect de preenchimento automático**: Simplificada inicialização do formulário usando apenas defaultValues do useForm, eliminando lógica complexa de preenchimento automático via useEffect
+- **Inicialização mais estável**: Campos agora são preenchidos diretamente na criação do formulário, evitando re-renderizações desnecessárias
+- **Melhor performance**: Eliminado useEffect que causava atualizações após montagem do componente
+- **Código mais limpo**: Reduzida complexidade do código removendo lógica de busca e mapeamento de empresas
+
+---
+
+#### `PlanoAcaoDetalhes.tsx`
+Componente de visualização detalhada de planos de ação, organizado em abas para melhor navegação e apresentação das informações.
+
+**Funcionalidades principais:**
+- **Interface com abas**: Organização em 4 abas principais (Informações, Contato, Resultado, Histórico)
+- **Visualização completa**: Exibição de todos os dados do plano de ação e pesquisa relacionada
+- **Badges coloridos**: Indicadores visuais para prioridade e status com cores específicas
+- **Formatação de datas**: Datas formatadas em pt-BR com locale apropriado
+- **Estados vazios**: Mensagens e ícones informativos quando não há dados para exibir
+- **Histórico de atualizações**: Timeline com todas as alterações do plano
+
+**Props do componente:**
+- `plano: PlanoAcaoCompleto` - Plano de ação completo com dados da pesquisa relacionada
+- `historico?: PlanoAcaoHistorico[]` - Array opcional com histórico de atualizações do plano
+
+**Estrutura das abas:**
+
+**Aba "Informações":**
+- **Card "Informações da Pesquisa"**: Dados da pesquisa relacionada (empresa, cliente, chamado, resposta)
+- **Comentário do Cliente**: Exibe `comentario_cliente` (campo direto do plano) ou fallback para `pesquisa.comentario_pesquisa`
+- **Card "Ações Planejadas"**: Ação corretiva (obrigatória) e ação preventiva (opcional)
+- **Card "Status do Plano"**: Prioridade, status, data início e data conclusão (se houver)
+
+**Aba "Contato":**
+- **Card "Contato com Cliente"**: Data do primeiro contato, meio de contato, retorno do cliente e resumo da comunicação
+- **Estado vazio**: Ícone e mensagem quando não há contatos registrados
+
+**Aba "Resultado":**
+- **Card "Resultado Final"**: Status final e data de fechamento
+- **Estado vazio**: Ícone e mensagem quando plano ainda não foi concluído
+
+**Aba "Histórico":**
+- **Timeline de atualizações**: Lista cronológica de todas as alterações com usuário, data/hora e tipo de atualização
+- **Estado vazio**: Ícone e mensagem quando não há histórico disponível
+
+**Ícones utilizados (lucide-react):**
+- `FileText`, `MessageCircle`, `Target`, `History` - Ícones das abas
+- `Calendar`, `User`, `CheckCircle2`, `Clock` - Ícones de informações
+- `Phone`, `Mail`, `MessageSquare` - Ícones de contato
+
+**Componentes UI utilizados:**
+- `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger` - Sistema de abas
+- `Card`, `CardContent`, `CardHeader`, `CardTitle` - Cards de conteúdo
+- `Badge` - Indicadores de prioridade e status
+- `Separator` - Separadores visuais no histórico
+
+**Formatação de dados:**
+- Datas formatadas em pt-BR (DD/MM/YYYY) usando date-fns com locale ptBR
+- Datas com hora formatadas como "DD/MM/YYYY às HH:mm"
+- Capitalização automática de textos (prioridade, status, meio de contato)
+- Substituição de underscores por espaços em textos de enum
+
+**Melhorias recentes:**
+- **Priorização do campo comentario_cliente**: Modificada lógica de exibição do comentário para priorizar o campo `comentario_cliente` (campo direto do plano) sobre `pesquisa.comentario_pesquisa` (campo da pesquisa relacionada)
+- **Fallback inteligente**: Mantido fallback para `pesquisa.comentario_pesquisa` quando `comentario_cliente` não estiver disponível
+- **Compatibilidade**: Suporte a ambos os campos garante funcionamento com dados existentes e novos
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de planos de ação
+- Integra-se com tipos `PlanoAcaoCompleto` e `PlanoAcaoHistorico` de `@/types/planoAcao`
+- Utiliza funções `getCorPrioridade()` e `getCorStatus()` para cores dos badges
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+**Melhorias recentes:**
+- **Integração com sistema de contatos múltiplos**: Aba "Contato" agora exibe o componente `ContatosList` ao invés de campos de contato único
+- **Interface simplificada**: Removidos campos individuais de contato (data_primeiro_contato, meio_contato, resumo_comunicacao, retorno_cliente)
+- **Histórico completo**: Usuários podem visualizar todos os contatos registrados em formato expansível
+
+**Uso típico:**
+```typescript
+<PlanoAcaoDetalhes
+  plano={planoCompleto}
+  historico={historicoAtualizacoes}
+/>
+```
+
+#### `ContatoForm.tsx`
+Formulário dedicado para cadastro e edição de contatos individuais do plano de ação, com validação via Zod e integração com React Hook Form.
+
+**Funcionalidades principais:**
+- **Formulário completo**: Cadastro e edição de contatos individuais com todos os campos necessários
+- **Validação robusta**: Validação de dados usando Zod schema com campos obrigatórios e opcionais
+- **Seleção de datas**: Calendário interativo para data do contato
+- **Meios de contato**: Select com opções (WhatsApp, E-mail, Ligação)
+- **Status de retorno**: Select com status do retorno do cliente (Aguardando, Respondeu, Solicitou Mais Informações)
+- **Campos de texto**: Resumo da comunicação (obrigatório) e observações (opcional)
+
+**Props do componente:**
+- `contato?: PlanoAcaoContato` - Contato existente para edição (opcional)
+- `onSubmit: (dados: PlanoAcaoContatoFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Campos do formulário:**
+- `data_contato` (obrigatório) - Data do contato com o cliente
+- `meio_contato` (obrigatório) - Meio utilizado (whatsapp, email, ligacao)
+- `resumo_comunicacao` (obrigatório) - Resumo do que foi conversado (mínimo 10 caracteres)
+- `retorno_cliente` (opcional) - Status do retorno do cliente
+- `observacoes` (opcional) - Observações adicionais sobre o contato
+
+**Integração:**
+- Utilizado pelo componente `ContatosList` em modais de criação e edição
+- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData` de `@/types/planoAcaoContatos`
+- Validação via schema Zod com mensagens de erro em português
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+#### `ContatosList.tsx`
+Componente de lista expansível para gerenciamento completo do histórico de contatos de um plano de ação, com funcionalidades de CRUD e interface colapsável.
+
+**Funcionalidades principais:**
+- **Lista expansível**: Contatos exibidos em cards colapsáveis com resumo na linha principal
+- **CRUD completo**: Criar, visualizar, editar e excluir contatos com confirmação
+- **Interface intuitiva**: Cards com ícones visuais por meio de contato e badges de status
+- **Modais integrados**: Formulários de criação e edição em modais responsivos
+- **Confirmação de exclusão**: AlertDialog para confirmar remoção de contatos
+- **Estados vazios**: Mensagens informativas quando não há contatos registrados
+- **Controle de expansão**: Sistema de expansão individual por contato com ícones visuais
+
+**Props do componente:**
+- `planoAcaoId: string` - UUID do plano de ação para buscar contatos relacionados
+
+**Hooks utilizados:**
+- `useContatosPlanoAcao(planoAcaoId)` - Busca contatos do plano de ação
+- `useCriarContato()` - Hook para criação de novos contatos
+- `useAtualizarContato()` - Hook para atualização de contatos existentes
+- `useDeletarContato()` - Hook para exclusão de contatos
+
+**Estados gerenciados:**
+- `expandedContatos: Set<string>` - IDs dos contatos expandidos
+- `modalNovoContato: boolean` - Controle do modal de criação
+- `contatoEditando: PlanoAcaoContato | null` - Contato sendo editado
+- `contatoParaDeletar: string | null` - ID do contato para exclusão
+
+**Estrutura visual:**
+- **Cabeçalho**: Título com contador de contatos e botão "Novo Contato" (azul Sonda)
+- **Cards colapsáveis**: Cada contato em card individual com:
+  - **Linha principal**: Ícone do meio de contato, data, resumo truncado, badge de retorno, botões de ação
+  - **Conteúdo expandido**: Resumo completo, retorno do cliente, observações, metadados de criação/atualização
+- **Estado vazio**: Card com ícone e mensagem quando não há contatos
+- **Modais**: Formulários de criação/edição em dialogs responsivos (max-w-2xl)
+
+**Funcionalidades de expansão:**
+- `toggleExpansao(contatoId)` - Alterna expansão de contato específico
+- Ícones visuais: ChevronRight (fechado) / ChevronDown (aberto)
+- Múltiplos contatos podem estar expandidos simultaneamente
+- Estado de expansão mantido durante operações CRUD
+
+**Integração:**
+- Utilizado nos componentes `PlanoAcaoForm` e `PlanoAcaoDetalhes`
+- Integra-se com serviços de contatos via hooks customizados
+- Utiliza componentes `ContatoForm` para modais de criação/edição
+- Componentes UI do shadcn/ui (Card, Dialog, AlertDialog, Badge, Collapsible)
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+**Tipos utilizados:**
+- `PlanoAcaoContato` - Tipo completo do contato
+- `PlanoAcaoContatoFormData` - Dados do formulário de contato
+- Funções utilitárias de `@/types/planoAcaoContatos` para labels e ícones
+
+---
+
 ### `src/components/admin/pesquisas-satisfacao/`
 
 Componentes relacionados ao gerenciamento de pesquisas de satisfação.
@@ -1111,7 +1629,7 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de pesquisas de satisfação com todos os campos necessários
-- **Validação robusta**: Validação de dados usando Zod schema (`PesquisaFormSchema`)
+- **Validação robusta**: Validação de dados usando Zod schema (`getPesquisaFormSchema()`) com validação condicional para pesquisas manuais
 - **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
 - **Seleção de datas**: Calendário interativo para seleção de data/hora de resposta
 - **Categorização**: Campos para categoria, grupo e tipo de chamado
@@ -1160,7 +1678,7 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 - `Button` - Botões de ação
 
 **Validação:**
-- Schema Zod (`PesquisaFormSchema`) aplicado via `zodResolver`
+- Schema Zod (`getPesquisaFormSchema()`) aplicado via `zodResolver` com validação condicional baseada na origem da pesquisa
 - Validação automática de campos obrigatórios
 - Validação de formato de email
 - Mensagens de erro contextuais via `FormMessage`
@@ -1194,9 +1712,18 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 **Tipos utilizados:**
 - `Pesquisa` - Tipo completo da pesquisa de satisfação
 - `PesquisaFormData` - Dados do formulário validados pelo schema Zod
-- `PesquisaFormSchema` - Schema de validação Zod
+- `getPesquisaFormSchema()` - Função que retorna o schema de validação Zod apropriado (base ou manual)
+
+**Validação condicional de comentário:**
+- **Pesquisas manuais**: Campo "Comentário da Pesquisa" é obrigatório com asterisco vermelho (*) e placeholder explicativo
+- **Pesquisas do SQL Server**: Campo "Comentário da Pesquisa" permanece opcional
+- **Lógica**: Usa `getPesquisaFormSchema(isPesquisaManual)` para aplicar schema correto baseado na origem
+- **Justificativa**: Pesquisas manuais precisam de contexto/justificativa, enquanto pesquisas sincronizadas já têm dados estruturados
 
 **Melhorias recentes:**
+- **Correção final de Select de Grupo**: Removido fallback `|| ''` do campo `value` do Select de Grupo, completando o padrão de correção já aplicado em outros Selects do componente (Categoria, Tipo de Caso, Resposta) para evitar warnings de componente não controlado
+- **Correção de inicialização de campos opcionais**: Substituídas strings vazias (`''`) por `undefined` para campos opcionais (categoria, grupo, tipo_caso, resposta) na inicialização do formulário, garantindo melhor compatibilidade com validação Zod e evitando valores inválidos em campos de seleção
+- **Correção de limpeza de campos**: Atualizada lógica de limpeza do campo `grupo` para usar `undefined` ao invés de string vazia (`''`), mantendo consistência com a inicialização de campos opcionais e evitando valores inválidos em Selects
 - Removido indicador de origem (SQL Server/Manual) para simplificar a interface
 - Removidas variáveis não utilizadas (`isOrigemSqlServer`, `anosDisponiveis`, `MESES_OPTIONS`)
 - Interface mais limpa e focada nos dados essenciais
@@ -1631,6 +2158,238 @@ Serviço completo para gerenciamento de elogios (pesquisas de satisfação posit
 
 ---
 
+### `planoAcaoService.ts`
+Serviço completo para gerenciamento de planos de ação, incluindo CRUD, filtros avançados, histórico de atualizações e estatísticas com logging aprimorado de erros.
+
+### `planoAcaoContatosService.ts`
+Serviço dedicado para gerenciamento de contatos múltiplos dos planos de ação, incluindo CRUD completo e estatísticas de contatos.
+
+**Funcionalidades principais:**
+- CRUD completo de contatos (criar, buscar, atualizar, deletar)
+- Busca de contatos por plano de ação ordenados por data (mais recente primeiro)
+- Integração com sistema de autenticação para rastreamento de criador
+- Cálculo de estatísticas de contatos (total, por meio de contato, por retorno)
+- Logging detalhado para troubleshooting e debug
+
+**Métodos principais:**
+- `buscarContatosPlanoAcao(planoAcaoId: string): Promise<PlanoAcaoContato[]>` - Busca todos os contatos de um plano ordenados por data
+- `buscarContatoPorId(id: string): Promise<PlanoAcaoContato | null>` - Busca contato específico por ID
+- `criarContato(planoAcaoId: string, dados: PlanoAcaoContatoFormData): Promise<PlanoAcaoContato>` - Cria novo contato vinculado ao plano
+- `atualizarContato(id: string, dados: Partial<PlanoAcaoContatoFormData>): Promise<PlanoAcaoContato>` - Atualiza contato existente
+- `deletarContato(id: string): Promise<void>` - Remove contato do sistema
+- `obterEstatisticasContatos(planoAcaoId: string)` - Calcula estatísticas agregadas dos contatos do plano
+
+**Estrutura de retorno das estatísticas:**
+```typescript
+{
+  total: number;
+  por_meio: {
+    whatsapp: number;
+    email: number;
+    ligacao: number;
+  };
+  por_retorno: {
+    aguardando: number;
+    respondeu: number;
+    solicitou_mais_informacoes: number;
+  };
+  ultimo_contato: PlanoAcaoContato | null;
+}
+```
+
+**Integração:**
+- Utilizado pelos hooks `useContatosPlanoAcao`, `useCriarContato`, `useAtualizarContato`, `useDeletarContato`
+- Integra-se com tabela `plano_acao_contatos` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+- Utilizado pelos componentes `ContatosList` e `ContatoForm`
+
+### `planoAcaoContatosService.ts`
+Serviço completo para gerenciamento de contatos com clientes em planos de ação, permitindo registro detalhado de comunicações e acompanhamento de retornos.
+
+**Funcionalidades principais:**
+- CRUD completo de contatos (criar, buscar, atualizar, deletar)
+- Busca de contatos por plano de ação com ordenação cronológica
+- Registro de meio de contato (WhatsApp, Email, Ligação)
+- Acompanhamento de retorno do cliente (aguardando, respondeu, solicitou mais informações)
+- Estatísticas de contatos por meio e tipo de retorno
+- Integração com sistema de autenticação para rastreamento de usuário criador
+- Logging detalhado para debug e auditoria
+
+**Métodos principais:**
+- `buscarContatosPlanoAcao(planoAcaoId)` - Busca todos os contatos de um plano ordenados por data
+- `buscarContatoPorId(id)` - Busca contato específico por ID
+- `criarContato(planoAcaoId, dados)` - Cria novo registro de contato
+- `atualizarContato(id, dados)` - Atualiza contato existente
+- `deletarContato(id)` - Remove contato do sistema
+- `obterEstatisticasContatos(planoAcaoId)` - Calcula estatísticas de contatos (total, por meio, por retorno, último contato)
+
+**Integração:**
+- Utiliza tabela `plano_acao_contatos` criada pela migração `create_plano_acao_contatos.sql`
+- Integra-se com sistema de autenticação via `supabase.auth.getUser()`
+- Suporta relacionamento CASCADE DELETE com planos de ação
+- Utilizado por componentes de gerenciamento de planos de ação para histórico de comunicações
+
+**Funcionalidades principais:**
+- CRUD completo de contatos (criar, buscar, atualizar, deletar)
+- Busca de contatos por plano de ação com ordenação cronológica
+- Registro de meio de contato (WhatsApp, Email, Ligação)
+- Acompanhamento de retorno do cliente (aguardando, respondeu, solicitou mais informações)
+- Estatísticas de contatos por meio e tipo de retorno
+- Integração com sistema de autenticação para rastreamento de usuário criador
+- Logging detalhado para debug e auditoria
+
+**Métodos principais:**
+- `buscarContatosPlanoAcao(planoAcaoId)` - Busca todos os contatos de um plano ordenados por data
+- `buscarContatoPorId(id)` - Busca contato específico por ID
+- `criarContato(planoAcaoId, dados)` - Cria novo registro de contato
+- `atualizarContato(id, dados)` - Atualiza contato existente
+- `deletarContato(id)` - Remove contato do sistema
+- `obterEstatisticasContatos(planoAcaoId)` - Calcula estatísticas de contatos (total, por meio, por retorno, último contato)
+
+**Integração:**
+- Utiliza tabela `plano_acao_contatos` criada pela migração `create_plano_acao_contatos.sql`
+- Integra-se com sistema de autenticação via `supabase.auth.getUser()`
+- Suporta relacionamento CASCADE DELETE com planos de ação
+- Utilizado por componentes de gerenciamento de planos de ação para histórico de comunicações
+
+**Funcionalidades principais:**
+- CRUD completo de planos de ação (criar, buscar, atualizar, deletar)
+- Busca de planos com filtros avançados (status, prioridade, período, busca textual)
+- Integração com tabela de pesquisas de satisfação relacionadas
+- Busca por pesquisa_id para verificar planos existentes
+- Gerenciamento de histórico de atualizações com usuário e timestamp
+- Cálculo de estatísticas agregadas por status e prioridade
+- Filtros por mês/ano da data de resposta da pesquisa relacionada
+- Busca textual em múltiplos campos (empresa, cliente, número do caso, descrição da ação)
+- **Logging aprimorado de erros**: Console logs estruturados com emojis visuais e detalhes completos do erro (message, details, hint, code) para melhor troubleshooting
+- **Filtragem de campos**: Pula campos que não existem na tabela `planos_acao` (ex: `chamado`, `empresa_id`) durante atualizações para evitar erros de banco até que migrações sejam executadas
+
+**Métodos principais:**
+- `buscarPlanosAcao(filtros?: FiltrosPlanoAcao): Promise<PlanoAcaoCompleto[]>` - Busca planos com filtros opcionais, retorna dados completos incluindo pesquisa relacionada
+- `buscarPlanoAcaoPorId(id: string): Promise<PlanoAcaoCompleto | null>` - Busca plano específico por ID com dados da pesquisa
+- `buscarPlanoAcaoPorPesquisa(pesquisaId: string): Promise<PlanoAcaoCompleto | null>` - Busca plano por ID da pesquisa relacionada
+- `criarPlanoAcao(dados: PlanoAcaoFormData): Promise<PlanoAcao>` - Cria novo plano de ação com usuário criador
+- `atualizarPlanoAcao(id: string, dados: Partial<PlanoAcaoFormData>): Promise<PlanoAcao>` - Atualiza plano existente com limpeza de dados
+- `deletarPlanoAcao(id: string): Promise<void>` - Remove plano do sistema
+- `buscarHistoricoPlano(planoId: string): Promise<PlanoAcaoHistorico[]>` - Busca histórico de alterações do plano
+- `adicionarHistorico(planoId: string, descricao: string, tipo: 'contato' | 'atualizacao'): Promise<PlanoAcaoHistorico>` - Adiciona entrada manual no histórico
+- `obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<EstatisticasPlanoAcao>` - Calcula estatísticas agregadas (total, por status, por prioridade)
+
+**Campos da pesquisa vinculada:**
+- `id` - UUID da pesquisa
+- `empresa` - Nome da empresa
+- `cliente` - Nome do cliente
+- `tipo_caso` - Tipo do chamado (IM/PR/RF)
+- `nro_caso` - Número do chamado
+- `comentario_pesquisa` - Comentário da pesquisa
+- `resposta` - Nível de satisfação
+- `data_resposta` - Data/hora da resposta
+
+**Filtros disponíveis (FiltrosPlanoAcao):**
+- `prioridade` - Array de prioridades para filtrar (baixa, media, alta, critica)
+- `status` - Array de status para filtrar (aberto, em_andamento, aguardando_retorno, concluido, cancelado)
+- `dataInicio` - Data inicial do período (filtro por data_inicio do plano)
+- `dataFim` - Data final do período (filtro por data_inicio do plano)
+- `busca` - Busca textual em empresa, cliente, número do caso e descrição da ação corretiva
+- `empresa` - Filtro específico por nome da empresa
+- `mes` - Mês da data de resposta da pesquisa (1-12)
+- `ano` - Ano da data de resposta da pesquisa
+
+**Fluxo de criação:**
+1. Recebe dados do formulário e limpa valores vazios/null
+2. Busca usuário autenticado via `supabase.auth.getUser()`
+3. Define status inicial como 'aberto' se não fornecido
+4. Registra usuário criador (criado_por)
+5. Retorna plano criado
+
+**Fluxo de atualização:**
+1. Recebe dados parciais do formulário
+2. Limpa valores vazios/null (exceto campos que aceitam null como meio_contato, retorno_cliente, status_final)
+3. Atualiza plano no banco com dados limpos
+4. **Logging aprimorado**: Em caso de erro, exibe detalhes estruturados com message, details, hint e code
+5. Retorna plano atualizado
+
+**Fluxo de histórico:**
+1. Busca usuário autenticado e seu nome no perfil
+2. Cria entrada no histórico com usuário, timestamp e descrição
+3. Suporta tipos 'contato' e 'atualizacao'
+4. Retorna entrada de histórico criada
+
+**Tipos utilizados:**
+- `PlanoAcao` - Tipo base do plano de ação
+- `PlanoAcaoCompleto` - Plano com dados da pesquisa relacionada
+- `PlanoAcaoFormData` - Dados do formulário de criação/edição
+- `PlanoAcaoHistorico` - Entrada do histórico de alterações
+- `FiltrosPlanoAcao` - Filtros para busca
+- `EstatisticasPlanoAcao` - Estatísticas agregadas (total, por status, por prioridade)
+
+**Integração:**
+- Utilizado pelos hooks de planos de ação
+- Integra-se com tabelas `planos_acao`, `pesquisas_satisfacao` e `plano_acao_historico` do Supabase
+- Suporta autenticação via `supabase.auth.getUser()`
+- Integra-se com tabela `profiles` para obter nomes de usuários
+
+---
+
+## Diretório `src/hooks/`
+
+Hooks customizados para gerenciamento de estado e integração com APIs.
+
+### `usePlanoAcaoContatos.ts`
+Hooks completos para gerenciamento de contatos com clientes em planos de ação, incluindo CRUD, estatísticas e invalidação de cache.
+
+**Hooks exportados:**
+
+**useContatosPlanoAcao(planoAcaoId: string)**
+- Busca todos os contatos de um plano de ação específico
+- Ordenação cronológica automática
+- Cache invalidado automaticamente após operações CRUD
+- Habilitado apenas quando planoAcaoId é fornecido
+
+**useContatoPorId(id: string)**
+- Busca contato específico por ID
+- Usado para visualização detalhada ou edição
+- Cache individual por contato
+
+**useCriarContato()**
+- Mutation para criação de novos contatos
+- Invalidação automática de cache dos contatos do plano e estatísticas
+- Feedback via toast de sucesso/erro
+- Parâmetros: `{ planoAcaoId: string; dados: PlanoAcaoContatoFormData }`
+
+**useAtualizarContato()**
+- Mutation para atualização de contatos existentes
+- Invalidação de cache do contato específico, lista do plano e estatísticas
+- Feedback via toast de sucesso/erro
+- Parâmetros: `{ id: string; dados: Partial<PlanoAcaoContatoFormData> }`
+
+**useDeletarContato()**
+- Mutation para exclusão de contatos
+- Invalidação de cache da lista do plano e estatísticas
+- Feedback via toast de sucesso/erro
+- Parâmetros: `{ id: string; planoAcaoId: string }`
+
+**useEstatisticasContatos(planoAcaoId: string)**
+- Busca estatísticas agregadas de contatos do plano
+- Total de contatos, por meio de contato, por tipo de retorno
+- Data do último contato registrado
+- Cache independente das operações CRUD
+
+**Integração:**
+- Utiliza serviço `planoAcaoContatosService` para operações no banco
+- Integração com TanStack Query para cache e estados de loading
+- Notificações via sonner (toast) para feedback ao usuário
+- Invalidação inteligente de cache para manter dados sincronizados
+
+**Melhorias recentes:**
+- **Logging aprimorado de erros**: Implementados console logs estruturados com emojis visuais (❌, 📋, 🔍) e detalhes completos do erro incluindo message, details, hint e code para facilitar troubleshooting e debug de problemas de atualização
+- Implementada limpeza inteligente de dados que preserva campos que aceitam null
+- Adicionado suporte completo ao histórico de alterações com usuário e timestamp
+- Filtros por mês/ano baseados na data_resposta da pesquisa relacionada
+- Busca textual em múltiplos campos para melhor usabilidade
+
+---
+
 ### `auditService.ts`
 Serviço completo para gerenciamento de logs de auditoria do sistema, incluindo registro, busca, exportação e mapeamento de nomes de tabelas.
 
@@ -1729,7 +2488,7 @@ const nomeAmigavel = auditService.obterNomeTabela('taxas_clientes');
 ---
 
 ### `taxasClientesService.ts`
-Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca de taxas vigentes e cálculo automático de valores derivados.
+Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca de taxas vigentes, cálculo automático de valores derivados e validação robusta de dados.
 
 **Funcionalidades principais:**
 - CRUD completo de taxas de clientes (criar, buscar, atualizar, deletar)
@@ -1737,7 +2496,8 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 - Cálculo automático de valores derivados (hora extra, sobreaviso, etc.)
 - **Cálculo automático de valores locais**: Calcula automaticamente valores locais (10% a mais dos valores remotos) durante a criação de taxas
 - **Cálculo completo na busca**: Ao buscar uma taxa, calcula automaticamente TODOS os valores derivados para cada função (remota e local)
-- Gestão de vigências com controle de períodos (início e fim)
+- Gestão de vigências com controle de períodos (início e fim) e verificação de conflitos
+- **Validação robusta de dados**: Tratamento seguro de valores undefined/null com validações obrigatórias
 - Suporte a dois tipos de produto: GALLERY e OUTROS (COMEX, FISCAL)
 - Valores separados para hora remota e hora local
 - Tipo de cálculo adicional configurável (normal ou média)
@@ -1822,6 +2582,12 @@ Serviço completo para gerenciamento de taxas de clientes, incluindo CRUD, busca
 - Utilizado pelos componentes `TaxaForm` e página `CadastroTaxasClientes`
 
 **Melhorias recentes:**
+- **Validação robusta de vigência implementada**: Adicionada validação obrigatória do campo `vigencia_inicio` com tratamento seguro de valores undefined:
+  - **Operador de encadeamento opcional**: Uso de `?.` para evitar erros quando `vigencia_inicio` é undefined
+  - **Validação explícita**: Verificação `if (!vigenciaInicio)` com erro específico "Vigência início é obrigatória"
+  - **Tratamento consistente**: Aplicado mesmo padrão para `vigencia_fim` garantindo robustez
+  - **Prevenção de erros**: Evita crashes por tentativa de chamar `toISOString()` em valores undefined
+  - **Mensagens claras**: Erro específico facilita debug e identificação de problemas de validação
 - **Cálculo completo na busca implementado**: Refatorado método `buscarTaxaClientePorId()` para calcular automaticamente TODOS os valores derivados:
   - **Separação inteligente**: Valores separados por tipo (remota/local) usando `filter()`
   - **Arrays para cálculo de média**: Criados `todasFuncoesRemota` e `todasFuncoesLocal` com estrutura `{ funcao, valor_base }`
@@ -2622,6 +3388,381 @@ const formData: RequerimentoFormData = {
 
 ---
 
+### `planoAcao.ts`
+Definições de tipos e interfaces para o sistema de planos de ação, incluindo gestão de prioridades, status e histórico de atualizações.
+
+### `planoAcaoContatos.ts`
+Definições de tipos e interfaces para o sistema de contatos com clientes em planos de ação, incluindo meios de contato, status de retorno e funções utilitárias.
+
+**Tipos principais:**
+
+**MeioContatoType**
+```typescript
+type MeioContatoType = 'whatsapp' | 'email' | 'ligacao';
+```
+Tipos de meio de contato disponíveis para comunicação com clientes.
+
+**RetornoClienteType**
+```typescript
+type RetornoClienteType = 'aguardando' | 'respondeu' | 'solicitou_mais_informacoes';
+```
+Status do retorno do cliente após tentativa de contato.
+
+**Interfaces principais:**
+
+**PlanoAcaoContato**
+Interface completa do contato com cliente:
+- `id` - UUID do contato
+- `plano_acao_id` - UUID do plano de ação relacionado
+- `data_contato` - Data do contato (formato YYYY-MM-DD)
+- `meio_contato` - Meio utilizado para contato
+- `resumo_comunicacao` - Resumo do que foi comunicado
+- `retorno_cliente` - Status do retorno do cliente (opcional)
+- `observacoes` - Observações adicionais (opcional)
+- `criado_por` - UUID do usuário que criou (opcional)
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**PlanoAcaoContatoFormData**
+Interface para dados do formulário de contato:
+- `data_contato` - Data do contato
+- `meio_contato` - Meio de contato utilizado
+- `resumo_comunicacao` - Resumo da comunicação
+- `retorno_cliente` - Status do retorno (opcional)
+- `observacoes` - Observações adicionais (opcional)
+
+**Constantes exportadas:**
+
+**MEIO_CONTATO_CONTATOS_OPTIONS**
+Array de opções para select de meios de contato:
+```typescript
+[
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'ligacao', label: 'Ligação' },
+]
+```
+
+**RETORNO_CLIENTE_CONTATOS_OPTIONS**
+Array de opções para select de status de retorno:
+```typescript
+[
+  { value: 'aguardando', label: 'Aguardando' },
+  { value: 'respondeu', label: 'Respondeu' },
+  { value: 'solicitou_mais_informacoes', label: 'Solicitou Mais Informações' },
+]
+```
+
+**Funções utilitárias:**
+- `getMeioContatoLabel(meio)` - Retorna label amigável do meio de contato
+- `getRetornoClienteLabel(retorno)` - Retorna label amigável do status de retorno
+- `getMeioContatoIcon(meio)` - Retorna emoji apropriado para o meio de contato (📱 WhatsApp, 📧 Email, 📞 Ligação)
+
+**Tipos principais:**
+
+**PrioridadePlano**
+```typescript
+type PrioridadePlano = 'baixa' | 'media' | 'alta' | 'critica';
+```
+Níveis de prioridade disponíveis para planos de ação:
+- `baixa` - Prioridade baixa
+- `media` - Prioridade média
+- `alta` - Prioridade alta
+- `critica` - Prioridade crítica
+
+**StatusPlano**
+```typescript
+type StatusPlano = 'aberto' | 'em_andamento' | 'aguardando_retorno' | 'concluido' | 'cancelado';
+```
+Status possíveis de um plano de ação:
+- `aberto` - Plano criado mas ainda não iniciado
+- `em_andamento` - Plano em execução
+- `aguardando_retorno` - Aguardando resposta do cliente
+- `concluido` - Plano finalizado com sucesso
+- `cancelado` - Plano cancelado
+
+**MeioContato**
+```typescript
+type MeioContato = 'whatsapp' | 'email' | 'ligacao';
+```
+Meios de contato disponíveis para comunicação com o cliente.
+
+**RetornoCliente**
+```typescript
+type RetornoCliente = 'aguardando' | 'respondeu' | 'solicitou_mais_informacoes';
+```
+Status do retorno do cliente após contato.
+
+**StatusFinal**
+```typescript
+type StatusFinal = 'resolvido' | 'nao_resolvido' | 'resolvido_parcialmente';
+```
+Status final da resolução do problema.
+
+**TipoAtualizacao**
+```typescript
+type TipoAtualizacao = 'criacao' | 'atualizacao' | 'contato' | 'conclusao' | 'reabertura' | 'cancelamento';
+```
+Tipos de atualização registrados no histórico.
+
+**Interfaces principais:**
+
+**PlanoAcao**
+Interface principal do plano de ação:
+- `id` - UUID do plano de ação
+- `pesquisa_id` - UUID da pesquisa de satisfação relacionada
+- `chamado` - Número do chamado (opcional)
+- `empresa_id` - UUID da empresa (opcional)
+- `data_resposta` - Data de resposta da pesquisa (copiada para facilitar filtros, opcional)
+- `comentario_cliente` - **NOVO**: Comentário do cliente (antigo descricao_acao_corretiva, opcional)
+- `descricao_acao_corretiva` - **NOVO**: Descrição da ação corretiva (campo em branco para preenchimento)
+- `acao_preventiva` - Ação preventiva para evitar recorrência (opcional)
+- `prioridade` - Nível de prioridade do plano
+- `status_plano` - Status atual do plano
+- `data_inicio` - Data de início do plano
+- `data_conclusao` - Data de conclusão (opcional)
+- `data_primeiro_contato` - Data do primeiro contato com o cliente (opcional)
+- `meio_contato` - Meio de contato utilizado (opcional)
+- `resumo_comunicacao` - Resumo da comunicação com o cliente (opcional)
+- `retorno_cliente` - Status do retorno do cliente (opcional)
+- `status_final` - Status final da resolução (opcional)
+- `data_fechamento` - Data de fechamento do plano (opcional)
+- `justificativa_cancelamento` - Justificativa para cancelamento (opcional)
+- `criado_por` - UUID do usuário que criou (opcional)
+- `criado_em` - Data/hora de criação
+- `atualizado_em` - Data/hora da última atualização
+
+**PlanoAcaoHistorico**
+Interface para histórico de alterações do plano:
+- `id` - UUID do registro de histórico
+- `plano_acao_id` - UUID do plano de ação relacionado
+- `data_atualizacao` - Data/hora da atualização
+- `usuario_id` - UUID do usuário que fez a atualização (opcional)
+- `usuario_nome` - Nome do usuário (opcional)
+- `descricao_atualizacao` - Descrição da alteração realizada
+- `tipo_atualizacao` - Tipo da atualização (opcional)
+- `criado_em` - Data/hora de criação do registro
+
+**PlanoAcaoCompleto**
+Interface estendida que inclui dados da pesquisa de satisfação relacionada:
+- Herda todos os campos de `PlanoAcao`
+- `pesquisa` - Objeto com dados da pesquisa relacionada:
+  - `id` - UUID da pesquisa
+  - `empresa` - Nome da empresa
+  - `cliente` - Nome do cliente
+  - `tipo_caso` - Tipo do chamado (opcional)
+  - `nro_caso` - Número do chamado (opcional)
+  - `comentario_pesquisa` - Comentário da pesquisa (opcional)
+  - `resposta` - Nível de satisfação (opcional)
+
+**PlanoAcaoFormData**
+Interface para dados do formulário de criação/edição:
+- `pesquisa_id` - UUID da pesquisa relacionada
+- `chamado` - Número do chamado (opcional)
+- `empresa_id` - UUID da empresa (opcional)
+- `comentario_cliente` - **NOVO**: Comentário do cliente (opcional)
+- `descricao_acao_corretiva` - **NOVO**: Descrição da ação corretiva (campo em branco)
+- `acao_preventiva` - Ação preventiva (opcional)
+- `prioridade` - Nível de prioridade
+- `status_plano` - Status do plano (opcional)
+- `data_inicio` - Data de início
+- `data_conclusao` - Data de conclusão (opcional)
+- `data_primeiro_contato` - Data do primeiro contato (opcional)
+- `meio_contato` - Meio de contato (opcional)
+- `resumo_comunicacao` - Resumo da comunicação (opcional)
+- `retorno_cliente` - Status do retorno (opcional)
+- `status_final` - Status final (opcional)
+- `justificativa_cancelamento` - Justificativa para cancelamento (opcional)
+
+**FiltrosPlanoAcao**
+Interface para filtros de busca:
+- `busca` - Busca textual (opcional)
+- `prioridade` - Array de prioridades para filtrar (opcional)
+- `status` - Array de status para filtrar (opcional)
+- `empresa` - Filtro por empresa (opcional)
+- `dataInicio` - Data inicial do período (opcional)
+- `dataFim` - Data final do período (opcional)
+- `mes` - Mês da data de resposta da pesquisa (1-12, opcional)
+- `ano` - Ano da data de resposta da pesquisa (opcional)
+
+**EstatisticasPlanoAcao**
+Interface para estatísticas agregadas:
+- `total` - Total de planos de ação
+- `abertos` - Quantidade de planos abertos
+- `em_andamento` - Quantidade de planos em andamento
+- `aguardando_retorno` - Quantidade aguardando retorno
+- `concluidos` - Quantidade de planos concluídos
+- `cancelados` - Quantidade de planos cancelados
+- `por_prioridade` - Estatísticas por nível de prioridade:
+  - `baixa` - Quantidade com prioridade baixa
+  - `media` - Quantidade com prioridade média
+  - `alta` - Quantidade com prioridade alta
+  - `critica` - Quantidade com prioridade crítica
+
+**Constantes exportadas:**
+
+**PRIORIDADE_OPTIONS**
+Array de opções para select de prioridades:
+```typescript
+[
+  { value: 'baixa', label: 'Baixa' },
+  { value: 'media', label: 'Média' },
+  { value: 'alta', label: 'Alta' },
+  { value: 'critica', label: 'Crítica' },
+]
+```
+
+**STATUS_PLANO_OPTIONS**
+Array de opções para select de status:
+```typescript
+[
+  { value: 'aberto', label: 'Aberto' },
+  { value: 'em_andamento', label: 'Em Andamento' },
+  { value: 'aguardando_retorno', label: 'Aguardando Retorno' },
+  { value: 'concluido', label: 'Concluído' },
+  { value: 'cancelado', label: 'Cancelado' },
+]
+```
+
+**MEIO_CONTATO_OPTIONS**
+Array de opções para select de meios de contato:
+```typescript
+[
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'ligacao', label: 'Ligação' },
+]
+```
+
+**RETORNO_CLIENTE_OPTIONS**
+Array de opções para select de retorno do cliente:
+```typescript
+[
+  { value: 'aguardando', label: 'Aguardando' },
+  { value: 'respondeu', label: 'Respondeu' },
+  { value: 'solicitou_mais_informacoes', label: 'Solicitou Mais Informações' },
+]
+```
+
+**STATUS_FINAL_OPTIONS**
+Array de opções para select de status final:
+```typescript
+[
+  { value: 'resolvido', label: 'Resolvido' },
+  { value: 'nao_resolvido', label: 'Não Resolvido' },
+  { value: 'resolvido_parcialmente', label: 'Resolvido Parcialmente' },
+]
+```
+
+**Funções utilitárias:**
+
+**getCorPrioridade()**
+```typescript
+getCorPrioridade(prioridade: PrioridadePlano): string
+```
+Retorna classes CSS para colorir badges de prioridade:
+- `baixa` - Azul (bg-blue-100 text-blue-800)
+- `media` - Amarelo (bg-yellow-100 text-yellow-800)
+- `alta` - Laranja (bg-orange-100 text-orange-800)
+- `critica` - Vermelho (bg-red-100 text-red-800)
+
+**getCorStatus()**
+```typescript
+getCorStatus(status: StatusPlano): string
+```
+Retorna classes CSS para colorir badges de status:
+- `aberto` - Cinza (bg-gray-100 text-gray-800)
+- `em_andamento` - Azul (bg-blue-100 text-blue-800)
+- `aguardando_retorno` - Amarelo (bg-yellow-100 text-yellow-800)
+- `concluido` - Verde (bg-green-100 text-green-800)
+- `cancelado` - Vermelho (bg-red-100 text-red-800)
+
+**Uso típico:**
+```typescript
+import { 
+  PlanoAcaoCompleto, 
+  FiltrosPlanoAcao, 
+  PRIORIDADE_OPTIONS,
+  getCorPrioridade 
+} from '@/types/planoAcao';
+
+// Buscar planos com filtros
+const filtros: FiltrosPlanoAcao = {
+  mes: 12,
+  ano: 2024,
+  status: ['aberto', 'em_andamento']
+};
+
+// Trabalhar com plano completo
+const plano: PlanoAcaoCompleto = {
+  id: 'uuid',
+  pesquisa_id: 'uuid-pesquisa',
+  comentario_cliente: 'Cliente relatou problema com sistema',
+  descricao_acao_corretiva: 'Implementar correção no módulo X',
+  prioridade: 'alta',
+  status_plano: 'em_andamento',
+  data_inicio: '2024-12-01',
+  criado_em: '2024-12-01T10:00:00Z',
+  atualizado_em: '2024-12-01T10:00:00Z',
+  pesquisa: {
+    id: 'uuid-pesquisa',
+    empresa: 'Empresa XYZ',
+    cliente: 'Cliente ABC',
+    resposta: 'Insatisfeito'
+  }
+};
+
+// Obter cor para badge
+const corPrioridade = getCorPrioridade('alta'); // bg-orange-100 text-orange-800
+```
+
+**Melhorias recentes:**
+- **CORREÇÃO CRÍTICA**: Corrigido erro "Cannot access 'form' before initialization" movendo useEffect para depois da declaração do useForm
+- **Reestruturação de campos**: Adicionado campo `comentario_cliente` (opcional) para armazenar comentário do cliente, e mantido `descricao_acao_corretiva` como campo em branco para preenchimento da ação corretiva
+- **Separação de responsabilidades**: Campo `comentario_cliente` armazena informação vinda da pesquisa, enquanto `descricao_acao_corretiva` é preenchido pela equipe interna
+- **Preenchimento automático**: Implementado useEffect que preenche automaticamente campos Chamado, Empresa e Comentário do Cliente quando dados da pesquisa estão disponíveis
+- **Compatibilidade mantida**: Interface mantém todos os campos existentes, apenas adicionando novo campo opcional
+
+**Integração:**
+- Utilizado pelos componentes de formulário de planos de ação
+- Integra-se com sistema de pesquisas de satisfação
+- Usado pelos serviços de planos de ação para CRUD
+- Constantes utilizadas em selects e validações
+- Tipos utilizados para tipagem TypeScript em todo o sistema
+
+**Uso típico:**
+```typescript
+import { 
+  RequerimentoFormData, 
+  TIPO_COBRANCA_OPTIONS, 
+  requerValorHora 
+} from '@/types/requerimentos';
+
+// Verificar se tipo requer valor/hora
+const precisaValor = requerValorHora('Faturado'); // true
+
+// Usar em formulário
+const formData: RequerimentoFormData = {
+  chamado: 'INC123456',
+  cliente_id: 'uuid-cliente',
+  tipo_cobranca: 'Faturado',
+  atendimento_presencial: true, // Usar valores locais
+  // ... outros campos
+};
+```
+
+**Melhorias recentes:**
+- **Campo atendimento_presencial adicionado**: Novo campo booleano opcional que permite indicar quando um atendimento foi realizado presencialmente, fazendo com que o sistema use valores locais (com acréscimo de 10%) ao invés de valores remotos para cálculo de valores/hora
+
+**Integração:**
+- Utilizado pelos componentes de formulário de requerimentos
+- Integra-se com schemas de validação Zod
+- Usado pelos serviços de requerimentos para CRUD
+- Constantes utilizadas em selects e validações
+- Tipos utilizados para tipagem TypeScript em todo o sistema
+
+---
+
 ## Diretório `src/utils/`
 
 Utilitários e funções auxiliares utilizadas em todo o projeto.
@@ -3122,6 +4263,334 @@ DROP TRIGGER IF EXISTS audit_valores_taxas_funcoes_trigger ON valores_taxas_func
 - Remove trigger antigo antes de criar novo
 - Requer que `fix_taxas_audit_triggers.sql` tenha sido executado primeiro
 - Permite rastreamento granular de alterações em valores por função
+
+---
+
+### `add_campos_especificos_clientes_taxas.sql`
+Migração SQL para adicionar campos específicos por cliente na tabela `taxas_clientes`, permitindo configuração de valores personalizados baseados no nome abreviado da empresa.
+
+**Funcionalidades principais:**
+- **Adição de 7 campos específicos**: Adiciona colunas para valores de tickets e excedentes específicos por cliente
+- **Campos condicionais**: Campos aparecem baseado no `nome_abreviado` da empresa selecionada
+- **Documentação completa**: Comentários SQL explicando qual cliente usa cada campo
+- **Verificação automática**: Valida se todas as 7 colunas foram criadas com sucesso
+- **Feedback detalhado**: Mensagens de sucesso listando todos os campos criados
+
+**Campos adicionados:**
+- `valor_ticket` - Valor do Ticket (usado por VOTORANTIM e CSN)
+- `valor_ticket_excedente` - Valor do Ticket Excedente (usado por VOTORANTIM e CSN)
+- `ticket_excedente_simples` - Ticket Excedente - Ticket Simples (usado por EXXONMOBIL)
+- `ticket_excedente_complexo` - Ticket Excedente - Ticket Complexo (usado por EXXONMOBIL)
+- `ticket_excedente_1` - Ticket Excedente (campo 1) (usado por CHIESI)
+- `ticket_excedente_2` - Ticket Excedente (campo 2) (usado por CHIESI)
+- `ticket_excedente` - Ticket Excedente (usado por NIDEC)
+
+**Estrutura do script:**
+1. **Adição de colunas**: Adiciona 7 campos DECIMAL(10,2) com `IF NOT EXISTS` para segurança
+2. **Documentação**: Adiciona comentários SQL explicando o uso de cada campo
+3. **Verificação**: Conta colunas criadas e exibe feedback detalhado
+
+**Mapeamento por cliente:**
+- **VOTORANTIM**: `valor_ticket`, `valor_ticket_excedente`
+- **CSN**: `valor_ticket`, `valor_ticket_excedente`
+- **EXXONMOBIL**: `ticket_excedente_simples`, `ticket_excedente_complexo`
+- **CHIESI**: `ticket_excedente_1` (Ticket Base), `ticket_excedente_2` (Ticket Excedente)
+- **NIDEC**: `ticket_excedente`
+
+**Como executar:**
+
+**Via Supabase Dashboard (Recomendado):**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/add_campos_especificos_clientes_taxas.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/add_campos_especificos_clientes_taxas.sql
+```
+
+**Saída esperada:**
+```
+NOTICE:  ✅ Todos os 7 campos específicos por cliente foram criados com sucesso!
+NOTICE:     - valor_ticket (VOTORANTIM, CSN)
+NOTICE:     - valor_ticket_excedente (VOTORANTIM, CSN)
+NOTICE:     - ticket_excedente_simples (EXXONMOBIL)
+NOTICE:     - ticket_excedente_complexo (EXXONMOBIL)
+NOTICE:     - ticket_excedente_1 (CHIESI)
+NOTICE:     - ticket_excedente_2 (CHIESI)
+NOTICE:     - ticket_excedente (NIDEC)
+```
+
+**Verificação pós-execução:**
+```sql
+-- Verificar se as colunas foram criadas
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'taxas_clientes' 
+AND column_name IN (
+    'valor_ticket', 'valor_ticket_excedente', 
+    'ticket_excedente_simples', 'ticket_excedente_complexo',
+    'ticket_excedente_1', 'ticket_excedente_2', 'ticket_excedente'
+)
+ORDER BY column_name;
+```
+
+**Integração:**
+- Utilizado pelos componentes de formulário de taxas para exibir campos condicionais
+- Permite configuração específica de valores por cliente
+- Suporta diferentes modelos de cobrança por empresa
+- Integra-se com sistema de auditoria existente
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Campos são opcionais (nullable) para manter compatibilidade
+- Tipo DECIMAL(10,2) suporta valores até 99.999.999,99
+- Comentários SQL facilitam manutenção e documentação
+
+---
+
+### `add_comentario_cliente_simple.sql`
+Script SQL simples para adicionar o campo `comentario_cliente` na tabela `planos_acao`, permitindo armazenar comentários específicos do cliente separadamente da descrição da ação corretiva.
+
+**Funcionalidades principais:**
+- **Adição de coluna**: Adiciona campo `comentario_cliente` do tipo TEXT na tabela `planos_acao`
+- **Verificação automática**: Valida se a coluna foi criada com sucesso
+- **Operação segura**: Usa `IF NOT EXISTS` para evitar erros se coluna já existir
+- **Feedback imediato**: Exibe informações da coluna criada (nome e tipo de dados)
+
+**Estrutura do script:**
+1. **Adição da coluna**: `ALTER TABLE planos_acao ADD COLUMN IF NOT EXISTS comentario_cliente TEXT`
+2. **Verificação**: Query para confirmar criação da coluna consultando `information_schema.columns`
+
+**Campo criado:**
+- `comentario_cliente` - Campo TEXT opcional para armazenar comentários específicos do cliente
+
+**Propósito do campo:**
+- **Separação de responsabilidades**: Campo `comentario_cliente` armazena informação vinda da pesquisa de satisfação
+- **Campo `descricao_acao_corretiva`**: Mantido como campo em branco para preenchimento da ação corretiva pela equipe interna
+- **Melhor organização**: Permite distinguir entre feedback do cliente e plano de ação da equipe
+
+**Como executar:**
+
+**Via Supabase Dashboard:**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/add_comentario_cliente_simple.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/add_comentario_cliente_simple.sql
+```
+
+**Saída esperada:**
+```
+ column_name        | data_type
+--------------------+-----------
+ comentario_cliente | text
+```
+
+**Integração:**
+- Utilizado pelos componentes de planos de ação (`PlanoAcaoForm.tsx`, `PlanoAcaoDetalhes.tsx`)
+- Campo opcional que pode ser preenchido automaticamente com dados da pesquisa relacionada
+- Melhora organização dos dados separando feedback do cliente de ações internas
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Campo opcional (permite valores NULL)
+- Não afeta dados existentes na tabela
+- Complementa funcionalidade de planos de ação com melhor estruturação de dados
+
+---
+
+### `create_plano_acao_contatos.sql`
+Migração SQL completa para criar tabela de histórico de contatos com clientes em planos de ação, permitindo registro de múltiplos contatos por plano com detalhes completos de comunicação.
+
+**Funcionalidades principais:**
+- **Criação de tabela**: Cria tabela `plano_acao_contatos` para armazenar histórico de contatos
+- **Relacionamento com planos**: Foreign key para `planos_acao` com CASCADE DELETE
+- **Validação de dados**: Constraints CHECK para garantir valores válidos em campos enum
+- **Índices de performance**: Índices otimizados para consultas por plano e data
+- **Segurança RLS**: Row Level Security habilitado com políticas completas
+- **Triggers automáticos**: Trigger para atualização automática de timestamp
+- **Comentários explicativos**: Documentação completa da estrutura da tabela
+
+**Estrutura da tabela:**
+- `id` - UUID primary key gerado automaticamente
+- `plano_acao_id` - UUID referenciando planos_acao (NOT NULL, CASCADE DELETE)
+- `data_contato` - Data do contato (NOT NULL)
+- `meio_contato` - Meio utilizado (whatsapp, email, ligacao) com CHECK constraint
+- `resumo_comunicacao` - Resumo do que foi comunicado (NOT NULL)
+- `retorno_cliente` - Status do retorno (aguardando, respondeu, solicitou_mais_informacoes) com CHECK constraint
+- `observacoes` - Observações adicionais (opcional)
+- `criado_por` - UUID do usuário que criou o registro
+- `criado_em` - Timestamp de criação (default NOW())
+- `atualizado_em` - Timestamp de atualização (default NOW())
+
+**Índices criados:**
+- `idx_plano_acao_contatos_plano_id` - Índice por plano_acao_id para consultas rápidas
+- `idx_plano_acao_contatos_data` - Índice por data_contato DESC para ordenação cronológica
+
+**Políticas RLS:**
+- **SELECT**: Usuários podem ver todos os contatos
+- **INSERT**: Usuários podem inserir novos contatos
+- **UPDATE**: Usuários podem atualizar contatos existentes
+- **DELETE**: Usuários podem deletar contatos
+
+**Trigger implementado:**
+- `update_plano_acao_contatos_updated_at()` - Função que atualiza automaticamente o campo `atualizado_em`
+- `trigger_update_plano_acao_contatos_updated_at` - Trigger BEFORE UPDATE que executa a função
+
+**Validações de dados:**
+- `meio_contato` deve ser um dos valores: 'whatsapp', 'email', 'ligacao'
+- `retorno_cliente` deve ser um dos valores: 'aguardando', 'respondeu', 'solicitou_mais_informacoes'
+- `data_contato` e `resumo_comunicacao` são obrigatórios
+- `plano_acao_id` deve referenciar um plano existente
+
+**Como executar:**
+
+**Via Supabase Dashboard (Recomendado):**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/create_plano_acao_contatos.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/create_plano_acao_contatos.sql
+```
+
+**Saída esperada:**
+```
+NOTICE: ✅ Tabela plano_acao_contatos criada com sucesso
+NOTICE:    - Políticas RLS configuradas
+NOTICE:    - Triggers de timestamp criados
+NOTICE:    - Índices para performance criados
+```
+
+**Integração:**
+- Utilizada pelos componentes de planos de ação para registrar histórico de contatos
+- Permite rastreamento completo de todas as comunicações com o cliente
+- Suporta múltiplos contatos por plano de ação com detalhes específicos
+- Integra-se com sistema de autenticação para rastreamento de usuário criador
+
+**Casos de uso:**
+- Registrar tentativas de contato com cliente
+- Documentar respostas e feedback do cliente
+- Acompanhar evolução da comunicação ao longo do tempo
+- Gerar relatórios de efetividade de contatos
+- Manter histórico completo para auditoria
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Relacionamento CASCADE DELETE remove contatos quando plano é excluído
+- RLS garante segurança de acesso aos dados
+- Índices otimizam performance para consultas frequentes
+- Triggers mantêm timestamps atualizados automaticamente
+
+---
+
+### `setup_plano_acao_contatos_completo.sql`
+Migração SQL completa para implementar o sistema de histórico de contatos múltiplos para planos de ação, substituindo o sistema de contato único anterior.
+
+**Funcionalidades principais:**
+- **Migração completa em 7 passos**: Executa todas as migrações necessárias para implementar o sistema de contatos múltiplos
+- **Adição de campos**: Adiciona campos faltantes na tabela `planos_acao` (chamado, comentario_cliente, empresa_id)
+- **Criação de tabela**: Cria tabela `plano_acao_contatos` para armazenar histórico de contatos
+- **Índices de performance**: Cria índices otimizados para consultas por plano e data
+- **Segurança RLS**: Configura Row Level Security com políticas completas
+- **Triggers automáticos**: Cria trigger para atualização automática de timestamp
+- **Documentação**: Adiciona comentários explicativos na estrutura da tabela
+- **Verificação final**: Valida se migração foi executada com sucesso
+- **Sintaxe SQL corrigida**: Comandos `RAISE NOTICE` encapsulados em blocos `DO` nomeados para compatibilidade com diferentes versões do PostgreSQL
+
+**Estrutura da migração:**
+1. **PASSO 1**: Adiciona campos faltantes na tabela `planos_acao`
+2. **PASSO 2**: Cria tabela `plano_acao_contatos` com estrutura completa
+3. **PASSO 3**: Cria índices para performance
+4. **PASSO 4**: Configura Row Level Security (RLS)
+5. **PASSO 5**: Cria triggers para atualização de timestamp
+6. **PASSO 6**: Adiciona comentários explicativos
+7. **PASSO 7**: Executa verificação final e exibe resultado
+
+**Como executar:**
+
+**Via Supabase Dashboard (Recomendado):**
+```
+1. Acesse o Supabase Dashboard
+2. Vá em SQL Editor
+3. Clique em New Query
+4. Copie e cole o conteúdo do arquivo
+5. Clique em Run
+```
+
+**Via CLI do Supabase:**
+```bash
+supabase db push --file supabase/migration/setup_plano_acao_contatos_completo.sql
+```
+
+**Via psql:**
+```bash
+psql -h [host] -U postgres -d postgres -f supabase/migration/setup_plano_acao_contatos_completo.sql
+```
+
+**Saída esperada:**
+```
+NOTICE: 🔧 PASSO 1: Adicionando campos faltantes na tabela planos_acao...
+NOTICE: ✅ Campos verificados/adicionados: 3
+NOTICE: 🔧 PASSO 2: Criando tabela plano_acao_contatos...
+NOTICE: 🔧 PASSO 3: Criando índices...
+NOTICE: 🔧 PASSO 4: Configurando segurança (RLS)...
+NOTICE: 🔧 PASSO 5: Criando triggers...
+NOTICE: 🔧 PASSO 6: Adicionando documentação...
+NOTICE: 🔧 PASSO 7: Verificação final...
+NOTICE: ✅ MIGRAÇÃO COMPLETA EXECUTADA COM SUCESSO!
+NOTICE: 🎉 Sistema de contatos múltiplos pronto para uso!
+```
+
+**Melhorias recentes:**
+- **Correção de sintaxe SQL**: Comandos `RAISE NOTICE` agora são encapsulados em blocos `DO` nomeados (ex: `$passo7$`) para garantir compatibilidade com diferentes versões do PostgreSQL
+- **Melhor compatibilidade**: Script funciona corretamente em ambientes Supabase e PostgreSQL standalone
+- **Execução mais robusta**: Eliminados possíveis erros de sintaxe em diferentes configurações de banco
+- **Blocos nomeados**: Uso de delimitadores nomeados (`$passo7$`) melhora legibilidade e debugging do código SQL
+
+**Integração:**
+- Substitui completamente o sistema de contato único anterior
+- Utilizada pelos componentes `ContatosList` e `ContatoForm` para gerenciamento de contatos
+- Permite rastreamento completo de todas as comunicações com clientes
+- Integra-se com sistema de autenticação para rastreamento de usuário criador
+
+**Notas importantes:**
+- Script é idempotente (pode ser executado múltiplas vezes)
+- Executa verificação automática de sucesso da migração
+- Relacionamento CASCADE DELETE remove contatos quando plano é excluído
+- RLS garante segurança de acesso aos dados
+- Índices otimizam performance para consultas frequentes
 
 ---
 
@@ -4356,6 +5825,76 @@ const form = useForm({
     // ... outros campos
   }
 });
+```
+
+### `pesquisasSatisfacaoSchemas.ts`
+Schema de validação Zod para formulários de pesquisas de satisfação, com suporte diferenciado para pesquisas manuais e do SQL Server.
+
+**Funcionalidades principais:**
+- Validação completa de todos os campos do formulário de pesquisas
+- **Schemas diferenciados**: Validação específica para pesquisas manuais vs. SQL Server
+- **Função de seleção de schema**: `getPesquisaFormSchema()` retorna schema apropriado baseado na origem
+- Conversão automática de tipos (strings para números, datas, etc.)
+- Validação de formato de email
+- Validação de campos obrigatórios e opcionais
+- Mensagens de erro personalizadas em português
+
+**Schemas exportados:**
+
+**PesquisaFormSchemaBase**
+Schema base compartilhado entre pesquisas manuais e do SQL Server:
+
+**Campos obrigatórios:**
+- `empresa` - String não vazia (nome da empresa)
+- `cliente` - String não vazia (nome do cliente)
+
+**Campos opcionais:**
+- `email_cliente` - Email válido do cliente
+- `prestador` - Nome do consultor/prestador
+- `categoria` - Categoria do atendimento
+- `grupo` - Grupo responsável
+- `tipo_caso` - Tipo do chamado (IM, PR, RF)
+- `nro_caso` - Número do chamado
+- `comentario_pesquisa` - Comentário da pesquisa (máximo 5000 caracteres, opcional no schema base)
+- `resposta` - Nível de satisfação
+- `data_resposta` - Data/hora da resposta
+- `observacao` - Observações internas (máximo 2000 caracteres)
+
+**PesquisaFormSchemaManual**
+Schema estendido para pesquisas cadastradas manualmente:
+- Herda todos os campos de `PesquisaFormSchemaBase`
+- **comentario_pesquisa obrigatório**: Campo comentário torna-se obrigatório para pesquisas manuais
+
+**PesquisaFormSchema**
+Schema principal (alias para `PesquisaFormSchemaBase`) mantido para compatibilidade com código existente.
+
+**Função utilitária:**
+
+**getPesquisaFormSchema(isManual: boolean = false)**
+Função que retorna o schema apropriado baseado na origem da pesquisa:
+- `isManual = false`: Retorna `PesquisaFormSchemaBase` (pesquisas do SQL Server)
+- `isManual = true`: Retorna `PesquisaFormSchemaManual` (comentário obrigatório)
+
+**Validações especiais:**
+- Email com formato válido quando fornecido
+- Strings com limite de caracteres para evitar overflow
+- Datas válidas quando fornecidas
+- Campos de texto com trim automático
+- **Validação condicional de comentário**: Obrigatório apenas para pesquisas manuais
+
+**Integração:**
+- Utilizado pelo componente `PesquisaForm.tsx` via `zodResolver`
+- Schema selecionado dinamicamente baseado na origem da pesquisa
+- Validação aplicada automaticamente no submit do formulário
+- Erros exibidos via `FormMessage` do shadcn/ui
+
+**Uso típico:**
+```typescript
+// Para pesquisa manual (comentário obrigatório)
+const schemaManual = getPesquisaFormSchema(true);
+
+// Para pesquisa do SQL Server (comentário opcional)
+const schemaSqlServer = getPesquisaFormSchema(false);
 ```
 
 ---

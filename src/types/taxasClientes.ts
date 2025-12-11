@@ -15,6 +15,14 @@ export interface TaxaCliente {
   tipo_produto: TipoProduto;
   tipo_calculo_adicional: TipoCalculoAdicional;
   personalizado?: boolean; // Flag para indicar se os valores são personalizados
+  // Campos específicos por cliente
+  valor_ticket?: number; // VOTORANTIM, CSN
+  valor_ticket_excedente?: number; // VOTORANTIM, CSN
+  ticket_excedente_simples?: number; // EXXONMOBIL
+  ticket_excedente_complexo?: number; // EXXONMOBIL
+  ticket_excedente_1?: number; // CHIESI
+  ticket_excedente_2?: number; // CHIESI
+  ticket_excedente?: number; // NIDEC
   criado_por?: string;
   criado_em: string;
   atualizado_em: string;
@@ -77,6 +85,14 @@ export interface TaxaFormData {
     dba: number;
     gestor: number;
   };
+  // Campos específicos por cliente
+  valor_ticket?: number; // VOTORANTIM, CSN
+  valor_ticket_excedente?: number; // VOTORANTIM, CSN
+  ticket_excedente_simples?: number; // EXXONMOBIL
+  ticket_excedente_complexo?: number; // EXXONMOBIL
+  ticket_excedente_1?: number; // CHIESI
+  ticket_excedente_2?: number; // CHIESI
+  ticket_excedente?: number; // NIDEC
   // Valores personalizados (quando personalizado = true)
   valores_remota_personalizados?: {
     [funcao: string]: {
@@ -245,4 +261,59 @@ export const calcularValoresLocaisAutomaticos = (valoresRemotos: {
   
   console.log('🔄 [FUNÇÃO] Resultado calculado:', resultado);
   return resultado;
+};
+
+// =====================================================
+// CAMPOS ESPECÍFICOS POR CLIENTE
+// =====================================================
+
+// Interface para configuração de campos específicos por cliente
+export interface CampoEspecificoCliente {
+  campo: keyof TaxaFormData;
+  label: string;
+  placeholder?: string;
+}
+
+// Mapeamento de campos específicos por nome abreviado do cliente
+export const getCamposEspecificosPorCliente = (nomeAbreviado: string): CampoEspecificoCliente[] => {
+  const nomeUpper = nomeAbreviado?.toUpperCase();
+  
+  switch (nomeUpper) {
+    case 'VOTORANTIM':
+      return [
+        { campo: 'valor_ticket', label: 'Valor do Ticket', placeholder: 'Ex: 150,00' },
+        { campo: 'valor_ticket_excedente', label: 'Valor do Ticket Excedente', placeholder: 'Ex: 200,00' }
+      ];
+      
+    case 'EXXONMOBIL':
+      return [
+        { campo: 'ticket_excedente_simples', label: 'Ticket Excedente - Ticket Simples', placeholder: 'Ex: 100,00' },
+        { campo: 'ticket_excedente_complexo', label: 'Ticket Excedente - Ticket Complexo', placeholder: 'Ex: 250,00' }
+      ];
+      
+    case 'CHIESI':
+      return [
+        { campo: 'ticket_excedente_1', label: 'Ticket Base', placeholder: 'Ex: 120,00' },
+        { campo: 'ticket_excedente_2', label: 'Ticket Excedente', placeholder: 'Ex: 180,00' }
+      ];
+      
+    case 'CSN':
+      return [
+        { campo: 'valor_ticket', label: 'Valor do Ticket', placeholder: 'Ex: 130,00' },
+        { campo: 'valor_ticket_excedente', label: 'Valor do Ticket Excedente', placeholder: 'Ex: 170,00' }
+      ];
+      
+    case 'NIDEC':
+      return [
+        { campo: 'ticket_excedente', label: 'Ticket Excedente', placeholder: 'Ex: 160,00' }
+      ];
+      
+    default:
+      return [];
+  }
+};
+
+// Função para verificar se um cliente tem campos específicos
+export const clienteTemCamposEspecificos = (nomeAbreviado: string): boolean => {
+  return getCamposEspecificosPorCliente(nomeAbreviado).length > 0;
 };

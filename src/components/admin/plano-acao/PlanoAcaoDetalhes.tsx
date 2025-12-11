@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ContatosList } from './ContatosList';
 import type { PlanoAcaoCompleto, PlanoAcaoHistorico } from '@/types/planoAcao';
 import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
 import {
@@ -79,11 +80,11 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
               <p className="font-medium">{plano.pesquisa?.resposta || '-'}</p>
             </div>
           </div>
-          {plano.pesquisa?.comentario_pesquisa && (
+          {(plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa) && (
             <div>
               <p className="text-sm text-muted-foreground mb-1">Comentário do Cliente</p>
               <p className="text-sm bg-muted p-3 rounded-md">
-                {plano.pesquisa.comentario_pesquisa}
+                {plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa}
               </p>
             </div>
           )}
@@ -160,52 +161,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
 
       {/* Aba: Contato */}
       <TabsContent value="contato" className="space-y-6 mt-6">
-        {(plano.data_primeiro_contato || plano.meio_contato || plano.resumo_comunicacao) ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Contato com Cliente</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {plano.data_primeiro_contato && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Data do Contato</p>
-                    <p className="text-sm font-medium">
-                      {format(new Date(plano.data_primeiro_contato), 'dd/MM/yyyy', {
-                        locale: ptBR,
-                      })}
-                    </p>
-                  </div>
-                )}
-                {plano.meio_contato && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Meio de Contato</p>
-                    <p className="text-sm font-medium capitalize">{plano.meio_contato}</p>
-                  </div>
-                )}
-                {plano.retorno_cliente && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Retorno</p>
-                    <p className="text-sm font-medium capitalize">
-                      {plano.retorno_cliente.replace(/_/g, ' ')}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {plano.resumo_comunicacao && (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Resumo da Comunicação</p>
-                  <p className="text-sm bg-muted p-3 rounded-md">{plano.resumo_comunicacao}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum contato registrado ainda</p>
-          </div>
-        )}
+        <ContatosList planoAcaoId={plano.id} />
       </TabsContent>
 
       {/* Aba: Resultado */}

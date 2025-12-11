@@ -147,6 +147,15 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   }, [categoriaSelecionada, grupos, form]);
 
   const handleSubmit = (dados: ElogioFormData) => {
+    // Validação manual: comentário obrigatório para elogios (sempre manuais)
+    if (!dados.comentario_pesquisa || dados.comentario_pesquisa.trim() === '') {
+      form.setError('comentario_pesquisa', {
+        type: 'required',
+        message: 'Comentário é obrigatório para elogios'
+      });
+      return;
+    }
+    
     onSubmit(dados);
   };
 
@@ -423,9 +432,17 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
             name="comentario_pesquisa"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Comentário da Pesquisa</FormLabel>
+                <FormLabel>
+                  Comentário da Pesquisa
+                  <span className="text-red-500 ml-1">*</span>
+                </FormLabel>
                 <FormControl>
-                  <Textarea {...field} placeholder="Comentário do cliente" rows={4} value={field.value || ''} />
+                  <Textarea 
+                    {...field} 
+                    placeholder="Comentário obrigatório - descreva o contexto do elogio ou feedback positivo do cliente" 
+                    rows={4} 
+                    value={field.value || ''} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

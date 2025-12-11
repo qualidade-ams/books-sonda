@@ -251,12 +251,16 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   // Verificar conflito de vigência
   const vigenciaInicio = typeof dados.vigencia_inicio === 'string' 
     ? dados.vigencia_inicio 
-    : dados.vigencia_inicio.toISOString().split('T')[0];
+    : dados.vigencia_inicio?.toISOString().split('T')[0];
+  
+  if (!vigenciaInicio) {
+    throw new Error('Vigência início é obrigatória');
+  }
   
   const vigenciaFim = dados.vigencia_fim 
     ? (typeof dados.vigencia_fim === 'string' 
         ? dados.vigencia_fim 
-        : dados.vigencia_fim.toISOString().split('T')[0])
+        : dados.vigencia_fim?.toISOString().split('T')[0])
     : undefined;
 
   const temConflito = await verificarVigenciaConflitante(
@@ -270,18 +274,30 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     throw new Error(`Já existe uma taxa cadastrada para este cliente e produto (${dados.tipo_produto}) neste período de vigência`);
   }
 
+  // Preparar dados da taxa incluindo campos específicos por cliente
+  const dadosTaxa: any = {
+    cliente_id: dados.cliente_id,
+    vigencia_inicio: vigenciaInicio,
+    vigencia_fim: vigenciaFim,
+    tipo_produto: dados.tipo_produto,
+    tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
+    personalizado: dados.personalizado || false,
+    criado_por: user?.id
+  };
+
+  // Adicionar campos específicos por cliente se fornecidos
+  if (dados.valor_ticket !== undefined) dadosTaxa.valor_ticket = dados.valor_ticket;
+  if (dados.valor_ticket_excedente !== undefined) dadosTaxa.valor_ticket_excedente = dados.valor_ticket_excedente;
+  if (dados.ticket_excedente_simples !== undefined) dadosTaxa.ticket_excedente_simples = dados.ticket_excedente_simples;
+  if (dados.ticket_excedente_complexo !== undefined) dadosTaxa.ticket_excedente_complexo = dados.ticket_excedente_complexo;
+  if (dados.ticket_excedente_1 !== undefined) dadosTaxa.ticket_excedente_1 = dados.ticket_excedente_1;
+  if (dados.ticket_excedente_2 !== undefined) dadosTaxa.ticket_excedente_2 = dados.ticket_excedente_2;
+  if (dados.ticket_excedente !== undefined) dadosTaxa.ticket_excedente = dados.ticket_excedente;
+
   // Criar taxa
   const { data: taxa, error: taxaError } = await supabase
     .from('taxas_clientes')
-    .insert({
-      cliente_id: dados.cliente_id,
-      vigencia_inicio: vigenciaInicio,
-      vigencia_fim: vigenciaFim,
-      tipo_produto: dados.tipo_produto,
-      tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
-      personalizado: dados.personalizado || false,
-      criado_por: user?.id
-    })
+    .insert(dadosTaxa)
     .select()
     .single();
 
@@ -476,25 +492,37 @@ export async function atualizarTaxa(
     const vigenciaFim = dados.vigencia_fim 
       ? (typeof dados.vigencia_fim === 'string' 
           ? dados.vigencia_fim 
-          : dados.vigencia_fim.toISOString().split('T')[0])
+          : dados.vigencia_fim?.toISOString().split('T')[0])
       : undefined;
 
     if (!vigenciaInicio) {
       throw new Error('Vigência início é obrigatória');
     }
 
+    // Preparar dados da nova taxa incluindo campos específicos por cliente
+    const dadosNovaTaxa: any = {
+      cliente_id: taxaAtual.cliente_id,
+      vigencia_inicio: vigenciaInicio,
+      vigencia_fim: vigenciaFim,
+      tipo_produto: dados.tipo_produto || taxaAtual.tipo_produto,
+      tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtual.tipo_calculo_adicional,
+      personalizado: dados.personalizado !== undefined ? dados.personalizado : taxaAtual.personalizado,
+      criado_por: user?.id
+    };
+
+    // Adicionar campos específicos por cliente se fornecidos
+    if (dados.valor_ticket !== undefined) dadosNovaTaxa.valor_ticket = dados.valor_ticket;
+    if (dados.valor_ticket_excedente !== undefined) dadosNovaTaxa.valor_ticket_excedente = dados.valor_ticket_excedente;
+    if (dados.ticket_excedente_simples !== undefined) dadosNovaTaxa.ticket_excedente_simples = dados.ticket_excedente_simples;
+    if (dados.ticket_excedente_complexo !== undefined) dadosNovaTaxa.ticket_excedente_complexo = dados.ticket_excedente_complexo;
+    if (dados.ticket_excedente_1 !== undefined) dadosNovaTaxa.ticket_excedente_1 = dados.ticket_excedente_1;
+    if (dados.ticket_excedente_2 !== undefined) dadosNovaTaxa.ticket_excedente_2 = dados.ticket_excedente_2;
+    if (dados.ticket_excedente !== undefined) dadosNovaTaxa.ticket_excedente = dados.ticket_excedente;
+
     // Criar nova taxa
     const { data: novaTaxa, error: novaTaxaError } = await supabase
       .from('taxas_clientes')
-      .insert({
-        cliente_id: taxaAtual.cliente_id,
-        vigencia_inicio: vigenciaInicio,
-        vigencia_fim: vigenciaFim,
-        tipo_produto: dados.tipo_produto || taxaAtual.tipo_produto,
-        tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtual.tipo_calculo_adicional,
-        personalizado: dados.personalizado !== undefined ? dados.personalizado : taxaAtual.personalizado,
-        criado_por: user?.id
-      })
+      .insert(dadosNovaTaxa)
       .select()
       .single();
 
@@ -570,14 +598,14 @@ export async function atualizarTaxa(
     const vigenciaInicio = dados.vigencia_inicio 
       ? (typeof dados.vigencia_inicio === 'string' 
           ? dados.vigencia_inicio 
-          : dados.vigencia_inicio.toISOString().split('T')[0])
+          : dados.vigencia_inicio?.toISOString().split('T')[0])
       : taxaAtual.vigencia_inicio;
     
     const vigenciaFim = dados.vigencia_fim !== undefined
       ? (dados.vigencia_fim 
           ? (typeof dados.vigencia_fim === 'string' 
               ? dados.vigencia_fim 
-              : dados.vigencia_fim.toISOString().split('T')[0])
+              : dados.vigencia_fim?.toISOString().split('T')[0])
           : undefined)
       : taxaAtual.vigencia_fim;
 
@@ -602,14 +630,14 @@ export async function atualizarTaxa(
   if (dados.vigencia_inicio) {
     dadosAtualizacao.vigencia_inicio = typeof dados.vigencia_inicio === 'string'
       ? dados.vigencia_inicio
-      : dados.vigencia_inicio.toISOString().split('T')[0];
+      : dados.vigencia_inicio?.toISOString().split('T')[0];
   }
   
   if (dados.vigencia_fim !== undefined) {
     dadosAtualizacao.vigencia_fim = dados.vigencia_fim
       ? (typeof dados.vigencia_fim === 'string'
           ? dados.vigencia_fim
-          : dados.vigencia_fim.toISOString().split('T')[0])
+          : dados.vigencia_fim?.toISOString().split('T')[0])
       : null;
   }
 
@@ -624,6 +652,15 @@ export async function atualizarTaxa(
   if (dados.personalizado !== undefined) {
     dadosAtualizacao.personalizado = dados.personalizado;
   }
+
+  // Adicionar campos específicos por cliente se fornecidos
+  if (dados.valor_ticket !== undefined) dadosAtualizacao.valor_ticket = dados.valor_ticket;
+  if (dados.valor_ticket_excedente !== undefined) dadosAtualizacao.valor_ticket_excedente = dados.valor_ticket_excedente;
+  if (dados.ticket_excedente_simples !== undefined) dadosAtualizacao.ticket_excedente_simples = dados.ticket_excedente_simples;
+  if (dados.ticket_excedente_complexo !== undefined) dadosAtualizacao.ticket_excedente_complexo = dados.ticket_excedente_complexo;
+  if (dados.ticket_excedente_1 !== undefined) dadosAtualizacao.ticket_excedente_1 = dados.ticket_excedente_1;
+  if (dados.ticket_excedente_2 !== undefined) dadosAtualizacao.ticket_excedente_2 = dados.ticket_excedente_2;
+  if (dados.ticket_excedente !== undefined) dadosAtualizacao.ticket_excedente = dados.ticket_excedente;
 
   const { data: taxaAtualizada, error: updateError } = await supabase
     .from('taxas_clientes')

@@ -8,7 +8,8 @@ import { z } from 'zod';
 // SCHEMA PRINCIPAL DO FORMULÁRIO
 // ============================================
 
-export const PesquisaFormSchema = z.object({
+// Schema base para pesquisas vindas do SQL Server
+export const PesquisaFormSchemaBase = z.object({
   // Campos obrigatórios
   empresa: z.string()
     .min(1, 'Empresa é obrigatória')
@@ -88,6 +89,21 @@ export const PesquisaFormSchema = z.object({
   empresa_id: z.string().uuid().optional().nullable(),
   cliente_id: z.string().uuid().optional().nullable()
 });
+
+// Schema para pesquisas manuais (comentário obrigatório)
+export const PesquisaFormSchemaManual = PesquisaFormSchemaBase.extend({
+  comentario_pesquisa: z.string()
+    .min(1, 'Comentário é obrigatório para pesquisas manuais')
+    .max(5000, 'Comentário deve ter no máximo 5000 caracteres')
+});
+
+// Schema principal - usa o base por padrão (para compatibilidade)
+export const PesquisaFormSchema = PesquisaFormSchemaBase;
+
+// Função para obter o schema correto baseado na origem
+export function getPesquisaFormSchema(isManual: boolean = false) {
+  return isManual ? PesquisaFormSchemaManual : PesquisaFormSchemaBase;
+}
 
 // ============================================
 // SCHEMA DE FILTROS

@@ -31,7 +31,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { TaxaClienteCompleta, TaxaFormData, TipoProduto } from '@/types/taxasClientes';
-import { calcularValores, getFuncoesPorProduto, calcularValoresLocaisAutomaticos } from '@/types/taxasClientes';
+import { calcularValores, getFuncoesPorProduto, calcularValoresLocaisAutomaticos, getCamposEspecificosPorCliente, clienteTemCamposEspecificos } from '@/types/taxasClientes';
 
 interface TaxaFormProps {
   taxa?: TaxaClienteCompleta | null;
@@ -89,6 +89,14 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         dba: 0,
         gestor: 0,
       },
+      // Campos específicos por cliente
+      valor_ticket: undefined,
+      valor_ticket_excedente: undefined,
+      ticket_excedente_simples: undefined,
+      ticket_excedente_complexo: undefined,
+      ticket_excedente_1: undefined,
+      ticket_excedente_2: undefined,
+      ticket_excedente: undefined,
     },
   });
 
@@ -179,6 +187,14 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
               )?.valor_base || 0,
               gestor: taxa.valores_local?.find(v => v.funcao === 'Gestor')?.valor_base || 0,
             },
+            // Campos específicos por cliente
+            valor_ticket: taxa.valor_ticket,
+            valor_ticket_excedente: taxa.valor_ticket_excedente,
+            ticket_excedente_simples: taxa.ticket_excedente_simples,
+            ticket_excedente_complexo: taxa.ticket_excedente_complexo,
+            ticket_excedente_1: taxa.ticket_excedente_1,
+            ticket_excedente_2: taxa.ticket_excedente_2,
+            ticket_excedente: taxa.ticket_excedente,
           };
           
           // Salvar valores originais para referência
@@ -207,6 +223,17 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       return;
     }
 
+    // Validar campos obrigatórios
+    if (!data.vigencia_inicio) {
+      form.setError('vigencia_inicio', { message: 'Vigência início é obrigatória' });
+      return;
+    }
+
+    if (!data.tipo_produto) {
+      form.setError('tipo_produto', { message: 'Tipo de produto é obrigatório' });
+      return;
+    }
+
     const dadosFormatados: TaxaFormData = {
       cliente_id: empresa.id,
       vigencia_inicio: data.vigencia_inicio,
@@ -219,6 +246,14 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       valores_local: data.valores_local,
       valores_remota_personalizados: data.personalizado ? data.valores_remota_personalizados : undefined,
       valores_local_personalizados: data.personalizado ? data.valores_local_personalizados : undefined,
+      // Campos específicos por cliente
+      valor_ticket: data.valor_ticket,
+      valor_ticket_excedente: data.valor_ticket_excedente,
+      ticket_excedente_simples: data.ticket_excedente_simples,
+      ticket_excedente_complexo: data.ticket_excedente_complexo,
+      ticket_excedente_1: data.ticket_excedente_1,
+      ticket_excedente_2: data.ticket_excedente_2,
+      ticket_excedente: data.ticket_excedente,
     };
 
     onSubmit(dadosFormatados);
@@ -604,6 +639,39 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
           />
           </div>
         </div>
+
+        {/* Campos Específicos por Cliente */}
+        {clienteSelecionado && clienteTemCamposEspecificos(clienteSelecionado) && (
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Campos Específicos - {clienteSelecionado}</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {getCamposEspecificosPorCliente(clienteSelecionado).map((campo) => (
+                <FormField
+                  key={campo.campo}
+                  control={form.control}
+                  name={campo.campo}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{campo.label}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder={campo.placeholder}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tabela de Valores Remotos */}
         <div className="space-y-3">

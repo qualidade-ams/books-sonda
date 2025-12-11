@@ -145,7 +145,8 @@ export async function buscarPlanoAcaoPorId(id: string): Promise<PlanoAcaoComplet
         tipo_caso,
         nro_caso,
         comentario_pesquisa,
-        resposta
+        resposta,
+        data_resposta
       )
     `)
     .eq('id', id)
@@ -174,7 +175,8 @@ export async function buscarPlanoAcaoPorPesquisa(pesquisaId: string): Promise<Pl
         tipo_caso,
         nro_caso,
         comentario_pesquisa,
-        resposta
+        resposta,
+        data_resposta
       )
     `)
     .eq('pesquisa_id', pesquisaId)
@@ -197,6 +199,11 @@ export async function criarPlanoAcao(dados: PlanoAcaoFormData): Promise<PlanoAca
 
   // Limpar valores vazios e null para evitar erros de validação
   const dadosLimpos = Object.entries(dados).reduce((acc, [key, value]) => {
+    // Pular campos que não existem na tabela planos_acao (até migração ser executada)
+    if (key === 'chamado' || key === 'empresa_id') {
+      console.log(`⏭️ Pulando campo ${key} (não existe na tabela):`, value);
+      return acc;
+    }
     // Manter apenas valores que não são undefined, null ou string vazia
     if (value !== undefined && value !== null && value !== '') {
       acc[key] = value;
@@ -230,14 +237,33 @@ export async function atualizarPlanoAcao(
   id: string,
   dados: Partial<PlanoAcaoFormData>
 ): Promise<PlanoAcao> {
+  console.log('🔧 Dados recebidos para atualização:', dados);
+  
   // Limpar valores vazios e null para evitar erros de validação
   const dadosLimpos = Object.entries(dados).reduce((acc, [key, value]) => {
+    // Pular campos que não existem na tabela planos_acao (até migração ser executada)
+    if (key === 'chamado' || key === 'empresa_id') {
+      console.log(`⏭️ Pulando campo ${key} (não existe na tabela):`, value);
+      return acc;
+    }
+    
+    // Tratar campos especiais que podem ser null
+    if (key === 'meio_contato' || key === 'retorno_cliente' || key === 'status_final') {
+      if (value === null || value === undefined || value === '') {
+        // Para estes campos, null é um valor válido
+        acc[key] = null;
+        return acc;
+      }
+    }
+    
     // Manter apenas valores que não são undefined, null ou string vazia
     if (value !== undefined && value !== null && value !== '') {
       acc[key] = value;
     }
     return acc;
   }, {} as any);
+  
+  console.log('📤 Dados limpos para envio:', dadosLimpos);
 
   const { data, error } = await supabase
     .from('planos_acao')
@@ -247,8 +273,14 @@ export async function atualizarPlanoAcao(
     .single();
 
   if (error) {
-    console.error('Erro ao atualizar plano de ação:', error);
-    console.error('Dados enviados:', dadosLimpos);
+    console.error('❌ Erro ao atualizar plano de ação:', error);
+    console.error('📋 Dados enviados:', dadosLimpos);
+    console.error('🔍 Detalhes do erro:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
     throw new Error('Erro ao atualizar plano de ação');
   }
 

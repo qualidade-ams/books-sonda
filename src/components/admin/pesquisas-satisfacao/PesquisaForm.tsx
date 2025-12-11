@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-import { PesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
+import { getPesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
 import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
 import { MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
 import { useEmpresas } from '@/hooks/useEmpresas';
@@ -55,19 +55,22 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
   // Buscar categorias e grupos da tabela DE-PARA
   const { data: categorias = [] } = useCategorias();
 
+  // Determinar se é pesquisa manual (nova pesquisa ou pesquisa existente com origem manual)
+  const isPesquisaManual = !pesquisa || pesquisa.origem === 'manual';
+
   const form = useForm<PesquisaFormData>({
-    resolver: zodResolver(PesquisaFormSchema),
+    resolver: zodResolver(getPesquisaFormSchema(isPesquisaManual)),
     defaultValues: {
       empresa: '',
       cliente: '',
-      categoria: '',
-      grupo: '',
+      categoria: undefined,
+      grupo: undefined,
       email_cliente: '',
       prestador: '',
       nro_caso: '',
-      tipo_caso: '',
+      tipo_caso: undefined,
       data_resposta: undefined, // Vem em branco
-      resposta: '',
+      resposta: undefined,
       comentario_pesquisa: '',
       observacao: ''
     }
@@ -109,14 +112,14 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       form.reset({
         empresa: empresaValue || '',
         cliente: pesquisa.cliente,
-        categoria: pesquisa.categoria || '',
-        grupo: pesquisa.grupo || '',
+        categoria: pesquisa.categoria || undefined,
+        grupo: pesquisa.grupo || undefined,
         email_cliente: pesquisa.email_cliente || '',
         prestador: pesquisa.prestador || '',
         nro_caso: pesquisa.nro_caso || '',
-        tipo_caso: pesquisa.tipo_caso || '',
+        tipo_caso: pesquisa.tipo_caso || undefined,
         data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
-        resposta: pesquisa.resposta || '',
+        resposta: pesquisa.resposta || undefined,
         comentario_pesquisa: pesquisa.comentario_pesquisa || '',
         observacao: pesquisa.observacao || '',
         empresa_id: pesquisa.empresa_id || undefined,
@@ -137,12 +140,12 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         const grupoAtual = form.getValues('grupo');
         const grupoValido = grupos.find(g => g.value === grupoAtual);
         if (!grupoValido) {
-          form.setValue('grupo', '');
+          form.setValue('grupo', undefined);
         }
       }
     } else if (!categoriaSelecionada) {
       // Se categoria foi limpa, limpa o grupo também
-      form.setValue('grupo', '');
+      form.setValue('grupo', undefined);
     }
   }, [categoriaSelecionada, grupos, form]);
 
@@ -260,7 +263,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
                   <Select
-                    value={field.value || ''}
+                    value={field.value}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
@@ -288,7 +291,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Grupo</FormLabel>
                   <Select
-                    value={field.value || ''}
+                    value={field.value}
                     onValueChange={field.onChange}
                     disabled={!categoriaSelecionada || grupos.length === 0}
                   >
@@ -331,7 +334,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Tipo do Chamado</FormLabel>
                   <Select
-                    value={field.value || ''}
+                    value={field.value}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
@@ -385,7 +388,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Resposta</FormLabel>
                   <Select
-                    value={field.value || ''}
+                    value={field.value}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
@@ -455,11 +458,18 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             name="comentario_pesquisa"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Comentário da Pesquisa</FormLabel>
+                <FormLabel>
+                  Comentário da Pesquisa
+                  {isPesquisaManual && <span className="text-red-500 ml-1">*</span>}
+                </FormLabel>
                 <FormControl>
                   <Textarea 
                     {...field} 
-                    placeholder="Comentários adicionais da pesquisa"
+                    placeholder={
+                      isPesquisaManual 
+                        ? "Comentário obrigatório para pesquisas manuais - descreva o contexto ou motivo da pesquisa"
+                        : "Comentários adicionais da pesquisa"
+                    }
                     rows={3}
                     value={field.value || ''}
                   />
