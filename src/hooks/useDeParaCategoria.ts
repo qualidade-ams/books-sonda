@@ -32,6 +32,8 @@ export function useCategorias() {
   return useQuery({
     queryKey: ['categorias'],
     queryFn: async () => {
+      console.log('🔍 [HOOK] Buscando categorias...');
+      
       const { data, error } = await supabase
         .from('de_para_categoria')
         .select('categoria')
@@ -39,19 +41,25 @@ export function useCategorias() {
         .order('categoria');
 
       if (error) {
-        console.error('Erro ao buscar categorias:', error);
+        console.error('❌ [HOOK] Erro ao buscar categorias:', error);
         throw error;
       }
+
+      console.log('📊 [HOOK] Dados brutos de categorias:', data);
 
       // Remover duplicatas e criar array de opções
       const categoriasUnicas = Array.from(
         new Set(data.map((item) => item.categoria))
       );
 
-      return categoriasUnicas.map((categoria) => ({
+      const categoriasOptions = categoriasUnicas.map((categoria) => ({
         value: categoria,
         label: categoria,
       })) as CategoriaOption[];
+
+      console.log('✅ [HOOK] Categorias únicas processadas:', categoriasOptions);
+      
+      return categoriasOptions;
     },
   });
 }
@@ -63,7 +71,10 @@ export function useGruposPorCategoria(categoria?: string) {
   return useQuery({
     queryKey: ['grupos', categoria],
     queryFn: async () => {
+      console.log('🔍 [HOOK] Buscando grupos para categoria:', categoria);
+      
       if (!categoria) {
+        console.log('⏭️ [HOOK] Categoria não fornecida, retornando array vazio');
         return [] as GrupoOption[];
       }
 
@@ -75,19 +86,25 @@ export function useGruposPorCategoria(categoria?: string) {
         .order('grupo');
 
       if (error) {
-        console.error('Erro ao buscar grupos:', error);
+        console.error('❌ [HOOK] Erro ao buscar grupos:', error);
         throw error;
       }
+
+      console.log('📊 [HOOK] Dados brutos retornados:', data);
 
       // Remover duplicatas e criar array de opções
       const gruposUnicos = Array.from(
         new Set(data.map((item) => item.grupo))
       );
 
-      return gruposUnicos.map((grupo) => ({
+      const gruposOptions = gruposUnicos.map((grupo) => ({
         value: grupo,
         label: grupo,
       })) as GrupoOption[];
+
+      console.log('✅ [HOOK] Grupos únicos processados:', gruposOptions);
+      
+      return gruposOptions;
     },
     enabled: !!categoria, // Só executa se categoria estiver definida
   });

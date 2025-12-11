@@ -35,7 +35,11 @@ const contatoFormSchema = z.object({
   meio_contato: z.enum(['whatsapp', 'email', 'ligacao'], {
     required_error: 'Meio de contato é obrigatório',
   }),
-  resumo_comunicacao: z.string().min(10, 'Resumo deve ter pelo menos 10 caracteres'),
+  resumo_comunicacao: z.string()
+    .min(1, 'Resumo da comunicação é obrigatório')
+    .refine((val) => val.trim().length > 0, {
+      message: 'Resumo da comunicação não pode estar vazio'
+    }),
   retorno_cliente: z.enum(['aguardando', 'respondeu', 'solicitou_mais_informacoes']).optional().nullable(),
   observacoes: z.string().optional(),
 });
@@ -57,16 +61,57 @@ export function ContatoForm({
     resolver: zodResolver(contatoFormSchema),
     defaultValues: {
       data_contato: contato?.data_contato || format(new Date(), 'yyyy-MM-dd'),
-      meio_contato: contato?.meio_contato || 'whatsapp',
+      meio_contato: contato?.meio_contato || 'email',
       resumo_comunicacao: contato?.resumo_comunicacao || '',
       retorno_cliente: contato?.retorno_cliente || null,
       observacoes: contato?.observacoes || '',
     },
   });
 
+  // Esta função não é mais usada, a validação está no handleFormSubmit
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🚀 Form submit interceptado');
+    
+    // Obter valores atuais
+    const currentValues = form.getValues();
+    console.log('🔍 Valores atuais:', currentValues);
+    
+    // Verificação manual do campo obrigatório
+    const resumo = currentValues.resumo_comunicacao?.trim() || '';
+    console.log('🔍 Resumo trimmed:', `"${resumo}"`);
+    console.log('🔍 Resumo length:', resumo.length);
+    
+    if (resumo.length === 0) {
+      console.log('❌ BLOQUEANDO: Resumo está vazio');
+      form.setError('resumo_comunicacao', {
+        type: 'manual',
+        message: 'Resumo da comunicação é obrigatório'
+      });
+      // Forçar re-render para mostrar erro
+      form.trigger('resumo_comunicacao');
+      return;
+    }
+    
+    // Forçar validação completa
+    const isValid = await form.trigger();
+    console.log('🔍 Formulário válido após trigger?', isValid);
+    console.log('🔍 Erros após trigger:', form.formState.errors);
+    
+    if (!isValid) {
+      console.log('❌ BLOQUEANDO: Formulário inválido');
+      return;
+    }
+    
+    console.log('✅ PERMITINDO: Dados válidos, enviando');
+    onSubmit(currentValues);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleFormSubmit} className="space-y-4">
         {/* Data e Meio de Contato */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -89,7 +134,7 @@ export function ContatoForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Meio de Contato *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o meio" />
@@ -115,12 +160,13 @@ export function ContatoForm({
           name="resumo_comunicacao"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Resumo da Comunicação *</FormLabel>
+              <FormLabel className='mt-2'>Resumo da Comunicação *</FormLabel>
               <FormControl>
                 <Textarea
                   {...field}
                   placeholder="Descreva o que foi conversado com o cliente..."
                   rows={4}
+                  className={form.formState.errors.resumo_comunicacao ? 'border-red-500' : ''}
                 />
               </FormControl>
               <FormMessage />
@@ -137,7 +183,7 @@ export function ContatoForm({
               <FormLabel>Retorno do Cliente</FormLabel>
               <Select 
                 onValueChange={field.onChange} 
-                defaultValue={field.value || undefined}
+                value={field.value || ""}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -178,7 +224,16 @@ export function ContatoForm({
 
         {/* Botões */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCancel();
+            }} 
+            disabled={isLoading}
+          >
             Cancelar
           </Button>
           <Button type="submit" disabled={isLoading}>

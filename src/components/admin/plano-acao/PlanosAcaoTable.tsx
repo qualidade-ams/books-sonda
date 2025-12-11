@@ -120,7 +120,7 @@ export function PlanosAcaoTable({
                 <TableRow key={plano.id}>
                   {/* Coluna Chamado */}
                   <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                    <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
                       {plano.pesquisa?.tipo_caso && (
                         <span className="text-xs text-muted-foreground">
                           {plano.pesquisa.tipo_caso}
@@ -131,13 +131,15 @@ export function PlanosAcaoTable({
                           {plano.pesquisa.nro_caso}
                         </span>
                       )}
-                      {!plano.pesquisa?.nro_caso && '-'}
+                      {!plano.pesquisa?.nro_caso && (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </div>
                   </TableCell>
                   
                   {/* Coluna Empresa (com Cliente abaixo) */}
                   <TableCell className="text-center">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 items-center">
                       {/* Nome da Empresa */}
                       <div className="font-medium text-xs sm:text-sm">
                         {validacao.encontrada ? (
@@ -172,7 +174,7 @@ export function PlanosAcaoTable({
                       </div>
                       {/* Nome do Cliente (pequeno, abaixo) */}
                       {plano.pesquisa?.cliente && (
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 break-words leading-tight">
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 break-words leading-tight text-center">
                           {plano.pesquisa.cliente}
                         </div>
                       )}
@@ -181,31 +183,33 @@ export function PlanosAcaoTable({
                   
                   {/* Coluna Ação Corretiva */}
                   <TableCell className="text-center hidden lg:table-cell">
-                    {(() => {
-                      const palavras = plano.descricao_acao_corretiva.split(' ');
-                      const textoTruncado = palavras.length > 5 
-                        ? palavras.slice(0, 5).join(' ') + '...'
-                        : plano.descricao_acao_corretiva;
-                      
-                      return palavras.length > 5 ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="max-w-[300px] cursor-help text-xs sm:text-sm">
-                                {textoTruncado}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md">
-                              <p className="text-xs whitespace-pre-wrap">{plano.descricao_acao_corretiva}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <div className="max-w-[300px] text-xs sm:text-sm">
-                          {plano.descricao_acao_corretiva}
-                        </div>
-                      );
-                    })()}
+                    <div className="flex justify-center">
+                      {(() => {
+                        const palavras = plano.descricao_acao_corretiva.split(' ');
+                        const textoTruncado = palavras.length > 5 
+                          ? palavras.slice(0, 5).join(' ') + '...'
+                          : plano.descricao_acao_corretiva;
+                        
+                        return palavras.length > 5 ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="max-w-[300px] cursor-help text-xs sm:text-sm text-center">
+                                  {textoTruncado}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md">
+                                <p className="text-xs whitespace-pre-wrap">{plano.descricao_acao_corretiva}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <div className="max-w-[300px] text-xs sm:text-sm text-center">
+                            {plano.descricao_acao_corretiva}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </TableCell>
                   
                   {/* Coluna Prioridade */}
@@ -227,8 +231,10 @@ export function PlanosAcaoTable({
                   </TableCell>
                   
                   {/* Coluna Data Início */}
-                  <TableCell className="text-xs sm:text-sm text-gray-500 text-center hidden xl:table-cell">
-                    {format(new Date(plano.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
+                  <TableCell className="text-center hidden xl:table-cell">
+                    <div className="text-xs sm:text-sm text-gray-500">
+                      {format(new Date(plano.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
+                    </div>
                   </TableCell>
                   
                   {/* Coluna Ações */}

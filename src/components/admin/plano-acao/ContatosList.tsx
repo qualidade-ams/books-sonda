@@ -2,7 +2,7 @@
 // COMPONENTE: LISTA DE CONTATOS DO PLANO DE AÇÃO
 // =====================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,8 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
   const atualizarContatoMutation = useAtualizarContato();
   const deletarContatoMutation = useDeletarContato();
 
+
+
   // Funções de controle de expansão
   const toggleExpansao = (contatoId: string) => {
     const newExpanded = new Set(expandedContatos);
@@ -72,14 +74,31 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
     setExpandedContatos(newExpanded);
   };
 
+  // Função para abrir modal de novo contato
+  const handleNovoContato = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setModalNovoContato(true);
+  };
+
   // Funções de CRUD
   const handleCriarContato = (dados: PlanoAcaoContatoFormData) => {
+    console.log('🚀 Tentando criar contato:', dados);
+    
     criarContatoMutation.mutate(
       { planoAcaoId, dados },
       {
         onSuccess: () => {
-          setModalNovoContato(false);
+          console.log('✅ Contato criado com sucesso!');
+          // Pequeno delay para garantir que o toast seja exibido antes de fechar o modal
+          setTimeout(() => {
+            setModalNovoContato(false);
+          }, 100);
         },
+        onError: (error) => {
+          console.log('❌ Erro ao criar contato:', error);
+          // Modal permanece aberto em caso de erro
+        }
       }
     );
   };
@@ -87,12 +106,22 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
   const handleAtualizarContato = (dados: PlanoAcaoContatoFormData) => {
     if (!contatoEditando) return;
     
+    console.log('🚀 Tentando atualizar contato:', dados);
+    
     atualizarContatoMutation.mutate(
       { id: contatoEditando.id, dados },
       {
         onSuccess: () => {
-          setContatoEditando(null);
+          console.log('✅ Contato atualizado com sucesso!');
+          // Pequeno delay para garantir que o toast seja exibido antes de fechar o modal
+          setTimeout(() => {
+            setContatoEditando(null);
+          }, 100);
         },
+        onError: (error) => {
+          console.log('❌ Erro ao atualizar contato:', error);
+          // Modal permanece aberto em caso de erro
+        }
       }
     );
   };
@@ -104,7 +133,10 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
       { id: contatoParaDeletar, planoAcaoId },
       {
         onSuccess: () => {
-          setContatoParaDeletar(null);
+          // Pequeno delay para garantir que o toast seja exibido antes de fechar o modal
+          setTimeout(() => {
+            setContatoParaDeletar(null);
+          }, 100);
         },
       }
     );
@@ -134,7 +166,7 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
         <h4 className="font-semibold">Histórico de Contatos ({contatos.length})</h4>
         <Button 
           size="sm" 
-          onClick={() => setModalNovoContato(true)}
+          onClick={handleNovoContato}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -229,7 +261,7 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
                       <div className="space-y-3">
                         {/* Resumo da Comunicação */}
                         <div>
-                          <p className="text-sm font-medium mb-1 flex items-center gap-1">
+                          <p className="text-sm font-medium mb-1 flex items-center gap-1 mt-2">
                             <MessageSquare className="h-3 w-3" />
                             Resumo da Comunicação
                           </p>

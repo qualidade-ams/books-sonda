@@ -43,9 +43,9 @@ export interface PlanoAcaoContatoFormData {
  * Constantes para opções de select
  */
 export const MEIO_CONTATO_CONTATOS_OPTIONS = [
-  { value: 'whatsapp' as const, label: 'WhatsApp' },
   { value: 'email' as const, label: 'E-mail' },
   { value: 'ligacao' as const, label: 'Ligação' },
+  { value: 'whatsapp' as const, label: 'WhatsApp' },
 ];
 
 export const RETORNO_CLIENTE_CONTATOS_OPTIONS = [

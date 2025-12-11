@@ -60,6 +60,7 @@ import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { emailService } from '@/services/emailService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
+import { getBadgeResposta } from '@/utils/badgeUtils';
 
 export default function EnviarElogios() {
   // Estados
@@ -804,12 +805,11 @@ export default function EnviarElogios() {
                             <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge 
-                              variant="default"
-                              className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 whitespace-nowrap"
-                            >
-                              {elogio.pesquisa?.resposta || 'Muito Satisfeito'}
-                            </Badge>
+                            {getBadgeResposta(elogio.pesquisa?.resposta) || (
+                              <Badge variant="outline" className="text-xs px-2 py-1 whitespace-nowrap">
+                                -
+                              </Badge>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

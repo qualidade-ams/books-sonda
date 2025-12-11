@@ -130,6 +130,28 @@ Servidor Express principal com endpoints para sincronização de pesquisas.
 
 ## Diretório Principal do Projeto
 
+### `GUIA_TESTE_FINAL_ELOGIOS.md`
+Guia completo de teste para validação do sistema de categoria/grupo em elogios, incluindo procedimentos de teste, critérios de sucesso e instruções de limpeza após validação.
+
+**Funcionalidades documentadas:**
+- **Procedimentos de teste**: Guia passo a passo para testar criação e edição de elogios com categoria/grupo
+- **Critérios de validação**: Definição clara de quando os testes passaram ou falharam
+- **Logs esperados**: Documentação dos console logs que devem aparecer durante os testes
+- **Casos de teste específicos**: 
+  - Teste de criação de novo elogio
+  - Teste de edição de elogio existente (teste principal)
+  - Teste de preenchimento automático de grupo
+  - Validação de logs no console
+- **Troubleshooting**: Instruções para verificações adicionais caso os testes falhem
+- **Limpeza pós-teste**: Instruções para remover console logs de debug após validação
+- **Checklist final**: Lista de verificação completa para confirmar funcionamento
+
+**Integração:**
+- Complementa a implementação do sistema categoria/grupo no `ElogioForm.tsx`
+- Valida correção de timing para aguardar carregamento de empresas E categorias
+- Serve como documentação de teste para funcionalidade de preenchimento automático
+- Guia para validação da integração com hook `useCategorias()` e sistema DE-PARA
+
 ### `RESUMO_IMPLEMENTACAO_CAMPOS_ESPECIFICOS.md`
 Documento de resumo completo da implementação de campos específicos por cliente no sistema de taxas, detalhando todas as etapas realizadas, correções aplicadas e status final da funcionalidade.
 
@@ -309,6 +331,44 @@ node test_chiesi_labels.js
 - Valida implementação antes da migração no banco
 - Serve como documentação das correções aplicadas
 
+### `test_elogios_categoria_grupo.js`
+Script de teste JavaScript para verificar o funcionamento do sistema de categoria/grupo no formulário de elogios, validando o preenchimento automático inteligente de grupos baseado na categoria selecionada.
+
+**Funcionalidades principais:**
+- **Teste do sistema categoria/grupo**: Valida funcionamento do preenchimento automático de grupos no formulário de elogios
+- **Simulação de dados**: Implementa dados de teste simulando categorias e grupos disponíveis no sistema
+- **Função de preenchimento simulada**: Replica lógica de preenchimento automático do componente `ElogioForm.tsx`
+- **4 cenários de teste**: Cobertura completa de casos de uso:
+  - Categoria com 1 grupo (deve preencher automaticamente)
+  - Categoria com múltiplos grupos (seleção manual necessária)
+  - Categoria limpa (deve limpar grupo)
+  - Categoria inexistente (não deve preencher)
+- **Logging detalhado**: Console logs estruturados com emojis visuais para debug do processo
+- **Resumo de resultados**: Exibe resultado individual e geral de todos os testes
+- **Guia de próximos passos**: Instruções para testar no navegador e validar implementação
+
+**Dados de teste simulados:**
+- **Categorias**: CE+ RECOF.MANUTENÇÃO, CE+.MANUTENÇÃO.CÂMBIO EXPORTAÇÃO, GALLERY.MANUTENÇÃO
+- **Grupos por categoria**: Mapeamento simulando estrutura real do sistema DE-PARA
+- **Cenários variados**: 1 grupo, múltiplos grupos, categoria vazia, categoria inexistente
+
+**Validações realizadas:**
+- Preenchimento automático quando há apenas 1 grupo para a categoria
+- Não preenchimento quando há múltiplos grupos (seleção manual)
+- Limpeza de grupo quando categoria é removida
+- Comportamento correto para categorias inexistentes
+
+**Como executar:**
+```bash
+node test_elogios_categoria_grupo.js
+```
+
+**Integração:**
+- Valida implementação do preenchimento automático no `ElogioForm.tsx`
+- Testa lógica de integração com hook `useCategorias()` e sistema DE-PARA
+- Serve como documentação executável do comportamento esperado
+- Facilita debug de problemas com preenchimento automático de grupos
+
 ### `src/pages/admin/`
 
 Páginas administrativas do sistema Books SND.
@@ -323,9 +383,10 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - **Seleção múltipla**: Checkboxes para seleção individual ou em massa de elogios
 - **Paginação flexível**: Controle de itens por página (25, 50, 100, 500, Todos) com navegação entre páginas
 - **Estatísticas visuais**: Cards com estatísticas do período (total, registrados, compartilhados, arquivados)
-- **Modal de edição**: Dialog para visualização detalhada dos dados do elogio organizado em seções
+- **Modal de edição**: Dialog para edição de elogios usando componente ElogioForm
 - **CRUD completo**: Criação, edição e exclusão de elogios via modais com formulário dedicado (ElogioForm)
-- **Integração com envio**: Botão de ação rápida para navegar para a página de envio de elogios
+- **Envio individual e em lote**: Funcionalidades para enviar elogios individuais ou múltiplos para status "compartilhado"
+- **Validação visual de empresas**: Destaque em vermelho para empresas não cadastradas (apenas para pesquisas do SQL Server)
 - **Limpeza de cache**: Limpa cache de pesquisas ao entrar na tela para garantir dados atualizados
 
 **Hooks utilizados:**
@@ -376,7 +437,7 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - `handlePaginaAnterior()`, `handleProximaPagina()`: Navegação entre páginas
 - `obterDadosEmpresa(nomeCompleto)`: Busca empresa pelo nome completo ou abreviado e retorna objeto com `{ nome: string, encontrada: boolean }` para exibição e validação visual
 - `handleEnviarElogioIndividual(id)`: Atualiza status de um elogio individual para "compartilhado" e recarrega dados
-- `handleEnviarElogiosLote()`: Abre modal de confirmação para envio em lote de elogios selecionados
+- `handleAbrirConfirmacaoEnvio()`: Abre modal de confirmação para envio em lote de elogios selecionados
 - `handleConfirmarEnvioLote()`: Atualiza status de múltiplos elogios selecionados para "compartilhado" em lote após confirmação do usuário
 
 **Estrutura da tabela:**
@@ -435,7 +496,7 @@ Página principal para gerenciamento e visualização de elogios (pesquisas de s
 - **Preparação para CRUD completo**: Estrutura pronta para implementar criação, edição e exclusão de elogios
 - **Validação visual de empresas**: Implementada função `obterDadosEmpresa()` que retorna objeto com nome da empresa e flag `encontrada`, permitindo destacar em vermelho empresas não cadastradas no sistema
 - **Funcionalidade de envio individual**: Implementada função `handleEnviarElogioIndividual()` que atualiza o status de um elogio para "compartilhado" e recarrega os dados automaticamente
-- **Funcionalidade de envio em lote**: Implementada função `handleEnviarElogiosLote()` que abre modal de confirmação, e `handleConfirmarEnvioLote()` que executa o envio múltiplo de elogios selecionados, atualizando todos para status "compartilhado" com feedback de sucesso/erro
+- **Funcionalidade de envio em lote**: Implementada função `handleAbrirConfirmacaoEnvio()` que abre modal de confirmação, e `handleConfirmarEnvioLote()` que executa o envio múltiplo de elogios selecionados, atualizando todos para status "compartilhado" com feedback de sucesso/erro
 - **Feedback aprimorado ao usuário**: Substituídos `alert()` por notificações toast (sonner) para melhor experiência:
   - Toast de sucesso ao enviar elogio individual com mensagem específica
   - Toast de erro ao falhar envio individual
@@ -577,6 +638,18 @@ Página completa para gerenciamento e envio de elogios por email, permitindo sel
 - `FiltrosElogio`: Filtros para busca (mês, ano)
 
 **Melhorias recentes:**
+- **Preenchimento automático inteligente de grupos refinado**: Aprimorado sistema de preenchimento automático do campo grupo com lógica mais sofisticada:
+  - **Preenchimento único**: Quando há apenas 1 grupo disponível para a categoria, seleciona automaticamente
+  - **Validação múltipla**: Quando há múltiplos grupos, verifica se o grupo atual é válido para a categoria selecionada
+  - **Limpeza condicional**: Remove apenas grupos inválidos que estão preenchidos, preserva campo vazio quando apropriado
+  - **Logging estruturado**: Console logs organizados com separadores visuais (=== INÍCIO/FIM ===) e informações detalhadas:
+    - Condições atendidas para preenchimento automático
+    - Quantidade de grupos disponíveis
+    - Grupo atual e sua validade
+    - Ações tomadas (preenchimento, limpeza ou preservação)
+  - **UX aprimorada**: Comportamento mais intuitivo que não força preenchimento quando há múltiplas opções válidas
+- **Integração com sistema de categorias**: Adicionado hook `useCategorias()` para buscar categorias da tabela DE-PARA, permitindo preenchimento dinâmico do campo categoria com dados atualizados do sistema
+- **Debug logging aprimorado**: Implementado console log específico (📋 [ELOGIOS] Categorias carregadas) para facilitar troubleshooting do carregamento de categorias durante desenvolvimento
 - **Estilo visual consistente**: Aplicado estilo azul Sonda (bg-blue-600 hover:bg-blue-700 rounded-2xl) em todos os botões de ação principais (Disparar Elogios, Enviar e Confirmar Envio) para manter consistência com a identidade visual da marca
 - **Reorganização de colunas**: Ordem otimizada para melhor fluxo de leitura (Chamado → Empresa → Data → Cliente → Comentário → Resposta)
 - **Larguras fixas**: Colunas com larguras definidas para melhor controle de layout e responsividade
@@ -1307,76 +1380,156 @@ Componentes relacionados ao gerenciamento de planos de ação.
 Formulário completo para cadastro e edição de planos de ação, com validação via Zod, integração com React Hook Form e sistema de histórico de contatos múltiplos.
 
 #### `ContatosList.tsx`
-Componente completo para listagem e gerenciamento de contatos com clientes em planos de ação, permitindo registro detalhado de comunicações e acompanhamento de retornos.
+Componente completo para listagem e gerenciamento de contatos com clientes em planos de ação, permitindo registro detalhado de comunicações e acompanhamento de retornos com interface expansível e CRUD completo.
 
 **Funcionalidades principais:**
-- **Listagem de contatos**: Exibição de todos os contatos registrados para um plano de ação específico
-- **Interface expansível**: Cards colapsáveis com resumo na visualização compacta e detalhes completos na expansão
-- **CRUD completo**: Criação, edição e exclusão de contatos via modais
+- **Listagem de contatos**: Exibição de todos os contatos registrados para um plano de ação específico ordenados cronologicamente
+- **Interface expansível**: Cards colapsáveis com resumo na visualização compacta e detalhes completos na expansão usando Collapsible do shadcn/ui
+- **CRUD completo**: Criação, edição e exclusão de contatos via modais responsivos
 - **Histórico cronológico**: Contatos ordenados por data com metadados de criação e atualização
-- **Indicadores visuais**: Ícones específicos por meio de contato (📱 WhatsApp, 📧 Email, 📞 Ligação)
-- **Estados vazios**: Mensagens informativas quando não há contatos registrados
-- **Confirmação de exclusão**: Dialog de confirmação antes de remover contatos
+- **Indicadores visuais**: Ícones específicos por meio de contato (📱 WhatsApp, 📧 Email, 📞 Ligação) e badges de status de retorno
+- **Estados vazios**: Mensagens informativas quando não há contatos registrados com ícone MessageSquare
+- **Confirmação de exclusão**: AlertDialog para confirmação antes de remover contatos com botão vermelho
+- **Controle de expansão**: Sistema de expansão individual por contato com ícones visuais (ChevronRight/ChevronDown)
 
 **Props do componente:**
 - `planoAcaoId: string` - UUID do plano de ação para buscar contatos relacionados
 
 **Hooks utilizados:**
-- `useContatosPlanoAcao(planoAcaoId)` - Busca lista de contatos do plano
-- `useCriarContato()` - Hook para criação de novos contatos
+- `useContatosPlanoAcao(planoAcaoId)` - Busca lista de contatos do plano ordenados por data
+- `useCriarContato()` - Hook para criação de novos contatos com invalidação de cache
 - `useAtualizarContato()` - Hook para atualização de contatos existentes
-- `useDeletarContato()` - Hook para exclusão de contatos
+- `useDeletarContato()` - Hook para exclusão de contatos com confirmação
 
 **Estados gerenciados:**
-- `expandedContatos: Set<string>` - Controle de expansão de cards individuais
+- `expandedContatos: Set<string>` - Controle de expansão de cards individuais (múltiplos podem estar expandidos)
 - `modalNovoContato: boolean` - Controle do modal de criação
-- `contatoEditando: PlanoAcaoContato | null` - Contato sendo editado
+- `contatoEditando: PlanoAcaoContato | null` - Contato sendo editado no modal
 - `contatoParaDeletar: string | null` - ID do contato para confirmação de exclusão
 
 **Estrutura visual:**
-- **Cabeçalho**: Título com contador de contatos e botão "Novo Contato" (azul Sonda)
-- **Cards expansíveis**: Cada contato em card com Collapsible do shadcn/ui:
-  - **Header compacto**: Ícone do meio de contato, data, resumo truncado, badge de retorno e botões de ação
-  - **Conteúdo expandido**: Resumo completo, retorno do cliente, observações e metadados
-- **Estado vazio**: Card com ícone MessageSquare e mensagem explicativa
-- **Modais**: Dialog para criação/edição usando componente `ContatoForm`
-- **Confirmação**: AlertDialog para exclusão com botão vermelho
+- **Cabeçalho**: Título "Histórico de Contatos" com contador dinâmico e botão "Novo Contato" (azul Sonda: bg-blue-600 hover:bg-blue-700)
+- **Cards expansíveis**: Cada contato em Card individual com Collapsible:
+  - **Header compacto**: Ícone do meio de contato, data formatada (dd/MM/yyyy), resumo truncado (line-clamp-1), badge de retorno e botões de ação
+  - **Conteúdo expandido**: Seções organizadas com resumo completo, retorno do cliente, observações e metadados de criação/atualização
+  - **Hover effects**: CardHeader com hover:bg-muted/50 para feedback visual
+- **Estado vazio**: Card centralizado com ícone MessageSquare (h-12 w-12), mensagem principal e instrução de uso
+- **Modais responsivos**: Dialog (max-w-2xl) para criação/edição usando componente `ContatoForm`
+- **Confirmação de exclusão**: AlertDialog com botão vermelho (bg-red-600 hover:bg-red-700) e estados de loading
+
+**Funcionalidades de expansão:**
+- `toggleExpansao(contatoId)` - Alterna expansão de contato específico usando Set para controle de estado
+- Ícones visuais: ChevronRight (fechado) / ChevronDown (aberto) com text-muted-foreground
+- Múltiplos contatos podem estar expandidos simultaneamente
+- Estado de expansão mantido durante operações CRUD
+
+**Seções do conteúdo expandido:**
+- **Resumo da Comunicação**: Texto completo em background com borda e padding
+- **Retorno do Cliente**: Badge outline com label amigável (condicional)
+- **Observações**: Texto completo em background com borda (condicional)
+- **Metadados**: Linha inferior com data de criação e atualização (se diferente) usando ícones Calendar e Clock
 
 **Integração:**
-- Utiliza componente `ContatoForm` para formulários de criação e edição
-- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData`
+- Utiliza componente `ContatoForm` para formulários de criação e edição em modais
+- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData` de `@/types/planoAcaoContatos`
 - Utiliza funções utilitárias `getMeioContatoLabel()`, `getRetornoClienteLabel()` e `getMeioContatoIcon()`
-- Formatação de datas com date-fns e locale pt-BR
+- Formatação de datas com date-fns e locale pt-BR (dd/MM/yyyy e dd/MM/yyyy 'às' HH:mm)
+- Exportado via `src/components/admin/plano-acao/index.ts`
 
 #### `ContatoForm.tsx`
-Formulário completo para cadastro e edição de contatos com clientes em planos de ação, com validação via Zod e campos específicos para registro de comunicações.
+Formulário completo para cadastro e edição de contatos individuais do plano de ação, com validação via Zod, interceptação de submit e sistema avançado de debug.
 
 **Funcionalidades principais:**
-- **Formulário completo**: Cadastro e edição de contatos com validação robusta
-- **Validação via Zod**: Schema `contatoFormSchema` com validações específicas
-- **Campos organizados**: Layout responsivo com grid adaptativo
-- **Valores padrão inteligentes**: Data atual e WhatsApp como meio padrão
-- **Validação contextual**: Resumo obrigatório com mínimo de 10 caracteres
+- **Formulário completo**: Cadastro e edição de contatos individuais com todos os campos necessários
+- **Validação robusta**: Validação de dados usando Zod schema (`contatoFormSchema`) com campos obrigatórios e opcionais
+- **Interceptação de submit**: Sistema que intercepta submissão via `handleFormSubmit` para validação adicional antes de enviar dados
+- **Sistema de debug avançado**: Logging detalhado para troubleshooting de validação e submissão
+- **Validação dupla**: Validação via React Hook Form + validação manual adicional para campos críticos
+- **Seleção de datas**: Calendário interativo para data do contato com valor padrão (data atual)
+- **Meios de contato**: Select com opções (WhatsApp, E-mail, Ligação) com valor padrão WhatsApp
+- **Status de retorno**: Select com status do retorno do cliente (Aguardando, Respondeu, Solicitou Mais Informações)
+- **Campos de texto**: Resumo da comunicação (obrigatório) e observações (opcional)
+- **Select controlado**: Campo "Retorno do Cliente" usa `value={field.value || ""}` para evitar warnings de componente não controlado
 
 **Props do componente:**
 - `contato?: PlanoAcaoContato` - Contato existente para edição (opcional)
-- `onSubmit: (dados: PlanoAcaoContatoFormData) => void` - Callback de submissão
-- `onCancel: () => void` - Callback de cancelamento
-- `isLoading?: boolean` - Estado de loading durante operações
+- `onSubmit: (dados: PlanoAcaoContatoFormData) => void` - Callback executado ao submeter o formulário
+- `onCancel: () => void` - Callback para cancelar a operação
+- `isLoading?: boolean` - Estado de loading durante operações assíncronas
+
+**Schema de validação (contatoFormSchema):**
+- `data_contato` (obrigatório) - String não vazia para data do contato
+- `meio_contato` (obrigatório) - Enum com opções: whatsapp, email, ligacao
+- `resumo_comunicacao` (obrigatório) - String com validação de conteúdo (mínimo 1 caractere, não pode estar vazio após trim)
+- `retorno_cliente` (opcional) - Enum com opções: aguardando, respondeu, solicitou_mais_informacoes (aceita null)
+- `observacoes` (opcional) - String para observações adicionais
 
 **Campos do formulário:**
-- `data_contato` (obrigatório) - Data do contato (input date)
-- `meio_contato` (obrigatório) - Select com opções: WhatsApp, E-mail, Ligação
-- `resumo_comunicacao` (obrigatório) - Textarea com mínimo 10 caracteres
-- `retorno_cliente` (opcional) - Select com status: Aguardando, Respondeu, Solicitou Mais Informações
-- `observacoes` (opcional) - Textarea para observações adicionais
 
-**Validações implementadas:**
-- Data do contato obrigatória
-- Meio de contato obrigatório (enum)
-- Resumo com mínimo de 10 caracteres
-- Retorno do cliente opcional mas tipado
-- Observações opcionais
+**Seção: Data e Meio de Contato (Grid responsivo 1/2 colunas)**
+- `data_contato` (obrigatório) - Input type="date" com valor padrão da data atual
+- `meio_contato` (obrigatório) - Select com opções de MEIO_CONTATO_CONTATOS_OPTIONS, valor padrão 'whatsapp'
+
+**Seção: Comunicação**
+- `resumo_comunicacao` (obrigatório) - Textarea com 4 linhas, placeholder explicativo
+- `retorno_cliente` (opcional) - Select com opções de RETORNO_CLIENTE_CONTATOS_OPTIONS, Select controlado com fallback para string vazia
+- `observacoes` (opcional) - Textarea com 3 linhas para observações adicionais
+
+**Sistema de validação avançado:**
+- **handleFormSubmit()**: Interceptador de submit que executa validação manual adicional:
+  - Previne comportamento padrão do form (`e.preventDefault()` e `e.stopPropagation()`)
+  - Obtém valores atuais via `form.getValues()`
+  - Executa validação específica do campo `resumo_comunicacao` (trim e verificação de length)
+  - Define erro manual via `form.setError()` se resumo estiver vazio
+  - Força validação completa via `form.trigger()`
+  - Só chama `onSubmit()` se todos os dados estiverem válidos
+- **Logging estruturado**: Console logs detalhados com emojis visuais para debug:
+  - 🚀 Interceptação de submit do formulário
+  - 🔍 Valores atuais obtidos do formulário
+  - 🔍 Resumo após trim e verificação de length
+  - ❌ Bloqueio quando resumo está vazio ou formulário inválido
+  - ✅ Permissão quando dados estão válidos
+  - 🔍 Status de validação após trigger e erros encontrados
+
+**Valores padrão inteligentes:**
+- `data_contato`: Data atual formatada (yyyy-MM-dd) via `format(new Date(), 'yyyy-MM-dd')`
+- `meio_contato`: 'email' como meio padrão
+- `resumo_comunicacao`: String vazia
+- `retorno_cliente`: null como valor padrão
+- `observacoes`: String vazia
+
+**Componentes UI utilizados:**
+- `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
+- `Input` - Campo de data (type="date")
+- `Textarea` - Campos de texto multilinha (resumo: 4 linhas, observações: 3 linhas)
+- `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` - Seleção de opções
+- `Button` - Botões de ação (Cancelar: outline, Submit: padrão)
+
+**Layout responsivo:**
+- Grid responsivo (1 coluna mobile, 2 colunas desktop) para data e meio de contato
+- Espaçamento consistente (space-y-4) entre seções
+- Botões alinhados à direita com gap-3 e padding superior (pt-4)
+
+**Melhorias recentes:**
+- **Sistema de interceptação de submit implementado**: Adicionada função `handleFormSubmit` que intercepta submissão do formulário para validação adicional antes de enviar dados
+- **Logging detalhado para debug**: Console logs estruturados com emojis visuais para facilitar troubleshooting de problemas de validação e submissão
+- **Validação dupla robusta**: Combinação de validação Zod + validação manual específica para campos críticos como `resumo_comunicacao`
+- **Prevenção de submissão inválida**: Sistema que bloqueia submissão quando dados não atendem critérios de validação
+- **Correção de classe CSS**: Corrigida classe CSS de `'t-2'` para `'mt-2'` no FormLabel do campo "Resumo da Comunicação"
+- **Select controlado**: Campo "Retorno do Cliente" usa `value={field.value || ""}` para evitar warnings de componente não controlado
+
+**Integração:**
+- Utilizado pelo componente `ContatosList` em modais de criação e edição
+- Integra-se com tipos `PlanoAcaoContato` e `PlanoAcaoContatoFormData` de `@/types/planoAcaoContatos`
+- Utiliza constantes `MEIO_CONTATO_CONTATOS_OPTIONS` e `RETORNO_CLIENTE_CONTATOS_OPTIONS`
+- Validação via schema Zod com mensagens de erro em português
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+**Notas técnicas:**
+- Comentário no código indica que função `handleSubmit` não é mais usada (validação migrada para `handleFormSubmit`)
+- Botão de cancelar usa `preventDefault()` e `stopPropagation()` para evitar submissão acidental
+- Estados de loading aplicados em ambos os botões durante operações assíncronas
+- Texto do botão de submit muda dinamicamente baseado no contexto (criar vs. editar)
 
 **Integração:**
 - Utilizado pelo componente `ContatosList` em modais de criação e edição
@@ -1545,6 +1698,7 @@ Formulário dedicado para cadastro e edição de contatos individuais do plano d
 - **Meios de contato**: Select com opções (WhatsApp, E-mail, Ligação)
 - **Status de retorno**: Select com status do retorno do cliente (Aguardando, Respondeu, Solicitou Mais Informações)
 - **Campos de texto**: Resumo da comunicação (obrigatório) e observações (opcional)
+- **Select controlado**: Campo "Retorno do Cliente" corrigido para usar `value` ao invés de `defaultValue`
 
 **Props do componente:**
 - `contato?: PlanoAcaoContato` - Contato existente para edição (opcional)
@@ -1556,8 +1710,12 @@ Formulário dedicado para cadastro e edição de contatos individuais do plano d
 - `data_contato` (obrigatório) - Data do contato com o cliente
 - `meio_contato` (obrigatório) - Meio utilizado (whatsapp, email, ligacao)
 - `resumo_comunicacao` (obrigatório) - Resumo do que foi conversado (mínimo 10 caracteres)
-- `retorno_cliente` (opcional) - Status do retorno do cliente
+- `retorno_cliente` (opcional) - Status do retorno do cliente (Select controlado com fallback para string vazia)
 - `observacoes` (opcional) - Observações adicionais sobre o contato
+
+**Melhorias recentes:**
+- **Correção de classe CSS**: Corrigida classe CSS de `'t-2'` para `'mt-2'` no FormLabel do campo "Resumo da Comunicação" para aplicar margem superior corretamente
+- **Correção de Select de Retorno do Cliente**: Alterado de `defaultValue={field.value || undefined}` para `value={field.value || ""}` para garantir que o Select seja sempre controlado e evitar warnings do React sobre componentes não controlados
 
 **Integração:**
 - Utilizado pelo componente `ContatosList` em modais de criação e edição
@@ -1721,9 +1879,13 @@ Formulário completo para cadastro e edição de pesquisas de satisfação, com 
 - **Justificativa**: Pesquisas manuais precisam de contexto/justificativa, enquanto pesquisas sincronizadas já têm dados estruturados
 
 **Melhorias recentes:**
+- **Correção de limpeza de campos aprimorada**: Refinada lógica de limpeza do campo `grupo` para usar `undefined` ao invés de string vazia (`''`) em ambos os cenários:
+  - Quando categoria é alterada e grupo atual não é válido para nova categoria
+  - Quando categoria é limpa (removida) - grupo também é limpo automaticamente
+  - Garante consistência com inicialização de campos opcionais e evita valores inválidos em Selects
+  - Melhora compatibilidade com validação Zod e componentes controlados do React
 - **Correção final de Select de Grupo**: Removido fallback `|| ''` do campo `value` do Select de Grupo, completando o padrão de correção já aplicado em outros Selects do componente (Categoria, Tipo de Caso, Resposta) para evitar warnings de componente não controlado
 - **Correção de inicialização de campos opcionais**: Substituídas strings vazias (`''`) por `undefined` para campos opcionais (categoria, grupo, tipo_caso, resposta) na inicialização do formulário, garantindo melhor compatibilidade com validação Zod e evitando valores inválidos em campos de seleção
-- **Correção de limpeza de campos**: Atualizada lógica de limpeza do campo `grupo` para usar `undefined` ao invés de string vazia (`''`), mantendo consistência com a inicialização de campos opcionais e evitando valores inválidos em Selects
 - Removido indicador de origem (SQL Server/Manual) para simplificar a interface
 - Removidas variáveis não utilizadas (`isOrigemSqlServer`, `anosDisponiveis`, `MESES_OPTIONS`)
 - Interface mais limpa e focada nos dados essenciais
@@ -1899,11 +2061,24 @@ Formulário completo de cadastro e edição de elogios, baseado na estrutura do 
 **Funcionalidades principais:**
 - **Formulário completo**: Cadastro e edição de elogios com todos os campos necessários
 - **Integração com empresas**: Select dinâmico com lista de empresas ordenadas alfabeticamente
+- **Integração com categorias**: Hook `useCategorias()` para buscar categorias da tabela DE-PARA com logging de debug
 - **Seleção de datas**: Calendário interativo para seleção de data/hora de resposta
 - **Categorização**: Campos para categoria, grupo e tipo de chamado
 - **Feedback do cliente**: Campos para resposta (satisfação) e comentários
 - **Organização em seções**: Interface dividida em 4 seções lógicas (Dados Principais, Categorização, Informações do Caso, Feedback do Cliente)
 - **Mapeamento inteligente de empresas**: Busca automática da empresa pelo nome completo ou abreviado ao editar elogio
+- **Preenchimento automático inteligente de grupos**: Sistema refinado que preenche automaticamente o campo grupo baseado na categoria selecionada:
+  - **Preenchimento único**: Quando há apenas 1 grupo disponível para a categoria, seleciona automaticamente
+  - **Validação múltipla**: Quando há múltiplos grupos, verifica se o grupo atual é válido para a categoria
+  - **Limpeza condicional**: Remove apenas grupos inválidos que estão preenchidos, preserva campo vazio quando apropriado
+  - **Logging detalhado**: Console logs estruturados com separadores visuais (=== INÍCIO/FIM ===) para debug do processo
+- **Limpeza inteligente de campos**: Sistema que limpa campo `grupo` usando `undefined` ao invés de string vazia para melhor compatibilidade com validação e evitar valores inválidos em Selects
+- **Preenchimento sincronizado com dependências**: Sistema aprimorado que aguarda carregamento completo de empresas E categorias antes de preencher formulário em modo edição:
+  - **Validação de dependências**: Verifica se `empresas.length > 0` E `categorias.length > 0` antes de preencher
+  - **Logging estruturado de preenchimento**: Console logs detalhados (🔄, ✅, ⏳) para debug do processo de inicialização
+  - **Preenchimento completo**: Inclui categoria e grupo nos dados preenchidos do elogio
+  - **Dependências do useEffect**: Array de dependências atualizado para incluir `categorias` além de `elogio`, `form` e `empresas`
+  - **Melhor sincronização**: Evita preenchimento parcial quando dados ainda estão carregando
 
 **Props do componente:**
 - `elogio?: ElogioCompleto | null` - Elogio existente para edição (opcional)
@@ -1954,6 +2129,9 @@ Formulário completo de cadastro e edição de elogios, baseado na estrutura do 
 **Hooks utilizados:**
 - `useForm` (React Hook Form) - Gerenciamento do estado do formulário
 - `useEmpresas()` - Busca lista de empresas para o select
+- `useCategorias()` - Busca categorias da tabela DE-PARA com logging de debug detalhado:
+  - 📋 [ELOGIOS] Categorias carregadas: lista completa das categorias
+  - 📋 [ELOGIOS] Total de categorias: contador para verificação de carregamento
 
 **Componentes UI utilizados:**
 - `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage` - Componentes de formulário do shadcn/ui
@@ -3766,6 +3944,45 @@ const formData: RequerimentoFormData = {
 ## Diretório `src/utils/`
 
 Utilitários e funções auxiliares utilizadas em todo o projeto.
+
+### `badgeUtils.ts`
+Utilitário para padronização de badges de resposta de satisfação em todo o sistema, garantindo consistência visual entre diferentes telas.
+
+**Funcionalidades principais:**
+- **Padronização de cores**: Hierarquia consistente de cores do pior para o melhor nível de satisfação
+- **Badge responsivo**: Componente Badge com classes otimizadas (text-xs px-2 py-1 whitespace-nowrap)
+- **Normalização inteligente**: Tratamento de strings com trim() e toLowerCase() para comparação robusta
+- **Fallback para valores não reconhecidos**: Badge outline para respostas não mapeadas
+- **Componente React**: Retorna elementos JSX válidos com import explícito do React
+
+**Hierarquia de cores implementada:**
+- **Muito Insatisfeito**: Vermelho (bg-red-600 hover:bg-red-700) - Pior nível
+- **Insatisfeito**: Laranja (bg-orange-500 hover:bg-orange-600)
+- **Neutro**: Amarelo (bg-yellow-500 hover:bg-yellow-600 text-white)
+- **Satisfeito**: Azul (bg-blue-500 hover:bg-blue-600)
+- **Muito Satisfeito**: Verde (bg-green-600 hover:bg-green-700) - Melhor nível
+
+**Função principal:**
+- `getBadgeResposta(resposta: string | null | undefined)` - Retorna componente Badge JSX padronizado baseado no nível de satisfação
+
+**Integração:**
+- Utilizado em componentes de tabelas de pesquisas de satisfação (`PesquisasTable.tsx`)
+- Pode ser usado em outras telas que exibem níveis de satisfação (elogios, planos de ação)
+- Garante consistência visual em todo o sistema
+- Substitui implementações locais de badges de resposta
+
+**Melhorias recentes:**
+- **Import explícito do React**: Adicionado `import React from 'react'` para garantir compatibilidade com diferentes configurações de build e evitar possíveis erros de JSX
+
+**Uso típico:**
+```typescript
+import { getBadgeResposta } from '@/utils/badgeUtils';
+
+// Renderizar badge de resposta
+const badge = getBadgeResposta('Muito Satisfeito'); // Retorna Badge verde
+const badgeNeutro = getBadgeResposta('Neutro'); // Retorna Badge amarelo
+const badgeDesconhecido = getBadgeResposta('Resposta Personalizada'); // Retorna Badge outline
+```
 
 ### `horasUtils.ts`
 Utilitário para conversão e manipulação de valores de horas em diferentes formatos (decimal, HH:MM, minutos).
@@ -5895,6 +6112,120 @@ const schemaManual = getPesquisaFormSchema(true);
 
 // Para pesquisa do SQL Server (comentário opcional)
 const schemaSqlServer = getPesquisaFormSchema(false);
+```
+
+---
+
+## Diretório `src/components/admin/plano-acao/`
+
+Componentes relacionados ao gerenciamento de planos de ação.
+
+### `PlanosAcaoTable.tsx`
+Componente de tabela para listagem e gerenciamento de planos de ação, com funcionalidades de visualização, edição, exclusão e validação visual de empresas.
+
+**Funcionalidades principais:**
+- **Listagem completa**: Exibição de todos os planos de ação com dados formatados e organizados
+- **Validação visual de empresas**: Destaque em vermelho para empresas não cadastradas no sistema
+- **Tooltips informativos**: Informações adicionais ao passar o mouse sobre empresas e descrições
+- **Ações CRUD**: Botões para visualizar, editar e excluir planos de ação
+- **Dialog de confirmação**: Confirmação antes de excluir plano de ação
+- **Layout responsivo**: Colunas adaptáveis para diferentes tamanhos de tela
+- **Truncamento inteligente**: Descrições longas truncadas com tooltip para texto completo
+
+**Props do componente:**
+- `planos: PlanoAcaoCompleto[]` - Array de planos de ação a serem exibidos
+- `onEdit: (plano: PlanoAcaoCompleto) => void` - Callback para editar plano
+- `onDelete: (id: string) => void` - Callback para excluir plano
+- `onView: (plano: PlanoAcaoCompleto) => void` - Callback para visualizar plano
+- `isLoading?: boolean` - Estado de loading durante operações
+
+**Hooks utilizados:**
+- `useState` - Gerenciamento de estado local (plano para excluir)
+- `useMemo` - Otimização de performance para mapa de empresas
+- `useEmpresas()` - Busca lista de empresas cadastradas no sistema
+
+**Ícones utilizados (lucide-react):**
+- `Edit` - Botão de editar
+- `Trash2` - Botão de excluir
+- `Eye` - Botão de visualizar
+- `Clock` - Ícone de estado vazio
+
+**Estrutura da tabela:**
+- **Coluna Chamado** (120px): Exibe tipo do caso (IM/PR/RF) e número do chamado em fonte mono
+- **Coluna Empresa** (200px): Nome da empresa com validação visual e nome do cliente abaixo:
+  - **Empresas cadastradas**: Exibe nome abreviado com tooltip mostrando nome completo
+  - **Empresas não cadastradas**: Exibe em vermelho com tooltip de alerta
+  - **Cliente**: Nome do cliente em texto pequeno abaixo da empresa
+- **Coluna Ação Corretiva** (hidden lg:table-cell): Descrição da ação corretiva com truncamento inteligente:
+  - **Truncamento**: Texto limitado a 5 palavras com "..." quando necessário
+  - **Tooltip**: Texto completo exibido ao passar o mouse
+  - **Centralização**: Conteúdo centralizado com `text-center` e container `flex justify-center`
+- **Coluna Prioridade** (100px, hidden md:table-cell): Badge colorido com nível de prioridade
+- **Coluna Status** (120px): Badge colorido com status atual do plano
+- **Coluna Data Início** (110px, hidden xl:table-cell): Data formatada em pt-BR (DD/MM/YYYY)
+- **Coluna Ações** (100px): Três botões compactos (8x8):
+  - Visualizar: Botão outline com ícone Eye
+  - Editar: Botão outline com ícone Edit
+  - Excluir: Botão outline vermelho com ícone Trash2
+
+**Estados gerenciados:**
+- `planoParaDeletar: string | null` - ID do plano selecionado para exclusão (controla dialog de confirmação)
+
+**Funções principais:**
+- `validarEmpresa(nomeEmpresa)`: Valida e formata nome da empresa, retornando objeto com status e nomes
+- `handleConfirmarDelecao()`: Executa exclusão após confirmação
+
+**Validação visual de empresas:**
+A função `validarEmpresa()` implementa lógica inteligente para destacar empresas não cadastradas:
+1. Normaliza nome da empresa (trim + uppercase) para comparação
+2. Busca empresa no mapa de empresas cadastradas
+3. Retorna objeto com:
+   - `encontrada`: boolean indicando se empresa existe no cadastro
+   - `nomeExibir`: nome abreviado (se encontrada) ou nome original
+   - `nomeCompleto`: nome completo da empresa
+4. **Lógica de exibição**:
+   - Se empresa encontrada: exibe nome abreviado com tooltip do nome completo
+   - Se não encontrada: exibe em vermelho com tooltip de alerta
+
+**Mapa de empresas (otimização):**
+- Criado via `useMemo` para evitar recálculos desnecessários
+- Estrutura: `Map<string, { nomeCompleto: string; nomeAbreviado: string }>`
+- Chave: nome completo normalizado (trim + uppercase)
+- Permite busca rápida O(1) ao validar empresas
+
+**Componentes UI utilizados:**
+- `Table`, `TableBody`, `TableCell`, `TableHead`, `TableHeader`, `TableRow` - Componentes de tabela do shadcn/ui
+- `Badge` - Indicadores de prioridade e status
+- `Button` - Botões de ação
+- `AlertDialog` - Confirmação de exclusão
+- `Tooltip` - Informações adicionais
+
+**Tratamento de casos especiais:**
+- **Sem planos**: Exibe mensagem "Nenhum plano de ação encontrado" com ícone Clock
+- **Sem chamado**: Exibe apenas traço (-)
+- **Empresa não encontrada**: Destaque em vermelho com tooltip de alerta
+
+**Melhorias recentes:**
+- **Centralização aprimorada da coluna Ação Corretiva**: Implementado container `flex justify-center` e classe `text-center` no conteúdo para garantir alinhamento central perfeito do texto truncado, melhorando consistência visual com outras colunas centralizadas da tabela
+
+**Integração:**
+- Utilizado em páginas de gerenciamento de planos de ação
+- Integra-se com o sistema de empresas via hook `useEmpresas()`
+- Recebe callbacks para operações CRUD da página pai
+- Exportado via `src/components/admin/plano-acao/index.ts`
+
+**Tipos utilizados:**
+- `PlanoAcaoCompleto` - Tipo completo do plano de ação com dados da pesquisa relacionada
+
+**Uso típico:**
+```typescript
+<PlanosAcaoTable
+  planos={planos}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onView={handleView}
+  isLoading={isLoading}
+/>
 ```
 
 ---

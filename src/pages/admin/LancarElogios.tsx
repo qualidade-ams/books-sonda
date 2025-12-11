@@ -51,6 +51,7 @@ import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { ElogioForm } from '@/components/admin/elogios';
 import { Plus } from 'lucide-react';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { getBadgeResposta } from '@/utils/badgeUtils';
 
 function LancarElogios() {
   const navigate = useNavigate();
@@ -530,12 +531,11 @@ function LancarElogios() {
                           <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge 
-                            variant="default"
-                            className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 whitespace-nowrap"
-                          >
-                            {elogio.pesquisa?.resposta || 'Muito Satisfeito'}
-                          </Badge>
+                          {getBadgeResposta(elogio.pesquisa?.resposta) || (
+                            <Badge variant="outline" className="text-xs px-2 py-1 whitespace-nowrap">
+                              -
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">

@@ -65,6 +65,10 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   
   // Buscar categorias e grupos da tabela DE-PARA
   const { data: categorias = [] } = useCategorias();
+  
+  // Debug: verificar se categorias estão sendo carregadas
+  console.log('📋 [ELOGIOS] Categorias carregadas:', categorias);
+  console.log('📋 [ELOGIOS] Total de categorias:', categorias.length);
 
   const form = useForm<ElogioFormData>({
     defaultValues: {
@@ -72,9 +76,9 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
       cliente: '',
       email_cliente: '',
       prestador: '',
-      categoria: '',
-      grupo: '',
-      tipo_caso: '',
+      categoria: undefined,
+      grupo: undefined,
+      tipo_caso: undefined,
       nro_caso: '',
       data_resposta: undefined,
       resposta: 'Muito Satisfeito',
@@ -101,49 +105,83 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   ];
 
   useEffect(() => {
-    if (elogio && empresas.length > 0) {
+    console.log('🔄 [ELOGIOS] === PREENCHIMENTO DO FORMULÁRIO ===');
+    console.log('🔄 [ELOGIOS] Elogio:', !!elogio);
+    console.log('🔄 [ELOGIOS] Empresas carregadas:', empresas.length);
+    console.log('🔄 [ELOGIOS] Categorias carregadas:', categorias.length);
+    
+    // Aguardar carregamento de empresas E categorias antes de preencher
+    if (elogio && empresas.length > 0 && categorias.length > 0) {
+      console.log('✅ [ELOGIOS] Todas as dependências carregadas, preenchendo formulário');
+      
       const empresaEncontrada = empresas.find(
         e => e.nome_completo === elogio.pesquisa?.empresa || e.nome_abreviado === elogio.pesquisa?.empresa
       );
       
       const empresaValue = empresaEncontrada ? empresaEncontrada.nome_abreviado : elogio.pesquisa?.empresa || '';
       
+      console.log('📋 [ELOGIOS] Dados do elogio a serem preenchidos:');
+      console.log('  - Categoria:', elogio.pesquisa?.categoria);
+      console.log('  - Grupo:', elogio.pesquisa?.grupo);
+      
       form.reset({
         empresa: empresaValue,
         cliente: elogio.pesquisa?.cliente || '',
         email_cliente: elogio.pesquisa?.email_cliente || '',
         prestador: elogio.pesquisa?.prestador || '',
-        categoria: elogio.pesquisa?.categoria || '',
-        grupo: elogio.pesquisa?.grupo || '',
-        tipo_caso: elogio.pesquisa?.tipo_caso || '',
+        categoria: elogio.pesquisa?.categoria || undefined,
+        grupo: elogio.pesquisa?.grupo || undefined,
+        tipo_caso: elogio.pesquisa?.tipo_caso || undefined,
         nro_caso: elogio.pesquisa?.nro_caso || elogio.chamado || '',
         data_resposta: elogio.data_resposta ? new Date(elogio.data_resposta) : undefined,
         resposta: elogio.pesquisa?.resposta || 'Muito Satisfeito',
         comentario_pesquisa: elogio.pesquisa?.comentario_pesquisa || '',
         observacao: elogio.observacao || ''
       });
+      
+      console.log('✅ [ELOGIOS] Formulário preenchido com sucesso');
+    } else {
+      console.log('⏳ [ELOGIOS] Aguardando carregamento das dependências...');
     }
-  }, [elogio, form, empresas]);
+  }, [elogio, form, empresas, categorias]);
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
+    console.log('🔄 [ELOGIOS] === INÍCIO DO PREENCHIMENTO AUTOMÁTICO ===');
+    console.log('🔄 [ELOGIOS] Categoria selecionada:', categoriaSelecionada);
+    console.log('🔄 [ELOGIOS] Grupos disponíveis:', grupos);
+    console.log('🔄 [ELOGIOS] Quantidade de grupos:', grupos.length);
+    
     if (categoriaSelecionada && grupos.length > 0) {
+      console.log('✅ [ELOGIOS] Condições atendidas para preenchimento automático');
+      
       // Se há apenas um grupo para a categoria, seleciona automaticamente
       if (grupos.length === 1) {
+        console.log('✅ [ELOGIOS] Apenas 1 grupo disponível, preenchendo automaticamente:', grupos[0].value);
         form.setValue('grupo', grupos[0].value);
       }
-      // Se o grupo atual não está na lista de grupos válidos, limpa o campo
+      // Se há múltiplos grupos, verifica se o atual é válido
       else {
         const grupoAtual = form.getValues('grupo');
         const grupoValido = grupos.find(g => g.value === grupoAtual);
-        if (!grupoValido) {
-          form.setValue('grupo', '');
+        console.log('🔍 [ELOGIOS] Múltiplos grupos disponíveis');
+        console.log('🔍 [ELOGIOS] Grupo atual:', grupoAtual);
+        console.log('🔍 [ELOGIOS] Grupo válido:', !!grupoValido);
+        
+        if (!grupoValido && grupoAtual) {
+          console.log('🧹 [ELOGIOS] Limpando grupo inválido:', grupoAtual);
+          form.setValue('grupo', undefined);
         }
       }
     } else if (!categoriaSelecionada) {
       // Se categoria foi limpa, limpa o grupo também
-      form.setValue('grupo', '');
+      console.log('🧹 [ELOGIOS] Categoria não selecionada, limpando grupo');
+      form.setValue('grupo', undefined);
+    } else {
+      console.log('⏭️ [ELOGIOS] Condições não atendidas - categoria:', !!categoriaSelecionada, 'grupos:', grupos.length);
     }
+    
+    console.log('🔄 [ELOGIOS] === FIM DO PREENCHIMENTO AUTOMÁTICO ===');
   }, [categoriaSelecionada, grupos, form]);
 
   const handleSubmit = (dados: ElogioFormData) => {
@@ -281,7 +319,10 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
                   <FormLabel>Grupo</FormLabel>
                   <Select
                     value={field.value || ''}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      console.log('🔄 [ELOGIOS] Grupo selecionado manualmente:', value);
+                      field.onChange(value);
+                    }}
                     disabled={!categoriaSelecionada || grupos.length === 0}
                   >
                     <FormControl>
