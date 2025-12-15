@@ -85,6 +85,11 @@ export const PesquisaFormSchemaBase = z.object({
     .optional()
     .nullable(),
   
+  // Especialistas/Consultores
+  especialistas_ids: z.array(z.string().uuid())
+    .optional()
+    .default([]),
+  
   // Relacionamentos
   empresa_id: z.string().uuid().optional().nullable(),
   cliente_id: z.string().uuid().optional().nullable()

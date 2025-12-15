@@ -46,7 +46,8 @@ import {
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { useCacheManager } from '@/hooks/useCacheManager';
-import { useElogios, useEstatisticasElogios, useCriarElogio, useAtualizarElogio, useDeletarElogio } from '@/hooks/useElogios';
+import { useElogios, useEstatisticasElogios, useDeletarElogio } from '@/hooks/useElogios';
+import { useCriarElogioComEspecialistas, useAtualizarElogioComEspecialistas } from '@/hooks/useElogiosComEspecialistas';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { ElogioForm } from '@/components/admin/elogios';
 import { Plus } from 'lucide-react';
@@ -85,8 +86,8 @@ function LancarElogios() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // Mutations
-  const criarElogio = useCriarElogio();
-  const atualizarElogio = useAtualizarElogio();
+  const criarElogio = useCriarElogioComEspecialistas();
+  const atualizarElogio = useAtualizarElogioComEspecialistas();
   const deletarElogio = useDeletarElogio();
 
   // Nomes dos meses

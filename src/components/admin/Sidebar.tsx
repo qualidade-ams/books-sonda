@@ -22,6 +22,7 @@ import {
   BarChart3,
   Award,
   MessageSquare,
+  Speech,
   Settings,
   Shield,
   FileText,
@@ -264,7 +265,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       ]
     },
     {
-      icon: MessageSquare,
+      icon: Speech,
       label: 'Comunicação',
       children: [
         {

@@ -37,6 +37,9 @@ import { cn } from '@/lib/utils';
 import type { ElogioCompleto } from '@/types/elogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
+import { useEspecialistasIdsElogio } from '@/hooks/useEspecialistasRelacionamentos';
+import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
 
 interface ElogioFormData {
   empresa: string;
@@ -51,6 +54,7 @@ interface ElogioFormData {
   resposta: string;
   comentario_pesquisa?: string;
   observacao?: string;
+  especialistas_ids?: string[]; // Array de IDs dos especialistas selecionados
 }
 
 interface ElogioFormProps {
@@ -83,7 +87,8 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
       data_resposta: undefined,
       resposta: 'Muito Satisfeito',
       comentario_pesquisa: '',
-      observacao: ''
+      observacao: '',
+      especialistas_ids: []
     }
   });
 
@@ -92,6 +97,24 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   
   // Buscar grupos baseado na categoria selecionada
   const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
+
+  // Buscar especialistas relacionados ao elogio (para edição)
+  const especialistasIdsRelacionados = useEspecialistasIdsElogio(elogio?.id);
+  
+  // Correlação automática baseada no campo prestador
+  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+    elogio?.pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? elogio.pesquisa.prestador : undefined
+  );
+  
+  // Usar relacionamentos salvos ou correlação automática
+  const especialistasIds = especialistasIdsRelacionados.length > 0 
+    ? especialistasIdsRelacionados 
+    : especialistasIdsCorrelacionados;
+
+  // Debug logs
+  console.log('🔍 [ElogioForm] Categoria selecionada:', categoriaSelecionada);
+  console.log('🔍 [ElogioForm] Grupos disponíveis:', grupos);
+  console.log('🔍 [ElogioForm] Especialistas IDs:', especialistasIds);
 
   const tiposChamado = [
     { value: 'IM', label: 'IM - Incidente' },
@@ -136,14 +159,15 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
         data_resposta: elogio.data_resposta ? new Date(elogio.data_resposta) : undefined,
         resposta: elogio.pesquisa?.resposta || 'Muito Satisfeito',
         comentario_pesquisa: elogio.pesquisa?.comentario_pesquisa || '',
-        observacao: elogio.observacao || ''
+        observacao: elogio.observacao || '',
+        especialistas_ids: especialistasIds // Carregados do banco de dados
       });
       
       console.log('✅ [ELOGIOS] Formulário preenchido com sucesso');
     } else {
       console.log('⏳ [ELOGIOS] Aguardando carregamento das dependências...');
     }
-  }, [elogio, form, empresas, categorias]);
+  }, [elogio, form, empresas, categorias, especialistasIds]);
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
@@ -264,12 +288,16 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
 
             <FormField
               control={form.control}
-              name="prestador"
+              name="especialistas_ids"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Consultor</FormLabel>
+                  <FormLabel>Consultores</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nome do consultor" value={field.value || ''} />
+                    <MultiSelectEspecialistas
+                      value={field.value || []}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione os consultores..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -317,33 +345,43 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Grupo</FormLabel>
-                  <Select
-                    value={field.value || ''}
-                    onValueChange={(value) => {
-                      console.log('🔄 [ELOGIOS] Grupo selecionado manualmente:', value);
-                      field.onChange(value);
-                    }}
-                    disabled={!categoriaSelecionada || grupos.length === 0}
-                  >
+                  {grupos.length === 1 ? (
+                    // Quando há apenas um grupo, mostra como campo readonly
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          !categoriaSelecionada 
-                            ? "Selecione uma categoria primeiro" 
-                            : grupos.length === 0 
-                            ? "Nenhum grupo disponível" 
-                            : "Selecione o grupo"
-                        } />
-                      </SelectTrigger>
+                      <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                        {grupos[0].label}
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {grupos.map(grupo => (
-                        <SelectItem key={grupo.value} value={grupo.value}>
-                          {grupo.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  ) : (
+                    // Quando há múltiplos grupos, mostra como select
+                    <Select
+                      value={field.value || ''}
+                      onValueChange={(value) => {
+                        console.log('🔄 [ELOGIOS] Grupo selecionado manualmente:', value);
+                        field.onChange(value);
+                      }}
+                      disabled={!categoriaSelecionada || grupos.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            !categoriaSelecionada 
+                              ? "Selecione uma categoria primeiro" 
+                              : grupos.length === 0 
+                              ? "Nenhum grupo disponível" 
+                              : "Selecione o grupo"
+                          } />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {grupos.map(grupo => (
+                          <SelectItem key={grupo.value} value={grupo.value}>
+                            {grupo.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

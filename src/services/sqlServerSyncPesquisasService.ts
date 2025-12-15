@@ -83,29 +83,75 @@ function gerarIdUnico(registro: DadosSqlServer): string {
 /**
  * Sincronizar dados do SQL Server para Supabase
  * Agora usa a API Node.js que faz todo o processamento
+ * INCLUI sincronização de pesquisas E especialistas
  */
-export async function sincronizarDados(): Promise<ResultadoSincronizacao> {
+export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any }> {
   const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
   
   try {
-    console.log('Chamando API de sincronização...');
+    console.log('Iniciando sincronização completa (pesquisas + especialistas)...');
     
-    const response = await fetch(`${API_URL}/api/sync-pesquisas`, {
+    // 1. Sincronizar pesquisas (funcionalidade existente)
+    console.log('1/2 - Sincronizando pesquisas...');
+    const responsePesquisas = await fetch(`${API_URL}/api/sync-pesquisas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      throw new Error(`Erro HTTP: ${response.status}`);
+    if (!responsePesquisas.ok) {
+      throw new Error(`Erro HTTP na sincronização de pesquisas: ${responsePesquisas.status}`);
     }
 
-    const resultado: ResultadoSincronizacao = await response.json();
-    
-    console.log('Resultado da sincronização:', resultado);
-    
-    return resultado;
+    const resultadoPesquisas: ResultadoSincronizacao = await responsePesquisas.json();
+    console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
+
+    // 2. Sincronizar especialistas (nova funcionalidade)
+    console.log('2/2 - Sincronizando especialistas...');
+    const responseEspecialistas = await fetch(`${API_URL}/api/sync-especialistas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let resultadoEspecialistas = null;
+    if (responseEspecialistas.ok) {
+      resultadoEspecialistas = await responseEspecialistas.json();
+      console.log('Resultado da sincronização de especialistas:', resultadoEspecialistas);
+      
+      // Limpar cache de especialistas após sincronização bem-sucedida
+      if (resultadoEspecialistas.sucesso) {
+        try {
+          const { limparCacheEspecialistas } = await import('@/integrations/supabase/admin-client');
+          limparCacheEspecialistas();
+          console.log('✅ Cache de especialistas limpo após sincronização');
+        } catch (error) {
+          console.warn('⚠️ Erro ao limpar cache de especialistas:', error);
+        }
+      }
+    } else {
+      console.warn('Erro na sincronização de especialistas, continuando apenas com pesquisas');
+      resultadoEspecialistas = {
+        sucesso: false,
+        mensagens: [`Erro HTTP: ${responseEspecialistas.status}`]
+      };
+    }
+
+    // 3. Combinar resultados
+    const resultadoCombinado = {
+      ...resultadoPesquisas,
+      especialistas: resultadoEspecialistas,
+      mensagens: [
+        ...resultadoPesquisas.mensagens,
+        '--- Especialistas ---',
+        ...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas'])
+      ]
+    };
+
+    console.log('Sincronização completa finalizada:', resultadoCombinado);
+    return resultadoCombinado;
 
   } catch (erro) {
     console.error('Erro ao sincronizar:', erro);
@@ -117,7 +163,8 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao> {
       atualizados: 0,
       erros: 1,
       mensagens: [`Erro ao conectar com API: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`],
-      detalhes_erros: []
+      detalhes_erros: [],
+      especialistas: null
     };
   }
 }

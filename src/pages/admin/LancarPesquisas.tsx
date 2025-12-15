@@ -33,13 +33,15 @@ import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { PesquisaForm, PesquisasTable, PesquisasExportButtons, SyncProgressModal } from '@/components/admin/pesquisas-satisfacao';
 import { 
   usePesquisasSatisfacao, 
-  useCriarPesquisa, 
-  useAtualizarPesquisa, 
   useExcluirPesquisa,
   useEstatisticasPesquisas,
   useEnviarParaPlanoAcao,
   useEnviarParaElogios
 } from '@/hooks/usePesquisasSatisfacao';
+import { 
+  useCriarPesquisaComEspecialistas, 
+  useAtualizarPesquisaComEspecialistas 
+} from '@/hooks/usePesquisasComEspecialistas';
 import { useSincronizarSqlServer, useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
 import { useApiStatus } from '@/hooks/useApiStatus';
 import { useCacheManager } from '@/hooks/useCacheManager';
@@ -75,8 +77,8 @@ function LancarPesquisas() {
   const { data: apiOnline = false } = useApiStatus();
 
   // Mutations
-  const criarPesquisa = useCriarPesquisa();
-  const atualizarPesquisa = useAtualizarPesquisa();
+  const criarPesquisa = useCriarPesquisaComEspecialistas();
+  const atualizarPesquisa = useAtualizarPesquisaComEspecialistas();
   const excluirPesquisa = useExcluirPesquisa();
   const sincronizarSqlServer = useSincronizarSqlServer();
   const enviarParaPlanoAcao = useEnviarParaPlanoAcao();

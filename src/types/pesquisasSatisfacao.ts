@@ -76,6 +76,9 @@ export interface PesquisaFormData {
   comentario_pesquisa?: string;
   observacao?: string;
   
+  // Especialistas/Consultores
+  especialistas_ids?: string[]; // Array de IDs dos especialistas selecionados
+  
   // Relacionamentos
   empresa_id?: string;
   cliente_id?: string;

@@ -23,6 +23,15 @@ interface SyncProgressModalProps {
     atualizados: number;
     erros: number;
     mensagens: string[];
+    especialistas?: {
+      sucesso: boolean;
+      total_processados: number;
+      novos: number;
+      atualizados: number;
+      removidos: number;
+      erros: number;
+      mensagens: string[];
+    };
   };
 }
 
@@ -46,24 +55,33 @@ export function SyncProgressModal({
       setTotal(0);
       setCurrentMessage('Conectando ao SQL Server...');
       
-      // Simular progresso suave
+      // Simular progresso suave para ambas as sincronizações
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += 0.5;
-        if (currentProgress <= 30) {
+        currentProgress += 0.4;
+        if (currentProgress <= 20) {
           setProgress(currentProgress);
           setCurrentMessage('Conectando ao SQL Server...');
+        } else if (currentProgress <= 35) {
+          setProgress(currentProgress);
+          setCurrentMessage('Sincronizando pesquisas (AMSpesquisa)...');
         } else if (currentProgress <= 50) {
           setProgress(currentProgress);
-          setCurrentMessage('Buscando registros...');
-        } else if (currentProgress <= 90) {
+          setCurrentMessage('Processando dados de pesquisas...');
+        } else if (currentProgress <= 65) {
           setProgress(currentProgress);
-          setCurrentMessage('Processando dados...');
+          setCurrentMessage('Sincronizando especialistas (AMSespecialistas)...');
+        } else if (currentProgress <= 80) {
+          setProgress(currentProgress);
+          setCurrentMessage('Processando dados de especialistas...');
+        } else if (currentProgress <= 95) {
+          setProgress(currentProgress);
+          setCurrentMessage('Finalizando sincronização...');
         } else {
-          setProgress(90);
-          setCurrentMessage('Sincronizando com Supabase...');
+          setProgress(95);
+          setCurrentMessage('Aguarde, quase concluído...');
         }
-      }, 100);
+      }, 150);
 
       return () => clearInterval(interval);
     } else if (resultado) {
@@ -83,6 +101,9 @@ export function SyncProgressModal({
             <Database className="h-5 w-5 text-blue-600" />
             Sincronização SQL Server
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Sincronizando pesquisas e especialistas
+          </p>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -136,40 +157,61 @@ export function SyncProgressModal({
                 )}
               </div>
 
-              {/* Resumo do Processamento */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border-l-4 border-blue-600">
-                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                  Registros Processados
+              {/* Resumo das Pesquisas */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-900 rounded-lg border-l-4 border-blue-600">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  📊 Pesquisas (AMSpesquisa)
                 </p>
-                <p className="text-3xl font-bold text-blue-600">
-                  {resultado.total_processados}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total de registros encontrados e processados
-                </p>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-bold text-blue-600">{resultado.total_processados}</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">Total</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-green-600">{resultado.novos}</p>
+                    <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-orange-600">{resultado.atualizados}</p>
+                    <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-red-600">{resultado.erros}</p>
+                    <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Estatísticas Detalhadas */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-2 bg-green-50 dark:bg-green-950 rounded-lg text-center">
-                  <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
-                  <p className="text-xl font-bold text-green-900 dark:text-green-100">
-                    {resultado.novos}
+              {/* Resumo dos Especialistas */}
+              {resultado.especialistas && (
+                <div className="p-3 bg-purple-50 dark:bg-purple-900 rounded-lg border-l-4 border-purple-600">
+                  <p className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1">
+                    👥 Especialistas (AMSespecialistas)
                   </p>
+                  <div className="grid grid-cols-5 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-purple-600">{resultado.especialistas.total_processados}</p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">Total</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-green-600">{resultado.especialistas.novos}</p>
+                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-orange-600">{resultado.especialistas.atualizados}</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-gray-600">{resultado.especialistas.removidos}</p>
+                      <p className="text-xs text-gray-700 dark:text-gray-300">Removidos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-red-600">{resultado.especialistas.erros}</p>
+                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg text-center">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">Atualizados</p>
-                  <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
-                    {resultado.atualizados}
-                  </p>
-                </div>
-                <div className="p-2 bg-red-50 dark:bg-red-950 rounded-lg text-center">
-                  <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
-                  <p className="text-xl font-bold text-red-900 dark:text-red-100">
-                    {resultado.erros}
-                  </p>
-                </div>
-              </div>
+              )}
 
               {/* Mensagens */}
               {resultado.mensagens && resultado.mensagens.length > 0 && (

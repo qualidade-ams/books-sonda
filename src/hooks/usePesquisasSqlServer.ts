@@ -36,6 +36,7 @@ export function useUltimaSincronizacao() {
 
 /**
  * Hook para sincronizar dados do SQL Server
+ * AGORA INCLUI: Pesquisas + Especialistas
  */
 export function useSincronizarSqlServer() {
   const queryClient = useQueryClient();
@@ -43,21 +44,40 @@ export function useSincronizarSqlServer() {
   return useMutation({
     mutationFn: () => sqlServerSyncService.sincronizarDados(),
     onSuccess: (resultado) => {
-      // Invalidar todas as queries relacionadas a pesquisas
+      // Invalidar todas as queries relacionadas a pesquisas E especialistas
       queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
       queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
+      queryClient.invalidateQueries({ queryKey: ['especialistas'] });
+      queryClient.invalidateQueries({ queryKey: ['especialistas-estatisticas'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ultimaSincronizacao });
+      queryClient.invalidateQueries({ queryKey: ['ultima-sincronizacao-especialistas'] });
 
+      // Mostrar resultado das pesquisas
       if (resultado.sucesso) {
         toast.success(
-          `Sincronização concluída! ${resultado.novos} novos, ${resultado.atualizados} atualizados`,
-          { duration: 5000 }
+          `Pesquisas sincronizadas! ${resultado.novos} novos, ${resultado.atualizados} atualizados`,
+          { duration: 4000 }
         );
       } else {
         toast.warning(
-          `Sincronização com erros: ${resultado.erros} falhas`,
-          { duration: 5000 }
+          `Pesquisas com erros: ${resultado.erros} falhas`,
+          { duration: 4000 }
         );
+      }
+
+      // Mostrar resultado dos especialistas
+      if (resultado.especialistas) {
+        if (resultado.especialistas.sucesso) {
+          toast.success(
+            `Especialistas sincronizados! ${resultado.especialistas.novos} novos, ${resultado.especialistas.atualizados} atualizados, ${resultado.especialistas.removidos} removidos`,
+            { duration: 4000 }
+          );
+        } else {
+          toast.warning(
+            `Especialistas com erros: ${resultado.especialistas.erros} falhas`,
+            { duration: 4000 }
+          );
+        }
       }
 
       // Exibir mensagens detalhadas

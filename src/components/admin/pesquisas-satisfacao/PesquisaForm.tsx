@@ -40,6 +40,9 @@ import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
 import { MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
+import { useEspecialistasIdsPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
+import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
 
 interface PesquisaFormProps {
   pesquisa?: Pesquisa | null;
@@ -72,7 +75,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       data_resposta: undefined, // Vem em branco
       resposta: undefined,
       comentario_pesquisa: '',
-      observacao: ''
+      observacao: '',
+      especialistas_ids: []
     }
   });
 
@@ -81,6 +85,19 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
   
   // Buscar grupos baseado na categoria selecionada
   const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
+
+  // Buscar especialistas relacionados à pesquisa (para edição)
+  const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisa?.id);
+  
+  // Correlação automática baseada no campo prestador
+  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+    pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisa.prestador : undefined
+  );
+  
+  // Usar relacionamentos salvos ou correlação automática
+  const especialistasIds = especialistasIdsRelacionados.length > 0 
+    ? especialistasIdsRelacionados 
+    : especialistasIdsCorrelacionados;
 
   // Opções de tipo de chamado
   const tiposChamado = [
@@ -123,10 +140,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         comentario_pesquisa: pesquisa.comentario_pesquisa || '',
         observacao: pesquisa.observacao || '',
         empresa_id: pesquisa.empresa_id || undefined,
-        cliente_id: pesquisa.cliente_id || undefined
+        cliente_id: pesquisa.cliente_id || undefined,
+        especialistas_ids: especialistasIds // Carregados do banco de dados
       });
     }
-  }, [pesquisa, form, empresas]);
+  }, [pesquisa, form, empresas, especialistasIds]);
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
@@ -233,15 +251,15 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
 
             <FormField
               control={form.control}
-              name="prestador"
+              name="especialistas_ids"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Consultor</FormLabel>
+                  <FormLabel>Consultores</FormLabel>
                   <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Nome do prestador"
-                      value={field.value || ''}
+                    <MultiSelectEspecialistas
+                      value={field.value || []}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione os consultores..."
                     />
                   </FormControl>
                   <FormMessage />
@@ -290,30 +308,40 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Grupo</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={!categoriaSelecionada || grupos.length === 0}
-                  >
+                  {grupos.length === 1 ? (
+                    // Quando há apenas um grupo, mostra como campo readonly
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          !categoriaSelecionada 
-                            ? "Selecione uma categoria primeiro" 
-                            : grupos.length === 0 
-                            ? "Nenhum grupo disponível" 
-                            : "Selecione o grupo"
-                        } />
-                      </SelectTrigger>
+                      <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                        {grupos[0].label}
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {grupos.map(grupo => (
-                        <SelectItem key={grupo.value} value={grupo.value}>
-                          {grupo.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  ) : (
+                    // Quando há múltiplos grupos, mostra como select
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={!categoriaSelecionada || grupos.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            !categoriaSelecionada 
+                              ? "Selecione uma categoria primeiro" 
+                              : grupos.length === 0 
+                              ? "Nenhum grupo disponível" 
+                              : "Selecione o grupo"
+                          } />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {grupos.map(grupo => (
+                          <SelectItem key={grupo.value} value={grupo.value}>
+                            {grupo.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
