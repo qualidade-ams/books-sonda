@@ -17,7 +17,181 @@ import type {
 // ============================================
 
 /**
- * Buscar todos os pesquisas com filtros opcionais
+ * Buscar TODAS as pesquisas sem filtros automáticos (para tela de visualização)
+ */
+export async function buscarTodasPesquisas(filtros?: FiltrosPesquisas): Promise<Pesquisa[]> {
+  // Buscar em lotes para garantir que todos os registros sejam carregados
+  const BATCH_SIZE = 1000;
+  let allData: Pesquisa[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from('pesquisas_satisfacao')
+      .select('*')
+      .range(offset, offset + BATCH_SIZE - 1)
+      .order('created_at', { ascending: false });
+
+    // SEM FILTROS AUTOMÁTICOS - trazer todos os dados
+
+    // Aplicar apenas filtros explícitos se fornecidos
+    if (filtros) {
+      console.log('🔍 Filtros recebidos no serviço:', filtros);
+      
+      if (filtros.busca && filtros.busca.trim()) {
+        console.log('📝 Aplicando filtro de busca:', filtros.busca);
+        query = query.or(`empresa.ilike.%${filtros.busca}%,cliente.ilike.%${filtros.busca}%,prestador.ilike.%${filtros.busca}%,nro_caso.ilike.%${filtros.busca}%`);
+      }
+
+      if (filtros.origem && filtros.origem !== 'todos') {
+        console.log('🏢 Aplicando filtro de origem:', filtros.origem);
+        query = query.eq('origem', filtros.origem);
+      }
+
+      if (filtros.status && filtros.status !== 'todos') {
+        console.log('📊 Aplicando filtro de status:', filtros.status);
+        query = query.eq('status', filtros.status);
+      }
+
+      if (filtros.resposta && filtros.resposta !== 'todas') {
+        console.log('💬 Aplicando filtro de resposta:', filtros.resposta);
+        query = query.eq('resposta', filtros.resposta);
+      }
+
+      if (filtros.empresa) {
+        query = query.ilike('empresa', `%${filtros.empresa}%`);
+      }
+
+      if (filtros.categoria) {
+        query = query.ilike('categoria', `%${filtros.categoria}%`);
+      }
+
+      if (filtros.grupo) {
+        query = query.ilike('grupo', `%${filtros.grupo}%`);
+      }
+
+      if (filtros.ano_abertura) {
+        query = query.eq('ano_abertura', filtros.ano_abertura);
+      }
+
+      if (filtros.mes_abertura) {
+        query = query.eq('mes_abertura', filtros.mes_abertura);
+      }
+
+      // Filtro por ano da data de resposta
+      if (filtros.ano) {
+        console.log('🔍 Filtrando pesquisas por ano da data_resposta:', filtros.ano);
+        
+        // Filtrar registros que têm data_resposta não nula
+        query = query.not('data_resposta', 'is', null);
+        
+        // Usar função SQL para extrair o ano da data_resposta
+        // Supabase suporta funções SQL como extract
+        const anoInicio = `${filtros.ano}-01-01`;
+        const anoFim = `${filtros.ano}-12-31`;
+        
+        query = query.gte('data_resposta', anoInicio);
+        query = query.lte('data_resposta', anoFim);
+        
+        console.log(`📅 Buscando registros entre ${anoInicio} e ${anoFim}`);
+      }
+
+      // Filtro por mês da data de resposta (só se ano também estiver definido)
+      if (filtros.mes && filtros.ano) {
+        const mesStr = filtros.mes.toString().padStart(2, '0');
+        
+        console.log('🔍 Refinando filtro para mês específico da data_resposta:', { 
+          mes: filtros.mes, 
+          ano: filtros.ano,
+          mesStr
+        });
+        
+        // Calcular primeiro e último dia do mês
+        const mesInicio = `${filtros.ano}-${mesStr}-01`;
+        const proximoMes = filtros.mes === 12 ? 1 : filtros.mes + 1;
+        const proximoAno = filtros.mes === 12 ? filtros.ano + 1 : filtros.ano;
+        const proximoMesStr = proximoMes.toString().padStart(2, '0');
+        const mesFim = `${proximoAno}-${proximoMesStr}-01`;
+        
+        // Remover filtros de ano anteriores e aplicar filtro de mês específico
+        query = query.gte('data_resposta', mesInicio);
+        query = query.lt('data_resposta', mesFim);
+        
+        console.log(`📆 Buscando registros entre ${mesInicio} e ${mesFim} (exclusivo)`);
+      }
+
+      if (filtros.data_inicio) {
+        query = query.gte('data_resposta', filtros.data_inicio);
+      }
+
+      if (filtros.data_fim) {
+        query = query.lte('data_resposta', filtros.data_fim);
+      }
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Erro ao buscar todas as pesquisas:', error);
+      throw new Error(`Erro ao buscar todas as pesquisas: ${error.message}`);
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      offset += BATCH_SIZE;
+      hasMore = data.length === BATCH_SIZE; // Se retornou menos que BATCH_SIZE, não há mais dados
+    } else {
+      hasMore = false;
+    }
+  }
+
+  console.log(`📊 Total de TODAS as pesquisas carregadas: ${allData.length}`);
+  
+  // Debug: Se há filtros aplicados, mostrar algumas estatísticas
+  if (filtros && Object.keys(filtros).length > 0) {
+    console.log('📈 Estatísticas dos dados filtrados:');
+    if (allData.length > 0) {
+      const respostasUnicas = [...new Set(allData.map(p => p.resposta))];
+      console.log('💬 Respostas encontradas:', respostasUnicas);
+      
+      const origensUnicas = [...new Set(allData.map(p => p.origem))];
+      console.log('🏢 Origens encontradas:', origensUnicas);
+      
+      // Analisar datas de resposta
+      const datasResposta = allData.map(p => p.data_resposta).filter(Boolean);
+      console.log('📅 Total de registros com data_resposta:', datasResposta.length);
+      
+      if (datasResposta.length > 0) {
+        const anosResposta = [...new Set(datasResposta.map(d => new Date(d).getFullYear()))];
+        console.log('📅 Anos de resposta encontrados:', anosResposta.sort());
+        
+        const mesesResposta = [...new Set(datasResposta.map(d => new Date(d).getMonth() + 1))];
+        console.log('📆 Meses de resposta encontrados:', mesesResposta.sort());
+      }
+      
+      if (filtros.resposta) {
+        const comResposta = allData.filter(p => p.resposta === filtros.resposta);
+        console.log(`🎯 Registros com resposta "${filtros.resposta}":`, comResposta.length);
+      }
+      
+      if (filtros.ano) {
+        const comAno = allData.filter(p => p.ano_abertura === filtros.ano);
+        console.log(`📅 Registros com ano ${filtros.ano}:`, comAno.length);
+      }
+      
+      if (filtros.mes) {
+        const comMes = allData.filter(p => p.mes_abertura === filtros.mes);
+        console.log(`📆 Registros com mês ${filtros.mes}:`, comMes.length);
+      }
+    }
+  }
+  
+  return allData;
+}
+
+/**
+ * Buscar todos os pesquisas com filtros opcionais (COM filtro automático para tela de lançamento)
  */
 export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesquisa[]> {
   // Buscar em lotes para garantir que todos os registros sejam carregados
@@ -314,7 +488,47 @@ export async function excluirPesquisasEmLote(ids: string[]): Promise<void> {
 // ============================================
 
 /**
- * Obter estatísticas dos pesquisas
+ * Obter estatísticas de TODAS as pesquisas (sem filtros automáticos)
+ */
+export async function obterTodasEstatisticas(filtros?: FiltrosPesquisas): Promise<EstatisticasPesquisas> {
+  const pesquisas = await buscarTodasPesquisas(filtros);
+
+  const estatisticas: EstatisticasPesquisas = {
+    total: pesquisas.length,
+    pendentes: pesquisas.filter(e => e.status === 'pendente').length,
+    enviados: pesquisas.filter(e => e.status === 'enviado_plano_acao' || e.status === 'enviado_elogios').length,
+    sql_server: pesquisas.filter(e => e.origem === 'sql_server').length,
+    manuais: pesquisas.filter(e => e.origem === 'manual').length,
+    por_empresa: {},
+    por_categoria: {},
+    por_mes: {}
+  };
+
+  // Agrupar por empresa
+  pesquisas.forEach(pesquisa => {
+    estatisticas.por_empresa[pesquisa.empresa] = (estatisticas.por_empresa[pesquisa.empresa] || 0) + 1;
+  });
+
+  // Agrupar por categoria
+  pesquisas.forEach(pesquisa => {
+    if (pesquisa.categoria) {
+      estatisticas.por_categoria[pesquisa.categoria] = (estatisticas.por_categoria[pesquisa.categoria] || 0) + 1;
+    }
+  });
+
+  // Agrupar por mês
+  pesquisas.forEach(pesquisa => {
+    if (pesquisa.ano_abertura && pesquisa.mes_abertura) {
+      const chave = `${pesquisa.ano_abertura}-${String(pesquisa.mes_abertura).padStart(2, '0')}`;
+      estatisticas.por_mes[chave] = (estatisticas.por_mes[chave] || 0) + 1;
+    }
+  });
+
+  return estatisticas;
+}
+
+/**
+ * Obter estatísticas dos pesquisas (COM filtros automáticos)
  */
 export async function obterEstatisticas(filtros?: FiltrosPesquisas): Promise<EstatisticasPesquisas> {
   const pesquisas = await buscarPesquisas(filtros);

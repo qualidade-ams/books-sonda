@@ -30,7 +30,7 @@ const QUERY_KEYS = {
 // ============================================
 
 /**
- * Hook para buscar pesquisas com filtros
+ * Hook para buscar pesquisas com filtros (COM filtro automático para tela de lançamento)
  */
 export function usePesquisasSatisfacao(filtros?: FiltrosPesquisas) {
   return useQuery({
@@ -39,6 +39,22 @@ export function usePesquisasSatisfacao(filtros?: FiltrosPesquisas) {
     staleTime: 30000, // 30 segundos
     refetchOnWindowFocus: true,
     refetchInterval: 60000 // 1 minuto
+  });
+}
+
+/**
+ * Hook para buscar TODAS as pesquisas sem filtros automáticos (para tela de visualização)
+ */
+export function useTodasPesquisasSatisfacao(filtros?: FiltrosPesquisas) {
+  return useQuery({
+    queryKey: ['todas-pesquisas', JSON.stringify(filtros || {})],
+    queryFn: () => {
+      console.log('🚀 Executando buscarTodasPesquisas com filtros:', filtros);
+      return pesquisasService.buscarTodasPesquisas(filtros);
+    },
+    staleTime: 5000, // 5 segundos para debug
+    refetchOnWindowFocus: true,
+    refetchInterval: false // Desabilitar para debug
   });
 }
 
@@ -55,13 +71,27 @@ export function usePesquisa(id: string) {
 }
 
 /**
- * Hook para estatísticas
+ * Hook para estatísticas (COM filtros automáticos)
  */
 export function useEstatisticasPesquisas(filtros?: FiltrosPesquisas) {
   return useQuery({
     queryKey: QUERY_KEYS.estatisticas(filtros),
     queryFn: () => pesquisasService.obterEstatisticas(filtros),
     staleTime: 30000
+  });
+}
+
+/**
+ * Hook para estatísticas de TODAS as pesquisas (sem filtros automáticos)
+ */
+export function useTodasEstatisticasPesquisas(filtros?: FiltrosPesquisas) {
+  return useQuery({
+    queryKey: ['todas-estatisticas-pesquisas', JSON.stringify(filtros || {})],
+    queryFn: () => {
+      console.log('📊 Executando obterTodasEstatisticas com filtros:', filtros);
+      return pesquisasService.obterTodasEstatisticas(filtros);
+    },
+    staleTime: 5000 // 5 segundos para debug
   });
 }
 

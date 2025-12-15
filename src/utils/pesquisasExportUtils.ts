@@ -156,44 +156,55 @@ export function exportarPesquisasPDF(
 
     yPos = 40;
 
-    // Resumo Estatístico
+    // Card de Resumo Estatístico (estilo similar ao da imagem)
+    const cardResumoHeight = 35;
+    
+    // Borda azul do card de resumo
+    doc.setDrawColor(37, 99, 235); // Azul Sonda
+    doc.setLineWidth(1.5);
+    doc.rect(15, yPos, 180, cardResumoHeight);
+    
+    // Fundo cinza claro
+    doc.setFillColor(240, 248, 255); // Azul muito claro
+    doc.rect(15.5, yPos + 0.5, 179, cardResumoHeight - 1, 'F');
+    
+    // Título do resumo
     doc.setTextColor(0, 0, 0);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(15, yPos, 180, 8, 'F');
-    
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumo Estatístico', 20, yPos + 5);
+    doc.text('RESUMO ESTATÍSTICO - PESQUISAS DE SATISFAÇÃO', 20, yPos + 8);
     
-    yPos += 12;
-
+    // Estatísticas em linhas
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
     
-    const estatisticasTexto = [
-      `Total: ${estatisticas.total}`,
-      `Pendentes: ${estatisticas.pendentes}`,
-      `Enviados: ${estatisticas.enviados}`,
-      `SQL Server: ${estatisticas.sql_server}`,
-      `Manuais: ${estatisticas.manuais}`
-    ];
-
-    estatisticasTexto.forEach(texto => {
-      doc.text(texto, 20, yPos);
-      yPos += 5;
-    });
-
-    yPos += 5;
-
-    // Pesquisas
-    doc.setFillColor(240, 240, 240);
-    doc.rect(15, yPos, 180, 8, 'F');
+    let resumoY = yPos + 14;
+    doc.text(`Total de pesquisas: ${estatisticas.total}`, 20, resumoY);
+    resumoY += 4;
+    doc.text(`Pesquisas pendentes: ${estatisticas.pendentes}`, 20, resumoY);
+    resumoY += 4;
+    doc.text(`Pesquisas enviadas: ${estatisticas.enviados}`, 20, resumoY);
+    resumoY += 4;
+    doc.text(`Origem SQL Server: ${estatisticas.sql_server}`, 20, resumoY);
+    resumoY += 4;
+    doc.text(`Origem Manual: ${estatisticas.manuais}`, 20, resumoY);
     
-    doc.setFontSize(12);
+    // Valor total destacado em azul (canto direito)
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Pesquisas', 20, yPos + 5);
+    doc.setTextColor(37, 99, 235); // Azul Sonda
+    doc.text(`TOTAL: ${estatisticas.total}`, 185, yPos + 25, { align: 'right' });
     
-    yPos += 12;
+    yPos += cardResumoHeight + 10;
+
+    // Título da seção de pesquisas
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PESQUISAS DE SATISFAÇÃO', 20, yPos);
+    
+    yPos += 10;
 
     // Renderizar cada pesquisa como card
     pesquisas.forEach((pesquisa, index) => {
@@ -203,71 +214,85 @@ export function exportarPesquisasPDF(
         yPos = 20;
       }
 
-      // Card da pesquisa
-      const cardHeight = 45;
+      // Card da pesquisa (estilo similar ao da imagem)
+      const cardHeight = 50;
       
-      // Borda lateral colorida
-      doc.setFillColor(corAzulSonda);
-      doc.rect(15, yPos, 4, cardHeight, 'F');
+      // Borda lateral azul (mais larga)
+      doc.setFillColor(37, 99, 235); // Azul Sonda
+      doc.rect(15, yPos, 6, cardHeight, 'F');
       
-      // Fundo do card
-      doc.setFillColor(250, 250, 250);
-      doc.rect(19, yPos, 176, cardHeight, 'F');
+      // Fundo cinza claro do card
+      doc.setFillColor(248, 250, 252);
+      doc.rect(21, yPos, 174, cardHeight, 'F');
       
-      // Borda
-      doc.setDrawColor(200, 200, 200);
+      // Borda sutil do card
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.5);
       doc.rect(15, yPos, 180, cardHeight);
 
-      let cardY = yPos + 5;
+      let cardY = yPos + 8;
 
-      // Linha 1: Empresa e Origem
-      doc.setFontSize(10);
+      // Linha 1: ID/Número da pesquisa (estilo similar ao RF-7713780)
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(pesquisa.empresa, 22, cardY);
+      doc.setTextColor(0, 0, 0);
+      const idPesquisa = pesquisa.nro_caso || `PS-${pesquisa.id.substring(0, 8)}`;
+      doc.text(idPesquisa, 25, cardY);
       
-      doc.setFontSize(8);
+      // Tipo no canto direito (estilo "Banco de Horas")
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const origem = pesquisa.origem === 'sql_server' ? 'SQL Server' : 'Manual';
-      doc.text(origem, 185, cardY, { align: 'right' });
+      doc.setTextColor(37, 99, 235); // Azul Sonda
+      const tipoPesquisa = pesquisa.origem === 'sql_server' ? 'Pesquisa Automática' : 'Pesquisa Manual';
+      doc.text(tipoPesquisa, 185, cardY, { align: 'right' });
 
       cardY += 6;
 
-      // Linha 2: Cliente
+      // Linha 2: Cliente e empresa
       doc.setFontSize(9);
-      doc.text(`Cliente: ${pesquisa.cliente}`, 22, cardY);
-
-      cardY += 5;
-
-      // Linha 3: Chamado e Resposta
-      if (pesquisa.nro_caso) {
-        doc.text(`Chamado: ${pesquisa.tipo_caso || ''} ${pesquisa.nro_caso}`, 22, cardY);
-      }
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Cliente: ${pesquisa.cliente}`, 25, cardY);
+      
       if (pesquisa.resposta) {
         doc.text(`Resposta: ${pesquisa.resposta}`, 120, cardY);
       }
 
       cardY += 5;
 
-      // Linha 4: Comentário (truncado)
-      if (pesquisa.comentario_pesquisa) {
-        const comentario = pesquisa.comentario_pesquisa.length > 80 
-          ? pesquisa.comentario_pesquisa.substring(0, 80) + '...'
-          : pesquisa.comentario_pesquisa;
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Comentário: ${comentario}`, 22, cardY);
-        doc.setTextColor(0, 0, 0);
+      // Linha 3: Empresa e categoria
+      doc.text(`Empresa: ${pesquisa.empresa}`, 25, cardY);
+      if (pesquisa.categoria) {
+        doc.text(`Categoria: ${pesquisa.categoria}`, 120, cardY);
       }
 
       cardY += 5;
 
-      // Linha 5: Data e Autor
+      // Linha 4: Comentário (truncado)
+      if (pesquisa.comentario_pesquisa) {
+        const comentario = pesquisa.comentario_pesquisa.length > 70 
+          ? pesquisa.comentario_pesquisa.substring(0, 70) + '...'
+          : pesquisa.comentario_pesquisa;
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Descrição: ${comentario}`, 25, cardY);
+      }
+
+      cardY += 5;
+
+      // Linha 5: Data e autor (estilo similar ao "Envio: 12/12/2025 | Autor: Willian Betin Faria")
       doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      let infoLinha = '';
       if (pesquisa.data_resposta) {
-        doc.text(`Data: ${formatarData(pesquisa.data_resposta)}`, 22, cardY);
+        infoLinha += `Resposta: ${formatarData(pesquisa.data_resposta)}`;
       }
       if (pesquisa.autor_nome) {
-        doc.text(`Autor: ${pesquisa.autor_nome}`, 120, cardY);
+        if (infoLinha) infoLinha += ' | ';
+        infoLinha += `Autor: ${pesquisa.autor_nome}`;
+      }
+      if (infoLinha) {
+        doc.text(infoLinha, 25, cardY);
       }
 
       yPos += cardHeight + 3;
