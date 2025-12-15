@@ -283,7 +283,7 @@ export default function EnviarElogios() {
     <!-- Container de Elogios -->
     <div class="main-content">`;
 
-    // Gerar linhas de elogios com divisores (4 por linha)
+    // Gerar linhas de elogios com divisores (3 por linha)
     elogiosPorLinha.forEach((linha, linhaIndex) => {
       // Linha de elogios
       html += '<div class="elogios-row">';

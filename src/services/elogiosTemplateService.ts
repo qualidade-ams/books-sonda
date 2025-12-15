@@ -43,6 +43,64 @@ export class ElogiosTemplateService {
   private static readonly TEMPLATE_NAME = 'Template Elogios';
   private static readonly TEMPLATE_TYPE = 'elogios';
   
+  // Cache para empresas (evita múltiplas consultas)
+  private static empresasCache: Array<{ nome_completo: string; nome_abreviado: string }> | null = null;
+  
+  /**
+   * Busca empresas cadastradas para fazer de-para com nome abreviado
+   */
+  private static async buscarEmpresas(): Promise<Array<{ nome_completo: string; nome_abreviado: string }>> {
+    if (this.empresasCache) {
+      return this.empresasCache;
+    }
+    
+    try {
+      const { data: empresas, error } = await supabase
+        .from('empresas_clientes')
+        .select('nome_completo, nome_abreviado')
+        .eq('status', 'ativo');
+      
+      if (error) {
+        console.error('Erro ao buscar empresas:', error);
+        return [];
+      }
+      
+      this.empresasCache = empresas || [];
+      return this.empresasCache;
+    } catch (error) {
+      console.error('Erro inesperado ao buscar empresas:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Faz de-para do nome da empresa para nome abreviado
+   */
+  private async obterNomeAbreviadoEmpresa(nomeEmpresa: string): Promise<string> {
+    if (!nomeEmpresa || nomeEmpresa === 'N/A') {
+      return 'N/A';
+    }
+    
+    const empresas = await ElogiosTemplateService.buscarEmpresas();
+    
+    // Buscar empresa correspondente pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      empresa => 
+        empresa.nome_completo === nomeEmpresa || 
+        empresa.nome_abreviado === nomeEmpresa ||
+        empresa.nome_completo?.toLowerCase() === nomeEmpresa.toLowerCase() ||
+        empresa.nome_abreviado?.toLowerCase() === nomeEmpresa.toLowerCase()
+    );
+    
+    if (empresaEncontrada) {
+      console.log(`📧 De-para empresa: "${nomeEmpresa}" → "${empresaEncontrada.nome_abreviado}"`);
+      return empresaEncontrada.nome_abreviado;
+    }
+    
+    console.warn(`⚠️ Empresa não encontrada no cadastro: "${nomeEmpresa}"`);
+    return nomeEmpresa; // Retorna o nome original se não encontrar
+  }
+  
   /**
    * Busca o template de elogios na base de dados
    */
@@ -109,8 +167,10 @@ export class ElogiosTemplateService {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
+        .divider-row { display: flex; align-items: center; width: 100%; margin: 48px auto; }
+        .divider-line { flex: 1; height: 2px; background-color: #000000; }
+        .quote-cell { width: 60px; text-align: center; display: flex; justify-content: center; align-items: center; }
+        .quote-text { font-size: 40px; line-height: 1; font-weight: bold; display: inline-block; }
         .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; width: 100%; }
         .header-image { width: 100%; display: block; }
         .title-section { text-align: center; padding: 24px 48px; }
@@ -232,7 +292,7 @@ export class ElogiosTemplateService {
     if (templateId === 'template_elogios_padrao') {
       // Usar template padrão hardcoded diretamente
       console.log('📧 Usando template padrão hardcoded');
-      return this.processarTemplateFallback(elogiosSelecionados, mesSelecionado, anoSelecionado);
+      return await this.processarTemplateFallback(elogiosSelecionados, mesSelecionado, anoSelecionado);
     } else if (templateId) {
       // Buscar template específico por ID
       try {
@@ -270,7 +330,7 @@ export class ElogiosTemplateService {
     // Se ainda não tiver template, usar fallback hardcoded
     if (!templateHtml) {
       console.error('Não foi possível obter template de elogios, usando fallback');
-      return this.processarTemplateFallback(elogiosSelecionados, mesSelecionado, anoSelecionado);
+      return await this.processarTemplateFallback(elogiosSelecionados, mesSelecionado, anoSelecionado);
     }
 
     // Preparar variáveis do sistema
@@ -291,7 +351,7 @@ export class ElogiosTemplateService {
     };
 
     // Processar loop de elogios
-    const elogiosHtml = this.gerarHtmlElogios(elogiosSelecionados);
+    const elogiosHtml = await this.gerarHtmlElogios(elogiosSelecionados);
     
     // Substituir variáveis no template
     let htmlProcessado = templateHtml;
@@ -314,9 +374,9 @@ export class ElogiosTemplateService {
   }
 
   /**
-   * Gera HTML dos elogios organizados em linhas de 4
+   * Gera HTML dos elogios organizados em linhas de 3
    */
-  private gerarHtmlElogios(elogios: ElogioCompleto[]): string {
+  private async gerarHtmlElogios(elogios: ElogioCompleto[]): Promise<string> {
     // Dividir elogios em grupos de 3 para criar linhas
     const elogiosPorLinha: typeof elogios[] = [];
     for (let i = 0; i < elogios.length; i += 3) {
@@ -325,16 +385,19 @@ export class ElogiosTemplateService {
 
     let html = '';
 
-    elogiosPorLinha.forEach((linha, linhaIndex) => {
+    for (const [linhaIndex, linha] of elogiosPorLinha.entries()) {
       // Linha de elogios
       html += '<div class="elogios-row">';
       
-      linha.forEach((elogio) => {
+      for (const elogio of linha) {
         const nomeColaborador = elogio.pesquisa?.prestador || 'Colaborador';
         const comentario = elogio.pesquisa?.comentario_pesquisa || '';
         const resposta = elogio.pesquisa?.resposta || '';
         const cliente = elogio.pesquisa?.cliente || 'N/A';
-        const empresa = elogio.pesquisa?.empresa || 'N/A';
+        
+        // Usar mapeamento de empresa para nome abreviado
+        const nomeEmpresaOriginal = elogio.pesquisa?.empresa || 'N/A';
+        const nomeEmpresaAbreviado = await this.obterNomeAbreviadoEmpresa(nomeEmpresaOriginal);
         
         html += `
         <div class="elogio-cell">
@@ -351,11 +414,11 @@ export class ElogiosTemplateService {
         html += `
             <div class="elogio-info">
               <p><strong>Cliente:</strong> ${cliente}</p>
-              <p><strong>Empresa:</strong> ${empresa}</p>
+              <p><strong>Empresa:</strong> ${nomeEmpresaAbreviado}</p>
             </div>
           </div>
         </div>`;
-      });
+      }
       
       html += '</div>';
       
@@ -368,7 +431,7 @@ export class ElogiosTemplateService {
           // Aspas à direita (azul)
           html += `
           <div class="divider-row">
-            <div style="display: table-cell;"><div class="divider-line"></div></div>
+            <div class="divider-line"></div>
             <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
           </div>`;
         } else {
@@ -376,11 +439,11 @@ export class ElogiosTemplateService {
           html += `
           <div class="divider-row">
             <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
-            <div style="display: table-cell;"><div class="divider-line"></div></div>
+            <div class="divider-line"></div>
           </div>`;
         }
       }
-    });
+    }
 
     return html;
   }
@@ -388,11 +451,11 @@ export class ElogiosTemplateService {
   /**
    * Template fallback caso não consiga acessar o banco
    */
-  private processarTemplateFallback(
+  private async processarTemplateFallback(
     elogiosSelecionados: ElogioCompleto[],
     mesSelecionado: number,
     anoSelecionado: number
-  ): ProcessedElogiosTemplate {
+  ): Promise<ProcessedElogiosTemplate> {
     const nomesMeses = [
       'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
       'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
@@ -457,7 +520,7 @@ export class ElogiosTemplateService {
         
         <!-- Container de Elogios -->
         <div class="main-content">
-            ${this.gerarHtmlElogios(elogiosSelecionados)}
+            ${await this.gerarHtmlElogios(elogiosSelecionados)}
         </div>
         
         <!-- Footer -->

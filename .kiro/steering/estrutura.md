@@ -35,9 +35,11 @@ Serviço avançado para processamento dinâmico de templates de elogios, substit
 - `buscarTemplateElogios()` - Busca template ativo na tabela `email_templates`
 - `criarTemplatePadrao()` - Cria template padrão completo se não existir (template HTML responsivo funcional)
 - `processarTemplate(elogios, mes, ano, templateId?)` - Processa template com dados dos elogios selecionados, com suporte a template específico
-- `gerarHtmlElogios(elogios)` - Gera HTML dos elogios organizados em linhas de 3
+- `gerarHtmlElogios(elogios)` - Gera HTML dos elogios organizados em linhas de 3 com mapeamento automático de empresas
 - `processarTemplateFallback()` - Template de emergência quando banco não está acessível
 - `getVariaveisDisponiveis()` - Lista todas as variáveis disponíveis para templates
+- `buscarEmpresas()` - Busca empresas cadastradas com cache para mapeamento de nomes
+- `obterNomeAbreviadoEmpresa(nomeEmpresa)` - Faz de-para do nome da empresa para nome abreviado
 
 **Interfaces exportadas:**
 - `ElogiosTemplateVariables` - Definição de todas as variáveis disponíveis para templates
@@ -64,9 +66,10 @@ Serviço avançado para processamento dinâmico de templates de elogios, substit
 2. **Fallback automático**: Se não encontrar, cria template padrão automaticamente
 3. **Fallback de emergência**: Se falhar, usa template hardcoded como fallback
 4. **Preparação de variáveis**: Prepara variáveis do sistema (mês, ano, URLs de imagens)
-5. **Geração de HTML**: Gera HTML dos elogios organizados em linhas de 3
-6. **Substituição de variáveis**: Substitui todas as variáveis no template
-7. **Retorno processado**: Retorna HTML processado com estatísticas
+5. **Mapeamento de empresas**: Para cada elogio, faz de-para do nome da empresa para nome abreviado usando cache
+6. **Geração de HTML**: Gera HTML dos elogios organizados em linhas de 3 com nomes de empresas abreviados
+7. **Substituição de variáveis**: Substitui todas as variáveis no template
+8. **Retorno processado**: Retorna HTML processado com estatísticas
 
 **Integração:**
 - Utilizado pela página `EnviarElogios.tsx` para geração de relatórios
@@ -92,6 +95,10 @@ Serviço avançado para processamento dinâmico de templates de elogios, substit
 - **Flexibilidade aumentada**: Sistema agora suporta tanto templates padrão quanto templates personalizados criados via interface administrativa
 - **Robustez mantida**: Mantido sistema de fallback robusto que garante funcionamento mesmo se template específico não for encontrado
 - **Compatibilidade preservada**: Parâmetro `templateId` é opcional, mantendo compatibilidade com código existente
+- **Mapeamento de empresas implementado**: Sistema agora faz de-para automático entre nome completo da empresa (da tabela elogios) e nome abreviado (da tabela empresas_clientes)
+- **Cache de empresas**: Implementado sistema de cache para evitar múltiplas consultas ao banco durante geração de relatórios
+- **Logging de mapeamento**: Console logs detalhados mostrando o de-para de empresas (📧 De-para empresa: "Nome Completo" → "Nome Abreviado")
+- **Fallback inteligente**: Se empresa não for encontrada no cadastro, mantém nome original com aviso no console (⚠️ Empresa não encontrada no cadastro)
 
 ---
 
