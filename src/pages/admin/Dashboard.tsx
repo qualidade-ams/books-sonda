@@ -45,6 +45,902 @@ import {
   AreaChart
 } from 'recharts';
 
+// Componente para as sub-abas de elogios
+const ElogiosSubTabs = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  const [activeElogiosTab, setActiveElogiosTab] = useState<string>('visao-geral');
+
+  const elogiosSubTabs = [
+    { key: 'visao-geral', label: 'Visão Geral' },
+    { key: 'mapeamento', label: 'Mapeamento' },
+    { key: 'volume', label: 'Volume' },
+    { key: 'motivos', label: 'Motivos' },
+    { key: 'pesquisas', label: 'Pesquisas' }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Sub-abas */}
+      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-full">
+        {elogiosSubTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveElogiosTab(tab.key)}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+              activeElogiosTab === tab.key
+                ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Conteúdo das sub-abas */}
+      {activeElogiosTab === 'visao-geral' && (
+        <VisaoGeralElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+      )}
+      
+      {activeElogiosTab === 'mapeamento' && (
+        <MapeamentoElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+      )}
+      
+      {activeElogiosTab === 'volume' && (
+        <VolumeElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+      )}
+      
+      {activeElogiosTab === 'motivos' && (
+        <MotivosElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+      )}
+      
+      {activeElogiosTab === 'pesquisas' && (
+        <PesquisasElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+      )}
+    </div>
+  );
+};
+
+// Componente Visão Geral
+const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Cards principais sem cor */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Totais</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{statsElogios?.total || 0}</p>
+                <span className="text-xs font-medium text-blue-600">+8%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Heart className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Colaboradores Citados</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">42</p>
+              </div>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">4.9/5</p>
+                <span className="text-xs font-medium text-green-600">+0.2</span>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Star className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Canais Externos</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">15</p>
+              </div>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <Building2 className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Volume de Elogios */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-gray-600" />
+              <CardTitle className="text-lg font-semibold">Volume de Elogios</CardTitle>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Comparativo Interno vs Externo (Últimos 6 meses)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-600">● Interno</span>
+                <span className="text-sm text-orange-600">● Externo</span>
+              </div>
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                Gráfico de área - Volume de elogios
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Destaques */}
+        <div className="space-y-4">
+          {/* Top Colaborador */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">MARIA SILVA</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">12 Elogios este mês</p>
+                </div>
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <Star className="h-4 w-4 text-green-600" />
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Maior Crescimento */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">SUPORTE TÉCNICO</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">+45% vs mês anterior</p>
+                </div>
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+
+      {/* Seção inferior */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Equipes Elogiadas */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-orange-600" />
+              <CardTitle className="text-sm font-semibold">Top Equipes Elogiadas</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Fiscal</span>
+                </div>
+                <span className="text-xs font-medium">62%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Comex</span>
+                </div>
+                <span className="text-xs font-medium">38%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Categorias de Destaque */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-sm font-semibold">Categorias de Destaque</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
+              Gráfico de categorias
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Últimas Menções */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-purple-600" />
+              <CardTitle className="text-sm font-semibold">Últimas Menções</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-blue-600">JD</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">João D. elogiou Atendimento</p>
+                  <p className="text-xs text-gray-500">"Excelente agilidade na resolução do meu problema..."</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-green-600">AS</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">Ana S. elogiou Projeto X</p>
+                  <p className="text-xs text-gray-500">"Entrega muito acima da expectativa, parabéns!"</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-purple-600">RT</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">Roberto T. elogiou Suporte</p>
+                  <p className="text-xs text-gray-500">"Muito atencioso e técnico."</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente Mapeamento
+const MapeamentoElogios = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Destaque do Mês</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">Maria Silva</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">12 Elogios</p>
+            </div>
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+              <Award className="h-4 w-4 text-yellow-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Destaque do Ano</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">João Santos</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">45 Elogios</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Star className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Mapeado</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">86</p>
+                <span className="text-xs font-medium text-green-600">+12 novos</span>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Setor em Alta</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">Tecnologia</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Maior engajamento</p>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Building2 className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top 5 - Mês Atual */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-lg font-semibold">Top 5 - Mês Atual</CardTitle>
+              </div>
+              <span className="text-xs text-gray-500">Janeiro 2025</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              Gráfico de barras - Top 5 colaboradores do mês
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top 5 - Acumulado do Ano */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg font-semibold">Top 5 - Acumulado do Ano</CardTitle>
+              </div>
+              <span className="text-xs text-gray-500">Ano 2025</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              Gráfico de pizza - Top 5 colaboradores do ano
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Seção inferior */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Habilidades em Destaque */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-orange-600" />
+              <CardTitle className="text-sm font-semibold">Habilidades em Destaque</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
+              Gráfico de habilidades mais mencionadas
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Evolução dos Líderes */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <CardTitle className="text-sm font-semibold">Evolução dos Líderes (Últimos 6 meses)</CardTitle>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-blue-600">● Maria Silva</span>
+                <span className="text-purple-600">● João Santos</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
+              Gráfico de linha - Evolução dos líderes
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente Volume
+const VolumeElogios = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios no Mês</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">128</p>
+                <span className="text-xs font-medium text-blue-600">+12%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Acumulado Ano</p>
+              <p className="text-2xl font-bold">1,452</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Calendar className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pessoas Elogiadas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">86</p>
+                <span className="text-xs font-medium text-orange-600">+5</span>
+              </div>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Equipes Citadas</p>
+              <p className="text-2xl font-bold">14</p>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Building2 className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Evolução de Pessoas Elogiadas */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-lg font-semibold">Evolução de Pessoas Elogiadas</CardTitle>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-blue-600">● 2024</span>
+                <span className="text-gray-400">● 2023</span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Comparativo de volume mensal (Últimos 12 meses)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              Gráfico de linha - Evolução mensal
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Distribuição por Setor */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-purple-600" />
+              <CardTitle className="text-lg font-semibold">Distribuição por Setor</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm">Fiscal</span>
+                </div>
+                <span className="text-sm font-medium">62%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="text-sm">Comex</span>
+                </div>
+                <span className="text-sm font-medium">38%</span>
+              </div>
+              <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
+                Gráfico de pizza - Distribuição por setor
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Seção inferior */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Equipes Elogiadas */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-semibold">Top Equipes Elogiadas</CardTitle>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">Mês</button>
+                <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">Ano</button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Fiscal</span>
+                </div>
+                <span className="text-xs font-medium">● Comex</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Clientes (Volume) */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-purple-600" />
+                <CardTitle className="text-sm font-semibold">Top Clientes (Volume)</CardTitle>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">Mês</button>
+                <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">Ano</button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
+              Gráfico de barras - Top clientes por volume
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente Motivos
+const MotivosElogios = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Totais</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">128</p>
+                <span className="text-xs font-medium text-blue-600">+8%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Heart className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Colaboradores Citados</p>
+              <p className="text-2xl font-bold">42</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">4.9/5</p>
+                <span className="text-xs font-medium text-green-600">+0.2</span>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Star className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Canais Externos</p>
+              <p className="text-2xl font-bold">15</p>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <Building2 className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráfico principal */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <PieChart className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg font-semibold">Motivos do Elogio</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center text-gray-500">
+            Gráfico de pizza - Distribuição dos motivos de elogios
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Componente Pesquisas
+const PesquisasElogios = ({ statsElogios, anoSelecionado }: { 
+  statsElogios: any; 
+  anoSelecionado: number; 
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Efetuadas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">1,248</p>
+                <span className="text-xs font-medium text-blue-600">+4%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Respostas Recebidas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">892</p>
+                <span className="text-xs font-medium text-purple-600">+12%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa de Resposta</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">71.5%</p>
+                <span className="text-xs font-medium text-green-600">+4.4%</span>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <BarChart3 className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">NPS Geral</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">+74</p>
+                <span className="text-xs font-medium text-orange-600">Excelente</span>
+              </div>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <Star className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Engajamento por Equipe */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-lg font-semibold">Engajamento por Equipe</CardTitle>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-xs text-blue-600">Enviadas</span>
+                <span className="text-xs text-green-600">Respondidas</span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Comparativo Fiscal vs Comex (Enviadas e Respondidas)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              Gráfico de barras - Engajamento por equipe
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Termômetro de Satisfação */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-lg font-semibold">Termômetro de Satisfação</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-900 dark:text-white">4.8</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">MÉDIA / 5.0</div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-red-500">Insatisfeito</span>
+                  <span className="text-xs text-gray-500">0-2</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Neutro</span>
+                  <span className="text-xs text-gray-500">3</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-500">Satisfeito</span>
+                  <span className="text-xs text-gray-500">4-5</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Seção inferior */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Taxa de Resposta Mensal */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-sm font-semibold">Taxa de Resposta Mensal</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
+              Gráfico de linha - Taxa de resposta mensal
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Feedbacks Recentes */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-600" />
+                <CardTitle className="text-sm font-semibold">Feedbacks Recentes</CardTitle>
+              </div>
+              <button className="text-xs text-blue-600 hover:underline">Ver todos</button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-blue-600">EF</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">Equipe Fiscal</p>
+                  <p className="text-xs text-gray-500">"O processo de desembaraço foi surpreendentemente rápido. Parabéns à equipe!"</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {[1,2,3,4,5].map(i => (
+                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-green-600">EC</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">Equipe Comex</p>
+                  <p className="text-xs text-gray-500">"Atendimento cordial, mas ainda falta de atualizações proativas sobre o status."</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {[1,2,3].map(i => (
+                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    ))}
+                    {[4,5].map(i => (
+                      <Star key={i} className="h-3 w-3 text-gray-300" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-purple-600">EF</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium">Equipe Fiscal</p>
+                  <p className="text-xs text-gray-500">"Excelente suporte técnico na resolução da pendência tributária."</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {[1,2,3,4,5].map(i => (
+                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
@@ -1144,99 +2040,15 @@ const Dashboard = () => {
             {activeTab === 'elogios' && (
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Heart className="h-6 w-6 text-pink-600" />
+                  <Heart className="h-6 w-6 text-blue-600" />
                   Elogios
                 </h2>
 
-                {/* Cards de Resumo - Elogios */}
-                <DashboardGrid columns={4} gap="md">
-                  <StatCard
-                    title="Total de Elogios"
-                    value={statsElogios?.total || 0}
-                    description={`Ano: ${anoSelecionado}`}
-                    icon={Heart}
-                    color="pink"
-                  />
-                  
-                  <StatCard
-                    title="Compartilhados"
-                    value={statsElogios?.compartilhados || 0}
-                    description={statsElogios?.total ? `${((statsElogios.compartilhados / statsElogios.total) * 100).toFixed(1)}% do total` : '0% do total'}
-                    icon={Users}
-                    color="green"
-                  />
-                  
-                  <StatCard
-                    title="Registrados"
-                    value={statsElogios?.registrados || 0}
-                    description="Aguardando aprovação"
-                    icon={Calendar}
-                    color="orange"
-                  />
-                  
-                  <StatCard
-                    title="Satisfação Média"
-                    value={statsElogios?.satisfacaoMedia ? `${statsElogios.satisfacaoMedia.toFixed(1)}/5` : 'N/A'}
-                    description="Nota média"
-                    icon={Star}
-                    color="yellow"
-                  />
-                </DashboardGrid>
-
-                {/* Mensagem quando não há dados */}
-                {(!statsElogios || statsElogios.total === 0) && (
-                  <EmptyState
-                    icon={Heart}
-                    title="Nenhum elogio encontrado"
-                    description={`Não há elogios para o ano selecionado: ${anoSelecionado}`}
-                  />
-                )}
-
-                {/* Gráficos de Elogios */}
-                {statsElogios && statsElogios.total > 0 && (
-                  <DashboardGrid columns={2} gap="lg">
-                    {/* Gráfico de Evolução Mensal */}
-                    <ModernChart
-                      title="Evolução Mensal de Elogios"
-                      icon={TrendingUp}
-                      data={statsElogios.porMes}
-                      type="area"
-                      height={320}
-                      color="#ec4899"
-                      dataKey="count"
-                      xAxisKey="mesNome"
-                      gradient={true}
-                      formatTooltip={(value, name) => [
-                        `${value} elogios`,
-                        name === 'count' ? 'Total' : 'Compartilhados'
-                      ]}
-                    />
-
-                    {/* Top Empresas com Mais Elogios */}
-                    <ModernChart
-                      title="Top 10 Empresas com Mais Elogios"
-                      icon={Award}
-                      data={Object.entries(statsElogios.porEmpresa)
-                        .sort((a, b) => b[1].count - a[1].count)
-                        .slice(0, 10)
-                        .map(([empresa, data]) => ({
-                          name: empresa.length > 15 ? empresa.substring(0, 15) + '...' : empresa,
-                          value: data.count,
-                          compartilhados: data.compartilhados
-                        }))}
-                      type="bar"
-                      height={320}
-                      color="#ec4899"
-                      dataKey="value"
-                      xAxisKey="name"
-                      layout="vertical"
-                      formatTooltip={(value, name) => [
-                        `${value} elogios`,
-                        name === 'value' ? 'Total' : 'Compartilhados'
-                      ]}
-                    />
-                  </DashboardGrid>
-                )}
+                {/* Sub-abas de Elogios */}
+                <ElogiosSubTabs 
+                  statsElogios={statsElogios}
+                  anoSelecionado={anoSelecionado}
+                />
               </div>
             )}
 

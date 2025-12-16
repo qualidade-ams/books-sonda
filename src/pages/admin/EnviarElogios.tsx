@@ -52,11 +52,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
 
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { useToast } from '@/hooks/use-toast';
+import { useCacheManager } from '@/hooks/useCacheManager';
 
-import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
+import { useElogios, useEstatisticasElogios, useAtualizarElogio } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { emailService } from '@/services/emailService';
 import { elogiosTemplateService } from '@/services/elogiosTemplateService';
@@ -67,6 +74,7 @@ import SeletorTemplateElogios from '@/components/admin/elogios/SeletorTemplateEl
 export default function EnviarElogios() {
   // Hook para toast
   const { toast } = useToast();
+  const { clearFeatureCache } = useCacheManager();
 
   // Função para regenerar template quando seleção mudar
   const regenerarTemplate = async (templateId?: string) => {
@@ -98,6 +106,7 @@ export default function EnviarElogios() {
 
   const [destinatariosTexto, setDestinatariosTexto] = useState('');
   const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
+  const [abaAtiva, setAbaAtiva] = useState('enviar-colaboradores');
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
@@ -116,8 +125,29 @@ export default function EnviarElogios() {
     status: ['compartilhado'] // Filtrar apenas elogios compartilhados
   });
 
+  // Atualizar filtros baseado na aba ativa
+  const filtrosComAba = useMemo(() => {
+    return {
+      ...filtros,
+      status: abaAtiva === 'enviar-colaboradores' ? ['compartilhado'] : ['enviado']
+    };
+  }, [filtros, abaAtiva]);
+
   // Hooks
-  const { data: elogios = [], isLoading, error, refetch } = useElogios(filtros);
+  const { data: elogios = [], isLoading, error, refetch } = useElogios(filtrosComAba);
+  const atualizarElogio = useAtualizarElogio();
+  
+  // Estatísticas separadas para cada status (para contadores das abas)
+  const { data: estatisticasColaboradores } = useEstatisticasElogios({
+    ...filtros,
+    status: ['compartilhado']
+  });
+  const { data: estatisticasEnviados } = useEstatisticasElogios({
+    ...filtros,
+    status: ['enviado']
+  });
+  
+  // Estatísticas gerais (para os cards)
   const { data: estatisticas } = useEstatisticasElogios(filtros);
   const { empresas } = useEmpresas();
 
@@ -575,6 +605,20 @@ export default function EnviarElogios() {
       });
 
       if (resultado.success) {
+        // Atualizar status dos elogios selecionados para "enviado"
+        try {
+          await Promise.all(
+            elogiosSelecionados.map(async (elogioId) => {
+              await atualizarElogio.mutateAsync({ 
+                id: elogioId, 
+                dados: { status: 'enviado' } 
+              });
+            })
+          );
+        } catch (error) {
+          console.error('Erro ao atualizar status dos elogios:', error);
+        }
+
         toast({
           title: "Sucesso",
           description: `Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`
@@ -589,6 +633,10 @@ export default function EnviarElogios() {
         setDestinatariosCCTexto('');
         setAssuntoEmail('');
         setAnexos([]);
+        
+        // Limpar cache e recarregar dados para refletir as mudanças
+        clearFeatureCache('pesquisas');
+        await refetch();
       } else {
         toast({
           title: "Erro",
@@ -636,17 +684,19 @@ export default function EnviarElogios() {
           </div>
 
           <div className="flex gap-2">
-            <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
-              <Button
-                onClick={handleAbrirModalEmail}
-                disabled={isLoading || elogiosSelecionados.length === 0}
-                size="sm"
-                title={elogiosSelecionados.length === 0 ? 'Selecione elogios para enviar' : `Enviar ${elogiosSelecionados.length} elogio(s) selecionado(s)`}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Disparar Elogios ({elogiosSelecionados.length})
-              </Button>
-            </ProtectedAction>
+            {abaAtiva === 'enviar-colaboradores' && (
+              <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
+                <Button
+                  onClick={handleAbrirModalEmail}
+                  disabled={isLoading || elogiosSelecionados.length === 0}
+                  size="sm"
+                  title={elogiosSelecionados.length === 0 ? 'Selecione elogios para enviar' : `Enviar ${elogiosSelecionados.length} elogio(s) selecionado(s)`}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Disparar Elogios ({elogiosSelecionados.length})
+                </Button>
+              </ProtectedAction>
+            )}
           </div>
         </div>
 
@@ -682,6 +732,8 @@ export default function EnviarElogios() {
             </div>
           </CardContent>
         </Card>
+
+
 
         {/* Estatísticas */}
         {estatisticas && (
@@ -752,9 +804,30 @@ export default function EnviarElogios() {
           </div>
         )}
 
+        {/* Sistema de Abas */}
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full space-y-4 max-w-full overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <TabsList>
+              <TabsTrigger value="enviar-colaboradores">
+                Enviar Elogios Colaboradores ({estatisticasColaboradores?.total || 0})
+              </TabsTrigger>
+              <TabsTrigger value="historico-enviados">
+                Histórico de Enviados ({estatisticasEnviados?.total || 0})
+              </TabsTrigger>
+            </TabsList>
 
+            {/* Informação de selecionados - apenas para aba enviar colaboradores */}
+            {abaAtiva === 'enviar-colaboradores' && elogiosSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-4 items-center">
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {elogiosSelecionados.length} selecionado{elogiosSelecionados.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            )}
+          </div>
 
-        {/* Tabela de Elogios */}
+          <TabsContent value="enviar-colaboradores" className="space-y-4">
+            {/* Tabela de Elogios */}
         {isLoading ? (
           <Card>
             <CardContent className="p-8">
@@ -888,6 +961,105 @@ export default function EnviarElogios() {
             </CardContent>
           </Card>
         )}
+          </TabsContent>
+
+          <TabsContent value="historico-enviados" className="space-y-4">
+            {/* Tabela para Histórico de Enviados */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg lg:text-xl">
+                  Histórico de Enviados ({elogios.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    <span>Carregando elogios...</span>
+                  </div>
+                ) : elogios.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Nenhum elogio enviado por email encontrado
+                  </div>
+                ) : (
+                  <div className="rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[120px] text-center">Chamado</TableHead>
+                          <TableHead className="w-[180px] text-center">Empresa</TableHead>
+                          <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
+                          <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                          <TableHead className="w-[200px] text-center">Comentário</TableHead>
+                          <TableHead className="w-[140px] text-center">Resposta</TableHead>
+                          <TableHead className="text-center w-[120px]">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {elogios.map((elogio) => {
+                          const { nome: nomeEmpresa, encontrada: empresaEncontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
+                          
+                          return (
+                            <TableRow key={elogio.id}>
+                              <TableCell className="text-center">
+                                {elogio.pesquisa?.nro_caso ? (
+                                  <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                                    <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                      {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
+                                      <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Database className="h-4 w-4 text-blue-600" />
+                                    <span>-</span>
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium text-xs sm:text-sm max-w-[180px] text-center">
+                                {(() => {
+                                  const isOrigemSqlServer = elogio.pesquisa?.origem === 'sql_server';
+                                  const deveExibirVermelho = isOrigemSqlServer && !empresaEncontrada;
+                                  return (
+                                    <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
+                                      {nomeEmpresa}
+                                    </span>
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell className="text-center text-xs sm:text-sm text-muted-foreground">
+                                {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
+                              </TableCell>
+                              <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                                <span className="truncate block">{elogio.pesquisa?.cliente}</span>
+                              </TableCell>
+                              <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
+                                <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {getBadgeResposta(elogio.pesquisa?.resposta) || (
+                                  <Badge variant="outline" className="text-xs px-2 py-1 whitespace-nowrap">
+                                    -
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="secondary" className="text-xs px-2 py-1 bg-green-100 text-green-800">
+                                  Enviado por Email
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Modal de Email */}
         <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>

@@ -18,7 +18,7 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { elogiosTemplateService } from '@/services/elogiosTemplateService';
+import { elogiosTemplateService, ElogiosTemplateService } from '@/services/elogiosTemplateService';
 import { toast } from 'sonner';
 
 interface TemplateVariablesDemoProps {
@@ -30,7 +30,7 @@ export default function TemplateVariablesDemo({ onClose }: TemplateVariablesDemo
   const [exampleHtml, setExampleHtml] = useState<string>('');
 
   // Obter variáveis disponíveis
-  const variaveisDisponiveis = elogiosTemplateService.getVariaveisDisponiveis();
+  const variaveisDisponiveis = ElogiosTemplateService.getVariaveisDisponiveis();
 
   // Agrupar variáveis por categoria
   const variaveisPorCategoria = variaveisDisponiveis.reduce((acc, variavel) => {
