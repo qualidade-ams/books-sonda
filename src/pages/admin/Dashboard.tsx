@@ -2,7 +2,15 @@ import { useState, useMemo } from 'react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+import { StatCard } from '@/components/admin/dashboard/StatCard';
+import { ModernChart } from '@/components/admin/dashboard/ModernChart';
+import { DashboardGrid } from '@/components/admin/dashboard/DashboardGrid';
+import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
+import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
+import { useElogios } from '@/hooks/useElogios';
+import { usePermissions } from '@/hooks/usePermissions';
 import { 
   DollarSign, 
   Clock, 
@@ -12,7 +20,11 @@ import {
   Ticket,
   TrendingUp,
   Award,
-  Building2
+  Building2,
+  Heart,
+  Users,
+  Calendar,
+  Star
 } from 'lucide-react';
 import { converterMinutosParaHoras, converterMinutosParaHorasDecimal } from '@/utils/horasUtils';
 import { getHexColor } from '@/utils/requerimentosColors';
@@ -41,22 +53,71 @@ const Dashboard = () => {
   
   const [anoSelecionado, setAnoSelecionado] = useState(currentYear);
   const [filtroModulo, setFiltroModulo] = useState<ModuloType | 'todos'>('todos');
+  const [activeTab, setActiveTab] = useState<string>('');
+  const [topFaturamentoMode, setTopFaturamentoMode] = useState<'faturamento' | 'banco_horas'>('faturamento');
+
+  // Hooks de permissões
+  const { hasPermission } = usePermissions();
 
   // Buscar dados de requerimentos - buscar TODOS sem filtro
   const { data: requerimentos, isLoading: loadingRequerimentos } = useRequerimentos();
+  
+  // Buscar dados de elogios
+  const { data: elogios, isLoading: loadingElogios } = useElogios();
 
+  // Definir abas disponíveis baseadas nas permissões
+  const availableTabs = useMemo(() => {
+    const tabs = [];
+    
+    if (hasPermission('lancar_requerimentos', 'view') || hasPermission('faturar_requerimentos', 'view')) {
+      tabs.push({
+        key: 'requerimentos',
+        label: 'Requerimentos',
+        icon: FileText,
+        screenKeys: ['lancar_requerimentos', 'faturar_requerimentos']
+      });
+    }
+    
+    if (hasPermission('lancar_pesquisas', 'view') || hasPermission('enviar_pesquisas', 'view')) {
+      tabs.push({
+        key: 'elogios',
+        label: 'Elogios',
+        icon: Heart,
+        screenKeys: ['lancar_pesquisas', 'enviar_pesquisas']
+      });
+    }
+    
+    if (hasPermission('empresas_clientes', 'view') || hasPermission('clientes', 'view')) {
+      tabs.push({
+        key: 'clientes',
+        label: 'Clientes',
+        icon: Users,
+        screenKeys: ['empresas_clientes', 'clientes']
+      });
+    }
+    
+    return tabs;
+  }, [hasPermission]);
 
+  // Definir aba ativa inicial
+  useMemo(() => {
+    if (!activeTab && availableTabs.length > 0) {
+      setActiveTab(availableTabs[0].key);
+    }
+  }, [availableTabs, activeTab]);
 
   // Calcular estatísticas de requerimentos
   const statsRequerimentos = useMemo(() => {
-    console.log('Dashboard - Requerimentos recebidos:', requerimentos?.length || 0);
-    
     if (!requerimentos || requerimentos.length === 0) {
-      console.log('Dashboard - Nenhum requerimento disponível');
       return null;
     }
 
     let dados = requerimentos;
+
+    // FILTRO PRINCIPAL: Apenas requerimentos das abas "Enviar para Faturamento" e "Histórico de enviados"
+    dados = dados.filter(r => 
+      r.status === 'enviado_faturamento' || r.status === 'faturado'
+    );
 
     // Filtrar por ano
     if (anoSelecionado) {
@@ -65,24 +126,23 @@ const Dashboard = () => {
         const ano = r.mes_cobranca.split('/')[1];
         return parseInt(ano) === anoSelecionado;
       });
-      console.log(`Dashboard - Após filtro de ano (${anoSelecionado}):`, dados.length);
     }
 
     // Aplicar filtros
     if (filtroModulo !== 'todos') {
       dados = dados.filter(r => r.modulo === filtroModulo);
-      console.log(`Dashboard - Após filtro de módulo (${filtroModulo}):`, dados.length);
     }
 
     const total = dados.length;
     
-    // Debug: verificar formato das horas
-    if (dados.length > 0) {
-      console.log('Dashboard - Exemplo de horas_total:', dados[0].horas_total, typeof dados[0].horas_total);
-    }
-    
     // horas_total pode vir como string "HH:MM" ou número (minutos)
+    // DESCONTAR horas reprovadas do total
     const totalHoras = dados.reduce((acc, r) => {
+      // Pular requerimentos reprovados no cálculo de horas
+      if (r.tipo_cobranca === 'Reprovado') {
+        return acc;
+      }
+      
       const horas = r.horas_total;
       if (typeof horas === 'string' && horas.includes(':')) {
         // Formato HH:MM - converter para minutos
@@ -136,13 +196,15 @@ const Dashboard = () => {
       }
       acc[modulo].count++;
       
-      // Converter horas corretamente
-      const horas = r.horas_total;
-      if (typeof horas === 'string' && horas.includes(':')) {
-        const [h, m] = horas.split(':').map(Number);
-        acc[modulo].horas += (h * 60 + m);
-      } else {
-        acc[modulo].horas += Number(horas) || 0;
+      // Converter horas corretamente - DESCONTAR reprovados
+      if (r.tipo_cobranca !== 'Reprovado') {
+        const horas = r.horas_total;
+        if (typeof horas === 'string' && horas.includes(':')) {
+          const [h, m] = horas.split(':').map(Number);
+          acc[modulo].horas += (h * 60 + m);
+        } else {
+          acc[modulo].horas += Number(horas) || 0;
+        }
       }
       
       return acc;
@@ -156,13 +218,15 @@ const Dashboard = () => {
       }
       acc[mes].count++;
       
-      // Converter horas corretamente
-      const horas = r.horas_total;
-      if (typeof horas === 'string' && horas.includes(':')) {
-        const [h, m] = horas.split(':').map(Number);
-        acc[mes].horas += (h * 60 + m);
-      } else {
-        acc[mes].horas += Number(horas) || 0;
+      // Converter horas corretamente - DESCONTAR reprovados
+      if (r.tipo_cobranca !== 'Reprovado') {
+        const horas = r.horas_total;
+        if (typeof horas === 'string' && horas.includes(':')) {
+          const [h, m] = horas.split(':').map(Number);
+          acc[mes].horas += (h * 60 + m);
+        } else {
+          acc[mes].horas += Number(horas) || 0;
+        }
       }
       
       acc[mes].valor += Number(r.valor_total_geral) || 0;
@@ -184,77 +248,90 @@ const Dashboard = () => {
         ...data
       }));
 
-    // Agrupar por mês e tipo de cobrança (para gráficos mensais por tipo)
-    const porMesTipoCobranca = dados.reduce((acc, r) => {
-      const mes = r.mes_cobranca || 'Sem mês';
-      const tipo = r.tipo_cobranca;
-      
-      if (!acc[mes]) {
-        acc[mes] = {};
-      }
-      
-      if (!acc[mes][tipo]) {
-        acc[mes][tipo] = { horas: 0, valor: 0 };
-      }
-      
-      // Converter horas corretamente
-      const horas = r.horas_total;
-      if (typeof horas === 'string' && horas.includes(':')) {
-        const [h, m] = horas.split(':').map(Number);
-        acc[mes][tipo].horas += (h * 60 + m);
-      } else {
-        acc[mes][tipo].horas += Number(horas) || 0;
-      }
-      
-      acc[mes][tipo].valor += Number(r.valor_total_geral) || 0;
-      
-      return acc;
-    }, {} as Record<string, Partial<Record<TipoCobrancaType, { horas: number; valor: number }>>>);
-
-    // Formatar dados para gráficos mensais por tipo
-    const porMesTipoOrdenado = Object.entries(porMesTipoCobranca)
-      .filter(([mes]) => mes !== 'Sem mês')
-      .sort((a, b) => {
-        const [mesA] = a[0].split('/');
-        const [mesB] = b[0].split('/');
-        return parseInt(mesA) - parseInt(mesB);
-      })
-      .map(([mes, tipos]) => {
-        const mesNome = new Date(2000, parseInt(mes.split('/')[0]) - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-        const resultado: any = { mes, mesNome };
-        
-        // Adicionar cada tipo de cobrança como propriedade
-        Object.entries(tipos).forEach(([tipo, data]) => {
-          resultado[`${tipo}_horas`] = converterMinutosParaHorasDecimal(data.horas);
-          resultado[`${tipo}_valor`] = data.valor;
-        });
-        
-        return resultado;
-      });
-
-    const result = {
+    return {
       total,
       totalHoras,
       totalValor,
       totalTickets,
       porTipoCobranca: porcentagensTipo,
       porModulo,
-      porMes: porMesOrdenado,
-      porMesTipo: porMesTipoOrdenado
+      porMes: porMesOrdenado
     };
-
-    console.log('Dashboard - Stats finais:', {
-      total,
-      totalHoras,
-      totalValor,
-      totalTickets,
-      tiposCobranca: porcentagensTipo.length,
-      modulos: Object.keys(porModulo).length,
-      meses: porMesOrdenado.length
-    });
-
-    return result;
   }, [requerimentos, filtroModulo, anoSelecionado]);
+
+  // Calcular estatísticas de elogios
+  const statsElogios = useMemo(() => {
+    if (!elogios || elogios.length === 0) {
+      return null;
+    }
+
+    let dados = elogios;
+
+    // Filtrar por ano
+    if (anoSelecionado) {
+      dados = dados.filter(e => {
+        if (!e.criado_em) return false;
+        const ano = new Date(e.criado_em).getFullYear();
+        return ano === anoSelecionado;
+      });
+    }
+
+    const total = dados.length;
+    const compartilhados = dados.filter(e => e.status === 'compartilhado').length;
+    const registrados = dados.filter(e => e.status === 'registrado').length;
+
+    // Agrupar por empresa
+    const porEmpresa = dados.reduce((acc, e) => {
+      const empresa = e.pesquisa?.empresa || 'Sem empresa';
+      if (!acc[empresa]) {
+        acc[empresa] = { count: 0, compartilhados: 0 };
+      }
+      acc[empresa].count++;
+      if (e.status === 'compartilhado') {
+        acc[empresa].compartilhados++;
+      }
+      return acc;
+    }, {} as Record<string, { count: number; compartilhados: number }>);
+
+    // Agrupar por mês
+    const porMes = dados.reduce((acc, e) => {
+      const data = new Date(e.criado_em);
+      const mes = `${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
+      if (!acc[mes]) {
+        acc[mes] = { count: 0, compartilhados: 0 };
+      }
+      acc[mes].count++;
+      if (e.status === 'compartilhado') {
+        acc[mes].compartilhados++;
+      }
+      return acc;
+    }, {} as Record<string, { count: number; compartilhados: number }>);
+
+    // Ordenar por mês
+    const porMesOrdenado = Object.entries(porMes)
+      .sort((a, b) => {
+        const [mesA] = a[0].split('/');
+        const [mesB] = b[0].split('/');
+        return parseInt(mesA) - parseInt(mesB);
+      })
+      .map(([mes, data]) => ({
+        mes,
+        mesNome: new Date(2000, parseInt(mes.split('/')[0]) - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        ...data
+      }));
+
+    // Calcular satisfação média (funcionalidade removida - propriedade não existe)
+    const satisfacaoMedia = 0;
+
+    return {
+      total,
+      compartilhados,
+      registrados,
+      satisfacaoMedia,
+      porEmpresa,
+      porMes: porMesOrdenado
+    };
+  }, [elogios, anoSelecionado]);
 
   // Calcular estatísticas por empresa
   const statsEmpresas = useMemo(() => {
@@ -263,6 +340,11 @@ const Dashboard = () => {
     }
 
     let dados = requerimentos;
+
+    // FILTRO PRINCIPAL: Apenas requerimentos das abas "Enviar para Faturamento" e "Histórico de enviados"
+    dados = dados.filter(r => 
+      r.status === 'enviado_faturamento' || r.status === 'faturado'
+    );
 
     // Filtrar por ano
     if (anoSelecionado) {
@@ -293,7 +375,7 @@ const Dashboard = () => {
       }
       acc[empresa].count++;
       
-      // Converter horas corretamente
+      // Converter horas corretamente - DESCONTAR reprovados das horas
       const horas = r.horas_total;
       let horasEmMinutos = 0;
       if (typeof horas === 'string' && horas.includes(':')) {
@@ -303,7 +385,11 @@ const Dashboard = () => {
         horasEmMinutos = Number(horas) || 0;
       }
       
-      acc[empresa].horas += horasEmMinutos;
+      // Só somar horas se não for reprovado
+      if (r.tipo_cobranca !== 'Reprovado') {
+        acc[empresa].horas += horasEmMinutos;
+      }
+      
       acc[empresa].valor += Number(r.valor_total_geral) || 0;
       acc[empresa].tickets += Number(r.quantidade_tickets) || 0;
       
@@ -348,715 +434,767 @@ const Dashboard = () => {
     };
   }, [requerimentos, filtroModulo, anoSelecionado]);
 
-  const isLoading = loadingRequerimentos;
+  const isLoading = loadingRequerimentos || loadingElogios;
+
+  // Se não há abas disponíveis, mostrar mensagem
+  if (availableTabs.length === 0) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Acesso Restrito
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Você não possui permissão para visualizar nenhuma seção do dashboard.
+            </p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400">Visão geral do sistema</p>
           </div>
 
-          {/* Filtros */}
-          <div className="flex flex-wrap gap-2">
-            <Select value={String(anoSelecionado)} onValueChange={(v) => setAnoSelecionado(parseInt(v))}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Ano" />
-              </SelectTrigger>
-              <SelectContent>
-                {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map(ano => (
-                  <SelectItem key={ano} value={String(ano)}>
-                    {ano}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Linha com Abas e Filtros */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* Abas Compactas */}
+            <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              {availableTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                      activeTab === tab.key
+                        ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-            <Select value={filtroModulo} onValueChange={(v) => setFiltroModulo(v as ModuloType | 'todos')}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Módulo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos Módulos</SelectItem>
-                <SelectItem value="Comex">Comex</SelectItem>
-                <SelectItem value="Comply">Comply</SelectItem>
-                <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
-                <SelectItem value="Gallery">Gallery</SelectItem>
-                <SelectItem value="pw.SATI">pw.SATI</SelectItem>
-                <SelectItem value="pw.SPED">pw.SPED</SelectItem>
-                <SelectItem value="pw.SATI/pw.SPED">pw.SATI/pw.SPED</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Filtros */}
+            <div className="flex flex-wrap gap-2">
+              <Select value={String(anoSelecionado)} onValueChange={(v) => setAnoSelecionado(parseInt(v))}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map(ano => (
+                    <SelectItem key={ano} value={String(ano)}>
+                      {ano}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {activeTab === 'requerimentos' && (
+                <Select value={filtroModulo} onValueChange={(v) => setFiltroModulo(v as ModuloType | 'todos')}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Módulo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos Módulos</SelectItem>
+                    <SelectItem value="Comex">Comex</SelectItem>
+                    <SelectItem value="Comply">Comply</SelectItem>
+                    <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
+                    <SelectItem value="Gallery">Gallery</SelectItem>
+                    <SelectItem value="pw.SATI">pw.SATI</SelectItem>
+                    <SelectItem value="pw.SPED">pw.SPED</SelectItem>
+                    <SelectItem value="pw.SATI/pw.SPED">pw.SATI/pw.SPED</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+          <DashboardLoading />
         ) : (
-          <>
-            {/* Seção de Requerimentos */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <FileText className="h-6 w-6 text-blue-600" />
-                Requerimentos
-              </h2>
+          <div className="space-y-6">
+            {/* Conteúdo das Abas */}
+            
+            {/* Aba de Requerimentos */}
+            {activeTab === 'requerimentos' && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                  Requerimentos
+                </h2>
 
-              {/* Cards de Resumo - Requerimentos */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
-                    <CardTitle className="text-xs font-medium">Total de Requerimentos</CardTitle>
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-xl font-bold">{statsRequerimentos?.total || 0}</div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Ano: {anoSelecionado}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
-                    <CardTitle className="text-xs font-medium">Total de Horas</CardTitle>
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-xl font-bold">
-                      {converterMinutosParaHoras(statsRequerimentos?.totalHoras || 0)}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Horas trabalhadas
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
-                    <CardTitle className="text-xs font-medium">Valor Faturado</CardTitle>
-                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-xl font-bold">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(statsRequerimentos?.totalValor || 0)}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Valor total
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3">
-                    <CardTitle className="text-xs font-medium">Total de Tickets</CardTitle>
-                    <Ticket className="h-3.5 w-3.5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="text-xl font-bold">{statsRequerimentos?.totalTickets || 0}</div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Tickets consumidos
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Cards de Destaque - Empresas */}
-              {statsEmpresas && (statsEmpresas.empresaMaisFatura || statsEmpresas.empresaMaisBancoHoras) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Empresa que mais fatura */}
-                  {statsEmpresas.empresaMaisFatura && (
-                    <Card className="border-2 border-orange-500 dark:border-orange-600">
-                      <CardHeader className="pb-2 pt-3">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                          <Award className="h-4 w-4 text-orange-500" />
-                          Empresa que Mais Fatura
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="font-bold text-sm truncate">{statsEmpresas.empresaMaisFatura.nome}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">Valor Total:</span>
-                            <span className="text-base font-bold text-orange-600 dark:text-orange-500">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                              }).format(statsEmpresas.empresaMaisFatura.valor)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Requerimentos:</span>
-                            <span className="font-semibold">{statsEmpresas.empresaMaisFatura.count}</span>
+                {/* Layout Principal - Cards Expandidos */}
+                <div className="space-y-6">
+                  {/* Cards de Resumo - Linha Superior (Largura Completa) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Requerimentos</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-2xl font-bold">{statsRequerimentos?.total || 0}</p>
+                            <span className="text-xs text-green-600 font-medium">+12%</span>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Empresa que mais usa banco de horas */}
-                  {statsEmpresas.empresaMaisBancoHoras && (
-                    <Card className="border-2 border-blue-500 dark:border-blue-600">
-                      <CardHeader className="pb-2 pt-3">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                          <Clock className="h-4 w-4 text-blue-500" />
-                          Empresa que Mais Usa Banco de Horas
-                        </CardTitle>
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        </div>
                       </CardHeader>
-                      <CardContent className="pb-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="font-bold text-sm truncate">{statsEmpresas.empresaMaisBancoHoras.nome}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">Total de Horas:</span>
-                            <span className="text-base font-bold text-blue-600 dark:text-blue-500">
-                              {converterMinutosParaHoras(statsEmpresas.empresaMaisBancoHoras.horas)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Requerimentos:</span>
-                            <span className="font-semibold">{statsEmpresas.empresaMaisBancoHoras.count}</span>
+                    </Card>
+
+                    <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Horas</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-2xl font-bold">{converterMinutosParaHoras(statsRequerimentos?.totalHoras || 0).replace('h', '')}</p>
                           </div>
                         </div>
-                      </CardContent>
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                          <Clock className="h-4 w-4 text-purple-600" />
+                        </div>
+                      </CardHeader>
                     </Card>
-                  )}
+
+                    <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Faturamento</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-2xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentos?.totalValor || 0)}</p>
+                            <span className="text-xs text-green-600 font-medium">+5.3%</span>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                        </div>
+                      </CardHeader>
+                    </Card>
+
+                    <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tickets</p>
+                          <p className="text-2xl font-bold">{statsRequerimentos?.totalTickets || 0}</p>
+                        </div>
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                          <Ticket className="h-4 w-4 text-orange-600" />
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </div>
+
+                  {/* Seção com Gráfico de Evolução Mensal e Cards de Destaque lado a lado */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    {/* Gráfico de Evolução Mensal - 2/3 da largura */}
+                    <div className="lg:col-span-2">
+                      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-gray-600" />
+                            <CardTitle className="text-lg font-semibold">Evolução Mensal</CardTitle>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Comparativo de Requerimentos por mês</p>
+                        </CardHeader>
+                        <CardContent>
+                          {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                              <AreaChart data={statsRequerimentos.porMes}>
+                                <defs>
+                                  <linearGradient id="colorRequerimentos" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis dataKey="mesNome" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="count" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth={2}
+                                  fillOpacity={1} 
+                                  fill="url(#colorRequerimentos)" 
+                                  name="Requerimentos"
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-[300px] text-gray-500">
+                              Sem dados para exibir
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Cards de Destaque - 1/3 da largura, organizados verticalmente com altura alinhada */}
+                    <div className="flex flex-col gap-4">
+                      {/* Maior Faturamento */}
+                      {statsEmpresas?.empresaMaisFatura && (
+                        <Card className="bg-white dark:bg-gray-800 shadow-sm flex-1">
+                          <CardHeader className="pb-3 h-full flex flex-col justify-center">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Maior Faturamento</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">
+                                  {statsEmpresas.empresaMaisFatura.nome.length > 20 
+                                    ? statsEmpresas.empresaMaisFatura.nome.substring(0, 20) + '...' 
+                                    : statsEmpresas.empresaMaisFatura.nome}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsEmpresas.empresaMaisFatura.valor)}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                                <Award className="h-4 w-4 text-orange-600" />
+                              </div>
+                            </div>
+                          </CardHeader>
+                        </Card>
+                      )}
+
+                      {/* Maior Banco de Horas */}
+                      {statsEmpresas?.empresaMaisBancoHoras && (
+                        <Card className="bg-white dark:bg-gray-800 shadow-sm flex-1">
+                          <CardHeader className="pb-3 h-full flex flex-col justify-center">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Banco de Horas</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">
+                                  {statsEmpresas.empresaMaisBancoHoras.nome.length > 20 
+                                    ? statsEmpresas.empresaMaisBancoHoras.nome.substring(0, 20) + '...' 
+                                    : statsEmpresas.empresaMaisBancoHoras.nome}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {converterMinutosParaHoras(statsEmpresas.empresaMaisBancoHoras.horas)}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                                <Clock className="h-4 w-4 text-blue-600" />
+                              </div>
+                            </div>
+                          </CardHeader>
+                        </Card>
+                      )}
+
+                      {/* Card de Módulos */}
+                      <Card className="bg-white dark:bg-gray-800 shadow-sm flex-1">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-gray-600" />
+                            <CardTitle className="text-sm font-semibold">Módulos</CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1">
+                          {statsRequerimentos?.porModulo ? (
+                            <div className="space-y-3">
+                              {Object.entries(statsRequerimentos.porModulo)
+                                .sort((a, b) => b[1].count - a[1].count)
+                                .slice(0, 5)
+                                .map(([modulo, data]) => (
+                                  <div key={modulo} className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                      {modulo}
+                                    </span>
+                                    <span className="text-xs font-medium">
+                                      {data.count}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-500">Sem dados</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* Mensagem quando não há dados */}
-              {(!statsRequerimentos || statsRequerimentos.total === 0) && (
-                <Card>
-                  <CardContent className="p-8">
-                    <div className="text-center">
-                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        Nenhum requerimento encontrado
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        Não há requerimentos para o ano selecionado: <strong>{anoSelecionado}</strong>
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Grid de 2 colunas para gráficos */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Gráfico de Pizza - Distribuição por Tipo de Cobrança */}
-                {statsRequerimentos && statsRequerimentos.porTipoCobranca && statsRequerimentos.porTipoCobranca.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <PieChart className="h-5 w-5 text-blue-600" />
-                        Distribuição por Tipo de Cobrança
-                      </CardTitle>
+                {/* Seção Inferior - Gráficos */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                  {/* Top Faturamento */}
+                  <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Award className={`h-4 w-4 ${topFaturamentoMode === 'faturamento' ? 'text-orange-600' : 'text-blue-600'}`} />
+                          <CardTitle className="text-sm font-semibold">
+                            {topFaturamentoMode === 'faturamento' ? 'Top Faturamento' : 'Top Banco de Horas'}
+                          </CardTitle>
+                        </div>
+                        <button
+                          onClick={() => setTopFaturamentoMode(prev => prev === 'faturamento' ? 'banco_horas' : 'faturamento')}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200"
+                          title={`Alternar para ${topFaturamentoMode === 'faturamento' ? 'Banco de Horas' : 'Faturamento'}`}
+                        >
+                          {topFaturamentoMode === 'faturamento' ? '💰→⏰' : '⏰→💰'}
+                        </button>
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      {statsRequerimentos.porTipoCobranca.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={350}>
+                      {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 ? (
+                        <div className="space-y-3">
+                          {(() => {
+                            if (topFaturamentoMode === 'faturamento') {
+                              // Modo Faturamento
+                              const empresasComFaturamento = Object.entries(statsEmpresas.porEmpresa)
+                                .filter(([_, data]) => data.valor > 0)
+                                .sort((a, b) => b[1].valor - a[1].valor)
+                                .slice(0, 5);
+                              
+                              const maiorValor = empresasComFaturamento[0]?.[1]?.valor || 1;
+                              
+                              return empresasComFaturamento.map(([empresa, data]) => {
+                                const porcentagem = (data.valor / maiorValor) * 100;
+                                return (
+                                  <div key={empresa} className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                        {empresa.length > 15 ? empresa.substring(0, 15) + '...' : empresa}
+                                      </span>
+                                      <span className="text-xs font-medium">
+                                        {new Intl.NumberFormat('pt-BR', { 
+                                          style: 'currency', 
+                                          currency: 'BRL'
+                                        }).format(data.valor)}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                      <div 
+                                        className="h-1.5 rounded-full transition-all duration-300 bg-orange-500 cursor-pointer"
+                                        style={{ 
+                                          width: `${porcentagem}%`
+                                        }}
+                                        title={`${porcentagem.toFixed(1)}% do maior valor`}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            } else {
+                              // Modo Banco de Horas
+                              const empresasComBancoHoras = Object.entries(statsEmpresas.porEmpresa)
+                                .filter(([_, data]) => data.horasBancoHoras > 0)
+                                .sort((a, b) => b[1].horasBancoHoras - a[1].horasBancoHoras)
+                                .slice(0, 5);
+                              
+                              const maiorHoras = empresasComBancoHoras[0]?.[1]?.horasBancoHoras || 1;
+                              
+                              return empresasComBancoHoras.map(([empresa, data]) => {
+                                const porcentagem = (data.horasBancoHoras / maiorHoras) * 100;
+                                return (
+                                  <div key={empresa} className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                        {empresa.length > 15 ? empresa.substring(0, 15) + '...' : empresa}
+                                      </span>
+                                      <span className="text-xs font-medium">
+                                        {converterMinutosParaHoras(data.horasBancoHoras)}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                      <div 
+                                        className="h-1.5 rounded-full transition-all duration-300 bg-blue-500 cursor-pointer"
+                                        style={{ 
+                                          width: `${porcentagem}%`
+                                        }}
+                                        title={`${porcentagem.toFixed(1)}% do maior valor`}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            }
+                          })()}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">Sem dados</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Distribuição Faturamento */}
+                  <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <PieChart className="h-4 w-4 text-green-600" />
+                        <CardTitle className="text-sm font-semibold">Distribuição de Faturamento</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {statsRequerimentos && statsRequerimentos.porTipoCobranca && statsRequerimentos.porTipoCobranca.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
                           <RechartsPieChart>
-                            <Pie
-                              data={statsRequerimentos.porTipoCobranca.map(item => ({
-                                name: item.tipo,
-                                value: item.count,
-                                porcentagem: item.porcentagem
-                              }))}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, porcentagem }) => `${name}: ${porcentagem.toFixed(1)}%`}
-                              outerRadius={100}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {statsRequerimentos.porTipoCobranca.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={getHexColor(entry.tipo)} />
-                              ))}
-                            </Pie>
+                            {(() => {
+                              // Buscar dados específicos por tipo
+                              const faturado = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Faturado');
+                              const horaExtra = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Hora Extra');
+                              const sobreaviso = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Sobreaviso');
+                              const bolsaoEnel = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Bolsão Enel');
+                              const bancoHoras = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Banco de Horas');
+                              const reprovado = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Reprovado');
+                              
+                              const categorias = [
+                                { name: 'Faturado', value: faturado?.valor || 0, tipo: 'Faturado' as TipoCobrancaType },
+                                { name: 'Hora Extra', value: horaExtra?.valor || 0, tipo: 'Hora Extra' as TipoCobrancaType },
+                                { name: 'Sobreaviso', value: sobreaviso?.valor || 0, tipo: 'Sobreaviso' as TipoCobrancaType },
+                                { name: 'Bolsão Enel', value: bolsaoEnel?.valor || 0, tipo: 'Bolsão Enel' as TipoCobrancaType },
+                                { name: 'Banco de Horas', value: bancoHoras?.valor || 0, tipo: 'Banco de Horas' as TipoCobrancaType },
+                                { name: 'Reprovado', value: reprovado?.valor || 0, tipo: 'Reprovado' as TipoCobrancaType }
+                              ]
+                              .filter(item => item.value > 0)
+                              .sort((a, b) => a.value - b.value); // Ordenar do menor para o maior (menor no centro)
+                              
+                              const anelEspessura = 12;
+                              const espacamento = 3;
+                              const raioInicial = 25;
+                              
+                              // Calcular ângulos com visibilidade mínima garantida
+                              const maxValue = Math.max(...categorias.map(c => c.value));
+                              const minAngle = 45; // Ângulo mínimo de 45 graus para visibilidade
+                              const maxAngle = 270; // Ângulo máximo disponível
+                              
+                              return categorias.map((categoria, index) => {
+                                // Calcular ângulo proporcional
+                                const proportionalAngle = (categoria.value / maxValue) * maxAngle;
+                                // Garantir ângulo mínimo para visibilidade
+                                const finalAngle = Math.max(proportionalAngle, minAngle);
+                                
+                                return (
+                                  <Pie
+                                    key={`anel-${index}`}
+                                    data={[
+                                      { name: categoria.name, value: categoria.value, tipo: categoria.tipo, originalValue: categoria.value },
+                                      { name: 'Vazio', value: 0.1, tipo: 'Vazio' }
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={raioInicial + (index * (anelEspessura + espacamento))}
+                                    outerRadius={raioInicial + (index * (anelEspessura + espacamento)) + anelEspessura}
+                                    startAngle={90}
+                                    endAngle={90 + finalAngle}
+                                    paddingAngle={0}
+                                    dataKey="value"
+                                    cornerRadius={6}
+                                  >
+                                    <Cell fill={getHexColor(categoria.tipo)} />
+                                    <Cell fill="transparent" />
+                                  </Pie>
+                                );
+                              });
+                            })()}
+                            
                             <Tooltip 
-                              formatter={(value: number, name: string, props: any) => [
-                                `${value} requerimentos (${props.payload.porcentagem.toFixed(1)}%)`,
-                                name
-                              ]}
+                              formatter={(value: number, name: string, props: any) => {
+                                if (name === 'Vazio') return null;
+                                
+                                // Usar valor original se disponível
+                                const originalValue = props?.payload?.originalValue || value;
+                                const totalValor = statsRequerimentos.porTipoCobranca.reduce((acc, item) => acc + item.valor, 0);
+                                const porcentagem = totalValor > 0 ? ((originalValue / totalValor) * 100).toFixed(1) : '0';
+                                return [
+                                  `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(originalValue)} (${porcentagem}%)`,
+                                  `${name}`
+                                ];
+                              }}
+                              labelFormatter={(label: string) => label !== 'Vazio' ? `Categoria: ${label}` : ''}
                             />
-                            <Legend />
                           </RechartsPieChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="flex items-center justify-center h-[350px] text-gray-500">
-                          Sem dados para exibir
+                        <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
+                          Sem dados
                         </div>
                       )}
                     </CardContent>
                   </Card>
-                )}
 
-                {/* Gráfico de Barras - Horas por Tipo de Cobrança */}
-                <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    Horas por Tipo de Cobrança
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart
-                      data={statsRequerimentos?.porTipoCobranca.map(item => ({
-                        tipo: item.tipo,
-                        horas: converterMinutosParaHorasDecimal(item.horas),
-                        valor: item.valor,
-                        tickets: item.tickets
-                      }))}
-                      margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="tipo" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                      />
-                      <YAxis width={50} />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => {
-                          if (name === 'horas') return [`${value.toFixed(2)}h`, 'Horas'];
-                          if (name === 'valor') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor'];
-                          if (name === 'tickets') return [`${value} tickets`, 'Tickets'];
-                          return [value, name];
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="horas" fill="#2563eb" name="Horas" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+                  {/* Tipo de Cobrança */}
+                  <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-gray-600" />
+                        <CardTitle className="text-sm font-semibold">Tipo de Cobrança</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {statsRequerimentos?.porTipoCobranca ? (
+                        <div className="space-y-3">
+                          {statsRequerimentos.porTipoCobranca
+                            .sort((a, b) => b.count - a.count)
+                            .map((item) => (
+                              <div key={item.tipo} className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    {item.tipo}
+                                  </span>
+                                  <span className="text-xs font-medium">
+                                    {item.count}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                  <div 
+                                    className="h-1.5 rounded-full transition-all duration-300 cursor-pointer"
+                                    style={{ 
+                                      width: `${item.porcentagem}%`,
+                                      backgroundColor: getHexColor(item.tipo)
+                                    }}
+                                    title={`${item.porcentagem.toFixed(1)}% do total`}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">Sem dados</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
 
-                {/* Gráfico de Barras - Valor Faturado por Tipo */}
-                <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-600" />
-                    Valor Faturado por Tipo de Cobrança
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart
-                      data={statsRequerimentos?.porTipoCobranca
-                        .filter(item => item.valor > 0)
-                        .map(item => ({
-                          tipo: item.tipo,
-                          valor: item.valor
-                        }))}
-                      margin={{ top: 20, right: 30, left: 80, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="tipo" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                      />
-                      <YAxis 
-                        width={70}
-                        tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
-                      />
-                      <Tooltip 
-                        formatter={(value: number) => [
-                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                          'Valor'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="valor" fill="#2563eb" name="Valor Faturado" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              </div>
-
-              {/* Grid de 2 colunas - Top 10 Empresas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Gráfico de Barras - Top 10 Empresas por Faturamento */}
-                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="h-5 w-5 text-orange-600" />
-                      Top 10 Empresas por Faturamento
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart
-                        data={Object.entries(statsEmpresas.porEmpresa)
-                          .filter(([_, data]) => data.valor > 0)
-                          .sort((a, b) => b[1].valor - a[1].valor)
-                          .slice(0, 10)
-                          .map(([empresa, data]) => ({
-                            empresa: empresa.length > 20 ? empresa.substring(0, 20) + '...' : empresa,
-                            valor: data.valor,
-                            requerimentos: data.count
-                          }))}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          type="number" 
-                          tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-                        />
-                        <YAxis dataKey="empresa" type="category" width={140} />
-                        <Tooltip 
-                          formatter={(value: number, name: string) => {
-                            if (name === 'valor') return [
-                              new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                              'Valor Faturado'
-                            ];
-                            return [value, 'Requerimentos'];
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="valor" fill="#ea580c" name="Valor Faturado" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-                {/* Gráfico de Barras - Top 10 Empresas por Banco de Horas */}
-                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-600" />
-                      Top 10 Empresas por Banco de Horas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart
-                        data={Object.entries(statsEmpresas.porEmpresa)
-                          .filter(([_, data]) => data.horasBancoHoras > 0)
-                          .sort((a, b) => b[1].horasBancoHoras - a[1].horasBancoHoras)
-                          .slice(0, 10)
-                          .map(([empresa, data]) => ({
-                            empresa: empresa.length > 20 ? empresa.substring(0, 20) + '...' : empresa,
-                            horas: converterMinutosParaHorasDecimal(data.horasBancoHoras),
-                            requerimentos: data.bancoHoras
-                          }))}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="empresa" type="category" width={140} />
-                        <Tooltip 
-                          formatter={(value: number, name: string) => {
-                            if (name === 'horas') return [`${value.toFixed(2)}h`, 'Horas'];
-                            return [value, 'Requerimentos'];
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="horas" fill="#2563eb" name="Horas" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                {/* Mensagem quando não há dados */}
+                {(!statsRequerimentos || statsRequerimentos.total === 0) && (
+                  <EmptyState
+                    icon={FileText}
+                    title="Nenhum requerimento encontrado"
+                    description={`Não há requerimentos para o ano selecionado: ${anoSelecionado}`}
+                  />
                 )}
               </div>
+            )}
 
-              {/* Gráfico de Barras - Por Módulo (largura completa) */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-blue-600" />
-                    Requerimentos por Módulo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart
-                      data={Object.entries(statsRequerimentos?.porModulo || {})
+            {/* Aba de Elogios */}
+            {activeTab === 'elogios' && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Heart className="h-6 w-6 text-pink-600" />
+                  Elogios
+                </h2>
+
+                {/* Cards de Resumo - Elogios */}
+                <DashboardGrid columns={4} gap="md">
+                  <StatCard
+                    title="Total de Elogios"
+                    value={statsElogios?.total || 0}
+                    description={`Ano: ${anoSelecionado}`}
+                    icon={Heart}
+                    color="pink"
+                  />
+                  
+                  <StatCard
+                    title="Compartilhados"
+                    value={statsElogios?.compartilhados || 0}
+                    description={statsElogios?.total ? `${((statsElogios.compartilhados / statsElogios.total) * 100).toFixed(1)}% do total` : '0% do total'}
+                    icon={Users}
+                    color="green"
+                  />
+                  
+                  <StatCard
+                    title="Registrados"
+                    value={statsElogios?.registrados || 0}
+                    description="Aguardando aprovação"
+                    icon={Calendar}
+                    color="orange"
+                  />
+                  
+                  <StatCard
+                    title="Satisfação Média"
+                    value={statsElogios?.satisfacaoMedia ? `${statsElogios.satisfacaoMedia.toFixed(1)}/5` : 'N/A'}
+                    description="Nota média"
+                    icon={Star}
+                    color="yellow"
+                  />
+                </DashboardGrid>
+
+                {/* Mensagem quando não há dados */}
+                {(!statsElogios || statsElogios.total === 0) && (
+                  <EmptyState
+                    icon={Heart}
+                    title="Nenhum elogio encontrado"
+                    description={`Não há elogios para o ano selecionado: ${anoSelecionado}`}
+                  />
+                )}
+
+                {/* Gráficos de Elogios */}
+                {statsElogios && statsElogios.total > 0 && (
+                  <DashboardGrid columns={2} gap="lg">
+                    {/* Gráfico de Evolução Mensal */}
+                    <ModernChart
+                      title="Evolução Mensal de Elogios"
+                      icon={TrendingUp}
+                      data={statsElogios.porMes}
+                      type="area"
+                      height={320}
+                      color="#ec4899"
+                      dataKey="count"
+                      xAxisKey="mesNome"
+                      gradient={true}
+                      formatTooltip={(value, name) => [
+                        `${value} elogios`,
+                        name === 'count' ? 'Total' : 'Compartilhados'
+                      ]}
+                    />
+
+                    {/* Top Empresas com Mais Elogios */}
+                    <ModernChart
+                      title="Top 10 Empresas com Mais Elogios"
+                      icon={Award}
+                      data={Object.entries(statsElogios.porEmpresa)
                         .sort((a, b) => b[1].count - a[1].count)
-                        .map(([modulo, data]) => ({
-                          modulo,
-                          quantidade: data.count,
-                          horas: converterMinutosParaHorasDecimal(data.horas)
+                        .slice(0, 10)
+                        .map(([empresa, data]) => ({
+                          name: empresa.length > 15 ? empresa.substring(0, 15) + '...' : empresa,
+                          value: data.count,
+                          compartilhados: data.compartilhados
                         }))}
+                      type="bar"
+                      height={320}
+                      color="#ec4899"
+                      dataKey="value"
+                      xAxisKey="name"
                       layout="vertical"
-                      margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="modulo" type="category" width={110} />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => {
-                          if (name === 'horas') return [`${value.toFixed(2)}h`, 'Horas'];
-                          return [value, name === 'quantidade' ? 'Requerimentos' : name];
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="quantidade" fill="#2563eb" name="Requerimentos" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Gráficos de Evolução Mensal */}
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-4">
-                Evolução Mensal
-              </h3>
-
-              {/* Grid de 2 colunas - Evolução Mensal */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Gráfico de Linha - Evolução de Requerimentos */}
-                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
-                      Requerimentos por Mês
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <LineChart data={statsRequerimentos.porMes}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: number) => [`${value} requerimentos`, 'Quantidade']}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="count" 
-                          stroke="#2563eb" 
-                          strokeWidth={3}
-                          name="Requerimentos"
-                          dot={{ fill: '#2563eb', r: 5 }}
-                          activeDot={{ r: 7 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              ) : null}
-
-                {/* Gráfico de Área - Evolução de Horas */}
-                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-600" />
-                      Horas Trabalhadas por Mês
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <AreaChart data={statsRequerimentos.porMes}>
-                        <defs>
-                          <linearGradient id="colorHoras" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0.1}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: number) => [`${converterMinutosParaHorasDecimal(value).toFixed(2)}h`, 'Horas']}
-                        />
-                        <Legend />
-                        <Area 
-                          type="monotone" 
-                          dataKey="horas" 
-                          stroke="#2563eb" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorHoras)" 
-                          name="Horas"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              ) : null}
-
-                {/* Gráfico de Barras - Valor Faturado por Mês */}
-                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.valor > 0).length > 0 ? (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-blue-600" />
-                      Valor Faturado por Mês
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <BarChart data={statsRequerimentos.porMes.filter(m => m.valor > 0)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis 
-                          tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
-                        />
-                        <Tooltip 
-                          formatter={(value: number) => [
-                            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                            'Valor'
-                          ]}
-                        />
-                        <Legend />
-                        <Bar dataKey="valor" fill="#2563eb" name="Valor Faturado" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              ) : null}
-
-                {/* Gráfico de Linha - Tickets por Mês */}
-                {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.filter(m => m.tickets > 0).length > 0 ? (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Ticket className="h-5 w-5 text-blue-600" />
-                      Tickets Consumidos por Mês
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <LineChart data={statsRequerimentos.porMes.filter(m => m.tickets > 0)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: number) => [`${value} tickets`, 'Tickets']}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="tickets" 
-                          stroke="#2563eb" 
-                          strokeWidth={3}
-                          name="Tickets"
-                          dot={{ fill: '#2563eb', r: 5 }}
-                          activeDot={{ r: 7 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                ) : null}
-              </div>
-
-              {/* Grid de 2 colunas - Gráficos Empilhados por Tipo */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Gráfico de Área Empilhada - Horas por Tipo de Cobrança por Mês */}
-                {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-600" />
-                      Horas por Tipo de Cobrança - Evolução Mensal
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <AreaChart data={statsRequerimentos.porMesTipo} margin={{ top: 20, right: 30, left: 60, bottom: 20 }}>
-                        <defs>
-                          {statsRequerimentos.porTipoCobranca.map((item, index) => (
-                            <linearGradient key={item.tipo} id={`color${item.tipo.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={getHexColor(item.tipo)} stopOpacity={0.8}/>
-                              <stop offset="95%" stopColor={getHexColor(item.tipo)} stopOpacity={0.3}/>
-                            </linearGradient>
-                          ))}
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis width={50} />
-                        <Tooltip 
-                          formatter={(value: number, name: string) => [`${value.toFixed(2)}h`, name]}
-                        />
-                        <Legend />
-                        {statsRequerimentos.porTipoCobranca.map((item) => (
-                          <Area
-                            key={item.tipo}
-                            type="monotone"
-                            dataKey={`${item.tipo}_horas`}
-                            stackId="1"
-                            stroke={getHexColor(item.tipo)}
-                            fill={`url(#color${item.tipo.replace(/\s/g, '')})`}
-                            name={item.tipo}
-                          />
-                        ))}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-                {/* Gráfico de Barras Empilhadas - Valor Faturado por Tipo de Cobrança por Mês */}
-                {statsRequerimentos && statsRequerimentos.porMesTipo && statsRequerimentos.porMesTipo.length > 0 && (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-blue-600" />
-                      Valor Faturado por Tipo de Cobrança - Evolução Mensal
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart data={statsRequerimentos.porMesTipo} margin={{ top: 20, right: 30, left: 70, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mesNome" />
-                        <YAxis 
-                          width={60}
-                          tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip 
-                          formatter={(value: number, name: string) => [
-                            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                            name
-                          ]}
-                        />
-                        <Legend />
-                        {statsRequerimentos.porTipoCobranca
-                          .filter(item => item.valor > 0)
-                          .map((item) => (
-                            <Bar
-                              key={item.tipo}
-                              dataKey={`${item.tipo}_valor`}
-                              stackId="a"
-                              fill={getHexColor(item.tipo)}
-                              name={item.tipo}
-                            />
-                          ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                      formatTooltip={(value, name) => [
+                        `${value} elogios`,
+                        name === 'value' ? 'Total' : 'Compartilhados'
+                      ]}
+                    />
+                  </DashboardGrid>
                 )}
               </div>
-            </div>
-          </>
+            )}
+
+            {/* Aba de Clientes */}
+            {activeTab === 'clientes' && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Users className="h-6 w-6 text-purple-600" />
+                  Clientes
+                </h2>
+
+                {/* Cards de Resumo - Clientes */}
+                <DashboardGrid columns={4} gap="md">
+                  <StatCard
+                    title="Total de Empresas"
+                    value={statsEmpresas ? Object.keys(statsEmpresas.porEmpresa).length : 0}
+                    description="Empresas ativas"
+                    icon={Building2}
+                    color="purple"
+                  />
+                  
+                  <StatCard
+                    title="Maior Faturamento"
+                    value={statsEmpresas?.empresaMaisFatura?.nome?.length > 15 
+                      ? statsEmpresas.empresaMaisFatura.nome.substring(0, 15) + '...' 
+                      : statsEmpresas?.empresaMaisFatura?.nome || 'N/A'}
+                    description={statsEmpresas?.empresaMaisFatura ? 
+                      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsEmpresas.empresaMaisFatura.valor)
+                      : 'R$ 0'
+                    }
+                    icon={DollarSign}
+                    color="indigo"
+                  />
+                  
+                  <StatCard
+                    title="Mais Banco de Horas"
+                    value={statsEmpresas?.empresaMaisBancoHoras?.nome?.length > 15 
+                      ? statsEmpresas.empresaMaisBancoHoras.nome.substring(0, 15) + '...' 
+                      : statsEmpresas?.empresaMaisBancoHoras?.nome || 'N/A'}
+                    description={statsEmpresas?.empresaMaisBancoHoras ? 
+                      converterMinutosParaHoras(statsEmpresas.empresaMaisBancoHoras.horas)
+                      : '0h'
+                    }
+                    icon={Clock}
+                    color="cyan"
+                  />
+                  
+                  <StatCard
+                    title="Mais Ativa"
+                    value={statsEmpresas ? 
+                      (Object.entries(statsEmpresas.porEmpresa)
+                        .sort((a, b) => b[1].count - a[1].count)[0]?.[0]?.length > 15 
+                        ? Object.entries(statsEmpresas.porEmpresa)
+                          .sort((a, b) => b[1].count - a[1].count)[0]?.[0].substring(0, 15) + '...'
+                        : Object.entries(statsEmpresas.porEmpresa)
+                          .sort((a, b) => b[1].count - a[1].count)[0]?.[0]) || 'N/A'
+                      : 'N/A'
+                    }
+                    description={statsEmpresas ? 
+                      `${Object.entries(statsEmpresas.porEmpresa)
+                        .sort((a, b) => b[1].count - a[1].count)[0]?.[1]?.count || 0} requerimentos`
+                      : '0 requerimentos'
+                    }
+                    icon={TrendingUp}
+                    color="teal"
+                  />
+                </DashboardGrid>
+
+                {/* Gráfico de Empresas */}
+                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-purple-600" />
+                        Atividade por Empresa
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart
+                          data={Object.entries(statsEmpresas.porEmpresa)
+                            .sort((a, b) => b[1].count - a[1].count)
+                            .slice(0, 15)
+                            .map(([empresa, data]) => ({
+                              empresa: empresa.length > 20 ? empresa.substring(0, 20) + '...' : empresa,
+                              requerimentos: data.count,
+                              valor: data.valor,
+                              horas: converterMinutosParaHorasDecimal(data.horas)
+                            }))}
+                          layout="vertical"
+                          margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis dataKey="empresa" type="category" width={140} />
+                          <Tooltip 
+                            formatter={(value: number, name: string) => {
+                              if (name === 'valor') return [
+                                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                                'Valor Faturado'
+                              ];
+                              if (name === 'horas') return [`${value.toFixed(2)}h`, 'Horas'];
+                              return [value, 'Requerimentos'];
+                            }}
+                          />
+                          <Legend />
+                          <Bar dataKey="requerimentos" fill="#8b5cf6" name="Requerimentos" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </AdminLayout>

@@ -98,17 +98,23 @@ export const exportarFaturamentoExcel = (
         };
 
         // Converter horas para formato decimal do Excel (horas/24)
-        const converterHorasParaExcel = (horas: string | number): number => {
+        const converterHorasParaExcel = (horas: string | number | undefined): number => {
+          if (!horas) return 0;
+          
           if (typeof horas === 'string') {
             if (horas.includes(':')) {
               const [h, m] = horas.split(':').map(Number);
               return (h + m / 60) / 24; // Formato de tempo do Excel
             }
-            return 0;
+            // Se é string mas não tem ':', tentar converter para número
+            const numHoras = parseFloat(horas);
+            return isNaN(numHoras) ? 0 : numHoras / 24;
           }
+          
           if (typeof horas === 'number') {
             return horas / 24; // Formato de tempo do Excel
           }
+          
           return 0;
         };
 
@@ -117,12 +123,12 @@ export const exportarFaturamentoExcel = (
           req.cliente_nome || 'N/A',
           req.modulo,
           req.linguagem,
-          converterHorasParaExcel(req.horas_funcional),
-          converterHorasParaExcel(req.horas_tecnico),
-          converterHorasParaExcel(req.horas_total),
+          converterHorasParaExcel(req.horas_funcional) as any,
+          converterHorasParaExcel(req.horas_tecnico) as any,
+          converterHorasParaExcel(req.horas_total) as any,
           formatarData(req.data_envio),
           req.data_aprovacao ? formatarData(req.data_aprovacao) : '-',
-          req.valor_total_geral || 0, // Valor como número
+          req.valor_total_geral || 0 as any, // Valor como número
           req.mes_cobranca || '-',
           req.observacao || '-',
           req.autor_nome || '-',

@@ -1,0 +1,1107 @@
+import { useState, useMemo } from 'react';
+import AdminLayout from '@/components/admin/LayoutAdmin';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+import { StatCard } from '@/components/admin/dashboard/StatCard';
+import { ModernChart } from '@/components/admin/dashboard/ModernChart';
+import { DashboardGrid } from '@/components/admin/dashboard/DashboardGrid';
+import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
+import { EmptyState } from '@/components/admin/dashboard/EmptyState';
+import { useRequerimentos } from '@/hooks/useRequerimentos';
+import { useElogios } from '@/hooks/useElogios';
+import { usePermissions } from '@/hooks/usePermissions';
+import { 
+  DollarSign, 
+  Clock, 
+  FileText, 
+  BarChart3,
+  PieChart,
+  Ticket,
+  TrendingUp,
+  Award,
+  Building2,
+  Heart,
+  Users,
+  Calendar,
+  Star
+} from 'lucide-react';
+import { converterMinutosParaHoras, converterMinutosParaHorasDecimal } from '@/utils/horasUtils';
+import { getHexColor } from '@/utils/requerimentosColors';
+import type { TipoCobrancaType, ModuloType } from '@/types/requerimentos';
+import {
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Area,
+  AreaChart
+} from 'recharts';
+
+const Dashboard = () => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  
+  const [anoSelecionado, setAnoSelecionado] = useState(currentYear);
+  const [filtroModulo, setFiltroModulo] = useState<ModuloType | 'todos'>('todos');
+  const [activeTab, setActiveTab] = useState<string>('');
+
+  // Hooks de permissões
+  const { hasPermission } = usePermissions();
+
+  // Buscar dados de requerimentos - buscar TODOS sem filtro
+  const { data: requerimentos, isLoading: loadingRequerimentos } = useRequerimentos();
+  
+  // Buscar dados de elogios
+  const { data: elogios, isLoading: loadingElogios } = useElogios();
+
+  // Definir abas disponíveis baseadas nas permissões
+  const availableTabs = useMemo(() => {
+    const tabs = [];
+    
+    if (hasPermission('lancar_requerimentos', 'view') || hasPermission('faturar_requerimentos', 'view')) {
+      tabs.push({
+        key: 'requerimentos',
+        label: 'Requerimentos',
+        icon: FileText,
+        screenKeys: ['lancar_requerimentos', 'faturar_requerimentos']
+      });
+    }
+    
+    if (hasPermission('lancar_pesquisas', 'view') || hasPermission('enviar_pesquisas', 'view')) {
+      tabs.push({
+        key: 'elogios',
+        label: 'Elogios',
+        icon: Heart,
+        screenKeys: ['lancar_pesquisas', 'enviar_pesquisas']
+      });
+    }
+    
+    if (hasPermission('empresas_clientes', 'view') || hasPermission('clientes', 'view')) {
+      tabs.push({
+        key: 'clientes',
+        label: 'Clientes',
+        icon: Users,
+        screenKeys: ['empresas_clientes', 'clientes']
+      });
+    }
+    
+    return tabs;
+  }, [hasPermission]);
+
+  // Definir aba ativa inicial
+  useMemo(() => {
+    if (!activeTab && availableTabs.length > 0) {
+      setActiveTab(availableTabs[0].key);
+    }
+  }, [availableTabs, activeTab]);
+
+tos
+
+    console.log('Dashboard - Requerimentos  0);
+    
+    if (!requerimentos || requerimentos.length === 0) {
+    
+      return null;
+    }
+
+    ls;
+
+    // Filtrar por ano
+
+      dados = dados.fi{
+        if (!r.mes_cobrane;
+        const ano = r.mes_cobranc1];
+        return parseInt(ano) === anoSelecido;
+      });
+      console.log(`Dashboard - Após filtro de an;
+    }
+
+    /
+) {
+      dados = dados.fi;
+      console.log(`Dashboard - Após);
+    }
+
+    c;
+    
+    // Debug: verificar formatoras
+    
+      console.log('Dashboard - Exemplo detal);
+    }
+    
+    /
+    > {
+      const horas = r.horas_total;
+      if (typeof horas === 'string' && horas.incl) {
+        // Formato HH:MM - convertminutos
+        const [h, m] = horas.split(':').map(Number);
+        return acc + (h * 60 + m);
+      }
+      // Já é número (minutos)
+      r| 0);
+    }, 0);
+    
+    const );
+    );
+
+    // Agrupar por tipo de cobrança
+
+      const tipo = r.tipo_cobranca;
+      if (!acc[tipo]) {
+        acc[tipo] = { count: 0, hor
+      }
+      acc[tipo].count++;
+      
+      // Converter horasente
+      l;
+      if (typeof horas === 'string' &{
+        const [h, m] = horas.splitr);
+        acc[tipo].horas += (h * 60 + m);
+      } else {
+        acc[tipo].horas += Number(horas) || 0;
+      }
+      
+      a|| 0;
+       0;
+      return acc;
+    }, {} as Record<TipoCobrancaType, { count: number; horas:mber }>);
+
+    // Calcular porcentagens
+{
+      tipo: tipo as TipoCobrancaType,
+      porcentagem: (data.count / total) * 100,
+      count: data.count,
+      horas: data.horas,
+      valor: data.valor,
+      tickets: data.tick
+    }));
+
+    // A módulo
+ r) => {
+      const modulo = r.moo;
+      if (!acc[modulo]) {
+        acc[modulo] = { count:};
+      }
+      acc[modulo].count++;
+      
+      // Converter horas c
+      total;
+      if (typeof horas === 'string' &{
+        const [h, m] = horas.split
+        acc[modulo].horas += (h * 60 + m);
+      } else {
+        acc[modulo].horas += Number(horas);
+      }
+      
+      rc;
+    },);
+
+    // Agrupar por mês (para gráfico de evolução mensal)
+
+      const mes = r.mes_cobranca || 'Sem mês';
+      if (!acc[mes]) {
+        acc[mes] = { count: 0, horas: 0, valor
+      }
+      acc[mes].count++;
+      
+      // Converter hora
+      
+      if (typeof horas === 'string' &{
+        const [h, m] = horas.splitmber);
+        acc[mes].horas += (h * 60 + m);
+      } else {
+        acc[mes].horas += Number(horas) || 0;
+      }
+      
+      a 0;
+      ;
+      return acc;
+    }, {} as Record<string, { count: number; horas: number; 
+
+    // Ordenar por mês
+
+      .filter(([mes]) 
+      .sort((a, b) => {
+        const [mesA] = a[0].split('/');
+        const [mesB] = t('/');
+        return parseInt(mesA) - parseIn);
+      })
+      .map(([mes, data]) => ({
+        s,
+        mesNome: new Date(2000, ''),
+        ...data
+      }));
+
+    const = {
+
+      totalHoras,
+      totalValor,
+      totalTickets,
+      porTipoCobranca: porcentagensipo,
+      ,
+      porMes: porMesOrdo
+    };
+
+    cos:', {
+      total,
+      totalHoras,
+      t
+      ,
+      tiposCobranca: porcentagensTipo
+      modulos: Object.keys(porModulength,
+      meses: porMesOrdenado.length
+    });
+
+    return result;
+  }, [requerimentos, filtroModulo, anoSelecionado]);
+
+  // C
+  const statsElogios = useMemo(() => {
+    co0);
+    
+    if (!elogios || elogios.length === 0) {
+ível');
+      return null;
+    }
+
+    let dados = elogios;
+
+    // Filtrar por ano
+    if (anoSelecionado) {
+      da
+        if (!e.created_at) ret
+        const ano = new Date(e.created_at).getFullYear();
+        return ano === anoSelecionado;
+      });
+      console.log(`Dashboard - Após filtro de ano (${anoSel
+    }
+
+    const total = dados.length;
+    const c).length;
+    consgth;
+
+    // Aga
+{
+      const empresa a';
+      if (!a
+        acc[empre
+      }
+      acc[empresa].count++;
+      if (e.status === 'compartilhado') 
+        acc[empros++;
+      }
+      return acc;
+    },
+
+    // Agrupar por mês
+    const po e) => {
+      const data 
+      const mes =()}`;
+      if (!acc[mes]{
+        acc[mes] = { count: 0, compartilhados
+      }
+      acc[mes].count++;
+      iado') {
+
+      }
+      return acc;
+
+
+    // Ordenar por mês
+    const porMesOrdenado = Object.entries(porMes)
+    
+        const [mesA] = a[0].split('/');
+        const [mesB] = b[0].split('/');
+        return parmesB);
+      })
+({
+        mes,
+'.', ''),
+        ...data
+      }));
+
+    // Calcular satisfação média
+    const elogiosComNota = dados.filter(e => e.nota_satis
+    const satisfacaoMedia = elogiosCom0 
+      ? e 
+      : 0;
+
+ = {
+      total,
+      compartilhados,
+      registrados,
+aoMedia,
+      porEmpresa,
+      porMes: porMesOrdenado
+    };
+
+    console.log('Dashboard - Stats elogios finais:', {
+      total,
+      compartilhados,
+      registrados,
+      satisfacaoMedia,
+      e
+      meses: porMength
+    });
+
+    return result;
+  }, [elogios, anoSelecionado]);
+
+  // Calcular estatísticas por empresa
+  const statsEmpresas 
+    if (!requerimentos || requerimentos.length === ) {
+      rl;
+    }
+
+    let dados = requerimentos;
+
+    // Filtrar po ano
+    if (anoSelecionado) {
+{
+        if (!r.mes_cobe;
+        const ano = r.mes_cobranca.split('/')[1];
+        return parseInto;
+      });
+    }
+
+    // A filtros
+    if (filtroModulo !== 'todos') {
+      dados 
+    }
+
+    // Agrsa
+ r) => {
+      const empresa = r.cliente_';
+      if (!acc[empresa]) {
+        acc[empresa] = { 
+          count: 0, 
+          
+
+          tickets: 0
+          baHoras: 0,
+          horasBancoH
+        };
+      }
+      acc[empresa+;
+      
+      retamente
+
+      let horasEmMinutos = 0;
+      if (ty
+        const [h, m] 
+        horasEmMin
+      } else {
+        horasEmMinutos = Number(horas) || 0;
+      }
+      
+s;
+      acc[empresa]| 0;
+      acc[empresa].tickets += Nu| 0;
+ 
+      // Contar banco de horas
+      if (r.tipo_cobranca === 'Banco de
+        acc[empresa].bancoHoras++;
+        acc[empres
+      }
+  
+      return acc;
+
+      count: number; 
+      horas: number; 
+      valor: number; 
+      tickets: number;
+      bancoHoras: number;
+      horasBancoHoras: number;
+    }>);
+
+a
+    const empresaMaisF
+      .filter(([_, data]) => data.valor > 0)
+      .sort((a, b) => b[1].valor - a[1].valor)[0];
+
+as
+    const empresaMaisBancoEmpresa)
+      .filter(([_, data]) => data.bancoHoras > 0)
+      .sort((a, b) => b[1].horasBancoHoras - a[1].horas)[0];
+
+    return {
+      porEmpresa,
+      empresaMaisFat
+        nome: empresra[0],
+        valor: empres
+        count: empresaMa
+      } : null,
+      empras ? {
+       oras[0],
+        horas: empresaMaisBras,
+      oras
+      } : null
+    };
+  }, [requerimentos, filtroModo]);
+
+  const isLoading = loadingRequerimentos || loadingEos;
+
+  // Se não hár mensagem
+  if (availableTabs.length === 0) {
+    ret (
+      
+        <div className="flex items-center j h-64">
+          <div className="text-center">
+            <Building2 className="h-12 w-12 text-gray-400 mx-aut4" />
+      mb-2">
+              Acesso Restrito
+            </h3>
+            <p className="text-gra-400">
+              Você não possui permissão para visualizarrd.
+       p>
+      >
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        
+ap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-board</h1>
+            <p className="text-gray-600 darkstema</p>
+          </div>
+
+          {/* Linha com Abas e Filtros */}
+          <div className="flex flex-col sm:flex-row justify-
+            {/* Abas Compactas */}
+            <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-80">
+
+            con;
+                r
+                  <button
+                    key={tab.key}
+                    onClick={() => setActi.key)}
+                    className={`flex item
+               tab.key
+                        ? 'bg-white dark:bg-gray-700 t
+                        : 'text-gray-60200'
+                    }`}
+                  >
+              
+      >
+                  </button>
+
+              })}
+v>
+
+            {/* Filtros */}
+            ">
+              <Sele}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placehol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[currentYe=> (
+                 >
+                      {ano}
+                    </SelectItem>
+                ))}
+                ent>
+              ect>
+
+       && (
+   os')}>
+">
+          " />
+                 ger>
+                  <SelectContent>
+                    <Sele>
+                    <SelectItem value="Comex"tem>
+               
+                    <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
+                    <SelectItem value="Gallery">Gallery</SelectItem>
+                em>
+ctItem>
+                    <SelectItem value="pw.m>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <DashboardLoading />
+        ) : (
+          <div className="space-y-6">
+            {/* Conteúdo das Abas */}
+            
+            {/* Aba de 
+            {active (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text">
+                  <FileText600" />
+                  s
+                <
+
+ */}
+                <div classN>
+                  {/* Cards de Resumo - Linha Supe
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="bg-white dark:bgm">
+                      <CardHeader className="flex f>
+                        <div>
+                          <p cl/p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-2xl font-bold">>
+                           span>
+                          </div>
+                       </div>
+                        <div claed-lg">
+                       00" />
+</div>
+                      </CardHeader>
+                    </Card>
+
+                    <Card className="bg-white dark:bg-grsm">
+                      <CardHeader 
+                        <div>
+                          <p className="text-xs font-medium text-gray-60s</p>
+                          <div className="flex items-center gap-
+                            <p className="text-2xl font-bold">{con
+                            <span className="text-xs text-gray-500">:50</span>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-purple-100 dark:bg-pu
+                          <Clock className="h-4 w-4 text-purple-600" />
+                        </div>
+                      </C>
+                Card>
+
+                ">
+              
+>
+                      
+                          <div>
+             k</p>
+                            <span cla/span>
+                          </div>
+            >
+                        <div className="">
+                          <DollarSign className
+                        </div>
+                      </CardHeader>
+                    </Card>
+
+                    <sm">
+">
+                        <div>
+                          <p className="ts</p>
+                          <p className="text-2xl font-bold">{statsRequerime>
+                        </div>
+                        <div className="p-2 bg-orange-100 dark:bg-orange-9
+                          <Ticket className="h-4 w-4 text-orange-600" />
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </div>
+
+                  {/* Gráfico de
+                  <Card classN-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <Trend" />
+                        <CardTitle dTitle>
+                      </div>
+ras</p>
+                    </CardHeader>
+                    <CardContent>
+                      {statsR 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={statsRequerimentos.porMes}>
+                            <defs>
+                              <linearGradient id="colorRequerimentos" x1="0" yy2="1">
+                                
+                              y={0.1}/>
+                              </linearGradient>
+                            </defs>
+                            <C>
+                            <XAxis  />
+                           
+>
+                            <Legend />
+                            <Area 
+                             " 
+                              dataKey="count" 
+                              stroke="#3b82f6" 
+                              strokeWidth={2}
+                              fillOpacity={1} 
+                              fi" 
+                              "
+                            />
+                          </AreaChart>
+                        </RespContainer>
+                      ) : (
+                        <di>
+xibir
+                        </div>
+                      )}
+                    </CardCon
+                  </Card>
+
+                  {/* Cards de
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Maior Faturamento */}
+                    {statsEmpr (
+                      <Card classNa
+                        <Ca">
+                        between">
+    <div>
+                              <p className="text-xs font-medium text-</p>
+                              <p className="text-sm font-bold text-gra">
+                                {statsEmpresas.0 
+                                  ? statsEmpresas.empresaMais
+                                  : statsEmpresas.empresaMaisFatura.no
+                              </p>
+                          ay-400">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractio)}
+                              </p>
+                            </dv>
+                            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                              <Award className="h-4 w-4 text-orange-600" />
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    )}
+
+                    {/* Maior Ban}
+                    {statsEmpresas?.empresaMaisBancoHoras && (
+                      <Card className="bg-white dark:
+                        <CardHeaderpb-3">
+                          <div classNbetween">
+                            <div>
+                              <p
+                              <p className="
+                                {statsEmpres0 
+                                  ? statsEmpr
+                                  : statsEmas.nome}
+                              </p>
+                              <p className="text-xs text-gra0">
+                                {converterMinutoras)}
+                              </p>
+                            </div>
+                            <div className="">
+                         " />
+                            </div>
+                          </div>
+                        </Car>
+                      
+                    )}
+
+
+                    <Card className="bg-white dark:bg-gray">
+                      <CardHeader className="pb-3">
+                        <div className="fle-2">
+                          <BarChart3 className="h-4 w-4  />
+                          <CardTitle className="text-sm font-semibold">Móditle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {statsRequerimentos?.porModulo ? (
+                          <div className="space-y-3">
+                            {Object.entries(statsRequerimentos.porModulo)
+                              .sort((a, b) => b[1].count - a[1].count)
+                              .slice(0, 5)
+                              .m> (
+                                <div key={modulo} className="flex items-center justi>
+                                  <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                
+                                
+                                  <span className="text-xs font-medium">
+                                    {data.count}
+                                >
+                              div>
+                              ))}
+                          <
+                    
+dos</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Seção Inferior - Gráficos */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                  {/* Top Faturamento */}
+                  <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div class
+                        <Award className="h-4 w-4 text-orange-600" />
+                        <CardTitle className="text-sm font-semibold">Top Faturamento</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {statsEmpresas && Object.keys(statsEmpresas.porEm 0 ? (
+                        <Respons={200}>
+                          <Bart
+                            data={O)
+                           )
+                    r)
+)
+                              .map(([empr
+                                name: empresa.length > 12 ? empresa.subs
+                                value: data.valor
+                              }))}
+                            layout="vertical"
+                            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                          >
+                            <XAxie />
+                            <YAxi}} />
+                            <Tooltip 
+                              formatter={(value: nu
+                                new Intl.NumberFormat('pt-BR', { style:),
+                                'Valor'
+                              ]}
+                            />
+                            <Bar dataKey="value" fill="#ea580c" radius={[0, 2, 2, 0]} />
+                          </BarChart>
+                        </ResponsiveContai>
+                      ) : (
+                        <div className="flex items-center justify-centm">
+                          Sem dados
+                        </div>
+                      )}
+                    </CardContet>
+                  </Card>
+
+                  {/* Distribuição de Faturamento */}
+                  <Card 
+                    <CardHeader cl-3">
+                      <dip-2">
+                      
+                    e>
+
+                    </CardHeader>
+                    <CardContent>
+                      {statsRequeriment ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <RechartsPieChart>
+                            <Pie
+                              data={statsRequerimentos.porTipoCobranca
+                                .filter(item => item.valor > 0)
+                          ({
+                               em.tipo,
+                               m.valor
+                                }))}
+                              cx="50%"
+                              cy=
+                              innerRadius={40}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="v"
+                            >
+                              {statsRequerimentos.porTipoCobranca
+                                .filter(item =>
+                                 (
+                                  <Cell key)} />
+                                ))}
+                         >
+                            <Tooltip 
+                              formatter={(value: number) => [
+                                new
+                                'Valor'
+                              ]}
+                            />
+                          </Re>
+                        </Reiner>
+                      ) : (
+                        <div classN">
+                          Sem dados
+                        <
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Tipo de Co*/}
+                  <Card-sm">
+
+                      <div className="flex items-ce>
+                        <BarChart3 className="h-4 w-4 text-gray-600" /
+                        <CardTitle className="tle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {staca ? (
+                        <div cl>
+                          {statobranca
+                            .sort((a, b) => b.count - a.count)
+                            .map((item) => (
+                              <div key={it1">
+                              
+                                  <span className="text-xs text-gray0">
+                                    {item.tipo}
+                                  </span>
+                                  <span classNamum">
+                                    {item.count}
+                                  </span>
+                                </di
+                                <div5">
+                                  <div 
+                                    classNam
+                                    style={{
+                                      width,
+                           .tipo)
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Mensagem quando não há d */}
+                {(!statsR) && (
+                  <EmptyState
+                    icon={FileText}
+                    title="Nrado"
+                    de}`}
+                  />
+                )}
+>
+            )}
+
+            {/* Aba de Elogios */}
+            {activeTab === 'elogios' && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-cent2">
+                  <Heart c00" />
+                  Elogios
+                </h2>
+
+                {/* Cards de Resumo - Elogios */}
+                <DashboardGrid columns={4} gap="md">
+                  <StatCard
+                    title="Total de Elogio
+                    value={statsElogios?.total || 0}
+                    description={`Ano: ${anoSelecionado}`}
+                    icon={Heart}
+                    color="pink"
+                  />
+                  
+                  <StatCard
+                    title="Compartilhad
+                    value={statsElog
+                    description={statsElogios?.total ? `${((statsElogios.compartilhados / statsElogios
+                    icon={Users}
+                    color="green"
+                  />
+                  
+                  <StatCard
+                    title="Registrados"
+                    value={statsEls || 0}
+                    description="Aguão"
+                    icon={Calendar}
+                    color="or"
+                  />
+                  
+                  <StatCard
+                    ti
+                    value={stats/A'}
+                    des
+                    n={Star}
+"
+>
+
+
+                {/* Mensagem quando não há dados */}
+                {(!statsElo& (
+                  <EmptyState
+                    icon={Heart}
+                    title="Nenhum elogio encontrado"
+                  
+                  />
+                )}
+
+                {/* Gráficos de Elogios */}
+                {statsEl && (
+                  <DashboardGrid
+                    {/* Gráfico de Evolução Mensal */}
+                    <ModernChart
+                      title="Evolução Mensal de Elogios"
+                      icon={TrendingUp}
+                      data={statses}
+                      type="area"
+                      height={320}
+                      color="#ec4899"
+                      dataKey="count"
+                      xAxisKey=""
+                      gradient={true}
+                      formatTooltip={(value, nam [
+                        `${value} elogios`,
+                        name === 'count' ? 'Total' : 'Compartdos'
+                      ]}
+                    />
+
+                    {/* Top Empresas com Mais E
+                    <ModernChart
+                      title="Top 10 Empresas co"
+                      icon={Award}
+                      data={Object.entries(st
+                        .sort.count)
+                        .slice(0, 10)
+                        .map(([empresa, data]) => ({
+                          name: eesa,
+                          value: d,
+                          compartilhalhados
+                        }))}
+                      type="bar"
+                      height={320}
+                      color="#ec99"
+                      dataKey="
+                      xAxisKey="name"
+                      layout="vertical"
+                      formatTooltip={(value, ne) => [
+                        `${
+                        name === 'value' ? 'Total' : 'Compartilhados'
+                      ]}
+                    />
+                  </Dash
+                )}
+              </div>
+            )}
+
+            {/* Aba de Clientes */}
+            {activeTab(
+              <div className">
+                <h2 className="text-2xl font-bold text-gray-900 d
+                  <Users className="h-6 w-6 text-purple-600" />
+                  Clientes
+                </h2>
+
+                {/* Cards de ntes */}
+                <DashboardGrid columns={4} gap="md">
+                  <StatCard
+                    title="Total de Empresas"
+                    value={statsEmpresas 0}
+                    description="Empresas ativas"
+                    icon={Building2}
+                    color="purple"
+                  />
+                  
+                  <Stard
+                    title="Maior Faturamento"
+                    value={st5 
+                      ? statsEmpresas.e' 
+                      : statsEmpres|| 'N/A'}
+                    description={statsEm? 
+                      new Intl.Numbe
+                      : 'R$ 0'
+                    }
+                    icon={DollarSign}
+                    color="indigo"
+                  />
+                  
+                  <StatCard
+                    title="Mais Banco de Horas"
+                    value=
+                      ? 
+                      : statsEmp
+                    description={statsEmpresas?.empresaMaisBancoHoras ? 
+                      converteroras)
+                      : '0h'
+                    }
+                    ik}
+yan"
+                  />
+                  
+                  <StatCard
+                    title="Mais Ativa"
+                    value={statsEmpresas ? 
+                      (Object.entries(statsEmpresas.porpresa)
+                        .sort(15 
+                        ? Objmpresa)
+                          .so..'
+                        : Object.entries(statsEmpresas.porEmpresa)
+                          .soA'
+                      : 'N/A'
+                    }
+                    description={statsE? 
+                      `${Object.entries(sta)
+                        .sort((a, b) => b[1imentos`
+                      : '0 rentos'
+                    }
+                    ingUp}
+                    color="teal"
+                  />
+                </DashboardGrid>
+
+                {/* Gráfico de Empresas 
+                {statsEmpresas && Ob& (
+                  <Card>
+                    <CardHead
+                      <CardTitle c
+                        <Building2 className="h-5 w-5 text-purple-600" />
+                        sa
+                      </CardTit
+                    </CardHeader>
+                    <CardContent>
+                      <Responsive
+                        <BChart
+                        esa)
+                            .sor)
+                            .slice(0, 15)
+                            .ma]) => ({
+                              empresa: e,
+                              ,
+                     a.valor,
+                    ras)
+
+                          layout="vertical"
+                          margin={{ top: 5, right: 30, left: 150, bot}}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                        >
+                          <YAx{140} />
+                          <Tooltip 
+                            formatter={(value: number, name: string => {
+                              if (name === 'valor') rrn [
+                                e),
+                               
+                              ];
+                              if (name === 'horas') return [`${valu
+                              r
+                            }}
+                          />
+                          <Legend />
+                          <Bar dataKey=" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default Dashboard;
