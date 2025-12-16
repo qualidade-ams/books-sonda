@@ -65,8 +65,10 @@ import { useCacheManager } from '@/hooks/useCacheManager';
 
 import { useElogios, useEstatisticasElogios, useAtualizarElogio } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useElogiosTemplates } from '@/hooks/useElogiosTemplates';
 import { emailService } from '@/services/emailService';
 import { elogiosTemplateService } from '@/services/elogiosTemplateService';
+import * as elogiosService from '@/services/elogiosService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { getBadgeResposta } from '@/utils/badgeUtils';
 import SeletorTemplateElogios from '@/components/admin/elogios/SeletorTemplateElogios';
@@ -116,6 +118,7 @@ export default function EnviarElogios() {
 
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
   const [elogiosSelecionados, setElogiosSelecionados] = useState<string[]>([]);
+  const [elogiosEnviadosSelecionados, setElogiosEnviadosSelecionados] = useState<string[]>([]);
   const [templateSelecionado, setTemplateSelecionado] = useState<string>('');
 
   // Filtros - Buscar apenas elogios com status "compartilhado"
@@ -135,7 +138,8 @@ export default function EnviarElogios() {
 
   // Hooks
   const { data: elogios = [], isLoading, error, refetch } = useElogios(filtrosComAba);
-  const atualizarElogio = useAtualizarElogio();
+  const atualizarElogio = useAtualizarElogio({ silent: true }); // Silenciar toasts individuais
+  const { elogiosTemplateOptions } = useElogiosTemplates();
   
   // Estatísticas separadas para cada status (para contadores das abas)
   const { data: estatisticasColaboradores } = useEstatisticasElogios({
@@ -200,7 +204,7 @@ export default function EnviarElogios() {
     }
   };
 
-  // Funções de seleção
+  // Funções de seleção para aba "Enviar Colaboradores"
   const handleSelecionarElogio = (id: string, selecionado: boolean) => {
     if (selecionado) {
       setElogiosSelecionados(prev => [...prev, id]);
@@ -217,16 +221,74 @@ export default function EnviarElogios() {
     }
   };
 
+  // Funções de seleção para aba "Histórico de Enviados"
+  const handleSelecionarElogioEnviado = (id: string, selecionado: boolean) => {
+    if (selecionado) {
+      setElogiosEnviadosSelecionados(prev => [...prev, id]);
+    } else {
+      setElogiosEnviadosSelecionados(prev => prev.filter(elogioId => elogioId !== id));
+    }
+  };
+
+  const handleSelecionarTodosEnviados = (selecionado: boolean) => {
+    if (selecionado) {
+      setElogiosEnviadosSelecionados(elogios.map(e => e.id));
+    } else {
+      setElogiosEnviadosSelecionados([]);
+    }
+  };
+
+  // Função para obter todos os elogios selecionados (de ambas as abas)
+  const getTodosElogiosSelecionados = () => {
+    return [...elogiosSelecionados, ...elogiosEnviadosSelecionados];
+  };
+
+  // Função para limpar todas as seleções
+  const limparTodasSelecoes = () => {
+    setElogiosSelecionados([]);
+    setElogiosEnviadosSelecionados([]);
+  };
+
+  // Função para buscar todos os elogios selecionados (de ambas as abas)
+  const buscarTodosElogiosSelecionados = async (): Promise<ElogioCompleto[]> => {
+    const todosIds = getTodosElogiosSelecionados();
+    
+    // Se não há seleções, retornar array vazio
+    if (todosIds.length === 0) return [];
+    
+    // Buscar elogios de ambos os status
+    const [elogiosCompartilhados, elogiosEnviados] = await Promise.all([
+      // Buscar elogios compartilhados (se houver selecionados)
+      elogiosSelecionados.length > 0 
+        ? elogiosService.buscarElogios({ ...filtros, status: ['compartilhado'] })
+        : Promise.resolve([]),
+      // Buscar elogios enviados (se houver selecionados)
+      elogiosEnviadosSelecionados.length > 0
+        ? elogiosService.buscarElogios({ ...filtros, status: ['enviado'] })
+        : Promise.resolve([])
+    ]);
+    
+    // Filtrar apenas os selecionados
+    const elogiosFiltrados = [
+      ...elogiosCompartilhados.filter(e => elogiosSelecionados.includes(e.id)),
+      ...elogiosEnviados.filter(e => elogiosEnviadosSelecionados.includes(e.id))
+    ];
+    
+    return elogiosFiltrados;
+  };
+
   // Função para gerar HTML do relatório de elogios usando template dinâmico
   const gerarRelatorioElogios = async (templateId?: string): Promise<string> => {
     try {
       const templateParaUsar = templateId || templateSelecionado;
       console.log('🎨 Gerando relatório de elogios com template dinâmico:', templateParaUsar);
       
-      const elogiosSelecionadosData = elogios.filter(e => elogiosSelecionados.includes(e.id));
+      // Buscar todos os elogios selecionados (de ambas as abas)
+      const elogiosSelecionadosData = await buscarTodosElogiosSelecionados();
       
       console.log(`📊 Processando ${elogiosSelecionadosData.length} elogios selecionados`);
       console.log(`📅 Período: ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
+      console.log(`🔄 Incluindo elogios já enviados: ${elogiosEnviadosSelecionados.length > 0 ? 'Sim' : 'Não'}`);
       
       // Processar template com os dados dos elogios
       const resultado = await elogiosTemplateService.processarTemplate(
@@ -254,7 +316,12 @@ export default function EnviarElogios() {
 
   // Função fallback com template hardcoded (mantida para emergências)
   const gerarRelatorioElogiosFallback = (): string => {
-    const elogiosSelecionadosData = elogios.filter(e => elogiosSelecionados.includes(e.id));
+    // Para fallback, usar apenas os elogios da aba atual (limitação da função síncrona)
+    const elogiosSelecionadosData = elogios.filter(e => 
+      abaAtiva === 'enviar-colaboradores' 
+        ? elogiosSelecionados.includes(e.id)
+        : elogiosEnviadosSelecionados.includes(e.id)
+    );
     
     // Dividir elogios em grupos de 4 para criar linhas (atualizado para 4 como no template)
     const elogiosPorLinha: typeof elogiosSelecionadosData[] = [];
@@ -385,7 +452,8 @@ export default function EnviarElogios() {
 
   // Função para abrir modal de email
   const handleAbrirModalEmail = async () => {
-    if (elogiosSelecionados.length === 0) {
+    const todosElogiosSelecionados = getTodosElogiosSelecionados();
+    if (todosElogiosSelecionados.length === 0) {
       toast({
         title: "Erro",
         description: "Selecione pelo menos um elogio para enviar",
@@ -402,12 +470,21 @@ export default function EnviarElogios() {
     setDestinatariosTexto('');
     setDestinatariosCCTexto('');
     setAnexos([]);
-    setModalEmailAberto(true);
     
-    // Gerar template inicial se já houver um selecionado
-    if (templateSelecionado) {
+    // Auto-selecionar primeiro template disponível se nenhum estiver selecionado
+    if (!templateSelecionado && elogiosTemplateOptions.length > 0) {
+      const primeiroTemplate = elogiosTemplateOptions[0];
+      console.log('🎯 Auto-selecionando template:', primeiroTemplate);
+      setTemplateSelecionado(primeiroTemplate.value);
+      
+      // Gerar template automaticamente
+      await regenerarTemplate(primeiroTemplate.value);
+    } else if (templateSelecionado) {
+      // Gerar template inicial se já houver um selecionado
       await regenerarTemplate();
     }
+    
+    setModalEmailAberto(true);
   };
 
   // Função para extrair emails
@@ -606,27 +683,39 @@ export default function EnviarElogios() {
 
       if (resultado.success) {
         // Atualizar status dos elogios selecionados para "enviado"
+        // Apenas elogios que estavam com status "compartilhado" precisam ser atualizados
+        // Elogios já "enviados" mantêm o mesmo status (reenvio)
         try {
-          await Promise.all(
-            elogiosSelecionados.map(async (elogioId) => {
-              await atualizarElogio.mutateAsync({ 
-                id: elogioId, 
-                dados: { status: 'enviado' } 
-              });
-            })
-          );
+          if (elogiosSelecionados.length > 0) {
+            await Promise.all(
+              elogiosSelecionados.map(async (elogioId) => {
+                await atualizarElogio.mutateAsync({ 
+                  id: elogioId, 
+                  dados: { status: 'enviado' } 
+                });
+              })
+            );
+          }
         } catch (error) {
           console.error('Erro ao atualizar status dos elogios:', error);
         }
 
+        const totalElogios = getTodosElogiosSelecionados().length;
+        const elogiosReenviados = elogiosEnviadosSelecionados.length;
+        
+        let mensagemSucesso = `Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`;
+        if (elogiosReenviados > 0) {
+          mensagemSucesso += ` (${elogiosReenviados} elogio(s) reenviado(s))`;
+        }
+
         toast({
           title: "Sucesso",
-          description: `Email enviado com sucesso para ${emailsValidos.length} destinatário(s)!`
+          description: mensagemSucesso
         });
         
         setModalEmailAberto(false);
         setConfirmacaoAberta(false);
-        setElogiosSelecionados([]);
+        limparTodasSelecoes(); // Limpar seleções de ambas as abas
         setDestinatarios([]);
         setDestinatariosCC([]);
         setDestinatariosTexto('');
@@ -684,19 +773,17 @@ export default function EnviarElogios() {
           </div>
 
           <div className="flex gap-2">
-            {abaAtiva === 'enviar-colaboradores' && (
-              <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
-                <Button
-                  onClick={handleAbrirModalEmail}
-                  disabled={isLoading || elogiosSelecionados.length === 0}
-                  size="sm"
-                  title={elogiosSelecionados.length === 0 ? 'Selecione elogios para enviar' : `Enviar ${elogiosSelecionados.length} elogio(s) selecionado(s)`}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Disparar Elogios ({elogiosSelecionados.length})
-                </Button>
-              </ProtectedAction>
-            )}
+            <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
+              <Button
+                onClick={handleAbrirModalEmail}
+                disabled={isLoading || getTodosElogiosSelecionados().length === 0}
+                size="sm"
+                title={getTodosElogiosSelecionados().length === 0 ? 'Selecione elogios para enviar' : `Enviar ${getTodosElogiosSelecionados().length} elogio(s) selecionado(s)`}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Disparar Elogios ({getTodosElogiosSelecionados().length})
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 
@@ -816,12 +903,26 @@ export default function EnviarElogios() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Informação de selecionados - apenas para aba enviar colaboradores */}
-            {abaAtiva === 'enviar-colaboradores' && elogiosSelecionados.length > 0 && (
+            {/* Informação de selecionados - mostra total de ambas as abas */}
+            {getTodosElogiosSelecionados().length > 0 && (
               <div className="flex flex-wrap gap-4 items-center">
                 <Badge variant="outline" className="text-xs sm:text-sm">
-                  {elogiosSelecionados.length} selecionado{elogiosSelecionados.length !== 1 ? 's' : ''}
+                  {getTodosElogiosSelecionados().length} selecionado{getTodosElogiosSelecionados().length !== 1 ? 's' : ''}
+                  {elogiosEnviadosSelecionados.length > 0 && (
+                    <span className="ml-1 text-orange-600">
+                      ({elogiosEnviadosSelecionados.length} para reenvio)
+                    </span>
+                  )}
                 </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={limparTodasSelecoes}
+                  className="text-xs"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Limpar Seleção
+                </Button>
               </div>
             )}
           </div>
@@ -986,6 +1087,13 @@ export default function EnviarElogios() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={elogios.length > 0 && elogios.every(e => elogiosEnviadosSelecionados.includes(e.id))}
+                              onCheckedChange={handleSelecionarTodosEnviados}
+                              aria-label="Selecionar todos"
+                            />
+                          </TableHead>
                           <TableHead className="w-[120px] text-center">Chamado</TableHead>
                           <TableHead className="w-[180px] text-center">Empresa</TableHead>
                           <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
@@ -1001,6 +1109,13 @@ export default function EnviarElogios() {
                           
                           return (
                             <TableRow key={elogio.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={elogiosEnviadosSelecionados.includes(elogio.id)}
+                                  onCheckedChange={(checked) => handleSelecionarElogioEnviado(elogio.id, checked as boolean)}
+                                  aria-label={`Selecionar ${elogio.pesquisa?.cliente} para reenvio`}
+                                />
+                              </TableCell>
                               <TableCell className="text-center">
                                 {elogio.pesquisa?.nro_caso ? (
                                   <div className="flex items-center justify-center gap-2 whitespace-nowrap">
@@ -1281,7 +1396,19 @@ export default function EnviarElogios() {
                 <br /><br />
                 <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
                 <br />
-                <strong>Elogios selecionados:</strong> {elogiosSelecionados.length}
+                <strong>Total de elogios:</strong> {getTodosElogiosSelecionados().length}
+                {elogiosSelecionados.length > 0 && (
+                  <>
+                    <br />
+                    <strong>Novos elogios:</strong> {elogiosSelecionados.length}
+                  </>
+                )}
+                {elogiosEnviadosSelecionados.length > 0 && (
+                  <>
+                    <br />
+                    <strong className="text-orange-600">Reenvios:</strong> {elogiosEnviadosSelecionados.length}
+                  </>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

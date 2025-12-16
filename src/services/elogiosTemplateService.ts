@@ -167,35 +167,21 @@ export class ElogiosTemplateService {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        .divider-row { display: flex; align-items: center; width: 100%; margin: 48px auto; }
-        .divider-line { flex: 1; height: 2px; background-color: #000000; }
-        .quote-cell { width: 60px; text-align: center; display: flex; justify-content: center; align-items: center; }
-        .quote-text { font-size: 40px; line-height: 1; font-weight: bold; display: inline-block; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6; }
         .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; width: 100%; }
         .header-image { width: 100%; display: block; }
         .title-section { text-align: center; padding: 24px 48px; }
-        .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; }
-        .title-sub { font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #000000; }
-        .title-month { font-size: 18px; font-weight: bold; margin: 0; color: #000000; letter-spacing: 1px; }
+        .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; font-family: Arial, sans-serif; }
+        .title-sub { font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #000000; font-family: Arial, sans-serif; }
+        .title-month { font-size: 18px; font-weight: bold; margin: 0; color: #000000; letter-spacing: 1px; font-family: Arial, sans-serif; }
         .main-content { max-width: 1200px; margin: 0 auto; padding: 40px 48px; }
-        .elogios-row { display: table; width: 100%; margin-bottom: 40px; }
-        .elogio-cell { display: table-cell; width: 25%; padding: 10px; vertical-align: top; }
-        .elogio-card { padding: 16px; border-radius: 8px; height: 100%; }
-        .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; }
-        .elogio-response { font-weight: bold; margin-bottom: 8px; }
-        .elogio-comment { margin-bottom: 16px; font-size: 12px; line-height: 1.5; }
-        .elogio-info { font-size: 12px; color: #000000; font-weight: bold; }
-        .divider-row { display: table; width: 100%; margin: 48px auto; }
-        .divider-line { height: 2px; background-color: #000000; }
-        .quote-cell { width: 60px; text-align: center; vertical-align: middle; }
-        .quote-text { font-size: 40px; line-height: 1; font-weight: bold; }
-        .quote-blue { color: #0066FF; }
-        .quote-pink { color: #FF0066; }
         .footer-image { width: 100%; height: auto; display: block; }
         @media only screen and (max-width: 600px) {
             .title-section { padding: 16px; }
             .main-content { padding: 20px 16px; }
-            .elogio-cell { display: block; width: 100% !important; margin-bottom: 24px; }
+            table { width: 100% !important; }
+            td { display: block !important; width: 100% !important; margin-bottom: 24px; }
         }
     </style>
 </head>
@@ -203,7 +189,6 @@ export class ElogiosTemplateService {
     <div class="email-container">
         <!-- Header -->
         <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Header" class="header-image">
-        <img src="http://books-sonda.vercel.app/images/header-elogios-2.png" alt="Header" class="header-image">
         
         <!-- Título -->
         <div class="title-section">
@@ -374,7 +359,7 @@ export class ElogiosTemplateService {
   }
 
   /**
-   * Gera HTML dos elogios organizados em linhas de 3
+   * Gera HTML dos elogios organizados em linhas de 3 usando tabelas HTML para compatibilidade com email
    */
   private async gerarHtmlElogios(elogios: ElogioCompleto[]): Promise<string> {
     // Dividir elogios em grupos de 3 para criar linhas
@@ -386,8 +371,10 @@ export class ElogiosTemplateService {
     let html = '';
 
     for (const [linhaIndex, linha] of elogiosPorLinha.entries()) {
-      // Linha de elogios
-      html += '<div class="elogios-row">';
+      // Tabela para linha de elogios
+      html += `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 40px;">
+        <tr>`;
       
       for (const elogio of linha) {
         const nomeColaborador = elogio.pesquisa?.prestador || 'Colaborador';
@@ -400,47 +387,63 @@ export class ElogiosTemplateService {
         const nomeEmpresaAbreviado = await this.obterNomeAbreviadoEmpresa(nomeEmpresaOriginal);
         
         html += `
-        <div class="elogio-cell">
-          <div class="elogio-card">
-            <h4 class="elogio-name">${nomeColaborador}</h4>`;
+          <td width="33.33%" style="padding: 10px; vertical-align: top;">
+            <div style="border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; height: 100%; background: #ffffff;">
+              <h4 style="color: #0066FF; font-weight: bold; font-size: 14px; margin: 0 0 16px 0; text-transform: uppercase; font-family: Arial, sans-serif;">${nomeColaborador}</h4>`;
         
         if (resposta) {
-          html += `<p class="elogio-response">${resposta}</p>`;
+          html += `<p style="font-weight: bold; margin: 0 0 8px 0; font-family: Arial, sans-serif;">${resposta}</p>`;
         }
         if (comentario) {
-          html += `<p class="elogio-comment">${comentario}</p>`;
+          html += `<p style="margin: 0 0 16px 0; font-size: 12px; line-height: 1.5; font-family: Arial, sans-serif;">${comentario}</p>`;
         }
         
         html += `
-            <div class="elogio-info">
-              <p><strong>Cliente:</strong> ${cliente}</p>
-              <p><strong>Empresa:</strong> ${nomeEmpresaAbreviado}</p>
+              <div style="font-size: 12px; color: #000000; font-weight: bold; font-family: Arial, sans-serif;">
+                <p style="margin: 0 0 4px 0;"><strong>Cliente:</strong> ${cliente}</p>
+                <p style="margin: 0;"><strong>Empresa:</strong> ${nomeEmpresaAbreviado}</p>
+              </div>
             </div>
-          </div>
-        </div>`;
+          </td>`;
       }
       
-      html += '</div>';
+      // Preencher células vazias se a linha tiver menos de 3 elogios
+      const celulasVazias = 3 - linha.length;
+      for (let i = 0; i < celulasVazias; i++) {
+        html += `<td width="33.33%" style="padding: 10px;"></td>`;
+      }
+      
+      html += `
+        </tr>
+      </table>`;
       
       // Adicionar divisor entre linhas (exceto após a última linha)
       if (linhaIndex < elogiosPorLinha.length - 1) {
         const isEven = linhaIndex % 2 === 0;
-        const quoteColor = isEven ? 'quote-blue' : 'quote-pink';
+        const quoteColor = isEven ? '#0066FF' : '#FF0066';
         
         if (isEven) {
           // Aspas à direita (azul)
           html += `
-          <div class="divider-row">
-            <div class="divider-line"></div>
-            <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
-          </div>`;
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 48px auto;">
+            <tr>
+              <td style="height: 2px; background-color: #000000;"></td>
+              <td width="60px" style="text-align: center; vertical-align: middle;">
+                <span style="font-size: 40px; line-height: 1; font-weight: bold; color: ${quoteColor}; font-family: Arial, sans-serif;">"</span>
+              </td>
+            </tr>
+          </table>`;
         } else {
           // Aspas à esquerda (rosa)
           html += `
-          <div class="divider-row">
-            <div class="quote-cell"><span class="quote-text ${quoteColor}">"</span></div>
-            <div class="divider-line"></div>
-          </div>`;
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 48px auto;">
+            <tr>
+              <td width="60px" style="text-align: center; vertical-align: middle;">
+                <span style="font-size: 40px; line-height: 1; font-weight: bold; color: ${quoteColor}; font-family: Arial, sans-serif;">"</span>
+              </td>
+              <td style="height: 2px; background-color: #000000;"></td>
+            </tr>
+          </table>`;
         }
       }
     }
@@ -469,7 +472,7 @@ export class ElogiosTemplateService {
       'FOOTER_IMAGE_URL': 'http://books-sonda.vercel.app/images/rodape-elogios.png'
     };
 
-    // Template hardcoded como fallback com CSS completo
+    // Template hardcoded como fallback com CSS simplificado para tabelas HTML
     const templateFallback = `<!DOCTYPE html>
 <html>
 <head>
@@ -481,28 +484,16 @@ export class ElogiosTemplateService {
         .email-container { max-width: 1200px; margin: 0 auto; background-color: #ffffff; width: 100%; }
         .header-image { width: 100%; display: block; }
         .title-section { text-align: center; padding: 24px 48px; }
-        .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; }
-        .title-sub { font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #000000; }
-        .title-month { font-size: 18px; font-weight: bold; margin: 0; color: #000000; letter-spacing: 1px; }
+        .title-main { font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #000000; line-height: 1.3; font-family: Arial, sans-serif; }
+        .title-sub { font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #000000; font-family: Arial, sans-serif; }
+        .title-month { font-size: 18px; font-weight: bold; margin: 0; color: #000000; letter-spacing: 1px; font-family: Arial, sans-serif; }
         .main-content { max-width: 1200px; margin: 0 auto; padding: 40px 48px; }
-        .elogios-row { display: table; width: 100%; margin-bottom: 40px; }
-        .elogio-cell { display: table-cell; width: 25%; padding: 10px; vertical-align: top; }
-        .elogio-card { padding: 16px; border-radius: 8px; height: 100%; }
-        .elogio-name { color: #0066FF; font-weight: bold; font-size: 14px; margin-bottom: 16px; text-transform: uppercase; }
-        .elogio-response { font-weight: bold; margin-bottom: 8px; }
-        .elogio-comment { margin-bottom: 16px; font-size: 12px; line-height: 1.5; }
-        .elogio-info { font-size: 12px; color: #000000; font-weight: bold; }
-        .divider-row { display: table; width: 100%; margin: 48px auto; }
-        .divider-line { height: 2px; background-color: #000000; }
-        .quote-cell { width: 60px; text-align: center; vertical-align: middle; }
-        .quote-text { font-size: 40px; line-height: 1; font-weight: bold; }
-        .quote-blue { color: #0066FF; }
-        .quote-pink { color: #FF0066; }
         .footer-image { width: 100%; height: auto; display: block; }
         @media only screen and (max-width: 600px) {
             .title-section { padding: 16px; }
             .main-content { padding: 20px 16px; }
-            .elogio-cell { display: block; width: 100% !important; margin-bottom: 24px; }
+            table { width: 100% !important; }
+            td { display: block !important; width: 100% !important; margin-bottom: 24px; }
         }
     </style>
 </head>

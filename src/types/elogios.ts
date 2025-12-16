@@ -2,8 +2,8 @@
 // TIPOS: SISTEMA DE ELOGIOS
 // =====================================================
 
-export type StatusElogio = 'registrado' | 'compartilhado' | 'arquivado';
-export type TipoAtualizacaoElogio = 'criacao' | 'atualizacao' | 'compartilhamento' | 'arquivamento';
+export type StatusElogio = 'registrado' | 'compartilhado' | 'arquivado' | 'enviado';
+export type TipoAtualizacaoElogio = 'criacao' | 'atualizacao' | 'compartilhamento' | 'arquivamento' | 'envio';
 
 // Interface principal do Elogio
 export interface Elogio {
@@ -98,4 +98,5 @@ export const STATUS_ELOGIO_OPTIONS = [
   { value: 'registrado', label: 'Registrado' },
   { value: 'compartilhado', label: 'Compartilhado' },
   { value: 'arquivado', label: 'Arquivado' },
+  { value: 'enviado', label: 'Enviado por Email' },
 ] as const;

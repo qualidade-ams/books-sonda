@@ -57,8 +57,9 @@ export function useCriarElogio() {
 /**
  * Hook para atualizar elogio
  */
-export function useAtualizarElogio() {
+export function useAtualizarElogio(options?: { silent?: boolean }) {
   const queryClient = useQueryClient();
+  const { silent = false } = options || {};
 
   return useMutation({
     mutationFn: ({ id, dados }: { id: string; dados: Partial<ElogioFormData> }) =>
@@ -67,11 +68,15 @@ export function useAtualizarElogio() {
       queryClient.invalidateQueries({ queryKey: ['elogios'] });
       queryClient.invalidateQueries({ queryKey: ['elogio', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['estatisticas-elogios'] });
-      toast.success('Elogio atualizado com sucesso!');
+      if (!silent) {
+        toast.success('Elogio atualizado com sucesso!');
+      }
     },
     onError: (error) => {
       console.error('Erro ao atualizar elogio:', error);
-      toast.error('Erro ao atualizar elogio');
+      if (!silent) {
+        toast.error('Erro ao atualizar elogio');
+      }
     },
   });
 }

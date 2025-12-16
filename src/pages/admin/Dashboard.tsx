@@ -9,7 +9,7 @@ import { DashboardGrid } from '@/components/admin/dashboard/DashboardGrid';
 import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
 import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
-import { useElogios } from '@/hooks/useElogios';
+import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { usePermissions } from '@/hooks/usePermissions';
 import { 
   DollarSign, 
@@ -24,7 +24,9 @@ import {
   Heart,
   Users,
   Calendar,
-  Star
+  Star,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { converterMinutosParaHoras, converterMinutosParaHorasDecimal } from '@/utils/horasUtils';
 import { getHexColor } from '@/utils/requerimentosColors';
@@ -46,9 +48,10 @@ import {
 } from 'recharts';
 
 // Componente para as sub-abas de elogios
-const ElogiosSubTabs = ({ statsElogios, anoSelecionado }: { 
+const ElogiosSubTabs = ({ statsElogios, anoSelecionado, elogios }: { 
   statsElogios: any; 
-  anoSelecionado: number; 
+  anoSelecionado: number;
+  elogios?: any[];
 }) => {
   const [activeElogiosTab, setActiveElogiosTab] = useState<string>('visao-geral');
 
@@ -81,7 +84,7 @@ const ElogiosSubTabs = ({ statsElogios, anoSelecionado }: {
 
       {/* Conteúdo das sub-abas */}
       {activeElogiosTab === 'visao-geral' && (
-        <VisaoGeralElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+        <VisaoGeralElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} elogios={elogios} />
       )}
       
       {activeElogiosTab === 'mapeamento' && (
@@ -104,10 +107,12 @@ const ElogiosSubTabs = ({ statsElogios, anoSelecionado }: {
 };
 
 // Componente Visão Geral
-const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: { 
+const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: { 
   statsElogios: any; 
-  anoSelecionado: number; 
+  anoSelecionado: number;
+  elogios?: any[];
 }) => {
+  const [empresasExpandido, setEmpresasExpandido] = useState(false);
   return (
     <div className="space-y-6">
       {/* Cards principais sem cor */}
@@ -115,10 +120,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Totais</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Processados</p>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold">{statsElogios?.total || 0}</p>
-                <span className="text-xs font-medium text-blue-600">+8%</span>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -130,9 +134,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Colaboradores Citados</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Validados</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">42</p>
+                <p className="text-2xl font-bold">{statsElogios?.compartilhados || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -144,10 +148,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Enviados por Email</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">4.9/5</p>
-                <span className="text-xs font-medium text-green-600">+0.2</span>
+                <p className="text-2xl font-bold">{statsElogios?.enviados || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -159,9 +162,11 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Canais Externos</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">15</p>
+                <p className="text-2xl font-bold">
+                  {statsElogios?.satisfacaoMedia ? `${statsElogios.satisfacaoMedia.toFixed(1)}/5` : 'N/A'}
+                </p>
               </div>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
@@ -173,7 +178,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Volume de Elogios */}
+        {/* Volume de Elogios por Mês */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -181,18 +186,92 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
               <CardTitle className="text-lg font-semibold">Volume de Elogios</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Comparativo Interno vs Externo (Últimos 6 meses)
+              Evolução mensal no ano {anoSelecionado}
             </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-600">● Interno</span>
-                <span className="text-sm text-orange-600">● Externo</span>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={statsElogios?.porMes || []}
+                  margin={{
+                    top: 10,
+                    right: 30,
+                    left: 0,
+                    bottom: 0,
+                  }}
+                >
+                  <defs>
+                    <linearGradient id="colorValidados" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="colorEnviados" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis 
+                    dataKey="mesNome" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                    formatter={(value: any, name: string) => {
+                      if (name === 'compartilhados') return [value, 'Validados'];
+                      if (name === 'enviados') return [value, 'Enviados'];
+                      return [value, name];
+                    }}
+                    labelFormatter={(label) => `Mês: ${label}`}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="compartilhados"
+                    stackId="1"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorValidados)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="enviados"
+                    stackId="1"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorEnviados)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Legenda com totais */}
+            <div className="flex items-center justify-between text-sm mt-4 pt-4 border-t">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-600">Validados: {statsElogios?.compartilhados || 0}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">Enviados: {statsElogios?.enviados || 0}</span>
+                </div>
               </div>
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                Gráfico de área - Volume de elogios
-              </div>
+              <span className="font-medium text-gray-900">Total: {statsElogios?.total || 0}</span>
             </div>
           </CardContent>
         </Card>
@@ -235,31 +314,74 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
 
       {/* Seção inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Equipes Elogiadas */}
+        {/* Top Empresas com Elogios */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-orange-600" />
-              <CardTitle className="text-sm font-semibold">Top Equipes Elogiadas</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-semibold">Top Empresas com Elogios</CardTitle>
+              </div>
+              {statsElogios?.porEmpresa && Object.keys(statsElogios.porEmpresa).length > 5 && (
+                <button
+                  onClick={() => setEmpresasExpandido(!empresasExpandido)}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {empresasExpandido ? (
+                    <>
+                      <span>Recolher</span>
+                      <ChevronUp className="h-3 w-3" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Ver todas</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Fiscal</span>
+            <div className={`space-y-3 ${empresasExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+              {statsElogios?.porEmpresa && Object.entries(statsElogios.porEmpresa)
+                .sort((a, b) => (b[1] as any).count - (a[1] as any).count)
+                .slice(0, empresasExpandido ? undefined : 5)
+                .map(([empresa, dados], index) => {
+                  const dadosTyped = dados as { count: number; registrados: number; compartilhados: number; enviados: number; arquivados: number };
+                  const cores = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500'];
+                  const corIndex = index % cores.length; // Repetir cores se houver mais de 5 empresas
+                  const porcentagem = statsElogios.total > 0 ? ((dadosTyped.count / statsElogios.total) * 100).toFixed(1) : '0';
+                  
+                  return (
+                    <div key={empresa} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 ${cores[corIndex]} rounded-full`}></div>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px]">
+                          {empresa}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium">{dadosTyped.count}</span>
+                        <span className="text-xs text-gray-500">({porcentagem}%)</span>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+              {(!statsElogios?.porEmpresa || Object.keys(statsElogios.porEmpresa).length === 0) && (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  Nenhum dado disponível
                 </div>
-                <span className="text-xs font-medium">62%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Comex</span>
-                </div>
-                <span className="text-xs font-medium">38%</span>
-              </div>
+              )}
             </div>
+            
+            {/* Indicador de scroll quando expandido */}
+            {empresasExpandido && statsElogios?.porEmpresa && Object.keys(statsElogios.porEmpresa).length > 8 && (
+              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-400">Role para ver mais empresas</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -278,43 +400,65 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado }: {
           </CardContent>
         </Card>
 
-        {/* Últimas Menções */}
+        {/* Últimos Elogios */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-purple-600" />
-              <CardTitle className="text-sm font-semibold">Últimas Menções</CardTitle>
+              <CardTitle className="text-sm font-semibold">Últimos Elogios</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-blue-600">JD</span>
+              {elogios && elogios
+                .filter(e => e.pesquisa?.cliente && e.pesquisa?.comentario_pesquisa)
+                .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+                .slice(0, 3)
+                .map((elogio, index) => {
+                  const cores = ['bg-blue-100', 'bg-green-100', 'bg-purple-100'];
+                  const coresTexto = ['text-blue-600', 'text-green-600', 'text-purple-600'];
+                  const iniciais = elogio.pesquisa?.cliente
+                    ?.split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2) || 'XX';
+                  
+                  const comentario = elogio.pesquisa?.comentario_pesquisa || '';
+                  const comentarioTruncado = comentario.length > 50 
+                    ? comentario.substring(0, 50) + '...' 
+                    : comentario;
+                  
+                  const prestador = elogio.pesquisa?.prestador || 'Colaborador';
+                  const empresa = elogio.pesquisa?.empresa || 'Empresa';
+                  
+                  return (
+                    <div key={elogio.id} className="flex items-start gap-3">
+                      <div className={`w-8 h-8 ${cores[index]} rounded-full flex items-center justify-center`}>
+                        <span className={`text-xs font-medium ${coresTexto[index]}`}>
+                          {iniciais}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium">
+                          {elogio.pesquisa?.cliente} elogiou {prestador}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          "{comentarioTruncado}"
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {empresa} • {new Date(elogio.criado_em).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+              {(!elogios || elogios.length === 0) && (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  Nenhum elogio recente encontrado
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">João D. elogiou Atendimento</p>
-                  <p className="text-xs text-gray-500">"Excelente agilidade na resolução do meu problema..."</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-green-600">AS</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Ana S. elogiou Projeto X</p>
-                  <p className="text-xs text-gray-500">"Entrega muito acima da expectativa, parabéns!"</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-purple-600">RT</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Roberto T. elogiou Suporte</p>
-                  <p className="text-xs text-gray-500">"Muito atencioso e técnico."</p>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -959,6 +1103,11 @@ const Dashboard = () => {
   
   // Buscar dados de elogios
   const { data: elogios, isLoading: loadingElogios } = useElogios();
+  
+  // Buscar estatísticas de elogios para o ano selecionado
+  const { data: estatisticasElogios } = useEstatisticasElogios({
+    ano: anoSelecionado
+  });
 
   // Definir abas disponíveis baseadas nas permissões
   const availableTabs = useMemo(() => {
@@ -982,14 +1131,7 @@ const Dashboard = () => {
       });
     }
     
-    if (hasPermission('empresas_clientes', 'view') || hasPermission('clientes', 'view')) {
-      tabs.push({
-        key: 'clientes',
-        label: 'Clientes',
-        icon: Users,
-        screenKeys: ['empresas_clientes', 'clientes']
-      });
-    }
+
     
     return tabs;
   }, [hasPermission]);
@@ -1214,71 +1356,165 @@ const Dashboard = () => {
   // Calcular estatísticas de elogios
   const statsElogios = useMemo(() => {
     if (!elogios || elogios.length === 0) {
-      return null;
+      return {
+        total: 0,
+        registrados: 0,
+        compartilhados: 0,
+        enviados: 0,
+        arquivados: 0,
+        satisfacaoMedia: 0,
+        porEmpresa: {},
+        porMes: []
+      };
     }
 
     let dados = elogios;
 
-    // Filtrar por ano
+    // Filtrar por ano baseado APENAS na data_resposta (consistente com outras telas)
     if (anoSelecionado) {
       dados = dados.filter(e => {
-        if (!e.criado_em) return false;
-        const ano = new Date(e.criado_em).getFullYear();
+        // Usar APENAS data_resposta - excluir elogios sem data_resposta
+        if (!e.data_resposta) return false;
+        const ano = new Date(e.data_resposta).getFullYear();
         return ano === anoSelecionado;
       });
     }
 
+    // Filtrar apenas elogios processados (excluir registrados que ainda estão em etapa anterior)
+    dados = dados.filter(e => e.status !== 'registrado');
+
     const total = dados.length;
-    const compartilhados = dados.filter(e => e.status === 'compartilhado').length;
     const registrados = dados.filter(e => e.status === 'registrado').length;
+    const compartilhados = dados.filter(e => e.status === 'compartilhado').length;
+    const enviados = dados.filter(e => e.status === 'enviado').length;
+    const arquivados = dados.filter(e => e.status === 'arquivado').length;
+
+    // Debug será movido para depois da definição de porMesOrdenado
 
     // Agrupar por empresa
     const porEmpresa = dados.reduce((acc, e) => {
       const empresa = e.pesquisa?.empresa || 'Sem empresa';
       if (!acc[empresa]) {
-        acc[empresa] = { count: 0, compartilhados: 0 };
+        acc[empresa] = { 
+          count: 0, 
+          registrados: 0,
+          compartilhados: 0, 
+          enviados: 0,
+          arquivados: 0
+        };
       }
       acc[empresa].count++;
-      if (e.status === 'compartilhado') {
-        acc[empresa].compartilhados++;
-      }
+      if (e.status === 'registrado') acc[empresa].registrados++;
+      if (e.status === 'compartilhado') acc[empresa].compartilhados++;
+      if (e.status === 'enviado') acc[empresa].enviados++;
+      if (e.status === 'arquivado') acc[empresa].arquivados++;
       return acc;
-    }, {} as Record<string, { count: number; compartilhados: number }>);
+    }, {} as Record<string, { 
+      count: number; 
+      registrados: number;
+      compartilhados: number; 
+      enviados: number;
+      arquivados: number;
+    }>);
 
-    // Agrupar por mês
+    // Agrupar por mês usando APENAS data_resposta (consistente com outras telas)
     const porMes = dados.reduce((acc, e) => {
-      const data = new Date(e.criado_em);
+      // Usar APENAS data_resposta - pular elogios sem data_resposta
+      if (!e.data_resposta) return acc;
+      
+      const data = new Date(e.data_resposta);
       const mes = `${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
       if (!acc[mes]) {
-        acc[mes] = { count: 0, compartilhados: 0 };
+        acc[mes] = { 
+          count: 0, 
+          registrados: 0,
+          compartilhados: 0, 
+          enviados: 0,
+          arquivados: 0
+        };
       }
       acc[mes].count++;
-      if (e.status === 'compartilhado') {
-        acc[mes].compartilhados++;
-      }
+      if (e.status === 'registrado') acc[mes].registrados++;
+      if (e.status === 'compartilhado') acc[mes].compartilhados++;
+      if (e.status === 'enviado') acc[mes].enviados++;
+      if (e.status === 'arquivado') acc[mes].arquivados++;
       return acc;
-    }, {} as Record<string, { count: number; compartilhados: number }>);
+    }, {} as Record<string, { 
+      count: number; 
+      registrados: number;
+      compartilhados: number; 
+      enviados: number;
+      arquivados: number;
+    }>);
 
-    // Ordenar por mês
-    const porMesOrdenado = Object.entries(porMes)
-      .sort((a, b) => {
-        const [mesA] = a[0].split('/');
-        const [mesB] = b[0].split('/');
-        return parseInt(mesA) - parseInt(mesB);
-      })
-      .map(([mes, data]) => ({
-        mes,
-        mesNome: new Date(2000, parseInt(mes.split('/')[0]) - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
-        ...data
-      }));
+    // Criar array completo de meses (janeiro a dezembro)
+    const mesesCompletos = [];
+    for (let mes = 1; mes <= 12; mes++) {
+      const chaveMs = `${String(mes).padStart(2, '0')}/${anoSelecionado}`;
+      const dadosDoMes = porMes[chaveMs] || { 
+        count: 0, 
+        registrados: 0, 
+        compartilhados: 0, 
+        enviados: 0, 
+        arquivados: 0 
+      };
+      
+      mesesCompletos.push({
+        mes: chaveMs,
+        mesNome: new Date(2000, mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        mesNumero: mes,
+        ...dadosDoMes
+      });
+    }
+    
+    const porMesOrdenado = mesesCompletos;
 
-    // Calcular satisfação média (funcionalidade removida - propriedade não existe)
-    const satisfacaoMedia = 0;
+    // Debug temporário
+    console.log('📊 Dashboard Elogios Debug:', {
+      anoSelecionado,
+      totalElogios: elogios?.length || 0,
+      elogiosProcessados: total,
+      breakdown: { compartilhados, enviados, arquivados },
+      registradosExcluidos: elogios?.filter(e => e.status === 'registrado').length || 0,
+      porMesDetalhado: porMesOrdenado,
+      exemploElogios: dados.slice(0, 3).map(e => ({
+        id: e.id,
+        status: e.status,
+        data_resposta: e.data_resposta,
+        criado_em: e.criado_em
+      })),
+      nota: 'Agora usando APENAS data_resposta para agrupamento'
+    });
+
+    // Calcular satisfação média baseada nas respostas das pesquisas
+    const pesquisasComResposta = dados.filter(e => e.pesquisa?.resposta);
+    let satisfacaoMedia = 0;
+    
+    if (pesquisasComResposta.length > 0) {
+      // Mapear respostas para valores numéricos
+      const valorResposta = (resposta: string) => {
+        const resp = resposta.toLowerCase();
+        if (resp.includes('muito satisfeito') || resp.includes('excelente')) return 5;
+        if (resp.includes('satisfeito') || resp.includes('bom')) return 4;
+        if (resp.includes('neutro') || resp.includes('regular')) return 3;
+        if (resp.includes('insatisfeito') || resp.includes('ruim')) return 2;
+        if (resp.includes('muito insatisfeito') || resp.includes('péssimo')) return 1;
+        return 4; // Default para elogios
+      };
+      
+      const somaNotas = pesquisasComResposta.reduce((acc, e) => {
+        return acc + valorResposta(e.pesquisa?.resposta || '');
+      }, 0);
+      
+      satisfacaoMedia = somaNotas / pesquisasComResposta.length;
+    }
 
     return {
       total,
-      compartilhados,
       registrados,
+      compartilhados,
+      enviados,
+      arquivados,
       satisfacaoMedia,
       porEmpresa,
       porMes: porMesOrdenado
@@ -2048,121 +2284,12 @@ const Dashboard = () => {
                 <ElogiosSubTabs 
                   statsElogios={statsElogios}
                   anoSelecionado={anoSelecionado}
+                  elogios={elogios}
                 />
               </div>
             )}
 
-            {/* Aba de Clientes */}
-            {activeTab === 'clientes' && (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Users className="h-6 w-6 text-purple-600" />
-                  Clientes
-                </h2>
 
-                {/* Cards de Resumo - Clientes */}
-                <DashboardGrid columns={4} gap="md">
-                  <StatCard
-                    title="Total de Empresas"
-                    value={statsEmpresas ? Object.keys(statsEmpresas.porEmpresa).length : 0}
-                    description="Empresas ativas"
-                    icon={Building2}
-                    color="purple"
-                  />
-                  
-                  <StatCard
-                    title="Maior Faturamento"
-                    value={statsEmpresas?.empresaMaisFatura?.nome?.length > 15 
-                      ? statsEmpresas.empresaMaisFatura.nome.substring(0, 15) + '...' 
-                      : statsEmpresas?.empresaMaisFatura?.nome || 'N/A'}
-                    description={statsEmpresas?.empresaMaisFatura ? 
-                      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsEmpresas.empresaMaisFatura.valor)
-                      : 'R$ 0'
-                    }
-                    icon={DollarSign}
-                    color="indigo"
-                  />
-                  
-                  <StatCard
-                    title="Mais Banco de Horas"
-                    value={statsEmpresas?.empresaMaisBancoHoras?.nome?.length > 15 
-                      ? statsEmpresas.empresaMaisBancoHoras.nome.substring(0, 15) + '...' 
-                      : statsEmpresas?.empresaMaisBancoHoras?.nome || 'N/A'}
-                    description={statsEmpresas?.empresaMaisBancoHoras ? 
-                      converterMinutosParaHoras(statsEmpresas.empresaMaisBancoHoras.horas)
-                      : '0h'
-                    }
-                    icon={Clock}
-                    color="cyan"
-                  />
-                  
-                  <StatCard
-                    title="Mais Ativa"
-                    value={statsEmpresas ? 
-                      (Object.entries(statsEmpresas.porEmpresa)
-                        .sort((a, b) => b[1].count - a[1].count)[0]?.[0]?.length > 15 
-                        ? Object.entries(statsEmpresas.porEmpresa)
-                          .sort((a, b) => b[1].count - a[1].count)[0]?.[0].substring(0, 15) + '...'
-                        : Object.entries(statsEmpresas.porEmpresa)
-                          .sort((a, b) => b[1].count - a[1].count)[0]?.[0]) || 'N/A'
-                      : 'N/A'
-                    }
-                    description={statsEmpresas ? 
-                      `${Object.entries(statsEmpresas.porEmpresa)
-                        .sort((a, b) => b[1].count - a[1].count)[0]?.[1]?.count || 0} requerimentos`
-                      : '0 requerimentos'
-                    }
-                    icon={TrendingUp}
-                    color="teal"
-                  />
-                </DashboardGrid>
-
-                {/* Gráfico de Empresas */}
-                {statsEmpresas && Object.keys(statsEmpresas.porEmpresa).length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-purple-600" />
-                        Atividade por Empresa
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <BarChart
-                          data={Object.entries(statsEmpresas.porEmpresa)
-                            .sort((a, b) => b[1].count - a[1].count)
-                            .slice(0, 15)
-                            .map(([empresa, data]) => ({
-                              empresa: empresa.length > 20 ? empresa.substring(0, 20) + '...' : empresa,
-                              requerimentos: data.count,
-                              valor: data.valor,
-                              horas: converterMinutosParaHorasDecimal(data.horas)
-                            }))}
-                          layout="vertical"
-                          margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="empresa" type="category" width={140} />
-                          <Tooltip 
-                            formatter={(value: number, name: string) => {
-                              if (name === 'valor') return [
-                                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                                'Valor Faturado'
-                              ];
-                              if (name === 'horas') return [`${value.toFixed(2)}h`, 'Horas'];
-                              return [value, 'Requerimentos'];
-                            }}
-                          />
-                          <Legend />
-                          <Bar dataKey="requerimentos" fill="#8b5cf6" name="Requerimentos" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>

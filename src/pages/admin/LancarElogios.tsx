@@ -103,7 +103,7 @@ function LancarElogios() {
 
   // Mutations
   const criarElogio = useCriarElogioComEspecialistas();
-  const atualizarElogio = useAtualizarElogio();
+  const atualizarElogio = useAtualizarElogio({ silent: true }); // Silenciar toasts individuais
   const deletarElogio = useDeletarElogio();
 
   // Nomes dos meses
