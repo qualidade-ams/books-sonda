@@ -254,6 +254,15 @@ export function RequerimentoForm({
         form.setValue('horas_analise_ef', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
+    
+    // Se o tipo de cobrança NÃO é Banco de Horas, zerar quantidade_tickets
+    if (tipoCobranca && tipoCobranca !== 'Banco de Horas') {
+      const quantidadeTicketsAtual = form.getValues('quantidade_tickets');
+      if (quantidadeTicketsAtual !== undefined && quantidadeTicketsAtual !== null && quantidadeTicketsAtual !== 0) {
+        console.log('🎫 Zerando quantidade_tickets automaticamente - tipo mudou para:', tipoCobranca);
+        form.setValue('quantidade_tickets', 0, { shouldValidate: true, shouldDirty: true });
+      }
+    }
   }, [tipoCobranca, form]);
 
   // useEffect para preencher valores automaticamente baseado na taxa vigente

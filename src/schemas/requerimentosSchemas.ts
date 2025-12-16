@@ -171,8 +171,8 @@ export const requerimentoFormSchema = z.object({
       z.null()
     ])
     .optional()
-    .refine((val) => val === undefined || val === null || (val >= 1 && val <= 9999), {
-      message: 'Quantidade deve ser entre 1 e 9999'
+    .refine((val) => val === undefined || val === null || (val >= 0 && val <= 9999), {
+      message: 'Quantidade deve ser entre 0 e 9999'
     }),
   // Campo de horas de análise EF (para tipo Reprovado - opcional)
   horas_analise_ef: horasSchema.optional(),
@@ -310,8 +310,8 @@ export const requerimentoFaturamentoSchema = z.object({
       z.undefined()
     ])
     .optional()
-    .refine((val) => val === undefined || (val >= 1 && val <= 9999), {
-      message: 'Quantidade deve ser entre 1 e 9999'
+    .refine((val) => val === undefined || (val >= 0 && val <= 9999), {
+      message: 'Quantidade deve ser entre 0 e 9999'
     })
 }).refine((data) => {
   // Validação customizada: data_aprovacao deve ser >= data_envio (se fornecida)
