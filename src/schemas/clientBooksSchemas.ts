@@ -74,6 +74,7 @@ const tipoCobrancaSchema = z.enum(['banco_horas', 'ticket', 'outros'] as const, 
  * Schema para formulário de empresa cliente
  */
 export const empresaFormSchema = z.object({
+  id: z.string().uuid().optional(), // ID da empresa para edição
   nomeCompleto: nomeSchema,
   nomeAbreviado: z
     .string()

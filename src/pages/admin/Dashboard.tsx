@@ -41,8 +41,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
   Area,
   AreaChart
 } from 'recharts';
@@ -55,6 +53,7 @@ const Dashboard = () => {
   const [filtroModulo, setFiltroModulo] = useState<ModuloType | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState<string>('');
   const [topFaturamentoMode, setTopFaturamentoMode] = useState<'faturamento' | 'banco_horas'>('faturamento');
+  const [evolucaoMensalMode, setEvolucaoMensalMode] = useState<'requerimentos' | 'faturamento'>('requerimentos');
 
   // Hooks de permissões
   const { hasPermission } = usePermissions();
@@ -248,6 +247,59 @@ const Dashboard = () => {
         ...data
       }));
 
+    // Calcular crescimento comparado ao ano anterior
+    const anoAnterior = anoSelecionado - 1;
+    let dadosAnoAnterior = requerimentos.filter(r => 
+      r.status === 'enviado_faturamento' || r.status === 'faturado'
+    );
+    
+    // Filtrar dados do ano anterior
+    dadosAnoAnterior = dadosAnoAnterior.filter(r => {
+      if (!r.mes_cobranca) return false;
+      const ano = r.mes_cobranca.split('/')[1];
+      return parseInt(ano) === anoAnterior;
+    });
+    
+    // Aplicar mesmo filtro de módulo
+    if (filtroModulo !== 'todos') {
+      dadosAnoAnterior = dadosAnoAnterior.filter(r => r.modulo === filtroModulo);
+    }
+    
+    const totalAnoAnterior = dadosAnoAnterior.length;
+    const totalValorAnoAnterior = dadosAnoAnterior.reduce((acc, r) => acc + (Number(r.valor_total_geral) || 0), 0);
+    
+    // Calcular porcentagens de crescimento
+    const crescimentoRequerimentos = totalAnoAnterior > 0 
+      ? ((total - totalAnoAnterior) / totalAnoAnterior) * 100 
+      : total > 0 ? 100 : 0;
+      
+    const crescimentoFaturamento = totalValorAnoAnterior > 0 
+      ? ((totalValor - totalValorAnoAnterior) / totalValorAnoAnterior) * 100 
+      : totalValor > 0 ? 100 : 0;
+
+    // Calcular crescimento mensal (mês atual vs mês anterior)
+    let crescimentoMensalRequerimentos = 0;
+    let crescimentoMensalFaturamento = 0;
+    
+    if (porMesOrdenado.length >= 2) {
+      const mesAtual = porMesOrdenado[porMesOrdenado.length - 1];
+      const mesAnterior = porMesOrdenado[porMesOrdenado.length - 2];
+      
+      // Crescimento de requerimentos mês a mês
+      if (mesAnterior.count > 0) {
+        crescimentoMensalRequerimentos = ((mesAtual.count - mesAnterior.count) / mesAnterior.count) * 100;
+      } else if (mesAtual.count > 0) {
+        crescimentoMensalRequerimentos = 100;
+      }
+      
+      // Crescimento de faturamento mês a mês
+      if (mesAnterior.valor > 0) {
+        crescimentoMensalFaturamento = ((mesAtual.valor - mesAnterior.valor) / mesAnterior.valor) * 100;
+      } else if (mesAtual.valor > 0) {
+        crescimentoMensalFaturamento = 100;
+      }
+    }
+
     return {
       total,
       totalHoras,
@@ -255,7 +307,11 @@ const Dashboard = () => {
       totalTickets,
       porTipoCobranca: porcentagensTipo,
       porModulo,
-      porMes: porMesOrdenado
+      porMes: porMesOrdenado,
+      crescimentoRequerimentos,
+      crescimentoFaturamento,
+      crescimentoMensalRequerimentos,
+      crescimentoMensalFaturamento
     };
   }, [requerimentos, filtroModulo, anoSelecionado]);
 
@@ -548,7 +604,17 @@ const Dashboard = () => {
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Requerimentos</p>
                           <div className="flex items-center gap-2">
                             <p className="text-2xl font-bold">{statsRequerimentos?.total || 0}</p>
-                            <span className="text-xs text-green-600 font-medium">+12%</span>
+                            {/* Sempre mostrar crescimento mensal de requerimentos */}
+                            {statsRequerimentos?.crescimentoMensalRequerimentos !== undefined && (
+                              <span className={`text-xs font-medium ${
+                                statsRequerimentos.crescimentoMensalRequerimentos >= 0 
+                                  ? 'text-green-600' 
+                                  : 'text-red-600'
+                              }`}>
+                                {statsRequerimentos.crescimentoMensalRequerimentos >= 0 ? '+' : ''}
+                                {statsRequerimentos.crescimentoMensalRequerimentos.toFixed(1)}%
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -577,7 +643,17 @@ const Dashboard = () => {
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Faturamento</p>
                           <div className="flex items-center gap-2">
                             <p className="text-2xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentos?.totalValor || 0)}</p>
-                            <span className="text-xs text-green-600 font-medium">+5.3%</span>
+                            {/* Sempre mostrar crescimento mensal de faturamento */}
+                            {statsRequerimentos?.crescimentoMensalFaturamento !== undefined && (
+                              <span className={`text-xs font-medium ${
+                                statsRequerimentos.crescimentoMensalFaturamento >= 0 
+                                  ? 'text-green-600' 
+                                  : 'text-red-600'
+                              }`}>
+                                {statsRequerimentos.crescimentoMensalFaturamento >= 0 ? '+' : ''}
+                                {statsRequerimentos.crescimentoMensalFaturamento.toFixed(1)}%
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -605,35 +681,116 @@ const Dashboard = () => {
                     <div className="lg:col-span-2">
                       <Card className="bg-white dark:bg-gray-800 shadow-sm">
                         <CardHeader className="pb-3">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-gray-600" />
-                            <CardTitle className="text-lg font-semibold">Evolução Mensal</CardTitle>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-5 w-5 text-gray-600" />
+                              <CardTitle className="text-lg font-semibold">Evolução Mensal</CardTitle>
+                            </div>
+                            <button
+                              onClick={() => setEvolucaoMensalMode(prev => prev === 'requerimentos' ? 'faturamento' : 'requerimentos')}
+                              className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200 flex items-center gap-1"
+                              title={`Alternar para ${evolucaoMensalMode === 'requerimentos' ? 'Faturamento' : 'Requerimentos'}`}
+                            >
+                              {evolucaoMensalMode === 'requerimentos' ? (
+                                <>
+                                  <FileText className="h-3 w-3" />
+                                  <span>→</span>
+                                  <DollarSign className="h-3 w-3" />
+                                </>
+                              ) : (
+                                <>
+                                  <DollarSign className="h-3 w-3" />
+                                  <span>→</span>
+                                  <FileText className="h-3 w-3" />
+                                </>
+                              )}
+                            </button>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Comparativo de Requerimentos por mês</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Comparativo de {evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'} por mês
+                          </p>
                         </CardHeader>
                         <CardContent>
                           {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
                             <ResponsiveContainer width="100%" height={300}>
-                              <AreaChart data={statsRequerimentos.porMes}>
+                              <AreaChart 
+                                data={statsRequerimentos.porMes.map((item, index, array) => {
+                                // Calcular crescimento do mês anterior
+                                const valorAtual = evolucaoMensalMode === 'requerimentos' ? item.count : item.valor;
+                                const valorAnterior = index > 0 ? 
+                                  (evolucaoMensalMode === 'requerimentos' ? array[index - 1].count : array[index - 1].valor) : 0;
+                                
+                                const crescimento = valorAnterior > 0 ? 
+                                  ((valorAtual - valorAnterior) / valorAnterior) * 100 : 0;
+                                
+                                return {
+                                  ...item,
+                                  valorExibicao: valorAtual,
+                                  crescimento: index > 0 ? crescimento : 0,
+                                  temCrescimento: index > 0
+                                };
+                              })}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                              >
                                 <defs>
-                                  <linearGradient id="colorRequerimentos" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                  <linearGradient id={`color${evolucaoMensalMode}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={evolucaoMensalMode === 'requerimentos' ? "#3b82f6" : "#10b981"} stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor={evolucaoMensalMode === 'requerimentos' ? "#3b82f6" : "#10b981"} stopOpacity={0.1}/>
                                   </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis dataKey="mesNome" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
+                                <XAxis dataKey="mesNome" tick={{ fontSize: 11 }} />
+                                <YAxis 
+                                  tick={{ fontSize: 11 }}
+                                  tickFormatter={(value) => {
+                                    if (evolucaoMensalMode === 'faturamento') {
+                                      // Formatação customizada para manter R$ e abreviar valores grandes
+                                      if (value >= 1000000) {
+                                        return `R$ ${(value / 1000000).toFixed(0)} mi`;
+                                      } else if (value >= 1000) {
+                                        return `R$ ${(value / 1000).toFixed(0)} mil`;
+                                      } else {
+                                        return new Intl.NumberFormat('pt-BR', { 
+                                          style: 'currency', 
+                                          currency: 'BRL',
+                                          maximumFractionDigits: 0
+                                        }).format(value);
+                                      }
+                                    }
+                                    return value.toString();
+                                  }}
+                                />
+                                <Tooltip 
+                                  formatter={(value: number, name: string, props: any) => {
+                                    const crescimento = props?.payload?.crescimento || 0;
+                                    const temCrescimento = props?.payload?.temCrescimento || false;
+                                    
+                                    let valorFormatado = value.toString();
+                                    if (evolucaoMensalMode === 'faturamento') {
+                                      valorFormatado = new Intl.NumberFormat('pt-BR', { 
+                                        style: 'currency', 
+                                        currency: 'BRL' 
+                                      }).format(value);
+                                    }
+                                    
+                                    const crescimentoTexto = temCrescimento ? 
+                                      ` (${crescimento >= 0 ? '+' : ''}${crescimento.toFixed(1)}% vs mês anterior)` : '';
+                                    
+                                    return [
+                                      `${valorFormatado}${crescimentoTexto}`,
+                                      evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'
+                                    ];
+                                  }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '12px' }} />
                                 <Area 
                                   type="monotone" 
-                                  dataKey="count" 
-                                  stroke="#3b82f6" 
+                                  dataKey="valorExibicao" 
+                                  stroke={evolucaoMensalMode === 'requerimentos' ? "#3b82f6" : "#10b981"} 
                                   strokeWidth={2}
                                   fillOpacity={1} 
-                                  fill="url(#colorRequerimentos)" 
-                                  name="Requerimentos"
+                                  fill={`url(#color${evolucaoMensalMode})`} 
+                                  name={evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'}
                                 />
                               </AreaChart>
                             </ResponsiveContainer>

@@ -26,6 +26,8 @@ import {
 import { Save, X } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { inativarTaxasCliente } from '@/services/taxasClientesService';
 
 import type {
   EmpresaFormData,
@@ -169,6 +171,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const form = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
@@ -227,9 +230,26 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const handleSubmit = async (data: EmpresaFormData) => {
     setIsSubmitting(true);
     try {
-      // Normalizar dados antes do envio
+      // Verificar se o status está sendo alterado para inativo
+      const statusAnterior = initialData?.status;
+      const statusAtual = data.status;
+      const statusMudouParaInativo = mode === 'edit' && statusAnterior === 'ativo' && statusAtual === 'inativo';
+      
+      console.log('🔍 Debug status empresa:', {
+        mode,
+        statusAnterior,
+        statusAtual,
+        statusMudouParaInativo,
+        empresaId: initialData?.id,
+        empresaIdFromData: data.id,
+        nomeEmpresa: data.nomeAbreviado,
+        initialDataCompleto: initialData
+      });
+
+      // Normalizar dados antes do envio (excluir id do payload)
+      const { id, ...dataWithoutId } = data;
       const normalizedData: EmpresaFormData = {
-        ...data,
+        ...dataWithoutId,
         nomeCompleto: data.nomeCompleto.trim(),
         nomeAbreviado: data.nomeAbreviado.trim(),
         linkSharepoint: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.linkSharepoint?.trim() || '') : '',
@@ -248,7 +268,40 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         observacao: data.observacao?.trim() || ''
       };
 
+      // Salvar a empresa primeiro
       await onSubmit(normalizedData);
+
+      // Se o status foi alterado para inativo, inativar as taxas automaticamente
+      if (statusMudouParaInativo && initialData?.id) {
+        console.log(`🚀 Iniciando inativação de taxas para empresa ${data.nomeAbreviado} (ID: ${initialData.id})`);
+        try {
+          await inativarTaxasCliente(initialData.id);
+          console.log(`✅ Taxas inativadas com sucesso para empresa ${data.nomeAbreviado}`);
+          
+          // Invalidar cache das taxas e empresas para forçar atualização da interface
+          queryClient.invalidateQueries({ queryKey: ['taxas'] });
+          queryClient.invalidateQueries({ queryKey: ['empresas'] });
+          console.log(`🔄 Cache das taxas e empresas invalidado para atualização da interface`);
+          
+          toast({
+            title: "Empresa atualizada",
+            description: "Empresa inativada com sucesso. As taxas vinculadas também foram inativadas automaticamente.",
+            variant: "default",
+          });
+        } catch (taxaError) {
+          console.error('❌ Erro ao inativar taxas da empresa:', taxaError);
+          toast({
+            title: "Aviso",
+            description: "Empresa inativada, mas houve um problema ao inativar as taxas automaticamente. Verifique as taxas manualmente.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        console.log('ℹ️ Não é necessário inativar taxas:', {
+          statusMudouParaInativo,
+          temId: !!initialData?.id
+        });
+      }
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
 

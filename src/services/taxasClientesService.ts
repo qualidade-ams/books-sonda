@@ -842,3 +842,51 @@ export async function buscarTaxaVigente(
     valores_local: valoresLocalCalculados
   } as TaxaClienteCompleta;
 }
+
+/**
+ * Inativar todas as taxas de um cliente (definir vigencia_fim para hoje)
+ */
+export async function inativarTaxasCliente(clienteId: string): Promise<void> {
+  console.log(`🔍 Iniciando inativação de taxas para cliente ID: ${clienteId}`);
+  
+  const dataHoje = new Date().toISOString().split('T')[0];
+  console.log(`📅 Data de hoje: ${dataHoje}`);
+  
+  // Buscar todas as taxas ativas do cliente (sem vigencia_fim ou com vigencia_fim futura)
+  const { data: taxasAtivas, error: buscarError } = await supabase
+    .from('taxas_clientes')
+    .select('id, vigencia_inicio, vigencia_fim, cliente_id')
+    .eq('cliente_id', clienteId)
+    .or(`vigencia_fim.is.null,vigencia_fim.gt.${dataHoje}`);
+
+  console.log(`🔍 Query executada para cliente ${clienteId}:`, { taxasAtivas, buscarError });
+
+  if (buscarError) {
+    console.error('❌ Erro ao buscar taxas ativas do cliente:', buscarError);
+    throw new Error('Erro ao buscar taxas ativas do cliente');
+  }
+
+  if (!taxasAtivas || taxasAtivas.length === 0) {
+    console.log(`ℹ️ Nenhuma taxa ativa encontrada para o cliente ${clienteId}`);
+    return;
+  }
+
+  console.log(`📋 Encontradas ${taxasAtivas.length} taxa(s) ativa(s):`, taxasAtivas);
+
+  // Inativar cada taxa definindo vigencia_fim para hoje
+  const vigenciaFim = dataHoje;
+  console.log(`📅 Definindo vigencia_fim para: ${vigenciaFim}`);
+
+  const { error: updateError } = await supabase
+    .from('taxas_clientes')
+    .update({ vigencia_fim: vigenciaFim })
+    .eq('cliente_id', clienteId)
+    .or(`vigencia_fim.is.null,vigencia_fim.gt.${dataHoje}`);
+
+  if (updateError) {
+    console.error('❌ Erro ao inativar taxas do cliente:', updateError);
+    throw new Error('Erro ao inativar taxas do cliente');
+  }
+
+  console.log(`✅ Inativadas ${taxasAtivas.length} taxa(s) do cliente ${clienteId} com vigencia_fim = ${vigenciaFim}`);
+}

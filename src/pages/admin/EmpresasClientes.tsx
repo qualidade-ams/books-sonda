@@ -202,6 +202,7 @@ const EmpresasClientes = () => {
   // Preparar dados iniciais para edição
   const getInitialDataForEdit = (empresa: EmpresaClienteCompleta): Partial<EmpresaFormData> => {
     return {
+      id: empresa.id, // IMPORTANTE: Incluir o ID da empresa
       nomeCompleto: empresa.nome_completo,
       nomeAbreviado: empresa.nome_abreviado,
       linkSharepoint: empresa.link_sharepoint || '',

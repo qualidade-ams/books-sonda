@@ -444,6 +444,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                     </FormControl>
                     <SelectContent>
                       {empresas
+                        .filter((empresa) => empresa.status === 'ativo')
                         .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado))
                         .map((empresa) => (
                           <SelectItem key={empresa.id} value={empresa.nome_abreviado}>
