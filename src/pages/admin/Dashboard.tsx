@@ -113,6 +113,8 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
   elogios?: any[];
 }) => {
   const [empresasExpandido, setEmpresasExpandido] = useState(false);
+  const [colaboradoresExpandido, setColaboradoresExpandido] = useState(false);
+  const [elogiosExpandido, setElogiosExpandido] = useState(false);
   return (
     <div className="space-y-6">
       {/* Cards principais sem cor */}
@@ -271,25 +273,70 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                   <span className="text-gray-600">Enviados: {statsElogios?.enviados || 0}</span>
                 </div>
               </div>
-              <span className="font-medium text-gray-900">Total: {statsElogios?.total || 0}</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Destaques */}
         <div className="space-y-4">
-          {/* Top Colaborador */}
+          {/* Top Colaborador Mensal */}
           <Card className="bg-white dark:bg-gray-800 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">MARIA SILVA</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">12 Elogios este mês</p>
-                </div>
-                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                  <Star className="h-4 w-4 text-green-600" />
-                </div>
+                {(() => {
+                  // Calcular colaborador com mais elogios no mês atual
+                  const mesAtual = new Date().getMonth() + 1;
+                  const anoAtual = new Date().getFullYear();
+                  
+                  const elogiosMesAtual = elogios?.filter(e => {
+                    if (!e.data_resposta) return false;
+                    const dataResposta = new Date(e.data_resposta);
+                    return dataResposta.getMonth() + 1 === mesAtual && 
+                           dataResposta.getFullYear() === anoAtual &&
+                           (e.status === 'compartilhado' || e.status === 'enviado');
+                  }) || [];
+
+                  // Contar elogios por prestador
+                  const contagemPorPrestador: Record<string, number> = {};
+                  elogiosMesAtual.forEach(elogio => {
+                    const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                    contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                  });
+
+                  // Encontrar o top colaborador
+                  const topColaborador = Object.entries(contagemPorPrestador)
+                    .sort((a, b) => b[1] - a[1])[0];
+
+                  if (!topColaborador) {
+                    return (
+                      <>
+                        <div>
+                          <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Nenhum elogio este mês</p>
+                        </div>
+                        <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                          <Star className="h-4 w-4 text-green-600" />
+                        </div>
+                      </>
+                    );
+                  }
+
+                  const [nome, quantidade] = topColaborador;
+
+                  return (
+                    <>
+                      <div>
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador Mês</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 uppercase">{nome}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'} este mês</p>
+                      </div>
+                      <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                        <Star className="h-4 w-4 text-green-600 fill-green-600" />
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </CardHeader>
           </Card>
@@ -343,27 +390,43 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`space-y-3 ${empresasExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+            <div className={`space-y-4 ${empresasExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
               {statsElogios?.porEmpresa && Object.entries(statsElogios.porEmpresa)
                 .sort((a, b) => (b[1] as any).count - (a[1] as any).count)
                 .slice(0, empresasExpandido ? undefined : 5)
                 .map(([empresa, dados], index) => {
                   const dadosTyped = dados as { count: number; registrados: number; compartilhados: number; enviados: number; arquivados: number };
-                  const cores = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500'];
-                  const corIndex = index % cores.length; // Repetir cores se houver mais de 5 empresas
-                  const porcentagem = statsElogios.total > 0 ? ((dadosTyped.count / statsElogios.total) * 100).toFixed(1) : '0';
+                  const porcentagem = statsElogios.total > 0 ? ((dadosTyped.count / statsElogios.total) * 100) : 0;
+                  
+                  // Cores variadas para as barras
+                  const coresBarras = [
+                    'from-blue-500 to-blue-600',
+                    'from-green-500 to-green-600',
+                    'from-purple-500 to-purple-600',
+                    'from-orange-500 to-orange-600',
+                    'from-red-500 to-red-600'
+                  ];
+                  const corBarra = coresBarras[index % coresBarras.length];
                   
                   return (
-                    <div key={empresa} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 ${cores[corIndex]} rounded-full`}></div>
-                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px]">
+                    <div key={empresa} className="space-y-1.5">
+                      {/* Linha superior: nome da empresa e valores */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[180px]">
                           {empresa}
                         </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{dadosTyped.count}</span>
+                          <span className="text-xs text-gray-500">({porcentagem.toFixed(1)}%)</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium">{dadosTyped.count}</span>
-                        <span className="text-xs text-gray-500">({porcentagem}%)</span>
+                      
+                      {/* Barra de progresso colorida */}
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`bg-gradient-to-r ${corBarra} h-full rounded-full transition-all duration-500 ease-out`}
+                          style={{ width: `${porcentagem}%` }}
+                        ></div>
                       </div>
                     </div>
                   );
@@ -385,38 +448,205 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
           </CardContent>
         </Card>
 
-        {/* Categorias de Destaque */}
+        {/* Top Colaborador Anual */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <CardTitle className="text-sm font-semibold">Categorias de Destaque</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-green-600" />
+                <CardTitle className="text-sm font-semibold text-green-600">TOP COLABORADOR ANUAL</CardTitle>
+              </div>
+              {(() => {
+                const elogiosAno = elogios?.filter(e => {
+                  if (!e.data_resposta) return false;
+                  const dataResposta = new Date(e.data_resposta);
+                  return dataResposta.getFullYear() === anoSelecionado &&
+                         (e.status === 'compartilhado' || e.status === 'enviado');
+                }) || [];
+                const contagemPorPrestador: Record<string, number> = {};
+                elogiosAno.forEach(elogio => {
+                  const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                  contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                });
+                const totalColaboradores = Object.keys(contagemPorPrestador).length;
+                
+                return totalColaboradores > 3 ? (
+                  <button
+                    onClick={() => setColaboradoresExpandido(!colaboradoresExpandido)}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {colaboradoresExpandido ? (
+                      <>
+                        <span>Recolher</span>
+                        <ChevronUp className="h-3 w-3" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Ver todas</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </>
+                    )}
+                  </button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
-              Gráfico de categorias
-            </div>
+            {(() => {
+              // Calcular colaboradores com mais elogios no ano selecionado
+              const elogiosAno = elogios?.filter(e => {
+                if (!e.data_resposta) return false;
+                const dataResposta = new Date(e.data_resposta);
+                return dataResposta.getFullYear() === anoSelecionado &&
+                       (e.status === 'compartilhado' || e.status === 'enviado');
+              }) || [];
+
+              // Contar elogios por prestador
+              const contagemPorPrestador: Record<string, number> = {};
+              elogiosAno.forEach(elogio => {
+                const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+              });
+
+              // Pegar todos os colaboradores ordenados
+              const todosColaboradores = Object.entries(contagemPorPrestador)
+                .sort((a, b) => b[1] - a[1]);
+
+              // Mostrar top 3 ou todos se expandido
+              const colaboradoresExibir = colaboradoresExpandido 
+                ? todosColaboradores 
+                : todosColaboradores.slice(0, 3);
+
+              if (colaboradoresExibir.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-24 text-gray-500 text-sm">
+                    Nenhum elogio registrado este ano
+                  </div>
+                );
+              }
+
+              // Configuração das medalhas (apenas para top 3)
+              const medalhas = [
+                { bg: 'bg-yellow-100 dark:bg-yellow-900/30', icon: 'text-yellow-600 dark:text-yellow-400', emoji: '🥇' },
+                { bg: 'bg-gray-200 dark:bg-gray-700', icon: 'text-gray-600 dark:text-gray-400', emoji: '🥈' },
+                { bg: 'bg-orange-100 dark:bg-orange-900/30', icon: 'text-orange-600 dark:text-orange-400', emoji: '🥉' }
+              ];
+
+              return (
+                <div className={`space-y-3 ${colaboradoresExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+                  {colaboradoresExibir.map(([nome, quantidade], index) => {
+                    const posicao = index + 1;
+                    const temMedalha = posicao <= 3;
+                    const medalha = temMedalha ? medalhas[index] : null;
+                    
+                    return (
+                      <div key={nome} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                        <div className="flex items-center gap-3 flex-1">
+                          {temMedalha ? (
+                            <div className={`flex items-center justify-center w-10 h-10 ${medalha!.bg} rounded-full text-xl`}>
+                              {medalha!.emoji}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full">
+                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400">{posicao}º</span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase truncate">
+                              {nome}
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
         {/* Últimos Elogios */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-              <CardTitle className="text-sm font-semibold">Últimos Elogios</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-600" />
+                <CardTitle className="text-sm font-semibold">Últimos Elogios</CardTitle>
+              </div>
+              {(() => {
+                const todosElogios = elogios?.filter(e => 
+                  e.pesquisa?.cliente && 
+                  e.pesquisa?.comentario_pesquisa && 
+                  e.data_resposta &&
+                  (e.status === 'compartilhado' || e.status === 'enviado')
+                ) || [];
+                
+                return todosElogios.length > 3 ? (
+                  <button
+                    onClick={() => setElogiosExpandido(!elogiosExpandido)}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {elogiosExpandido ? (
+                      <>
+                        <span>Recolher</span>
+                        <ChevronUp className="h-3 w-3" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Ver todas</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </>
+                    )}
+                  </button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {elogios && elogios
-                .filter(e => e.pesquisa?.cliente && e.pesquisa?.comentario_pesquisa)
-                .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
-                .slice(0, 3)
-                .map((elogio, index) => {
-                  const cores = ['bg-blue-100', 'bg-green-100', 'bg-purple-100'];
-                  const coresTexto = ['text-blue-600', 'text-green-600', 'text-purple-600'];
+            <div className={`space-y-4 ${elogiosExpandido ? 'max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+              {(() => {
+                // Filtrar elogios válidos e ordenar por data_resposta
+                const todosElogiosRecentes = elogios
+                  ?.filter(e => 
+                    e.pesquisa?.cliente && 
+                    e.pesquisa?.comentario_pesquisa && 
+                    e.data_resposta &&
+                    (e.status === 'compartilhado' || e.status === 'enviado')
+                  )
+                  .sort((a, b) => {
+                    const dataA = a.data_resposta ? new Date(a.data_resposta).getTime() : 0;
+                    const dataB = b.data_resposta ? new Date(b.data_resposta).getTime() : 0;
+                    return dataB - dataA;
+                  }) || [];
+
+                // Mostrar 3 ou todos se expandido
+                const elogiosRecentes = elogiosExpandido 
+                  ? todosElogiosRecentes 
+                  : todosElogiosRecentes.slice(0, 3);
+
+                if (elogiosRecentes.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      Nenhum elogio recente encontrado
+                    </div>
+                  );
+                }
+
+                const cores = [
+                  { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
+                  { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400' },
+                  { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400' },
+                  { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400' },
+                  { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-600 dark:text-pink-400' },
+                  { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400' }
+                ];
+
+                return elogiosRecentes.map((elogio, index) => {
+                  const cor = cores[index % cores.length];
                   const iniciais = elogio.pesquisa?.cliente
                     ?.split(' ')
                     .map(n => n[0])
@@ -425,40 +655,39 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                     .slice(0, 2) || 'XX';
                   
                   const comentario = elogio.pesquisa?.comentario_pesquisa || '';
-                  const comentarioTruncado = comentario.length > 50 
-                    ? comentario.substring(0, 50) + '...' 
+                  const comentarioTruncado = comentario.length > 60 
+                    ? comentario.substring(0, 60) + '...' 
                     : comentario;
                   
+                  const cliente = elogio.pesquisa?.cliente || 'Cliente';
                   const prestador = elogio.pesquisa?.prestador || 'Colaborador';
                   const empresa = elogio.pesquisa?.empresa || 'Empresa';
+                  const dataFormatada = elogio.data_resposta 
+                    ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR')
+                    : '';
                   
                   return (
-                    <div key={elogio.id} className="flex items-start gap-3">
-                      <div className={`w-8 h-8 ${cores[index]} rounded-full flex items-center justify-center`}>
-                        <span className={`text-xs font-medium ${coresTexto[index]}`}>
+                    <div key={elogio.id} className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                      <div className={`w-10 h-10 ${cor.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                        <span className={`text-sm font-bold ${cor.text}`}>
                           {iniciais}
                         </span>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs font-medium">
-                          {elogio.pesquisa?.cliente} elogiou {prestador}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {cliente} elogiou {prestador}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 italic">
                           "{comentarioTruncado}"
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {empresa} • {new Date(elogio.criado_em).toLocaleDateString('pt-BR')}
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 uppercase">
+                          {empresa} • {dataFormatada}
                         </p>
                       </div>
                     </div>
                   );
-                })
-              }
-              {(!elogios || elogios.length === 0) && (
-                <div className="text-center py-4 text-gray-500 text-sm">
-                  Nenhum elogio recente encontrado
-                </div>
-              )}
+                });
+              })()}
             </div>
           </CardContent>
         </Card>
