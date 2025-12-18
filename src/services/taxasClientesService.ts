@@ -294,16 +294,31 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   if (dados.ticket_excedente_2 !== undefined) dadosTaxa.ticket_excedente_2 = dados.ticket_excedente_2;
   if (dados.ticket_excedente !== undefined) dadosTaxa.ticket_excedente = dados.ticket_excedente;
 
-  // Criar taxa
-  const { data: taxa, error: taxaError } = await supabase
+  // Criar taxa com timeout
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout: Operação demorou mais que 30 segundos')), 30000);
+  });
+
+  const taxaPromise = supabase
     .from('taxas_clientes')
     .insert(dadosTaxa)
     .select()
     .single();
 
-  if (taxaError) {
-    console.error('Erro ao criar taxa:', taxaError);
-    throw new Error('Erro ao criar taxa de cliente');
+  let taxa;
+  try {
+    const result = await Promise.race([taxaPromise, timeoutPromise]) as any;
+    if (result.error) {
+      console.error('Erro ao criar taxa:', result.error);
+      throw new Error(`Erro ao criar taxa: ${result.error.message || 'Erro desconhecido'}`);
+    }
+    taxa = result.data;
+  } catch (error: any) {
+    console.error('Erro ao criar taxa:', error);
+    if (error.message?.includes('Timeout')) {
+      throw new Error('A operação está demorando muito. Tente novamente.');
+    }
+    throw new Error(`Erro ao criar taxa: ${error.message || 'Erro desconhecido'}`);
   }
 
   // NOVO: Calcular automaticamente valores locais se não fornecidos (10% a mais dos remotos)
@@ -357,15 +372,36 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     });
   });
 
-  const { error: valoresError } = await supabase
+  // Inserir valores com timeout
+  const valoresTimeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout: Inserção de valores demorou mais que 30 segundos')), 30000);
+  });
+
+  const valoresPromise = supabase
     .from('valores_taxas_funcoes')
     .insert(valoresParaInserir);
 
-  if (valoresError) {
-    console.error('Erro ao criar valores da taxa:', valoresError);
+  try {
+    const valoresResult = await Promise.race([valoresPromise, valoresTimeoutPromise]) as any;
+    if (valoresResult.error) {
+      console.error('Erro ao criar valores da taxa:', valoresResult.error);
+      // Reverter criação da taxa
+      await supabase.from('taxas_clientes').delete().eq('id', taxa.id);
+      throw new Error(`Erro ao criar valores da taxa: ${valoresResult.error.message || 'Erro desconhecido'}`);
+    }
+  } catch (error: any) {
+    console.error('Erro ao criar valores da taxa:', error);
     // Reverter criação da taxa
-    await supabase.from('taxas_clientes').delete().eq('id', taxa.id);
-    throw new Error('Erro ao criar valores da taxa');
+    try {
+      await supabase.from('taxas_clientes').delete().eq('id', taxa.id);
+    } catch (rollbackError) {
+      console.error('Erro ao reverter criação da taxa:', rollbackError);
+    }
+    
+    if (error.message?.includes('Timeout')) {
+      throw new Error('A inserção dos valores está demorando muito. Tente novamente.');
+    }
+    throw new Error(`Erro ao criar valores da taxa: ${error.message || 'Erro desconhecido'}`);
   }
 
   // Se houver taxa de reajuste, criar segunda taxa automaticamente
@@ -578,15 +614,36 @@ export async function atualizarTaxa(
       });
     });
 
-    const { error: valoresError } = await supabase
+    // Inserir valores da nova taxa com timeout
+    const novaTaxaValoresTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: Inserção de valores da nova taxa demorou mais que 30 segundos')), 30000);
+    });
+
+    const novaTaxaValoresPromise = supabase
       .from('valores_taxas_funcoes')
       .insert(valoresParaInserir);
 
-    if (valoresError) {
-      console.error('Erro ao criar valores da nova taxa:', valoresError);
+    try {
+      const valoresResult = await Promise.race([novaTaxaValoresPromise, novaTaxaValoresTimeoutPromise]) as any;
+      if (valoresResult.error) {
+        console.error('Erro ao criar valores da nova taxa:', valoresResult.error);
+        // Reverter criação da nova taxa
+        await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
+        throw new Error(`Erro ao criar valores da nova taxa: ${valoresResult.error.message || 'Erro desconhecido'}`);
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar valores da nova taxa:', error);
       // Reverter criação da nova taxa
-      await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
-      throw new Error('Erro ao criar valores da nova taxa');
+      try {
+        await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
+      } catch (rollbackError) {
+        console.error('Erro ao reverter criação da nova taxa:', rollbackError);
+      }
+      
+      if (error.message?.includes('Timeout')) {
+        throw new Error('A inserção dos valores da nova taxa está demorando muito. Tente novamente.');
+      }
+      throw new Error(`Erro ao criar valores da nova taxa: ${error.message || 'Erro desconhecido'}`);
     }
 
     // Retornar a nova taxa criada
@@ -662,16 +719,32 @@ export async function atualizarTaxa(
   if (dados.ticket_excedente_2 !== undefined) dadosAtualizacao.ticket_excedente_2 = dados.ticket_excedente_2;
   if (dados.ticket_excedente !== undefined) dadosAtualizacao.ticket_excedente = dados.ticket_excedente;
 
-  const { data: taxaAtualizada, error: updateError } = await supabase
+  // Atualizar taxa com timeout
+  const updateTimeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout: Atualização demorou mais que 30 segundos')), 30000);
+  });
+
+  const updatePromise = supabase
     .from('taxas_clientes')
     .update(dadosAtualizacao)
     .eq('id', id)
     .select()
     .single();
 
-  if (updateError) {
-    console.error('Erro ao atualizar taxa:', updateError);
-    throw new Error('Erro ao atualizar taxa');
+  let taxaAtualizada;
+  try {
+    const result = await Promise.race([updatePromise, updateTimeoutPromise]) as any;
+    if (result.error) {
+      console.error('Erro ao atualizar taxa:', result.error);
+      throw new Error(`Erro ao atualizar taxa: ${result.error.message || 'Erro desconhecido'}`);
+    }
+    taxaAtualizada = result.data;
+  } catch (error: any) {
+    console.error('Erro ao atualizar taxa:', error);
+    if (error.message?.includes('Timeout')) {
+      throw new Error('A atualização está demorando muito. Tente novamente.');
+    }
+    throw new Error(`Erro ao atualizar taxa: ${error.message || 'Erro desconhecido'}`);
   }
 
   // Atualizar valores se fornecidos

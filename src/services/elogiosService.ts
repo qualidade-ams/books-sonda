@@ -294,10 +294,82 @@ export async function deletarElogio(id: string): Promise<void> {
 export async function obterEstatisticas(filtros?: FiltrosElogio): Promise<EstatisticasElogio> {
   const elogios = await buscarElogios(filtros);
   
+  // Calcular satisfação média baseada nas pesquisas
+  let satisfacaoMedia: number | null = null;
+  
+  try {
+    // Buscar pesquisas relacionadas aos elogios com resposta válida
+    const pesquisasComResposta = elogios
+      .filter(e => e.pesquisa?.resposta && e.pesquisa.resposta.trim() !== '')
+      .map(e => e.pesquisa!.resposta!.trim());
+
+    if (pesquisasComResposta.length > 0) {
+      // Mapear respostas textuais para valores numéricos
+      const valoresNumericos = pesquisasComResposta
+        .map(resposta => {
+          const respostaLower = resposta.toLowerCase().trim();
+          
+          // Mapeamento baseado no texto da resposta
+          // 1 - Muito insatisfeito
+          if (respostaLower.includes('muito insatisfeito') || 
+              respostaLower === '1' || 
+              respostaLower === 'muito insatisfeito') {
+            return 1;
+          }
+          
+          // 2 - Insatisfeito
+          if ((respostaLower.includes('insatisfeito') && !respostaLower.includes('muito')) || 
+              respostaLower === '2' || 
+              respostaLower === 'insatisfeito') {
+            return 2;
+          }
+          
+          // 3 - Neutro
+          if (respostaLower.includes('neutro') || 
+              respostaLower === '3' || 
+              respostaLower === 'neutro') {
+            return 3;
+          }
+          
+          // 5 - Muito Satisfeito (verificar antes do 4)
+          if (respostaLower.includes('muito satisfeito') || 
+              respostaLower === '5' || 
+              respostaLower === 'muito satisfeito') {
+            return 5;
+          }
+          
+          // 4 - Satisfeito
+          if (respostaLower.includes('satisfeito') || 
+              respostaLower === '4' || 
+              respostaLower === 'satisfeito') {
+            return 4;
+          }
+          
+          // Tentar converter diretamente para número (caso seja numérico)
+          const numeroResposta = parseInt(resposta);
+          if (!isNaN(numeroResposta) && numeroResposta >= 1 && numeroResposta <= 5) {
+            return numeroResposta;
+          }
+          
+          return null; // Resposta inválida
+        })
+        .filter(valor => valor !== null) as number[];
+
+      if (valoresNumericos.length > 0) {
+        const soma = valoresNumericos.reduce((acc, valor) => acc + valor, 0);
+        satisfacaoMedia = soma / valoresNumericos.length;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao calcular satisfação média:', error);
+  }
+  
   return {
     total: elogios.length,
     registrados: elogios.filter(e => e.status === 'registrado').length,
     compartilhados: elogios.filter(e => e.status === 'compartilhado').length,
     arquivados: elogios.filter(e => e.status === 'arquivado').length,
+    enviados: elogios.filter(e => e.status === 'enviado').length,
+    satisfacaoMedia,
   };
 }

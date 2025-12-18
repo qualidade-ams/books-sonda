@@ -167,7 +167,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold">
-                  {statsElogios?.satisfacaoMedia ? `${statsElogios.satisfacaoMedia.toFixed(1)}/5` : 'N/A'}
+                  {statsElogios?.satisfacaoMedia ? `${(Math.floor(statsElogios.satisfacaoMedia * 10) / 10).toFixed(1)}/5` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -566,6 +566,26 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                 </div>
               );
             })()}
+            
+            {/* Indicador de scroll quando expandido */}
+            {colaboradoresExpandido && (() => {
+              const elogiosAno = elogios?.filter(e => {
+                if (!e.data_resposta) return false;
+                const dataResposta = new Date(e.data_resposta);
+                return dataResposta.getFullYear() === anoSelecionado &&
+                       (e.status === 'compartilhado' || e.status === 'enviado');
+              }) || [];
+              const contagemPorPrestador: Record<string, number> = {};
+              elogiosAno.forEach(elogio => {
+                const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+              });
+              return Object.keys(contagemPorPrestador).length > 5;
+            })() && (
+              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-400">Role para ver mais colaboradores</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -689,6 +709,21 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                 });
               })()}
             </div>
+            
+            {/* Indicador de scroll quando expandido */}
+            {elogiosExpandido && (() => {
+              const todosElogios = elogios?.filter(e => 
+                e.pesquisa?.cliente && 
+                e.pesquisa?.comentario_pesquisa && 
+                e.data_resposta &&
+                (e.status === 'compartilhado' || e.status === 'enviado')
+              ) || [];
+              return todosElogios.length > 6;
+            })() && (
+              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-400">Role para ver mais elogios</span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

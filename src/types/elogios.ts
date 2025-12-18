@@ -91,6 +91,8 @@ export interface EstatisticasElogio {
   registrados: number;
   compartilhados: number;
   arquivados: number;
+  enviados: number;
+  satisfacaoMedia: number | null;
 }
 
 // Opções para selects
