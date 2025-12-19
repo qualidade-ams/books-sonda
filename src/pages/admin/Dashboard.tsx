@@ -1,7 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 import { StatCard } from '@/components/admin/dashboard/StatCard';
 import { ModernChart } from '@/components/admin/dashboard/ModernChart';
@@ -11,6 +15,8 @@ import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
+import { useEmpresas } from '@/hooks/useEmpresas';
 import { 
   DollarSign, 
   Clock, 
@@ -26,7 +32,9 @@ import {
   Calendar,
   Star,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Search,
+  X
 } from 'lucide-react';
 import { converterMinutosParaHoras, converterMinutosParaHorasDecimal } from '@/utils/horasUtils';
 import { getHexColor } from '@/utils/requerimentosColors';
@@ -48,9 +56,10 @@ import {
 } from 'recharts';
 
 // Componente para as sub-abas de elogios
-const ElogiosSubTabs = ({ statsElogios, anoSelecionado, elogios }: { 
+const ElogiosSubTabs = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
   statsElogios: any; 
   anoSelecionado: number;
+  mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
   const [activeElogiosTab, setActiveElogiosTab] = useState<string>('visao-geral');
@@ -59,7 +68,6 @@ const ElogiosSubTabs = ({ statsElogios, anoSelecionado, elogios }: {
     { key: 'visao-geral', label: 'Visão Geral' },
     { key: 'mapeamento', label: 'Mapeamento' },
     { key: 'volume', label: 'Volume' },
-    { key: 'motivos', label: 'Motivos' },
     { key: 'pesquisas', label: 'Pesquisas' }
   ];
 
@@ -84,37 +92,275 @@ const ElogiosSubTabs = ({ statsElogios, anoSelecionado, elogios }: {
 
       {/* Conteúdo das sub-abas */}
       {activeElogiosTab === 'visao-geral' && (
-        <VisaoGeralElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} elogios={elogios} />
+        <VisaoGeralElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} mesSelecionado={mesSelecionado} elogios={elogios} />
       )}
       
       {activeElogiosTab === 'mapeamento' && (
-        <MapeamentoElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+        <MapeamentoElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} mesSelecionado={mesSelecionado} elogios={elogios} />
       )}
       
       {activeElogiosTab === 'volume' && (
-        <VolumeElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
-      )}
-      
-      {activeElogiosTab === 'motivos' && (
-        <MotivosElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+        <VolumeElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} mesSelecionado={mesSelecionado} elogios={elogios} />
       )}
       
       {activeElogiosTab === 'pesquisas' && (
-        <PesquisasElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} />
+        <PesquisasElogios statsElogios={statsElogios} anoSelecionado={anoSelecionado} mesSelecionado={mesSelecionado} elogios={elogios} />
       )}
     </div>
   );
 };
 
 // Componente Visão Geral
-const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: { 
+const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
   statsElogios: any; 
   anoSelecionado: number;
+  mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  // Hook para buscar de-para de categorias
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
+  
+  // Hook para buscar empresas
+  const { empresas } = useEmpresas();
+
+  // Função para fazer de-para da categoria para grupo
+  const obterGrupoPorCategoria = (categoria: string): string => {
+    if (!categoria) return '';
+    
+    // Busca exata primeiro
+    let deParaEncontrado = deParaCategorias.find(
+      dp => dp.categoria === categoria
+    );
+    
+    // Se não encontrar, tentar busca parcial (mais flexível)
+    if (!deParaEncontrado) {
+      deParaEncontrado = deParaCategorias.find(
+        dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+      );
+    }
+    
+    if (deParaEncontrado) {
+      return deParaEncontrado.grupo;
+    } else {
+      return categoria; // Fallback para categoria original
+    }
+  };
+
+  // Função para obter nome abreviado da empresa
+  const obterNomeAbreviadoEmpresa = (nomeEmpresa: string): string => {
+    if (!nomeEmpresa || nomeEmpresa === 'N/A') {
+      return 'N/A';
+    }
+    
+    // Buscar empresa correspondente pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      empresa => 
+        empresa.nome_completo === nomeEmpresa || 
+        empresa.nome_abreviado === nomeEmpresa ||
+        empresa.nome_completo?.toLowerCase() === nomeEmpresa.toLowerCase() ||
+        empresa.nome_abreviado?.toLowerCase() === nomeEmpresa.toLowerCase()
+    );
+    
+    if (empresaEncontrada) {
+      return empresaEncontrada.nome_abreviado || empresaEncontrada.nome_completo;
+    }
+    
+    // Fallback para nome original
+    return nomeEmpresa;
+  };
+
   const [empresasExpandido, setEmpresasExpandido] = useState(false);
   const [colaboradoresExpandido, setColaboradoresExpandido] = useState(false);
   const [elogiosExpandido, setElogiosExpandido] = useState(false);
+  const [areasExpandido, setAreasExpandido] = useState(false);
+  
+  // Estados para controlar seleção e detalhes
+  const [itemSelecionado, setItemSelecionado] = useState<{
+    tipo: 'empresa' | 'colaborador' | 'elogio' | 'volume' | null;
+    dados: any;
+  } | null>(null);
+
+  // Função para filtrar elogios baseado na seleção
+  const obterElogiosFiltrados = () => {
+    if (!itemSelecionado) return [];
+    
+    const elogiosFiltrados = elogios?.filter(e => {
+      if (!e.data_resposta) return false;
+      const dataResposta = new Date(e.data_resposta);
+      return dataResposta.getFullYear() === anoSelecionado &&
+             (e.status === 'compartilhado' || e.status === 'enviado');
+    }) || [];
+
+    switch (itemSelecionado.tipo) {
+      case 'empresa':
+        return elogiosFiltrados.filter(e => 
+          obterNomeAbreviadoEmpresa(e.pesquisa?.empresa || '') === itemSelecionado.dados
+        );
+      case 'colaborador':
+        return elogiosFiltrados.filter(e => 
+          e.pesquisa?.prestador === itemSelecionado.dados
+        );
+      case 'elogio':
+        return [itemSelecionado.dados];
+      case 'volume':
+        return elogiosFiltrados;
+      default:
+        return [];
+    }
+  };
+
+  const elogiosDetalhados = obterElogiosFiltrados();
+
+  // Estado para controlar linhas expandidas
+  const [linhasExpandidas, setLinhasExpandidas] = useState<Set<string>>(new Set());
+
+  // Função para alternar expansão de linha
+  const toggleLinha = (elogioId: string) => {
+    const novasLinhasExpandidas = new Set(linhasExpandidas);
+    if (novasLinhasExpandidas.has(elogioId)) {
+      novasLinhasExpandidas.delete(elogioId);
+    } else {
+      novasLinhasExpandidas.add(elogioId);
+    }
+    setLinhasExpandidas(novasLinhasExpandidas);
+  };
+
+  // Componente de detalhes dos elogios
+  const DetalhesElogios = () => {
+    if (!itemSelecionado) return null;
+
+    return (
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold">
+                Detalhes dos Elogios
+              </CardTitle>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
+                {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
+                {itemSelecionado.tipo === 'elogio' && 'Elogio Selecionado'}
+                {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Ano'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setItemSelecionado(null)}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Fechar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Total de elogios encontrados: {elogiosDetalhados.length}
+            </div>
+            
+            {/* Cabeçalho da tabela */}
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
+              <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <div className="col-span-2">Nº Chamado</div>
+                <div className="col-span-2">Empresa</div>
+                <div className="col-span-3">Colaborador</div>
+                <div className="col-span-2">Data Resposta</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-1 text-center"></div>
+              </div>
+            </div>
+            
+            {/* Lista de elogios como linhas expansíveis */}
+            <div className="max-h-96 overflow-y-auto space-y-1">
+              {elogiosDetalhados.map((elogio, index) => {
+                const elogioId = elogio.id || `elogio-${index}`;
+                const isExpanded = linhasExpandidas.has(elogioId);
+                
+                return (
+                  <div key={elogioId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    {/* Linha principal (sempre visível) */}
+                    <div 
+                      className="grid grid-cols-12 gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                      onClick={() => toggleLinha(elogioId)}
+                    >
+                      <div className="col-span-2">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {elogio.pesquisa?.nro_caso || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
+                        </span>
+                      </div>
+                      <div className="col-span-3">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {elogio.pesquisa?.prestador || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {elogio.data_resposta ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR') : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                          elogio.status === 'enviado' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                        }`}>
+                          {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                        </span>
+                      </div>
+                      <div className="col-span-1 text-center">
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`} />
+                      </div>
+                    </div>
+                    
+                    {/* Conteúdo expandido (comentário) */}
+                    {isExpanded && elogio.pesquisa?.comentario_pesquisa && (
+                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+                        <div className="space-y-2">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Comentário:
+                          </span>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {elogio.pesquisa.comentario_pesquisa}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Mensagem quando não há comentário */}
+                    {isExpanded && !elogio.pesquisa?.comentario_pesquisa && (
+                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                          Nenhum comentário disponível para este elogio.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Mensagem quando não há elogios */}
+            {elogiosDetalhados.length === 0 && (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum elogio encontrado para a seleção atual.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Cards principais sem cor */}
@@ -202,6 +448,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                     left: 0,
                     bottom: 0,
                   }}
+                  onClick={() => setItemSelecionado({
+                    tipo: 'volume',
+                    dados: 'todos'
+                  })}
                 >
                   <defs>
                     <linearGradient id="colorValidados" x1="0" y1="0" x2="0" y2="1">
@@ -261,102 +511,385 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
               </ResponsiveContainer>
             </div>
             
-            {/* Legenda com totais */}
-            <div className="flex items-center justify-between text-sm mt-4 pt-4 border-t">
-              <div className="flex items-center gap-4">
+            {/* Legenda centralizada */}
+            <div className="flex items-center justify-center text-sm mt-4 pt-4 border-t">
+              <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-600">Validados: {statsElogios?.compartilhados || 0}</span>
+                  <span className="text-gray-600">Validados</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-600">Enviados: {statsElogios?.enviados || 0}</span>
+                  <span className="text-gray-600">Enviados</span>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Destaques */}
-        <div className="space-y-4">
-          {/* Top Colaborador Mensal */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                {(() => {
-                  // Calcular colaborador com mais elogios no mês atual
-                  const mesAtual = new Date().getMonth() + 1;
-                  const anoAtual = new Date().getFullYear();
-                  
-                  const elogiosMesAtual = elogios?.filter(e => {
-                    if (!e.data_resposta) return false;
-                    const dataResposta = new Date(e.data_resposta);
-                    return dataResposta.getMonth() + 1 === mesAtual && 
-                           dataResposta.getFullYear() === anoAtual &&
-                           (e.status === 'compartilhado' || e.status === 'enviado');
-                  }) || [];
+        {/* Destaques ou Detalhes dos Elogios */}
+        {itemSelecionado ? (
+          <DetalhesElogios />
+        ) : (
+          <div className="space-y-4">
+            {/* Top Colaborador Mensal */}
+            <Card className="bg-white dark:bg-gray-800 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  {(() => {
+                    // Calcular colaborador com mais elogios no período selecionado
+                    let elogiosFiltrados = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta);
+                      
+                      // Filtrar por ano
+                      if (dataResposta.getFullYear() !== anoSelecionado) return false;
+                      
+                      // Filtrar por mês se selecionado
+                      if (mesSelecionado !== 'todos') {
+                        if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+                      }
+                      
+                      return e.status === 'compartilhado' || e.status === 'enviado';
+                    }) || [];
 
-                  // Contar elogios por prestador
-                  const contagemPorPrestador: Record<string, number> = {};
-                  elogiosMesAtual.forEach(elogio => {
-                    const prestador = elogio.pesquisa?.prestador || 'Sem nome';
-                    contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
-                  });
+                    // Contar elogios por prestador
+                    const contagemPorPrestador: Record<string, number> = {};
+                    elogiosFiltrados.forEach(elogio => {
+                      const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                      contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                    });
 
-                  // Encontrar o top colaborador
-                  const topColaborador = Object.entries(contagemPorPrestador)
-                    .sort((a, b) => b[1] - a[1])[0];
+                    // Encontrar o top colaborador
+                    const topColaborador = Object.entries(contagemPorPrestador)
+                      .sort((a, b) => b[1] - a[1])[0];
 
-                  if (!topColaborador) {
+                    if (!topColaborador) {
+                      return (
+                        <>
+                          <div>
+                            <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Nenhum elogio no período</p>
+                          </div>
+                          <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                            <Star className="h-4 w-4 text-green-600" />
+                          </div>
+                        </>
+                      );
+                    }
+
+                    const [nome, quantidade] = topColaborador;
+
                     return (
                       <>
                         <div>
-                          <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Nenhum elogio este mês</p>
+                          <p className="text-xs font-medium text-green-600 uppercase tracking-wide">
+                            Top Colaborador {mesSelecionado === 'todos' ? 'Ano' : 'Mês'}
+                          </p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 uppercase">{nome}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'} no período</p>
                         </div>
                         <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                          <Star className="h-4 w-4 text-green-600" />
+                          <Star className="h-4 w-4 text-green-600 fill-green-600" />
                         </div>
                       </>
                     );
-                  }
-
-                  const [nome, quantidade] = topColaborador;
-
-                  return (
-                    <>
-                      <div>
-                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador Mês</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 uppercase">{nome}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'} este mês</p>
-                      </div>
-                      <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                        <Star className="h-4 w-4 text-green-600 fill-green-600" />
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Maior Crescimento */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">SUPORTE TÉCNICO</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">+45% vs mês anterior</p>
+                  })()}
                 </div>
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+            </Card>
+
+            {/* Maior Crescimento - Grupo */}
+            <Card className="bg-white dark:bg-gray-800 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  {(() => {
+                    // Função para obter grupo da categoria usando de_para_categoria e extrair primeira palavra
+                    const obterGrupoSimplificado = (categoria: string): string => {
+                      if (!categoria) return 'OUTROS';
+                      
+                      // Usar a função existente que faz o de-para com a tabela
+                      const grupoCompleto = obterGrupoPorCategoria(categoria);
+                      
+                      if (!grupoCompleto) return 'OUTROS';
+                      
+                      // Extrair apenas a primeira palavra do grupo
+                      const primeiraPalavra = grupoCompleto.split(/[\s-]+/)[0].trim().toUpperCase();
+                      
+                      return primeiraPalavra || 'OUTROS';
+                    };
+
+                    // Calcular crescimento por grupo baseado no filtro selecionado
+                    let mesComparacao: number;
+                    let anoComparacao: number;
+                    let mesAnterior: number;
+                    let anoAnterior: number;
+
+                    if (mesSelecionado === 'todos') {
+                      // Se "todos os meses", comparar ano atual vs ano anterior
+                      mesComparacao = 0; // Não usado
+                      anoComparacao = anoSelecionado;
+                      mesAnterior = 0; // Não usado
+                      anoAnterior = anoSelecionado - 1;
+                    } else {
+                      // Se mês específico, comparar mês selecionado vs mês anterior
+                      mesComparacao = mesSelecionado as number;
+                      anoComparacao = anoSelecionado;
+                      mesAnterior = mesComparacao === 1 ? 12 : mesComparacao - 1;
+                      anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
+                    }
+                    
+                    // Elogios do período atual
+                    const elogiosPeriodoAtual = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta);
+                      
+                      if (mesSelecionado === 'todos') {
+                        return dataResposta.getFullYear() === anoComparacao &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      } else {
+                        return dataResposta.getMonth() + 1 === mesComparacao && 
+                               dataResposta.getFullYear() === anoComparacao &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      }
+                    }) || [];
+                    
+                    // Elogios do período anterior
+                    const elogiosPeriodoAnterior = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta);
+                      
+                      if (mesSelecionado === 'todos') {
+                        return dataResposta.getFullYear() === anoAnterior &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      } else {
+                        return dataResposta.getMonth() + 1 === mesAnterior && 
+                               dataResposta.getFullYear() === anoAnterior &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      }
+                    }) || [];
+                    
+                    // Contar por grupo
+                    const contagemAtual: Record<string, number> = {};
+                    const contagemAnterior: Record<string, number> = {};
+                    
+                    elogiosPeriodoAtual.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const grupo = obterGrupoSimplificado(categoria);
+                      contagemAtual[grupo] = (contagemAtual[grupo] || 0) + 1;
+                    });
+                    
+                    elogiosPeriodoAnterior.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const grupo = obterGrupoSimplificado(categoria);
+                      contagemAnterior[grupo] = (contagemAnterior[grupo] || 0) + 1;
+                    });
+                    
+                    // Calcular crescimento - apenas valores positivos
+                    let maiorCrescimento: { grupo: string; percentual: number } | null = null;
+                    
+                    Object.keys(contagemAtual).forEach(grupo => {
+                      const atual = contagemAtual[grupo] || 0;
+                      const anterior = contagemAnterior[grupo] || 0;
+                      
+                      if (anterior > 0) {
+                        const crescimento = ((atual - anterior) / anterior) * 100;
+                        // Só considerar crescimentos positivos
+                        if (crescimento > 0 && (!maiorCrescimento || crescimento > maiorCrescimento.percentual)) {
+                          maiorCrescimento = { grupo, percentual: crescimento };
+                        }
+                      } else if (atual > 0) {
+                        // Novo grupo (crescimento infinito, consideramos 100%)
+                        if (!maiorCrescimento || 100 > maiorCrescimento.percentual) {
+                          maiorCrescimento = { grupo, percentual: 100 };
+                        }
+                      }
+                    });
+                    
+                    if (!maiorCrescimento) {
+                      return (
+                        <>
+                          <div>
+                            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento - Grupo</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Sem crescimento positivo</p>
+                          </div>
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                            <TrendingUp className="h-4 w-4 text-blue-600" />
+                          </div>
+                        </>
+                      );
+                    }
+                    
+                    const sinal = maiorCrescimento.percentual >= 0 ? '+' : '';
+                    const grupoFormatado = maiorCrescimento.grupo;
+                    
+                    return (
+                      <>
+                        <div>
+                          <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento - Grupo</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{grupoFormatado}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {sinal}{maiorCrescimento.percentual.toFixed(0)}% vs período anterior
+                          </p>
+                        </div>
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                          <TrendingUp className="h-4 w-4 text-blue-600" />
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
+              </CardHeader>
+            </Card>
+
+            {/* Maior Crescimento - Módulo */}
+            <Card className="bg-white dark:bg-gray-800 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  {(() => {
+                    // Função para extrair módulo da categoria (tudo após o segundo ponto)
+                    const extrairModulo = (categoria: string): string => {
+                      if (!categoria) return '';
+                      const partes = categoria.split('.');
+                      if (partes.length >= 3) {
+                        // Pegar tudo após o segundo ponto
+                        return partes.slice(2).join('.').trim();
+                      }
+                      return categoria;
+                    };
+
+                    // Calcular crescimento por módulo baseado no filtro selecionado
+                    let mesComparacao: number;
+                    let anoComparacao: number;
+                    let mesAnterior: number;
+                    let anoAnterior: number;
+
+                    if (mesSelecionado === 'todos') {
+                      // Se "todos os meses", comparar ano atual vs ano anterior
+                      mesComparacao = 0; // Não usado
+                      anoComparacao = anoSelecionado;
+                      mesAnterior = 0; // Não usado
+                      anoAnterior = anoSelecionado - 1;
+                    } else {
+                      // Se mês específico, comparar mês selecionado vs mês anterior
+                      mesComparacao = mesSelecionado as number;
+                      anoComparacao = anoSelecionado;
+                      mesAnterior = mesComparacao === 1 ? 12 : mesComparacao - 1;
+                      anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
+                    }
+                    
+                    // Elogios do período atual
+                    const elogiosPeriodoAtual = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta);
+                      
+                      if (mesSelecionado === 'todos') {
+                        return dataResposta.getFullYear() === anoComparacao &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      } else {
+                        return dataResposta.getMonth() + 1 === mesComparacao && 
+                               dataResposta.getFullYear() === anoComparacao &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      }
+                    }) || [];
+                    
+                    // Elogios do período anterior
+                    const elogiosPeriodoAnterior = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta);
+                      
+                      if (mesSelecionado === 'todos') {
+                        return dataResposta.getFullYear() === anoAnterior &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      } else {
+                        return dataResposta.getMonth() + 1 === mesAnterior && 
+                               dataResposta.getFullYear() === anoAnterior &&
+                               (e.status === 'compartilhado' || e.status === 'enviado');
+                      }
+                    }) || [];
+                    
+                    // Contar por módulo
+                    const contagemAtual: Record<string, number> = {};
+                    const contagemAnterior: Record<string, number> = {};
+                    
+                    elogiosPeriodoAtual.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const modulo = extrairModulo(categoria);
+                      if (modulo) {
+                        contagemAtual[modulo] = (contagemAtual[modulo] || 0) + 1;
+                      }
+                    });
+                    
+                    elogiosPeriodoAnterior.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const modulo = extrairModulo(categoria);
+                      if (modulo) {
+                        contagemAnterior[modulo] = (contagemAnterior[modulo] || 0) + 1;
+                      }
+                    });
+                    
+                    // Calcular crescimento - apenas valores positivos
+                    let maiorCrescimento: { modulo: string; percentual: number } | null = null;
+                    
+                    Object.keys(contagemAtual).forEach(modulo => {
+                      const atual = contagemAtual[modulo] || 0;
+                      const anterior = contagemAnterior[modulo] || 0;
+                      
+                      if (anterior > 0) {
+                        const crescimento = ((atual - anterior) / anterior) * 100;
+                        // Só considerar crescimentos positivos
+                        if (crescimento > 0 && (!maiorCrescimento || crescimento > maiorCrescimento.percentual)) {
+                          maiorCrescimento = { modulo, percentual: crescimento };
+                        }
+                      } else if (atual > 0) {
+                        // Novo módulo (crescimento infinito, consideramos 100%)
+                        if (!maiorCrescimento || 100 > maiorCrescimento.percentual) {
+                          maiorCrescimento = { modulo, percentual: 100 };
+                        }
+                      }
+                    });
+                    
+                    if (!maiorCrescimento) {
+                      return (
+                        <>
+                          <div>
+                            <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Maior Crescimento - Módulo</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Sem crescimento positivo</p>
+                          </div>
+                          <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                            <Users className="h-4 w-4 text-purple-600" />
+                          </div>
+                        </>
+                      );
+                    }
+                    
+                    const sinal = maiorCrescimento.percentual >= 0 ? '+' : '';
+                    // Exibir apenas o nome do módulo
+                    const moduloFormatado = maiorCrescimento.modulo.toUpperCase();
+                    
+                    return (
+                      <>
+                        <div>
+                          <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Maior Crescimento - Módulo</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{moduloFormatado}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {sinal}{maiorCrescimento.percentual.toFixed(0)}% vs período anterior
+                          </p>
+                        </div>
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                          <Users className="h-4 w-4 text-purple-600" />
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Seção inferior */}
@@ -411,9 +944,15 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                   return (
                     <div key={empresa} className="space-y-1.5">
                       {/* Linha superior: nome da empresa e valores */}
-                      <div className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                        onClick={() => setItemSelecionado({
+                          tipo: 'empresa',
+                          dados: obterNomeAbreviadoEmpresa(empresa)
+                        })}
+                      >
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[180px]">
-                          {empresa}
+                          {obterNomeAbreviadoEmpresa(empresa)}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{dadosTyped.count}</span>
@@ -501,12 +1040,38 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                        (e.status === 'compartilhado' || e.status === 'enviado');
               }) || [];
 
-              // Contar elogios por prestador
+              // Contar elogios por prestador e mapear grupos
               const contagemPorPrestador: Record<string, number> = {};
+              const gruposPorPrestador: Record<string, Record<string, number>> = {};
+              
               elogiosAno.forEach(elogio => {
                 const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                const categoria = elogio.pesquisa?.categoria || '';
+                const grupoMapeado = obterGrupoPorCategoria(categoria);
+                
+                // Contar elogios
                 contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                
+                // Mapear grupos por prestador
+                if (!gruposPorPrestador[prestador]) {
+                  gruposPorPrestador[prestador] = {};
+                }
+                if (grupoMapeado) {
+                  gruposPorPrestador[prestador][grupoMapeado] = (gruposPorPrestador[prestador][grupoMapeado] || 0) + 1;
+                }
               });
+              
+              // Função para obter o grupo principal de um prestador
+              const obterGrupoPrincipal = (prestador: string): string => {
+                const grupos = gruposPorPrestador[prestador];
+                if (!grupos || Object.keys(grupos).length === 0) return '';
+                
+                // Pegar o grupo com mais elogios
+                const grupoPrincipal = Object.entries(grupos)
+                  .sort((a, b) => b[1] - a[1])[0];
+                
+                return grupoPrincipal ? grupoPrincipal[0] : '';
+              };
 
               // Pegar todos os colaboradores ordenados
               const todosColaboradores = Object.entries(contagemPorPrestador)
@@ -540,7 +1105,14 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                     const medalha = temMedalha ? medalhas[index] : null;
                     
                     return (
-                      <div key={nome} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                      <div 
+                        key={nome} 
+                        className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+                        onClick={() => setItemSelecionado({
+                          tipo: 'colaborador',
+                          dados: nome
+                        })}
+                      >
                         <div className="flex items-center gap-3 flex-1">
                           {temMedalha ? (
                             <div className={`flex items-center justify-center w-10 h-10 ${medalha!.bg} rounded-full text-xl`}>
@@ -555,9 +1127,19 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                             <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase truncate">
                               {nome}
                             </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'}
+                              </p>
+                              {(() => {
+                                const grupoPrincipal = obterGrupoPrincipal(nome);
+                                return grupoPrincipal ? (
+                                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+                                    {grupoPrincipal}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -687,7 +1269,14 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
                     : '';
                   
                   return (
-                    <div key={elogio.id} className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                    <div 
+                      key={elogio.id} 
+                      className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                      onClick={() => setItemSelecionado({
+                        tipo: 'elogio',
+                        dados: elogio
+                      })}
+                    >
                       <div className={`w-10 h-10 ${cor.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
                         <span className={`text-sm font-bold ${cor.text}`}>
                           {iniciais}
@@ -732,10 +1321,121 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, elogios }: {
 };
 
 // Componente Mapeamento
-const MapeamentoElogios = ({ statsElogios, anoSelecionado }: { 
+const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
   statsElogios: any; 
-  anoSelecionado: number; 
+  anoSelecionado: number;
+  mesSelecionado: number | 'todos';
+  elogios?: any[];
 }) => {
+  // Estado para controlar expansão das áreas
+  const [areasExpandido, setAreasExpandido] = useState(false);
+  
+  // Hook para buscar de-para de categorias
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
+
+  // Função para fazer de-para da categoria para grupo
+  const obterGrupoPorCategoria = (categoria: string): string => {
+    if (!categoria) return '';
+    
+    // Busca exata primeiro
+    let deParaEncontrado = deParaCategorias.find(
+      dp => dp.categoria === categoria
+    );
+    
+    // Se não encontrar, tentar busca parcial (mais flexível)
+    if (!deParaEncontrado) {
+      deParaEncontrado = deParaCategorias.find(
+        dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+      );
+    }
+    
+    if (deParaEncontrado) {
+      console.log('✅ De-para encontrado:', {
+        categoria,
+        grupoMapeado: deParaEncontrado.grupo
+      });
+      return deParaEncontrado.grupo;
+    } else {
+      console.log('❌ De-para NÃO encontrado para categoria:', categoria);
+      console.log('📋 Categorias disponíveis:', deParaCategorias.map(dp => dp.categoria));
+      return categoria; // Fallback para categoria original
+    }
+  };
+
+  // Filtrar elogios baseado no ano e mês selecionados
+  const elogiosFiltrados = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    
+    // Filtrar por ano
+    if (dataResposta.getFullYear() !== anoSelecionado) return false;
+    
+    // Filtrar por mês se selecionado
+    if (mesSelecionado !== 'todos') {
+      if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+    }
+    
+    return e.status === 'compartilhado' || e.status === 'enviado';
+  }) || [];
+
+  // Para comparação mensal (quando mês específico selecionado)
+  const mesAtual = new Date().getMonth() + 1;
+  const anoAtual = new Date().getFullYear();
+  
+  const elogiosMesAtual = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getMonth() + 1 === mesAtual && 
+           dataResposta.getFullYear() === anoAtual &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
+  // Top grupos baseado no filtro selecionado
+  const contagemPeriodo: Record<string, number> = {};
+  elogiosFiltrados.forEach(elogio => {
+    const categoria = elogio.pesquisa?.categoria || '';
+    const grupoMapeado = obterGrupoPorCategoria(categoria);
+    if (grupoMapeado) {
+      contagemPeriodo[grupoMapeado] = (contagemPeriodo[grupoMapeado] || 0) + 1;
+    }
+  });
+  const topPeriodo = Object.entries(contagemPeriodo).sort((a, b) => b[1] - a[1])[0];
+
+  // Top grupos do mês atual (para comparação quando necessário)
+  const contagemMes: Record<string, number> = {};
+  elogiosMesAtual.forEach(elogio => {
+    const categoria = elogio.pesquisa?.categoria || '';
+    const grupoMapeado = obterGrupoPorCategoria(categoria);
+    if (grupoMapeado) {
+      contagemMes[grupoMapeado] = (contagemMes[grupoMapeado] || 0) + 1;
+    }
+  });
+  const topMes = Object.entries(contagemMes).sort((a, b) => b[1] - a[1])[0];
+
+  // Top grupos do ano completo (para comparação quando necessário)
+  const elogiosAnoCompleto = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getFullYear() === anoSelecionado &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+  
+  const contagemAno: Record<string, number> = {};
+  elogiosAnoCompleto.forEach(elogio => {
+    const categoria = elogio.pesquisa?.categoria || '';
+    const grupoMapeado = obterGrupoPorCategoria(categoria);
+    if (grupoMapeado) {
+      contagemAno[grupoMapeado] = (contagemAno[grupoMapeado] || 0) + 1;
+    }
+  });
+  const topAno = Object.entries(contagemAno).sort((a, b) => b[1] - a[1])[0];
+
+  // Total de colaboradores únicos
+  const colaboradoresUnicos = new Set(elogiosFiltrados.map(e => e.pesquisa?.prestador).filter(Boolean)).size;
+
+  // Setor em alta baseado no período selecionado
+  const setorDestaque = topPeriodo;
+
   return (
     <div className="space-y-6">
       {/* Cards principais */}
@@ -743,9 +1443,15 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Destaque do Mês</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">Maria Silva</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">12 Elogios</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Destaque do {mesSelecionado === 'todos' ? 'Ano' : 'Mês'}
+              </p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">
+                {topPeriodo ? topPeriodo[0] : '-'}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {topPeriodo ? `${topPeriodo[1]} ${topPeriodo[1] === 1 ? 'Elogio' : 'Elogios'}` : 'Nenhum elogio'}
+              </p>
             </div>
             <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
               <Award className="h-4 w-4 text-yellow-600" />
@@ -756,9 +1462,18 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Destaque do Ano</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">João Santos</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">45 Elogios</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {mesSelecionado === 'todos' ? 'Destaque Geral' : 'Destaque do Ano'}
+              </p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">
+                {mesSelecionado === 'todos' ? (topAno ? topAno[0] : '-') : (topAno ? topAno[0] : '-')}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {mesSelecionado === 'todos' 
+                  ? (topAno ? `${topAno[1]} ${topAno[1] === 1 ? 'Elogio' : 'Elogios'} no ano` : 'Nenhum elogio')
+                  : (topAno ? `${topAno[1]} ${topAno[1] === 1 ? 'Elogio' : 'Elogios'} no ano` : 'Nenhum elogio')
+                }
+              </p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <Star className="h-4 w-4 text-purple-600" />
@@ -771,8 +1486,8 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Mapeado</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">86</p>
-                <span className="text-xs font-medium text-green-600">+12 novos</span>
+                <p className="text-2xl font-bold">{colaboradoresUnicos}</p>
+                <span className="text-xs font-medium text-green-600">colaboradores</span>
               </div>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -785,8 +1500,15 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Setor em Alta</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">Tecnologia</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Maior engajamento</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                {setorDestaque ? setorDestaque[0].split(/[\s-]+/)[0].trim().toUpperCase() : '-'}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {setorDestaque 
+                  ? `${setorDestaque[1]} ${setorDestaque[1] === 1 ? 'Elogio' : 'Elogios'} ${mesSelecionado === 'todos' ? 'no ano' : 'no mês'}`
+                  : 'Sem dados'
+                }
+              </p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <Building2 className="h-4 w-4 text-blue-600" />
@@ -797,20 +1519,56 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top 5 - Mês Atual */}
+        {/* Top 5 - Período Selecionado */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg font-semibold">Top 5 - Mês Atual</CardTitle>
+                <CardTitle className="text-lg font-semibold">
+                  Top 5 Grupos - {mesSelecionado === 'todos' ? 'Ano' : 'Mês Selecionado'}
+                </CardTitle>
               </div>
-              <span className="text-xs text-gray-500">Janeiro 2025</span>
+              <span className="text-xs text-gray-500">
+                {mesSelecionado === 'todos' 
+                  ? `Ano ${anoSelecionado}`
+                  : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' })} ${anoSelecionado}`
+                }
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              Gráfico de barras - Top 5 colaboradores do mês
+            <div className="space-y-3">
+              {Object.entries(contagemPeriodo)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([nome, quantidade], index) => {
+                  const cores = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500'];
+                  const porcentagem = Object.values(contagemPeriodo).reduce((a, b) => a + b, 0) > 0 
+                    ? (quantidade / Object.values(contagemPeriodo).reduce((a, b) => a + b, 0)) * 100 
+                    : 0;
+                  
+                  return (
+                    <div key={nome} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`${cores[index]} h-full rounded-full transition-all duration-500`}
+                          style={{ width: `${porcentagem}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+              {Object.keys(contagemPeriodo).length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Nenhum grupo com elogios no período selecionado
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -821,14 +1579,43 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <PieChart className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-lg font-semibold">Top 5 - Acumulado do Ano</CardTitle>
+                <CardTitle className="text-lg font-semibold">Top 5 Grupos - Acumulado do Ano</CardTitle>
               </div>
-              <span className="text-xs text-gray-500">Ano 2025</span>
+              <span className="text-xs text-gray-500">Ano {anoSelecionado}</span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              Gráfico de pizza - Top 5 colaboradores do ano
+            <div className="space-y-3">
+              {Object.entries(contagemAno)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([nome, quantidade], index) => {
+                  const cores = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500'];
+                  const porcentagem = Object.values(contagemAno).reduce((a, b) => a + b, 0) > 0 
+                    ? (quantidade / Object.values(contagemAno).reduce((a, b) => a + b, 0)) * 100 
+                    : 0;
+                  
+                  return (
+                    <div key={nome} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`${cores[index]} h-full rounded-full transition-all duration-500`}
+                          style={{ width: `${porcentagem}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+              {Object.keys(contagemAno).length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Nenhum grupo com elogios este ano
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -845,29 +1632,299 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
-              Gráfico de habilidades mais mencionadas
+            <div className="space-y-3">
+              {(() => {
+                // Extrair palavras-chave dos comentários
+                const palavrasChave: Record<string, number> = {};
+                const palavrasRelevantes = ['técnico', 'suporte', 'atendimento', 'rápido', 'eficiente', 'qualidade', 'excelente', 'ótimo', 'bom', 'profissional'];
+                
+                elogiosFiltrados.forEach(elogio => {
+                  const comentario = elogio.pesquisa?.comentario_pesquisa?.toLowerCase() || '';
+                  palavrasRelevantes.forEach(palavra => {
+                    if (comentario.includes(palavra)) {
+                      palavrasChave[palavra] = (palavrasChave[palavra] || 0) + 1;
+                    }
+                  });
+                });
+
+                const topPalavras = Object.entries(palavrasChave)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 5);
+
+                if (topPalavras.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      Nenhuma habilidade identificada
+                    </div>
+                  );
+                }
+
+                return topPalavras.map(([palavra, quantidade], index) => {
+                  const cores = ['bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-purple-500'];
+                  const maxQuantidade = Math.max(...Object.values(palavrasChave));
+                  const porcentagem = (quantidade / maxQuantidade) * 100;
+                  
+                  return (
+                    <div key={palavra} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">{palavra}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{quantidade}x</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`${cores[index]} h-full rounded-full transition-all duration-500`}
+                          style={{ width: `${porcentagem}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </CardContent>
         </Card>
 
-        {/* Evolução dos Líderes */}
+        {/* Distribuição por Área */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <CardTitle className="text-sm font-semibold">Evolução dos Líderes (Últimos 6 meses)</CardTitle>
+                <PieChart className="h-4 w-4 text-green-600" />
+                <CardTitle className="text-sm font-semibold">Distribuição por Área</CardTitle>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-blue-600">● Maria Silva</span>
-                <span className="text-purple-600">● João Santos</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setAreasExpandido(!areasExpandido)}
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200"
+                  title={areasExpandido ? 'Mostrar apenas principais (FISCAL e COMEX)' : 'Mostrar todas as áreas'}
+                >
+                  {areasExpandido ? 'Principais' : 'Todas'}
+                </button>
+                <span className="text-xs text-gray-500">
+                  {mesSelecionado === 'todos' 
+                    ? `Ano ${anoSelecionado}`
+                    : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' })} ${anoSelecionado}`
+                  }
+                </span>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
-              Gráfico de linha - Evolução dos líderes
+            <div className="space-y-4">
+              {(() => {
+                // Contar pesquisas por área (COMEX, FISCAL, QUALIDADE, BPO)
+                const contagemAreas: Record<string, number> = {
+                  'COMEX': 0,
+                  'FISCAL': 0,
+                  'QUALIDADE': 0,
+                  'BPO': 0
+                };
+                
+                // Debug: Log dos grupos para investigação
+                console.log('🔍 Debug Distribuição por Área:');
+                console.log('Total de elogios filtrados:', elogiosFiltrados.length);
+                
+                const gruposUnicos = new Set();
+                
+                elogiosFiltrados.forEach(elogio => {
+                  const categoria = elogio.pesquisa?.categoria || '';
+                  const grupoOriginal = elogio.pesquisa?.grupo || '';
+                  
+                  // Fazer de-para da categoria para obter o grupo correto
+                  const grupoMapeado = obterGrupoPorCategoria(categoria);
+                  
+                  gruposUnicos.add(`${categoria} → ${grupoMapeado}`);
+                  
+                  // Classificar baseado no grupo mapeado
+                  const grupoUpper = grupoMapeado.toUpperCase();
+                  
+                  console.log('🔄 De-para:', {
+                    categoria,
+                    grupoOriginal,
+                    grupoMapeado,
+                    elogioId: elogio.id
+                  });
+                  
+                  // Lógica de classificação baseada no grupo mapeado
+                  if (
+                    grupoUpper.includes('COMEX') || 
+                    grupoUpper.includes('CÂMBIO') || 
+                    grupoUpper.includes('CAMBIO') ||
+                    grupoUpper.includes('CE+') ||
+                    grupoUpper.includes('EXPORTAÇÃO') ||
+                    grupoUpper.includes('IMPORTAÇÃO')
+                  ) {
+                    contagemAreas['COMEX']++;
+                    console.log('📊 COMEX encontrado:', grupoMapeado);
+                  } else if (
+                    grupoUpper.includes('FISCAL') || 
+                    grupoUpper.includes('TRIBUTÁRIO') || 
+                    grupoUpper.includes('TRIBUTARIO') ||
+                    grupoUpper.includes('TRIBUT') ||
+                    grupoUpper.includes('IMPOSTO') ||
+                    grupoUpper.includes('FISC') ||
+                    grupoUpper.includes('COMPLY') ||
+                    grupoUpper.includes('PW_SATI') ||
+                    grupoUpper.includes('GALLERY') ||
+                    grupoUpper.includes('NF-E') ||
+                    grupoUpper.includes('NFS-E') ||
+                    grupoUpper.includes('SPED') ||
+                    grupoUpper.includes('REINF') ||
+                    grupoUpper.includes('ICMS') ||
+                    grupoUpper.includes('CIAP') ||
+                    grupoUpper.includes('EFD')
+                  ) {
+                    contagemAreas['FISCAL']++;
+                    console.log('📊 FISCAL encontrado:', grupoMapeado);
+                  } else if (grupoUpper.includes('QUALIDADE') || grupoUpper.includes('QUALITY')) {
+                    contagemAreas['QUALIDADE']++;
+                    console.log('📊 QUALIDADE encontrado:', grupoMapeado);
+                  } else if (
+                    grupoUpper.includes('BPO') || 
+                    grupoUpper.includes('BUSINESS PROCESS') ||
+                    grupoUpper.includes('ADMINISTRAÇÃO') ||
+                    grupoUpper.includes('ADMIN')
+                  ) {
+                    contagemAreas['BPO']++;
+                    console.log('📊 BPO encontrado:', grupoMapeado);
+                  } else {
+                    console.log('❌ Grupo não classificado:', {
+                      categoria,
+                      grupoMapeado,
+                      grupoUpper
+                    });
+                  }
+                });
+                
+                console.log('Grupos únicos encontrados:', Array.from(gruposUnicos));
+                console.log('Contagem por área:', contagemAreas);
+                console.log('📊 RESUMO FINAL:');
+                console.log('  - Total de elogios processados:', elogiosFiltrados.length);
+                console.log('  - Total classificado nas áreas:', Object.values(contagemAreas).reduce((a, b) => a + b, 0));
+                console.log('  - COMEX:', contagemAreas['COMEX']);
+                console.log('  - FISCAL:', contagemAreas['FISCAL']);
+                console.log('  - QUALIDADE:', contagemAreas['QUALIDADE']);
+                console.log('  - BPO:', contagemAreas['BPO']);
+                
+                const totalPesquisas = Object.values(contagemAreas).reduce((a, b) => a + b, 0);
+                
+                // Preparar dados para o gráfico de pizza
+                let dadosPizza = [
+                  { nome: 'FISCAL', valor: contagemAreas['FISCAL'], cor: '#3b82f6' },
+                  { nome: 'COMEX', valor: contagemAreas['COMEX'], cor: '#8b5cf6' },
+                  { nome: 'QUALIDADE', valor: contagemAreas['QUALIDADE'], cor: '#10b981' },
+                  { nome: 'BPO', valor: contagemAreas['BPO'], cor: '#f59e0b' }
+                ].filter(item => item.valor > 0); // Só mostra áreas com pesquisas
+                
+                // Se expandido (modo todas), mostrar todas as áreas
+                // Se não expandido (modo principais), mostrar apenas FISCAL e COMEX
+                if (areasExpandido) {
+                  // Modo "Todas" - mostrar todas as áreas (não filtrar)
+                  // dadosPizza já contém todas as áreas
+                } else {
+                  // Modo "Principais" - mostrar apenas FISCAL e COMEX
+                  dadosPizza = dadosPizza.filter(item => item.nome === 'FISCAL' || item.nome === 'COMEX');
+                }
+                
+                // Ordenar por valor (maior primeiro)
+                dadosPizza.sort((a, b) => b.valor - a.valor);
+                
+                if (dadosPizza.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      {areasExpandido 
+                        ? 'Nenhuma pesquisa encontrada para todas as áreas'
+                        : 'Nenhuma pesquisa encontrada para FISCAL e COMEX'
+                      }
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="flex flex-col items-center space-y-6">
+                    {/* Gráfico de Pizza Centralizado */}
+                    <div className="flex justify-center">
+                      <ResponsiveContainer width={280} height={280}>
+                        <RechartsPieChart>
+                          <Pie
+                            data={dadosPizza}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={100}
+                            paddingAngle={2}
+                            dataKey="valor"
+                            strokeWidth={0}
+                            label={({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
+                              // Calcular porcentagem baseada apenas nas áreas visíveis
+                              const totalVisivel = dadosPizza.reduce((acc, item) => acc + item.valor, 0);
+                              const porcentagem = totalVisivel > 0 ? (value / totalVisivel) * 100 : 0;
+                              if (porcentagem < 3) return null;
+                              
+                              const RADIAN = Math.PI / 180;
+                              const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                              
+                              return (
+                                <text 
+                                  x={x} 
+                                  y={y} 
+                                  fill="white" 
+                                  textAnchor="middle" 
+                                  dominantBaseline="central"
+                                  fontSize="9"
+                                  fontWeight="200"
+                                >
+                                  {`${porcentagem.toFixed(1)}%`}
+                                </text>
+                              );
+                            }}
+                            labelLine={false}
+                          >
+                            {dadosPizza.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.cor} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: any, name: string, props: any) => {
+                              // Calcular porcentagem baseada apenas nas áreas visíveis
+                              const totalVisivel = dadosPizza.reduce((acc, item) => acc + item.valor, 0);
+                              const porcentagem = totalVisivel > 0 ? (value / totalVisivel) * 100 : 0;
+                              const nomeArea = props?.payload?.nome || name;
+                              return [`${value} (${porcentagem.toFixed(1)}%)`, nomeArea];
+                            }}
+                            contentStyle={{
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                              fontSize: '12px'
+                            }}
+                          />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    {/* Legenda em Uma Linha */}
+                    <div className="flex items-center justify-center gap-6 flex-wrap">
+                      {dadosPizza.map((area) => {
+                        return (
+                          <div key={area.nome} className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: area.cor }}
+                            ></div>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {area.nome}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -876,13 +1933,394 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado }: {
   );
 };
 
+// Componente de Seleção Múltipla Personalizada
+interface MultiSelectProps {
+  options: string[];
+  selected: string[];
+  onSelectionChange: (selected: string[]) => void;
+  placeholder: string;
+  searchPlaceholder: string;
+}
+
+const MultiSelect = ({ options, selected, onSelectionChange, placeholder, searchPlaceholder }: MultiSelectProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredOptions = options.filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleToggleOption = (option: string) => {
+    if (selected.includes(option)) {
+      onSelectionChange(selected.filter(item => item !== option));
+    } else {
+      onSelectionChange([...selected, option]);
+    }
+  };
+
+  const handleRemoveTag = (option: string) => {
+    onSelectionChange(selected.filter(item => item !== option));
+  };
+
+  const handleSelectAll = () => {
+    onSelectionChange(filteredOptions);
+  };
+
+  const handleClearAll = () => {
+    onSelectionChange([]);
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      {/* Campo principal com tags selecionadas */}
+      <div 
+        className="min-h-[42px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex flex-wrap gap-1">
+          {selected.map(item => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1 rounded-full bg-blue-500 px-2.5 py-0.5 text-xs font-medium text-white"
+            >
+              {item}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveTag(item);
+                }}
+                className="ml-1 hover:bg-blue-600 rounded-full p-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          {selected.length === 0 && (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown className={`absolute right-3 top-3 h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+
+      {/* Dropdown com opções */}
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-background border border-input rounded-md shadow-lg">
+          {/* Campo de busca */}
+          <div className="p-3 border-b">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {/* Botões de controle */}
+          <div className="p-2 border-b flex gap-2">
+            <button
+              onClick={handleSelectAll}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Selecionar todos
+            </button>
+            <button
+              onClick={handleClearAll}
+              className="text-xs text-gray-600 hover:text-gray-800 font-medium"
+            >
+              Limpar seleção
+            </button>
+          </div>
+
+          {/* Lista de opções */}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-3 text-sm text-muted-foreground text-center">
+                Nenhum item encontrado
+              </div>
+            ) : (
+              filteredOptions.map(option => (
+                <div
+                  key={option}
+                  className="flex items-center space-x-2 p-2 hover:bg-accent cursor-pointer"
+                  onClick={() => handleToggleOption(option)}
+                >
+                  <Checkbox
+                    checked={selected.includes(option)}
+                    onChange={() => {}} // Controlado pelo onClick do div
+                  />
+                  <span className="text-sm flex-1">{option}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Contador de selecionados */}
+          {selected.length > 0 && (
+            <div className="p-2 border-t bg-muted/50">
+              <span className="text-xs text-muted-foreground">
+                {selected.length} item(ns) selecionado(s)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Componente Volume
-const VolumeElogios = ({ statsElogios, anoSelecionado }: { 
+const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
   statsElogios: any; 
-  anoSelecionado: number; 
+  anoSelecionado: number;
+  mesSelecionado: number | 'todos';
+  elogios?: any[];
 }) => {
+  // Estados para filtros múltiplos
+  const [colaboradoresSelecionados, setColaboradoresSelecionados] = useState<string[]>([]);
+  const [empresasSelecionadas, setEmpresasSelecionadas] = useState<string[]>([]);
+  const [tipoFiltro, setTipoFiltro] = useState<'colaborador' | 'empresa'>('colaborador');
+
+  // Hook para buscar empresas
+  const { empresas } = useEmpresas();
+
+  // Função para obter nome abreviado da empresa
+  const obterNomeAbreviadoEmpresa = (nomeEmpresa: string): string => {
+    if (!nomeEmpresa || nomeEmpresa === 'N/A') {
+      return 'N/A';
+    }
+    
+    const empresaEncontrada = empresas.find(
+      empresa => 
+        empresa.nome_completo === nomeEmpresa || 
+        empresa.nome_abreviado === nomeEmpresa ||
+        empresa.nome_completo?.toLowerCase() === nomeEmpresa.toLowerCase() ||
+        empresa.nome_abreviado?.toLowerCase() === nomeEmpresa.toLowerCase()
+    );
+    
+    if (empresaEncontrada) {
+      return empresaEncontrada.nome_abreviado || empresaEncontrada.nome_completo;
+    }
+    
+    return nomeEmpresa;
+  };
+
+  // Filtrar elogios do ano
+  const elogiosFiltrados = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getFullYear() === anoSelecionado &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
+  // Aplicar filtros múltiplos
+  const elogiosFiltradosComFiltro = elogiosFiltrados.filter(elogio => {
+    if (tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0) {
+      const prestador = elogio.pesquisa?.prestador || '';
+      return colaboradoresSelecionados.includes(prestador);
+    }
+    
+    if (tipoFiltro === 'empresa' && empresasSelecionadas.length > 0) {
+      const empresa = elogio.pesquisa?.empresa || '';
+      const nomeAbreviado = obterNomeAbreviadoEmpresa(empresa);
+      return empresasSelecionadas.includes(nomeAbreviado);
+    }
+    
+    return true;
+  });
+
+  // Obter listas únicas para os filtros
+  const colaboradoresUnicos = [...new Set(elogiosFiltrados.map(e => e.pesquisa?.prestador).filter(Boolean))].sort();
+  const empresasUnicas = [...new Set(elogiosFiltrados.map(e => {
+    const empresa = e.pesquisa?.empresa;
+    return empresa ? obterNomeAbreviadoEmpresa(empresa) : null;
+  }).filter(Boolean))].sort();
+
+  // Calcular dados por mês para comparação múltipla
+  const dadosPorMes = useMemo(() => {
+    const meses = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+    
+    if (tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0) {
+      // Dados separados por colaborador
+      const dadosPorColaborador: Record<string, Record<number, number>> = {};
+      
+      colaboradoresSelecionados.forEach(colaborador => {
+        dadosPorColaborador[colaborador] = {};
+      });
+      
+      elogiosFiltrados.forEach(elogio => {
+        const prestador = elogio.pesquisa?.prestador || '';
+        if (colaboradoresSelecionados.includes(prestador)) {
+          const dataResposta = new Date(elogio.data_resposta!);
+          const mes = dataResposta.getMonth() + 1;
+          dadosPorColaborador[prestador][mes] = (dadosPorColaborador[prestador][mes] || 0) + 1;
+        }
+      });
+      
+      return meses.map((nome, index) => {
+        const dadosMes: any = { mes: nome };
+        colaboradoresSelecionados.forEach(colaborador => {
+          dadosMes[colaborador] = dadosPorColaborador[colaborador][index + 1] || 0;
+        });
+        return dadosMes;
+      });
+    }
+    
+    if (tipoFiltro === 'empresa' && empresasSelecionadas.length > 0) {
+      // Dados separados por empresa
+      const dadosPorEmpresa: Record<string, Record<number, number>> = {};
+      
+      empresasSelecionadas.forEach(empresa => {
+        dadosPorEmpresa[empresa] = {};
+      });
+      
+      elogiosFiltrados.forEach(elogio => {
+        const empresa = elogio.pesquisa?.empresa || '';
+        const nomeAbreviado = obterNomeAbreviadoEmpresa(empresa);
+        if (empresasSelecionadas.includes(nomeAbreviado)) {
+          const dataResposta = new Date(elogio.data_resposta!);
+          const mes = dataResposta.getMonth() + 1;
+          dadosPorEmpresa[nomeAbreviado][mes] = (dadosPorEmpresa[nomeAbreviado][mes] || 0) + 1;
+        }
+      });
+      
+      return meses.map((nome, index) => {
+        const dadosMes: any = { mes: nome };
+        empresasSelecionadas.forEach(empresa => {
+          dadosMes[empresa] = dadosPorEmpresa[empresa][index + 1] || 0;
+        });
+        return dadosMes;
+      });
+    }
+    
+    // Dados totais quando nenhum filtro específico
+    const contagemPorMes: Record<number, number> = {};
+    
+    elogiosFiltradosComFiltro.forEach(elogio => {
+      const dataResposta = new Date(elogio.data_resposta!);
+      const mes = dataResposta.getMonth() + 1;
+      contagemPorMes[mes] = (contagemPorMes[mes] || 0) + 1;
+    });
+    
+    return meses.map((nome, index) => ({
+      mes: nome,
+      elogios: contagemPorMes[index + 1] || 0
+    }));
+  }, [elogiosFiltrados, colaboradoresSelecionados, empresasSelecionadas, tipoFiltro]);
+
+  // Calcular estatísticas
+  const mesAtual = new Date().getMonth() + 1;
+  const elogiosMesAtual = elogiosFiltradosComFiltro.filter(e => {
+    const dataResposta = new Date(e.data_resposta!);
+    return dataResposta.getMonth() + 1 === mesAtual;
+  });
+
+  const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1;
+  const anoAnterior = mesAtual === 1 ? anoSelecionado - 1 : anoSelecionado;
+  const elogiosMesAnterior = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getMonth() + 1 === mesAnterior && 
+           dataResposta.getFullYear() === anoAnterior &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
+  const crescimento = elogiosMesAnterior.length > 0 
+    ? ((elogiosMesAtual.length - elogiosMesAnterior.length) / elogiosMesAnterior.length) * 100 
+    : 0;
+
   return (
     <div className="space-y-6">
+      {/* Filtros */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold">Filtros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Linha com botões de filtro e seleção múltipla */}
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+              {/* Botões de tipo de filtro */}
+              <div className="flex-shrink-0">
+                <Label className="text-sm font-medium mb-2 block">Filtrar por:</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={tipoFiltro === 'colaborador' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setTipoFiltro('colaborador');
+                      setColaboradoresSelecionados([]);
+                      setEmpresasSelecionadas([]);
+                    }}
+                  >
+                    Colaborador
+                  </Button>
+                  <Button
+                    variant={tipoFiltro === 'empresa' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setTipoFiltro('empresa');
+                      setColaboradoresSelecionados([]);
+                      setEmpresasSelecionadas([]);
+                    }}
+                  >
+                    Empresa
+                  </Button>
+                </div>
+              </div>
+
+              {/* Seleção múltipla de colaboradores */}
+              {tipoFiltro === 'colaborador' && (
+                <div className="flex-1 min-w-0">
+                  <Label className="text-sm font-medium mb-2 block">Colaboradores para comparação:</Label>
+                  <MultiSelect
+                    options={colaboradoresUnicos}
+                    selected={colaboradoresSelecionados}
+                    onSelectionChange={setColaboradoresSelecionados}
+                    placeholder="Selecione colaboradores para comparar..."
+                    searchPlaceholder="Buscar colaborador..."
+                  />
+                </div>
+              )}
+
+              {/* Seleção múltipla de empresas */}
+              {tipoFiltro === 'empresa' && (
+                <div className="flex-1 min-w-0">
+                  <Label className="text-sm font-medium mb-2 block">Empresas para comparação:</Label>
+                  <MultiSelect
+                    options={empresasUnicas}
+                    selected={empresasSelecionadas}
+                    onSelectionChange={setEmpresasSelecionadas}
+                    placeholder="Selecione empresas para comparar..."
+                    searchPlaceholder="Buscar empresa..."
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -890,8 +2328,10 @@ const VolumeElogios = ({ statsElogios, anoSelecionado }: {
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios no Mês</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">128</p>
-                <span className="text-xs font-medium text-blue-600">+12%</span>
+                <p className="text-2xl font-bold">{elogiosMesAtual.length}</p>
+                <span className={`text-xs font-medium ${crescimento >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {crescimento >= 0 ? '+' : ''}{crescimento.toFixed(0)}%
+                </span>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -904,7 +2344,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado }: {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Acumulado Ano</p>
-              <p className="text-2xl font-bold">1,452</p>
+              <p className="text-2xl font-bold">{elogiosFiltradosComFiltro.length}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <Calendar className="h-4 w-4 text-purple-600" />
@@ -916,10 +2356,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado }: {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pessoas Elogiadas</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">86</p>
-                <span className="text-xs font-medium text-orange-600">+5</span>
-              </div>
+              <p className="text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.prestador).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
               <Users className="h-4 w-4 text-orange-600" />
@@ -930,8 +2367,8 @@ const VolumeElogios = ({ statsElogios, anoSelecionado }: {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Equipes Citadas</p>
-              <p className="text-2xl font-bold">14</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Categorias Citadas</p>
+              <p className="text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.categoria).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
               <Building2 className="h-4 w-4 text-green-600" />
@@ -940,193 +2377,206 @@ const VolumeElogios = ({ statsElogios, anoSelecionado }: {
         </Card>
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Evolução de Pessoas Elogiadas */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg font-semibold">Evolução de Pessoas Elogiadas</CardTitle>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-blue-600">● 2024</span>
-                <span className="text-gray-400">● 2023</span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Comparativo de volume mensal (Últimos 12 meses)
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              Gráfico de linha - Evolução mensal
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Distribuição por Setor */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg font-semibold">Distribuição por Setor</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm">Fiscal</span>
-                </div>
-                <span className="text-sm font-medium">62%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm">Comex</span>
-                </div>
-                <span className="text-sm font-medium">38%</span>
-              </div>
-              <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
-                Gráfico de pizza - Distribuição por setor
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Seção inferior */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Equipes Elogiadas */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-orange-600" />
-                <CardTitle className="text-sm font-semibold">Top Equipes Elogiadas</CardTitle>
-              </div>
-              <div className="flex gap-2">
-                <button className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">Mês</button>
-                <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">Ano</button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Fiscal</span>
-                </div>
-                <span className="text-xs font-medium">● Comex</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Clientes (Volume) */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-purple-600" />
-                <CardTitle className="text-sm font-semibold">Top Clientes (Volume)</CardTitle>
-              </div>
-              <div className="flex gap-2">
-                <button className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">Mês</button>
-                <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">Ano</button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
-              Gráfico de barras - Top clientes por volume
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-// Componente Motivos
-const MotivosElogios = ({ statsElogios, anoSelecionado }: { 
-  statsElogios: any; 
-  anoSelecionado: number; 
-}) => {
-  return (
-    <div className="space-y-6">
-      {/* Cards principais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Totais</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">128</p>
-                <span className="text-xs font-medium text-blue-600">+8%</span>
-              </div>
-            </div>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Heart className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Colaboradores Citados</p>
-              <p className="text-2xl font-bold">42</p>
-            </div>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-              <Users className="h-4 w-4 text-purple-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">4.9/5</p>
-                <span className="text-xs font-medium text-green-600">+0.2</span>
-              </div>
-            </div>
-            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <Star className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Canais Externos</p>
-              <p className="text-2xl font-bold">15</p>
-            </div>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-              <Building2 className="h-4 w-4 text-orange-600" />
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Gráfico principal */}
+      {/* Gráfico de Volume por Mês */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <PieChart className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-lg font-semibold">Motivos do Elogio</CardTitle>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Volume de Elogios por Mês - Comparação</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0
+              ? `Comparando ${colaboradoresSelecionados.length} colaborador(es): ${colaboradoresSelecionados.slice(0, 3).join(', ')}${colaboradoresSelecionados.length > 3 ? '...' : ''}`
+              : tipoFiltro === 'empresa' && empresasSelecionadas.length > 0
+              ? `Comparando ${empresasSelecionadas.length} empresa(s): ${empresasSelecionadas.slice(0, 3).join(', ')}${empresasSelecionadas.length > 3 ? '...' : ''}`
+              : 'Todos os elogios - Selecione itens para comparação'
+            }
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="h-80 flex items-center justify-center text-gray-500">
-            Gráfico de pizza - Distribuição dos motivos de elogios
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              {(() => {
+                // Cores para as linhas
+                const cores = [
+                  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                  '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
+                ];
+
+                if (tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0) {
+                  return (
+                    <AreaChart data={dadosPorMes} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <XAxis 
+                        dataKey="mes" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || payload.length === 0) return null;
+                          
+                          // Quebrar dados em colunas de máximo 10 itens
+                          const maxItemsPerColumn = 10;
+                          const columns = [];
+                          
+                          for (let i = 0; i < payload.length; i += maxItemsPerColumn) {
+                            columns.push(payload.slice(i, i + maxItemsPerColumn));
+                          }
+                          
+                          return (
+                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-4xl">
+                              <p className="font-semibold mb-2 text-gray-800">Mês: {label}</p>
+                              <div className="flex gap-6">
+                                {columns.map((column, columnIndex) => (
+                                  <div key={columnIndex} className="flex flex-col gap-1">
+                                    {column.map((entry, index) => (
+                                      <div key={index} className="flex items-center gap-2 text-sm">
+                                        <div 
+                                          className="w-3 h-3 rounded-full" 
+                                          style={{ backgroundColor: entry.color }}
+                                        />
+                                        <span className="text-gray-700">
+                                          {entry.name}: {entry.value}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Legend />
+                      {colaboradoresSelecionados.map((colaborador, index) => (
+                        <Area
+                          key={colaborador}
+                          type="monotone"
+                          dataKey={colaborador}
+                          stroke={cores[index % cores.length]}
+                          strokeWidth={2}
+                          fillOpacity={0.1}
+                          fill={cores[index % cores.length]}
+                        />
+                      ))}
+                    </AreaChart>
+                  );
+                }
+
+                if (tipoFiltro === 'empresa' && empresasSelecionadas.length > 0) {
+                  return (
+                    <AreaChart data={dadosPorMes} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <XAxis 
+                        dataKey="mes" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || payload.length === 0) return null;
+                          
+                          // Quebrar dados em colunas de máximo 10 itens
+                          const maxItemsPerColumn = 10;
+                          const columns = [];
+                          
+                          for (let i = 0; i < payload.length; i += maxItemsPerColumn) {
+                            columns.push(payload.slice(i, i + maxItemsPerColumn));
+                          }
+                          
+                          return (
+                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-4xl">
+                              <p className="font-semibold mb-2 text-gray-800">Mês: {label}</p>
+                              <div className="flex gap-6">
+                                {columns.map((column, columnIndex) => (
+                                  <div key={columnIndex} className="flex flex-col gap-1">
+                                    {column.map((entry, index) => (
+                                      <div key={index} className="flex items-center gap-2 text-sm">
+                                        <div 
+                                          className="w-3 h-3 rounded-full" 
+                                          style={{ backgroundColor: entry.color }}
+                                        />
+                                        <span className="text-gray-700">
+                                          {entry.name}: {entry.value}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Legend />
+                      {empresasSelecionadas.map((empresa, index) => (
+                        <Area
+                          key={empresa}
+                          type="monotone"
+                          dataKey={empresa}
+                          stroke={cores[index % cores.length]}
+                          strokeWidth={2}
+                          fillOpacity={0.1}
+                          fill={cores[index % cores.length]}
+                        />
+                      ))}
+                    </AreaChart>
+                  );
+                }
+
+                // Gráfico padrão quando nenhum filtro específico
+                return (
+                  <AreaChart data={dadosPorMes} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorElogios" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="mes" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value: any) => [value, 'Elogios']}
+                      labelFormatter={(label) => `Mês: ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="elogios"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorElogios)"
+                    />
+                  </AreaChart>
+                );
+              })()}
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
@@ -1134,217 +2584,90 @@ const MotivosElogios = ({ statsElogios, anoSelecionado }: {
   );
 };
 
-// Componente Pesquisas
-const PesquisasElogios = ({ statsElogios, anoSelecionado }: { 
+// Componente Motivos (implementação concisa)
+const MotivosElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
   statsElogios: any; 
-  anoSelecionado: number; 
+  anoSelecionado: number;
+  mesSelecionado: number | 'todos';
+  elogios?: any[];
 }) => {
+  const elogiosFiltrados = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getFullYear() === anoSelecionado &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
   return (
     <div className="space-y-6">
-      {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Efetuadas</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">1,248</p>
-                <span className="text-xs font-medium text-blue-600">+4%</span>
-              </div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Motivos Identificados</p>
+              <p className="text-2xl font-bold">{elogiosFiltrados.length}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600" />
+              <Heart className="h-4 w-4 text-blue-600" />
             </div>
           </CardHeader>
         </Card>
+      </div>
+      
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Análise de Motivos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center text-gray-500">
+            Análise de {elogiosFiltrados.length} elogios para identificar motivos principais
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
+// Componente Pesquisas (implementação concisa)
+const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
+  statsElogios: any; 
+  anoSelecionado: number;
+  mesSelecionado: number | 'todos';
+  elogios?: any[];
+}) => {
+  const elogiosFiltrados = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta);
+    return dataResposta.getFullYear() === anoSelecionado &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Respostas Recebidas</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">892</p>
-                <span className="text-xs font-medium text-purple-600">+12%</span>
-              </div>
-            </div>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-              <Users className="h-4 w-4 text-purple-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa de Resposta</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">71.5%</p>
-                <span className="text-xs font-medium text-green-600">+4.4%</span>
-              </div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Respondidas</p>
+              <p className="text-2xl font-bold">{elogiosFiltrados.length}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <BarChart3 className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">NPS Geral</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">+74</p>
-                <span className="text-xs font-medium text-orange-600">Excelente</span>
-              </div>
-            </div>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-              <Star className="h-4 w-4 text-orange-600" />
+              <FileText className="h-4 w-4 text-green-600" />
             </div>
           </CardHeader>
         </Card>
       </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Engajamento por Equipe */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg font-semibold">Engajamento por Equipe</CardTitle>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-xs text-blue-600">Enviadas</span>
-                <span className="text-xs text-green-600">Respondidas</span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Comparativo Fiscal vs Comex (Enviadas e Respondidas)
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              Gráfico de barras - Engajamento por equipe
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Termômetro de Satisfação */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-orange-600" />
-              <CardTitle className="text-lg font-semibold">Termômetro de Satisfação</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-gray-900 dark:text-white">4.8</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">MÉDIA / 5.0</div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-red-500">Insatisfeito</span>
-                  <span className="text-xs text-gray-500">0-2</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Neutro</span>
-                  <span className="text-xs text-gray-500">3</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-green-500">Satisfeito</span>
-                  <span className="text-xs text-gray-500">4-5</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Seção inferior */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Taxa de Resposta Mensal */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <CardTitle className="text-sm font-semibold">Taxa de Resposta Mensal</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-32 flex items-center justify-center text-gray-500 text-sm">
-              Gráfico de linha - Taxa de resposta mensal
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Feedbacks Recentes */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-purple-600" />
-                <CardTitle className="text-sm font-semibold">Feedbacks Recentes</CardTitle>
-              </div>
-              <button className="text-xs text-blue-600 hover:underline">Ver todos</button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-blue-600">EF</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Equipe Fiscal</p>
-                  <p className="text-xs text-gray-500">"O processo de desembaraço foi surpreendentemente rápido. Parabéns à equipe!"</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {[1,2,3,4,5].map(i => (
-                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-green-600">EC</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Equipe Comex</p>
-                  <p className="text-xs text-gray-500">"Atendimento cordial, mas ainda falta de atualizações proativas sobre o status."</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {[1,2,3].map(i => (
-                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    ))}
-                    {[4,5].map(i => (
-                      <Star key={i} className="h-3 w-3 text-gray-300" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-purple-600">EF</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Equipe Fiscal</p>
-                  <p className="text-xs text-gray-500">"Excelente suporte técnico na resolução da pendência tributária."</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {[1,2,3,4,5].map(i => (
-                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Dados das Pesquisas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center text-gray-500">
+            {elogiosFiltrados.length} pesquisas de satisfação processadas no ano {anoSelecionado}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -1354,6 +2677,7 @@ const Dashboard = () => {
   const currentYear = currentDate.getFullYear();
   
   const [anoSelecionado, setAnoSelecionado] = useState(currentYear);
+  const [mesSelecionado, setMesSelecionado] = useState<number | 'todos'>('todos');
   const [filtroModulo, setFiltroModulo] = useState<ModuloType | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState<string>('');
   const [topFaturamentoMode, setTopFaturamentoMode] = useState<'faturamento' | 'banco_horas'>('faturamento');
@@ -1426,6 +2750,15 @@ const Dashboard = () => {
         if (!r.mes_cobranca) return false;
         const ano = r.mes_cobranca.split('/')[1];
         return parseInt(ano) === anoSelecionado;
+      });
+    }
+
+    // Filtrar por mês
+    if (mesSelecionado !== 'todos') {
+      dados = dados.filter(r => {
+        if (!r.mes_cobranca) return false;
+        const mes = r.mes_cobranca.split('/')[0];
+        return parseInt(mes) === mesSelecionado;
       });
     }
 
@@ -1615,7 +2948,7 @@ const Dashboard = () => {
       crescimentoMensalRequerimentos,
       crescimentoMensalFaturamento
     };
-  }, [requerimentos, filtroModulo, anoSelecionado]);
+  }, [requerimentos, filtroModulo, anoSelecionado, mesSelecionado]);
 
   // Calcular estatísticas de elogios
   const statsElogios = useMemo(() => {
@@ -1641,6 +2974,15 @@ const Dashboard = () => {
         if (!e.data_resposta) return false;
         const ano = new Date(e.data_resposta).getFullYear();
         return ano === anoSelecionado;
+      });
+    }
+
+    // Filtrar por mês baseado na data_resposta
+    if (mesSelecionado !== 'todos') {
+      dados = dados.filter(e => {
+        if (!e.data_resposta) return false;
+        const mes = new Date(e.data_resposta).getMonth() + 1; // getMonth() retorna 0-11, então +1
+        return mes === mesSelecionado;
       });
     }
 
@@ -1783,7 +3125,7 @@ const Dashboard = () => {
       porEmpresa,
       porMes: porMesOrdenado
     };
-  }, [elogios, anoSelecionado]);
+  }, [elogios, anoSelecionado, mesSelecionado]);
 
   // Calcular estatísticas por empresa
   const statsEmpresas = useMemo(() => {
@@ -1804,6 +3146,15 @@ const Dashboard = () => {
         if (!r.mes_cobranca) return false;
         const ano = r.mes_cobranca.split('/')[1];
         return parseInt(ano) === anoSelecionado;
+      });
+    }
+
+    // Filtrar por mês
+    if (mesSelecionado !== 'todos') {
+      dados = dados.filter(r => {
+        if (!r.mes_cobranca) return false;
+        const mes = r.mes_cobranca.split('/')[0];
+        return parseInt(mes) === mesSelecionado;
       });
     }
 
@@ -1884,7 +3235,7 @@ const Dashboard = () => {
         count: empresaMaisBancoHoras[1].bancoHoras
       } : null
     };
-  }, [requerimentos, filtroModulo, anoSelecionado]);
+  }, [requerimentos, filtroModulo, anoSelecionado, mesSelecionado]);
 
   const isLoading = loadingRequerimentos || loadingElogios;
 
@@ -1947,11 +3298,32 @@ const Dashboard = () => {
                   <SelectValue placeholder="Ano" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map(ano => (
+                  {[currentYear, currentYear - 1].map(ano => (
                     <SelectItem key={ano} value={String(ano)}>
                       {ano}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={String(mesSelecionado)} onValueChange={(v) => setMesSelecionado(v === 'todos' ? 'todos' : parseInt(v))}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Meses</SelectItem>
+                  <SelectItem value="1">Janeiro</SelectItem>
+                  <SelectItem value="2">Fevereiro</SelectItem>
+                  <SelectItem value="3">Março</SelectItem>
+                  <SelectItem value="4">Abril</SelectItem>
+                  <SelectItem value="5">Maio</SelectItem>
+                  <SelectItem value="6">Junho</SelectItem>
+                  <SelectItem value="7">Julho</SelectItem>
+                  <SelectItem value="8">Agosto</SelectItem>
+                  <SelectItem value="9">Setembro</SelectItem>
+                  <SelectItem value="10">Outubro</SelectItem>
+                  <SelectItem value="11">Novembro</SelectItem>
+                  <SelectItem value="12">Dezembro</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -2548,6 +3920,7 @@ const Dashboard = () => {
                 <ElogiosSubTabs 
                   statsElogios={statsElogios}
                   anoSelecionado={anoSelecionado}
+                  mesSelecionado={mesSelecionado}
                   elogios={elogios}
                 />
               </div>

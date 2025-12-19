@@ -18,7 +18,8 @@ import {
   CheckSquare,
   Square,
   TrendingUp,
-  Database
+  Database,
+  Eye
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -66,17 +67,20 @@ import { useCacheManager } from '@/hooks/useCacheManager';
 import { useElogios, useEstatisticasElogios, useAtualizarElogio } from '@/hooks/useElogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useElogiosTemplates } from '@/hooks/useElogiosTemplates';
+import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { emailService } from '@/services/emailService';
 import { elogiosTemplateService } from '@/services/elogiosTemplateService';
 import * as elogiosService from '@/services/elogiosService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { getBadgeResposta } from '@/utils/badgeUtils';
 import SeletorTemplateElogios from '@/components/admin/elogios/SeletorTemplateElogios';
+import ElogiosExportButtons from '@/components/admin/elogios/ElogiosExportButtons';
 
 export default function EnviarElogios() {
   // Hook para toast
   const { toast } = useToast();
   const { clearFeatureCache } = useCacheManager();
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
 
   // Função para regenerar template quando seleção mudar
   const regenerarTemplate = async (templateId?: string) => {
@@ -105,6 +109,8 @@ export default function EnviarElogios() {
 
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
+  const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
+  const [elogioParaVisualizar, setElogioParaVisualizar] = useState<ElogioCompleto | null>(null);
 
   const [destinatariosTexto, setDestinatariosTexto] = useState('');
   const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
@@ -450,6 +456,12 @@ export default function EnviarElogios() {
     return html;
   };
 
+  // Função para visualizar elogio
+  const handleVisualizarElogio = (elogio: ElogioCompleto) => {
+    setElogioParaVisualizar(elogio);
+    setModalVisualizarAberto(true);
+  };
+
   // Função para abrir modal de email
   const handleAbrirModalEmail = async () => {
     const todosElogiosSelecionados = getTodosElogiosSelecionados();
@@ -773,6 +785,12 @@ export default function EnviarElogios() {
           </div>
 
           <div className="flex gap-2">
+            <ElogiosExportButtons 
+              elogios={elogios}
+              periodo={`${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`}
+              deParaCategorias={deParaCategorias}
+              disabled={isLoading}
+            />
             <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
               <Button
                 onClick={handleAbrirModalEmail}
@@ -994,6 +1012,7 @@ export default function EnviarElogios() {
                       <TableHead className="w-[150px] text-center">Cliente</TableHead>
                       <TableHead className="w-[200px] text-center">Comentário</TableHead>
                       <TableHead className="w-[140px] text-center">Resposta</TableHead>
+                      <TableHead className="w-[100px] text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1053,6 +1072,17 @@ export default function EnviarElogios() {
                               </Badge>
                             )}
                           </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleVisualizarElogio(elogio)}
+                              className="h-8 w-8 p-0"
+                              title="Visualizar detalhes do elogio"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -1101,6 +1131,7 @@ export default function EnviarElogios() {
                           <TableHead className="w-[200px] text-center">Comentário</TableHead>
                           <TableHead className="w-[140px] text-center">Resposta</TableHead>
                           <TableHead className="text-center w-[120px]">Status</TableHead>
+                          <TableHead className="w-[100px] text-center">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1163,6 +1194,17 @@ export default function EnviarElogios() {
                                 <Badge variant="secondary" className="text-xs px-2 py-1 bg-green-100 text-green-800">
                                   Enviado por Email
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleVisualizarElogio(elogio)}
+                                  className="h-8 w-8 p-0"
+                                  title="Visualizar detalhes do elogio"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
@@ -1435,6 +1477,164 @@ export default function EnviarElogios() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Modal de Visualização do Elogio */}
+        <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Detalhes do Elogio
+              </DialogTitle>
+            </DialogHeader>
+
+            {elogioParaVisualizar && (
+              <div className="space-y-6">
+                {/* Informações Básicas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Informações do Chamado</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <Label className="text-xs text-gray-500">Número do Caso</Label>
+                        <p className="font-mono text-sm">{elogioParaVisualizar.pesquisa?.nro_caso || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Tipo do Caso</Label>
+                        <p className="text-sm">{elogioParaVisualizar.pesquisa?.tipo_caso || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Data da Resposta</Label>
+                        <p className="text-sm">
+                          {elogioParaVisualizar.data_resposta ? formatarData(elogioParaVisualizar.data_resposta) : '-'}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Informações do Cliente</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <Label className="text-xs text-gray-500">Cliente</Label>
+                        <p className="text-sm font-medium">{elogioParaVisualizar.pesquisa?.cliente || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Empresa</Label>
+                        <p className="text-sm">{elogioParaVisualizar.pesquisa?.empresa || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Grupo</Label>
+                        <p className="text-sm font-medium">
+                          {(() => {
+                            const categoria = elogioParaVisualizar.pesquisa?.categoria || '';
+                            // Para o modal de visualização, vamos mostrar o grupo original
+                            // pois é mais informativo para o usuário ver o grupo completo
+                            return elogioParaVisualizar.pesquisa?.grupo || '-';
+                          })()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Informações do Colaborador */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Colaborador Elogiado</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div>
+                      <Label className="text-xs text-gray-500">Nome do Prestador</Label>
+                      <p className="text-sm font-medium">{elogioParaVisualizar.pesquisa?.prestador || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Categoria</Label>
+                      <p className="text-sm">{elogioParaVisualizar.pesquisa?.categoria || '-'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Avaliação */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Avaliação</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-gray-500">Resposta</Label>
+                      <div className="mt-1">
+                        {getBadgeResposta(elogioParaVisualizar.pesquisa?.resposta) || (
+                          <Badge variant="outline" className="text-xs">-</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {elogioParaVisualizar.pesquisa?.comentario_pesquisa && (
+                      <div>
+                        <Label className="text-xs text-gray-500">Comentário</Label>
+                        <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {elogioParaVisualizar.pesquisa.comentario_pesquisa}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Status e Informações Técnicas */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Status e Informações</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-xs text-gray-500">Status</Label>
+                        <div className="mt-1">
+                          <Badge 
+                            variant={elogioParaVisualizar.status === 'enviado' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {elogioParaVisualizar.status === 'enviado' ? 'Enviado por Email' : 
+                             elogioParaVisualizar.status === 'compartilhado' ? 'Compartilhado' : 
+                             'Registrado'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Data de Criação</Label>
+                        <p className="text-sm">
+                          {elogioParaVisualizar.criado_em ? formatarData(elogioParaVisualizar.criado_em) : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Origem</Label>
+                        <p className="text-sm capitalize">
+                          {elogioParaVisualizar.pesquisa?.origem?.replace('_', ' ') || '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalVisualizarAberto(false)}
+              >
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

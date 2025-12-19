@@ -56,14 +56,17 @@ import { useElogios, useEstatisticasElogios, useDeletarElogio, useAtualizarElogi
 import { useCriarElogioComEspecialistas } from '@/hooks/useElogiosComEspecialistas';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { ElogioForm } from '@/components/admin/elogios';
+import ElogiosExportButtons from '@/components/admin/elogios/ElogiosExportButtons';
 import { Plus } from 'lucide-react';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { getBadgeResposta } from '@/utils/badgeUtils';
 
 function LancarElogios() {
   const navigate = useNavigate();
   const { clearFeatureCache } = useCacheManager();
   const { empresas } = useEmpresas();
+  const { data: deParaCategorias = [] } = useDeParaCategoria();
   
   // Limpar cache ao entrar na tela
   useEffect(() => {
@@ -336,6 +339,12 @@ function LancarElogios() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ElogiosExportButtons 
+              elogios={elogios}
+              periodo={`${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`}
+              deParaCategorias={deParaCategorias}
+              disabled={isLoading}
+            />
             <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
               <Plus className="h-4 w-4" />
               Novo Elogio
