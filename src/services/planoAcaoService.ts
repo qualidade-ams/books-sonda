@@ -374,6 +374,48 @@ export async function obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<Est
   // Buscar planos com os mesmos filtros
   const planosCompletos = await buscarPlanosAcao(filtros);
   
+  // Calcular estatísticas por mês
+  const meses = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+  ];
+
+  const porMes = meses.map((mesNome, index) => {
+    const mesNumero = index + 1;
+    const planosMes = planosCompletos.filter(plano => {
+      const dataInicio = new Date(plano.data_inicio);
+      return dataInicio.getMonth() + 1 === mesNumero;
+    });
+
+    return {
+      mes: mesNumero,
+      mesNome,
+      abertos: planosMes.filter(p => p.status_plano === 'aberto').length,
+      em_andamento: planosMes.filter(p => p.status_plano === 'em_andamento').length,
+      aguardando_retorno: planosMes.filter(p => p.status_plano === 'aguardando_retorno').length,
+      concluidos: planosMes.filter(p => p.status_plano === 'concluido').length,
+      cancelados: planosMes.filter(p => p.status_plano === 'cancelado').length,
+      total: planosMes.length
+    };
+  });
+  
+  // Calcular tempo médio de resolução
+  const planosConcluidos = planosCompletos.filter(p => 
+    p.status_plano === 'concluido' && p.data_conclusao
+  );
+  
+  let tempoMedioResolucao = 0;
+  if (planosConcluidos.length > 0) {
+    const totalDias = planosConcluidos.reduce((acc, plano) => {
+      const dataInicio = new Date(plano.data_inicio);
+      const dataConclusao = new Date(plano.data_conclusao!);
+      const diffTime = Math.abs(dataConclusao.getTime() - dataInicio.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return acc + diffDays;
+    }, 0);
+    tempoMedioResolucao = Math.round(totalDias / planosConcluidos.length);
+  }
+  
   return {
     total: planosCompletos.length,
     abertos: planosCompletos.filter(p => p.status_plano === 'aberto').length,
@@ -381,11 +423,13 @@ export async function obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<Est
     aguardando_retorno: planosCompletos.filter(p => p.status_plano === 'aguardando_retorno').length,
     concluidos: planosCompletos.filter(p => p.status_plano === 'concluido').length,
     cancelados: planosCompletos.filter(p => p.status_plano === 'cancelado').length,
+    tempo_medio_resolucao: tempoMedioResolucao,
     por_prioridade: {
       baixa: planosCompletos.filter(p => p.prioridade === 'baixa').length,
       media: planosCompletos.filter(p => p.prioridade === 'media').length,
       alta: planosCompletos.filter(p => p.prioridade === 'alta').length,
       critica: planosCompletos.filter(p => p.prioridade === 'critica').length,
     },
+    por_mes: porMes,
   };
 }

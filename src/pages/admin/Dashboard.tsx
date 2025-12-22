@@ -3162,7 +3162,9 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   const aguardandoRetorno = estatisticasPlanos?.aguardando_retorno || 0;
   const concluidos = estatisticasPlanos?.concluidos || 0;
   const cancelados = estatisticasPlanos?.cancelados || 0;
+  const tempoMedioResolucao = estatisticasPlanos?.tempo_medio_resolucao || 0;
   const porPrioridade = estatisticasPlanos?.por_prioridade || { baixa: 0, media: 0, alta: 0, critica: 0 };
+  const dadosMensais = estatisticasPlanos?.por_mes || [];
 
   return (
     <div className="space-y-6">
@@ -3219,16 +3221,14 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Abertos</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tempo Médio Resolução</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-orange-600">{abertos}</p>
-                <span className="text-xs text-gray-500">
-                  ({totalPlanos > 0 ? Math.round((abertos / totalPlanos) * 100) : 0}%)
-                </span>
+                <p className="text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
+                <span className="text-xs text-gray-500">dias</span>
               </div>
             </div>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-              <FileText className="h-4 w-4 text-orange-600" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-purple-600" />
             </div>
           </CardHeader>
         </Card>
@@ -3272,7 +3272,159 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       </div>
 
       {/* Gráficos e tabelas */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Evolução Mensal dos Planos de Ação */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-gray-600" />
+              <CardTitle className="text-lg font-semibold">Evolução dos Planos de Ação</CardTitle>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {mesSelecionado === 'todos' 
+                ? `Evolução mensal no ano ${anoSelecionado}`
+                : `Dados do mês selecionado em ${anoSelecionado}`
+              }
+            </p>
+          </CardHeader>
+          <CardContent>
+            {loadingPlanos ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Carregando dados...</p>
+                </div>
+              </div>
+            ) : dadosMensais.length === 0 || dadosMensais.every(item => item.total === 0) ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600">Nenhum plano de ação encontrado para este período</p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={dadosMensais.map(item => ({
+                      mes: item.mesNome,
+                      concluidos: item.concluidos,
+                      abertos: item.abertos + item.em_andamento + item.aguardando_retorno // Somar todos os não concluídos
+                    }))}
+                    margin={{
+                      top: 10,
+                      right: 30,
+                      left: 0,
+                      bottom: 0,
+                    }}
+                  >
+                    <defs>
+                      <linearGradient id="colorConcluidos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorAbertos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ec4899" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="mes" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      domain={[0, 'dataMax + 5']}
+                      allowDecimals={false}
+                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        padding: '12px'
+                      }}
+                      formatter={(value: any, name: string) => {
+                        if (name === 'concluidos') return [value, 'Concluídos'];
+                        if (name === 'abertos') return [value, 'Abertos'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label) => `Mês: ${label}`}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0);
+                          return (
+                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                              <p className="font-semibold text-gray-800 mb-2">{`Mês: ${label}`}</p>
+                              {payload.map((entry, index) => (
+                                <div key={index} className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: entry.color }}
+                                    ></div>
+                                    <span className="text-sm text-gray-600">{entry.name}:</span>
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-800">{entry.value}</span>
+                                </div>
+                              ))}
+                              <div className="border-t pt-2 mt-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700">Total:</span>
+                                  <span className="text-sm font-bold text-gray-900">{total}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="concluidos"
+                      stackId="1"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      fillOpacity={0.6}
+                      fill="url(#colorConcluidos)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="abertos"
+                      stackId="1"
+                      stroke="#ec4899"
+                      strokeWidth={2}
+                      fillOpacity={0.6}
+                      fill="url(#colorAbertos)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            
+            {/* Legenda centralizada */}
+            <div className="flex items-center justify-center text-sm mt-4 pt-4 border-t">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">Concluídos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
+                  <span className="text-gray-600">Abertos</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Distribuição por Prioridade */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
@@ -3335,18 +3487,6 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <CardContent>
           <PlanosAcaoTable
             planos={planosAcao}
-            onEdit={(plano) => {
-              console.log('Editar plano:', plano);
-              // Implementar lógica de edição
-            }}
-            onDelete={(id) => {
-              console.log('Deletar plano:', id);
-              // Implementar lógica de exclusão
-            }}
-            onView={(plano) => {
-              console.log('Visualizar plano:', plano);
-              // Implementar lógica de visualização
-            }}
             isLoading={loadingPlanos}
           />
         </CardContent>

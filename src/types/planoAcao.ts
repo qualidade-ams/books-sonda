@@ -100,12 +100,23 @@ export interface EstatisticasPlanoAcao {
   aguardando_retorno: number;
   concluidos: number;
   cancelados: number;
+  tempo_medio_resolucao: number; // em dias
   por_prioridade: {
     baixa: number;
     media: number;
     alta: number;
     critica: number;
   };
+  por_mes?: Array<{
+    mes: number;
+    mesNome: string;
+    abertos: number;
+    em_andamento: number;
+    aguardando_retorno: number;
+    concluidos: number;
+    cancelados: number;
+    total: number;
+  }>;
 }
 
 // Opções para selects
