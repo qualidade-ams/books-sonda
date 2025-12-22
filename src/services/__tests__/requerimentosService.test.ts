@@ -148,7 +148,7 @@ describe('RequerimentosService', () => {
 
       // Act & Assert
       await expect(service.criarRequerimento(invalidData))
-        .rejects.toThrow('Dados inválidos: Chamado deve conter apenas letras, números e hífen');
+        .rejects.toThrow('Dados inválidos: Chamado deve conter apenas letras, números, hífen (-) e underscore (_)');
     });
 
     it('deve lançar erro quando descrição excede 500 caracteres', async () => {

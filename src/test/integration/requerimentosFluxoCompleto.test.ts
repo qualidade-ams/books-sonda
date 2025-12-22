@@ -476,7 +476,7 @@ describe('Sistema de Requerimentos - Fluxo Completo de Integração', () => {
 
       await expect(
         requerimentosService.criarRequerimento(requerimentoInvalido)
-      ).rejects.toThrow('Chamado deve conter apenas letras, números e hífen');
+      ).rejects.toThrow('Chamado deve conter apenas letras, números, hífen (-) e underscore (_)');
     });
 
     it('deve validar relacionamentos com outras tabelas', async () => {

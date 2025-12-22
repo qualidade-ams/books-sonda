@@ -185,10 +185,11 @@ export function PlanosAcaoTable({
                   <TableCell className="text-center hidden lg:table-cell">
                     <div className="flex justify-center">
                       {(() => {
-                        const palavras = plano.descricao_acao_corretiva.split(' ');
+                        const descricao = plano.descricao_acao_corretiva || '';
+                        const palavras = descricao.split(' ');
                         const textoTruncado = palavras.length > 5 
                           ? palavras.slice(0, 5).join(' ') + '...'
-                          : plano.descricao_acao_corretiva;
+                          : descricao;
                         
                         return palavras.length > 5 ? (
                           <TooltipProvider>
@@ -199,13 +200,13 @@ export function PlanosAcaoTable({
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-md">
-                                <p className="text-xs whitespace-pre-wrap">{plano.descricao_acao_corretiva}</p>
+                                <p className="text-xs whitespace-pre-wrap">{descricao}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
                           <div className="max-w-[300px] text-xs sm:text-sm text-center">
-                            {plano.descricao_acao_corretiva}
+                            {descricao || '-'}
                           </div>
                         );
                       })()}
@@ -214,15 +215,20 @@ export function PlanosAcaoTable({
                   
                   {/* Coluna Prioridade */}
                   <TableCell className="text-center hidden md:table-cell">
-                    <Badge className={`${getCorPrioridade(plano.prioridade)} text-xs px-2 py-1`}>
-                      {plano.prioridade.charAt(0).toUpperCase() + plano.prioridade.slice(1)}
+                    <Badge className={`${getCorPrioridade(plano.prioridade || 'baixa')} text-xs px-2 py-1`}>
+                      {plano.prioridade 
+                        ? plano.prioridade.charAt(0).toUpperCase() + plano.prioridade.slice(1)
+                        : 'Baixa'
+                      }
                     </Badge>
                   </TableCell>
                   
                   {/* Coluna Status */}
                   <TableCell className="text-center">
-                    <Badge className={`${getCorStatus(plano.status_plano)} text-xs px-2 py-1`}>
-                      {plano.status_plano === 'em_andamento'
+                    <Badge className={`${getCorStatus(plano.status_plano || 'pendente')} text-xs px-2 py-1`}>
+                      {!plano.status_plano 
+                        ? 'Pendente'
+                        : plano.status_plano === 'em_andamento'
                         ? 'Em Andamento'
                         : plano.status_plano === 'aguardando_retorno'
                         ? 'Aguardando'

@@ -880,6 +880,97 @@ async function sincronizarEspecialistas(req: any, res: any) {
 }
 
 /**
+ * Buscar estatísticas de pesquisas (enviadas vs respondidas) com filtros
+ */
+app.get('/api/stats-pesquisas', async (req, res) => {
+  try {
+    const { ano, grupo } = req.query;
+    
+    // Validar ano
+    const anoFiltro = ano ? parseInt(ano as string) : new Date().getFullYear();
+    
+    console.log(`Buscando estatísticas de pesquisas para ano ${anoFiltro}${grupo ? ` e grupo ${grupo}` : ''}...`);
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    
+    let whereClause = `
+      WHERE Ano_Abertura = @ano
+        AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+    `;
+    
+    // Adicionar filtro de grupo se especificado
+    if (grupo && grupo !== 'todos') {
+      // Mapear grupos principais para padrões de busca
+      const grupoPatterns: Record<string, string> = {
+        'FISCAL': '%FISCAL%',
+        'COMEX': '%COMEX%',
+        'QUALIDADE': '%QUALIDADE%',
+        'BPO': '%BPO%'
+      };
+      
+      const pattern = grupoPatterns[grupo as string] || `%${grupo}%`;
+      whereClause += ` AND Grupo LIKE @grupoPattern`;
+    }
+    
+    const query = `
+      SELECT 
+        COUNT(*) as total_enviadas,
+        COUNT([Data_Resposta (Date-Hour-Minute-Second)]) as total_respondidas,
+        COUNT(CASE WHEN [Data_Resposta (Date-Hour-Minute-Second)] IS NULL THEN 1 END) as total_nao_respondidas
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      ${whereClause}
+    `;
+    
+    const request = pool.request();
+    request.input('ano', sql.Int, anoFiltro);
+    
+    if (grupo && grupo !== 'todos') {
+      const grupoPatterns: Record<string, string> = {
+        'FISCAL': '%FISCAL%',
+        'COMEX': '%COMEX%',
+        'QUALIDADE': '%QUALIDADE%',
+        'BPO': '%BPO%'
+      };
+      const pattern = grupoPatterns[grupo as string] || `%${grupo}%`;
+      request.input('grupoPattern', sql.VarChar, pattern);
+    }
+    
+    const result = await request.query(query);
+    const stats = result.recordset[0];
+    
+    await pool.close();
+    
+    // Calcular taxa de resposta
+    const taxaResposta = stats.total_enviadas > 0 
+      ? ((stats.total_respondidas / stats.total_enviadas) * 100).toFixed(1)
+      : '0.0';
+    
+    const response = {
+      success: true,
+      ano: anoFiltro,
+      grupo: grupo || 'todos',
+      estatisticas: {
+        total_enviadas: stats.total_enviadas || 0,
+        total_respondidas: stats.total_respondidas || 0,
+        total_nao_respondidas: stats.total_nao_respondidas || 0,
+        taxa_resposta: parseFloat(taxaResposta)
+      }
+    };
+    
+    console.log('Estatísticas calculadas:', response);
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas de pesquisas:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
  * Buscar estatísticas
  */
 app.get('/api/stats', async (req, res) => {
@@ -907,6 +998,109 @@ app.get('/api/stats', async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar estatísticas:', error);
     res.status(500).json({
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Debug: Analisar distribuição de grupos para entender discrepâncias
+ */
+app.get('/api/debug-grupos', async (req, res) => {
+  try {
+    const { ano } = req.query;
+    const anoFiltro = ano ? parseInt(ano as string) : new Date().getFullYear();
+    
+    console.log(`Analisando distribuição de grupos para ano ${anoFiltro}...`);
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    
+    // Query para analisar todos os grupos
+    const query = `
+      SELECT 
+        Grupo,
+        COUNT(*) as total_enviadas,
+        COUNT([Data_Resposta (Date-Hour-Minute-Second)]) as total_respondidas,
+        COUNT(CASE WHEN [Data_Resposta (Date-Hour-Minute-Second)] IS NULL THEN 1 END) as total_nao_respondidas
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE Ano_Abertura = @ano
+        AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+      GROUP BY Grupo
+      ORDER BY COUNT(*) DESC
+    `;
+    
+    const request = pool.request();
+    request.input('ano', sql.Int, anoFiltro);
+    
+    const result = await request.query(query);
+    const grupos = result.recordset;
+    
+    // Query para total geral
+    const queryTotal = `
+      SELECT 
+        COUNT(*) as total_enviadas,
+        COUNT([Data_Resposta (Date-Hour-Minute-Second)]) as total_respondidas,
+        COUNT(CASE WHEN [Data_Resposta (Date-Hour-Minute-Second)] IS NULL THEN 1 END) as total_nao_respondidas
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE Ano_Abertura = @ano
+        AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+    `;
+    
+    const resultTotal = await request.query(queryTotal);
+    const totalGeral = resultTotal.recordset[0];
+    
+    await pool.close();
+    
+    // Calcular soma dos grupos principais
+    const gruposPrincipais = ['FISCAL', 'COMEX', 'QUALIDADE', 'BPO'];
+    let somaGruposPrincipais = {
+      total_enviadas: 0,
+      total_respondidas: 0,
+      total_nao_respondidas: 0
+    };
+    
+    grupos.forEach(grupo => {
+      const nomeGrupo = grupo.Grupo || 'NULL';
+      const pertenceAosPrincipais = gruposPrincipais.some(principal => 
+        nomeGrupo.toUpperCase().includes(principal)
+      );
+      
+      if (pertenceAosPrincipais) {
+        somaGruposPrincipais.total_enviadas += grupo.total_enviadas;
+        somaGruposPrincipais.total_respondidas += grupo.total_respondidas;
+        somaGruposPrincipais.total_nao_respondidas += grupo.total_nao_respondidas;
+      }
+    });
+    
+    const response = {
+      success: true,
+      ano: anoFiltro,
+      total_geral: totalGeral,
+      soma_grupos_principais: somaGruposPrincipais,
+      discrepancia: {
+        enviadas: totalGeral.total_enviadas - somaGruposPrincipais.total_enviadas,
+        respondidas: totalGeral.total_respondidas - somaGruposPrincipais.total_respondidas,
+        nao_respondidas: totalGeral.total_nao_respondidas - somaGruposPrincipais.total_nao_respondidas
+      },
+      grupos_detalhados: grupos.map(g => ({
+        grupo: g.Grupo || 'NULL',
+        enviadas: g.total_enviadas,
+        respondidas: g.total_respondidas,
+        nao_respondidas: g.total_nao_respondidas,
+        pertence_aos_principais: gruposPrincipais.some(principal => 
+          (g.Grupo || '').toUpperCase().includes(principal)
+        )
+      }))
+    };
+    
+    console.log('Análise de grupos:', response);
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Erro ao analisar grupos:', error);
+    res.status(500).json({
+      success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

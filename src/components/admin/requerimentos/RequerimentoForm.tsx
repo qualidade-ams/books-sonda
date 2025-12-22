@@ -885,8 +885,8 @@ export function RequerimentoForm({
       type: 'error' as const
     },
     {
-      test: (value: string) => /^[A-Za-z0-9\-]+$/.test(value),
-      message: 'Use apenas letras, números e hífen',
+      test: (value: string) => /^[A-Za-z0-9\-_]+$/.test(value),
+      message: 'Use apenas letras, números, hífen (-) e underscore (_)',
       type: 'error' as const
     },
     {
@@ -940,7 +940,7 @@ export function RequerimentoForm({
                     <FormFieldHelp
                       label="Chamado"
                       required
-                      helpText="Código único do chamado técnico. Use apenas letras, números e hífen."
+                      helpText="Código único do chamado técnico. Use apenas letras, números, hífen (-) e underscore (_)."
                       error={form.formState.errors.chamado?.message}
                     >
                       <Input

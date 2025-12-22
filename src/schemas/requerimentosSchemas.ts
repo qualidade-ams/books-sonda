@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-// Schema para validação do chamado (letras, números e hífen)
+// Schema para validação do chamado (letras, números, hífen e underscore)
 const chamadoSchema = z
   .string()
   .min(1, 'Chamado é obrigatório')
   .max(50, 'Chamado deve ter no máximo 50 caracteres')
-  .regex(/^[A-Za-z0-9\-]+$/, 'Chamado deve conter apenas letras, números e hífen (ex: RF-6017993)');
+  .regex(/^[A-Za-z0-9\-_]+$/, 'Chamado deve conter apenas letras, números, hífen (-) e underscore (_) (ex: RF-6017993, HORA_EXTRA)');
 
 // Schema para validação de módulo
 const moduloSchema = z

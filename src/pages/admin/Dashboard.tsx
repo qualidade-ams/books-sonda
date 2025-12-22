@@ -14,9 +14,12 @@ import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading'
 import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
+import { useEstatisticasPesquisas, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisas';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { usePlanosAcao, useEstatisticasPlanosAcao } from '@/hooks/usePlanosAcao';
+import { PlanosAcaoTable } from '@/components/admin/plano-acao/PlanosAcaoTable';
 import { 
   DollarSign, 
   Clock, 
@@ -56,11 +59,12 @@ import {
 } from 'recharts';
 
 // Componente para as sub-abas de elogios
-const ElogiosSubTabs = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
+const ElogiosSubTabs = ({ statsElogios, anoSelecionado, mesSelecionado, elogios, hasPermission }: { 
   statsElogios: any; 
   anoSelecionado: number;
   mesSelecionado: number | 'todos';
   elogios?: any[];
+  hasPermission: (screenKey: string, level?: string) => boolean;
 }) => {
   const [activeElogiosTab, setActiveElogiosTab] = useState<string>('visao-geral');
 
@@ -749,15 +753,12 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   {(() => {
-                    // Função para extrair módulo da categoria (tudo após o segundo ponto)
+                    // Função para extrair módulo da categoria (última parte após qualquer ponto)
                     const extrairModulo = (categoria: string): string => {
                       if (!categoria) return '';
                       const partes = categoria.split('.');
-                      if (partes.length >= 3) {
-                        // Pegar tudo após o segundo ponto
-                        return partes.slice(2).join('.').trim();
-                      }
-                      return categoria;
+                      // Pegar apenas a última parte
+                      return partes[partes.length - 1].trim();
                     };
 
                     // Calcular crescimento por módulo baseado no filtro selecionado
@@ -942,15 +943,16 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   const corBarra = coresBarras[index % coresBarras.length];
                   
                   return (
-                    <div key={empresa} className="space-y-1.5">
+                    <div 
+                      key={empresa} 
+                      className="space-y-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                      onClick={() => setItemSelecionado({
+                        tipo: 'empresa',
+                        dados: obterNomeAbreviadoEmpresa(empresa)
+                      })}
+                    >
                       {/* Linha superior: nome da empresa e valores */}
-                      <div 
-                        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                        onClick={() => setItemSelecionado({
-                          tipo: 'empresa',
-                          dados: obterNomeAbreviadoEmpresa(empresa)
-                        })}
-                      >
+                      <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[180px]">
                           {obterNomeAbreviadoEmpresa(empresa)}
                         </span>
@@ -1330,8 +1332,23 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Estado para controlar expansão das áreas
   const [areasExpandido, setAreasExpandido] = useState(false);
   
+  // Estados para controlar seleção e detalhes (similar à aba Visão Geral)
+  const [itemSelecionado, setItemSelecionado] = useState<{
+    tipo: 'empresa' | 'colaborador' | 'grupo' | 'volume' | 'grupos-principais' | null;
+    dados: any;
+  } | null>({
+    tipo: 'grupos-principais',
+    dados: ['FISCAL', 'COMEX']
+  });
+
+  // Estado para controlar linhas expandidas
+  const [linhasExpandidas, setLinhasExpandidas] = useState<Set<string>>(new Set());
+  
   // Hook para buscar de-para de categorias
   const { data: deParaCategorias = [] } = useDeParaCategoria();
+
+  // Hook para buscar empresas
+  const { empresas } = useEmpresas();
 
   // Função para fazer de-para da categoria para grupo
   const obterGrupoPorCategoria = (categoria: string): string => {
@@ -1360,6 +1377,106 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       console.log('📋 Categorias disponíveis:', deParaCategorias.map(dp => dp.categoria));
       return categoria; // Fallback para categoria original
     }
+  };
+
+  // Função para obter nome abreviado da empresa
+  const obterNomeAbreviadoEmpresa = (nomeEmpresa: string): string => {
+    if (!nomeEmpresa || nomeEmpresa === 'N/A') {
+      return 'N/A';
+    }
+    
+    // Buscar empresa correspondente pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      empresa => 
+        empresa.nome_completo === nomeEmpresa || 
+        empresa.nome_abreviado === nomeEmpresa ||
+        empresa.nome_completo?.toLowerCase() === nomeEmpresa.toLowerCase() ||
+        empresa.nome_abreviado?.toLowerCase() === nomeEmpresa.toLowerCase()
+    );
+    
+    if (empresaEncontrada) {
+      return empresaEncontrada.nome_abreviado || empresaEncontrada.nome_completo;
+    }
+    
+    // Fallback para nome original
+    return nomeEmpresa;
+  };
+
+  // Função para filtrar elogios baseado na seleção
+  const obterElogiosFiltrados = () => {
+    if (!itemSelecionado) return [];
+    
+    const elogiosFiltrados = elogios?.filter(e => {
+      if (!e.data_resposta) return false;
+      const dataResposta = new Date(e.data_resposta);
+      
+      // Filtrar por ano
+      if (dataResposta.getFullYear() !== anoSelecionado) return false;
+      
+      // Filtrar por mês se selecionado
+      if (mesSelecionado !== 'todos') {
+        if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+      }
+      
+      return e.status === 'compartilhado' || e.status === 'enviado';
+    }) || [];
+
+    switch (itemSelecionado.tipo) {
+      case 'empresa':
+        return elogiosFiltrados.filter(e => 
+          obterNomeAbreviadoEmpresa(e.pesquisa?.empresa || '') === itemSelecionado.dados
+        );
+      case 'colaborador':
+        return elogiosFiltrados.filter(e => 
+          e.pesquisa?.prestador === itemSelecionado.dados
+        );
+      case 'grupo':
+        return elogiosFiltrados.filter(e => {
+          const categoria = e.pesquisa?.categoria || '';
+          const grupoMapeado = obterGrupoPorCategoria(categoria);
+          
+          // Se clicou em uma área específica (FISCAL, COMEX, QUALIDADE, BPO)
+          // filtrar por grupos que começam com essa área
+          if (itemSelecionado.dados === 'FISCAL') {
+            return grupoMapeado.toUpperCase().includes('FISCAL');
+          } else if (itemSelecionado.dados === 'COMEX') {
+            return grupoMapeado.toUpperCase().includes('COMEX');
+          } else if (itemSelecionado.dados === 'QUALIDADE') {
+            return grupoMapeado.toUpperCase().includes('QUALIDADE');
+          } else if (itemSelecionado.dados === 'BPO') {
+            return grupoMapeado.toUpperCase().includes('BPO');
+          } else {
+            // Para grupos específicos, busca exata
+            return grupoMapeado === itemSelecionado.dados;
+          }
+        });
+      case 'grupos-principais':
+        return elogiosFiltrados.filter(e => {
+          const categoria = e.pesquisa?.categoria || '';
+          const grupoMapeado = obterGrupoPorCategoria(categoria);
+          
+          // Filtrar por FISCAL e COMEX
+          return grupoMapeado.toUpperCase().includes('FISCAL') || 
+                 grupoMapeado.toUpperCase().includes('COMEX');
+        });
+      case 'volume':
+        return elogiosFiltrados;
+      default:
+        return [];
+    }
+  };
+
+  const elogiosDetalhados = obterElogiosFiltrados();
+
+  // Função para alternar expansão de linha
+  const toggleLinha = (elogioId: string) => {
+    const novasLinhasExpandidas = new Set(linhasExpandidas);
+    if (novasLinhasExpandidas.has(elogioId)) {
+      novasLinhasExpandidas.delete(elogioId);
+    } else {
+      novasLinhasExpandidas.add(elogioId);
+    }
+    setLinhasExpandidas(novasLinhasExpandidas);
   };
 
   // Filtrar elogios baseado no ano e mês selecionados
@@ -1549,7 +1666,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     : 0;
                   
                   return (
-                    <div key={nome} className="space-y-1">
+                    <div 
+                      key={nome} 
+                      className="space-y-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                      onClick={() => setItemSelecionado({
+                        tipo: 'grupo',
+                        dados: nome
+                      })}
+                    >
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
                         <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
@@ -1596,7 +1720,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     : 0;
                   
                   return (
-                    <div key={nome} className="space-y-1">
+                    <div 
+                      key={nome} 
+                      className="space-y-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                      onClick={() => setItemSelecionado({
+                        tipo: 'grupo',
+                        dados: nome
+                      })}
+                    >
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
                         <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
@@ -1623,66 +1754,153 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
       {/* Seção inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Habilidades em Destaque */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-orange-600" />
-              <CardTitle className="text-sm font-semibold">Habilidades em Destaque</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {(() => {
-                // Extrair palavras-chave dos comentários
-                const palavrasChave: Record<string, number> = {};
-                const palavrasRelevantes = ['técnico', 'suporte', 'atendimento', 'rápido', 'eficiente', 'qualidade', 'excelente', 'ótimo', 'bom', 'profissional'];
+        {/* Detalhes dos Elogios ou Distribuição por Área */}
+        {itemSelecionado ? (
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold">
+                    Detalhes dos Elogios
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
+                    {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
+                    {itemSelecionado.tipo === 'grupo' && `Grupo: ${itemSelecionado.dados}`}
+                    {itemSelecionado.tipo === 'grupos-principais' && 'Grupos: FISCAL e COMEX'}
+                    {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Período'}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setItemSelecionado(null)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Fechar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Total de elogios encontrados: {elogiosDetalhados.length}
+                </div>
                 
-                elogiosFiltrados.forEach(elogio => {
-                  const comentario = elogio.pesquisa?.comentario_pesquisa?.toLowerCase() || '';
-                  palavrasRelevantes.forEach(palavra => {
-                    if (comentario.includes(palavra)) {
-                      palavrasChave[palavra] = (palavrasChave[palavra] || 0) + 1;
-                    }
-                  });
-                });
-
-                const topPalavras = Object.entries(palavrasChave)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5);
-
-                if (topPalavras.length === 0) {
-                  return (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      Nenhuma habilidade identificada
-                    </div>
-                  );
-                }
-
-                return topPalavras.map(([palavra, quantidade], index) => {
-                  const cores = ['bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-purple-500'];
-                  const maxQuantidade = Math.max(...Object.values(palavrasChave));
-                  const porcentagem = (quantidade / maxQuantidade) * 100;
-                  
-                  return (
-                    <div key={palavra} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">{palavra}</span>
-                        <span className="text-gray-600 dark:text-gray-400">{quantidade}x</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                {/* Cabeçalho da tabela */}
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <div className="col-span-2">Nº Chamado</div>
+                    <div className="col-span-2">Empresa</div>
+                    <div className="col-span-3">Colaborador</div>
+                    <div className="col-span-2">Data Resposta</div>
+                    <div className="col-span-2">Status</div>
+                    <div className="col-span-1 text-center"></div>
+                  </div>
+                </div>
+                
+                {/* Lista de elogios como linhas expansíveis */}
+                <div className="max-h-96 overflow-y-auto space-y-1">
+                  {elogiosDetalhados.map((elogio, index) => {
+                    const elogioId = elogio.id || `elogio-${index}`;
+                    const isExpanded = linhasExpandidas.has(elogioId);
+                    
+                    return (
+                      <div key={elogioId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        {/* Linha principal (sempre visível) */}
                         <div 
-                          className={`${cores[index]} h-full rounded-full transition-all duration-500`}
-                          style={{ width: `${porcentagem}%` }}
-                        ></div>
+                          className="grid grid-cols-12 gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          onClick={() => toggleLinha(elogioId)}
+                        >
+                          <div className="col-span-2">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              {elogio.pesquisa?.nro_caso || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
+                            </span>
+                          </div>
+                          <div className="col-span-3">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {elogio.pesquisa?.prestador || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {elogio.data_resposta ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR') : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                              elogio.status === 'enviado' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                            }`}>
+                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                            </span>
+                          </div>
+                          <div className="col-span-1 text-center">
+                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`} />
+                          </div>
+                        </div>
+                        
+                        {/* Conteúdo expandido (comentário) */}
+                        {isExpanded && elogio.pesquisa?.comentario_pesquisa && (
+                          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+                            <div className="space-y-2">
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                Comentário:
+                              </span>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {elogio.pesquisa.comentario_pesquisa}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Mensagem quando não há comentário */}
+                        {isExpanded && !elogio.pesquisa?.comentario_pesquisa && (
+                          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                              Nenhum comentário disponível para este elogio.
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })}
+                </div>
+                
+                {/* Mensagem quando não há elogios */}
+                {elogiosDetalhados.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum elogio encontrado para a seleção atual.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-semibold">Clique nos itens para ver detalhes</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Selecione um item nos gráficos ou cards acima para ver os detalhes dos elogios.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Distribuição por Área */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -1883,7 +2101,18 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                             labelLine={false}
                           >
                             {dadosPizza.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.cor} />
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.cor} 
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  console.log('🖱️ Clique na célula:', entry.nome);
+                                  setItemSelecionado({
+                                    tipo: 'grupo',
+                                    dados: entry.nome
+                                  });
+                                }}
+                              />
                             ))}
                           </Pie>
                           <Tooltip 
@@ -2635,6 +2864,21 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  // Hook para buscar estatísticas de pesquisas do SQL Server (sempre todos os grupos)
+  const { data: estatisticasPesquisas, isLoading: loadingEstatisticas, error } = useEstatisticasPesquisas(
+    anoSelecionado, 
+    'todos'
+  );
+  
+  // Garantir que temos dados válidos com cast explícito
+  const stats: EstatisticasPesquisas = (estatisticasPesquisas as EstatisticasPesquisas) ?? {
+    total_enviadas: 0,
+    total_respondidas: 0,
+    total_nao_respondidas: 0,
+    taxa_resposta: 0
+  };
+  
+  // Dados dos elogios filtrados (apenas para comparação)
   const elogiosFiltrados = elogios?.filter(e => {
     if (!e.data_resposta) return false;
     const dataResposta = new Date(e.data_resposta);
@@ -2644,28 +2888,467 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
 
   return (
     <div className="space-y-6">
+      {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Enviadas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">
+                  {loadingEstatisticas ? '...' : stats.total_enviadas}
+                </p>
+                {error && (
+                  <span className="text-xs text-red-500" title="Erro ao carregar dados do SQL Server">
+                    ⚠️
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Respondidas</p>
-              <p className="text-2xl font-bold">{elogiosFiltrados.length}</p>
+              <p className="text-2xl font-bold">
+                {loadingEstatisticas ? '...' : stats.total_respondidas}
+              </p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <FileText className="h-4 w-4 text-green-600" />
+              <Heart className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Não Respondidas</p>
+              <p className="text-2xl font-bold">
+                {loadingEstatisticas ? '...' : stats.total_nao_respondidas}
+              </p>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa de Resposta</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">
+                  {loadingEstatisticas ? '...' : `${stats.taxa_resposta}%`}
+                </p>
+                {!loadingEstatisticas && (
+                  <span className={`text-xs font-medium ${
+                    stats.taxa_resposta >= 80 ? 'text-green-600' : 
+                    stats.taxa_resposta >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {stats.taxa_resposta >= 80 ? '✓ Boa' : 
+                     stats.taxa_resposta >= 60 ? '⚠ Regular' : '✗ Baixa'}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <BarChart3 className="h-4 w-4 text-purple-600" />
             </div>
           </CardHeader>
         </Card>
       </div>
       
+      {/* Gráfico de Comparação */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Enviadas vs Respondidas</CardTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Comparação entre pesquisas enviadas e respondidas - Todos os Grupos
+            </p>
+          </CardHeader>
+          <CardContent>
+            {loadingEstatisticas ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="text-gray-500">Carregando dados...</div>
+              </div>
+            ) : error ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="text-red-500 text-center">
+                  <p>Erro ao carregar dados do SQL Server</p>
+                  <p className="text-xs mt-1">Verifique se a API de sincronização está ativa</p>
+                </div>
+              </div>
+            ) : estatisticasPesquisas ? (
+              <div className="space-y-4">
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={[
+                        {
+                          categoria: 'Pesquisas',
+                          enviadas: stats.total_enviadas,
+                          respondidas: stats.total_respondidas,
+                          nao_respondidas: stats.total_nao_respondidas
+                        }
+                      ]}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      barCategoryGap="40%"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="categoria" />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => {
+                          const labels: Record<string, string> = {
+                            'enviadas': 'Enviadas',
+                            'respondidas': 'Respondidas', 
+                            'nao_respondidas': 'Não Respondidas'
+                          };
+                          return [value, labels[name] || name];
+                        }}
+                      />
+                      <Bar 
+                        dataKey="enviadas" 
+                        fill="#3b82f6" 
+                        name="enviadas" 
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={60}
+                      />
+                      <Bar 
+                        dataKey="respondidas" 
+                        fill="#10b981" 
+                        name="respondidas" 
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={60}
+                      />
+                      <Bar 
+                        dataKey="nao_respondidas" 
+                        fill="#f59e0b" 
+                        name="nao_respondidas" 
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={60}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legenda customizada com círculos */}
+                <div className="flex items-center justify-center text-sm pt-4 border-t">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="text-gray-600">Enviadas</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-600">Respondidas</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      <span className="text-gray-600">Não Respondidas</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                Nenhum dado disponível
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Dados Processados no Sistema</CardTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Elogios já sincronizados e processados no sistema
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Elogios Processados
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Dados sincronizados da ferramenta ITSM
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {elogiosFiltrados.length}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    no ano {anoSelecionado}
+                  </p>
+                </div>
+              </div>
+              
+              {!loadingEstatisticas && (
+                <div className="text-center p-4 border-t">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <strong>Cobertura de Sincronização:</strong>
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {stats.total_respondidas > 0 
+                      ? ((elogiosFiltrados.length / stats.total_respondidas) * 100).toFixed(1)
+                      : '0'
+                    }%
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    dos elogios respondidos foram sincronizados
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente Planos de Ação
+const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }: { 
+  statsElogios: any; 
+  anoSelecionado: number;
+  mesSelecionado: number | 'todos';
+  elogios?: any[];
+}) => {
+  // Estados para controlar seleção e detalhes
+  const [itemSelecionado, setItemSelecionado] = useState<{
+    tipo: 'empresa' | 'status' | 'acao-paliativa' | null;
+    dados: any;
+  } | null>(null);
+
+  // Buscar dados reais da tabela planos_acao
+  const { data: planosAcao = [], isLoading: loadingPlanos } = usePlanosAcao({
+    ano: anoSelecionado,
+    mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
+  });
+
+  // Buscar estatísticas dos planos de ação
+  const { data: estatisticasPlanos } = useEstatisticasPlanosAcao({
+    ano: anoSelecionado,
+    mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
+  });
+
+  // Se estiver carregando, mostrar loading
+  if (loadingPlanos) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando planos de ação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Usar dados das estatísticas ou valores padrão
+  const totalPlanos = estatisticasPlanos?.total || 0;
+  const abertos = estatisticasPlanos?.abertos || 0;
+  const emAndamento = estatisticasPlanos?.em_andamento || 0;
+  const aguardandoRetorno = estatisticasPlanos?.aguardando_retorno || 0;
+  const concluidos = estatisticasPlanos?.concluidos || 0;
+  const cancelados = estatisticasPlanos?.cancelados || 0;
+  const porPrioridade = estatisticasPlanos?.por_prioridade || { baixa: 0, media: 0, alta: 0, critica: 0 };
+
+  return (
+    <div className="space-y-6">
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total de Planos</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{totalPlanos}</p>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Concluídos</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-green-600">{concluidos}</p>
+                <span className="text-xs text-gray-500">
+                  ({totalPlanos > 0 ? Math.round((concluidos / totalPlanos) * 100) : 0}%)
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Award className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Andamento</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-blue-600">{emAndamento}</p>
+                <span className="text-xs text-gray-500">
+                  ({totalPlanos > 0 ? Math.round((emAndamento / totalPlanos) * 100) : 0}%)
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Abertos</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-orange-600">{abertos}</p>
+                <span className="text-xs text-gray-500">
+                  ({totalPlanos > 0 ? Math.round((abertos / totalPlanos) * 100) : 0}%)
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <FileText className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Segunda linha de cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Aguardando Retorno</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
+                <span className="text-xs text-gray-500">
+                  ({totalPlanos > 0 ? Math.round((aguardandoRetorno / totalPlanos) * 100) : 0}%)
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+              <TrendingUp className="h-4 w-4 text-yellow-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Cancelados</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-red-600">{cancelados}</p>
+                <span className="text-xs text-gray-500">
+                  ({totalPlanos > 0 ? Math.round((cancelados / totalPlanos) * 100) : 0}%)
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <Users className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Gráficos e tabelas */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Distribuição por Prioridade */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-gray-600" />
+              <CardTitle className="text-lg font-semibold">Distribuição por Prioridade</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Crítica</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-red-600">{porPrioridade.critica}</span>
+                  <span className="text-xs text-gray-500">
+                    ({totalPlanos > 0 ? Math.round((porPrioridade.critica / totalPlanos) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Alta</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-orange-600">{porPrioridade.alta}</span>
+                  <span className="text-xs text-gray-500">
+                    ({totalPlanos > 0 ? Math.round((porPrioridade.alta / totalPlanos) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Média</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-yellow-600">{porPrioridade.media}</span>
+                  <span className="text-xs text-gray-500">
+                    ({totalPlanos > 0 ? Math.round((porPrioridade.media / totalPlanos) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Baixa</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-blue-600">{porPrioridade.baixa}</span>
+                  <span className="text-xs text-gray-500">
+                    ({totalPlanos > 0 ? Math.round((porPrioridade.baixa / totalPlanos) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabela de Planos de Ação */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Dados das Pesquisas</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-lg font-semibold">Lista de Planos de Ação</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            {elogiosFiltrados.length} pesquisas de satisfação processadas no ano {anoSelecionado}
-          </div>
+          <PlanosAcaoTable
+            planos={planosAcao}
+            onEdit={(plano) => {
+              console.log('Editar plano:', plano);
+              // Implementar lógica de edição
+            }}
+            onDelete={(id) => {
+              console.log('Deletar plano:', id);
+              // Implementar lógica de exclusão
+            }}
+            onView={(plano) => {
+              console.log('Visualizar plano:', plano);
+              // Implementar lógica de visualização
+            }}
+            isLoading={loadingPlanos}
+          />
         </CardContent>
       </Card>
     </div>
@@ -2710,6 +3393,16 @@ const Dashboard = () => {
       });
     }
     
+    // Aba Planos de Ação com verificação de permissão correta
+    if (hasPermission('plano_acao', 'view') || hasPermission('plano_acao', 'view')) {
+      tabs.push({
+        key: 'planos-acao',
+        label: 'Planos de Ação',
+        icon: BarChart3,
+        screenKeys: ['plano_acao_visualizar']
+      });
+    }
+    
     if (hasPermission('lancar_pesquisas', 'view') || hasPermission('enviar_pesquisas', 'view')) {
       tabs.push({
         key: 'elogios',
@@ -2718,8 +3411,6 @@ const Dashboard = () => {
         screenKeys: ['lancar_pesquisas', 'enviar_pesquisas']
       });
     }
-    
-
     
     return tabs;
   }, [hasPermission]);
@@ -3918,6 +4609,25 @@ const Dashboard = () => {
 
                 {/* Sub-abas de Elogios */}
                 <ElogiosSubTabs 
+                  statsElogios={statsElogios}
+                  anoSelecionado={anoSelecionado}
+                  mesSelecionado={mesSelecionado}
+                  elogios={elogios}
+                  hasPermission={hasPermission}
+                />
+              </div>
+            )}
+
+            {/* Aba de Planos de Ação */}
+            {activeTab === 'planos-acao' && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                  Planos de Ação
+                </h2>
+
+                {/* Conteúdo dos Planos de Ação */}
+                <PlanosAcaoElogios 
                   statsElogios={statsElogios}
                   anoSelecionado={anoSelecionado}
                   mesSelecionado={mesSelecionado}

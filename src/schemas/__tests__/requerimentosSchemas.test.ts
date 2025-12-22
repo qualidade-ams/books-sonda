@@ -62,12 +62,12 @@ describe('requerimentosSchemas', () => {
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error.issues[0].message).toBe('Chamado deve conter apenas letras, números e hífen (ex: RF-6017993)');
+          expect(result.error.issues[0].message).toBe('Chamado deve conter apenas letras, números, hífen (-) e underscore (_) (ex: RF-6017993, HORA_EXTRA)');
         }
       });
 
-      it('deve aceitar chamado válido com letras, números e hífen', () => {
-        const validChamados = ['RF-123', 'ABC123', 'TEST-456-XYZ'];
+      it('deve aceitar chamado válido com letras, números, hífen e underscore', () => {
+        const validChamados = ['RF-123', 'ABC123', 'TEST-456-XYZ', 'HORA_EXTRA', 'PROJETO_2024'];
 
         validChamados.forEach(chamado => {
           const testData = { ...validData, chamado };

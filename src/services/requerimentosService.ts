@@ -886,8 +886,8 @@ export class RequerimentosService {
     if (!isUpdate || data.chamado !== undefined) {
       if (!data.chamado?.trim()) {
         errors.push('Chamado é obrigatório');
-      } else if (!/^[A-Za-z0-9\-]+$/.test(data.chamado.trim())) {
-        errors.push('Chamado deve conter apenas letras, números e hífen');
+      } else if (!/^[A-Za-z0-9\-_]+$/.test(data.chamado.trim())) {
+        errors.push('Chamado deve conter apenas letras, números, hífen (-) e underscore (_)');
       }
     }
 
