@@ -227,8 +227,8 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
                     </TableHeader>
                     <TableBody>
                       {categoryScreens.map((screen) => (
-                        <TableRow key={screen.key}>
-                          <TableCell className="font-medium">
+                        <TableRow key={screen.key} className="h-16">
+                          <TableCell className="font-medium align-middle">
                             <div className="flex items-center space-x-2">
                               <span>{screen.name}</span>
                               {hasChangesForScreen(screen.key) && (
@@ -238,18 +238,20 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-gray-600">
+                          <TableCell className="text-gray-600 align-middle">
                             {screen.description || 'Sem descrição'}
                           </TableCell>
-                          <TableCell className="text-gray-500 font-mono text-sm">
+                          <TableCell className="text-gray-500 font-mono text-sm align-middle">
                             {screen.route}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <PermissionLevelSelect
-                              value={getPermissionForScreen(screen.key)}
-                              onChange={(level) => handlePermissionChange(screen.key, level)}
-                              disabled={saving}
-                            />
+                          <TableCell className="text-center align-middle">
+                            <div className="flex justify-center">
+                              <PermissionLevelSelect
+                                value={getPermissionForScreen(screen.key)}
+                                onChange={(level) => handlePermissionChange(screen.key, level)}
+                                disabled={saving}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
