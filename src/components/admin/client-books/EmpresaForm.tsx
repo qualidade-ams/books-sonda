@@ -63,6 +63,7 @@ const empresaSchema = z.object({
     .string()
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
     .optional(),
+  emProjeto: z.boolean().optional(), // NOVO: Campo Em Projeto
   emailGestor: z
     .string()
     .min(1, 'E-mail do Customer Success é obrigatório')
@@ -182,6 +183,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       templatePadrao: 'portugues',
       status: 'ativo',
       descricaoStatus: '',
+      emProjeto: false, // NOVO: Campo Em Projeto - padrão false
       emailGestor: '',
       produtos: [],
       grupos: [],
@@ -211,6 +213,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         templatePadrao: 'portugues',
         status: 'ativo',
         descricaoStatus: '',
+        emProjeto: false, // NOVO: Campo Em Projeto - padrão false
         emailGestor: '',
         produtos: [],
         grupos: [],
@@ -256,6 +259,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         templatePadrao: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.templatePadrao || 'portugues') : '',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
+        emProjeto: data.emProjeto || false, // NOVO: Campo Em Projeto
         produtos: data.produtos.map(p => p.toUpperCase() as Produto), // Normalizar produtos para uppercase
         grupos: data.grupos || [],
         temAms: data.temAms || false,
@@ -477,6 +481,34 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           />
         )}
 
+        {/* Campo Em Projeto */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="emProjeto"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Em Projeto</FormLabel>
+              <Select
+                onValueChange={(value) => field.onChange(value === 'true')}
+                value={field.value ? 'true' : 'false'}
+                disabled={isSubmitting || isLoading}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma opção" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="false">Não</SelectItem>
+                  <SelectItem value="true">Sim</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* E-mail do Customer Success - aparece sempre */}
         <FormField
           control={form.control}
@@ -497,7 +529,8 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             </FormItem>
           )}
         />
-
+        </div>
+        
         {/* Vigência do Contrato */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField

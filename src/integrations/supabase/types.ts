@@ -487,6 +487,7 @@ export type Database = {
           data_status: string | null
           descricao_status: string | null
           email_gestor: string | null
+          em_projeto: boolean | null
           id: string
           link_sharepoint: string | null
           nome_abreviado: string
@@ -508,6 +509,7 @@ export type Database = {
           data_status?: string | null
           descricao_status?: string | null
           email_gestor?: string | null
+          em_projeto?: boolean | null
           id?: string
           link_sharepoint?: string | null
           nome_abreviado: string
@@ -529,6 +531,7 @@ export type Database = {
           data_status?: string | null
           descricao_status?: string | null
           email_gestor?: string | null
+          em_projeto?: boolean | null
           id?: string
           link_sharepoint?: string | null
           nome_abreviado?: string

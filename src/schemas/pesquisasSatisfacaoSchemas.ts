@@ -95,11 +95,15 @@ export const PesquisaFormSchemaBase = z.object({
   cliente_id: z.string().uuid().optional().nullable()
 });
 
-// Schema para pesquisas manuais (comentário obrigatório)
+// Schema para pesquisas manuais (comentário e resposta obrigatórios)
 export const PesquisaFormSchemaManual = PesquisaFormSchemaBase.extend({
   comentario_pesquisa: z.string()
     .min(1, 'Comentário é obrigatório para pesquisas manuais')
-    .max(5000, 'Comentário deve ter no máximo 5000 caracteres')
+    .max(5000, 'Comentário deve ter no máximo 5000 caracteres'),
+  
+  resposta: z.string()
+    .min(1, 'Resposta é obrigatória')
+    .max(5000, 'Resposta deve ter no máximo 5000 caracteres')
 });
 
 // Schema principal - usa o base por padrão (para compatibilidade)

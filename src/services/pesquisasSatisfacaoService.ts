@@ -650,7 +650,8 @@ export async function enviarParaPlanoAcao(id: string): Promise<void> {
     .from('planos_acao')
     .insert({
       pesquisa_id: pesquisa.id,
-      descricao_acao_corretiva: pesquisa.comentario_pesquisa || `Ação corretiva para pesquisa de ${pesquisa.cliente} - ${pesquisa.empresa}`,
+      comentario_cliente: pesquisa.comentario_pesquisa || '', // Comentário do cliente vem da pesquisa
+      descricao_acao_corretiva: '', // Campo vazio para ser preenchido pelo usuário
       acao_preventiva: null,
       prioridade: pesquisa.resposta === 'Muito Insatisfeito' ? 'alta' : 'media',
       status_plano: 'aberto',

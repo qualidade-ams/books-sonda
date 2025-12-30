@@ -10,7 +10,8 @@ import {
   Trash2, 
   Database, 
   FileEdit,
-  Send
+  Send,
+  ChevronDown
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { Pesquisa } from '@/types/pesquisasSatisfacao';
@@ -53,6 +60,8 @@ interface PesquisasTableProps {
   onEditar: (pesquisa: Pesquisa) => void;
   onExcluir: (id: string) => void;
   onEnviar: (pesquisa: Pesquisa) => void;
+  onEnviarParaPlanoAcao?: (pesquisa: Pesquisa) => void;
+  onEnviarParaElogios?: (pesquisa: Pesquisa) => void;
   isLoading?: boolean;
 }
 
@@ -64,6 +73,8 @@ export function PesquisasTable({
   onEditar,
   onExcluir,
   onEnviar,
+  onEnviarParaPlanoAcao,
+  onEnviarParaElogios,
   isLoading
 }: PesquisasTableProps) {
   const [pesquisaParaExcluir, setPesquisaParaExcluir] = useState<string | null>(null);
@@ -292,25 +303,57 @@ export function PesquisasTable({
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                    {/* Botão de Envio - Condicional para Neutro */}
+                    {pesquisa.resposta?.toLowerCase() === 'neutro' ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onEnviar(pesquisa)}
                             disabled={isLoading || !pesquisa.resposta}
                             className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                            title="Enviar pesquisa"
                           >
                             <Send className="h-4 w-4" />
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enviar pesquisa</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => onEnviarParaPlanoAcao?.(pesquisa)}
+                            className="cursor-pointer"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Enviar para Plano de Ação
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => onEnviarParaElogios?.(pesquisa)}
+                            className="cursor-pointer"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Enviar para Elogios
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onEnviar(pesquisa)}
+                              disabled={isLoading || !pesquisa.resposta}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                              title="Enviar pesquisa"
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enviar pesquisa</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

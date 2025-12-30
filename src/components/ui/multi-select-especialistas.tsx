@@ -8,6 +8,7 @@ import { Check, ChevronDown, X, User, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Command,
   CommandEmpty,
@@ -21,6 +22,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useEspecialistasComPaginacao } from '@/hooks/useEspecialistasOtimizado';
 
 export interface EspecialistaOption {
@@ -47,6 +55,10 @@ export function MultiSelectEspecialistas({
   maxCount = 2
 }: MultiSelectEspecialistasProps) {
   const [open, setOpen] = React.useState(false);
+  const [modalNovoConsultor, setModalNovoConsultor] = React.useState(false);
+  const [nomeNovoConsultor, setNomeNovoConsultor] = React.useState('');
+  const [emailNovoConsultor, setEmailNovoConsultor] = React.useState('');
+  const [consultoresManuais, setConsultoresManuais] = React.useState<EspecialistaOption[]>([]);
   
   const { 
     especialistas, 
@@ -62,18 +74,18 @@ export function MultiSelectEspecialistas({
     itensRestantes
   } = useEspecialistasComPaginacao(10); // 10 itens por "página"
 
-  // Converter TODOS os especialistas para formato de opções (não apenas os paginados)
-  // Isso garante que especialistas selecionados sempre apareçam, mesmo se não estiverem na página atual
-  
-  const allOptions: EspecialistaOption[] = React.useMemo(() => 
-    todosEspecialistas.map(esp => ({
+  // Combinar especialistas do banco com consultores manuais
+  const allOptions: EspecialistaOption[] = React.useMemo(() => {
+    const especialistasDb = todosEspecialistas.map(esp => ({
       label: esp.nome,
       value: esp.id,
       email: esp.email || undefined
-    })), [todosEspecialistas]
-  );
+    }));
+    
+    return [...especialistasDb, ...consultoresManuais];
+  }, [todosEspecialistas, consultoresManuais]);
 
-  // Opções paginadas para exibição na lista
+  // Opções paginadas para exibição na lista (apenas do banco de dados)
   const options: EspecialistaOption[] = React.useMemo(() => 
     especialistas.map(esp => ({
       label: esp.nome,
@@ -96,6 +108,10 @@ export function MultiSelectEspecialistas({
   const temMaisItensDisponiveis = !termoBusca.trim() && selectables.length < totalDisponiveis;
 
   const handleUnselect = (item: string) => {
+    // Se for um consultor manual, remover também da lista de consultores manuais
+    if (item.startsWith('manual_')) {
+      setConsultoresManuais(prev => prev.filter(c => c.value !== item));
+    }
     onValueChange?.(value.filter(id => id !== item));
   };
 
@@ -103,6 +119,11 @@ export function MultiSelectEspecialistas({
     const input = e.target as HTMLInputElement;
     if (input.value === "" && value.length > 0) {
       if (e.key === "Delete" || e.key === "Backspace") {
+        const ultimoItem = value[value.length - 1];
+        // Se for um consultor manual, remover também da lista de consultores manuais
+        if (ultimoItem.startsWith('manual_')) {
+          setConsultoresManuais(prev => prev.filter(c => c.value !== ultimoItem));
+        }
         onValueChange?.(value.slice(0, -1));
       }
     }
@@ -110,6 +131,37 @@ export function MultiSelectEspecialistas({
     if (e.key === "Escape") {
       setOpen(false);
     }
+  };
+
+  const handleAdicionarConsultorManual = () => {
+    if (!nomeNovoConsultor.trim()) return;
+    
+    // Gerar um ID temporário único para o consultor manual
+    const idTemporario = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Criar o novo consultor
+    const novoConsultor: EspecialistaOption = {
+      label: nomeNovoConsultor.trim(),
+      value: idTemporario,
+      email: emailNovoConsultor.trim() || undefined
+    };
+    
+    // Adicionar à lista de consultores manuais
+    setConsultoresManuais(prev => [...prev, novoConsultor]);
+    
+    // Adicionar à seleção
+    onValueChange?.([...value, idTemporario]);
+    
+    // Limpar o modal
+    setNomeNovoConsultor('');
+    setEmailNovoConsultor('');
+    setModalNovoConsultor(false);
+  };
+
+  const handleCancelarNovoConsultor = () => {
+    setNomeNovoConsultor('');
+    setEmailNovoConsultor('');
+    setModalNovoConsultor(false);
   };
 
   if (isLoading) {
@@ -126,204 +178,286 @@ export function MultiSelectEspecialistas({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "w-full justify-between text-left font-normal min-h-[40px] h-auto",
-            className
-          )}
-          disabled={disabled}
-        >
-          <div className="flex gap-1 flex-wrap">
-            {value.length === 0 && (
-              <span className="text-muted-foreground">{placeholder}</span>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "w-full justify-between text-left font-normal min-h-[40px] h-auto",
+              className
             )}
-            {value.length > 0 && value.length <= maxCount && (
-              <>
-                {value.map((item) => {
-                  const option = allOptions.find((option) => option.value === item);
-                  if (!option) return null;
-                  return (
-                    <Badge
-                      variant="secondary"
-                      key={item}
-                      className="mr-1 mb-1 flex items-center gap-1 hover:bg-destructive/10 cursor-pointer"
-                      title={`Clique para remover ${option.label}`}
-                    >
-                      <User className="h-3 w-3" />
-                      <span className="max-w-[120px] truncate">{option.label}</span>
-                      <button
-                        className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-destructive hover:text-destructive-foreground"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleUnselect(item);
-                          }
-                        }}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleUnselect(item);
-                        }}
-                        title="Remover"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </>
-            )}
-            {value.length > maxCount && (
-              <Badge
-                variant="secondary"
-                className="mr-1 mb-1 flex items-center gap-1"
-              >
-                <User className="h-3 w-3" />
-                {value.length} consultores selecionados
-              </Badge>
-            )}
-          </div>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-full p-0 max-h-96 overflow-hidden"
-        side="bottom"
-        align="start"
-      >
-        <Command className="overflow-hidden">
-          <CommandInput
-            placeholder={`Buscar consultor... (${filtrados}/${total})`}
-            value={termoBusca}
-            onValueChange={atualizarBusca}
-            onKeyDown={handleKeyDown}
-          />
-          <CommandList className="max-h-80 overflow-hidden">
-            <CommandEmpty>
-              {isLoading ? "Carregando..." : "Nenhum consultor encontrado."}
-            </CommandEmpty>
-            
-            {/* Seção de consultores selecionados */}
-            {value.length > 0 && (
-              <CommandGroup>
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
-                  Selecionados ({value.length})
-                </div>
-                <div className="p-2 space-y-1">
+            disabled={disabled}
+          >
+            <div className="flex gap-1 flex-wrap">
+              {value.length === 0 && (
+                <span className="text-muted-foreground">{placeholder}</span>
+              )}
+              {value.length > 0 && value.length <= maxCount && (
+                <>
                   {value.map((item) => {
-                    const option = allOptions.find((opt) => opt.value === item);
+                    const option = allOptions.find((option) => option.value === item);
                     if (!option) return null;
                     return (
-                      <div
+                      <Badge
+                        variant="secondary"
                         key={item}
-                        className="flex items-center justify-between p-2 rounded-md bg-accent/50 hover:bg-accent"
+                        className={cn(
+                          "mr-1 mb-1 flex items-center gap-1 hover:bg-destructive/10 cursor-pointer",
+                          item.startsWith('manual_') && "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200"
+                        )}
+                        title={`Clique para remover ${option.label}${item.startsWith('manual_') ? ' (Manual)' : ''}`}
                       >
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">{option.label}</span>
-                            {option.email && (
-                              <span className="text-xs text-muted-foreground">{option.email}</span>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUnselect(item)}
-                          className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                        <User className="h-3 w-3" />
+                        <span className="max-w-[120px] truncate">{option.label}</span>
+                        {item.startsWith('manual_') && (
+                          <span className="text-xs opacity-75">(M)</span>
+                        )}
+                        <button
+                          className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-destructive hover:text-destructive-foreground"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUnselect(item);
+                            }
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleUnselect(item);
+                          }}
+                          title="Remover"
                         >
                           <X className="h-3 w-3" />
-                        </Button>
-                      </div>
+                        </button>
+                      </Badge>
                     );
                   })}
-                </div>
-              </CommandGroup>
-            )}
-            
-            <CommandGroup className="overflow-hidden">
-              {selectables.length > 0 && (
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
-                  Disponíveis ({selectables.length})
-                </div>
+                </>
               )}
-              <div 
-                className="max-h-64 overflow-y-auto overflow-x-hidden"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#cbd5e1 #f1f5f9',
-                  overflowY: 'scroll'
-                }}
-                onWheel={(e) => {
-                  // Permitir scroll nativo
-                  e.stopPropagation();
-                }}
-              >
-                {/* Opções paginadas */}
-                {selectables.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                      onValueChange?.([...value, option.value]);
-                      atualizarBusca("");
-                    }}
-                    className="flex items-center gap-2 cursor-pointer hover:bg-accent"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value.includes(option.value)
-                          ? "opacity-100"
-                          : "opacity-0"
-                      )}
-                    />
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex flex-col flex-1">
-                      <span className="font-medium">{option.label}</span>
-                      {option.email && (
-                        <span className="text-xs text-muted-foreground">
-                          {option.email}
-                        </span>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </div>
+              {value.length > maxCount && (
+                <Badge
+                  variant="secondary"
+                  className="mr-1 mb-1 flex items-center gap-1"
+                >
+                  <User className="h-3 w-3" />
+                  {value.length} consultores selecionados
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-full p-0 max-h-96 overflow-hidden"
+          side="bottom"
+          align="start"
+        >
+          <Command className="overflow-hidden">
+            <CommandInput
+              placeholder={`Buscar consultor... (${filtrados}/${total})`}
+              value={termoBusca}
+              onValueChange={atualizarBusca}
+              onKeyDown={handleKeyDown}
+            />
+            <CommandList className="max-h-80 overflow-hidden">
+              <CommandEmpty>
+                {isLoading ? "Carregando..." : "Nenhum consultor encontrado."}
+              </CommandEmpty>
               
-              {/* Botão "Carregar Mais" - fora da área de scroll */}
-              {temMaisItensDisponiveis && (
+              {/* Seção de consultores selecionados */}
+              {value.length > 0 && (
+                <CommandGroup>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                    Selecionados ({value.length})
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {value.map((item) => {
+                      const option = allOptions.find((opt) => opt.value === item);
+                      if (!option) return null;
+                      return (
+                        <div
+                          key={item}
+                          className={cn(
+                            "flex items-center justify-between p-2 rounded-md hover:bg-accent",
+                            item.startsWith('manual_') 
+                              ? "bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800" 
+                              : "bg-accent/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{option.label}</span>
+                                {item.startsWith('manual_') && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded dark:bg-blue-900 dark:text-blue-200">
+                                    Manual
+                                  </span>
+                                )}
+                              </div>
+                              {option.email && (
+                                <span className="text-xs text-muted-foreground">{option.email}</span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleUnselect(item)}
+                            className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CommandGroup>
+              )}
+              
+              <CommandGroup className="overflow-hidden">
+                {selectables.length > 0 && (
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                    Disponíveis ({selectables.length})
+                  </div>
+                )}
+                <div 
+                  className="max-h-64 overflow-y-auto overflow-x-hidden"
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 #f1f5f9',
+                    overflowY: 'scroll'
+                  }}
+                  onWheel={(e) => {
+                    // Permitir scroll nativo
+                    e.stopPropagation();
+                  }}
+                >
+                  {/* Opções paginadas */}
+                  {selectables.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      onSelect={() => {
+                        onValueChange?.([...value, option.value]);
+                        atualizarBusca("");
+                      }}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-accent"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value.includes(option.value)
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col flex-1">
+                        <span className="font-medium">{option.label}</span>
+                        {option.email && (
+                          <span className="text-xs text-muted-foreground">
+                            {option.email}
+                          </span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </div>
+                
+                {/* Botão "Carregar Mais" - fora da área de scroll */}
+                {temMaisItensDisponiveis && (
+                  <div className="p-2 border-t bg-background">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={carregarProximaPagina}
+                      className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Carregar mais ({totalDisponiveis - selectables.length} restantes)
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Botão "Adicionar Consultor Manual" */}
                 <div className="p-2 border-t bg-background">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={carregarProximaPagina}
-                    className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setModalNovoConsultor(true)}
+                    className="w-full justify-center gap-2 text-blue-600 hover:text-blue-800 border-blue-200 hover:border-blue-300"
                   >
                     <Plus className="h-4 w-4" />
-                    Carregar mais ({totalDisponiveis - selectables.length} restantes)
+                    Adicionar Consultor Manual
                   </Button>
                 </div>
-              )}
-              
-              {/* Indicador de fim da lista */}
-              {!temMaisPaginas && itensCarregados > 10 && (
-                <div className="p-2 text-center text-xs text-muted-foreground border-t bg-background">
-                  Todos os {itensCarregados} consultores carregados
-                </div>
-              )}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                
+                {/* Indicador de fim da lista */}
+                {!temMaisPaginas && itensCarregados > 10 && (
+                  <div className="p-2 text-center text-xs text-muted-foreground border-t bg-background">
+                    Todos os {itensCarregados} consultores carregados
+                  </div>
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {/* Modal para adicionar consultor manual */}
+      <Dialog open={modalNovoConsultor} onOpenChange={setModalNovoConsultor}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Consultor Manual</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Consultor *</label>
+              <Input
+                placeholder="Digite o nome do consultor"
+                value={nomeNovoConsultor}
+                onChange={(e) => setNomeNovoConsultor(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nomeNovoConsultor.trim()) {
+                    handleAdicionarConsultorManual();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email (opcional)</label>
+              <Input
+                type="email"
+                placeholder="email@exemplo.com"
+                value={emailNovoConsultor}
+                onChange={(e) => setEmailNovoConsultor(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nomeNovoConsultor.trim()) {
+                    handleAdicionarConsultorManual();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelarNovoConsultor}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAdicionarConsultorManual}
+              disabled={!nomeNovoConsultor.trim()}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

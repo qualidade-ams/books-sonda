@@ -34,14 +34,15 @@ export const useEmpresas = (
       // Garantir que sempre retorne um array
       return Array.isArray(generatedKey) ? generatedKey : [generatedKey];
     }
-    // Criar chave mais específica para garantir que mudanças no filtro temAms sejam detectadas
+    // Criar chave mais específica para garantir que mudanças nos filtros sejam detectadas
     return [
       baseKey, 
       filtros?.busca || '',
       filtros?.status || [],
       filtros?.produtos || [],
       filtros?.emailGestor || '',
-      filtros?.temAms
+      filtros?.temAms,
+      filtros?.emProjeto // NOVO: Incluir filtro emProjeto na chave de cache
     ] as const;
   }, [filtros, validatedParams]);
 
@@ -60,7 +61,8 @@ export const useEmpresas = (
         (filtros.produtos && filtros.produtos.length > 0) ||
         (filtros.status && filtros.status.length > 0) ||
         (filtros.emailGestor && filtros.emailGestor.trim()) ||
-        (filtros.temAms !== undefined)
+        (filtros.temAms !== undefined) ||
+        (filtros.emProjeto !== undefined) // NOVO: Incluir filtro emProjeto
       );
 
       // Tentar buscar do cache primeiro APENAS se não há filtros e não há paginação
@@ -91,7 +93,8 @@ export const useEmpresas = (
       (filtros.produtos && filtros.produtos.length > 0) ||
       (filtros.status && filtros.status.length > 0) ||
       (filtros.emailGestor && filtros.emailGestor.trim()) ||
-      (filtros.temAms !== undefined)
+      (filtros.temAms !== undefined) ||
+      (filtros.emProjeto !== undefined) // NOVO: Incluir filtro emProjeto
     ) ? 0 : 5 * 60 * 1000, // 0 quando há filtros, 5 minutos quando não há
     gcTime: 10 * 60 * 1000, // 10 minutos
     refetchOnMount: true, // Sempre refetch ao montar quando há filtros

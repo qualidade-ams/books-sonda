@@ -209,6 +209,7 @@ const EmpresasClientes = () => {
       templatePadrao: empresa.template_padrao as any,
       status: empresa.status as StatusEmpresa,
       descricaoStatus: empresa.descricao_status || '',
+      emProjeto: empresa.em_projeto || false, // NOVO: Campo Em Projeto
       emailGestor: empresa.email_gestor || '',
       produtos: empresa.produtos?.map(p => p.produto as Produto) || [],
       grupos: empresa.grupos?.map(g => g.grupo_id) || [],
@@ -329,7 +330,7 @@ const EmpresasClientes = () => {
             </div>
             {/* Filtros */}
             {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Buscar</label>
                   <div className="relative">
@@ -400,6 +401,29 @@ const EmpresasClientes = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__todos_ams__">Todos</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Em Projeto</label>
+                  <Select
+                    value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
+                    onValueChange={(value) => {
+                      if (value === '__todos_projeto__') {
+                        handleFiltroChange('emProjeto', undefined);
+                      } else {
+                        handleFiltroChange('emProjeto', value === 'sim');
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos_projeto__">Todos</SelectItem>
                       <SelectItem value="sim">Sim</SelectItem>
                       <SelectItem value="nao">Não</SelectItem>
                     </SelectContent>

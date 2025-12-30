@@ -63,12 +63,14 @@ export type StatusAnexo = 'pendente' | 'enviando' | 'processado' | 'erro';
 
 // Interfaces para formulários
 export interface EmpresaFormData {
+  id?: string; // NOVO: Campo ID opcional para edição
   nomeCompleto: string;
   nomeAbreviado: string;
   linkSharepoint?: string;
   templatePadrao: string; // Pode ser 'portugues', 'ingles' ou ID do template personalizado
   status: StatusEmpresa;
   descricaoStatus?: string;
+  emProjeto?: boolean; // NOVO: Campo para indicar se empresa está em projeto
   emailGestor?: string;
   produtos: Produto[];
   grupos: string[];
@@ -160,6 +162,7 @@ export interface EmpresaFiltros {
   produtos?: Produto[];
   busca?: string;
   temAms?: boolean;
+  emProjeto?: boolean; // NOVO: Filtro para empresas em projeto
 }
 
 export interface ClienteFiltros {

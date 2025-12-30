@@ -14,7 +14,8 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Mail
+  Mail,
+  Settings
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -225,9 +226,16 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
             <TableRow key={empresa.id}>
               <TableCell className="font-medium">
                 <div className="flex flex-col">
-                  <span className="truncate" title={empresa.nome_abreviado}>
-                    {empresa.nome_abreviado}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate" title={empresa.nome_abreviado}>
+                      {empresa.nome_abreviado}
+                    </span>
+                    {empresa.em_projeto && (
+                      <div className="flex items-center">
+                        <Settings className="h-4 w-4 text-orange-500" title="Empresa em projeto" />
+                      </div>
+                    )}
+                  </div>
                   {empresa.link_sharepoint && (
                     <a
                       href={empresa.link_sharepoint}

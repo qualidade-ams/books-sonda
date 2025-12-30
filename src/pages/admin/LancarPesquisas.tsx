@@ -122,7 +122,7 @@ function LancarPesquisas() {
     try {
       // Determinar destino baseado na resposta
       const respostasNegativas = ['Insatisfeito', 'Muito Insatisfeito'];
-      const respostasPositivas = ['Neutro', 'Satisfeito', 'Muito Satisfeito'];
+      const respostasPositivas = ['Satisfeito', 'Muito Satisfeito'];
 
       if (respostasNegativas.includes(pesquisa.resposta)) {
         // Enviar para Plano de Ação
@@ -130,11 +130,30 @@ function LancarPesquisas() {
       } else if (respostasPositivas.includes(pesquisa.resposta)) {
         // Enviar para Lançar Elogios
         await enviarParaElogios.mutateAsync(pesquisa.id);
+      } else if (pesquisa.resposta === 'Neutro') {
+        // Para Neutro, não fazer nada aqui - será tratado pelo dropdown
+        toast.info('Para pesquisas neutras, escolha o destino no menu dropdown');
       } else {
         toast.error('Resposta inválida para envio');
       }
     } catch (error) {
       console.error('Erro ao enviar pesquisa:', error);
+    }
+  };
+
+  const handleEnviarParaPlanoAcao = async (pesquisa: Pesquisa) => {
+    try {
+      await enviarParaPlanoAcao.mutateAsync(pesquisa.id);
+    } catch (error) {
+      console.error('Erro ao enviar para plano de ação:', error);
+    }
+  };
+
+  const handleEnviarParaElogios = async (pesquisa: Pesquisa) => {
+    try {
+      await enviarParaElogios.mutateAsync(pesquisa.id);
+    } catch (error) {
+      console.error('Erro ao enviar para elogios:', error);
     }
   };
 
@@ -374,6 +393,8 @@ function LancarPesquisas() {
             onEditar={handleEditarPesquisa}
             onExcluir={handleExcluir}
             onEnviar={handleEnviar}
+            onEnviarParaPlanoAcao={handleEnviarParaPlanoAcao}
+            onEnviarParaElogios={handleEnviarParaElogios}
             isLoading={isLoading}
           />
 

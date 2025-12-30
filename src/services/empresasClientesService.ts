@@ -62,6 +62,7 @@ export class EmpresasClientesService {
       status: data.status,
       data_status: new Date().toISOString(),
       descricao_status: data.descricaoStatus || null,
+      em_projeto: data.emProjeto || false, // NOVO: Campo Em Projeto
       email_gestor: data.emailGestor || null,
       tem_ams: data.temAms || false,
       tipo_book: data.tipoBook || 'nao_tem_book',
@@ -150,6 +151,17 @@ export class EmpresasClientesService {
       }
     }
 
+    // NOVO: Filtro por Em Projeto
+    if (filtros?.emProjeto !== undefined) {
+      if (filtros.emProjeto === true) {
+        // Filtrar apenas empresas em projeto = true
+        query = query.eq('em_projeto', true);
+      } else {
+        // Filtrar empresas em projeto = false ou null (considerando null como "não em projeto")
+        query = query.or('em_projeto.eq.false,em_projeto.is.null');
+      }
+    }
+
     const { data, error } = await query.order('nome_abreviado');
 
     if (error) {
@@ -228,6 +240,17 @@ export class EmpresasClientesService {
       } else {
         // Filtrar empresas com AMS = false ou null (considerando null como "sem AMS")
         query = query.or('tem_ams.eq.false,tem_ams.is.null');
+      }
+    }
+
+    // NOVO: Filtro por Em Projeto
+    if (filtros?.emProjeto !== undefined) {
+      if (filtros.emProjeto === true) {
+        // Filtrar apenas empresas em projeto = true
+        query = query.eq('em_projeto', true);
+      } else {
+        // Filtrar empresas em projeto = false ou null (considerando null como "não em projeto")
+        query = query.or('em_projeto.eq.false,em_projeto.is.null');
       }
     }
 
@@ -349,6 +372,7 @@ export class EmpresasClientesService {
       if (data.linkSharepoint !== undefined) updateData.link_sharepoint = data.linkSharepoint || null;
       if (data.templatePadrao) updateData.template_padrao = data.templatePadrao;
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
+      if (data.emProjeto !== undefined) updateData.em_projeto = data.emProjeto; // NOVO: Campo Em Projeto
       if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
       if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;
       if (data.tipoCobranca !== undefined) updateData.tipo_cobranca = data.tipoCobranca;

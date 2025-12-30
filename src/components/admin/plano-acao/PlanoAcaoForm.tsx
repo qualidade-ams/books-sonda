@@ -40,7 +40,7 @@ const formSchema = z.object({
   pesquisa_id: z.string().min(1, 'Pesquisa é obrigatória'),
   chamado: z.string().optional(),
   empresa_id: z.string().optional(),
-  // comentario_cliente: z.string().optional(), // DESABILITADO: Até migração ser executada
+  comentario_cliente: z.string().optional(), // Campo habilitado para planos manuais
   descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'), // NOVO: Descrição da ação corretiva
   acao_preventiva: z.string().optional(),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
@@ -100,13 +100,16 @@ export function PlanoAcaoForm({
     a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR')
   );
 
+  // Determinar se é um plano manual (novo plano sem pesquisa associada ou sem dados preenchidos automaticamente)
+  const isPlanoManual = !plano || !plano.pesquisa || (!plano.pesquisa.comentario_pesquisa && !plano.pesquisa.nro_caso && !plano.pesquisa.empresa);
+
   const form = useForm<PlanoAcaoFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       pesquisa_id: pesquisaId,
       chamado: plano?.chamado || plano?.pesquisa?.nro_caso || '', // CORREÇÃO: Buscar da pesquisa se não tiver no plano
       empresa_id: plano?.empresa_id || '', // CORREÇÃO: Será preenchido via useEffect
-      comentario_cliente: plano?.pesquisa?.comentario_pesquisa || '', 
+      comentario_cliente: plano?.comentario_cliente || plano?.pesquisa?.comentario_pesquisa || '', 
       descricao_acao_corretiva: plano?.descricao_acao_corretiva || '', // NOVO: Campo em branco para ação corretiva
       acao_preventiva: plano?.acao_preventiva || '',
       prioridade: plano?.prioridade || 'media',
@@ -147,7 +150,7 @@ export function PlanoAcaoForm({
         }
       }
 
-      
+      // Preencher comentário do cliente se não estiver preenchido
       if (!form.getValues('comentario_cliente') && plano.pesquisa.comentario_pesquisa) {
         form.setValue('comentario_cliente', plano.pesquisa.comentario_pesquisa);
       }
@@ -223,10 +226,14 @@ export function PlanoAcaoForm({
                 <FormControl>
                   <Textarea
                     {...field}
-                    placeholder="Comentário ou feedback do cliente sobre o problema..."
+                    placeholder={
+                      isPlanoManual 
+                        ? "Descreva o comentário ou feedback do cliente sobre o problema..."
+                        : "Comentário ou feedback do cliente sobre o problema..."
+                    }
                     rows={3}
-                    disabled // Campo somente leitura, preenchido automaticamente
-                    className="bg-gray-50 dark:bg-gray-900"
+                    disabled={!isPlanoManual} // Habilitado apenas para planos manuais
+                    className={!isPlanoManual ? "bg-gray-50 dark:bg-gray-900" : ""}
                   />
                 </FormControl>
                 <FormMessage />

@@ -5,8 +5,9 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock } from 'lucide-react';
+import { Clock, Edit, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -28,11 +29,17 @@ import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
 interface PlanosAcaoTableProps {
   planos: PlanoAcaoCompleto[];
   isLoading?: boolean;
+  onEditar?: (plano: PlanoAcaoCompleto) => void;
+  onVisualizar?: (plano: PlanoAcaoCompleto) => void;
+  onExcluir?: (id: string) => void;
 }
 
 export function PlanosAcaoTable({
   planos,
   isLoading,
+  onEditar,
+  onVisualizar,
+  onExcluir,
 }: PlanosAcaoTableProps) {
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
@@ -83,6 +90,7 @@ export function PlanosAcaoTable({
             <TableHead className="w-[120px] text-center">Status</TableHead>
             <TableHead className="w-[110px] text-center hidden xl:table-cell">Data Início</TableHead>
             <TableHead className="w-[120px] text-center">Tempo Resolução</TableHead>
+            <TableHead className="w-[120px] text-center">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -231,6 +239,68 @@ export function PlanosAcaoTable({
                       }
                       return '-';
                     })()}
+                  </div>
+                </TableCell>
+
+                {/* Coluna Ações */}
+                <TableCell className="text-center">
+                  <div className="flex justify-center gap-1">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onVisualizar?.(plano)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Visualizar detalhes</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditar?.(plano)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Editar plano</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onExcluir?.(plano.id)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Excluir plano</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableCell>
               </TableRow>

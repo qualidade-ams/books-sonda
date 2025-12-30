@@ -345,10 +345,10 @@ function LancarElogios() {
               deParaCategorias={deParaCategorias}
               disabled={isLoading}
             />
-            <Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
+            {/*<Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
               <Plus className="h-4 w-4" />
               Novo Elogio
-            </Button>
+            </Button> */}
             {/* Botão de envio em lote - aparece quando há seleções e está na aba de não enviados */}
             {selecionados.length > 0 && abaAtiva === 'nao-enviados' && (
               <Button 

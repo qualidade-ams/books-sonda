@@ -81,19 +81,6 @@ export function VisualizarPesquisasTable({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pendente':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Pendente</Badge>;
-      case 'enviado_plano_acao':
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Plano de Ação</Badge>;
-      case 'enviado_elogios':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Elogios</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
   if (pesquisas.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -113,7 +100,6 @@ export function VisualizarPesquisasTable({
             <TableHead className="w-[150px] text-center">Cliente</TableHead>
             <TableHead className="w-[200px] text-center">Comentário</TableHead>
             <TableHead className="w-[140px] text-center">Resposta</TableHead>
-            <TableHead className="w-[120px] text-center">Status</TableHead>
             <TableHead className="w-[120px] text-center">Prestador</TableHead>
             <TableHead className="w-[80px] text-center">Ações</TableHead>
           </TableRow>
@@ -235,11 +221,6 @@ export function VisualizarPesquisasTable({
               {/* Coluna Resposta */}
               <TableCell className="text-center">
                 {getBadgeResposta(pesquisa.resposta) || '-'}
-              </TableCell>
-
-              {/* Coluna Status */}
-              <TableCell className="text-center">
-                {getStatusBadge(pesquisa.status)}
               </TableCell>
 
               {/* Coluna Prestador */}

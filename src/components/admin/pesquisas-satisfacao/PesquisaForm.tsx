@@ -187,7 +187,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="empresa"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Empresa *</FormLabel>
                   <Select
@@ -195,7 +195,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                     onValueChange={field.onChange}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}>
                         <SelectValue placeholder="Selecione a empresa" />
                       </SelectTrigger>
                     </FormControl>
@@ -210,7 +212,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                         ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -218,13 +219,18 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="cliente"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Cliente *</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nome do cliente" />
+                    <Input 
+                      {...field} 
+                      placeholder="Nome do cliente"
+                      className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}
+                    />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -234,7 +240,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="email_cliente"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Email do Cliente</FormLabel>
                   <FormControl>
@@ -243,9 +249,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       type="email" 
                       placeholder="email@exemplo.com"
                       value={field.value || ''}
+                      className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -253,7 +261,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="especialistas_ids"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Consultores</FormLabel>
                   <FormControl>
@@ -261,9 +269,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       value={field.value || []}
                       onValueChange={field.onChange}
                       placeholder="Selecione os consultores..."
+                      className={cn(
+                        fieldState.error && "border-red-500"
+                      )}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -278,7 +288,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="categoria"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
                   <Select
@@ -286,7 +296,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                     onValueChange={field.onChange}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}>
                         <SelectValue placeholder="Selecione a categoria" />
                       </SelectTrigger>
                     </FormControl>
@@ -298,7 +310,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -306,13 +317,16 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="grupo"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Grupo</FormLabel>
                   {grupos.length === 1 ? (
                     // Quando há apenas um grupo, mostra como campo readonly
                     <FormControl>
-                      <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                      <div className={cn(
+                        "flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm",
+                        fieldState.error && "border-red-500"
+                      )}>
                         {grupos[0].label}
                       </div>
                     </FormControl>
@@ -324,7 +338,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       disabled={!categoriaSelecionada || grupos.length === 0}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className={cn(
+                          fieldState.error && "border-red-500 focus:border-red-500"
+                        )}>
                           <SelectValue placeholder={
                             !categoriaSelecionada 
                               ? "Selecione uma categoria primeiro" 
@@ -343,7 +359,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       </SelectContent>
                     </Select>
                   )}
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -359,7 +374,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="tipo_caso"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Tipo do Chamado</FormLabel>
                   <Select
@@ -367,7 +382,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                     onValueChange={field.onChange}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                     </FormControl>
@@ -379,7 +396,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -387,7 +403,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="nro_caso"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Número do Chamado</FormLabel>
                   <FormControl>
@@ -395,9 +411,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       {...field} 
                       placeholder="Nº do chamado"
                       value={field.value || ''}
+                      className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -413,15 +431,20 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="resposta"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Resposta</FormLabel>
+                  <FormLabel>
+                    Resposta
+                    {isPesquisaManual && <span className="text-foreground ml-1">*</span>}
+                  </FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
+                      )}>
                         <SelectValue placeholder="Selecione a resposta" />
                       </SelectTrigger>
                     </FormControl>
@@ -433,7 +456,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -441,7 +463,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             <FormField
               control={form.control}
               name="data_resposta"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Data da Resposta</FormLabel>
                   <Popover>
@@ -451,7 +473,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                           variant="outline"
                           className={cn(
                             "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            !field.value && "text-muted-foreground",
+                            fieldState.error && "border-red-500 focus:border-red-500"
                           )}
                         >
                           {field.value ? (
@@ -476,7 +499,6 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -485,11 +507,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
           <FormField
             control={form.control}
             name="comentario_pesquisa"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
                 <FormLabel>
                   Comentário da Pesquisa
-                  {isPesquisaManual && <span className="text-red-500 ml-1">*</span>}
+                  {isPesquisaManual && <span className="text-foreground ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Textarea 
@@ -501,9 +523,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                     }
                     rows={3}
                     value={field.value || ''}
+                    className={cn(
+                      fieldState.error && "border-red-500 focus:border-red-500"
+                    )}
                   />
                 </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />
@@ -511,7 +535,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
           <FormField
             control={form.control}
             name="observacao"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
                 <FormLabel>Observação Interna</FormLabel>
                 <FormControl>
@@ -520,9 +544,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                     placeholder="Observações internas (não visível para o cliente)"
                     rows={2}
                     value={field.value || ''}
+                    className={cn(
+                      fieldState.error && "border-red-500 focus:border-red-500"
+                    )}
                   />
                 </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />

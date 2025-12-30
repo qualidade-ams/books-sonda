@@ -357,9 +357,9 @@ export default function PlanoAcao() {
         <CardContent>
           <PlanosAcaoTable
             planos={planos}
-            onEdit={handleEditar}
-            onDelete={handleDeletar}
-            onView={handleVisualizar}
+            onEditar={handleEditar}
+            onExcluir={handleDeletar}
+            onVisualizar={handleVisualizar}
             isLoading={isLoading}
           />
         </CardContent>
