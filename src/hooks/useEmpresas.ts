@@ -40,7 +40,6 @@ export const useEmpresas = (
       filtros?.busca || '',
       filtros?.status || [],
       filtros?.produtos || [],
-      filtros?.emailGestor || '',
       filtros?.temAms,
       filtros?.emProjeto // NOVO: Incluir filtro emProjeto na chave de cache
     ] as const;
@@ -60,7 +59,6 @@ export const useEmpresas = (
         (filtros.busca && filtros.busca.trim()) ||
         (filtros.produtos && filtros.produtos.length > 0) ||
         (filtros.status && filtros.status.length > 0) ||
-        (filtros.emailGestor && filtros.emailGestor.trim()) ||
         (filtros.temAms !== undefined) ||
         (filtros.emProjeto !== undefined) // NOVO: Incluir filtro emProjeto
       );
@@ -92,7 +90,6 @@ export const useEmpresas = (
       (filtros.busca && filtros.busca.trim()) ||
       (filtros.produtos && filtros.produtos.length > 0) ||
       (filtros.status && filtros.status.length > 0) ||
-      (filtros.emailGestor && filtros.emailGestor.trim()) ||
       (filtros.temAms !== undefined) ||
       (filtros.emProjeto !== undefined) // NOVO: Incluir filtro emProjeto
     ) ? 0 : 5 * 60 * 1000, // 0 quando há filtros, 5 minutos quando não há
