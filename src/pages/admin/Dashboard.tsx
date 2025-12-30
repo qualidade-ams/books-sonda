@@ -12,6 +12,7 @@ import { ModernChart } from '@/components/admin/dashboard/ModernChart';
 import { DashboardGrid } from '@/components/admin/dashboard/DashboardGrid';
 import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
 import { EmptyState } from '@/components/admin/dashboard/EmptyState';
+import { EmpresasTab } from '@/components/admin/dashboard/EmpresasTab';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { useEstatisticasPesquisas, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisas';
@@ -3552,6 +3553,16 @@ const Dashboard = () => {
       });
     }
     
+    // Nova aba Empresas
+    if (hasPermission('empresas_clientes', 'view')) {
+      tabs.push({
+        key: 'empresas',
+        label: 'Empresas',
+        icon: Building2,
+        screenKeys: ['empresas_clientes']
+      });
+    }
+    
     return tabs;
   }, [hasPermission]);
 
@@ -4774,6 +4785,11 @@ const Dashboard = () => {
                   elogios={elogios}
                 />
               </div>
+            )}
+
+            {/* Aba de Empresas */}
+            {activeTab === 'empresas' && (
+              <EmpresasTab hasPermission={hasPermission} />
             )}
 
 
