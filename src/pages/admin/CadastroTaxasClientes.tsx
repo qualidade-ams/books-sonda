@@ -993,7 +993,13 @@ function CadastroTaxasClientes() {
                             valor_base: v.valor_base
                           })) || [];
 
-                          const valores = calcularValores(valorBase.valor_base, funcao, todasFuncoes);
+                          const valores = calcularValores(
+                            valorBase.valor_base, 
+                            funcao, 
+                            todasFuncoes, 
+                            taxaVisualizando.tipo_calculo_adicional,
+                            taxaVisualizando.tipo_produto
+                          );
 
                           return (
                             <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>
@@ -1059,7 +1065,14 @@ function CadastroTaxasClientes() {
                             valor_base: v.valor_base
                           })) || [];
 
-                          const valores = calcularValores(valorBase.valor_base, funcao, todasFuncoes);
+                          const valores = calcularValores(
+                            valorBase.valor_base, 
+                            funcao, 
+                            todasFuncoes, 
+                            taxaVisualizando.tipo_calculo_adicional,
+                            taxaVisualizando.tipo_produto,
+                            true // isLocal = true para valores locais
+                          );
 
                           return (
                             <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>

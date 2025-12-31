@@ -132,7 +132,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Projeto</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Projeto (Novo cliente)</p>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold">{stats.empresasEmProjeto}</p>
               </div>
