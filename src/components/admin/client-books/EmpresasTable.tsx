@@ -9,13 +9,20 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 import {
   Edit,
   Trash2,
   ExternalLink,
   Mail,
-  Settings
+  Settings,
+  ClipboardPenLine
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -231,9 +238,42 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                       {empresa.nome_abreviado}
                     </span>
                     {empresa.em_projeto && (
-                      <div className="flex items-center">
-                        <Settings className="h-4 w-4 text-orange-500" title="Empresa em projeto" />
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center cursor-help">
+                              <Settings className="h-4 w-4 text-sonda-blue" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            side="top" 
+                            className="bg-white border border-gray-200 shadow-lg rounded-md"
+                          >
+                            <div className="text-sm text-gray-700">
+                              Empresa em projeto
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {empresa.observacao && empresa.observacao.trim() && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center cursor-help">
+                              <ClipboardPenLine className="h-4 w-4 text-sonda-blue hover:text-sonda-dark-blue transition-colors" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            side="right" 
+                            className="max-w-xs p-3 bg-white border border-gray-200 shadow-lg rounded-md"
+                          >
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {empresa.observacao}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                   {empresa.link_sharepoint && (

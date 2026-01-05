@@ -103,6 +103,19 @@ function VisualizarPesquisas() {
     clearFeatureCache('pesquisas');
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setFiltrosBusca({
+      busca: '',
+      origem: 'todos',
+      resposta: 'todos',
+      ano: 'todos',
+      mes: 'todos'
+    });
+    setPaginaAtual(1);
+    clearFeatureCache('pesquisas');
+  };
+
   // Código de agrupamento por mês removido
 
   // Calcular paginação
@@ -323,6 +336,22 @@ function VisualizarPesquisas() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Botão Limpar Filtros */}
+              <Button
+                variant="outline"
+                onClick={limparFiltros}
+                disabled={
+                  filtrosBusca.busca === '' && 
+                  filtrosBusca.origem === 'todos' && 
+                  filtrosBusca.resposta === 'todos' && 
+                  filtrosBusca.ano === 'todos' && 
+                  filtrosBusca.mes === 'todos'
+                }
+                className="h-10"
+              >
+                Limpar Filtros
+              </Button>
               </div>
             )}
           </CardHeader>

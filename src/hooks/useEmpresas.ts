@@ -121,14 +121,17 @@ export const useEmpresas = (
   const createMutation = useMutation({
     mutationFn: (data: EmpresaFormData) => empresasClientesService.criarEmpresa(data),
     onSuccess: async (_, data) => {
-      // Invalidar cache específico
-      clientBooksCacheService.invalidateEmpresaCache('');
+      // ✅ NOVO: Limpeza agressiva de cache para garantir atualização imediata
+      await clientBooksCacheService.clearAllCache();
+      
+      // Invalidar todas as queries relacionadas a empresas
       await queryClient.invalidateQueries({ queryKey: ['empresas'] });
       await queryClient.invalidateQueries({ queryKey: ['empresas-stats'] });
-
-      // ✅ ADICIONADO: Invalidar cache da tela de controle de disparos
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos'] });
       await queryClient.invalidateQueries({ queryKey: ['controle-disparos-personalizados'] });
+
+      // ✅ NOVO: Forçar refetch imediato da query atual
+      await queryClient.refetchQueries({ queryKey: cacheKey });
 
       // ✅ NOVO: Verificar vigência automaticamente se foi definida uma vigência final
       if (data.vigenciaFinal) {

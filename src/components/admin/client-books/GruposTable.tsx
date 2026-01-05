@@ -51,6 +51,11 @@ const GruposTable: React.FC<GruposTableProps> = ({
     setFiltros({ ...filtros, busca });
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setFiltros({});
+  };
+
   const toggleGrupoExpandido = (grupoId: string) => {
     const novosExpandidos = new Set(gruposExpandidos);
     if (novosExpandidos.has(grupoId)) {
@@ -152,7 +157,7 @@ const GruposTable: React.FC<GruposTableProps> = ({
 
         {/* Filtros */}
         {mostrarFiltros && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar</label>
               <div className="relative">
@@ -164,6 +169,19 @@ const GruposTable: React.FC<GruposTableProps> = ({
                   className="pl-10"
                 />
               </div>
+            </div>
+
+            {/* Botão Limpar Filtros */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ações</label>
+              <Button
+                variant="outline"
+                onClick={limparFiltros}
+                disabled={!filtros.busca}
+                className="w-full h-10"
+              >
+                Limpar Filtros
+              </Button>
             </div>
           </div>
         )}

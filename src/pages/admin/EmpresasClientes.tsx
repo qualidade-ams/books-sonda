@@ -76,6 +76,7 @@ const EmpresasClientes = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setFiltros(prev => ({ ...prev, busca: buscaLocal }));
+      setCurrentPage(1); // Reset página ao filtrar
     }, 500); // 500ms de delay
 
     return () => clearTimeout(timer);
@@ -126,10 +127,12 @@ const EmpresasClientes = () => {
       ...prev,
       [key]: value
     }));
+    setCurrentPage(1); // Reset página ao filtrar
   };
 
   const handleBuscaChange = (busca: string) => {
     setBuscaLocal(busca);
+    setCurrentPage(1); // Reset página ao buscar
   };
 
 
@@ -146,6 +149,7 @@ const EmpresasClientes = () => {
         status: [value as StatusEmpresa]
       }));
     }
+    setCurrentPage(1); // Reset página ao filtrar
   };
 
   const handleProdutoSelectChange = (value: string) => {
@@ -160,6 +164,14 @@ const EmpresasClientes = () => {
         produtos: [value as Produto]
       }));
     }
+    setCurrentPage(1); // Reset página ao filtrar
+  };
+
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setFiltros({});
+    setBuscaLocal('');
+    setCurrentPage(1);
   };
 
   // Handler para refresh após importação
@@ -428,6 +440,19 @@ const EmpresasClientes = () => {
                       <SelectItem value="nao">Não</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Botão Limpar Filtros */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ações</label>
+                  <Button
+                    variant="outline"
+                    onClick={limparFiltros}
+                    disabled={!filtros.busca && !filtros.status && !filtros.produtos && filtros.temAms === undefined && filtros.emProjeto === undefined}
+                    className="w-full h-10"
+                  >
+                    Limpar Filtros
+                  </Button>
                 </div>
               </div>
             )}

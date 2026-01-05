@@ -12,7 +12,6 @@ import {
   CreditCard,
   Package,
   Briefcase,
-  Camera,
   Clock,
   AlertCircle
 } from 'lucide-react';
@@ -87,8 +86,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
   const produtosData = [
     { name: 'Fiscal', value: stats.empresasComFiscal, color: COLORS.primary },
     { name: 'Comex', value: stats.empresasComComex, color: COLORS.info },
-    { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: COLORS.purple },
-    { name: 'Gallery', value: stats.empresasComGallery, color: COLORS.pink }
+    { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: COLORS.purple }
   ];
 
   const bookData = [
@@ -100,7 +98,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
   return (
     <div className="space-y-6">
       {/* Cards principais sem cor */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -142,6 +140,37 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
             </div>
           </CardHeader>
         </Card>
+      </div>
+
+            {/* Cards de Tipos de Cobrança e AMS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Banco de Horas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{stats.empresasBancoHoras}</p>
+              </div>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Ticket</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{stats.empresasTicket}</p>
+              </div>
+            </div>
+            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
+              <CreditCard className="h-4 w-4 text-cyan-600" />
+            </div>
+          </CardHeader>
+        </Card>
 
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -153,6 +182,20 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <CheckCircle className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Sem AMS</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{stats.empresasSemAms}</p>
+              </div>
+            </div>
+            <div className="p-2 bg-gray-100 dark:bg-gray-900/20 rounded-lg">
+              <Settings className="h-4 w-4 text-gray-600" />
             </div>
           </CardHeader>
         </Card>
@@ -311,7 +354,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
       </div>
 
       {/* Cards de Produtos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -322,20 +365,6 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <FileText className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Gallery</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{stats.empresasComGallery}</p>
-              </div>
-            </div>
-            <div className="p-2 bg-pink-100 dark:bg-pink-900/20 rounded-lg">
-              <Camera className="h-4 w-4 text-pink-600" />
             </div>
           </CardHeader>
         </Card>
@@ -369,18 +398,18 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         </Card>
       </div>
 
-      {/* Cards de Tipos de Cobrança */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Cards de Produtos Exclusivos */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Banco de Horas</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Fiscal</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{stats.empresasBancoHoras}</p>
+                <p className="text-2xl font-bold">{stats.empresasSomenteFiscal || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <FileText className="h-4 w-4 text-blue-600" />
             </div>
           </CardHeader>
         </Card>
@@ -388,13 +417,27 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Ticket</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Gallery</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{stats.empresasTicket}</p>
+                <p className="text-2xl font-bold">{stats.empresasSomenteGallery || 0}</p>
+              </div>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <Package className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Comex</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold">{stats.empresasSomenteComex || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
-              <CreditCard className="h-4 w-4 text-cyan-600" />
+              <Briefcase className="h-4 w-4 text-cyan-600" />
             </div>
           </CardHeader>
         </Card>
@@ -435,6 +478,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                     }}
+                    formatter={(value: any) => [value, 'Empresas']}
                   />
                   <Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]}>
                     {produtosData.map((entry, index) => (

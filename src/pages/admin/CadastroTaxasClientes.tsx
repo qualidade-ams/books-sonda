@@ -167,6 +167,14 @@ function CadastroTaxasClientes() {
       : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setFiltroCliente('');
+    setFiltroTipoProduto('todos');
+    setFiltroStatus('todos');
+    setCurrentPage(1);
+  };
+
   // Filtrar e ordenar taxas
   const taxasFiltradas = useMemo(() => {
     let resultado = [...taxas];
@@ -630,7 +638,10 @@ function CadastroTaxasClientes() {
                   <Input
                     placeholder="Buscar por cliente..."
                     value={filtroCliente}
-                    onChange={(e) => setFiltroCliente(e.target.value)}
+                    onChange={(e) => {
+                      setFiltroCliente(e.target.value);
+                      setCurrentPage(1); // Reset página ao filtrar
+                    }}
                     className="pl-10"
                   />
                 </div>
@@ -641,7 +652,10 @@ function CadastroTaxasClientes() {
                 <label className="text-sm font-medium">
                   Tipo de Produto
                 </label>
-                <Select value={filtroTipoProduto} onValueChange={setFiltroTipoProduto}>
+                <Select value={filtroTipoProduto} onValueChange={(value) => {
+                  setFiltroTipoProduto(value);
+                  setCurrentPage(1); // Reset página ao filtrar
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os tipos" />
                   </SelectTrigger>
@@ -658,7 +672,10 @@ function CadastroTaxasClientes() {
                 <label className="text-sm font-medium">
                   Status
                 </label>
-                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                <Select value={filtroStatus} onValueChange={(value) => {
+                  setFiltroStatus(value);
+                  setCurrentPage(1); // Reset página ao filtrar
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
@@ -668,6 +685,19 @@ function CadastroTaxasClientes() {
                     <SelectItem value="nao_vigente">Não Vigente</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Botão Limpar Filtros */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ações</label>
+                <Button
+                  variant="outline"
+                  onClick={limparFiltros}
+                  disabled={filtroCliente === '' && filtroTipoProduto === 'todos' && filtroStatus === 'todos'}
+                  className="w-full h-10"
+                >
+                  Limpar Filtros
+                </Button>
               </div>
               </div>
             )}

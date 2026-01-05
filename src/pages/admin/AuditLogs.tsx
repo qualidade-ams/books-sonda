@@ -11,12 +11,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Filter, RefreshCw, User, Clock, Database, Search, Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { FilterBar, FilterGrid, FilterField } from '@/components/ui/filter-bar';
+import { StatsCard } from '@/components/ui/stats-card';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Filter, RefreshCw, User, Clock, Database, Search, Download, FileText, FileSpreadsheet, ChevronDown, FileX } from 'lucide-react';
 import { auditService } from '@/services/auditService';
 import type { AuditLogWithUser, AuditLogFilters, AuditLogSummary, PermissionAuditLog } from '@/types/audit';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 // Componente para renderizar alterações de forma assíncrona
 const AuditLogChanges = ({ log }: { log: PermissionAuditLog }) => {
@@ -201,6 +206,9 @@ export default function AuditLogs() {
     setCurrentPage(1);
   };
 
+  // Verificar se há filtros ativos
+  const hasActiveFilters = Object.keys(filters).some(key => filters[key as keyof AuditLogFilters]) || searchTerm;
+
 
 
   // Filtrar logs baseado no termo de busca
@@ -240,124 +248,72 @@ export default function AuditLogs() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Logs de Auditoria</h1>
-          <p className="text-muted-foreground">
-            Acompanhe todas as alterações no sistema de permissões
-          </p>
-        </div>
-        
-        <AuditLogExportButtons 
-          filters={filters}
-          summary={summary}
-          isLoading={loading}
-        />
-      </div>
+      <div className="min-h-screen bg-gray-50">
+        <main className="container mx-auto px-4 py-6 space-y-6">
+          {/* Cabeçalho da página */}
+          <PageHeader
+            title="Logs de Auditoria"
+            subtitle="Acompanhe todas as alterações no sistema de permissões"
+            actions={
+              <AuditLogExportButtons 
+                filters={filters}
+                summary={summary}
+                isLoading={loading}
+              />
+            }
+          />
 
-      {/* Summary Cards */}
-      {summary && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Alterações</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_changes}</div>
-              <p className="text-xs text-muted-foreground">Últimos 30 dias</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Grupos Alterados</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summary.changes_by_table['user_groups'] || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">Alterações em grupos</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Permissões Alteradas</CardTitle>
-              <Filter className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summary.changes_by_table['screen_permissions'] || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">Alterações em permissões</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Atribuições Alteradas</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summary.changes_by_table['user_group_assignments'] || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">Alterações em atribuições</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Audit Logs Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <div>
-              <CardTitle>Logs de Auditoria</CardTitle>
-              <CardDescription>
-                {totalCount} registro(s) encontrado(s)
-              </CardDescription>
+          {/* Cards de estatísticas */}
+          {summary && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatsCard
+                title="Total de Alterações"
+                value={summary.total_changes}
+                icon={<Database className="h-5 w-5" />}
+                description="Últimos 30 dias"
+                className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200"
+              />
+              <StatsCard
+                title="Grupos Alterados"
+                value={summary.changes_by_table['user_groups'] || 0}
+                icon={<User className="h-5 w-5" />}
+                description="Alterações em grupos"
+                className="bg-gradient-to-r from-green-50 to-green-100 border-green-200"
+              />
+              <StatsCard
+                title="Permissões Alteradas"
+                value={summary.changes_by_table['screen_permissions'] || 0}
+                icon={<Filter className="h-5 w-5" />}
+                description="Alterações em permissões"
+                className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200"
+              />
+              <StatsCard
+                title="Atribuições Alteradas"
+                value={summary.changes_by_table['user_group_assignments'] || 0}
+                icon={<Clock className="h-5 w-5" />}
+                description="Alterações em atribuições"
+                className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200"
+              />
             </div>
+          )}
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center justify-center space-x-2"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filtros</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Filtros Escondidos */}
-          {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Buscar</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar nos logs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tabela</label>
+          {/* Filtros */}
+          <FilterBar
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            onClearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Buscar nos logs..."
+          >
+            <FilterGrid columns={4}>
+              <FilterField label="Tabela">
                 <Select
                   value={filters.table_name || '__todas_tabelas__'}
                   onValueChange={(value) => handleFilterChange('table_name', value === '__todas_tabelas__' ? '' : value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                     <SelectValue placeholder="Todas as tabelas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -376,15 +332,14 @@ export default function AuditLogs() {
                     <SelectItem value="taxas_padrao">Taxas Padrão</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FilterField>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Ação</label>
+              <FilterField label="Ação">
                 <Select
                   value={filters.action || '__todas_acoes__'}
                   onValueChange={(value) => handleFilterChange('action', value === '__todas_acoes__' ? '' : value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                     <SelectValue placeholder="Todas as ações" />
                   </SelectTrigger>
                   <SelectContent>
@@ -394,164 +349,181 @@ export default function AuditLogs() {
                     <SelectItem value="DELETE">Excluído</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FilterField>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Período</label>
-                <div className="flex gap-2">
-                  <Input
-                    type="date"
-                    value={filters.date_from || ''}
-                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                    className="text-xs"
-                  />
-                  <Input
-                    type="date"
-                    value={filters.date_to || ''}
-                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                    className="text-xs"
-                  />
+              <FilterField label="Data Inicial">
+                <Input
+                  type="date"
+                  value={filters.date_from || ''}
+                  onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  className="focus:ring-sonda-blue focus:border-sonda-blue"
+                />
+              </FilterField>
+
+              <FilterField label="Data Final">
+                <Input
+                  type="date"
+                  value={filters.date_to || ''}
+                  onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  className="focus:ring-sonda-blue focus:border-sonda-blue"
+                />
+              </FilterField>
+            </FilterGrid>
+          </FilterBar>
+
+          {/* Tabela de logs */}
+          <Card className="shadow-sm border border-gray-200">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div>
+                  <CardTitle className="text-sonda-blue">Logs de Auditoria</CardTitle>
+                  <CardDescription>
+                    {totalCount} registro(s) encontrado(s)
+                  </CardDescription>
                 </div>
               </div>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-              <span className="ml-2">Carregando logs...</span>
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? 'Nenhum log encontrado para o termo de busca' : 'Nenhum log encontrado com os filtros aplicados'}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="border rounded-lg p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getActionBadgeVariant(log.action)}>
-                        {getActionLabel(log.action)}
-                      </Badge>
-                      <span className="font-medium">
-                        {auditService.getTableDisplayName(log.table_name)}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {format(new Date(log.changed_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
-                    </div>
-                  </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin text-sonda-blue" />
+                  <span className="ml-2">Carregando logs...</span>
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <EmptyState
+                  icon={<FileX className="h-12 w-12 text-gray-400" />}
+                  title="Nenhum log encontrado"
+                  description={searchTerm ? 'Nenhum log encontrado para o termo de busca' : 'Não há logs para exibir com os filtros aplicados'}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {filteredLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="border rounded-lg p-4 space-y-2 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getActionBadgeVariant(log.action)}>
+                            {getActionLabel(log.action)}
+                          </Badge>
+                          <span className="font-medium text-gray-900">
+                            {auditService.getTableDisplayName(log.table_name)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {format(new Date(log.changed_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
+                        </div>
+                      </div>
 
-                  <div className="text-sm">
-                    <strong>Alterações:</strong> <AuditLogChanges log={log} />
-                  </div>
+                      <div className="text-sm text-gray-700">
+                        <strong>Alterações:</strong> <AuditLogChanges log={log} />
+                      </div>
 
-                  {log.user_name && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <User className="h-3 w-3" />
-                      <span>Por: {log.user_name}</span>
-                      {log.user_email && (
-                        <span className="text-xs">({log.user_email})</span>
+                      {log.user_name && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <User className="h-3 w-3" />
+                          <span>Por: {log.user_name}</span>
+                          {log.user_email && (
+                            <span className="text-xs">({log.user_email})</span>
+                          )}
+                        </div>
                       )}
                     </div>
+                  ))}
+
+                  {/* Paginação */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="text-sm text-gray-600">
+                        Página {currentPage} de {totalPages}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
+                        >
+                          Anterior
+                        </Button>
+                        
+                        {/* Números das páginas */}
+                        {(() => {
+                          const pages: (number | string)[] = [];
+                          const showEllipsis = totalPages > 7;
+                          
+                          if (!showEllipsis) {
+                            for (let i = 1; i <= totalPages; i++) {
+                              pages.push(i);
+                            }
+                          } else {
+                            pages.push(1);
+                            
+                            if (currentPage > 3) {
+                              pages.push('...');
+                            }
+                            
+                            const start = Math.max(2, currentPage - 1);
+                            const end = Math.min(totalPages - 1, currentPage + 1);
+                            
+                            for (let i = start; i <= end; i++) {
+                              pages.push(i);
+                            }
+                            
+                            if (currentPage < totalPages - 2) {
+                              pages.push('...');
+                            }
+                            
+                            pages.push(totalPages);
+                          }
+                          
+                          return pages.map((page, index) => {
+                            if (page === '...') {
+                              return (
+                                <span key={`ellipsis-${index}`} className="px-2 text-gray-600">
+                                  ...
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setCurrentPage(page as number)}
+                                className={cn(
+                                  "min-w-[36px]",
+                                  currentPage === page 
+                                    ? "bg-sonda-blue hover:bg-sonda-dark-blue" 
+                                    : "border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
+                                )}
+                              >
+                                {page}
+                              </Button>
+                            );
+                          });
+                        })()}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
+                        >
+                          Próxima
+                        </Button>
+                      </div>
+                    </div>
                   )}
-
-                </div>
-              ))}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    
-                    {/* Page Numbers with Ellipsis */}
-                    {(() => {
-                      const pages: (number | string)[] = [];
-                      const showEllipsis = totalPages > 7;
-                      
-                      if (!showEllipsis) {
-                        // Show all pages if 7 or less
-                        for (let i = 1; i <= totalPages; i++) {
-                          pages.push(i);
-                        }
-                      } else {
-                        // Always show first page
-                        pages.push(1);
-                        
-                        if (currentPage > 3) {
-                          pages.push('...');
-                        }
-                        
-                        // Show pages around current page
-                        const start = Math.max(2, currentPage - 1);
-                        const end = Math.min(totalPages - 1, currentPage + 1);
-                        
-                        for (let i = start; i <= end; i++) {
-                          pages.push(i);
-                        }
-                        
-                        if (currentPage < totalPages - 2) {
-                          pages.push('...');
-                        }
-                        
-                        // Always show last page
-                        pages.push(totalPages);
-                      }
-                      
-                      return pages.map((page, index) => {
-                        if (page === '...') {
-                          return (
-                            <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
-                              ...
-                            </span>
-                          );
-                        }
-                        
-                        return (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCurrentPage(page as number)}
-                            className="min-w-[36px]"
-                          >
-                            {page}
-                          </Button>
-                        );
-                      });
-                    })()}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Próxima
-                    </Button>
-                  </div>
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     </AdminLayout>
   );

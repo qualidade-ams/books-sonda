@@ -10,9 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { Save, RefreshCw, User, Edit, Plus, Filter, Search } from 'lucide-react';
+import { Save, RefreshCw, User, Edit, Plus, Filter, Search, FileX } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { userManagementService, type UserData, type CreateUserData } from '@/services/userManagementService';
+import { FilterBar, FilterGrid, FilterField } from '@/components/ui/filter-bar';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 
 
 
@@ -361,6 +364,16 @@ const UserManagement = () => {
     return matchesSearch && matchesStatus && matchesGroup;
   });
 
+  // Verificar se há filtros ativos
+  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'todos' || groupFilter !== 'todos';
+
+  // Limpar filtros
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('todos');
+    setGroupFilter('todos');
+  };
+
   // Obter lista única de grupos para o filtro
   const uniqueGroups = [...new Set(users.map(user => user.group_name).filter(Boolean))].sort();
 
@@ -376,25 +389,25 @@ const UserManagement = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
-            <p className="text-gray-600">Gerencie usuários do sistema</p>
-          </div>
-
-          <ProtectedAction screenKey="cadastro-usuarios" requiredLevel="edit">
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  className="flex items-center gap-2"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Cadastrar Usuário</span>
-                  <span className="sm:hidden">Novo</span>
-                </Button>
-              </DialogTrigger>
+      <div className="min-h-screen bg-gray-50">
+        <main className="container mx-auto px-4 py-6 space-y-6">
+          {/* Cabeçalho da página */}
+          <PageHeader
+            title="Gerenciamento de Usuários"
+            subtitle="Gerencie usuários do sistema"
+            actions={
+              <ProtectedAction screenKey="cadastro-usuarios" requiredLevel="edit">
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="bg-sonda-blue hover:bg-sonda-dark-blue flex items-center gap-2"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Cadastrar Usuário</span>
+                      <span className="sm:hidden">Novo</span>
+                    </Button>
+                  </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Novo Usuário</DialogTitle>
@@ -533,7 +546,8 @@ const UserManagement = () => {
               </DialogContent>
             </Dialog>
           </ProtectedAction>
-        </div>
+            }
+          />
 
         {/* Modal de Edição de Usuário */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -682,108 +696,112 @@ const UserManagement = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Filtros */}
+        <FilterBar
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Nome ou e-mail..."
+          className="mb-6"
+        >
+          <FilterGrid columns={3}>
+            <FilterField label="Status">
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <FilterField label="Grupo">
+              <Select
+                value={groupFilter}
+                onValueChange={setGroupFilter}
+              >
+                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                  <SelectValue placeholder="Todos os grupos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os grupos</SelectItem>
+                  {uniqueGroups.map((group) => (
+                    <SelectItem key={group} value={group}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+          </FilterGrid>
+        </FilterBar>
+
         {/* Lista de Usuários */}
-        <Card>
+        <Card className="shadow-sm border border-gray-200">
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <CardTitle className="text-lg lg:text-xl">Usuários Cadastrados ({filteredUsers.length})</CardTitle>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center justify-center space-x-2"
-                >
-                  <Filter className="h-4 w-4" />
-                  <span>Filtros</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Filtros */}
-            {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Buscar</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Nome ou e-mail..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={setStatusFilter}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os status</SelectItem>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="inativo">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Grupo</label>
-                  <Select
-                    value={groupFilter}
-                    onValueChange={setGroupFilter}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os grupos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os grupos</SelectItem>
-                      {uniqueGroups.map((group) => (
-                        <SelectItem key={group} value={group}>
-                          {group}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
+            <CardTitle className="text-sonda-blue">
+              Usuários Cadastrados ({filteredUsers.length})
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin" />
+              <div className="flex justify-center items-center py-8">
+                <RefreshCw className="h-8 w-8 animate-spin text-sonda-blue" />
+                <span className="ml-2">Carregando usuários...</span>
               </div>
+            ) : filteredUsers.length === 0 ? (
+              <EmptyState
+                icon={<FileX className="h-12 w-12 text-gray-400" />}
+                title="Nenhum usuário encontrado"
+                description={hasActiveFilters ? 'Nenhum usuário encontrado com os filtros aplicados' : 'Não há usuários cadastrados no sistema'}
+                action={
+                  !hasActiveFilters && (
+                    <ProtectedAction screenKey="cadastro-usuarios" requiredLevel="create">
+                      <Button 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar Usuário
+                      </Button>
+                    </ProtectedAction>
+                  )
+                }
+              />
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Grupo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Criado em</TableHead>
-                    <TableHead>Último Login</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold text-gray-700">Nome</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Grupo</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Criado em</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Último Login</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
+                    <TableRow key={user.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium text-gray-900">
                         {user.full_name || 'Sem nome'}
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell className="text-gray-700">{user.email}</TableCell>
                       <TableCell>
                         {user.group_name ? (
-                          <Badge variant="outline" className="text-blue-600 border-blue-600">{user.group_name}</Badge>
+                          <Badge variant="outline" className="text-sonda-blue border-sonda-blue">
+                            {user.group_name}
+                          </Badge>
                         ) : (
                           <span className="text-gray-500">Sem grupo</span>
                         )}
@@ -793,10 +811,10 @@ const UserManagement = () => {
                           {user.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-gray-600">
                         {formatDate(user.created_at)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-gray-600">
                         {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Nunca'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -806,10 +824,9 @@ const UserManagement = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => openEditDialog(user)}
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
                               title='Editar'
                             >
-                              
                               <Edit className="h-4 w-4" />
                             </Button>
                           </ProtectedAction>
@@ -817,18 +834,12 @@ const UserManagement = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredUsers.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                        Nenhum usuário encontrado
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
+        </main>
       </div>
     </AdminLayout>
   );

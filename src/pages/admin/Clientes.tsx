@@ -142,6 +142,7 @@ const Clientes: React.FC = () => {
 
   const handleFiltrosChange = (novosFiltros: ClienteFiltros) => {
     atualizarFiltros(novosFiltros);
+    setCurrentPage(1); // Reset página ao filtrar
   };
 
   const handleFecharModal = () => {

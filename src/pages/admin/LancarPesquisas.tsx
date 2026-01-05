@@ -185,6 +185,18 @@ function LancarPesquisas() {
     setPaginaAtual(1); // Resetar para primeira página ao filtrar
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setFiltros({
+      busca: '',
+      origem: 'todos',
+      resposta: 'todos',
+      ano: 'todos',
+      mes: 'todos'
+    });
+    setPaginaAtual(1);
+  };
+
   // Calcular paginação
   const totalPaginas = Math.ceil(pesquisas.length / itensPorPagina);
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
@@ -343,7 +355,7 @@ function LancarPesquisas() {
 
           {/* Filtros Colapsáveis */}
           {mostrarFiltros && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
               <Input
                 placeholder="Buscar por empresa, cliente, prestador..."
                 value={filtros.busca}
@@ -381,6 +393,20 @@ function LancarPesquisas() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Botão Limpar Filtros */}
+              <Button
+                variant="outline"
+                onClick={limparFiltros}
+                disabled={
+                  filtros.busca === '' && 
+                  filtros.origem === 'todos' && 
+                  (filtros.resposta === 'todas' || !filtros.resposta)
+                }
+                className="h-10"
+              >
+                Limpar Filtros
+              </Button>
             </div>
           )}
         </CardHeader>

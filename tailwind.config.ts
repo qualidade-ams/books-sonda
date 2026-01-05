@@ -107,6 +107,18 @@ export default {
 					gray4: '#E4E4E4',     // Gris 4 - RGB(228,228,228)
 					white: '#FFFFFF'      // Branco puro
 				},
+				// Cores do Design System Sonda
+				'sonda-blue': '#0066CC',
+				'sonda-dark-blue': '#004499',
+				'sonda-light-blue': '#3385D6',
+				'sonda-accent-blue': '#66B2FF',
+				'sonda-gray': '#6B7280',
+				'sonda-light-gray': '#F3F4F6',
+				'sonda-dark-gray': '#374151',
+				// Backgrounds do Design System
+				'bg-primary': '#FFFFFF',
+				'bg-secondary': '#F9FAFB',
+				'bg-tertiary': '#F3F4F6',
 				// Dark Mode Elegante - Tons azulados
 				dark: {
 					bg: '#1e2328',        // Background principal

@@ -149,6 +149,15 @@ export default function PlanoAcao() {
     setPlanoSelecionado(null);
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    const hoje = new Date();
+    setFiltros({
+      mes: hoje.getMonth() + 1,
+      ano: hoje.getFullYear()
+    });
+  };
+
   return (
     <LayoutAdmin>
       <div className="space-y-6">
@@ -346,11 +355,29 @@ export default function PlanoAcao() {
               </Select>
 
               {/* Empresa */}
-              <Input
-                placeholder="Filtrar por empresa"
-                value={filtros.empresa || ''}
-                onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Filtrar por empresa"
+                  value={filtros.empresa || ''}
+                  onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
+                  className="flex-1"
+                />
+                
+                {/* Botão Limpar Filtros */}
+                <Button
+                  variant="outline"
+                  onClick={limparFiltros}
+                  disabled={
+                    !filtros.busca && 
+                    (!filtros.prioridade || filtros.prioridade.length === 0) && 
+                    (!filtros.status || filtros.status.length === 0) && 
+                    !filtros.empresa
+                  }
+                  className="h-10 px-3"
+                >
+                  Limpar
+                </Button>
+              </div>
             </div>
           )}
         </CardHeader>

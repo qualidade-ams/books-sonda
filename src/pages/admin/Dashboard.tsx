@@ -632,10 +632,11 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      // Se "todos os meses", comparar ano atual vs ano anterior
-                      mesComparacao = 0; // Não usado
+                      // Se "todos os meses", comparar mês vigente atual vs mês vigente ano anterior
+                      const mesVigente = new Date().getMonth() + 1;
+                      mesComparacao = mesVigente;
                       anoComparacao = anoSelecionado;
-                      mesAnterior = 0; // Não usado
+                      mesAnterior = mesVigente;
                       anoAnterior = anoSelecionado - 1;
                     } else {
                       // Se mês específico, comparar mês selecionado vs mês anterior
@@ -650,14 +651,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       if (!e.data_resposta) return false;
                       const dataResposta = new Date(e.data_resposta);
                       
-                      if (mesSelecionado === 'todos') {
-                        return dataResposta.getFullYear() === anoComparacao &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      } else {
-                        return dataResposta.getMonth() + 1 === mesComparacao && 
-                               dataResposta.getFullYear() === anoComparacao &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      }
+                      return dataResposta.getMonth() + 1 === mesComparacao && 
+                             dataResposta.getFullYear() === anoComparacao &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
                     }) || [];
                     
                     // Elogios do período anterior
@@ -665,14 +661,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       if (!e.data_resposta) return false;
                       const dataResposta = new Date(e.data_resposta);
                       
-                      if (mesSelecionado === 'todos') {
-                        return dataResposta.getFullYear() === anoAnterior &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      } else {
-                        return dataResposta.getMonth() + 1 === mesAnterior && 
-                               dataResposta.getFullYear() === anoAnterior &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      }
+                      return dataResposta.getMonth() + 1 === mesAnterior && 
+                             dataResposta.getFullYear() === anoAnterior &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
                     }) || [];
                     
                     // Contar por grupo
@@ -705,11 +696,25 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           maiorCrescimento = { grupo, percentual: crescimento };
                         }
                       } else if (atual > 0) {
-                        // Novo grupo (crescimento infinito, consideramos 100%)
-                        if (!maiorCrescimento || 100 > maiorCrescimento.percentual) {
+                        // Novo grupo (crescimento infinito, mas só considerar se não há outros crescimentos)
+                        if (!maiorCrescimento) {
                           maiorCrescimento = { grupo, percentual: 100 };
                         }
                       }
+                    });
+
+                    // Debug logs
+                    console.log('🔍 DEBUG Crescimento Grupo:', {
+                      mesSelecionado,
+                      anoSelecionado,
+                      mesComparacao,
+                      mesAnterior,
+                      anoAnterior,
+                      elogiosAtual: elogiosPeriodoAtual.length,
+                      elogiosAnterior: elogiosPeriodoAnterior.length,
+                      contagemAtual,
+                      contagemAnterior,
+                      maiorCrescimento
                     });
                     
                     if (!maiorCrescimento) {
@@ -769,10 +774,11 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      // Se "todos os meses", comparar ano atual vs ano anterior
-                      mesComparacao = 0; // Não usado
+                      // Se "todos os meses", comparar mês vigente atual vs mês vigente ano anterior
+                      const mesVigente = new Date().getMonth() + 1;
+                      mesComparacao = mesVigente;
                       anoComparacao = anoSelecionado;
-                      mesAnterior = 0; // Não usado
+                      mesAnterior = mesVigente;
                       anoAnterior = anoSelecionado - 1;
                     } else {
                       // Se mês específico, comparar mês selecionado vs mês anterior
@@ -787,14 +793,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       if (!e.data_resposta) return false;
                       const dataResposta = new Date(e.data_resposta);
                       
-                      if (mesSelecionado === 'todos') {
-                        return dataResposta.getFullYear() === anoComparacao &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      } else {
-                        return dataResposta.getMonth() + 1 === mesComparacao && 
-                               dataResposta.getFullYear() === anoComparacao &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      }
+                      return dataResposta.getMonth() + 1 === mesComparacao && 
+                             dataResposta.getFullYear() === anoComparacao &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
                     }) || [];
                     
                     // Elogios do período anterior
@@ -802,14 +803,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       if (!e.data_resposta) return false;
                       const dataResposta = new Date(e.data_resposta);
                       
-                      if (mesSelecionado === 'todos') {
-                        return dataResposta.getFullYear() === anoAnterior &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      } else {
-                        return dataResposta.getMonth() + 1 === mesAnterior && 
-                               dataResposta.getFullYear() === anoAnterior &&
-                               (e.status === 'compartilhado' || e.status === 'enviado');
-                      }
+                      return dataResposta.getMonth() + 1 === mesAnterior && 
+                             dataResposta.getFullYear() === anoAnterior &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
                     }) || [];
                     
                     // Contar por módulo
@@ -846,11 +842,25 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           maiorCrescimento = { modulo, percentual: crescimento };
                         }
                       } else if (atual > 0) {
-                        // Novo módulo (crescimento infinito, consideramos 100%)
-                        if (!maiorCrescimento || 100 > maiorCrescimento.percentual) {
+                        // Novo módulo (crescimento infinito, mas só considerar se não há outros crescimentos)
+                        if (!maiorCrescimento) {
                           maiorCrescimento = { modulo, percentual: 100 };
                         }
                       }
+                    });
+
+                    // Debug logs
+                    console.log('🔍 DEBUG Crescimento Módulo:', {
+                      mesSelecionado,
+                      anoSelecionado,
+                      mesComparacao,
+                      mesAnterior,
+                      anoAnterior,
+                      elogiosAtual: elogiosPeriodoAtual.length,
+                      elogiosAnterior: elogiosPeriodoAnterior.length,
+                      contagemAtual,
+                      contagemAnterior,
+                      maiorCrescimento
                     });
                     
                     if (!maiorCrescimento) {
@@ -1488,9 +1498,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     // Filtrar por ano
     if (dataResposta.getFullYear() !== anoSelecionado) return false;
     
-    // Filtrar por mês se selecionado
+    // Filtrar por mês
     if (mesSelecionado !== 'todos') {
+      // Se mês específico selecionado, filtrar por esse mês
       if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+    } else {
+      // Se "todos" selecionado, filtrar pelo mês vigente (atual)
+      const mesVigente = new Date().getMonth() + 1;
+      if (dataResposta.getMonth() + 1 !== mesVigente) return false;
     }
     
     return e.status === 'compartilhado' || e.status === 'enviado';
@@ -1644,13 +1659,13 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-blue-600" />
                 <CardTitle className="text-lg font-semibold">
-                  Top 5 Grupos - {mesSelecionado === 'todos' ? 'Ano' : 'Mês Selecionado'}
+                  Top 5 Grupos - {mesSelecionado === 'todos' ? 'Mês Vigente' : 'Mês Selecionado'}
                 </CardTitle>
               </div>
               <span className="text-xs text-gray-500">
                 {mesSelecionado === 'todos' 
-                  ? `Ano ${anoSelecionado}`
-                  : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' })} ${anoSelecionado}`
+                  ? `${new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())} ${anoSelecionado}`
+                  : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())} ${anoSelecionado}`
                 }
               </span>
             </div>
@@ -4133,60 +4148,62 @@ const Dashboard = () => {
               })}
             </div>
 
-            {/* Filtros */}
-            <div className="flex flex-wrap gap-2">
-              <Select value={String(anoSelecionado)} onValueChange={(v) => setAnoSelecionado(parseInt(v))}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Ano" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[currentYear, currentYear - 1].map(ano => (
-                    <SelectItem key={ano} value={String(ano)}>
-                      {ano}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={String(mesSelecionado)} onValueChange={(v) => setMesSelecionado(v === 'todos' ? 'todos' : parseInt(v))}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Meses</SelectItem>
-                  <SelectItem value="1">Janeiro</SelectItem>
-                  <SelectItem value="2">Fevereiro</SelectItem>
-                  <SelectItem value="3">Março</SelectItem>
-                  <SelectItem value="4">Abril</SelectItem>
-                  <SelectItem value="5">Maio</SelectItem>
-                  <SelectItem value="6">Junho</SelectItem>
-                  <SelectItem value="7">Julho</SelectItem>
-                  <SelectItem value="8">Agosto</SelectItem>
-                  <SelectItem value="9">Setembro</SelectItem>
-                  <SelectItem value="10">Outubro</SelectItem>
-                  <SelectItem value="11">Novembro</SelectItem>
-                  <SelectItem value="12">Dezembro</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {activeTab === 'requerimentos' && (
-                <Select value={filtroModulo} onValueChange={(v) => setFiltroModulo(v as ModuloType | 'todos')}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Módulo" />
+            {/* Filtros - Ocultar na aba Empresas */}
+            {activeTab !== 'empresas' && (
+              <div className="flex flex-wrap gap-2">
+                <Select value={String(anoSelecionado)} onValueChange={(v) => setAnoSelecionado(parseInt(v))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Ano" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos Módulos</SelectItem>
-                    <SelectItem value="Comex">Comex</SelectItem>
-                    <SelectItem value="Comply">Comply</SelectItem>
-                    <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
-                    <SelectItem value="Gallery">Gallery</SelectItem>
-                    <SelectItem value="pw.SATI">pw.SATI</SelectItem>
-                    <SelectItem value="pw.SPED">pw.SPED</SelectItem>
-                    <SelectItem value="pw.SATI/pw.SPED">pw.SATI/pw.SPED</SelectItem>
+                    {[currentYear, currentYear - 1].map(ano => (
+                      <SelectItem key={ano} value={String(ano)}>
+                        {ano}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              )}
-            </div>
+
+                <Select value={String(mesSelecionado)} onValueChange={(v) => setMesSelecionado(v === 'todos' ? 'todos' : parseInt(v))}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Meses</SelectItem>
+                    <SelectItem value="1">Janeiro</SelectItem>
+                    <SelectItem value="2">Fevereiro</SelectItem>
+                    <SelectItem value="3">Março</SelectItem>
+                    <SelectItem value="4">Abril</SelectItem>
+                    <SelectItem value="5">Maio</SelectItem>
+                    <SelectItem value="6">Junho</SelectItem>
+                    <SelectItem value="7">Julho</SelectItem>
+                    <SelectItem value="8">Agosto</SelectItem>
+                    <SelectItem value="9">Setembro</SelectItem>
+                    <SelectItem value="10">Outubro</SelectItem>
+                    <SelectItem value="11">Novembro</SelectItem>
+                    <SelectItem value="12">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {activeTab === 'requerimentos' && (
+                  <Select value={filtroModulo} onValueChange={(v) => setFiltroModulo(v as ModuloType | 'todos')}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Módulo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos Módulos</SelectItem>
+                      <SelectItem value="Comex">Comex</SelectItem>
+                      <SelectItem value="Comply">Comply</SelectItem>
+                      <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
+                      <SelectItem value="Gallery">Gallery</SelectItem>
+                      <SelectItem value="pw.SATI">pw.SATI</SelectItem>
+                      <SelectItem value="pw.SPED">pw.SPED</SelectItem>
+                      <SelectItem value="pw.SATI/pw.SPED">pw.SATI/pw.SPED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -100,6 +100,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     }
   };
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setBuscaLocal('');
+    onFiltrosChange({});
+  };
+
   const getStatusBadge = (status: ClienteStatus) => {
     switch (status) {
       case 'ativo':
@@ -214,6 +220,19 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                 </Select>
               </div>
             )}
+
+            {/* Botão Limpar Filtros */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ações</label>
+              <Button
+                variant="outline"
+                onClick={limparFiltros}
+                disabled={!filtros.busca && !filtros.status && !filtros.empresaId}
+                className="w-full h-10"
+              >
+                Limpar Filtros
+              </Button>
+            </div>
           </div>
         )}
       </CardHeader>
