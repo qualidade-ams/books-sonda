@@ -31,14 +31,21 @@ class BooksDisparoService {
    */
   async dispararBooksMensal(mes: number, ano: number): Promise<DisparoResult> {
     try {
+      // Calcular período de referência (mês anterior ao mês de disparo)
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+
       // Buscar empresas ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
+      // E que tenham vigência inicial <= período de referência
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
-        .eq('book_personalizado', false);
+        .eq('book_personalizado', false)
+        .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -232,7 +239,13 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
+      // Calcular período de referência (mês anterior ao mês de disparo)
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+
       // Buscar empresas selecionadas e ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
+      // E que tenham vigência inicial <= período de referência
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
@@ -240,7 +253,8 @@ class BooksDisparoService {
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
-        .eq('book_personalizado', false);
+        .eq('book_personalizado', false)
+        .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -556,16 +570,38 @@ class BooksDisparoService {
         }
       }
 
-      // Converter para formato final
-      const statusMensal: StatusMensal[] = Array.from(empresasMap.values()).map(empresaData => ({
-        empresaId: empresaData.empresa.id,
-        empresa: empresaData.empresa,
-        status: empresaData.controle?.status as StatusControleMensal || 'pendente',
-        dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
-        observacoes: empresaData.controle?.observacoes || undefined,
-        clientesAtivos: empresaData.clientesAtivos.size,
-        emailsEnviados: empresaData.emailsEnviados.size
-      }));
+      // Converter para formato final, aplicando filtro de vigência inicial
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`);
+
+      const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
+        .filter(empresaData => {
+          // Se já foi efetivamente processada (enviado, falhou, agendado), sempre incluir
+          if (empresaData.controle && ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)) {
+            return true;
+          }
+          
+          // Para empresas pendentes ou sem controle mensal, aplicar filtro de vigência inicial
+          const vigenciaInicial = empresaData.empresa.vigencia_inicial ? new Date(empresaData.empresa.vigencia_inicial) : null;
+          if (vigenciaInicial) {
+            // A vigência inicial deve ser <= primeiro dia do mês de referência
+            const dataReferenciaInicio = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`);
+            return vigenciaInicial <= dataReferenciaInicio;
+          }
+          
+          // Se não tem vigência inicial definida, incluir (comportamento padrão)
+          return true;
+        })
+        .map(empresaData => ({
+          empresaId: empresaData.empresa.id,
+          empresa: empresaData.empresa,
+          status: empresaData.controle?.status as StatusControleMensal || 'pendente',
+          dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+          observacoes: empresaData.controle?.observacoes || undefined,
+          clientesAtivos: empresaData.clientesAtivos.size,
+          emailsEnviados: empresaData.emailsEnviados.size
+        }));
 
       // Ordenação alfabética por nome abreviado da empresa
       return statusMensal.sort((a, b) => {
@@ -584,12 +620,19 @@ class BooksDisparoService {
    */
   async dispararBooksPersonalizados(mes: number, ano: number): Promise<DisparoResult> {
     try {
+      // Calcular período de referência (mês anterior ao mês de disparo)
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+
       // Buscar empresas ativas com book personalizado
+      // E que tenham vigência inicial <= período de referência
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
         .eq('status', 'ativo')
-        .eq('book_personalizado', true);
+        .eq('book_personalizado', true)
+        .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -781,13 +824,20 @@ class BooksDisparoService {
         return { sucesso: 0, falhas: 0, total: 0, detalhes: [] };
       }
 
+      // Calcular período de referência (mês anterior ao mês de disparo)
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+
       // Buscar empresas selecionadas e ativas com book personalizado
+      // E que tenham vigência inicial <= período de referência
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
         .select('*')
         .in('id', empresaIds)
         .eq('status', 'ativo')
-        .eq('book_personalizado', true);
+        .eq('book_personalizado', true)
+        .lte('vigencia_inicial', dataReferenciaFim);
 
       if (empresasError) {
         throw new Error(`Erro ao buscar empresas: ${empresasError.message}`);
@@ -1345,16 +1395,38 @@ class BooksDisparoService {
         }
       }
 
-      // Converter para formato final
-      const statusMensal: StatusMensal[] = Array.from(empresasMap.values()).map(empresaData => ({
-        empresaId: empresaData.empresa.id,
-        empresa: empresaData.empresa,
-        status: empresaData.controle?.status as StatusControleMensal || 'pendente',
-        dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
-        observacoes: empresaData.controle?.observacoes || undefined,
-        clientesAtivos: empresaData.clientesAtivos.size,
-        emailsEnviados: empresaData.emailsEnviados.size
-      }));
+      // Converter para formato final, aplicando filtro de vigência inicial
+      const mesReferencia = mes === 1 ? 12 : mes - 1;
+      const anoReferencia = mes === 1 ? ano - 1 : ano;
+      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`);
+
+      const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
+        .filter(empresaData => {
+          // Se já foi efetivamente processada (enviado, falhou, agendado), sempre incluir
+          if (empresaData.controle && ['enviado', 'falhou', 'agendado'].includes(empresaData.controle.status)) {
+            return true;
+          }
+          
+          // Para empresas pendentes ou sem controle mensal, aplicar filtro de vigência inicial
+          const vigenciaInicial = empresaData.empresa.vigencia_inicial ? new Date(empresaData.empresa.vigencia_inicial) : null;
+          if (vigenciaInicial) {
+            // A vigência inicial deve ser <= primeiro dia do mês de referência
+            const dataReferenciaInicio = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-01`);
+            return vigenciaInicial <= dataReferenciaInicio;
+          }
+          
+          // Se não tem vigência inicial definida, incluir (comportamento padrão)
+          return true;
+        })
+        .map(empresaData => ({
+          empresaId: empresaData.empresa.id,
+          empresa: empresaData.empresa,
+          status: empresaData.controle?.status as StatusControleMensal || 'pendente',
+          dataProcessamento: empresaData.controle?.data_processamento ? new Date(empresaData.controle.data_processamento) : undefined,
+          observacoes: empresaData.controle?.observacoes || undefined,
+          clientesAtivos: empresaData.clientesAtivos.size,
+          emailsEnviados: empresaData.emailsEnviados.size
+        }));
 
       // Ordenação alfabética por nome abreviado da empresa
       return statusMensal.sort((a, b) => {
