@@ -25,37 +25,27 @@ export function useEspecialistasAtivosOtimizado() {
 // Hook com busca otimizada e debounce
 export function useEspecialistasComBusca() {
   const [termoBusca, setTermoBusca] = useState('');
-  const [debouncedTermo, setDebouncedTermo] = useState('');
   
   const { data: todosEspecialistas = [], isLoading, error } = useEspecialistasAtivosOtimizado();
 
-  // Debounce da busca
-  const debouncedSetTermo = useCallback(
-    debounce((termo: string) => {
-      setDebouncedTermo(termo);
-    }, 300),
-    []
-  );
-
-  // Atualizar termo com debounce
+  // Atualizar termo diretamente (sem debounce para busca em memória)
   const atualizarBusca = useCallback((termo: string) => {
     setTermoBusca(termo);
-    debouncedSetTermo(termo);
-  }, [debouncedSetTermo]);
+  }, []);
 
   // Filtrar especialistas em memória (muito mais rápido que no banco)
   const especialistasFiltrados = useMemo(() => {
-    if (!debouncedTermo.trim()) {
+    if (!termoBusca.trim()) {
       return todosEspecialistas;
     }
 
-    const termo = debouncedTermo.toLowerCase().trim();
+    const termo = termoBusca.toLowerCase().trim();
     return todosEspecialistas.filter(especialista => 
       especialista.nome.toLowerCase().includes(termo) ||
       (especialista.email && especialista.email.toLowerCase().includes(termo)) ||
       (especialista.codigo && especialista.codigo.toLowerCase().includes(termo))
     );
-  }, [todosEspecialistas, debouncedTermo]);
+  }, [todosEspecialistas, termoBusca]);
 
   return {
     especialistas: especialistasFiltrados,

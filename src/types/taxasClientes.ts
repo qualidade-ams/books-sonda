@@ -35,6 +35,12 @@ export interface ValorTaxaFuncao {
   funcao: TipoFuncao;
   tipo_hora: 'remota' | 'local';
   valor_base: number; // Valor hora remota/local - Segunda à sexta-feira - 08h30 às 17h30
+  // Campos para valores personalizados (quando taxa.personalizado = true)
+  valor_17h30_19h30?: number;
+  valor_apos_19h30?: number;
+  valor_fim_semana?: number;
+  valor_adicional?: number;
+  valor_standby?: number;
   criado_em: string;
   atualizado_em: string;
 }

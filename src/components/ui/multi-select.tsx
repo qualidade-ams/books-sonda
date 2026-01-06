@@ -144,7 +144,7 @@ export function MultiSelect({
         side={side}
         align="start"
       >
-        <Command>
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar..."
             value={search}

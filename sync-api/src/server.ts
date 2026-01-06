@@ -61,7 +61,6 @@ interface DadosSqlServer {
 
 // Interface dos dados de especialistas (estrutura real da tabela AMSespecialistas)
 interface DadosEspecialistaSqlServer {
-  user_id: number;
   user_name: string;
   user_email: string;
   user_active: boolean;
@@ -85,11 +84,16 @@ function gerarIdUnico(registro: DadosSqlServer): string {
  * Gerar ID único para registro de especialista
  */
 function gerarIdUnicoEspecialista(registro: DadosEspecialistaSqlServer): string {
+  // Validar se os campos obrigatórios existem
+  if (!registro.user_name || registro.user_name.trim() === '') {
+    console.error('Erro: user_name é obrigatório para gerar ID único', registro);
+    throw new Error(`user_name é obrigatório para gerar ID único. Registro: ${JSON.stringify(registro)}`);
+  }
+  
   const partes = [
     'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    registro.user_id.toString(),
-    registro.user_name,
-    registro.user_email
+    registro.user_name.trim(),
+    registro.user_email?.trim() || 'sem_email'
   ].filter(Boolean);
   
   return partes.join('|');
@@ -266,6 +270,60 @@ app.post('/api/sync-especialistas', async (req, res) => {
 });
 
 /**
+ * Teste simples de especialistas
+ */
+app.get('/api/test-especialistas-simple', async (req, res) => {
+  try {
+    console.log('🧪 [TEST] Teste simples de especialistas...');
+    
+    // Teste 1: Conectar ao SQL Server
+    console.log('🧪 [TEST] Teste 1: Conectando ao SQL Server...');
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [TEST] SQL Server conectado');
+    
+    // Teste 2: Query simples
+    console.log('🧪 [TEST] Teste 2: Executando query simples...');
+    const result = await pool.request().query('SELECT COUNT(*) as total FROM AMSespecialistas');
+    const total = result.recordset[0].total;
+    console.log(`✅ [TEST] Total de registros na tabela: ${total}`);
+    
+    await pool.close();
+    console.log('✅ [TEST] Conexão SQL Server fechada');
+    
+    // Teste 3: Conectar ao Supabase
+    console.log('🧪 [TEST] Teste 3: Testando Supabase...');
+    const { data, error } = await supabase
+      .from('especialistas')
+      .select('count')
+      .eq('origem', 'sql_server');
+    
+    if (error) {
+      console.error('❌ [TEST] Erro no Supabase:', error);
+      throw error;
+    }
+    
+    console.log('✅ [TEST] Supabase conectado');
+    
+    res.json({
+      success: true,
+      message: 'Todos os testes passaram',
+      sql_server_total: total,
+      supabase_connected: true,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ [TEST] Erro no teste:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * Debug: Testar query de especialistas
  */
 app.get('/api/debug-especialistas', async (req, res) => {
@@ -274,11 +332,15 @@ app.get('/api/debug-especialistas', async (req, res) => {
     const pool = await sql.connect(sqlConfig);
     
     const query = `
-      SELECT TOP 5
-        user_id,
+      SELECT TOP 10
         user_name,
         user_email,
-        user_active
+        user_active,
+        CASE 
+          WHEN user_name IS NULL THEN 'user_name_null'
+          WHEN user_name = '' THEN 'user_name_empty'
+          ELSE 'ok'
+        END as status_validacao
       FROM AMSespecialistas
       ORDER BY user_name ASC
     `;
@@ -286,11 +348,16 @@ app.get('/api/debug-especialistas', async (req, res) => {
     const result = await pool.request().query(query);
     await pool.close();
     
+    // Verificar se há registros com problemas
+    const registrosComProblema = result.recordset.filter(r => r.status_validacao !== 'ok');
+    
     res.json({
       success: true,
       message: 'Query executada com sucesso',
       sample_records: result.recordset,
-      total_found: result.recordset.length
+      total_found: result.recordset.length,
+      registros_com_problema: registrosComProblema.length,
+      detalhes_problemas: registrosComProblema
     });
     
   } catch (error) {
@@ -298,7 +365,7 @@ app.get('/api/debug-especialistas', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : 'N/A'
     });
   }
 });
@@ -697,121 +764,154 @@ async function sincronizarEspecialistas(req: any, res: any) {
   };
 
   try {
-    console.log('Iniciando sincronização de especialistas...');
+    console.log('🔄 [ESPECIALISTAS] Iniciando sincronização de especialistas...');
     resultado.mensagens.push('Iniciando sincronização com SQL Server (AMSespecialistas)...');
 
     // Conectar ao SQL Server
+    console.log('🔌 [ESPECIALISTAS] Tentando conectar ao SQL Server...');
     const pool = await sql.connect(sqlConfig);
-    console.log('Conectado ao SQL Server');
+    console.log('✅ [ESPECIALISTAS] Conectado ao SQL Server');
     resultado.mensagens.push('Conectado ao SQL Server');
 
     // Buscar todos os registros da tabela AMSespecialistas
+    console.log('📋 [ESPECIALISTAS] Executando query...');
     const query = `
       SELECT
-        user_id,
         user_name,
         user_email,
         user_active
       FROM AMSespecialistas
+      WHERE user_name IS NOT NULL
+        AND user_name != ''
       ORDER BY user_name ASC
     `;
 
     const result = await pool.request().query(query);
     const registros = result.recordset as DadosEspecialistaSqlServer[];
     
+    console.log(`📊 [ESPECIALISTAS] ${registros.length} registros encontrados`);
     resultado.total_processados = registros.length;
     resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
-    console.log(`${registros.length} registros encontrados`);
 
     await pool.close();
+    console.log('🔌 [ESPECIALISTAS] Conexão SQL Server fechada');
 
     if (registros.length === 0) {
+      console.log('⚠️ [ESPECIALISTAS] Nenhum registro para sincronizar');
       resultado.sucesso = true;
       resultado.mensagens.push('Nenhum registro para sincronizar');
       return res.json(resultado);
     }
 
     // Buscar todos os especialistas existentes no Supabase (origem sql_server)
+    console.log('🔍 [ESPECIALISTAS] Consultando especialistas existentes no Supabase...');
     const { data: especialistasExistentes, error: erroConsulta } = await supabase
       .from('especialistas')
       .select('id, id_externo')
       .eq('origem', 'sql_server');
 
     if (erroConsulta) {
-      console.error('Erro ao consultar especialistas existentes:', erroConsulta);
-      throw erroConsulta;
+      console.error('❌ [ESPECIALISTAS] Erro ao consultar especialistas existentes:', erroConsulta);
+      throw new Error(`Erro ao consultar Supabase: ${erroConsulta.message}`);
     }
 
+    console.log(`📊 [ESPECIALISTAS] ${especialistasExistentes?.length || 0} especialistas existentes no Supabase`);
     const idsExistentes = new Set(especialistasExistentes?.map(e => e.id_externo) || []);
     const idsProcessados = new Set<string>();
 
     // Processar cada registro
-    console.log('Iniciando processamento de registros...');
+    console.log('🔄 [ESPECIALISTAS] Iniciando processamento de registros...');
     resultado.mensagens.push('Iniciando processamento de registros...');
     
     for (let i = 0; i < registros.length; i++) {
       const registro = registros[i];
       
       if (i % 10 === 0) {
-        console.log(`Processando registro ${i + 1}/${registros.length}...`);
+        console.log(`📝 [ESPECIALISTAS] Processando registro ${i + 1}/${registros.length}...`);
       }
       
       try {
+        // Validar dados do registro antes de processar
+        if (!registro.user_name || registro.user_name.trim() === '') {
+          console.error(`❌ [ESPECIALISTAS] Registro ${i + 1} tem user_name inválido:`, registro);
+          resultado.erros++;
+          resultado.detalhes_erros.push({
+            registro: {
+              user_name: registro.user_name,
+              user_email: registro.user_email
+            },
+            erro: 'user_name é obrigatório mas está vazio/nulo'
+          });
+          continue; // Pular este registro
+        }
+        
+        console.log(`🔍 [ESPECIALISTAS] Gerando ID único para registro ${i + 1}...`);
         const idUnico = gerarIdUnicoEspecialista(registro);
         idsProcessados.add(idUnico);
 
         // Verificar se já existe
         const jaExiste = idsExistentes.has(idUnico);
+        console.log(`🔍 [ESPECIALISTAS] Registro ${i + 1} - ID: ${idUnico}, Existe: ${jaExiste}`);
 
         const dadosEspecialista = {
           origem: 'sql_server' as const,
           id_externo: idUnico,
-          codigo: registro.user_id?.toString() || null,
+          codigo: null, // Não há mais user_id na tabela
           nome: registro.user_name || '',
           email: registro.user_email || null,
-          telefone: null, // Campo não existe na tabela AMSespecialistas
-          cargo: null, // Campo não existe na tabela AMSespecialistas
-          departamento: null, // Campo não existe na tabela AMSespecialistas
-          empresa: null, // Campo não existe na tabela AMSespecialistas
-          especialidade: null, // Campo não existe na tabela AMSespecialistas
-          nivel: null, // Campo não existe na tabela AMSespecialistas
-          observacoes: null, // Campo não existe na tabela AMSespecialistas
+          telefone: null,
+          cargo: null,
+          departamento: null,
+          empresa: null,
+          especialidade: null,
+          nivel: null,
+          observacoes: null,
           status: (registro.user_active ? 'ativo' : 'inativo') as 'ativo' | 'inativo',
           autor_id: null,
           autor_nome: 'SQL Server Sync'
         };
 
+        console.log(`💾 [ESPECIALISTAS] Preparando dados para registro ${i + 1}:`, {
+          id_externo: dadosEspecialista.id_externo,
+          nome: dadosEspecialista.nome,
+          email: dadosEspecialista.email,
+          status: dadosEspecialista.status
+        });
+
         if (jaExiste) {
           // Atualizar registro existente
+          console.log(`🔄 [ESPECIALISTAS] Atualizando registro ${i + 1}...`);
           const { error } = await supabase
             .from('especialistas')
             .update(dadosEspecialista)
             .eq('id_externo', idUnico);
 
           if (error) {
-            console.error('Erro ao atualizar:', error);
-            throw error;
+            console.error(`❌ [ESPECIALISTAS] Erro ao atualizar registro ${i + 1}:`, error);
+            throw new Error(`Erro ao atualizar: ${error.message}`);
           }
           resultado.atualizados++;
+          console.log(`✅ [ESPECIALISTAS] Registro ${i + 1} atualizado com sucesso`);
         } else {
           // Inserir novo registro
+          console.log(`➕ [ESPECIALISTAS] Inserindo novo registro ${i + 1}...`);
           const { error } = await supabase
             .from('especialistas')
             .insert(dadosEspecialista);
 
           if (error) {
-            console.error('Erro ao inserir:', error);
-            throw error;
+            console.error(`❌ [ESPECIALISTAS] Erro ao inserir registro ${i + 1}:`, error);
+            throw new Error(`Erro ao inserir: ${error.message}`);
           }
           resultado.novos++;
+          console.log(`✅ [ESPECIALISTAS] Registro ${i + 1} inserido com sucesso`);
         }
       } catch (erro) {
-        console.error(`Erro no registro ${i + 1}:`, erro);
+        console.error(`💥 [ESPECIALISTAS] Erro no registro ${i + 1}:`, erro);
         resultado.erros++;
         const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
         resultado.detalhes_erros.push({
           registro: {
-            user_id: registro.user_id,
             user_name: registro.user_name,
             user_email: registro.user_email
           },
@@ -819,7 +919,7 @@ async function sincronizarEspecialistas(req: any, res: any) {
         });
         
         // Log detalhado do erro
-        console.error(`Erro detalhado no registro ${i + 1}:`, {
+        console.error(`🔍 [ESPECIALISTAS] Erro detalhado no registro ${i + 1}:`, {
           registro: registro,
           erro: erro,
           stack: erro instanceof Error ? erro.stack : 'N/A'
@@ -827,54 +927,37 @@ async function sincronizarEspecialistas(req: any, res: any) {
         
         // Se houver muitos erros, parar
         if (resultado.erros >= 10) {
-          console.log('Muitos erros detectados, parando sincronização...');
+          console.log('🛑 [ESPECIALISTAS] Muitos erros detectados, parando sincronização...');
           resultado.mensagens.push('Sincronização interrompida devido a múltiplos erros');
           break;
         }
       }
     }
 
-    // Remover registros que não existem mais no SQL Server (TEMPORARIAMENTE DESABILITADO)
-    /*
-    const idsParaRemover = Array.from(idsExistentes).filter(id => !idsProcessados.has(id));
-    
-    if (idsParaRemover.length > 0) {
-      console.log(`Removendo ${idsParaRemover.length} registros que não existem mais no SQL Server...`);
-      
-      const { error: erroRemocao } = await supabase
-        .from('especialistas')
-        .delete()
-        .in('id_externo', idsParaRemover);
-
-      if (erroRemocao) {
-        console.error('Erro ao remover registros:', erroRemocao);
-        resultado.erros++;
-        resultado.detalhes_erros.push({
-          registro: { acao: 'remover_registros_obsoletos' },
-          erro: erroRemocao.message
-        });
-      } else {
-        resultado.removidos = idsParaRemover.length;
-        resultado.mensagens.push(`${idsParaRemover.length} registros obsoletos removidos`);
-      }
-    }
-    */
-    console.log('Remoção de registros obsoletos desabilitada temporariamente');
-    
-    console.log('Processamento concluído');
+    console.log('✅ [ESPECIALISTAS] Processamento concluído');
 
     resultado.sucesso = resultado.erros === 0;
     resultado.mensagens.push(
       `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.removidos} removidos, ${resultado.erros} erros`
     );
 
-    console.log('Sincronização de especialistas concluída:', resultado);
+    console.log('📊 [ESPECIALISTAS] Sincronização de especialistas concluída:', resultado);
     res.json(resultado);
 
   } catch (error) {
-    console.error('Erro na sincronização de especialistas:', error);
+    console.error('💥 [ESPECIALISTAS] Erro crítico na sincronização de especialistas:', error);
+    console.error('🔍 [ESPECIALISTAS] Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    
     resultado.sucesso = false;
     resultado.mensagens.push(`Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    
+    // Adicionar detalhes do erro para debug
+    resultado.detalhes_erros.push({
+      registro: { acao: 'sincronizacao_geral' },
+      erro: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+    
     res.status(500).json(resultado);
   }
 }
