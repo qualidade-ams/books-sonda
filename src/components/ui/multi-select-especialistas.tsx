@@ -258,7 +258,7 @@ export function MultiSelectEspecialistas({
           side="bottom"
           align="start"
         >
-          <Command className="overflow-hidden">
+          <Command className="overflow-hidden" shouldFilter={false}>
             <CommandInput
               placeholder={`Buscar consultor... (${filtrados}/${total})`}
               value={termoBusca}

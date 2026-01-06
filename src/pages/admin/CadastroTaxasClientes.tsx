@@ -128,6 +128,7 @@ function CadastroTaxasClientes() {
       await refetch();
     } catch (error) {
       console.error('Erro ao salvar taxa:', error);
+      toast.error(`Erro ao salvar taxa: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 

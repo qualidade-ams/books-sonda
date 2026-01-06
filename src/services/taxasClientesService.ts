@@ -117,11 +117,18 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
     return null;
   }
 
+  console.log(`🔍 [DEBUG] Taxa encontrada - personalizado: ${data.personalizado}`);
+  console.log(`🔍 [DEBUG] Dados completos da taxa:`, data);
+  
   const valores = await buscarValoresTaxa(data.id);
+  console.log(`🔍 [DEBUG] Valores brutos do banco:`, valores);
   
   // Separar valores por tipo
   const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
   const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
+  
+  console.log(`🔍 [DEBUG] Valores remotos separados:`, valoresRemota);
+  console.log(`🔍 [DEBUG] Valores locais separados:`, valoresLocal);
   
   // Preparar arrays para cálculo da média
   const todasFuncoesRemota = valoresRemota.map(v => ({
@@ -134,35 +141,151 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
     valor_base: v.valor_base
   }));
   
-  // Calcular valores completos
-  const valoresRemotaCalculados = valoresRemota.map(v => 
-    calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto, false)
-  );
+  // CORREÇÃO CRÍTICA: Se a taxa for personalizada, SEMPRE usar valores salvos no banco
+  let valoresRemotaCalculados: ValorTaxaCalculado[];
+  let valoresLocalCalculados: ValorTaxaCalculado[];
   
-  const valoresLocalCalculados = valoresLocal.map(v => 
-    calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto, true)
-  );
+  if (data.personalizado) {
+    // Para taxas personalizadas, SEMPRE usar valores salvos no banco (não calcular)
+    console.log(`✅ [DEBUG] Taxa personalizada - usando valores EXATOS da tabela valores_taxas_funcoes`);
+    
+    valoresRemotaCalculados = valoresRemota.map(v => {
+      const valorExato = {
+        funcao: v.funcao,
+        valor_base: v.valor_base,
+        valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
+        valor_apos_19h30: v.valor_apos_19h30 ?? 0,
+        valor_fim_semana: v.valor_fim_semana ?? 0,
+        valor_adicional: v.valor_adicional ?? 0,
+        valor_standby: v.valor_standby ?? 0
+      } as ValorTaxaCalculado;
+      
+      console.log(`🔍 [DEBUG] Valor remoto EXATO para ${v.funcao}:`, valorExato);
+      console.log(`🔍 [DEBUG] Valores originais do banco para ${v.funcao}:`, {
+        valor_17h30_19h30: v.valor_17h30_19h30,
+        valor_apos_19h30: v.valor_apos_19h30,
+        valor_fim_semana: v.valor_fim_semana,
+        valor_adicional: v.valor_adicional,
+        valor_standby: v.valor_standby
+      });
+      return valorExato;
+    });
+    
+    valoresLocalCalculados = valoresLocal.map(v => {
+      const valorExato = {
+        funcao: v.funcao,
+        valor_base: v.valor_base,
+        valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
+        valor_apos_19h30: v.valor_apos_19h30 ?? 0,
+        valor_fim_semana: v.valor_fim_semana ?? 0,
+        valor_adicional: 0, // Local não tem valor adicional
+        valor_standby: 0    // Local não tem valor standby
+      } as ValorTaxaCalculado;
+      
+      console.log(`🔍 [DEBUG] Valor local EXATO para ${v.funcao}:`, valorExato);
+      console.log(`🔍 [DEBUG] Valores originais do banco para ${v.funcao} (local):`, {
+        valor_17h30_19h30: v.valor_17h30_19h30,
+        valor_apos_19h30: v.valor_apos_19h30,
+        valor_fim_semana: v.valor_fim_semana
+      });
+      return valorExato;
+    });
+  } else {
+    // Para taxas não-personalizadas, calcular automaticamente
+    console.log(`🔄 [DEBUG] Taxa não personalizada - calculando valores automaticamente`);
+    
+    valoresRemotaCalculados = valoresRemota.map(v => 
+      calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto, false)
+    );
+    
+    valoresLocalCalculados = valoresLocal.map(v => 
+      calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto, true)
+    );
+  }
   
-  return {
+  const resultado = {
     ...data,
     valores_remota: valoresRemotaCalculados,
     valores_local: valoresLocalCalculados
   } as TaxaClienteCompleta;
+  
+  console.log(`🔍 [DEBUG] Resultado final do serviço:`, {
+    personalizado: resultado.personalizado,
+    valores_remota_count: resultado.valores_remota?.length,
+    valores_local_count: resultado.valores_local?.length,
+    valores_remota_completos: resultado.valores_remota,
+    valores_local_completos: resultado.valores_local
+  });
+  
+  return resultado;
 }
 
 /**
  * Buscar valores de uma taxa específica
  */
 async function buscarValoresTaxa(taxaId: string): Promise<ValorTaxaFuncao[]> {
+  console.log(`🔍 [DEBUG] Buscando valores para taxa ID: ${taxaId}`);
+  
+  // FORÇAR CONSULTA SEM CACHE
   const { data, error } = await supabase
     .from('valores_taxas_funcoes')
     .select('*')
-    .eq('taxa_id', taxaId);
+    .eq('taxa_id', taxaId)
+    .order('funcao, tipo_hora')
+    .abortSignal(AbortSignal.timeout(10000)); // Timeout de 10s para forçar nova consulta
 
   if (error) {
-    console.error('Erro ao buscar valores da taxa:', error);
+    console.error('❌ [DEBUG] Erro ao buscar valores da taxa:', error);
     return [];
   }
+
+  console.log(`🔍 [DEBUG] Valores encontrados no banco:`, data);
+  console.log(`🔍 [DEBUG] Total de registros: ${data?.length || 0}`);
+  
+  // Log detalhado ESPECIFICAMENTE da função Funcional - Remota
+  const funcionalRemota = data?.find(v => v.funcao === 'Funcional' && v.tipo_hora === 'remota');
+  if (funcionalRemota) {
+    console.log(`🎯 [DEBUG] FUNCIONAL REMOTA - Valores do banco:`, {
+      valor_17h30_19h30: funcionalRemota.valor_17h30_19h30,
+      valor_apos_19h30: funcionalRemota.valor_apos_19h30,
+      valor_fim_semana: funcionalRemota.valor_fim_semana,
+      valor_adicional: funcionalRemota.valor_adicional,
+      valor_standby: funcionalRemota.valor_standby
+    });
+    
+    console.log(`🔍 [DEBUG] ESPERADO vs ATUAL:`, {
+      esperado: {
+        valor_17h30_19h30: 313.45,
+        valor_apos_19h30: 0.00,
+        valor_fim_semana: 391.81,
+        valor_adicional: 225.30,
+        valor_standby: 58.78
+      },
+      atual: {
+        valor_17h30_19h30: funcionalRemota.valor_17h30_19h30,
+        valor_apos_19h30: funcionalRemota.valor_apos_19h30,
+        valor_fim_semana: funcionalRemota.valor_fim_semana,
+        valor_adicional: funcionalRemota.valor_adicional,
+        valor_standby: funcionalRemota.valor_standby
+      }
+    });
+  } else {
+    console.log(`❌ [DEBUG] FUNCIONAL REMOTA NÃO ENCONTRADA!`);
+  }
+  
+  // Log detalhado de cada valor
+  data?.forEach((valor, index) => {
+    console.log(`📋 [DEBUG] Registro ${index + 1}:`, {
+      funcao: valor.funcao,
+      tipo_hora: valor.tipo_hora,
+      valor_base: valor.valor_base,
+      valor_17h30_19h30: valor.valor_17h30_19h30,
+      valor_apos_19h30: valor.valor_apos_19h30,
+      valor_fim_semana: valor.valor_fim_semana,
+      valor_adicional: valor.valor_adicional,
+      valor_standby: valor.valor_standby
+    });
+  });
 
   return data || [];
 }
@@ -356,20 +479,42 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     }
 
     // Valor remota
-    valoresParaInserir.push({
+    const valorRemotaData: any = {
       taxa_id: taxa.id,
       funcao,
       tipo_hora: 'remota',
       valor_base: valorRemota
-    });
+    };
+
+    // Se for personalizado, adicionar valores personalizados
+    if (dados.personalizado && dados.valores_remota_personalizados && dados.valores_remota_personalizados[funcao]) {
+      const valoresPersonalizados = dados.valores_remota_personalizados[funcao];
+      valorRemotaData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
+      valorRemotaData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30;
+      valorRemotaData.valor_fim_semana = valoresPersonalizados.valor_fim_semana;
+      valorRemotaData.valor_adicional = valoresPersonalizados.valor_adicional;
+      valorRemotaData.valor_standby = valoresPersonalizados.valor_standby;
+    }
+
+    valoresParaInserir.push(valorRemotaData);
 
     // Valor local
-    valoresParaInserir.push({
+    const valorLocalData: any = {
       taxa_id: taxa.id,
       funcao,
       tipo_hora: 'local',
       valor_base: valorLocal
-    });
+    };
+
+    // Se for personalizado, adicionar valores personalizados locais
+    if (dados.personalizado && dados.valores_local_personalizados && dados.valores_local_personalizados[funcao]) {
+      const valoresPersonalizados = dados.valores_local_personalizados[funcao];
+      valorLocalData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
+      valorLocalData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30;
+      valorLocalData.valor_fim_semana = valoresPersonalizados.valor_fim_semana;
+    }
+
+    valoresParaInserir.push(valorLocalData);
   });
 
   // Inserir valores com timeout
@@ -571,7 +716,6 @@ export async function atualizarTaxa(
     let valoresLocaisFinais = dados.valores_local;
     if (!dados.personalizado && dados.valores_remota) {
       valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
-      console.log('🔄 Valores locais calculados automaticamente na atualização:', valoresLocaisFinais);
     }
 
     // Criar valores para a nova taxa
@@ -753,14 +897,18 @@ export async function atualizarTaxa(
     let valoresLocaisFinais = dados.valores_local;
     if (!dados.personalizado && dados.valores_remota) {
       valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
-      console.log('🔄 Valores locais calculados automaticamente na atualização normal:', valoresLocaisFinais);
     }
 
     // Deletar valores antigos
-    await supabase
+    const { error: deleteError } = await supabase
       .from('valores_taxas_funcoes')
       .delete()
       .eq('taxa_id', id);
+
+    if (deleteError) {
+      console.error('Erro ao deletar valores antigos:', deleteError);
+      throw new Error('Erro ao deletar valores antigos da taxa');
+    }
 
     // Inserir novos valores
     const funcoes = getFuncoesPorProduto(taxaAtualizada.tipo_produto);
@@ -787,24 +935,53 @@ export async function atualizarTaxa(
         valorLocal = valoresLocaisFinais?.gestor || 0;
       }
 
-      valoresParaInserir.push({
+      // Valor remota
+      const valorRemotaData: any = {
         taxa_id: id,
         funcao,
         tipo_hora: 'remota',
         valor_base: valorRemota
-      });
+      };
 
-      valoresParaInserir.push({
+      // Se for personalizado, adicionar valores personalizados
+      if (dados.personalizado && dados.valores_remota_personalizados && dados.valores_remota_personalizados[funcao]) {
+        const valoresPersonalizados = dados.valores_remota_personalizados[funcao];
+        valorRemotaData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
+        valorRemotaData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30;
+        valorRemotaData.valor_fim_semana = valoresPersonalizados.valor_fim_semana;
+        valorRemotaData.valor_adicional = valoresPersonalizados.valor_adicional;
+        valorRemotaData.valor_standby = valoresPersonalizados.valor_standby;
+      }
+
+      valoresParaInserir.push(valorRemotaData);
+
+      // Valor local
+      const valorLocalData: any = {
         taxa_id: id,
         funcao,
         tipo_hora: 'local',
         valor_base: valorLocal
-      });
+      };
+
+      // Se for personalizado, adicionar valores personalizados locais
+      if (dados.personalizado && dados.valores_local_personalizados && dados.valores_local_personalizados[funcao]) {
+        const valoresPersonalizados = dados.valores_local_personalizados[funcao];
+        valorLocalData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
+        valorLocalData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30;
+        valorLocalData.valor_fim_semana = valoresPersonalizados.valor_fim_semana;
+      }
+
+      valoresParaInserir.push(valorLocalData);
     });
 
-    await supabase
+    const { error: insertError } = await supabase
       .from('valores_taxas_funcoes')
       .insert(valoresParaInserir);
+
+    if (insertError) {
+      console.error('Erro ao inserir novos valores:', insertError);
+      throw new Error(`Erro ao atualizar valores da taxa: ${insertError.message || 'Erro desconhecido'}`);
+    }
   }
 
   return taxaAtualizada as TaxaCliente;
