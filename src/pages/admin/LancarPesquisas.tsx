@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Database, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Plus, Database, ChevronLeft, ChevronRight, Filter, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import {
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { PesquisaForm, PesquisasTable, PesquisasExportButtons, SyncProgressModal } from '@/components/admin/pesquisas-satisfacao';
+import { DiagnosticoApi } from '@/components/admin/DiagnosticoApi';
 import { 
   usePesquisasSatisfacao, 
   useExcluirPesquisa,
@@ -69,6 +70,7 @@ function LancarPesquisas() {
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalSyncAberto, setModalSyncAberto] = useState(false);
+  const [modalDiagnosticoAberto, setModalDiagnosticoAberto] = useState(false);
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
@@ -280,6 +282,14 @@ function LancarPesquisas() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <Button
+              variant="outline"
+              onClick={() => setModalDiagnosticoAberto(true)}
+              className="flex items-center gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              Diagnóstico API
+            </Button>
             <Button onClick={handleNovoPesquisa}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Pesquisa
@@ -508,6 +518,16 @@ function LancarPesquisas() {
         isLoading={sincronizarSqlServer.isPending}
         resultado={sincronizarSqlServer.data}
       />
+
+      {/* Modal de Diagnóstico da API */}
+      <Dialog open={modalDiagnosticoAberto} onOpenChange={setModalDiagnosticoAberto}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Diagnóstico da API de Sincronização</DialogTitle>
+          </DialogHeader>
+          <DiagnosticoApi />
+        </DialogContent>
+      </Dialog>
 
       </div>
     </LayoutAdmin>

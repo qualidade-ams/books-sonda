@@ -38,7 +38,7 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  */
 async function buscarDadosSqlServer(): Promise<DadosSqlServer[]> {
   // URL da API de sincronização
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     const response = await fetch(`${API_URL}/api/sync-pesquisas`, {
@@ -86,7 +86,7 @@ function gerarIdUnico(registro: DadosSqlServer): string {
  * INCLUI sincronização de pesquisas E especialistas
  */
 export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any }> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Iniciando sincronização completa (pesquisas + especialistas)...');
@@ -100,11 +100,28 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
       }
     });
 
-    if (!responsePesquisas.ok) {
+    let resultadoPesquisas: ResultadoSincronizacao;
+
+    if (responsePesquisas.status === 404) {
+      resultadoPesquisas = {
+        sucesso: false,
+        total_processados: 0,
+        novos: 0,
+        atualizados: 0,
+        erros: 1,
+        mensagens: [
+          'Endpoint de sincronização de pesquisas não implementado na API.',
+          'A API está online mas o endpoint /api/sync-pesquisas não existe.',
+          'Verifique se a API foi atualizada com os endpoints de sincronização.'
+        ],
+        detalhes_erros: []
+      };
+    } else if (!responsePesquisas.ok) {
       throw new Error(`Erro HTTP na sincronização de pesquisas: ${responsePesquisas.status}`);
+    } else {
+      resultadoPesquisas = await responsePesquisas.json();
     }
 
-    const resultadoPesquisas: ResultadoSincronizacao = await responsePesquisas.json();
     console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
 
     // 2. Sincronizar especialistas (nova funcionalidade)
@@ -117,7 +134,15 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
     });
 
     let resultadoEspecialistas = null;
-    if (responseEspecialistas.ok) {
+    if (responseEspecialistas.status === 404) {
+      resultadoEspecialistas = {
+        sucesso: false,
+        mensagens: [
+          'Endpoint de sincronização de especialistas não implementado na API.',
+          'A API está online mas o endpoint /api/sync-especialistas não existe.'
+        ]
+      };
+    } else if (responseEspecialistas.ok) {
       resultadoEspecialistas = await responseEspecialistas.json();
       console.log('Resultado da sincronização de especialistas:', resultadoEspecialistas);
       
@@ -218,7 +243,7 @@ export async function verificarUltimaSincronizacao(): Promise<{
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com SQL Server via API...');

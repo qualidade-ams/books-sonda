@@ -21,7 +21,7 @@ export const useEstatisticasPesquisas = (ano: number, grupo: string = 'todos') =
   return useQuery<EstatisticasPesquisas>({
     queryKey: ['estatisticas-pesquisas', ano, grupo],
     queryFn: async (): Promise<EstatisticasPesquisas> => {
-      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
+      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
       
       const params = new URLSearchParams({
         ano: ano.toString(),
