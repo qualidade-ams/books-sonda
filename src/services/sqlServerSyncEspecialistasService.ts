@@ -37,12 +37,11 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  * Gerar ID único para registro do SQL Server
  */
 function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
-  // Combinar campos para criar ID único
+  // Combinar campos para criar ID único usando as propriedades corretas da interface
   const partes = [
     'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    registro.Codigo,
-    registro.Nome,
-    registro.Email
+    registro.user_name,
+    registro.user_email
   ].filter(Boolean);
   
   return partes.join('|');
@@ -53,7 +52,7 @@ function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
  * Usa a API Node.js que faz todo o processamento
  */
 export async function sincronizarEspecialistas(): Promise<ResultadoSincronizacaoEspecialistas> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Chamando API de sincronização de especialistas...');
@@ -99,28 +98,31 @@ export async function verificarUltimaSincronizacaoEspecialistas(): Promise<{
   total_registros: number;
 }> {
   try {
-    const { data: ultimoRegistro, error } = await supabase
+    // @ts-ignore - Supabase type inference issues with complex relationships
+    const { data: ultimoRegistro, error } = await (supabase as any)
       .from('especialistas')
       .select('created_at')
       .eq('origem', 'sql_server')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single<{ created_at: string }>();
+      .single();
 
     if (error || !ultimoRegistro) {
+      console.log('Nenhum registro encontrado ou erro:', error);
       return {
         data: null,
         total_registros: 0
       };
     }
 
-    const { count } = await supabase
+    // @ts-ignore - Supabase type inference issues with complex relationships
+    const { count } = await (supabase as any)
       .from('especialistas')
       .select('*', { count: 'exact', head: true })
       .eq('origem', 'sql_server');
 
     return {
-      data: ultimoRegistro.created_at,
+      data: ultimoRegistro?.created_at || null,
       total_registros: count || 0
     };
   } catch (error) {
@@ -140,7 +142,7 @@ export async function verificarUltimaSincronizacaoEspecialistas(): Promise<{
  * Testar conexão com tabela AMSespecialistas via API
  */
 export async function testarConexaoEspecialistas(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com tabela AMSespecialistas via API...');
@@ -166,7 +168,7 @@ export async function testarConexaoEspecialistas(): Promise<boolean> {
  * Obter estrutura da tabela AMSespecialistas
  */
 export async function obterEstruturaEspecialistas(): Promise<any> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Consultando estrutura da tabela AMSespecialistas...');
