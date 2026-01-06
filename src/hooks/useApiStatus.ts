@@ -4,7 +4,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-const API_BASE_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
+const API_BASE_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
 
 async function verificarStatusApi(): Promise<boolean> {
   try {
