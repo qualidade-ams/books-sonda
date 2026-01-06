@@ -44,13 +44,11 @@ export function DiagnosticoApi() {
         toast({
           title: "Diagnóstico Concluído",
           description: "Todos os testes passaram! API funcionando corretamente.",
-          variant: "success"
         });
       } else if (sucessos > 0) {
         toast({
           title: "Diagnóstico Concluído",
           description: `${sucessos}/4 testes passaram. Verifique os detalhes.`,
-          variant: "warning"
         });
       } else {
         toast({
@@ -79,7 +77,6 @@ export function DiagnosticoApi() {
     toast({
       title: "Relatório Copiado",
       description: "Relatório de diagnóstico copiado para a área de transferência.",
-      variant: "success"
     });
   };
 
@@ -110,11 +107,11 @@ export function DiagnosticoApi() {
     ].filter(Boolean).length;
 
     if (sucessos === 4) {
-      return { icon: CheckCircle, text: 'TUDO OK', variant: 'success' as const, color: 'text-green-600' };
+      return { icon: CheckCircle, text: 'TUDO OK', variant: 'default' as const, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-l-green-500' };
     } else if (sucessos > 0) {
-      return { icon: AlertTriangle, text: 'PARCIAL', variant: 'warning' as const, color: 'text-yellow-600' };
+      return { icon: AlertTriangle, text: 'PARCIAL', variant: 'default' as const, color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-l-yellow-500' };
     } else {
-      return { icon: XCircle, text: 'OFFLINE', variant: 'destructive' as const, color: 'text-red-600' };
+      return { icon: XCircle, text: 'OFFLINE', variant: 'destructive' as const, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-l-red-500' };
     }
   };
 
@@ -163,21 +160,26 @@ export function DiagnosticoApi() {
           <Server className="h-4 w-4" />
           <span>URL: </span>
           <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-            {import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001'}
+            {diagnostico?.configInfo?.apiUrl || import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001'}
           </code>
         </div>
 
+        {/* Informações de Configuração */}
+        {diagnostico?.configInfo && (
+          <div className="text-xs text-gray-500 space-y-1">
+            <div>Protocolo: {diagnostico.configInfo.protocol}</div>
+            <div>Ambiente: {diagnostico.configInfo.isDev ? 'Desenvolvimento' : 'Produção'}</div>
+            <div>HTTPS: {diagnostico.configInfo.isHttps ? 'Sim' : 'Não'}</div>
+          </div>
+        )}
+
         {/* Status Geral */}
         {statusGeral && (
-          <Alert className={`border-l-4 ${
-            statusGeral.variant === 'success' ? 'border-l-green-500 bg-green-50' :
-            statusGeral.variant === 'warning' ? 'border-l-yellow-500 bg-yellow-50' :
-            'border-l-red-500 bg-red-50'
-          }`}>
+          <Alert variant={statusGeral.variant} className={`border-l-4 ${statusGeral.borderColor} ${statusGeral.bgColor}`}>
             <statusGeral.icon className={`h-4 w-4 ${statusGeral.color}`} />
             <AlertDescription className="flex items-center gap-2">
               <span className="font-semibold">Status Geral:</span>
-              <Badge variant={statusGeral.variant}>{statusGeral.text}</Badge>
+              <Badge variant={statusGeral.variant === 'destructive' ? 'destructive' : statusGeral.text === 'TUDO OK' ? 'success' : 'warning'}>{statusGeral.text}</Badge>
             </AlertDescription>
           </Alert>
         )}

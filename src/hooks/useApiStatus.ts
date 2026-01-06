@@ -3,12 +3,13 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { getApiBaseUrl, safeFetch } from '@/utils/apiConfig';
 
-const API_BASE_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
+const API_BASE_URL = getApiBaseUrl();
 
 async function verificarStatusApi(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await safeFetch(`${API_BASE_URL}/health`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

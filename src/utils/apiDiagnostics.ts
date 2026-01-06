@@ -2,7 +2,9 @@
  * Utilitários para diagnóstico de conexão com a API de sincronização
  */
 
-const API_BASE_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
+import { getApiBaseUrl, safeFetch, getApiConfigInfo } from './apiConfig';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface DiagnosticoApi {
   url: string;
@@ -17,6 +19,7 @@ export interface DiagnosticoApi {
     syncEspecialistas?: number;
   };
   erros: string[];
+  configInfo: ReturnType<typeof getApiConfigInfo>;
 }
 
 /**
@@ -30,15 +33,17 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
     syncPesquisas: false,
     syncEspecialistas: false,
     tempos: {},
-    erros: []
+    erros: [],
+    configInfo: getApiConfigInfo()
   };
 
   console.log('🔍 Iniciando diagnóstico da API:', API_BASE_URL);
+  console.log('📋 Configuração:', diagnostico.configInfo);
 
   // 1. Teste de Health Check
   try {
     const inicio = Date.now();
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await safeFetch(`${API_BASE_URL}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000)
     });
@@ -51,14 +56,21 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
       console.log('✅ Health check OK');
     }
   } catch (error) {
-    diagnostico.erros.push(`Health check erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    diagnostico.erros.push(`Health check erro: ${errorMsg}`);
+    
+    // Detectar erro de Mixed Content
+    if (errorMsg.includes('Failed to fetch') && diagnostico.configInfo.isHttps && API_BASE_URL.startsWith('http://')) {
+      diagnostico.erros.push('⚠️ MIXED CONTENT: Aplicação HTTPS tentando acessar API HTTP - Configure HTTPS na API');
+    }
+    
     console.error('❌ Health check falhou:', error);
   }
 
   // 2. Teste de Conexão com SQL Server
   try {
     const inicio = Date.now();
-    const response = await fetch(`${API_BASE_URL}/api/test-connection`, {
+    const response = await safeFetch(`${API_BASE_URL}/api/test-connection`, {
       method: 'GET',
       signal: AbortSignal.timeout(10000)
     });
@@ -77,14 +89,15 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
       diagnostico.erros.push(`Teste de conexão falhou: HTTP ${response.status}`);
     }
   } catch (error) {
-    diagnostico.erros.push(`Teste de conexão erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    diagnostico.erros.push(`Teste de conexão erro: ${errorMsg}`);
     console.error('❌ Teste de conexão falhou:', error);
   }
 
   // 3. Teste de Endpoint de Sincronização de Pesquisas
   try {
     const inicio = Date.now();
-    const response = await fetch(`${API_BASE_URL}/api/sync-pesquisas`, {
+    const response = await safeFetch(`${API_BASE_URL}/api/sync-pesquisas`, {
       method: 'HEAD', // Apenas verifica se o endpoint existe
       signal: AbortSignal.timeout(5000)
     });
@@ -105,7 +118,7 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
   // 4. Teste de Endpoint de Sincronização de Especialistas
   try {
     const inicio = Date.now();
-    const response = await fetch(`${API_BASE_URL}/api/sync-especialistas`, {
+    const response = await safeFetch(`${API_BASE_URL}/api/sync-especialistas`, {
       method: 'HEAD', // Apenas verifica se o endpoint existe
       signal: AbortSignal.timeout(5000)
     });
@@ -152,7 +165,7 @@ export async function testarConectividade(): Promise<{
   const inicio = Date.now();
   
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await safeFetch(`${getApiBaseUrl()}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(3000)
     });
