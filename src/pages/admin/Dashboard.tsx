@@ -6,6 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 import { StatCard } from '@/components/admin/dashboard/StatCard';
 import { ModernChart } from '@/components/admin/dashboard/ModernChart';
@@ -3521,6 +3527,8 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<string>('');
   const [topFaturamentoMode, setTopFaturamentoMode] = useState<'faturamento' | 'banco_horas'>('faturamento');
   const [evolucaoMensalMode, setEvolucaoMensalMode] = useState<'requerimentos' | 'faturamento'>('requerimentos');
+  const [comparativoMode, setComparativoMode] = useState<'faturamento' | 'banco_horas'>('faturamento');
+  const [comparativoFiltroAtivo, setComparativoFiltroAtivo] = useState<'comex' | 'fiscal' | null>(null);
 
   // Hooks de permissões
   const { hasPermission } = usePermissions();
@@ -3803,9 +3811,58 @@ const Dashboard = () => {
       crescimentoRequerimentos,
       crescimentoFaturamento,
       crescimentoMensalRequerimentos,
-      crescimentoMensalFaturamento
+      crescimentoMensalFaturamento,
+      dados // Adicionar os dados filtrados para uso no gráfico COMEX vs FISCAL
     };
   }, [requerimentos, filtroModulo, anoSelecionado, mesSelecionado]);
+
+  // Calcular estatísticas filtradas para o comparativo COMEX vs FISCAL
+  const statsRequerimentosFiltradas = useMemo(() => {
+    if (!statsRequerimentos || !comparativoFiltroAtivo) {
+      return statsRequerimentos; // Retorna stats normais se não há filtro ativo
+    }
+
+    // Filtrar dados baseado no filtro ativo
+    const modulosFiscal = ['Comply', 'Comply e-DOCS', 'pw.SATI', 'Gallery', 'pw.SPED'];
+    let dadosFiltrados = statsRequerimentos.dados || [];
+
+    if (comparativoFiltroAtivo === 'comex') {
+      dadosFiltrados = dadosFiltrados.filter(req => req.modulo?.toLowerCase() === 'comex');
+    } else if (comparativoFiltroAtivo === 'fiscal') {
+      dadosFiltrados = dadosFiltrados.filter(req => 
+        modulosFiscal.some(mod => mod.toLowerCase() === req.modulo?.toLowerCase())
+      );
+    }
+
+    // Recalcular estatísticas com dados filtrados
+    const total = dadosFiltrados.length;
+    
+    const totalHoras = dadosFiltrados.reduce((acc, r) => {
+      if (r.tipo_cobranca === 'Reprovado') return acc;
+      
+      const horas = r.horas_total;
+      if (typeof horas === 'string' && horas.includes(':')) {
+        const [h, m] = horas.split(':').map(Number);
+        return acc + (h * 60 + m);
+      }
+      return acc + (Number(horas) || 0);
+    }, 0);
+    
+    const totalValor = dadosFiltrados.reduce((acc, r) => {
+      const valor = r.valor_total_geral || 0;
+      return acc + (Number(valor) || 0);
+    }, 0);
+    
+    const totalTickets = dadosFiltrados.reduce((acc, r) => acc + (Number(r.quantidade_tickets) || 0), 0);
+
+    return {
+      ...statsRequerimentos,
+      total,
+      totalHoras,
+      totalValor,
+      totalTickets
+    };
+  }, [statsRequerimentos, comparativoFiltroAtivo]);
 
   // Calcular estatísticas de elogios
   const statsElogios = useMemo(() => {
@@ -4228,9 +4285,16 @@ const Dashboard = () => {
                     <Card className="bg-white dark:bg-gray-800 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Requerimentos</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Requerimentos
+                            {comparativoFiltroAtivo && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                                {comparativoFiltroAtivo.toUpperCase()}
+                              </span>
+                            )}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <p className="text-2xl font-bold">{statsRequerimentos?.total || 0}</p>
+                            <p className="text-2xl font-bold">{statsRequerimentosFiltradas?.total || 0}</p>
                             {/* Sempre mostrar crescimento mensal de requerimentos */}
                             {statsRequerimentos?.crescimentoMensalRequerimentos !== undefined && (
                               <span className={`text-xs font-medium ${
@@ -4253,9 +4317,27 @@ const Dashboard = () => {
                     <Card className="bg-white dark:bg-gray-800 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Horas</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Total Horas
+                            {comparativoFiltroAtivo && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                                {comparativoFiltroAtivo.toUpperCase()}
+                              </span>
+                            )}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <p className="text-2xl font-bold">{converterMinutosParaHoras(statsRequerimentos?.totalHoras || 0).replace('h', '')}</p>
+                            <TooltipProvider>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="text-2xl font-bold cursor-help">{converterMinutosParaHoras(statsRequerimentosFiltradas?.totalHoras || 0).replace('h', '')}</p>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-sm">
+                                    Inclui todas as horas: Faturado, Hora Extra, Sobreaviso, Bolsão Enel e Banco de Horas
+                                  </p>
+                                </TooltipContent>
+                              </UITooltip>
+                            </TooltipProvider>
                           </div>
                         </div>
                         <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -4267,9 +4349,16 @@ const Dashboard = () => {
                     <Card className="bg-white dark:bg-gray-800 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Faturamento</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Faturamento
+                            {comparativoFiltroAtivo && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                                {comparativoFiltroAtivo.toUpperCase()}
+                              </span>
+                            )}
+                          </p>
                           <div className="flex items-center gap-2">
-                            <p className="text-2xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentos?.totalValor || 0)}</p>
+                            <p className="text-2xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentosFiltradas?.totalValor || 0)}</p>
                             {/* Sempre mostrar crescimento mensal de faturamento */}
                             {statsRequerimentos?.crescimentoMensalFaturamento !== undefined && (
                               <span className={`text-xs font-medium ${
@@ -4292,8 +4381,15 @@ const Dashboard = () => {
                     <Card className="bg-white dark:bg-gray-800 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tickets</p>
-                          <p className="text-2xl font-bold">{statsRequerimentos?.totalTickets || 0}</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Tickets
+                            {comparativoFiltroAtivo && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                                {comparativoFiltroAtivo.toUpperCase()}
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-2xl font-bold">{statsRequerimentosFiltradas?.totalTickets || 0}</p>
                         </div>
                         <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                           <Ticket className="h-4 w-4 text-orange-600" />
@@ -4512,6 +4608,299 @@ const Dashboard = () => {
                       </Card>
                     </div>
                   </div>
+                </div>
+
+                {/* Novo Gráfico: Comparativo COMEX vs FISCAL */}
+                <div className="grid grid-cols-1 gap-6 mt-6">
+                  <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-gray-600" />
+                          <CardTitle className="text-lg font-semibold">Comparativo COMEX vs FISCAL</CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {/* Botões de filtro */}
+                          <div className="flex items-center gap-1 mr-2">
+                            <button
+                              onClick={() => setComparativoFiltroAtivo(null)}
+                              className={`px-2 py-1 text-xs rounded transition-colors duration-200 ${
+                                comparativoFiltroAtivo === null
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                              }`}
+                              title="Mostrar todos"
+                            >
+                              Todos
+                            </button>
+                            <button
+                              onClick={() => setComparativoFiltroAtivo('comex')}
+                              className={`px-2 py-1 text-xs rounded transition-colors duration-200 ${
+                                comparativoFiltroAtivo === 'comex'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                              }`}
+                              title="Filtrar apenas COMEX"
+                            >
+                              COMEX
+                            </button>
+                            <button
+                              onClick={() => setComparativoFiltroAtivo('fiscal')}
+                              className={`px-2 py-1 text-xs rounded transition-colors duration-200 ${
+                                comparativoFiltroAtivo === 'fiscal'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                              }`}
+                              title="Filtrar apenas FISCAL"
+                            >
+                              FISCAL
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => setComparativoMode(prev => prev === 'faturamento' ? 'banco_horas' : 'faturamento')}
+                            className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200 font-medium"
+                            title={`Alternar para ${comparativoMode === 'faturamento' ? 'Banco de Horas' : 'Faturamento'}`}
+                          >
+                            {comparativoMode === 'faturamento' ? '💰→⏰' : '⏰→💰'}
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Evolução mensal de {comparativoMode === 'faturamento' ? 'Faturamento' : 'Banco de Horas'} - Últimos 12 meses
+                        {comparativoFiltroAtivo && (
+                          <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                            Filtrado: {comparativoFiltroAtivo.toUpperCase()}
+                          </span>
+                        )}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {statsRequerimentos && statsRequerimentos.porMes && statsRequerimentos.porMes.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={400}>
+                          <AreaChart 
+                            data={(() => {
+                              // Processar dados para comparativo COMEX vs FISCAL
+                              const dadosComparativos = statsRequerimentos.porMes.map(mesData => {
+                                // Filtrar requerimentos do mês atual
+                                const requerimentosDoMes = statsRequerimentos.dados?.filter(req => {
+                                  const mesReq = req.mes_cobranca;
+                                  return mesReq === mesData.mes;
+                                }) || [];
+
+                                // Definir módulos FISCAL
+                                const modulosFiscal = ['Comply', 'Comply e-DOCS', 'pw.SATI', 'Gallery', 'pw.SPED'];
+                                
+                                // Separar COMEX e FISCAL (verificar variações de case)
+                                const comexReqs = requerimentosDoMes.filter(req => 
+                                  req.modulo?.toLowerCase() === 'comex'
+                                );
+                                const fiscalReqs = requerimentosDoMes.filter(req => 
+                                  modulosFiscal.some(mod => mod.toLowerCase() === req.modulo?.toLowerCase())
+                                );
+
+                                // Calcular valores para COMEX
+                                const comexFaturamento = comexReqs
+                                  .filter(req => ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca))
+                                  .reduce((acc, req) => {
+                                    // Tentar diferentes campos de valor
+                                    const valor = req.valor_total_geral || 0;
+                                    return acc + (Number(valor) || 0);
+                                  }, 0);
+                                
+                                const comexBancoHoras = comexReqs
+                                  .filter(req => req.tipo_cobranca === 'Banco de Horas')
+                                  .reduce((acc, req) => {
+                                    const horas = req.horas_total;
+                                    if (typeof horas === 'string' && horas.includes(':')) {
+                                      // Formato HH:MM - converter para minutos totais
+                                      const [h, m] = horas.split(':').map(Number);
+                                      return acc + (h * 60 + m);
+                                    }
+                                    // Assumir que já é número em minutos
+                                    return acc + (Number(horas) || 0);
+                                  }, 0);
+
+                                // Calcular valores para FISCAL
+                                const fiscalFaturamento = fiscalReqs
+                                  .filter(req => ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca))
+                                  .reduce((acc, req) => {
+                                    // Tentar diferentes campos de valor
+                                    const valor = req.valor_total_geral || 0;
+                                    return acc + (Number(valor) || 0);
+                                  }, 0);
+                                
+                                const fiscalBancoHoras = fiscalReqs
+                                  .filter(req => req.tipo_cobranca === 'Banco de Horas')
+                                  .reduce((acc, req) => {
+                                    const horas = req.horas_total;
+                                    if (typeof horas === 'string' && horas.includes(':')) {
+                                      // Formato HH:MM - converter para minutos totais
+                                      const [h, m] = horas.split(':').map(Number);
+                                      return acc + (h * 60 + m);
+                                    }
+                                    // Assumir que já é número em minutos
+                                    return acc + (Number(horas) || 0);
+                                  }, 0);
+
+                                return {
+                                  ...mesData,
+                                  comexFaturamento,
+                                  comexBancoHoras, // Manter em minutos
+                                  fiscalFaturamento,
+                                  fiscalBancoHoras // Manter em minutos
+                                };
+                              });
+
+                              // Retornar apenas os últimos 12 meses
+                              return dadosComparativos.slice(-12);
+                            })()}
+                            margin={{ top: 20, right: 60, left: 60, bottom: 60 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorComexFaturamento" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#ec4899" stopOpacity={0.2}/>
+                              </linearGradient>
+                              <linearGradient id="colorComexBancoHoras" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f472b6" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#f472b6" stopOpacity={0.2}/>
+                              </linearGradient>
+                              <linearGradient id="colorFiscalFaturamento" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                              </linearGradient>
+                              <linearGradient id="colorFiscalBancoHoras" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#a855f7" stopOpacity={0.2}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis 
+                              dataKey="mesNome" 
+                              tick={{ fontSize: 10 }} 
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            {/* Eixos Y condicionais baseados no modo selecionado */}
+                            {comparativoMode === 'faturamento' ? (
+                              <YAxis 
+                                yAxisId="faturamento"
+                                orientation="left"
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(value) => {
+                                  if (value >= 1000000) {
+                                    return `R$ ${(value / 1000000).toFixed(1)}M`;
+                                  } else if (value >= 1000) {
+                                    return `R$ ${(value / 1000).toFixed(0)}K`;
+                                  } else {
+                                    return `R$ ${value}`;
+                                  }
+                                }}
+                                label={{ value: 'Faturamento (R$)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
+                              />
+                            ) : (
+                              <YAxis 
+                                yAxisId="horas"
+                                orientation="left"
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(value) => {
+                                  // Converter minutos para formato HH:MM
+                                  const horasFormatadas = converterMinutosParaHoras(value);
+                                  return horasFormatadas;
+                                }}
+                                label={{ value: 'Banco de Horas', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
+                              />
+                            )}
+                            <Tooltip 
+                              formatter={(value: number, name: string) => {
+                                if (comparativoMode === 'faturamento' && name.includes('Faturamento')) {
+                                  return [
+                                    new Intl.NumberFormat('pt-BR', { 
+                                      style: 'currency', 
+                                      currency: 'BRL' 
+                                    }).format(value),
+                                    name
+                                  ];
+                                } else if (comparativoMode === 'banco_horas' && name.includes('Banco de Horas')) {
+                                  // Converter minutos para formato HH:MM
+                                  const horasFormatadas = converterMinutosParaHoras(value);
+                                  return [horasFormatadas, name];
+                                }
+                                return [value, name];
+                              }}
+                              labelFormatter={(label) => `Mês: ${label}`}
+                              contentStyle={{
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                              }}
+                            />
+                            <Legend 
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }}
+                              iconType="rect"
+                            />
+                            
+                            {/* Áreas condicionais baseadas no modo selecionado */}
+                            {comparativoMode === 'faturamento' ? (
+                              <>
+                                {/* Áreas para Faturamento */}
+                                <Area
+                                  yAxisId="faturamento"
+                                  type="monotone"
+                                  dataKey="comexFaturamento"
+                                  stroke="#ec4899"
+                                  strokeWidth={2}
+                                  fillOpacity={1}
+                                  fill="url(#colorComexFaturamento)"
+                                  name="COMEX - Faturamento"
+                                />
+                                <Area
+                                  yAxisId="faturamento"
+                                  type="monotone"
+                                  dataKey="fiscalFaturamento"
+                                  stroke="#8b5cf6"
+                                  strokeWidth={2}
+                                  fillOpacity={1}
+                                  fill="url(#colorFiscalFaturamento)"
+                                  name="FISCAL - Faturamento"
+                                />
+                              </>
+                            ) : (
+                              <>
+                                {/* Áreas para Banco de Horas */}
+                                <Area
+                                  yAxisId="horas"
+                                  type="monotone"
+                                  dataKey="comexBancoHoras"
+                                  stroke="#f472b6"
+                                  strokeWidth={2}
+                                  fillOpacity={1}
+                                  fill="url(#colorComexBancoHoras)"
+                                  name="COMEX - Banco de Horas"
+                                />
+                                <Area
+                                  yAxisId="horas"
+                                  type="monotone"
+                                  dataKey="fiscalBancoHoras"
+                                  stroke="#a855f7"
+                                  strokeWidth={2}
+                                  fillOpacity={1}
+                                  fill="url(#colorFiscalBancoHoras)"
+                                  name="FISCAL - Banco de Horas"
+                                />
+                              </>
+                            )}
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[400px] text-gray-500">
+                          Sem dados para exibir
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Seção Inferior - Gráficos */}
