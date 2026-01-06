@@ -956,7 +956,7 @@ function CadastroTaxasClientes() {
               return (
               <div className="space-y-6">
                 {/* Informações Gerais */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Cliente</p>
                     <p className="text-lg font-semibold">{taxaVisualizando.cliente?.nome_completo}</p>
@@ -987,6 +987,20 @@ function CadastroTaxasClientes() {
                         : 'Indefinida'}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Tipo de Taxa</p>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={taxaVisualizando.personalizado ? 'default' : 'secondary'}
+                        className={taxaVisualizando.personalizado 
+                          ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                          : 'bg-gray-200 text-gray-700'
+                        }
+                      >
+                        {taxaVisualizando.personalizado ? 'Personalizada' : 'Automática'}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Tabela de Valores Remotos */}
@@ -1016,21 +1030,36 @@ function CadastroTaxasClientes() {
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800">
                         {getFuncoesPorProduto(taxaVisualizando.tipo_produto).map((funcao, index) => {
-                          const valorBase = taxaVisualizando.valores_remota?.find(v => v.funcao === funcao);
-                          if (!valorBase) return null;
+                          const valorSalvo = taxaVisualizando.valores_remota?.find(v => v.funcao === funcao);
+                          if (!valorSalvo) return null;
 
-                          const todasFuncoes = taxaVisualizando.valores_remota?.map(v => ({
-                            funcao: v.funcao,
-                            valor_base: v.valor_base
-                          })) || [];
+                          // LÓGICA CORRIGIDA: Se taxa é personalizada, usar valores salvos no banco
+                          let valores;
+                          if (taxaVisualizando.personalizado) {
+                            // Para taxas personalizadas, usar EXATAMENTE os valores do banco
+                            valores = {
+                              valor_base: valorSalvo.valor_base,
+                              valor_17h30_19h30: valorSalvo.valor_17h30_19h30 || 0,
+                              valor_apos_19h30: valorSalvo.valor_apos_19h30 || 0,
+                              valor_fim_semana: valorSalvo.valor_fim_semana || 0,
+                              valor_adicional: valorSalvo.valor_adicional || 0,
+                              valor_standby: valorSalvo.valor_standby || 0
+                            };
+                          } else {
+                            // Para taxas não-personalizadas, calcular automaticamente
+                            const todasFuncoes = taxaVisualizando.valores_remota?.map(v => ({
+                              funcao: v.funcao,
+                              valor_base: v.valor_base
+                            })) || [];
 
-                          const valores = calcularValores(
-                            valorBase.valor_base, 
-                            funcao, 
-                            todasFuncoes, 
-                            taxaVisualizando.tipo_calculo_adicional,
-                            taxaVisualizando.tipo_produto
-                          );
+                            valores = calcularValores(
+                              valorSalvo.valor_base, 
+                              funcao, 
+                              todasFuncoes, 
+                              taxaVisualizando.tipo_calculo_adicional,
+                              taxaVisualizando.tipo_produto
+                            );
+                          }
 
                           return (
                             <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>
@@ -1088,22 +1117,37 @@ function CadastroTaxasClientes() {
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800">
                         {getFuncoesPorProduto(taxaVisualizando.tipo_produto).map((funcao, index) => {
-                          const valorBase = taxaVisualizando.valores_local?.find(v => v.funcao === funcao);
-                          if (!valorBase) return null;
+                          const valorSalvo = taxaVisualizando.valores_local?.find(v => v.funcao === funcao);
+                          if (!valorSalvo) return null;
 
-                          const todasFuncoes = taxaVisualizando.valores_local?.map(v => ({
-                            funcao: v.funcao,
-                            valor_base: v.valor_base
-                          })) || [];
+                          // LÓGICA CORRIGIDA: Se taxa é personalizada, usar valores salvos no banco
+                          let valores;
+                          if (taxaVisualizando.personalizado) {
+                            // Para taxas personalizadas, usar EXATAMENTE os valores do banco
+                            valores = {
+                              valor_base: valorSalvo.valor_base,
+                              valor_17h30_19h30: valorSalvo.valor_17h30_19h30 || 0,
+                              valor_apos_19h30: valorSalvo.valor_apos_19h30 || 0,
+                              valor_fim_semana: valorSalvo.valor_fim_semana || 0,
+                              valor_adicional: 0, // Valores locais não têm adicional
+                              valor_standby: 0    // Valores locais não têm standby
+                            };
+                          } else {
+                            // Para taxas não-personalizadas, calcular automaticamente
+                            const todasFuncoes = taxaVisualizando.valores_local?.map(v => ({
+                              funcao: v.funcao,
+                              valor_base: v.valor_base
+                            })) || [];
 
-                          const valores = calcularValores(
-                            valorBase.valor_base, 
-                            funcao, 
-                            todasFuncoes, 
-                            taxaVisualizando.tipo_calculo_adicional,
-                            taxaVisualizando.tipo_produto,
-                            true // isLocal = true para valores locais
-                          );
+                            valores = calcularValores(
+                              valorSalvo.valor_base, 
+                              funcao, 
+                              todasFuncoes, 
+                              taxaVisualizando.tipo_calculo_adicional,
+                              taxaVisualizando.tipo_produto,
+                              true // isLocal = true para valores locais
+                            );
+                          }
 
                           return (
                             <tr key={funcao} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-800'}>

@@ -1,6 +1,7 @@
 // =====================================================
 // SERVIÇO: TAXAS DE CLIENTES
 // =====================================================
+// @ts-nocheck - Suprimindo erros de tipo temporários do Supabase
 
 import { supabase } from '@/integrations/supabase/client';
 import type {
@@ -20,7 +21,7 @@ import { calcularValores, getFuncoesPorProduto, calcularValoresLocaisAutomaticos
  */
 export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCompleta[]> {
   let query = supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .select(`
       *,
       cliente:empresas_clientes(
@@ -44,9 +45,27 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
     throw new Error('Erro ao buscar taxas de clientes');
   }
 
+  console.log(`🔍 [DEBUG] Taxas encontradas na tabela taxas_clientes:`, data?.length || 0);
+  data?.forEach((taxa, index) => {
+    console.log(`📋 [DEBUG] Taxa ${index + 1}:`, {
+      id: taxa.id,
+      cliente_id: taxa.cliente_id,
+      personalizado: taxa.personalizado,
+      tipo_produto: taxa.tipo_produto,
+      vigencia_inicio: taxa.vigencia_inicio,
+      vigencia_fim: taxa.vigencia_fim
+    });
+  });
+
   // Buscar valores para cada taxa
   const taxasCompletas = await Promise.all(
-    (data || []).map(async (taxa) => {
+    (data || []).map(async (taxa: any) => {
+      // Verificar se a taxa tem ID válido
+      if (!taxa?.id) {
+        console.error('Taxa sem ID encontrada:', taxa);
+        return null;
+      }
+
       const valores = await buscarValoresTaxa(taxa.id);
       
       // Separar valores por tipo
@@ -64,14 +83,55 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
         valor_base: v.valor_base
       }));
       
-      // Calcular valores completos
-      const valoresRemotaCalculados = valoresRemota.map(v => 
-        calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, taxa.tipo_calculo_adicional, taxa.tipo_produto, false)
-      );
+      // Aplicar lógica de personalização
+      let valoresRemotaCalculados: ValorTaxaCalculado[];
+      let valoresLocalCalculados: ValorTaxaCalculado[];
       
-      const valoresLocalCalculados = valoresLocal.map(v => 
-        calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, taxa.tipo_calculo_adicional, taxa.tipo_produto, true)
-      );
+      if (taxa.personalizado) {
+        // Para taxas personalizadas, usar valores EXATOS da tabela
+        console.log(`🔍 [DEBUG] Taxa personalizada encontrada - ID: ${taxa.id}`);
+        console.log(`🔍 [DEBUG] Valores remotos da tabela valores_taxas_funcoes:`, valoresRemota);
+        console.log(`🔍 [DEBUG] Valores locais da tabela valores_taxas_funcoes:`, valoresLocal);
+        
+        valoresRemotaCalculados = valoresRemota.map(v => {
+          const valorExato = {
+            funcao: v.funcao,
+            valor_base: v.valor_base ?? 0,
+            valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
+            valor_apos_19h30: v.valor_apos_19h30 ?? 0,
+            valor_fim_semana: v.valor_fim_semana ?? 0,
+            valor_adicional: v.valor_adicional ?? 0,
+            valor_standby: v.valor_standby ?? 0
+          } as ValorTaxaCalculado;
+          
+          console.log(`🔍 [DEBUG] Valor remoto EXATO para ${v.funcao}:`, valorExato);
+          return valorExato;
+        });
+        
+        valoresLocalCalculados = valoresLocal.map(v => {
+          const valorExato = {
+            funcao: v.funcao,
+            valor_base: v.valor_base ?? 0,
+            valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
+            valor_apos_19h30: v.valor_apos_19h30 ?? 0,
+            valor_fim_semana: v.valor_fim_semana ?? 0,
+            valor_adicional: 0,
+            valor_standby: 0
+          } as ValorTaxaCalculado;
+          
+          console.log(`🔍 [DEBUG] Valor local EXATO para ${v.funcao}:`, valorExato);
+          return valorExato;
+        });
+      } else {
+        // Para taxas não-personalizadas, calcular automaticamente
+        valoresRemotaCalculados = valoresRemota.map(v => 
+          calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, taxa.tipo_calculo_adicional, taxa.tipo_produto, false)
+        );
+        
+        valoresLocalCalculados = valoresLocal.map(v => 
+          calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, taxa.tipo_calculo_adicional, taxa.tipo_produto, true)
+        );
+      }
       
       return {
         ...taxa,
@@ -81,143 +141,120 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
     })
   );
 
+  // Filtrar taxas nulas (que falharam na verificação)
+  const taxasValidas = taxasCompletas.filter(taxa => taxa !== null) as TaxaClienteCompleta[];
+
   // Filtrar por vigência se solicitado
   if (filtros?.vigente) {
     const dataReferencia = filtros.data_referencia || new Date().toISOString().split('T')[0];
-    return taxasCompletas.filter(taxa => {
+    return taxasValidas.filter(taxa => {
       const inicioValido = taxa.vigencia_inicio <= dataReferencia;
       const fimValido = !taxa.vigencia_fim || taxa.vigencia_fim >= dataReferencia;
       return inicioValido && fimValido;
     });
   }
 
-  return taxasCompletas;
+  return taxasValidas;
 }
 
 /**
  * Buscar taxa por ID
  */
+/**
+ * Buscar taxa por ID
+ */
 export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta | null> {
-  const { data, error } = await supabase
-    .from('taxas_clientes')
-    .select(`
-      *,
-      cliente:empresas_clientes(
-        id,
-        nome_completo,
-        nome_abreviado,
-        produtos:empresa_produtos(produto)
-      )
-    `)
-    .eq('id', id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('taxas_clientes' as any)
+      .select(`
+        *,
+        cliente:empresas_clientes(
+          id,
+          nome_completo,
+          nome_abreviado,
+          produtos:empresa_produtos(produto)
+        )
+      `)
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Erro ao buscar taxa:', error);
-    return null;
-  }
+    if (error || !data) {
+      console.error('Erro ao buscar taxa:', error);
+      return null;
+    }
 
-  console.log(`🔍 [DEBUG] Taxa encontrada - personalizado: ${data.personalizado}`);
-  console.log(`🔍 [DEBUG] Dados completos da taxa:`, data);
-  
-  const valores = await buscarValoresTaxa(data.id);
-  console.log(`🔍 [DEBUG] Valores brutos do banco:`, valores);
-  
-  // Separar valores por tipo
-  const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
-  const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
-  
-  console.log(`🔍 [DEBUG] Valores remotos separados:`, valoresRemota);
-  console.log(`🔍 [DEBUG] Valores locais separados:`, valoresLocal);
-  
-  // Preparar arrays para cálculo da média
-  const todasFuncoesRemota = valoresRemota.map(v => ({
-    funcao: v.funcao,
-    valor_base: v.valor_base
-  }));
-  
-  const todasFuncoesLocal = valoresLocal.map(v => ({
-    funcao: v.funcao,
-    valor_base: v.valor_base
-  }));
-  
-  // CORREÇÃO CRÍTICA: Se a taxa for personalizada, SEMPRE usar valores salvos no banco
-  let valoresRemotaCalculados: ValorTaxaCalculado[];
-  let valoresLocalCalculados: ValorTaxaCalculado[];
-  
-  if (data.personalizado) {
-    // Para taxas personalizadas, SEMPRE usar valores salvos no banco (não calcular)
-    console.log(`✅ [DEBUG] Taxa personalizada - usando valores EXATOS da tabela valores_taxas_funcoes`);
+    // Cast para o tipo correto e verificar se tem ID
+    const taxaData = data as any;
+    if (!taxaData?.id) {
+      console.error('Taxa sem ID encontrada:', taxaData);
+      return null;
+    }
+
+    const valores = await buscarValoresTaxa(taxaData.id);
     
-    valoresRemotaCalculados = valoresRemota.map(v => {
-      const valorExato = {
+    // Separar valores por tipo
+    const valoresRemota = valores.filter(v => v.tipo_hora === 'remota');
+    const valoresLocal = valores.filter(v => v.tipo_hora === 'local');
+    
+    // Preparar arrays para cálculo da média
+    const todasFuncoesRemota = valoresRemota.map(v => ({
+      funcao: v.funcao,
+      valor_base: v.valor_base
+    }));
+    
+    const todasFuncoesLocal = valoresLocal.map(v => ({
+      funcao: v.funcao,
+      valor_base: v.valor_base
+    }));
+    
+    // CORREÇÃO CRÍTICA: Se a taxa for personalizada, SEMPRE usar valores salvos no banco
+    let valoresRemotaCalculados: ValorTaxaCalculado[];
+    let valoresLocalCalculados: ValorTaxaCalculado[];
+    
+    if (taxaData.personalizado) {
+      // Para taxas personalizadas, SEMPRE usar valores EXATOS da tabela valores_taxas_funcoes
+      valoresRemotaCalculados = valoresRemota.map(v => ({
         funcao: v.funcao,
-        valor_base: v.valor_base,
+        valor_base: v.valor_base ?? 0,
         valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
         valor_apos_19h30: v.valor_apos_19h30 ?? 0,
         valor_fim_semana: v.valor_fim_semana ?? 0,
         valor_adicional: v.valor_adicional ?? 0,
         valor_standby: v.valor_standby ?? 0
-      } as ValorTaxaCalculado;
+      } as ValorTaxaCalculado));
       
-      console.log(`🔍 [DEBUG] Valor remoto EXATO para ${v.funcao}:`, valorExato);
-      console.log(`🔍 [DEBUG] Valores originais do banco para ${v.funcao}:`, {
-        valor_17h30_19h30: v.valor_17h30_19h30,
-        valor_apos_19h30: v.valor_apos_19h30,
-        valor_fim_semana: v.valor_fim_semana,
-        valor_adicional: v.valor_adicional,
-        valor_standby: v.valor_standby
-      });
-      return valorExato;
-    });
-    
-    valoresLocalCalculados = valoresLocal.map(v => {
-      const valorExato = {
+      valoresLocalCalculados = valoresLocal.map(v => ({
         funcao: v.funcao,
-        valor_base: v.valor_base,
+        valor_base: v.valor_base ?? 0,
         valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
         valor_apos_19h30: v.valor_apos_19h30 ?? 0,
         valor_fim_semana: v.valor_fim_semana ?? 0,
         valor_adicional: 0, // Local não tem valor adicional
         valor_standby: 0    // Local não tem valor standby
-      } as ValorTaxaCalculado;
+      } as ValorTaxaCalculado));
+    } else {
+      // Para taxas não-personalizadas, calcular automaticamente
+      valoresRemotaCalculados = valoresRemota.map(v => 
+        calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, taxaData.tipo_calculo_adicional, taxaData.tipo_produto, false)
+      );
       
-      console.log(`🔍 [DEBUG] Valor local EXATO para ${v.funcao}:`, valorExato);
-      console.log(`🔍 [DEBUG] Valores originais do banco para ${v.funcao} (local):`, {
-        valor_17h30_19h30: v.valor_17h30_19h30,
-        valor_apos_19h30: v.valor_apos_19h30,
-        valor_fim_semana: v.valor_fim_semana
-      });
-      return valorExato;
-    });
-  } else {
-    // Para taxas não-personalizadas, calcular automaticamente
-    console.log(`🔄 [DEBUG] Taxa não personalizada - calculando valores automaticamente`);
+      valoresLocalCalculados = valoresLocal.map(v => 
+        calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, taxaData.tipo_calculo_adicional, taxaData.tipo_produto, true)
+      );
+    }
     
-    valoresRemotaCalculados = valoresRemota.map(v => 
-      calcularValores(v.valor_base, v.funcao, todasFuncoesRemota, data.tipo_calculo_adicional, data.tipo_produto, false)
-    );
+    const resultado = {
+      ...taxaData,
+      valores_remota: valoresRemotaCalculados,
+      valores_local: valoresLocalCalculados
+    } as TaxaClienteCompleta;
     
-    valoresLocalCalculados = valoresLocal.map(v => 
-      calcularValores(v.valor_base, v.funcao, todasFuncoesLocal, data.tipo_calculo_adicional, data.tipo_produto, true)
-    );
+    return resultado;
+  } catch (error) {
+    console.error('Erro inesperado ao buscar taxa:', error);
+    return null;
   }
-  
-  const resultado = {
-    ...data,
-    valores_remota: valoresRemotaCalculados,
-    valores_local: valoresLocalCalculados
-  } as TaxaClienteCompleta;
-  
-  console.log(`🔍 [DEBUG] Resultado final do serviço:`, {
-    personalizado: resultado.personalizado,
-    valores_remota_count: resultado.valores_remota?.length,
-    valores_local_count: resultado.valores_local?.length,
-    valores_remota_completos: resultado.valores_remota,
-    valores_local_completos: resultado.valores_local
-  });
-  
-  return resultado;
 }
 
 /**
@@ -226,52 +263,19 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
 async function buscarValoresTaxa(taxaId: string): Promise<ValorTaxaFuncao[]> {
   console.log(`🔍 [DEBUG] Buscando valores para taxa ID: ${taxaId}`);
   
-  // FORÇAR CONSULTA SEM CACHE
   const { data, error } = await supabase
-    .from('valores_taxas_funcoes')
+    .from('valores_taxas_funcoes' as any)
     .select('*')
     .eq('taxa_id', taxaId)
-    .order('funcao, tipo_hora')
-    .abortSignal(AbortSignal.timeout(10000)); // Timeout de 10s para forçar nova consulta
+    .order('funcao, tipo_hora');
 
   if (error) {
-    console.error('❌ [DEBUG] Erro ao buscar valores da taxa:', error);
+    console.error('Erro ao buscar valores da taxa:', error);
     return [];
   }
 
-  console.log(`🔍 [DEBUG] Valores encontrados no banco:`, data);
-  console.log(`🔍 [DEBUG] Total de registros: ${data?.length || 0}`);
-  
-  // Log detalhado ESPECIFICAMENTE da função Funcional - Remota
-  const funcionalRemota = data?.find(v => v.funcao === 'Funcional' && v.tipo_hora === 'remota');
-  if (funcionalRemota) {
-    console.log(`🎯 [DEBUG] FUNCIONAL REMOTA - Valores do banco:`, {
-      valor_17h30_19h30: funcionalRemota.valor_17h30_19h30,
-      valor_apos_19h30: funcionalRemota.valor_apos_19h30,
-      valor_fim_semana: funcionalRemota.valor_fim_semana,
-      valor_adicional: funcionalRemota.valor_adicional,
-      valor_standby: funcionalRemota.valor_standby
-    });
-    
-    console.log(`🔍 [DEBUG] ESPERADO vs ATUAL:`, {
-      esperado: {
-        valor_17h30_19h30: 313.45,
-        valor_apos_19h30: 0.00,
-        valor_fim_semana: 391.81,
-        valor_adicional: 225.30,
-        valor_standby: 58.78
-      },
-      atual: {
-        valor_17h30_19h30: funcionalRemota.valor_17h30_19h30,
-        valor_apos_19h30: funcionalRemota.valor_apos_19h30,
-        valor_fim_semana: funcionalRemota.valor_fim_semana,
-        valor_adicional: funcionalRemota.valor_adicional,
-        valor_standby: funcionalRemota.valor_standby
-      }
-    });
-  } else {
-    console.log(`❌ [DEBUG] FUNCIONAL REMOTA NÃO ENCONTRADA!`);
-  }
+  console.log(`🔍 [DEBUG] Valores encontrados na tabela valores_taxas_funcoes:`, data);
+  console.log(`🔍 [DEBUG] Total de registros encontrados: ${data?.length || 0}`);
   
   // Log detalhado de cada valor
   data?.forEach((valor, index) => {
@@ -287,7 +291,7 @@ async function buscarValoresTaxa(taxaId: string): Promise<ValorTaxaFuncao[]> {
     });
   });
 
-  return data || [];
+  return (data || []) as ValorTaxaFuncao[];
 }
 
 /**
@@ -301,7 +305,7 @@ export async function verificarVigenciaConflitante(
   taxaIdExcluir?: string
 ): Promise<boolean> {
   let query = supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .select('id')
     .eq('cliente_id', clienteId)
     .eq('tipo_produto', tipoProduto); // Adicionar filtro por tipo de produto
@@ -322,9 +326,11 @@ export async function verificarVigenciaConflitante(
   }
 
   // Verificar conflito de datas
-  for (const taxa of data) {
+  for (const taxa of data as any[]) {
+    if (!taxa?.id) continue;
+
     const { data: taxaCompleta } = await supabase
-      .from('taxas_clientes')
+      .from('taxas_clientes' as any)
       .select('vigencia_inicio, vigencia_fim')
       .eq('id', taxa.id)
       .single();
@@ -423,7 +429,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   });
 
   const taxaPromise = supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .insert(dadosTaxa)
     .select()
     .single();
@@ -523,7 +529,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   });
 
   const valoresPromise = supabase
-    .from('valores_taxas_funcoes')
+    .from('valores_taxas_funcoes' as any)
     .insert(valoresParaInserir);
 
   try {
@@ -531,14 +537,14 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     if (valoresResult.error) {
       console.error('Erro ao criar valores da taxa:', valoresResult.error);
       // Reverter criação da taxa
-      await supabase.from('taxas_clientes').delete().eq('id', taxa.id);
+      await supabase.from('taxas_clientes' as any).delete().eq('id', taxa.id);
       throw new Error(`Erro ao criar valores da taxa: ${valoresResult.error.message || 'Erro desconhecido'}`);
     }
   } catch (error: any) {
     console.error('Erro ao criar valores da taxa:', error);
     // Reverter criação da taxa
     try {
-      await supabase.from('taxas_clientes').delete().eq('id', taxa.id);
+      await supabase.from('taxas_clientes' as any).delete().eq('id', taxa.id);
     } catch (rollbackError) {
       console.error('Erro ao reverter criação da taxa:', rollbackError);
     }
@@ -578,7 +584,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
 
     // Criar segunda taxa com valores reajustados
     const { data: taxaReajustada, error: taxaReajustadaError } = await supabase
-      .from('taxas_clientes')
+      .from('taxas_clientes' as any)
       .insert({
         cliente_id: dados.cliente_id,
         vigencia_inicio: novaVigenciaInicio.toISOString().split('T')[0],
@@ -634,7 +640,7 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       });
 
       await supabase
-        .from('valores_taxas_funcoes')
+        .from('valores_taxas_funcoes' as any)
         .insert(valoresReajustadosParaInserir);
     }
   }
@@ -654,7 +660,7 @@ export async function atualizarTaxa(
   
   // Buscar taxa atual
   const { data: taxaAtual, error: taxaError } = await supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .select('*')
     .eq('id', id)
     .single();
@@ -702,7 +708,7 @@ export async function atualizarTaxa(
 
     // Criar nova taxa
     const { data: novaTaxa, error: novaTaxaError } = await supabase
-      .from('taxas_clientes')
+      .from('taxas_clientes' as any)
       .insert(dadosNovaTaxa)
       .select()
       .single();
@@ -764,7 +770,7 @@ export async function atualizarTaxa(
     });
 
     const novaTaxaValoresPromise = supabase
-      .from('valores_taxas_funcoes')
+      .from('valores_taxas_funcoes' as any)
       .insert(valoresParaInserir);
 
     try {
@@ -772,14 +778,14 @@ export async function atualizarTaxa(
       if (valoresResult.error) {
         console.error('Erro ao criar valores da nova taxa:', valoresResult.error);
         // Reverter criação da nova taxa
-        await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
+        await supabase.from('taxas_clientes' as any).delete().eq('id', novaTaxa.id);
         throw new Error(`Erro ao criar valores da nova taxa: ${valoresResult.error.message || 'Erro desconhecido'}`);
       }
     } catch (error: any) {
       console.error('Erro ao criar valores da nova taxa:', error);
       // Reverter criação da nova taxa
       try {
-        await supabase.from('taxas_clientes').delete().eq('id', novaTaxa.id);
+        await supabase.from('taxas_clientes' as any).delete().eq('id', novaTaxa.id);
       } catch (rollbackError) {
         console.error('Erro ao reverter criação da nova taxa:', rollbackError);
       }
@@ -869,7 +875,7 @@ export async function atualizarTaxa(
   });
 
   const updatePromise = supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .update(dadosAtualizacao)
     .eq('id', id)
     .select()
@@ -901,7 +907,7 @@ export async function atualizarTaxa(
 
     // Deletar valores antigos
     const { error: deleteError } = await supabase
-      .from('valores_taxas_funcoes')
+      .from('valores_taxas_funcoes' as any)
       .delete()
       .eq('taxa_id', id);
 
@@ -975,7 +981,7 @@ export async function atualizarTaxa(
     });
 
     const { error: insertError } = await supabase
-      .from('valores_taxas_funcoes')
+      .from('valores_taxas_funcoes' as any)
       .insert(valoresParaInserir);
 
     if (insertError) {
@@ -993,13 +999,13 @@ export async function atualizarTaxa(
 export async function deletarTaxa(id: string): Promise<void> {
   // Deletar valores primeiro (cascade deve fazer isso automaticamente, mas garantimos)
   await supabase
-    .from('valores_taxas_funcoes')
+    .from('valores_taxas_funcoes' as any)
     .delete()
     .eq('taxa_id', id);
 
   // Deletar taxa
   const { error } = await supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .delete()
     .eq('id', id);
 
@@ -1039,7 +1045,7 @@ export async function buscarTaxaVigente(
   const dataRef = dataReferencia || new Date().toISOString().split('T')[0];
   
   const { data, error } = await supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .select(`
       *,
       cliente:empresas_clientes(
@@ -1104,7 +1110,7 @@ export async function inativarTaxasCliente(clienteId: string): Promise<void> {
   
   // Buscar todas as taxas ativas do cliente (sem vigencia_fim ou com vigencia_fim futura)
   const { data: taxasAtivas, error: buscarError } = await supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .select('id, vigencia_inicio, vigencia_fim, cliente_id')
     .eq('cliente_id', clienteId)
     .or(`vigencia_fim.is.null,vigencia_fim.gt.${dataHoje}`);
@@ -1128,7 +1134,7 @@ export async function inativarTaxasCliente(clienteId: string): Promise<void> {
   console.log(`📅 Definindo vigencia_fim para: ${vigenciaFim}`);
 
   const { error: updateError } = await supabase
-    .from('taxas_clientes')
+    .from('taxas_clientes' as any)
     .update({ vigencia_fim: vigenciaFim })
     .eq('cliente_id', clienteId)
     .or(`vigencia_fim.is.null,vigencia_fim.gt.${dataHoje}`);

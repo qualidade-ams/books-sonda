@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -23,11 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { TaxaClienteCompleta, TaxaFormData, TipoProduto } from '@/types/taxasClientes';
@@ -52,12 +45,10 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   
   // Função para formatar valor como moeda
   const formatarMoeda = (valor: number): string => {
-    console.log(`💰 [FORMATAR] Formatando valor:`, valor, 'tipo:', typeof valor);
     const resultado = valor.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
-    console.log(`💰 [FORMATAR] Resultado:`, resultado);
     return resultado;
   };
 
@@ -149,11 +140,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   // Preencher formulário ao editar
   useEffect(() => {
     if (taxa && empresas.length > 0) {
-      console.log('🔄 [DEBUG] Preenchendo formulário com taxa:', taxa);
-      console.log('🔄 [DEBUG] Taxa personalizada:', taxa.personalizado);
-      console.log('🔄 [DEBUG] Valores remota da taxa:', taxa.valores_remota);
-      console.log('🔄 [DEBUG] Valores local da taxa:', taxa.valores_local);
-      
       const empresa = empresas.find(e => e.id === taxa.cliente_id);
       
       if (empresa) {
@@ -164,6 +150,10 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
         }
         setClienteSelecionado(empresa.nome_abreviado);
         
+        // CRÍTICO: Definir personalizado ANTES de qualquer cálculo
+        const isPersonalizado = taxa.personalizado || false;
+        setPersonalizado(isPersonalizado);
+        
         // Aguardar um tick para garantir que os estados foram atualizados
         setTimeout(() => {
           const valoresIniciais = {
@@ -172,7 +162,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
             vigencia_fim: taxa.vigencia_fim ? new Date(taxa.vigencia_fim + 'T00:00:00') : undefined,
             tipo_produto: taxa.tipo_produto,
             tipo_calculo_adicional: taxa.tipo_calculo_adicional || 'media',
-            personalizado: taxa.personalizado || false,
+            personalizado: isPersonalizado,
             taxa_reajuste: undefined,
             valores_remota: {
               funcional: taxa.valores_remota?.find(v => v.funcao === 'Funcional')?.valor_base || 0,
@@ -206,22 +196,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
             ticket_excedente: taxa.ticket_excedente,
           };
           
-          console.log('🔄 [DEBUG] Valores iniciais mapeados:', valoresIniciais);
-          console.log('🔄 [DEBUG] Mapeamento valores remota:', {
-            funcional: taxa.valores_remota?.find(v => v.funcao === 'Funcional'),
-            tecnico: taxa.valores_remota?.find(v => v.funcao === 'Técnico / ABAP' || v.funcao === 'Técnico (Instalação / Atualização)'),
-            abap: taxa.valores_remota?.find(v => v.funcao === 'ABAP - PL/SQL'),
-            dba: taxa.valores_remota?.find(v => v.funcao === 'DBA / Basis' || v.funcao === 'DBA'),
-            gestor: taxa.valores_remota?.find(v => v.funcao === 'Gestor')
-          });
-          console.log('🔄 [DEBUG] Mapeamento valores local:', {
-            funcional: taxa.valores_local?.find(v => v.funcao === 'Funcional'),
-            tecnico: taxa.valores_local?.find(v => v.funcao === 'Técnico / ABAP' || v.funcao === 'Técnico (Instalação / Atualização)'),
-            abap: taxa.valores_local?.find(v => v.funcao === 'ABAP - PL/SQL'),
-            dba: taxa.valores_local?.find(v => v.funcao === 'DBA / Basis' || v.funcao === 'DBA'),
-            gestor: taxa.valores_local?.find(v => v.funcao === 'Gestor')
-          });
-          
           // Salvar valores originais para referência
           setValoresOriginais({
             valores_remota: { ...valoresIniciais.valores_remota },
@@ -234,7 +208,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
           
           setTipoProdutoSelecionado(taxa.tipo_produto);
           setTipoCalculoAdicional(taxa.tipo_calculo_adicional || 'media');
-          setPersonalizado(taxa.personalizado || false);
         }, 0);
       }
     }
@@ -296,23 +269,16 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   const abapRemoto = form.watch('valores_remota.abap');
   const dbaRemoto = form.watch('valores_remota.dba');
   const gestorRemoto = form.watch('valores_remota.gestor');
-  
-  // Debug: Log dos valores observados
-  console.log('🔍 [DEBUG] Valores observados:', {
-    funcionalRemoto,
-    tecnicoRemoto,
-    abapRemoto,
-    dbaRemoto,
-    gestorRemoto,
-    personalizado,
-    valoresRemota
-  });
 
   // NOVO: Calcular automaticamente valores locais quando valores remotos mudarem (10% a mais)
   useEffect(() => {
-    // BLOQUEIO TOTAL: Se for personalizado, NÃO calcular NADA
+    // BLOQUEIO CRÍTICO: Se for personalizado, NÃO calcular NADA
     if (personalizado) {
-      console.log('🚫 [CALC BLOCK] Taxa personalizada - bloqueando cálculo automático de valores locais');
+      return;
+    }
+    
+    // BLOQUEIO ADICIONAL: Se estamos editando uma taxa existente, não recalcular automaticamente
+    if (taxa) {
       return;
     }
     
@@ -323,20 +289,23 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                         (valoresRemota.abap && valoresRemota.abap > 0);
       
       if (temValores) {
-        console.log('🔄 [CALC AUTO] Calculando valores locais automaticamente (taxa não-personalizada)');
         const valoresLocaisCalculados = calcularValoresLocaisAutomaticos(valoresRemota);
         
         // Atualizar valores locais no formulário
         form.setValue('valores_local', valoresLocaisCalculados);
       }
     }
-  }, [valoresRemota, personalizado, form]);
+  }, [valoresRemota, personalizado, taxa, form]);
 
   // ADICIONAL: Monitorar campos específicos para garantir cálculo em tempo real
   useEffect(() => {
-    // BLOQUEIO TOTAL: Se for personalizado, NÃO calcular NADA
+    // BLOQUEIO CRÍTICO: Se for personalizado, NÃO calcular NADA
     if (personalizado) {
-      console.log('🚫 [CALC BLOCK] Taxa personalizada - bloqueando cálculo por campos específicos');
+      return;
+    }
+    
+    // BLOQUEIO ADICIONAL: Se estamos editando uma taxa existente, não recalcular automaticamente
+    if (taxa) {
       return;
     }
     
@@ -355,23 +324,20 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                         valoresAtuais.abap > 0;
       
       if (temValores) {
-        console.log('🔄 [CALC AUTO] Recalculando valores locais por mudança de campo (taxa não-personalizada)');
         const valoresLocaisCalculados = calcularValoresLocaisAutomaticos(valoresAtuais);
         form.setValue('valores_local', valoresLocaisCalculados);
       }
     }
-  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, personalizado, form]);
+  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, personalizado, taxa, form]);
 
   // Recalcular valores e vigências quando taxa de reajuste mudar (apenas em edição e não personalizado)
   useEffect(() => {
-    // BLOQUEIO TOTAL: Se for personalizado, NÃO calcular NADA
+    // BLOQUEIO CRÍTICO: Se for personalizado, NÃO calcular NADA
     if (personalizado) {
-      console.log('🚫 [CALC BLOCK] Taxa personalizada - bloqueando cálculo de reajuste');
       return;
     }
     
     if (taxa && valoresOriginais && taxaReajuste && taxaReajuste > 0) {
-      console.log('🔄 [CALC AUTO] Aplicando reajuste (taxa não-personalizada)');
       const percentual = taxaReajuste / 100;
       
       // Recalcular valores remotos
@@ -404,7 +370,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       form.setValue('valores_remota', novosValoresRemota);
       form.setValue('valores_local', novosValoresLocal);
     } else if (taxa && valoresOriginais && (!taxaReajuste || taxaReajuste === 0)) {
-      console.log('🔄 [CALC AUTO] Restaurando valores originais (taxa não-personalizada)');
       // Se taxa de reajuste for zerada, restaurar valores originais (apenas se não for personalizado)
       form.setValue('valores_remota', valoresOriginais.valores_remota);
       form.setValue('valores_local', valoresOriginais.valores_local);
@@ -417,123 +382,125 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
     const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado || 'GALLERY');
     const resultado: any = {};
 
-    console.log(`🔍 [DEBUG CALC] Iniciando calcularValoresExibicao - tipo: ${tipo}, personalizado: ${personalizado}, taxa existe: ${!!taxa}`);
-    console.log(`🔍 [DEBUG CALC] Valores recebidos:`, valores);
-    console.log(`🔍 [DEBUG CALC] Funções para produto:`, funcoes);
-    
-    if (taxa) {
-      console.log(`🔍 [DEBUG CALC] Taxa dados:`, {
-        id: taxa.id,
-        personalizado: taxa.personalizado,
-        valores_remota_count: taxa.valores_remota?.length,
-        valores_local_count: taxa.valores_local?.length,
-        valores_remota_sample: taxa.valores_remota?.[0],
-        valores_local_sample: taxa.valores_local?.[0]
-      });
-    }
-
     funcoes.forEach(funcao => {
-      console.log(`🔍 [DEBUG CALC] Processando função: ${funcao}`);
-      
-      // PRIORIDADE ABSOLUTA: Se for taxa personalizada, SEMPRE usar valores salvos no banco
-      if (personalizado && taxa) {
-        const valoresSalvos = tipo === 'remota' ? taxa.valores_remota : taxa.valores_local;
-        console.log(`🔍 [DEBUG CALC] Valores salvos para ${tipo}:`, valoresSalvos);
-        
-        const valorSalvo = valoresSalvos?.find(v => v.funcao === funcao);
-        
-        console.log(`🔍 [DEBUG CALC] Função ${funcao} (${tipo}) - valorSalvo:`, valorSalvo);
-        
-        if (valorSalvo) {
-          // Para taxas personalizadas, usar EXATAMENTE os valores do banco
-          const valoresSalvosNoBanco = {
-            funcao: valorSalvo.funcao,
-            valor_base: valorSalvo.valor_base,
-            valor_17h30_19h30: valorSalvo.valor_17h30_19h30 ?? 0,
-            valor_apos_19h30: valorSalvo.valor_apos_19h30 ?? 0,
-            valor_fim_semana: valorSalvo.valor_fim_semana ?? 0,
-            valor_adicional: tipo === 'remota' ? (valorSalvo.valor_adicional ?? 0) : 0,
-            valor_standby: tipo === 'remota' ? (valorSalvo.valor_standby ?? 0) : 0
-          };
+      // REGRA ÚNICA: Se personalizado está marcado, NÃO calcular automaticamente (nova taxa OU edição)
+      if (personalizado) {
+        // Se estiver editando uma taxa personalizada, usar EXATAMENTE os valores do banco
+        if (taxa) {
+          const valoresSalvos = tipo === 'remota' ? taxa.valores_remota : taxa.valores_local;
+          const valorSalvo = valoresSalvos?.find(v => v.funcao === funcao);
           
-          console.log(`✅ [DEBUG CALC] Usando valores EXATOS do banco para ${funcao} (${tipo}):`, valoresSalvosNoBanco);
-          console.log(`🔍 [DEBUG CALC] Valores originais do banco:`, {
-            valor_17h30_19h30: valorSalvo.valor_17h30_19h30,
-            valor_apos_19h30: valorSalvo.valor_apos_19h30,
-            valor_fim_semana: valorSalvo.valor_fim_semana,
-            valor_adicional: valorSalvo.valor_adicional,
-            valor_standby: valorSalvo.valor_standby
-          });
-          resultado[funcao] = valoresSalvosNoBanco;
-          console.log(`🚫 [DEBUG CALC] PULANDO cálculo automático para ${funcao} (personalizado)`);
-          return; // IMPORTANTE: Este return só pula para próxima iteração do forEach, NÃO sai da função!
+          if (valorSalvo) {
+            // Usar EXATAMENTE os valores salvos no banco, sem nenhuma alteração
+            resultado[funcao] = {
+              funcao: valorSalvo.funcao,
+              valor_base: valorSalvo.valor_base ?? 0,
+              valor_17h30_19h30: valorSalvo.valor_17h30_19h30 ?? 0,
+              valor_apos_19h30: valorSalvo.valor_apos_19h30 ?? 0,
+              valor_fim_semana: valorSalvo.valor_fim_semana ?? 0,
+              valor_adicional: tipo === 'remota' ? (valorSalvo.valor_adicional ?? 0) : 0,
+              valor_standby: tipo === 'remota' ? (valorSalvo.valor_standby ?? 0) : 0
+            };
+          } else {
+            // Se não tem valor salvo no banco, usar zeros
+            resultado[funcao] = {
+              funcao: funcao,
+              valor_base: 0,
+              valor_17h30_19h30: 0,
+              valor_apos_19h30: 0,
+              valor_fim_semana: 0,
+              valor_adicional: 0,
+              valor_standby: 0
+            };
+          }
         } else {
-          console.log(`❌ [DEBUG CALC] ERRO: Valor salvo não encontrado para ${funcao} (${tipo})`);
-          // Se não encontrar valor salvo, criar um valor zerado para evitar erro
+          // Para nova taxa personalizada, usar apenas o valor base digitado, resto em zero
+          let valorBase = 0;
+          
+          if (funcao === 'Funcional') {
+            valorBase = funcionalRemoto || valores.funcional || 0;
+          } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+            valorBase = tecnicoRemoto || valores.tecnico || 0;
+          } else if (funcao === 'ABAP - PL/SQL') {
+            valorBase = abapRemoto || valores.abap || 0;
+          } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+            valorBase = dbaRemoto || valores.dba || 0;
+          } else if (funcao === 'Gestor') {
+            valorBase = gestorRemoto || valores.gestor || 0;
+          }
+          
           resultado[funcao] = {
             funcao: funcao,
-            valor_base: 0,
-            valor_17h30_19h30: 0,
-            valor_apos_19h30: 0,
-            valor_fim_semana: 0,
-            valor_adicional: 0,
-            valor_standby: 0
+            valor_base: valorBase,
+            valor_17h30_19h30: 0, // NÃO calcular automaticamente
+            valor_apos_19h30: 0,  // NÃO calcular automaticamente
+            valor_fim_semana: 0,  // NÃO calcular automaticamente
+            valor_adicional: 0,   // NÃO calcular automaticamente
+            valor_standby: 0      // NÃO calcular automaticamente
           };
-          return;
         }
-      }
-
-      // ATENÇÃO: Se chegou aqui para taxa personalizada, há um erro!
-      if (personalizado && taxa) {
-        console.log(`🚨 [DEBUG CALC] ERRO CRÍTICO: Taxa personalizada chegou no cálculo automático para ${funcao} (${tipo})`);
-      }
-
-      // Cálculo automático APENAS para taxas não-personalizadas
-      if (!personalizado) {
-        console.log(`🔄 [DEBUG CALC] Calculando automaticamente para ${funcao} (${tipo})`);
-        let valorBase = 0;
         
-        if (funcao === 'Funcional') {
-          valorBase = valores.funcional || 0;
-        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
-          valorBase = valores.tecnico || 0;
-        } else if (funcao === 'ABAP - PL/SQL') {
-          valorBase = valores.abap || 0;
-        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
-          valorBase = valores.dba || 0;
-        } else if (funcao === 'Gestor') {
-          valorBase = valores.gestor || 0;
-        }
-
-        // Preparar array com todas as funções para cálculo da média
-        const todasFuncoes = funcoes.map(f => {
-          let vb = 0;
-          if (f === 'Funcional') vb = valores.funcional || 0;
-          else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = valores.tecnico || 0;
-          else if (f === 'ABAP - PL/SQL') vb = valores.abap || 0;
-          else if (f === 'DBA / Basis' || f === 'DBA') vb = valores.dba || 0;
-          else if (f === 'Gestor') vb = valores.gestor || 0;
-          return { funcao: f, valor_base: vb };
-        });
-
-        // Usar parâmetro isLocal para aplicar 10% a mais nos valores locais
-        const isLocal = tipo === 'local';
-        resultado[funcao] = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado || 'GALLERY', isLocal);
-        console.log(`✅ [DEBUG CALC] Valor calculado para ${funcao} (${tipo}):`, resultado[funcao]);
-      } else {
-        console.log(`🚫 [DEBUG CALC] Pulando cálculo para taxa personalizada ${funcao} (${tipo})`);
+        return; // Pular para próxima função
       }
+
+      // LÓGICA NORMAL: Calcular automaticamente APENAS quando NÃO é personalizado (nova taxa OU edição)
+      
+      // Obter valor base atual do formulário (mais atualizado)
+      let valorBase = 0;
+      
+      if (funcao === 'Funcional') {
+        valorBase = funcionalRemoto || valores.funcional || 0;
+      } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+        valorBase = tecnicoRemoto || valores.tecnico || 0;
+      } else if (funcao === 'ABAP - PL/SQL') {
+        valorBase = abapRemoto || valores.abap || 0;
+      } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+        valorBase = dbaRemoto || valores.dba || 0;
+      } else if (funcao === 'Gestor') {
+        valorBase = gestorRemoto || valores.gestor || 0;
+      }
+
+      // Preparar array com todas as funções para cálculo da média (usando valores mais atuais)
+      const todasFuncoes = funcoes.map(f => {
+        let vb = 0;
+        if (f === 'Funcional') vb = funcionalRemoto || valores.funcional || 0;
+        else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = tecnicoRemoto || valores.tecnico || 0;
+        else if (f === 'ABAP - PL/SQL') vb = abapRemoto || valores.abap || 0;
+        else if (f === 'DBA / Basis' || f === 'DBA') vb = dbaRemoto || valores.dba || 0;
+        else if (f === 'Gestor') vb = gestorRemoto || valores.gestor || 0;
+        return { funcao: f, valor_base: vb };
+      });
+
+      // Usar parâmetro isLocal para aplicar 10% a mais nos valores locais
+      const isLocal = tipo === 'local';
+      
+      const valoresCalculados = calcularValores(valorBase, funcao, todasFuncoes, tipoCalculoAdicional, tipoProdutoSelecionado || 'GALLERY', isLocal);
+      
+      resultado[funcao] = valoresCalculados;
     });
 
-    console.log(`🔍 [DEBUG CALC] Resultado final calcularValoresExibicao (${tipo}):`, resultado);
     return resultado;
   };
+  const valoresCalculadosRemota = useMemo(() => {
+    const resultado = calcularValoresExibicao(valoresRemota, 'remota');
+    return resultado;
+  }, [valoresRemota, personalizado, taxa, tipoProdutoSelecionado, tipoCalculoAdicional, funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto]);
+  
+  const valoresCalculadosLocal = useMemo(() => {
+    return calcularValoresExibicao(valoresLocal, 'local');
+  }, [valoresLocal, personalizado, taxa, tipoProdutoSelecionado, tipoCalculoAdicional, funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto]);
 
-  const valoresCalculadosRemota = calcularValoresExibicao(valoresRemota, 'remota');
-  const valoresCalculadosLocal = calcularValoresExibicao(valoresLocal, 'local');
-
-  console.log(`🎯 [VALORES CALCULADOS] valoresCalculadosRemota:`, valoresCalculadosRemota);
-  console.log(`🎯 [VALORES CALCULADOS] valoresCalculadosLocal:`, valoresCalculadosLocal);
+  // Forçar recálculo quando valores base mudam (apenas para taxas não personalizadas)
+  useEffect(() => {
+    if (!personalizado) {
+      // Força uma atualização dos valores calculados quando qualquer valor base muda
+      const timeoutId = setTimeout(() => {
+        // Este timeout garante que o recálculo aconteça após a atualização do estado
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, personalizado]);
 
   const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado || 'GALLERY');
 
@@ -825,7 +792,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
               <tbody className="bg-white dark:bg-gray-800">
                 {funcoes.map((funcao, index) => {
                   const valores = valoresCalculadosRemota[funcao];
-                  console.log(`🎯 [RENDER MAP] Função: ${funcao}, valores:`, valores);
                   
                   const campoNome = funcao === 'Funcional' ? 'funcional' 
                     : (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') ? 'tecnico'
@@ -862,9 +828,8 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                                   delete newValues[fieldKey];
                                   setValoresEditando(newValues);
                                   
-                                  // BLOQUEIO: Só calcular valores locais se NÃO for personalizado
-                                  if (!personalizado) {
-                                    console.log('🔄 [ON BLUR] Recalculando valores locais (taxa não-personalizada)');
+                                  // BLOQUEIO CRÍTICO: Só calcular valores locais se NÃO for personalizado E não estiver editando taxa existente
+                                  if (!personalizado && !taxa) {
                                     setTimeout(() => {
                                       const valoresRemotosAtuais = form.getValues('valores_remota');
                                       if (valoresRemotosAtuais) {
@@ -872,8 +837,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                                         form.setValue('valores_local', valoresLocaisCalculados);
                                       }
                                     }, 100);
-                                  } else {
-                                    console.log('🚫 [ON BLUR] Taxa personalizada - bloqueando recálculo de valores locais');
                                   }
                                 }}
                                 className="text-right text-xs h-8 pr-3"
@@ -920,8 +883,6 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
                           />
                         ) : (
                           <div className="text-center text-xs text-gray-700 dark:text-gray-300">
-                            {console.log(`🔍 [RENDER REMOTA] ${funcao} - valor_17h30_19h30:`, valores?.valor_17h30_19h30, 'valores completos:', valores)}
-                            {console.log(`🔍 [RENDER REMOTA] ${funcao} - formatarMoeda(${valores?.valor_17h30_19h30}):`, formatarMoeda(valores?.valor_17h30_19h30 || 0))}
                             R$ {formatarMoeda(valores?.valor_17h30_19h30 || 0)}
                           </div>
                         )}
