@@ -16,7 +16,9 @@ import {
   ChevronRight,
   Check,
   CheckSquare,
-  Square
+  Square,
+  Search,
+  Eye
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -124,9 +126,19 @@ export default function FaturarRequerimentos() {
   const [filtroModulo, setFiltroModulo] = useState<ModuloType[]>([]);
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
 
+  // Estados para filtros no estilo da tela Lançar Requerimentos
+  const [busca, setBusca] = useState('');
+  const [filtroModuloSelect, setFiltroModuloSelect] = useState<ModuloType[]>([]);
+  const [filtroTipoSelect, setFiltroTipoSelect] = useState<TipoCobrancaType[]>([]);
+  const [filtroPeriodo, setFiltroPeriodo] = useState('all');
+
   // Estados para rejeição
   const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
   const [confirmacaoRejeicaoAberta, setConfirmacaoRejeicaoAberta] = useState(false);
+
+  // Estados para visualização de detalhes
+  const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
+  const [requerimentoParaVisualizar, setRequerimentoParaVisualizar] = useState<Requerimento | null>(null);
 
   // Estados para controle de abas e seleção
   const [abaAtiva, setAbaAtiva] = useState<'para_faturar' | 'faturados'>('para_faturar');
@@ -160,18 +172,51 @@ export default function FaturarRequerimentos() {
     
     let filtrados = [...dadosFaturados];
     
-    // Filtrar por tipo de cobrança
-    if (filtroTipoHistorico.length > 0) {
-      filtrados = filtrados.filter(req => filtroTipoHistorico.includes(req.tipo_cobranca));
-    }
-    
-    // Filtrar por módulo
-    if (filtroModuloHistorico.length > 0) {
-      filtrados = filtrados.filter(req => filtroModuloHistorico.includes(req.modulo));
+    // Aplicar filtros dos novos campos (estilo Lançar Requerimentos)
+    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || (filtroPeriodo !== 'all' && filtroPeriodo !== 'all')) {
+      filtrados = filtrados.filter(req => {
+        // Filtro de busca (chamado, cliente, descrição)
+        if (busca.trim() !== '') {
+          const buscaLower = busca.toLowerCase();
+          const matchBusca =
+            req.chamado.toLowerCase().includes(buscaLower) ||
+            req.cliente_nome?.toLowerCase().includes(buscaLower) ||
+            req.descricao.toLowerCase().includes(buscaLower);
+          if (!matchBusca) return false;
+        }
+
+        // Filtro por tipo de cobrança
+        if (filtroTipoSelect.length > 0) {
+          if (!filtroTipoSelect.includes(req.tipo_cobranca)) return false;
+        }
+
+        // Filtro por módulo
+        if (filtroModuloSelect.length > 0) {
+          if (!filtroModuloSelect.includes(req.modulo)) return false;
+        }
+
+        // Filtro por período de cobrança
+        if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+          if (req.mes_cobranca !== filtroPeriodo) return false;
+        }
+
+        return true;
+      });
+    } else {
+      // Aplicar filtros antigos se os novos não estão sendo usados
+      // Filtrar por tipo de cobrança
+      if (filtroTipoHistorico.length > 0) {
+        filtrados = filtrados.filter(req => filtroTipoHistorico.includes(req.tipo_cobranca));
+      }
+      
+      // Filtrar por módulo
+      if (filtroModuloHistorico.length > 0) {
+        filtrados = filtrados.filter(req => filtroModuloHistorico.includes(req.modulo));
+      }
     }
     
     return filtrados;
-  }, [dadosFaturados, filtroTipoHistorico, filtroModuloHistorico]);
+  }, [dadosFaturados, filtroTipoHistorico, filtroModuloHistorico, busca, filtroTipoSelect, filtroModuloSelect, filtroPeriodo]);
 
   // Dados processados
   const requerimentosAgrupados = useMemo((): RequerimentosAgrupados => {
@@ -241,27 +286,169 @@ export default function FaturarRequerimentos() {
     };
   }, [dadosFaturamento, requerimentosAgrupados]);
 
+  // Calcular estatísticas filtradas baseadas nos filtros aplicados
+  const estatisticasPeriodoFiltradas = useMemo((): EstatisticasPeriodo => {
+    // Função auxiliar para verificar se há filtros ativos
+    const temFiltroAtivo = () => {
+      return busca.trim() !== '' || 
+             filtroTipoSelect.length > 0 || 
+             filtroModuloSelect.length > 0 || 
+             (filtroPeriodo !== 'all' && filtroPeriodo !== 'all');
+    };
+
+    // Se não há filtros ativos, retorna as estatísticas normais
+    if (!temFiltroAtivo()) {
+      return estatisticasPeriodo;
+    }
+
+    // Calcular estatísticas dos dados filtrados
+    const requerimentosFiltrados = dadosFaturamento?.requerimentos?.filter(req => {
+      // Debug: Log do requerimento sendo processado
+      console.log('🔍 Processando requerimento:', {
+        chamado: req.chamado,
+        modulo: req.modulo,
+        tipo_cobranca: req.tipo_cobranca,
+        valor_total_geral: req.valor_total_geral,
+        horas_total: req.horas_total
+      });
+
+      // Filtro de busca (chamado, cliente, descrição)
+      if (busca.trim() !== '') {
+        const buscaLower = busca.toLowerCase();
+        const matchBusca =
+          req.chamado.toLowerCase().includes(buscaLower) ||
+          req.cliente_nome?.toLowerCase().includes(buscaLower) ||
+          req.descricao.toLowerCase().includes(buscaLower);
+        if (!matchBusca) {
+          console.log('❌ Rejeitado por busca:', req.chamado);
+          return false;
+        }
+      }
+
+      // Filtro por tipo de cobrança
+      if (filtroTipoSelect.length > 0) {
+        if (!filtroTipoSelect.includes(req.tipo_cobranca)) {
+          console.log('❌ Rejeitado por tipo de cobrança:', req.chamado, req.tipo_cobranca);
+          return false;
+        }
+      }
+
+      // Filtro por módulo (com suporte a case-insensitive)
+      if (filtroModuloSelect.length > 0) {
+        console.log('🔍 Verificando módulo:', {
+          requerimento: req.chamado,
+          moduloReq: req.modulo,
+          filtroModuloSelect,
+          includes: filtroModuloSelect.includes(req.modulo),
+          includesLowerCase: filtroModuloSelect.some(mod => mod.toLowerCase() === req.modulo?.toLowerCase())
+        });
+        
+        // Verificar tanto case-sensitive quanto case-insensitive
+        const moduloMatch = filtroModuloSelect.includes(req.modulo) || 
+                           filtroModuloSelect.some(mod => mod.toLowerCase() === req.modulo?.toLowerCase());
+        
+        if (!moduloMatch) {
+          console.log('❌ Rejeitado por módulo:', req.chamado, req.modulo);
+          return false;
+        }
+      }
+
+      // Filtro por período de cobrança
+      if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+        if (req.mes_cobranca !== filtroPeriodo) {
+          console.log('❌ Rejeitado por período:', req.chamado, req.mes_cobranca);
+          return false;
+        }
+      }
+
+      console.log('✅ Requerimento aceito:', req.chamado);
+      return true;
+    }) || [];
+
+    console.log('📊 Resultado da filtragem:', {
+      totalOriginal: dadosFaturamento?.requerimentos?.length || 0,
+      totalFiltrado: requerimentosFiltrados.length,
+      filtros: {
+        busca: busca.trim(),
+        filtroTipoSelect,
+        filtroModuloSelect,
+        filtroPeriodo
+      }
+    });
+
+    // Calcular estatísticas dos requerimentos filtrados
+    let totalHorasString = '0:00';
+    let valorTotalFaturavel = 0;
+    const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    const tiposUnicos = new Set<string>();
+
+    requerimentosFiltrados.forEach(req => {
+      if (req.horas_total) {
+        totalHorasString = somarHoras(totalHorasString, req.horas_total.toString());
+      }
+
+      // Somar valores dos tipos de cobrança monetários
+      if (tiposComValor.includes(req.tipo_cobranca) && req.valor_total_geral) {
+        valorTotalFaturavel += req.valor_total_geral;
+      }
+
+      // Contar tipos únicos
+      tiposUnicos.add(req.tipo_cobranca);
+    });
+
+    return {
+      totalRequerimentos: requerimentosFiltrados.length,
+      totalHoras: totalHorasString,
+      tiposAtivos: tiposUnicos.size,
+      valorTotalFaturavel
+    };
+  }, [estatisticasPeriodo, dadosFaturamento, busca, filtroTipoSelect, filtroModuloSelect, filtroPeriodo]);
+
+  // Função auxiliar para verificar se há filtros ativos (para uso nos componentes)
+  const temFiltrosAtivos = busca.trim() !== '' || 
+                          filtroTipoSelect.length > 0 || 
+                          filtroModuloSelect.length > 0 || 
+                          (filtroPeriodo !== 'all' && filtroPeriodo !== 'all');
+
   const gruposFiltrados = useMemo(() => {
     let grupos = Object.values(requerimentosAgrupados);
 
-    // Filtrar por tipo de cobrança
-    if (filtroTipo.length > 0) {
-      grupos = grupos.filter(grupo => filtroTipo.includes(grupo.tipo));
-    }
-
-    // Filtrar por módulo
-    if (filtroModulo.length > 0) {
+    // Aplicar filtros dos novos campos (estilo Lançar Requerimentos)
+    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || (filtroPeriodo !== 'all' && filtroPeriodo !== 'all')) {
       grupos = grupos.map(grupo => ({
         ...grupo,
-        requerimentos: grupo.requerimentos.filter(req => 
-          filtroModulo.includes(req.modulo)
-        ),
-        quantidade: grupo.requerimentos.filter(req => 
-          filtroModulo.includes(req.modulo)
-        ).length
-      })).filter(grupo => grupo.quantidade > 0);
+        requerimentos: grupo.requerimentos.filter(req => {
+          // Filtro de busca (chamado, cliente, descrição)
+          if (busca.trim() !== '') {
+            const buscaLower = busca.toLowerCase();
+            const matchBusca =
+              req.chamado.toLowerCase().includes(buscaLower) ||
+              req.cliente_nome?.toLowerCase().includes(buscaLower) ||
+              req.descricao.toLowerCase().includes(buscaLower);
+            if (!matchBusca) return false;
+          }
 
-      // Recalcular totais para grupos filtrados por módulo
+          // Filtro por tipo de cobrança
+          if (filtroTipoSelect.length > 0) {
+            if (!filtroTipoSelect.includes(req.tipo_cobranca)) return false;
+          }
+
+          // Filtro por módulo
+          if (filtroModuloSelect.length > 0) {
+            if (!filtroModuloSelect.includes(req.modulo)) return false;
+          }
+
+          // Filtro por período de cobrança
+          if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+            if (req.mes_cobranca !== filtroPeriodo) return false;
+          }
+
+          return true;
+        }),
+        quantidade: 0 // Será recalculado abaixo
+      })).filter(grupo => grupo.requerimentos.length > 0);
+
+      // Recalcular totais para grupos filtrados
       grupos = grupos.map(grupo => {
         let totalHoras = '0:00';
         let totalValor = 0;
@@ -278,9 +465,50 @@ export default function FaturarRequerimentos() {
         return {
           ...grupo,
           totalHoras,
-          totalValor
+          totalValor,
+          quantidade: grupo.requerimentos.length
         };
       });
+    } else {
+      // Aplicar filtros antigos se os novos não estão sendo usados
+      // Filtrar por tipo de cobrança
+      if (filtroTipo.length > 0) {
+        grupos = grupos.filter(grupo => filtroTipo.includes(grupo.tipo));
+      }
+
+      // Filtrar por módulo
+      if (filtroModulo.length > 0) {
+        grupos = grupos.map(grupo => ({
+          ...grupo,
+          requerimentos: grupo.requerimentos.filter(req => 
+            filtroModulo.includes(req.modulo)
+          ),
+          quantidade: grupo.requerimentos.filter(req => 
+            filtroModulo.includes(req.modulo)
+          ).length
+        })).filter(grupo => grupo.quantidade > 0);
+
+        // Recalcular totais para grupos filtrados por módulo
+        grupos = grupos.map(grupo => {
+          let totalHoras = '0:00';
+          let totalValor = 0;
+
+          grupo.requerimentos.forEach(req => {
+            if (req.horas_total) {
+              totalHoras = somarHoras(totalHoras, req.horas_total.toString());
+            }
+            if (req.valor_total_geral) {
+              totalValor += req.valor_total_geral;
+            }
+          });
+
+          return {
+            ...grupo,
+            totalHoras,
+            totalValor
+          };
+        });
+      }
     }
 
     // Ordenar grupos: tipos com valor primeiro (em ordem alfabética), depois os outros (em ordem alfabética)
@@ -300,7 +528,7 @@ export default function FaturarRequerimentos() {
     });
 
     return grupos;
-  }, [requerimentosAgrupados, filtroTipo, filtroModulo]);
+  }, [requerimentosAgrupados, filtroTipo, filtroModulo, busca, filtroTipoSelect, filtroModuloSelect, filtroPeriodo]);
 
   // Funções
   const nomesMeses = [
@@ -833,6 +1061,12 @@ export default function FaturarRequerimentos() {
     }
   };
 
+  // Função para visualizar detalhes do requerimento
+  const handleVisualizarRequerimento = (requerimento: Requerimento) => {
+    setRequerimentoParaVisualizar(requerimento);
+    setModalVisualizacaoAberto(true);
+  };
+
   // Funções de controle de seleção
   const handleSelecionarRequerimento = (id: string, selecionado: boolean) => {
     if (selecionado) {
@@ -953,7 +1187,7 @@ export default function FaturarRequerimentos() {
 
 
 
-        {/* Navegação de Período e Filtros */}
+        {/* Navegação de Período */}
         <Card>
           <CardContent className="py-3 xl:py-4">
             <div className="flex items-center justify-between gap-2 xl:gap-4">
@@ -973,35 +1207,15 @@ export default function FaturarRequerimentos() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 xl:gap-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={navegarMesProximo}
-                  className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
-                >
-                  <span className="hidden sm:inline">Próximo</span>
-                  <ChevronRight className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
-                  className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
-                  aria-expanded={filtrosExpandidos}
-                  aria-controls="filters-section"
-                >
-                  <Filter className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                  <span className="hidden sm:inline">Filtros</span>
-                  {((abaAtiva === 'para_faturar' && (filtroTipo.length > 0 || filtroModulo.length > 0)) || 
-                    (abaAtiva === 'faturados' && (filtroTipoHistorico.length > 0 || filtroModuloHistorico.length > 0))) && (
-                    <Badge variant="secondary" className="ml-0.5 xl:ml-1 text-[10px] xl:text-xs px-1 xl:px-1.5">
-                      {filtroTipo.length + filtroModulo.length}
-                    </Badge>
-                  )}
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navegarMesProximo}
+                className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
+              >
+                <span className="hidden sm:inline">Próximo</span>
+                <ChevronRight className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1017,9 +1231,14 @@ export default function FaturarRequerimentos() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                     Total de Requerimentos
+                    {temFiltrosAtivos && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                        FILTRADO
+                      </span>
+                    )}
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {estatisticasPeriodo.totalRequerimentos}
+                    {estatisticasPeriodoFiltradas.totalRequerimentos}
                   </p>
                 </div>
                 <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
@@ -1033,9 +1252,14 @@ export default function FaturarRequerimentos() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                     Total de Horas
+                    {temFiltrosAtivos && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                        FILTRADO
+                      </span>
+                    )}
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')}
+                    {formatarHorasParaExibicao(estatisticasPeriodoFiltradas.totalHoras, 'completo')}
                   </p>
                 </div>
                 <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
@@ -1049,9 +1273,14 @@ export default function FaturarRequerimentos() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                     Tipos Ativos
+                    {temFiltrosAtivos && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                        FILTRADO
+                      </span>
+                    )}
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {estatisticasPeriodo.tiposAtivos}
+                    {estatisticasPeriodoFiltradas.tiposAtivos}
                   </p>
                 </div>
                 <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" />
@@ -1081,9 +1310,14 @@ export default function FaturarRequerimentos() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                     Valor Total Faturável
+                    {temFiltrosAtivos && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                        FILTRADO
+                      </span>
+                    )}
                   </p>
                   <p className="text-lg sm:text-2xl font-bold text-green-600">
-                    R$ {estatisticasPeriodo.valorTotalFaturavel.toLocaleString('pt-BR', {
+                    R$ {estatisticasPeriodoFiltradas.valorTotalFaturavel.toLocaleString('pt-BR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2
                     })}
@@ -1221,203 +1455,6 @@ export default function FaturarRequerimentos() {
           </div>
         )}
 
-        {/* Filtros */}
-        {filtrosExpandidos && (
-          <Card id="filters-section">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                {abaAtiva === 'para_faturar' ? 'Filtros de Período, Tipo e Módulo' : 'Filtros de Tipo e Módulo'}
-                <div className="flex gap-2">
-                  {abaAtiva === 'para_faturar' ? (
-                    <>
-                      {filtroTipo.length > 0 && (
-                        <Badge variant="secondary">
-                          {filtroTipo.length} tipo{filtroTipo.length !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      {filtroModulo.length > 0 && (
-                        <Badge variant="secondary">
-                          {filtroModulo.length} módulo{filtroModulo.length !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {filtroTipoHistorico.length > 0 && (
-                        <Badge variant="secondary">
-                          {filtroTipoHistorico.length} tipo{filtroTipoHistorico.length !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      {filtroModuloHistorico.length > 0 && (
-                        <Badge variant="secondary">
-                          {filtroModuloHistorico.length} módulo{filtroModuloHistorico.length !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {abaAtiva === 'para_faturar' ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mes" className="text-sm font-medium">Mês</Label>
-                      <Select value={mesSelecionado.toString()} onValueChange={(value) => setMesSelecionado(parseInt(value))}>
-                        <SelectTrigger className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {nomesMeses.map((nome, index) => (
-                            <SelectItem key={index + 1} value={(index + 1).toString()}>
-                              {nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="ano" className="text-sm font-medium">Ano</Label>
-                      <Select value={anoSelecionado.toString()} onValueChange={(value) => setAnoSelecionado(parseInt(value))}>
-                        <SelectTrigger className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 5 }, (_, i) => anoAtual - 2 + i).map(ano => (
-                            <SelectItem key={ano} value={ano.toString()}>
-                              {ano}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="tipo" className="text-sm font-medium">Tipos de Cobrança</Label>
-                      <div className="h-10">
-                        <MultiSelect
-                          options={tipoCobrancaOptions}
-                          selected={filtroTipo}
-                          onChange={(values) => setFiltroTipo(values as TipoCobrancaType[])}
-                          placeholder="Selecione os tipos..."
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="modulo" className="text-sm font-medium">Módulos</Label>
-                      <div className="h-10">
-                        <MultiSelect
-                          options={moduloOptions}
-                          selected={filtroModulo}
-                          onChange={(values) => setFiltroModulo(values as ModuloType[])}
-                          placeholder="Selecione os módulos..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="tipo-historico" className="text-sm font-medium">Tipos de Cobrança</Label>
-                      <div className="h-10">
-                        <MultiSelect
-                          options={tipoCobrancaOptions}
-                          selected={filtroTipoHistorico}
-                          onChange={(values) => setFiltroTipoHistorico(values as TipoCobrancaType[])}
-                          placeholder="Selecione os tipos..."
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="modulo-historico" className="text-sm font-medium">Módulos</Label>
-                      <div className="h-10">
-                        <MultiSelect
-                          options={moduloOptions}
-                          selected={filtroModuloHistorico}
-                          onChange={(values) => setFiltroModuloHistorico(values as ModuloType[])}
-                          placeholder="Selecione os módulos..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Botões de ação rápida */}
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                {abaAtiva === 'para_faturar' ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setFiltroTipo([]);
-                        setFiltroModulo([]);
-                      }}
-                      disabled={filtroTipo.length === 0 && filtroModulo.length === 0}
-                    >
-                      Limpar Filtros
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFiltroTipo(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
-                      disabled={filtroTipo.length === tipoCobrancaOptions.length}
-                    >
-                      Todos os Tipos
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFiltroModulo(moduloOptions.map(opt => opt.value as ModuloType))}
-                      disabled={filtroModulo.length === moduloOptions.length}
-                    >
-                      Todos os Módulos
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setFiltroTipoHistorico([]);
-                        setFiltroModuloHistorico([]);
-                      }}
-                      disabled={filtroTipoHistorico.length === 0 && filtroModuloHistorico.length === 0}
-                    >
-                      Limpar Filtros
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFiltroTipoHistorico(tipoCobrancaOptions.map(opt => opt.value as TipoCobrancaType))}
-                      disabled={filtroTipoHistorico.length === tipoCobrancaOptions.length}
-                    >
-                      Todos os Tipos
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFiltroModuloHistorico(moduloOptions.map(opt => opt.value as ModuloType))}
-                      disabled={filtroModuloHistorico.length === moduloOptions.length}
-                    >
-                      Todos os Módulos
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Conteúdo Principal */}
         {isLoading ? (
           <Card>
@@ -1464,6 +1501,123 @@ export default function FaturarRequerimentos() {
             <TabsContent value="para_faturar" className="space-y-6">
               {gruposFiltrados.length === 0 ? (
                 <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Requerimentos para Faturamento
+                      </CardTitle>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                          className="flex items-center justify-center space-x-2"
+                          aria-expanded={filtrosExpandidos}
+                          aria-controls="filters-section"
+                        >
+                          <Filter className="h-4 w-4" />
+                          <span>Filtros</span>
+                          {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                            <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                              {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                            </Badge>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Filtros */}
+                    {filtrosExpandidos && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          {/* Busca */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                value={busca}
+                                onChange={(e) => setBusca(e.target.value)}
+                                className="pl-10"
+                                aria-label="Campo de busca"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Módulo */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <MultiSelect
+                              options={moduloOptions}
+                              selected={filtroModuloSelect}
+                              onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
+                              placeholder="Todos os módulos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Tipo de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <MultiSelect
+                              options={tipoCobrancaOptions}
+                              selected={filtroTipoSelect}
+                              onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
+                              placeholder="Todos os tipos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Período de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todos os períodos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos os períodos</SelectItem>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const mes = String(i + 1).padStart(2, '0');
+                                  const ano = anoSelecionado;
+                                  const periodo = `${mes}/${ano}`;
+                                  const nomesMeses = [
+                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                  ];
+                                  return (
+                                    <SelectItem key={periodo} value={periodo}>
+                                      {nomesMeses[i]} {ano}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Botões de ação rápida */}
+                        <div className="flex items-center gap-2 pt-4 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
+                          >
+                            Limpar Filtros
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardHeader>
                   <CardContent className="p-8">
                     <div className="text-center text-gray-500">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1471,13 +1625,140 @@ export default function FaturarRequerimentos() {
                         Nenhum requerimento encontrado
                       </h3>
                       <p>
-                        Não há requerimentos enviados para faturamento no período de{' '}
-                        <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
+                        {busca || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo
+                          ? 'Tente ajustar os filtros para encontrar requerimentos.'
+                          : `Não há requerimentos enviados para faturamento no período de ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}.`}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
+                <>
+                  {/* Card com filtros para quando há dados */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Requerimentos para Faturamento
+                        </CardTitle>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                            className="flex items-center justify-center space-x-2"
+                            aria-expanded={filtrosExpandidos}
+                            aria-controls="filters-section"
+                          >
+                            <Filter className="h-4 w-4" />
+                            <span>Filtros</span>
+                            {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                              <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                                {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                              </Badge>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Filtros */}
+                      {filtrosExpandidos && (
+                        <div className="space-y-4 pt-4 border-t">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Busca */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Buscar</div>
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                  placeholder="Buscar por chamado, cliente ou descrição..."
+                                  value={busca}
+                                  onChange={(e) => setBusca(e.target.value)}
+                                  className="pl-10"
+                                  aria-label="Campo de busca"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Módulo */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Módulo</div>
+                              <MultiSelect
+                                options={moduloOptions}
+                                selected={filtroModuloSelect}
+                                onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
+                                placeholder="Todos os módulos"
+                                maxCount={2}
+                              />
+                            </div>
+
+                            {/* Tipo de Cobrança */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                              <MultiSelect
+                                options={tipoCobrancaOptions}
+                                selected={filtroTipoSelect}
+                                onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
+                                placeholder="Todos os tipos"
+                                maxCount={2}
+                              />
+                            </div>
+
+                            {/* Período de Cobrança */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Todos os períodos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">Todos os períodos</SelectItem>
+                                  {Array.from({ length: 12 }, (_, i) => {
+                                    const mes = String(i + 1).padStart(2, '0');
+                                    const ano = anoSelecionado;
+                                    const periodo = `${mes}/${ano}`;
+                                    const nomesMeses = [
+                                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                    ];
+                                    return (
+                                      <SelectItem key={periodo} value={periodo}>
+                                        {nomesMeses[i]} {ano}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Botões de ação rápida */}
+                          <div className="flex items-center gap-2 pt-4 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setBusca('');
+                                setFiltroTipoSelect([]);
+                                setFiltroModuloSelect([]);
+                                setFiltroPeriodo('all');
+                              }}
+                              disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
+                            >
+                              Limpar Filtros
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardHeader>
+                  </Card>
+                </>
+              )}
+
+              {/* Renderizar grupos filtrados */}
+              {gruposFiltrados.length > 0 && (
                 gruposFiltrados.map(grupo => {
               const colors = getCobrancaColors(grupo.tipo);
               const icon = getCobrancaIcon(grupo.tipo);
@@ -1669,17 +1950,26 @@ export default function FaturarRequerimentos() {
                                 {/* Coluna Ações */}
                                 <TableCell className="text-center py-3 px-3">
                                   <div className="flex items-center justify-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() => handleVisualizarRequerimento(req)}
+                                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                      title="Visualizar detalhes do requerimento"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    
                                     <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                       <Button
                                         variant="outline"
-                                        size="sm"
+                                        size="xs"
                                         onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                         disabled={rejeitarRequerimento.isPending}
-                                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs whitespace-nowrap"
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                                         title="Rejeitar requerimento"
                                       >
-                                        <X className="h-4 w-4 mr-1" />
-                                        Rejeitar
+                                        <X className="h-4 w-4" />
                                       </Button>
                                     </ProtectedAction>
                                     
@@ -1687,14 +1977,13 @@ export default function FaturarRequerimentos() {
                                       <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                         <Button
                                           variant="outline"
-                                          size="sm"
+                                          size="xs"
                                           onClick={() => handleArquivarRequerimento(req)}
                                           disabled={marcarComoFaturados.isPending}
-                                          className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs whitespace-nowrap"
+                                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
                                           title="Arquivar requerimento"
                                         >
-                                          <Check className="h-4 w-4 mr-1" />
-                                          Arquivar
+                                          <Check className="h-4 w-4" />
                                         </Button>
                                       </ProtectedAction>
                                     )}
@@ -1737,6 +2026,118 @@ export default function FaturarRequerimentos() {
                 </Card>
               ) : !dadosFaturados || dadosFaturados.length === 0 ? (
                 <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        Histórico - Requerimentos Enviados
+                      </CardTitle>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                          className="flex items-center justify-center space-x-2"
+                          aria-expanded={filtrosExpandidos}
+                          aria-controls="filters-section"
+                        >
+                          <Filter className="h-4 w-4" />
+                          <span>Filtros</span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Filtros */}
+                    {filtrosExpandidos && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          {/* Busca */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                value={busca}
+                                onChange={(e) => setBusca(e.target.value)}
+                                className="pl-10"
+                                aria-label="Campo de busca"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Módulo */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <MultiSelect
+                              options={moduloOptions}
+                              selected={filtroModuloSelect}
+                              onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
+                              placeholder="Todos os módulos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Tipo de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <MultiSelect
+                              options={tipoCobrancaOptions}
+                              selected={filtroTipoSelect}
+                              onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
+                              placeholder="Todos os tipos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Período de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todos os períodos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos os períodos</SelectItem>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const mes = String(i + 1).padStart(2, '0');
+                                  const ano = anoSelecionado;
+                                  const periodo = `${mes}/${ano}`;
+                                  const nomesMeses = [
+                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                  ];
+                                  return (
+                                    <SelectItem key={periodo} value={periodo}>
+                                      {nomesMeses[i]} {ano}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Botões de ação rápida */}
+                        <div className="flex items-center gap-2 pt-4 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
+                          >
+                            Limpar Filtros
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardHeader>
                   <CardContent className="p-8">
                     <div className="text-center text-gray-500">
                       <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1752,6 +2153,123 @@ export default function FaturarRequerimentos() {
                 </Card>
               ) : dadosFaturadosFiltrados.length === 0 ? (
                 <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        Histórico - Requerimentos Enviados
+                      </CardTitle>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                          className="flex items-center justify-center space-x-2"
+                          aria-expanded={filtrosExpandidos}
+                          aria-controls="filters-section"
+                        >
+                          <Filter className="h-4 w-4" />
+                          <span>Filtros</span>
+                          {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                            <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                              {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                            </Badge>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Filtros */}
+                    {filtrosExpandidos && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          {/* Busca */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                value={busca}
+                                onChange={(e) => setBusca(e.target.value)}
+                                className="pl-10"
+                                aria-label="Campo de busca"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Módulo */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <MultiSelect
+                              options={moduloOptions}
+                              selected={filtroModuloSelect}
+                              onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
+                              placeholder="Todos os módulos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Tipo de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <MultiSelect
+                              options={tipoCobrancaOptions}
+                              selected={filtroTipoSelect}
+                              onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
+                              placeholder="Todos os tipos"
+                              maxCount={2}
+                            />
+                          </div>
+
+                          {/* Período de Cobrança */}
+                          <div>
+                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todos os períodos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos os períodos</SelectItem>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const mes = String(i + 1).padStart(2, '0');
+                                  const ano = anoSelecionado;
+                                  const periodo = `${mes}/${ano}`;
+                                  const nomesMeses = [
+                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                  ];
+                                  return (
+                                    <SelectItem key={periodo} value={periodo}>
+                                      {nomesMeses[i]} {ano}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Botões de ação rápida */}
+                        <div className="flex items-center gap-2 pt-4 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
+                          >
+                            Limpar Filtros
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardHeader>
                   <CardContent className="p-8">
                     <div className="text-center text-gray-500">
                       <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1759,35 +2277,136 @@ export default function FaturarRequerimentos() {
                         Nenhum requerimento encontrado
                       </h3>
                       <p>
-                        Não há requerimentos que correspondam aos filtros selecionados.
+                        {busca || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo
+                          ? 'Tente ajustar os filtros para encontrar requerimentos.'
+                          : 'Não há requerimentos que correspondam aos filtros selecionados.'}
                       </p>
-                      <Button 
-                        onClick={() => {
-                          setFiltroTipoHistorico([]);
-                          setFiltroModuloHistorico([]);
-                        }}
-                        className="mt-4"
-                        variant="outline"
-                      >
-                        Limpar Filtros
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
                 <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                           <Check className="h-5 w-5 text-green-600" />
-                          Requerimentos Enviados
+                          Histórico - Requerimentos Enviados
                         </CardTitle>
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          {dadosFaturadosFiltrados.length} faturado{dadosFaturadosFiltrados.length !== 1 ? 's' : ''}
-                        </Badge>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                            className="flex items-center justify-center space-x-2"
+                            aria-expanded={filtrosExpandidos}
+                            aria-controls="filters-section"
+                          >
+                            <Filter className="h-4 w-4" />
+                            <span>Filtros</span>
+                            {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                              <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                                {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                              </Badge>
+                            )}
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Filtros */}
+                      {filtrosExpandidos && (
+                        <div className="space-y-4 pt-4 border-t">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Busca */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Buscar</div>
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                  placeholder="Buscar por chamado, cliente ou descrição..."
+                                  value={busca}
+                                  onChange={(e) => setBusca(e.target.value)}
+                                  className="pl-10"
+                                  aria-label="Campo de busca"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Módulo */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Módulo</div>
+                              <MultiSelect
+                                options={moduloOptions}
+                                selected={filtroModuloSelect}
+                                onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
+                                placeholder="Todos os módulos"
+                                maxCount={2}
+                              />
+                            </div>
+
+                            {/* Tipo de Cobrança */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                              <MultiSelect
+                                options={tipoCobrancaOptions}
+                                selected={filtroTipoSelect}
+                                onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
+                                placeholder="Todos os tipos"
+                                maxCount={2}
+                              />
+                            </div>
+
+                            {/* Período de Cobrança */}
+                            <div>
+                              <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Todos os períodos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">Todos os períodos</SelectItem>
+                                  {Array.from({ length: 12 }, (_, i) => {
+                                    const mes = String(i + 1).padStart(2, '0');
+                                    const ano = anoSelecionado;
+                                    const periodo = `${mes}/${ano}`;
+                                    const nomesMeses = [
+                                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                    ];
+                                    return (
+                                      <SelectItem key={periodo} value={periodo}>
+                                        {nomesMeses[i]} {ano}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Botões de ação rápida */}
+                          <div className="flex items-center gap-2 pt-4 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setBusca('');
+                                setFiltroTipoSelect([]);
+                                setFiltroModuloSelect([]);
+                                setFiltroPeriodo('all');
+                              }}
+                              disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
+                            >
+                              Limpar Filtros
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </CardHeader>
                   <CardContent>
+                    <Badge variant="secondary" className="bg-green-100 text-green-800 mb-4">
+                      {dadosFaturadosFiltrados.length} faturado{dadosFaturadosFiltrados.length !== 1 ? 's' : ''}
+                    </Badge>
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -1926,19 +2545,30 @@ export default function FaturarRequerimentos() {
 
                               {/* Coluna Ações */}
                               <TableCell className="text-center py-3 px-3">
-                                <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                <div className="flex items-center justify-center gap-2">
                                   <Button
                                     variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAbrirConfirmacaoRejeicao(req)}
-                                    disabled={rejeitarRequerimento.isPending}
-                                    className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs whitespace-nowrap"
-                                    title="Rejeitar requerimento"
+                                    size="xs"
+                                    onClick={() => handleVisualizarRequerimento(req)}
+                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                    title="Visualizar detalhes do requerimento"
                                   >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Rejeitar
+                                    <Eye className="h-4 w-4" />
                                   </Button>
-                                </ProtectedAction>
+                                  
+                                  <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
+                                    <Button
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() => handleAbrirConfirmacaoRejeicao(req)}
+                                      disabled={rejeitarRequerimento.isPending}
+                                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                      title="Rejeitar requerimento"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </ProtectedAction>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1951,6 +2581,191 @@ export default function FaturarRequerimentos() {
             </TabsContent>
           </Tabs>
         )}
+
+        {/* Modal de Visualização de Detalhes */}
+        <Dialog open={modalVisualizacaoAberto} onOpenChange={setModalVisualizacaoAberto}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Detalhes do Requerimento
+              </DialogTitle>
+            </DialogHeader>
+
+            {requerimentoParaVisualizar && (
+              <div className="space-y-6">
+                {/* Informações Básicas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Informações Básicas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Chamado</Label>
+                        <p className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                          {requerimentoParaVisualizar.chamado}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Cliente</Label>
+                        <p className="text-sm">{requerimentoParaVisualizar.cliente_nome || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Módulo</Label>
+                        <Badge variant="outline" className="text-blue-600 border-blue-600">
+                          {requerimentoParaVisualizar.modulo}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Tipo de Cobrança</Label>
+                        <Badge className={getBadgeClasses(requerimentoParaVisualizar.tipo_cobranca)}>
+                          {getCobrancaIcon(requerimentoParaVisualizar.tipo_cobranca)} {requerimentoParaVisualizar.tipo_cobranca}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Horas e Valores</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Horas Funcionais</Label>
+                        <p className="text-sm font-semibold text-blue-600">
+                          {formatarHoras(requerimentoParaVisualizar.horas_funcional)}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Horas Técnicas</Label>
+                        <p className="text-sm font-semibold text-green-600">
+                          {formatarHoras(requerimentoParaVisualizar.horas_tecnico)}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Total de Horas</Label>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          {formatarHoras(requerimentoParaVisualizar.horas_total)}
+                        </p>
+                      </div>
+                      {requerimentoParaVisualizar.valor_total_geral && (
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Valor Total</Label>
+                          <p className="text-lg font-bold text-green-600">
+                            R$ {requerimentoParaVisualizar.valor_total_geral.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </p>
+                        </div>
+                      )}
+                      {requerimentoParaVisualizar.quantidade_tickets && requerimentoParaVisualizar.quantidade_tickets > 0 && (
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Quantidade de Tickets</Label>
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                            🎫 {requerimentoParaVisualizar.quantidade_tickets}
+                          </Badge>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Datas */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Datas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Data de Envio</Label>
+                        <p className="text-sm flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          {formatarData(requerimentoParaVisualizar.data_envio)}
+                        </p>
+                      </div>
+                      {requerimentoParaVisualizar.data_aprovacao && (
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Data de Aprovação</Label>
+                          <p className="text-sm flex items-center gap-1">
+                            <Check className="h-4 w-4 text-green-500" />
+                            {formatarData(requerimentoParaVisualizar.data_aprovacao)}
+                          </p>
+                        </div>
+                      )}
+                      {requerimentoParaVisualizar.data_faturamento && (
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Data de Faturamento</Label>
+                          <p className="text-sm flex items-center gap-1">
+                            <Send className="h-4 w-4 text-blue-500" />
+                            {formatarData(requerimentoParaVisualizar.data_faturamento)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Período de Cobrança */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Período e Autor</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500">Período de Cobrança</Label>
+                        <p className="text-sm font-medium">
+                          {requerimentoParaVisualizar.mes_cobranca || 'Não definido'}
+                        </p>
+                      </div>
+                      {requerimentoParaVisualizar.autor_nome && (
+                        <div>
+                          <Label className="text-xs font-medium text-gray-500">Autor</Label>
+                          <p className="text-sm">{requerimentoParaVisualizar.autor_nome}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Descrição */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-600">Descrição</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {requerimentoParaVisualizar.descricao || 'Sem descrição'}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Observações */}
+                {requerimentoParaVisualizar.observacao && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Observações</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {requerimentoParaVisualizar.observacao}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setModalVisualizacaoAberto(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Modal de Email */}
         <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
