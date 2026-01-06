@@ -38,7 +38,7 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  */
 async function buscarDadosSqlServer(): Promise<DadosSqlServer[]> {
   // URL da API de sincronização
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     const response = await fetch(`${API_URL}/api/sync-pesquisas`, {
@@ -86,7 +86,7 @@ function gerarIdUnico(registro: DadosSqlServer): string {
  * INCLUI sincronização de pesquisas E especialistas
  */
 export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any }> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Iniciando sincronização completa (pesquisas + especialistas)...');
@@ -218,7 +218,7 @@ export async function verificarUltimaSincronizacao(): Promise<{
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com SQL Server via API...');

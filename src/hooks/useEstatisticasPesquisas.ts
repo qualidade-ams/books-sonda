@@ -21,7 +21,7 @@ export const useEstatisticasPesquisas = (ano: number, grupo: string = 'todos') =
   return useQuery<EstatisticasPesquisas>({
     queryKey: ['estatisticas-pesquisas', ano, grupo],
     queryFn: async (): Promise<EstatisticasPesquisas> => {
-      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'http://localhost:3001';
+      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'SAPSERVDB.sondait.com.br:3001';
       
       const params = new URLSearchParams({
         ano: ano.toString(),
@@ -43,7 +43,7 @@ export const useEstatisticasPesquisas = (ano: number, grupo: string = 'todos') =
       return data.estatisticas;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 10 * 60 * 1000, // 10 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos (anteriormente cacheTime)
     retry: 2,
     enabled: !!ano // Só executa se o ano estiver definido
   });
