@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { safeFetch } from '@/utils/apiConfig';
 
 interface EstatisticasPesquisas {
   total_enviadas: number;
@@ -21,14 +22,14 @@ export const useEstatisticasPesquisas = (ano: number, grupo: string = 'todos') =
   return useQuery<EstatisticasPesquisas>({
     queryKey: ['estatisticas-pesquisas', ano, grupo],
     queryFn: async (): Promise<EstatisticasPesquisas> => {
-      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+      const syncApiUrl = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
       
       const params = new URLSearchParams({
         ano: ano.toString(),
         ...(grupo !== 'todos' && { grupo })
       });
       
-      const response = await fetch(`${syncApiUrl}/api/stats-pesquisas?${params}`);
+      const response = await safeFetch(`${syncApiUrl}/api/stats-pesquisas?${params}`);
       
       if (!response.ok) {
         throw new Error(`Erro ao buscar estatísticas: ${response.status}`);
