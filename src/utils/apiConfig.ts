@@ -29,33 +29,51 @@ export function getApiBaseUrl(): string {
   const baseHost = 'SAPSERVDB.sondait.com.br:3001';
   
   if (isDevelopment()) {
-    // Em desenvolvimento, pode usar HTTP
+    // Em desenvolvimento, sempre HTTP
     return `http://${baseHost}`;
-  } else if (isHttpsEnvironment()) {
-    // Em produção com HTTPS, deve usar HTTPS
-    return `https://${baseHost}`;
   } else {
-    // Fallback para HTTP
+    // Em produção, usa HTTP por enquanto (servidor não suporta HTTPS)
+    // TODO: Quando o servidor suportar HTTPS, mudar para:
+    // return isHttpsEnvironment() ? `https://${baseHost}` : `http://${baseHost}`;
     return `http://${baseHost}`;
   }
 }
 
 /**
- * Configuração de fetch com tratamento de Mixed Content
+ * Configuração de fetch com fallback automático HTTP/HTTPS
  */
 export async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
   try {
+    // Primeira tentativa com a URL fornecida
     return await fetch(url, options);
   } catch (error) {
-    // Se falhar por Mixed Content, tenta com protocolo alternativo
+    // Se falhar e for erro de SSL/protocolo, tenta com protocolo alternativo
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.warn('Tentativa de fetch falhou, possivelmente por Mixed Content. URL:', url);
+      console.warn('🔄 Fetch falhou, tentando protocolo alternativo. URL original:', url);
       
-      // Se a URL atual é HTTP e estamos em HTTPS, tenta HTTPS
-      if (url.startsWith('http://') && isHttpsEnvironment()) {
-        const httpsUrl = url.replace('http://', 'https://');
-        console.log('Tentando com HTTPS:', httpsUrl);
-        return await fetch(httpsUrl, options);
+      let alternativeUrl: string;
+      
+      if (url.startsWith('https://')) {
+        // Se HTTPS falhou, tenta HTTP
+        alternativeUrl = url.replace('https://', 'http://');
+        console.log('🔄 Tentando HTTP:', alternativeUrl);
+      } else if (url.startsWith('http://')) {
+        // Se HTTP falhou, tenta HTTPS
+        alternativeUrl = url.replace('http://', 'https://');
+        console.log('🔄 Tentando HTTPS:', alternativeUrl);
+      } else {
+        // Se não tem protocolo, adiciona http
+        alternativeUrl = `http://${url}`;
+        console.log('🔄 Tentando com HTTP:', alternativeUrl);
+      }
+      
+      try {
+        const response = await fetch(alternativeUrl, options);
+        console.log('✅ Fallback bem-sucedido:', alternativeUrl);
+        return response;
+      } catch (fallbackError) {
+        console.error('❌ Fallback também falhou:', fallbackError);
+        throw error; // Lança o erro original
       }
     }
     

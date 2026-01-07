@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { safeFetch } from '@/utils/apiConfig';
 import type { DadosEspecialistaSqlServer, ResultadoSincronizacaoEspecialistas } from '@/types/especialistas';
 
 // ============================================
@@ -52,12 +53,12 @@ function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
  * Usa a API Node.js que faz todo o processamento
  */
 export async function sincronizarEspecialistas(): Promise<ResultadoSincronizacaoEspecialistas> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Chamando API de sincronização de especialistas...');
     
-    const response = await fetch(`${API_URL}/api/sync-especialistas`, {
+    const response = await safeFetch(`${API_URL}/api/sync-especialistas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -159,12 +160,12 @@ export async function verificarUltimaSincronizacaoEspecialistas(): Promise<{
  * Testar conexão com tabela AMSespecialistas via API
  */
 export async function testarConexaoEspecialistas(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com tabela AMSespecialistas via API...');
     
-    const response = await fetch(`${API_URL}/api/test-connection-especialistas`);
+    const response = await safeFetch(`${API_URL}/api/test-connection-especialistas`);
     
     if (!response.ok) {
       throw new Error(`Erro HTTP: ${response.status}`);
@@ -185,12 +186,12 @@ export async function testarConexaoEspecialistas(): Promise<boolean> {
  * Obter estrutura da tabela AMSespecialistas
  */
 export async function obterEstruturaEspecialistas(): Promise<any> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Consultando estrutura da tabela AMSespecialistas...');
     
-    const response = await fetch(`${API_URL}/api/table-structure-especialistas`);
+    const response = await safeFetch(`${API_URL}/api/table-structure-especialistas`);
     
     if (!response.ok) {
       throw new Error(`Erro HTTP: ${response.status}`);

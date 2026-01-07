@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { safeFetch } from '@/utils/apiConfig';
 import type { DadosSqlServer, ResultadoSincronizacao } from '@/types/pesquisasSatisfacao';
 
 // ============================================
@@ -38,10 +39,10 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  */
 async function buscarDadosSqlServer(): Promise<DadosSqlServer[]> {
   // URL da API de sincronização
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
-    const response = await fetch(`${API_URL}/api/sync-pesquisas`, {
+    const response = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -86,14 +87,14 @@ function gerarIdUnico(registro: DadosSqlServer): string {
  * INCLUI sincronização de pesquisas E especialistas
  */
 export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any }> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Iniciando sincronização completa (pesquisas + especialistas)...');
     
     // 1. Sincronizar pesquisas (funcionalidade existente)
     console.log('1/2 - Sincronizando pesquisas...');
-    const responsePesquisas = await fetch(`${API_URL}/api/sync-pesquisas`, {
+    const responsePesquisas = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -126,7 +127,7 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
 
     // 2. Sincronizar especialistas (nova funcionalidade)
     console.log('2/2 - Sincronizando especialistas...');
-    const responseEspecialistas = await fetch(`${API_URL}/api/sync-especialistas`, {
+    const responseEspecialistas = await safeFetch(`${API_URL}/api/sync-especialistas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -243,12 +244,12 @@ export async function verificarUltimaSincronizacao(): Promise<{
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com SQL Server via API...');
     
-    const response = await fetch(`${API_URL}/api/test-connection`);
+    const response = await safeFetch(`${API_URL}/api/test-connection`);
     
     if (!response.ok) {
       throw new Error(`Erro HTTP: ${response.status}`);
