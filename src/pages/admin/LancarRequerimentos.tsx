@@ -630,7 +630,7 @@ const LancarRequerimentos = () => {
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                                        {activeTab === 'enviados' ? 'Valores Selecionados' : 'Tipos Únicos'}
+                                        {activeTab === 'enviados' ? 'Valores Selecionados' : 'Tipos de Cobrança'}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
