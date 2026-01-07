@@ -34,7 +34,6 @@ export function RequerimentoMultiploForm({
   const [descricao, setDescricao] = useState('');
   const [dataEnvio, setDataEnvio] = useState('');
   const [dataAprovacao, setDataAprovacao] = useState('');
-  const [linguagem, setLinguagem] = useState('Funcional');
   const [observacao, setObservacao] = useState('');
 
   // Estado para blocos de tipos de cobrança
@@ -43,7 +42,8 @@ export function RequerimentoMultiploForm({
       id: crypto.randomUUID(),
       tipo_cobranca: 'Banco de Horas',
       horas_funcional: 0,
-      horas_tecnico: 0
+      horas_tecnico: 0,
+      linguagem: 'Técnico'
     }
   ]);
 
@@ -72,7 +72,8 @@ export function RequerimentoMultiploForm({
       id: crypto.randomUUID(),
       tipo_cobranca: 'Banco de Horas',
       horas_funcional: 0,
-      horas_tecnico: 0
+      horas_tecnico: 0,
+      linguagem: 'Técnico'
     };
     setBlocos([...blocos, novoBloco]);
   };
@@ -170,12 +171,20 @@ export function RequerimentoMultiploForm({
     if (!modulo) erros.push('Módulo é obrigatório');
     if (!descricao.trim()) erros.push('Descrição é obrigatória');
     if (!dataEnvio) erros.push('Data de envio é obrigatória');
-    if (!linguagem) erros.push('Linguagem é obrigatória');
 
     // Validar cada bloco
     blocos.forEach((bloco, index) => {
       if (!bloco.tipo_cobranca) {
         erros.push(`Bloco ${index + 1}: Tipo de cobrança é obrigatório`);
+      }
+
+      // Validar linguagem técnica apenas se houver horas técnicas
+      const horasTecnicoValidacao = typeof bloco.horas_tecnico === 'string'
+        ? converterParaHorasDecimal(bloco.horas_tecnico)
+        : bloco.horas_tecnico || 0;
+
+      if (horasTecnicoValidacao > 0 && !bloco.linguagem) {
+        erros.push(`Bloco ${index + 1}: Linguagem Técnica é obrigatória quando há Horas Técnicas`);
       }
 
       const horasFuncional = typeof bloco.horas_funcional === 'string'
@@ -240,13 +249,13 @@ export function RequerimentoMultiploForm({
       descricao: descricao.trim(),
       data_envio: dataEnvio,
       data_aprovacao: dataAprovacao || undefined,
-      linguagem,
       observacao: observacao.trim() || undefined
     };
 
     // Criar array de requerimentos
     const requerimentos = blocos.map(bloco => ({
       ...dadosCompartilhados,
+      linguagem: bloco.linguagem,
       tipo_cobranca: bloco.tipo_cobranca,
       horas_funcional: bloco.horas_funcional,
       horas_tecnico: bloco.horas_tecnico,
@@ -323,7 +332,7 @@ export function RequerimentoMultiploForm({
             </div>
           </div>
 
-          {/* Módulo e Linguagem */}
+          {/* Módulo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
@@ -339,24 +348,6 @@ export function RequerimentoMultiploForm({
                       {mod.label}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                Linguagem <span className="text-red-500">*</span>
-              </Label>
-              <Select value={linguagem} onValueChange={setLinguagem} disabled={isLoading}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma linguagem" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ABAP">ABAP</SelectItem>
-                  <SelectItem value="DBA">DBA</SelectItem>
-                  <SelectItem value="Funcional">Funcional</SelectItem>
-                  <SelectItem value="PL/SQL">PL/SQL</SelectItem>
-                  <SelectItem value="Técnico">Técnico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -429,7 +420,6 @@ export function RequerimentoMultiploForm({
                   canRemove={blocos.length > 1}
                   empresaTipoCobranca={clienteSelecionado?.tipo_cobranca}
                   clienteId={clienteId}
-                  linguagem={linguagem}
                 />
               </React.Fragment>
             ))}

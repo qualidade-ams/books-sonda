@@ -26,6 +26,7 @@ export interface TipoCobrancaBlocoData {
   horas_analise_ef?: string | number;
   mes_cobranca?: string;
   atendimento_presencial?: boolean;
+  linguagem?: string;
 }
 
 interface TipoCobrancaBlocoProps {
@@ -37,7 +38,6 @@ interface TipoCobrancaBlocoProps {
   canRemove: boolean;
   empresaTipoCobranca?: string;
   clienteId?: string; // NOVO: ID do cliente para buscar taxa
-  linguagem?: string; // NOVO: Linguagem selecionada
 }
 
 export function TipoCobrancaBloco({
@@ -48,13 +48,12 @@ export function TipoCobrancaBloco({
   onRemove,
   canRemove,
   empresaTipoCobranca,
-  clienteId,
-  linguagem
+  clienteId
 }: TipoCobrancaBlocoProps) {
   console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', { 
     index, 
     clienteId, 
-    linguagem, 
+    linguagem: bloco.linguagem, 
     tipoCobranca: bloco.tipo_cobranca,
     valorHoraFuncional: bloco.valor_hora_funcional,
     valorHoraTecnico: bloco.valor_hora_tecnico
@@ -133,7 +132,7 @@ export function TipoCobrancaBloco({
       console.log('='.repeat(80));
       console.log('📊 Estado atual:', {
         taxaVigente: !!taxaVigente,
-        linguagem,
+        linguagem: bloco.linguagem,
         tipoCobranca: bloco.tipo_cobranca,
         tipoHoraExtra: bloco.tipo_hora_extra,
         valorAtualFuncional: bloco.valor_hora_funcional,
@@ -144,7 +143,7 @@ export function TipoCobrancaBloco({
         editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
       });
       
-      if (!taxaVigente || !linguagem || !bloco.tipo_cobranca) {
+      if (!taxaVigente || !bloco.linguagem || !bloco.tipo_cobranca) {
         console.log('❌ Faltam dados para preencher valores automaticamente');
         // Resetar ref quando não há dados
         valoresAnterioresRef.current = { funcional: undefined, tecnico: undefined };
@@ -175,10 +174,6 @@ export function TipoCobrancaBloco({
     
     const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
       // Mapear linguagem para a linha correspondente na tabela de taxas
-      if (ling === 'Funcional') {
-        // Se linguagem é Funcional, usar linha Técnico (Instalação / Atualização) ou Técnico / ABAP
-        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
-      }
       if (ling === 'Técnico') {
         // Se linguagem é Técnico, usar linha Técnico (Instalação / Atualização) ou Técnico / ABAP
         return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
@@ -191,18 +186,14 @@ export function TipoCobrancaBloco({
         // Se linguagem é DBA, usar linha DBA ou DBA / Basis
         return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
       }
-      if (ling === 'Gestor') {
-        // Se linguagem é Gestor, usar linha Gestor
-        return 'Gestor';
-      }
       return null;
     };
 
-    const funcaoTecnico = mapearLinguagemParaFuncao(linguagem);
+    const funcaoTecnico = mapearLinguagemParaFuncao(bloco.linguagem);
     console.log('🎯 Funções mapeadas:', { 
       funcaoFuncional, 
       funcaoTecnico, 
-      linguagem,
+      linguagem: bloco.linguagem,
       explicacao: `Valor/Hora Funcional usa linha "${funcaoFuncional}", Valor/Hora Técnico usa linha "${funcaoTecnico}"`
     });
     
@@ -342,7 +333,7 @@ export function TipoCobrancaBloco({
 
     // Cleanup do timeout
     return () => clearTimeout(timeoutId);
-  }, [taxaVigente, linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial]); // Removido bloco.id e onUpdate das dependências
+  }, [taxaVigente, bloco.linguagem, bloco.tipo_cobranca, bloco.tipo_hora_extra, bloco.atendimento_presencial]); // Removido bloco.id e onUpdate das dependências
 
   // Função para marcar valor como editado manualmente
   const handleValorEditadoManualmente = (campo: 'funcional' | 'tecnico') => {
@@ -375,7 +366,7 @@ export function TipoCobrancaBloco({
   useEffect(() => {
     console.log('🔄 Avaliando necessidade de reset de flags de edição manual');
     console.log('   Cliente ID:', clienteId);
-    console.log('   Linguagem:', linguagem);
+    console.log('   Linguagem:', bloco.linguagem);
     console.log('   Tipo de cobrança:', bloco.tipo_cobranca);
     console.log('   Valores atuais:', {
       funcional: bloco.valor_hora_funcional,
@@ -405,7 +396,7 @@ export function TipoCobrancaBloco({
       console.log('   Valor funcional significativo:', temValorFuncionalSignificativo, '(valor:', bloco.valor_hora_funcional, ')');
       console.log('   Valor técnico significativo:', temValorTecnicoSignificativo, '(valor:', bloco.valor_hora_tecnico, ')');
     }
-  }, [clienteId, linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
+  }, [clienteId, bloco.linguagem, bloco.tipo_cobranca]); // Removido bloco.tipo_hora_extra para evitar reset desnecessário
 
   // CORREÇÃO: Forçar sobrescrita de valores manuais quando tipo de hora extra mudar em "Hora Extra"
   useEffect(() => {
@@ -621,6 +612,26 @@ export function TipoCobrancaBloco({
                       {tipo.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Linguagem Técnica - Só aparece quando há Horas Técnicas */}
+          {horasTecnicoDecimal > 0 && (
+            <div className="space-y-2">
+              <Label>
+                Linguagem Técnica <span className="text-red-500">*</span>
+              </Label>
+              <Select value={bloco.linguagem || ''} onValueChange={(valor) => onUpdate(bloco.id, 'linguagem', valor)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma linguagem técnica" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ABAP">ABAP</SelectItem>
+                  <SelectItem value="DBA">DBA</SelectItem>
+                  <SelectItem value="PL/SQL">PL/SQL</SelectItem>
+                  <SelectItem value="Técnico">Técnico</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -43,7 +43,7 @@ export interface Requerimento {
 
 // Tipos para opções de select
 export type ModuloType = 'Comex' | 'Comply' | 'Comply e-DOCS' | 'Gallery' | 'pw.SATI' | 'pw.SPED' | 'pw.SATI/pw.SPED';
-export type LinguagemType = 'ABAP' | 'DBA' | 'Funcional' | 'PL/SQL' | 'Técnico';
+export type LinguagemType = 'ABAP' | 'DBA' | 'PL/SQL' | 'Técnico';
 export type TipoCobrancaType = 'Banco de Horas' | 'Cobro Interno' | 'Contrato' | 'Faturado' | 'Hora Extra' | 'Sobreaviso' | 'Reprovado' | 'Bolsão Enel';
 export type TipoHoraExtraType = '17h30-19h30' | 'apos_19h30' | 'fim_semana';
 export type StatusRequerimento = 'lancado' | 'enviado_faturamento' | 'faturado';
@@ -62,7 +62,6 @@ export const MODULO_OPTIONS: { value: ModuloType; label: string }[] = [
 export const LINGUAGEM_OPTIONS: { value: LinguagemType; label: string }[] = [
   { value: 'ABAP', label: 'ABAP' },
   { value: 'DBA', label: 'DBA' },
-  { value: 'Funcional', label: 'Funcional' },
   { value: 'PL/SQL', label: 'PL/SQL' },
   { value: 'Técnico', label: 'Técnico' }
 ];
