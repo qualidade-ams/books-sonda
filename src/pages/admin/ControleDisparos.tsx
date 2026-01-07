@@ -801,7 +801,7 @@ const ControleDisparos = () => {
                         {STATUS_CONTROLE_MENSAL_OPTIONS.find(opt => opt.value === status.status)?.label}
                       </Badge>
 
-                      {status.status === 'pendente' && (
+                      {false && status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
                             size="sm"

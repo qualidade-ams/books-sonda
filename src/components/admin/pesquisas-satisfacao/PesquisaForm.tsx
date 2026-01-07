@@ -123,8 +123,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
       );
       
-      // Usar o nome_abreviado se encontrou, senão usar o valor original
-      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_abreviado : pesquisa.empresa;
+      // Usar o nome_completo se encontrou, senão usar o valor original
+      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
       
       form.reset({
         empresa: empresaValue || '',
@@ -206,7 +206,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                         .filter((empresa) => empresa.status === 'ativo')
                         .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
                         .map(empresa => (
-                          <SelectItem key={empresa.id} value={empresa.nome_abreviado}>
+                          <SelectItem key={empresa.id} value={empresa.nome_completo}>
                             {empresa.nome_abreviado}
                           </SelectItem>
                         ))}

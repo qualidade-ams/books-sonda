@@ -141,7 +141,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
         e => e.nome_completo === elogio.pesquisa?.empresa || e.nome_abreviado === elogio.pesquisa?.empresa
       );
       
-      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_abreviado : elogio.pesquisa?.empresa || '';
+      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : elogio.pesquisa?.empresa || '';
       
       console.log('📋 [ELOGIOS] Dados do elogio a serem preenchidos:');
       console.log('  - Categoria:', elogio.pesquisa?.categoria);
@@ -246,7 +246,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
                         .filter((empresa) => empresa.status === 'ativo')
                         .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
                         .map(empresa => (
-                          <SelectItem key={empresa.id} value={empresa.nome_abreviado}>
+                          <SelectItem key={empresa.id} value={empresa.nome_completo}>
                             {empresa.nome_abreviado}
                           </SelectItem>
                         ))}
