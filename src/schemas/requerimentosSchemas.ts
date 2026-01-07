@@ -15,8 +15,8 @@ const moduloSchema = z
 
 // Schema para validação de linguagem
 const linguagemSchema = z
-  .enum(['ABAP', 'DBA', 'Funcional', 'PL/SQL', 'Técnico'] as const, {
-    errorMap: () => ({ message: 'Selecione uma linguagem válida' })
+  .enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico'] as const, {
+    errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' })
   });
 
 // Schema para validação de tipo de cobrança
@@ -138,7 +138,7 @@ export const requerimentoFormSchema = z.object({
     .min(1, 'Cliente é obrigatório')
     .uuid('ID do cliente deve ser um UUID válido'),
   modulo: moduloSchema,
-  linguagem: linguagemSchema, // Campo linguagem obrigatório
+  linguagem: linguagemSchema.optional(), // Campo linguagem técnica condicional
   descricao: descricaoSchema,
   data_envio: dataSchema,
   data_aprovacao: dataOpcionalSchema,
@@ -247,6 +247,19 @@ export const requerimentoFormSchema = z.object({
 }, {
   message: 'Quantidade de tickets é obrigatória para empresas com cobrança por ticket quando o tipo é "Banco de Horas"',
   path: ['quantidade_tickets']
+}).refine((data) => {
+  // Validação customizada: linguagem técnica obrigatória quando há horas técnicas
+  const horasTecnicoNum = typeof data.horas_tecnico === 'string' 
+    ? parseFloat(data.horas_tecnico) || 0 
+    : data.horas_tecnico || 0;
+  
+  if (horasTecnicoNum > 0 && !data.linguagem) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Linguagem Técnica é obrigatória quando há Horas Técnicas',
+  path: ['linguagem']
 });
 
 // Schema para validação de filtros

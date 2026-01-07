@@ -90,7 +90,7 @@ export function RequerimentoForm({
       data_aprovacao: requerimento?.data_aprovacao || '', // Deixar em branco por padrão
       horas_funcional: requerimento?.horas_funcional || 0,
       horas_tecnico: requerimento?.horas_tecnico || 0,
-      linguagem: requerimento?.linguagem || 'Funcional',
+      linguagem: requerimento?.linguagem || 'Técnico',
       tipo_cobranca: requerimento?.tipo_cobranca || 'Banco de Horas',
       mes_cobranca: requerimento?.mes_cobranca || '',
       observacao: requerimento?.observacao || '',
@@ -306,13 +306,7 @@ export function RequerimentoForm({
     const funcaoFuncional: TipoFuncao = 'Funcional';
     
     // Valor/Hora Técnico usa a linha correspondente à LINGUAGEM selecionada
-    // Quando linguagem é "Funcional", SEMPRE usa linha "Técnico" para o campo Valor/Hora Técnico
     const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
-      // Se linguagem é Funcional, usar linha Técnico para o campo Valor/Hora Técnico
-      if (ling === 'Funcional') {
-        return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
-      }
-      
       if (ling === 'Técnico') {
         return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
       }
@@ -548,9 +542,6 @@ export function RequerimentoForm({
       const funcaoFuncional: TipoFuncao = 'Funcional';
       
       const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
-        if (ling === 'Funcional') {
-          return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
-        }
         if (ling === 'Técnico') {
           return tipoProduto === 'GALLERY' ? 'Técnico / ABAP' : 'Técnico (Instalação / Atualização)';
         }
@@ -559,9 +550,6 @@ export function RequerimentoForm({
         }
         if (ling === 'DBA') {
           return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
-        }
-        if (ling === 'Gestor') {
-          return 'Gestor';
         }
         return null;
       };
@@ -738,7 +726,15 @@ export function RequerimentoForm({
     if (!descricao || descricao.trim() === '') status.camposFaltando.push('Descrição');
     if (!dataEnvio || dataEnvio.trim() === '') status.camposFaltando.push('Data de Envio');
     if (!modulo || modulo.trim() === '') status.camposFaltando.push('Módulo');
-    if (!linguagem || linguagem.trim() === '') status.camposFaltando.push('Linguagem');
+    
+    // Validar linguagem técnica apenas se houver horas técnicas
+    const horasTecnicoValidacao = typeof horasTecnico === 'string' 
+      ? converterParaHorasDecimal(horasTecnico) 
+      : horasTecnico || 0;
+    if (horasTecnicoValidacao > 0 && (!linguagem || linguagem.trim() === '')) {
+      status.camposFaltando.push('Linguagem Técnica');
+    }
+    
     if (!tipoCobranca || tipoCobranca.trim() === '') status.camposFaltando.push('Tipo de Cobrança');
 
     // Validação de horas - pelo menos uma deve ser maior que zero
@@ -1023,35 +1019,6 @@ export function RequerimentoForm({
                               {modulo.label}
                             </SelectItem>
                           ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Linguagem */}
-                <FormField
-                  control={form.control}
-                  name="linguagem"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Linguagem <span className="text-gray-700 dark:text-gray-300">*</span>
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma linguagem" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ABAP">ABAP</SelectItem>
-                          <SelectItem value="DBA">DBA</SelectItem>
-                          <SelectItem value="Funcional">Funcional</SelectItem>
-                          <SelectItem value="Gestor">Gestor</SelectItem>
-                          <SelectItem value="PL/SQL">PL/SQL</SelectItem>
-                          <SelectItem value="Técnico">Técnico</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1361,6 +1328,40 @@ export function RequerimentoForm({
                     </FormItem>
                   )}
                 />
+
+                {/* Linguagem Técnica - Só aparece quando há Horas Técnicas */}
+                {(() => {
+                  const horasTecnicoCondicional = typeof horasTecnico === 'string' 
+                    ? converterParaHorasDecimal(horasTecnico) 
+                    : horasTecnico || 0;
+                  return horasTecnicoCondicional > 0;
+                })() && (
+                  <FormField
+                    control={form.control}
+                    name="linguagem"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Linguagem Técnica <span className="text-gray-700 dark:text-gray-300">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma linguagem técnica" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="ABAP">ABAP</SelectItem>
+                            <SelectItem value="DBA">DBA</SelectItem>
+                            <SelectItem value="PL/SQL">PL/SQL</SelectItem>
+                            <SelectItem value="Técnico">Técnico</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
 
               </div>
