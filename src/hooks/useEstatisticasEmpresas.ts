@@ -27,6 +27,11 @@ export interface EstatisticasEmpresas {
   empresasComBookOutros: number;
   empresasSemBook: number;
   
+  // Tipos de book apenas para empresas com AMS
+  empresasAmsComBookQualidade: number;
+  empresasAmsComBookOutros: number;
+  empresasAmsSemBook: number;
+  
   // Tipos de cobrança
   empresasBancoHoras: number;
   empresasTicket: number;
@@ -120,6 +125,11 @@ export const useEstatisticasEmpresas = () => {
           empresasComBookOutros: empresasAtivas.filter(e => e.tipo_book === 'outros').length,
           empresasSemBook: empresasAtivas.filter(e => e.tipo_book === 'nao_tem_book' || e.tipo_book === null).length,
           
+          // Tipos de book apenas para empresas com AMS
+          empresasAmsComBookQualidade: empresasAtivas.filter(e => e.tem_ams === true && e.tipo_book === 'qualidade').length,
+          empresasAmsComBookOutros: empresasAtivas.filter(e => e.tem_ams === true && e.tipo_book === 'outros').length,
+          empresasAmsSemBook: empresasAtivas.filter(e => e.tem_ams === true && (e.tipo_book === 'nao_tem_book' || e.tipo_book === null)).length,
+          
           // Tipos de cobrança - usar apenas empresas ativas
           empresasBancoHoras: empresasAtivas.filter(e => e.tipo_cobranca === 'banco_horas').length,
           empresasTicket: empresasAtivas.filter(e => e.tipo_cobranca === 'ticket').length,
@@ -146,10 +156,15 @@ export const useEstatisticasEmpresas = () => {
         // Log simples para debug
         console.log('📊 Estatísticas:', {
           empresasAtivas: empresasAtivas.length,
+          empresasComAms: stats.empresasComAms,
           empresasComFiscal: stats.empresasComFiscal,
           empresasSomenteFiscal: stats.empresasSomenteFiscal,
           empresasSomenteGallery: stats.empresasSomenteGallery,
-          empresasSomenteComex: stats.empresasSomenteComex
+          empresasSomenteComex: stats.empresasSomenteComex,
+          // Estatísticas de book AMS
+          empresasAmsComBookQualidade: stats.empresasAmsComBookQualidade,
+          empresasAmsComBookOutros: stats.empresasAmsComBookOutros,
+          empresasAmsSemBook: stats.empresasAmsSemBook
         });
 
         return stats;

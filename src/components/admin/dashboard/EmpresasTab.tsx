@@ -90,9 +90,9 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
   ];
 
   const bookData = [
-    { name: 'Qualidade', value: stats.empresasComBookQualidade, color: COLORS.success },
-    { name: 'Outros', value: stats.empresasComBookOutros, color: COLORS.warning },
-    { name: 'Sem Book', value: stats.empresasSemBook, color: COLORS.gray }
+    { name: 'Qualidade', value: stats.empresasAmsComBookQualidade, color: COLORS.success },
+    { name: 'Outros', value: stats.empresasAmsComBookOutros, color: COLORS.warning },
+    { name: 'Sem Book', value: stats.empresasAmsSemBook, color: COLORS.gray }
   ];
 
   return (
@@ -456,9 +456,9 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="120%">
-                <BarChart data={produtosData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={produtosData} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis 
                     dataKey="name" 
@@ -476,7 +476,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
                       backgroundColor: '#ffffff',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
                     formatter={(value: any) => [value, 'Empresas']}
                   />
@@ -487,6 +487,29 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              
+              {/* Legenda dentro do card */}
+              <div className="flex flex-wrap justify-center gap-4 text-sm px-4 -mt-4">
+                {[
+                  { name: 'Fiscal', value: stats.empresasComFiscal, color: COLORS.primary },
+                  { name: 'Comex', value: stats.empresasComComex, color: COLORS.info },
+                  { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: COLORS.purple }
+                ].map((entry, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-2 group cursor-pointer"
+                    title={`${entry.name}: ${entry.value}`}
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full flex-shrink-0 transition-transform group-hover:scale-125" 
+                      style={{ backgroundColor: entry.color }}
+                    ></div>
+                    <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors">
+                      {entry.name}: {entry.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -495,10 +518,10 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Tipos de Book</CardTitle>
+              <CardTitle className="text-lg font-semibold">Tipos de Book AMS</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Distribuição por tipo de book
+              Distribuição por tipo de book (apenas clientes com AMS)
             </p>
           </CardHeader>
           <CardContent>
@@ -543,9 +566,9 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
               {/* Legenda dentro do card */}
               <div className="flex flex-wrap justify-center gap-4 text-sm px-4 -mt-4">
                 {[
-                  { name: 'Qualidade', value: stats.empresasComBookQualidade, color: COLORS.success },
-                  { name: 'Outros', value: stats.empresasComBookOutros, color: COLORS.warning },
-                  { name: 'Sem Book', value: stats.empresasSemBook, color: COLORS.gray }
+                  { name: 'Qualidade', value: stats.empresasAmsComBookQualidade, color: COLORS.success },
+                  { name: 'Outros', value: stats.empresasAmsComBookOutros, color: COLORS.warning },
+                  { name: 'Sem Book', value: stats.empresasAmsSemBook, color: COLORS.gray }
                 ].map((entry, index) => (
                   <div 
                     key={index} 

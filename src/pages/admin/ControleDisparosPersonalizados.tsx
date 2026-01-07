@@ -869,7 +869,7 @@ const ControleDisparosPersonalizados = () => {
                         </ProtectedAction>
                       )}
 
-                      {status.status === 'pendente' && (
+                      {false && status.status === 'pendente' && (
                         <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
                           <Button
                             size="sm"

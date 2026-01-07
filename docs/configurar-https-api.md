@@ -157,7 +157,7 @@ A API pode continuar rodando em HTTP na porta 3001, pois o Cloudflare fará o pr
 ### 1. Teste Manual
 ```bash
 # Testar HTTPS
-curl -k https://SAPSERVDB.sondait.com.br:3001/health
+curl -k http://SAPSERVDB.sondait.com.br:3001/health
 
 # Verificar certificado
 openssl s_client -connect SAPSERVDB.sondait.com.br:3001 -servername SAPSERVDB.sondait.com.br
