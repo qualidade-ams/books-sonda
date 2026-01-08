@@ -68,6 +68,7 @@ import { useElogios, useEstatisticasElogios, useAtualizarElogio } from '@/hooks/
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useElogiosTemplates } from '@/hooks/useElogiosTemplates';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { emailService } from '@/services/emailService';
 import { elogiosTemplateService } from '@/services/elogiosTemplateService';
 import * as elogiosService from '@/services/elogiosService';
@@ -1051,7 +1052,11 @@ export default function EnviarElogios() {
                               const deveExibirVermelho = isOrigemSqlServer && !empresaEncontrada;
                               return (
                                 <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
-                                  {nomeEmpresa}
+                                  <ClienteNomeDisplay
+                                    nomeEmpresa={elogio.pesquisa?.empresa}
+                                    nomeCliente={elogio.pesquisa?.cliente}
+                                    className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
+                                  />
                                 </span>
                               );
                             })()}
@@ -1060,7 +1065,9 @@ export default function EnviarElogios() {
                             {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
                           </TableCell>
                           <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
-                            <span className="truncate block">{elogio.pesquisa?.cliente || 'N/A'}</span>
+                            <span className="truncate block">
+                              {elogio.pesquisa?.cliente || 'N/A'}
+                            </span>
                           </TableCell>
                           <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
                             <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
@@ -1169,7 +1176,11 @@ export default function EnviarElogios() {
                                   const deveExibirVermelho = isOrigemSqlServer && !empresaEncontrada;
                                   return (
                                     <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
-                                      {nomeEmpresa}
+                                      <ClienteNomeDisplay
+                                        nomeEmpresa={elogio.pesquisa?.empresa}
+                                        nomeCliente={elogio.pesquisa?.cliente}
+                                        className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
+                                      />
                                     </span>
                                   );
                                 })()}
@@ -1178,7 +1189,9 @@ export default function EnviarElogios() {
                                 {elogio.data_resposta ? formatarData(elogio.data_resposta) : '-'}
                               </TableCell>
                               <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
-                                <span className="truncate block">{elogio.pesquisa?.cliente}</span>
+                                <span className="truncate block">
+                                  {elogio.pesquisa?.cliente}
+                                </span>
                               </TableCell>
                               <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
                                 <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
@@ -1521,11 +1534,19 @@ export default function EnviarElogios() {
                     <CardContent className="space-y-2">
                       <div>
                         <Label className="text-xs text-gray-500">Cliente</Label>
-                        <p className="text-sm font-medium">{elogioParaVisualizar.pesquisa?.cliente || '-'}</p>
+                        <p className="text-sm font-medium">
+                          {elogioParaVisualizar.pesquisa?.cliente || '-'}
+                        </p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Empresa</Label>
-                        <p className="text-sm">{elogioParaVisualizar.pesquisa?.empresa || '-'}</p>
+                        <p className="text-sm">
+                          <ClienteNomeDisplay
+                            nomeEmpresa={elogioParaVisualizar.pesquisa?.empresa || '-'}
+                            nomeCliente={elogioParaVisualizar.pesquisa?.cliente || '-'}
+                            className="inline"
+                          />
+                        </p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Grupo</Label>

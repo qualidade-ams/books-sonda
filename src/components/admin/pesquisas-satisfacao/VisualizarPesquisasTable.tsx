@@ -31,6 +31,8 @@ import {
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { Pesquisa } from '@/types/pesquisasSatisfacao';
 import { getBadgeResposta } from '@/utils/badgeUtils';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
+import { isClienteEspecialBRFONSDAGUIRRE, processarNomeClienteEspecial } from '@/utils/clienteEspecialUtils';
 
 interface VisualizarPesquisasTableProps {
   pesquisas: Pesquisa[];
@@ -140,9 +142,23 @@ export function VisualizarPesquisasTable({
                 {(() => {
                   const validacao = validarEmpresa(pesquisa.empresa);
                   const isOrigemSqlServer = pesquisa.origem === 'sql_server';
-                  // Só exibe em vermelho se for do SQL Server E não encontrada
-                  const deveExibirVermelho = isOrigemSqlServer && !validacao.encontrada;
+                  const isClienteEspecial = isClienteEspecialBRFONSDAGUIRRE(pesquisa.empresa);
                   
+                  // Só exibe em vermelho se for do SQL Server E não encontrada E não for cliente especial
+                  const deveExibirVermelho = isOrigemSqlServer && !validacao.encontrada && !isClienteEspecial;
+                  
+                  // Se for cliente especial, usa ClienteNomeDisplay
+                  if (isClienteEspecial) {
+                    return (
+                      <ClienteNomeDisplay
+                        nomeEmpresa={pesquisa.empresa}
+                        nomeCliente={pesquisa.cliente}
+                        className="inline"
+                      />
+                    );
+                  }
+                  
+                  // Para outras empresas, usa a lógica original
                   if (validacao.encontrada) {
                     return (
                       <TooltipProvider>
@@ -178,9 +194,7 @@ export function VisualizarPesquisasTable({
                   } else {
                     // Lançamento manual - exibe normalmente sem vermelho
                     return (
-                      <span>
-                        {validacao.nomeExibir}
-                      </span>
+                      <span>{validacao.nomeExibir}</span>
                     );
                   }
                 })()}
