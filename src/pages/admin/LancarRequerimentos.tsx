@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight, DollarSign, Target, Tags } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +67,14 @@ import {
     TIPO_COBRANCA_OPTIONS
 } from '@/types/requerimentos';
 
+// Função para obter o mês/ano padrão
+const getDefaultMesCobranca = () => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${mes}/${ano}`;
+};
+
 const LancarRequerimentos = () => {
     // Estados para modais
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -91,16 +99,12 @@ const LancarRequerimentos = () => {
     // Estados específicos para aba de enviados
     const [selectedRequerimentosEnviados, setSelectedRequerimentosEnviados] = useState<string[]>([]);
     const [showFiltersEnviados, setShowFiltersEnviados] = useState(false);
+    
     const [filtrosEnviados, setFiltrosEnviados] = useState<FiltrosRequerimentos>({
         busca: '',
         modulo: undefined,
         tipo_cobranca: undefined,
-        mes_cobranca: (() => {
-            const hoje = new Date();
-            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            const ano = hoje.getFullYear();
-            return `${mes}/${ano}`;
-        })(), // Formato MM/YYYY por padrão
+        mes_cobranca: getDefaultMesCobranca(), // Formato MM/YYYY por padrão
         data_inicio: undefined,
         data_fim: undefined
     });
@@ -324,15 +328,11 @@ const LancarRequerimentos = () => {
     }, [debouncedSearchEnviados]);
 
     const limparFiltrosEnviados = () => {
-        const hoje = new Date();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const ano = hoje.getFullYear();
-
         setFiltrosEnviados({
             busca: '',
             modulo: undefined,
             tipo_cobranca: undefined,
-            mes_cobranca: `${mes}/${ano}`, // Manter mês corrente no formato MM/YYYY
+            mes_cobranca: getDefaultMesCobranca(), // Manter mês corrente no formato MM/YYYY
             data_inicio: undefined,
             data_fim: undefined
         });
@@ -571,26 +571,40 @@ const LancarRequerimentos = () => {
                 </div>
 
                 {/* Estatísticas */}
-                <div className={cn("grid gap-4", grid.gridClass)}>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {isLoading ? (
                         Array.from({ length: 4 }).map((_, i) => (
                             <StatsCardSkeleton key={i} />
                         ))
                     ) : (
                         <>
+                            {/* Card combinado: Total + Tipos de Cobrança */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                                        <FileText className="h-4 w-4" />
-                                        Total
-                                    </CardTitle>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />
+                                            Total
+                                        </CardTitle>
+                                        <CardTitle className="text-xs lg:text-sm font-medium text-purple-600 flex items-center gap-2">
+                                            <Tags className="h-4 w-4" />
+                                            Tipos de Cobrança
+                                        </CardTitle>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="pt-0">
-                                    <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                                        {statsRequerimentos.total}
+                                    <div className="flex items-start justify-between">
+                                        <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
+                                            {statsRequerimentos.total}
+                                        </div>
+                                        <div className="text-xl lg:text-2xl font-bold text-purple-600">
+                                            {Object.keys(statsRequerimentos.porTipo).length}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
+                            
+                            {/* Card Total Horas */}
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
@@ -600,25 +614,9 @@ const LancarRequerimentos = () => {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                     <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                                        {formatarHorasParaExibicao(statsRequerimentos.totalHoras, 'completo')}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                                        Valor Total
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <div className="text-xl lg:text-2xl font-bold text-green-600">
-                                        R$ {(statsRequerimentos.selecionados > 0 
-                                            ? statsRequerimentos.valorSelecionados 
-                                            : statsRequerimentos.valorTotal
-                                        ).toLocaleString('pt-BR', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        })}
+                                        {formatarHorasParaExibicao(statsRequerimentos.selecionados > 0 
+                                            ? statsRequerimentos.horasSelecionados 
+                                            : statsRequerimentos.totalHoras, 'completo')}
                                     </div>
                                     {statsRequerimentos.selecionados > 0 && (
                                         <div className="text-xs text-muted-foreground mt-1">
@@ -627,23 +625,43 @@ const LancarRequerimentos = () => {
                                     )}
                                 </CardContent>
                             </Card>
+                            
+                            {/* Card Valor Total */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                                        {activeTab === 'enviados' ? 'Valores Selecionados' : 'Tipos de Cobrança'}
+                                    <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
+                                        <DollarSign className="h-4 w-4" />
+                                        Valor Total
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
-                                    {activeTab === 'enviados' ? (
-                                        <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                                            R$ {(statsRequerimentos.valorSelecionados || 0).toLocaleString('pt-BR', {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                                            {Object.keys(statsRequerimentos.porTipo).length}
+                                    <div className="text-xl lg:text-2xl font-bold text-green-600">
+                                        R$ {statsRequerimentos.valorTotal.toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            
+                            {/* Card Valores Selecionados */}
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
+                                        <Target className="h-4 w-4" />
+                                        Valores Selecionados
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                                        R$ {(statsRequerimentos.valorSelecionados || 0).toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
+                                    </div>
+                                    {statsRequerimentos.selecionados > 0 && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {statsRequerimentos.selecionados} selecionado{statsRequerimentos.selecionados > 1 ? 's' : ''}
                                         </div>
                                     )}
                                 </CardContent>
@@ -709,16 +727,19 @@ const LancarRequerimentos = () => {
                                         {activeTab === 'nao-enviados' && (
                                             <>
                                                 {selectedRequerimentos.length === 0 ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={selectAllRequerimentos}
-                                                        disabled={requerimentosFiltrados.length === 0}
-                                                        className="whitespace-nowrap"
-                                                        aria-label={`Selecionar todos os ${requerimentosFiltrados.length} requerimentos`}
-                                                    >
-                                                        Selecionar Todos
-                                                    </Button>
+                                                    // Mostrar botão "Limpar Filtro" se houver filtros ativos
+                                                    (filtros.busca || filtros.modulo || filtros.tipo_cobranca || filtros.mes_cobranca || filtros.data_inicio || filtros.data_fim) ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={limparFiltros}
+                                                            className="whitespace-nowrap"
+                                                            aria-label="Limpar todos os filtros aplicados"
+                                                        >
+                                                            <Filter className="h-4 w-4 mr-2" />
+                                                            Limpar Filtro
+                                                        </Button>
+                                                    ) : null
                                                 ) : (
                                                     <Button
                                                         variant="outline"
@@ -823,6 +844,7 @@ const LancarRequerimentos = () => {
                                             onSelectAll={selectAllRequerimentos}
                                             onClearSelection={clearSelection}
                                             showEnviarFaturamento={true}
+                                            totalFilteredCount={requerimentosFiltrados.length} // Total de requerimentos filtrados
                                         />
 
                                         {/* Paginação */}
@@ -914,16 +936,24 @@ const LancarRequerimentos = () => {
                                             <span>Filtros</span>
                                         </Button>
                                         {selectedRequerimentosEnviados.length === 0 ? (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={selectAllRequerimentos}
-                                                disabled={requerimentosFiltrados.length === 0}
-                                                className="whitespace-nowrap"
-                                                aria-label={`Selecionar todos os ${requerimentosFiltrados.length} requerimentos`}
-                                            >
-                                                Selecionar Todos
-                                            </Button>
+                                            // Mostrar botão "Limpar Filtro" se houver filtros ativos
+                                            (filtrosEnviados.busca || 
+                             filtrosEnviados.modulo || 
+                             filtrosEnviados.tipo_cobranca || 
+                             (filtrosEnviados.mes_cobranca && filtrosEnviados.mes_cobranca !== getDefaultMesCobranca()) ||
+                             filtrosEnviados.data_inicio || 
+                             filtrosEnviados.data_fim) ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={limparFiltrosEnviados}
+                                                    className="whitespace-nowrap"
+                                                    aria-label="Limpar todos os filtros aplicados"
+                                                >
+                                                    <Filter className="h-4 w-4 mr-2" />
+                                                    Limpar Filtro
+                                                </Button>
+                                            ) : null
                                         ) : (
                                             <Button
                                                 variant="outline"
@@ -938,7 +968,63 @@ const LancarRequerimentos = () => {
                                     </div>
                                 </div>
 
-                                {/* Navegação de Mês/Ano */}
+                                {/* Filtros para Enviados - Movidos para cima */}
+                                {showFiltersEnviados && (
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {/* Busca */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Buscar</div>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                    <Input
+                                                        placeholder="Nome ou e-mail..."
+                                                        defaultValue={filtrosEnviados.busca || ''}
+                                                        onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
+                                                        className="pl-10"
+                                                        aria-label="Campo de busca"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Módulo */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Módulo</div>
+                                                <MultiSelect
+                                                    options={moduloOptions}
+                                                    selected={Array.isArray(filtrosEnviados.modulo) ? filtrosEnviados.modulo : filtrosEnviados.modulo ? [filtrosEnviados.modulo] : []}
+                                                    onChange={(values) => handleFiltroEnviadosChange('modulo', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os módulos"
+                                                    maxCount={2}
+                                                />
+                                            </div>
+
+                                            {/* Tipo de Cobrança */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                                                <MultiSelect
+                                                    options={tipoCobrancaOptions}
+                                                    selected={Array.isArray(filtrosEnviados.tipo_cobranca) ? filtrosEnviados.tipo_cobranca : filtrosEnviados.tipo_cobranca ? [filtrosEnviados.tipo_cobranca] : []}
+                                                    onChange={(values) => handleFiltroEnviadosChange('tipo_cobranca', values.length > 0 ? values : undefined)}
+                                                    placeholder="Todos os tipos"
+                                                    maxCount={2}
+                                                />
+                                            </div>
+
+                                            {/* Mês/Ano */}
+                                            <div>
+                                                <div className="text-sm font-medium mb-2">Mês/Ano</div>
+                                                <MonthYearPicker
+                                                    value={filtrosEnviados.mes_cobranca || ''}
+                                                    onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
+                                                    placeholder="Outubro 2025"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Navegação de Mês/Ano - Movida para baixo dos filtros */}
                                 <div className="flex items-center justify-center gap-4 py-3">
                                     <Button
                                         variant="outline"
@@ -1012,61 +1098,6 @@ const LancarRequerimentos = () => {
                                         <span className="sr-only">Próximo</span>
                                     </Button>
                                 </div>
-                                {/* Filtros para Enviados */}
-                                {showFiltersEnviados && (
-                                    <div className="space-y-4 pt-4 border-t">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            {/* Busca */}
-                                            <div>
-                                                <div className="text-sm font-medium mb-2">Buscar</div>
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                                    <Input
-                                                        placeholder="Nome ou e-mail..."
-                                                        defaultValue={filtrosEnviados.busca || ''}
-                                                        onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
-                                                        className="pl-10"
-                                                        aria-label="Campo de busca"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Módulo */}
-                                            <div>
-                                                <div className="text-sm font-medium mb-2">Módulo</div>
-                                                <MultiSelect
-                                                    options={moduloOptions}
-                                                    selected={Array.isArray(filtrosEnviados.modulo) ? filtrosEnviados.modulo : filtrosEnviados.modulo ? [filtrosEnviados.modulo] : []}
-                                                    onChange={(values) => handleFiltroEnviadosChange('modulo', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os módulos"
-                                                    maxCount={2}
-                                                />
-                                            </div>
-
-                                            {/* Tipo de Cobrança */}
-                                            <div>
-                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
-                                                <MultiSelect
-                                                    options={tipoCobrancaOptions}
-                                                    selected={Array.isArray(filtrosEnviados.tipo_cobranca) ? filtrosEnviados.tipo_cobranca : filtrosEnviados.tipo_cobranca ? [filtrosEnviados.tipo_cobranca] : []}
-                                                    onChange={(values) => handleFiltroEnviadosChange('tipo_cobranca', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os tipos"
-                                                    maxCount={2}
-                                                />
-                                            </div>
-
-                                            {/* Mês/Ano */}
-                                            <div>
-                                                <div className="text-sm font-medium mb-2">Mês/Ano</div>
-                                                <MonthYearPicker
-                                                    value={filtrosEnviados.mes_cobranca || ''}
-                                                    onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
-                                                    placeholder="Outubro 2025"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </CardHeader>
                             <CardContent className="space-y-4 overflow-x-auto">
 
@@ -1100,6 +1131,7 @@ const LancarRequerimentos = () => {
                                             showEnviarFaturamento={false} // Não mostrar botão de enviar
                                             showActions={true} // Mostrar coluna de ações
                                             showEditDelete={false} // Não mostrar botões de editar/excluir (apenas visualizar)
+                                            totalFilteredCount={requerimentosFiltrados.length} // Total de requerimentos filtrados
                                         />
 
                                         {/* Paginação */}
