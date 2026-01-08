@@ -100,14 +100,14 @@ const LancarRequerimentos = () => {
     const [selectedRequerimentosEnviados, setSelectedRequerimentosEnviados] = useState<string[]>([]);
     const [showFiltersEnviados, setShowFiltersEnviados] = useState(false);
     
-    const [filtrosEnviados, setFiltrosEnviados] = useState<FiltrosRequerimentos>({
+    const [filtrosEnviados, setFiltrosEnviados] = useState<FiltrosRequerimentos>(() => ({
         busca: '',
         modulo: undefined,
         tipo_cobranca: undefined,
         mes_cobranca: getDefaultMesCobranca(), // Formato MM/YYYY por padrão
         data_inicio: undefined,
         data_fim: undefined
-    });
+    }));
 
     // Estados para filtros da aba não enviados
     const [filtros, setFiltros] = useState<FiltrosRequerimentos>({
@@ -179,14 +179,15 @@ const LancarRequerimentos = () => {
                 if (!modulos.includes(req.modulo)) return false;
             }
 
-
-
             if (currentFiltros.tipo_cobranca) {
                 const tipos = Array.isArray(currentFiltros.tipo_cobranca) ? currentFiltros.tipo_cobranca : [currentFiltros.tipo_cobranca];
                 if (!tipos.includes(req.tipo_cobranca)) return false;
             }
 
-            if (currentFiltros.mes_cobranca && req.mes_cobranca !== currentFiltros.mes_cobranca) return false;
+            // Filtro de mês/ano - SEMPRE aplicar se estiver definido
+            if (currentFiltros.mes_cobranca) {
+                if (req.mes_cobranca !== currentFiltros.mes_cobranca) return false;
+            }
 
             // Filtros de data
             if (currentFiltros.data_inicio) {
@@ -328,11 +329,13 @@ const LancarRequerimentos = () => {
     }, [debouncedSearchEnviados]);
 
     const limparFiltrosEnviados = () => {
+        const defaultMesCobranca = getDefaultMesCobranca();
+        console.log('🧹 Limpando filtros - definindo mês padrão:', defaultMesCobranca);
         setFiltrosEnviados({
             busca: '',
             modulo: undefined,
             tipo_cobranca: undefined,
-            mes_cobranca: getDefaultMesCobranca(), // Manter mês corrente no formato MM/YYYY
+            mes_cobranca: defaultMesCobranca, // Manter mês corrente no formato MM/YYYY
             data_inicio: undefined,
             data_fim: undefined
         });
@@ -669,6 +672,87 @@ const LancarRequerimentos = () => {
                         </>
                     )}
                 </div>
+
+                {/* Navegação de Período para aba de Histórico */}
+                {activeTab === 'enviados' && (
+                    <Card>
+                        <CardContent className="py-3">
+                            <div className="flex items-center justify-between gap-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                                        const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+                                        const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+                                        let novoMes = mesAtual - 1;
+                                        let novoAno = anoAtual;
+
+                                        if (novoMes < 1) {
+                                            novoMes = 12;
+                                            novoAno = anoAtual - 1;
+                                        }
+
+                                        const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+                                        handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
+                                    }}
+                                    className="flex items-center gap-2"
+                                    aria-label="Mês anterior"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                    Anterior
+                                </Button>
+
+                                <div className="text-center">
+                                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        {(() => {
+                                            const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                                            const mesNum = parseInt(mes) || new Date().getMonth() + 1;
+                                            const anoNum = parseInt(ano) || new Date().getFullYear();
+
+                                            const mesesNomes = [
+                                                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                            ];
+
+                                            return `${mesesNomes[mesNum - 1]} ${anoNum}`;
+                                        })()}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {requerimentosFiltrados.length} requerimento{requerimentosFiltrados.length !== 1 ? 's' : ''}
+                                    </div>
+                                </div>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
+                                        const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+                                        const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+                                        let novoMes = mesAtual + 1;
+                                        let novoAno = anoAtual;
+
+                                        if (novoMes > 12) {
+                                            novoMes = 1;
+                                            novoAno = anoAtual + 1;
+                                        }
+
+                                        const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+                                        handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
+                                    }}
+                                    className="flex items-center gap-2"
+                                    aria-label="Próximo mês"
+                                >
+                                    Próximo
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Sistema de Abas - Estilo igual ao EmailConfig */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4 max-w-full overflow-hidden">
@@ -1024,80 +1108,6 @@ const LancarRequerimentos = () => {
                                     </div>
                                 )}
 
-                                {/* Navegação de Mês/Ano - Movida para baixo dos filtros */}
-                                <div className="flex items-center justify-center gap-4 py-3">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
-                                            const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
-                                            const anoAtual = parseInt(ano) || new Date().getFullYear();
-
-                                            let novoMes = mesAtual - 1;
-                                            let novoAno = anoAtual;
-
-                                            if (novoMes < 1) {
-                                                novoMes = 12;
-                                                novoAno = anoAtual - 1;
-                                            }
-
-                                            const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-                                            handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
-                                        }}
-                                        className="h-8 px-3"
-                                        aria-label="Mês anterior"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        <span className="sr-only">Anterior</span>
-                                    </Button>
-
-                                    <div className="text-center min-w-[140px] px-4">
-                                        <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                                            {(() => {
-                                                const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
-                                                const mesNum = parseInt(mes) || new Date().getMonth() + 1;
-                                                const anoNum = parseInt(ano) || new Date().getFullYear();
-
-                                                const mesesNomes = [
-                                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                                ];
-
-                                                return `${mesesNomes[mesNum - 1]} ${anoNum}`;
-                                            })()}
-                                        </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {requerimentosFiltrados.length} requerimento{requerimentosFiltrados.length !== 1 ? 's' : ''}
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const [mes, ano] = (filtrosEnviados.mes_cobranca || '').split('/');
-                                            const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
-                                            const anoAtual = parseInt(ano) || new Date().getFullYear();
-
-                                            let novoMes = mesAtual + 1;
-                                            let novoAno = anoAtual;
-
-                                            if (novoMes > 12) {
-                                                novoMes = 1;
-                                                novoAno = anoAtual + 1;
-                                            }
-
-                                            const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-                                            handleFiltroEnviadosChange('mes_cobranca', novoMesCobranca);
-                                        }}
-                                        className="h-8 px-3"
-                                        aria-label="Próximo mês"
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                        <span className="sr-only">Próximo</span>
-                                    </Button>
-                                </div>
                             </CardHeader>
                             <CardContent className="space-y-4 overflow-x-auto">
 
