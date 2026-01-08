@@ -86,13 +86,6 @@ export function MonthYearPicker({
     }
   };
 
-  const handleClear = () => {
-    setSelectedMonth('');
-    setSelectedYear('');
-    onChange(undefined);
-    setOpen(false);
-  };
-
   const displayText = value 
     ? (() => {
         const [month, year] = value.split('/');
@@ -152,41 +145,6 @@ export function MonthYearPicker({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClear}
-              className="h-7 text-xs"
-            >
-              Limpar
-            </Button>
-            <div className="flex gap-2">
-              {selectedMonth && selectedYear && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    const newValue = `${selectedMonth}/${selectedYear}`;
-                    onChange(newValue);
-                    setOpen(false);
-                  }}
-                  className="h-7 text-xs"
-                >
-                  Confirmar
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOpen(false)}
-                className="h-7 text-xs"
-              >
-                Fechar
-              </Button>
             </div>
           </div>
         </div>
