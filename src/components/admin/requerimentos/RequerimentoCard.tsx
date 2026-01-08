@@ -28,6 +28,7 @@ import { useEnviarParaFaturamento } from '@/hooks/useRequerimentos';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import { formatarHorasParaExibicao, somarHoras, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { requerValorHora } from '@/types/requerimentos';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 
 interface RequerimentoCardProps {
   requerimento: Requerimento;
@@ -177,7 +178,7 @@ const RequerimentoCardComponent = function RequerimentoCard({
       <div
         className={`${isLoading ? 'opacity-50 pointer-events-none' : ''} relative py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 border-b border-gray-100 dark:border-gray-800`}
         role="article"
-        aria-label={`Requerimento ${requerimento.chamado} - ${requerimento.cliente_nome}`}
+        aria-label={`Requerimento ${requerimento.chamado} - Cliente: ${requerimento.cliente_nome || 'N/A'}`}
       >
         {/* Layout horizontal em flex - alinhado com cabeçalho */}
         <div className="flex items-center text-sm px-3">
@@ -205,7 +206,10 @@ const RequerimentoCardComponent = function RequerimentoCard({
 
           {/* Cliente - 9% */}
           <div className="w-[9%] min-w-0 pr-1">
-            <div className="truncate font-medium text-xs">{requerimento.cliente_nome}</div>
+            <ClienteNomeDisplay
+              nomeEmpresa={requerimento.cliente_nome}
+              className="truncate font-medium text-xs"
+            />
             <div className="text-xs text-gray-500 truncate">{requerimento.descricao}</div>
           </div>
 

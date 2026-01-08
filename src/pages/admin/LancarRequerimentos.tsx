@@ -41,6 +41,7 @@ import {
     ContextualHelp,
     RequerimentosHelpGuide
 } from '@/components/admin/requerimentos';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { StatsCardSkeleton, RequerimentoCardSkeleton, RequerimentosTableSkeleton } from '@/components/admin/requerimentos/LoadingStates';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { toast } from 'sonner';

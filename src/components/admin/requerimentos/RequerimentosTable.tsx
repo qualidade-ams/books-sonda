@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Eye
 } from 'lucide-react';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -322,9 +323,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 </TableCell>
 
                 <TableCell className="py-2 text-center max-w-[120px]">
-                  <div className="font-medium break-words whitespace-normal leading-tight text-[10px] sm:text-xs lg:text-sm" title={requerimento.cliente_nome}>
-                    {requerimento.cliente_nome}
-                  </div>
+                  <ClienteNomeDisplay
+                    nomeEmpresa={requerimento.cliente_nome}
+                    className="font-medium break-words whitespace-normal leading-tight text-[10px] sm:text-xs lg:text-sm"
+                  />
                 </TableCell>
 
                 <TableCell className="py-3">

@@ -8,5 +8,6 @@ export { default as RequerimentosTableFaturamento } from './RequerimentosTableFa
 export { default as FaturamentoExportButtons } from './FaturamentoExportButtons';
 export { default as RequerimentosExportButtons } from './RequerimentosExportButtons';
 export { default as RequerimentoViewModal } from './RequerimentoViewModal';
+export { default as ClienteNomeDisplay } from './ClienteNomeDisplay';
 export * from './LoadingStates';
 export * from './HelpSystem';

@@ -25,6 +25,7 @@ import {
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { PlanoAcaoCompleto } from '@/types/planoAcao';
 import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
+import { isClienteEspecialBRFONSDAGUIRRE } from '@/utils/clienteEspecialUtils';
 
 interface PlanosAcaoTableProps {
   planos: PlanoAcaoCompleto[];
@@ -123,35 +124,40 @@ export function PlanosAcaoTable({
                   <div className="flex flex-col gap-1 items-center">
                     {/* Nome da Empresa */}
                     <div className="font-medium text-xs sm:text-sm">
-                      {validacao.encontrada ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">
-                                {validacao.nomeExibir}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">{validacao.nomeCompleto}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-red-600 dark:text-red-400 cursor-help font-semibold">
-                                {validacao.nomeExibir}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs text-red-600 dark:text-red-400">
-                                ⚠️ Empresa não cadastrada no sistema
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                      {(() => {
+                        const isClienteEspecial = isClienteEspecialBRFONSDAGUIRRE(plano.pesquisa?.empresa);
+                        const shouldShowAsFound = validacao.encontrada || isClienteEspecial;
+                        
+                        return shouldShowAsFound ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">
+                                  {validacao.nomeExibir}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">{validacao.nomeCompleto}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-red-600 dark:text-red-400 cursor-help font-semibold">
+                                  {validacao.nomeExibir}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs text-red-600 dark:text-red-400">
+                                  ⚠️ Empresa não cadastrada no sistema
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </div>
                     {/* Nome do Cliente (pequeno, abaixo) */}
                     {plano.pesquisa?.cliente && (

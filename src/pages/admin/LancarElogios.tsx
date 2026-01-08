@@ -61,6 +61,7 @@ import { Plus } from 'lucide-react';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { getBadgeResposta } from '@/utils/badgeUtils';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 
 function LancarElogios() {
   const navigate = useNavigate();
@@ -580,7 +581,11 @@ function LancarElogios() {
                             const deveExibirVermelho = isOrigemSqlServer && !encontrada;
                             return (
                               <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
-                                {nome}
+                                <ClienteNomeDisplay
+                                  nomeEmpresa={elogio.pesquisa?.empresa}
+                                  nomeCliente={elogio.pesquisa?.cliente}
+                                  className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
+                                />
                               </span>
                             );
                           })()}
@@ -595,7 +600,9 @@ function LancarElogios() {
                           }) : '-'}
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
-                          <span className="truncate block">{elogio.pesquisa?.cliente}</span>
+                          <span className="truncate block">
+                            {elogio.pesquisa?.cliente}
+                          </span>
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
                           <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>
@@ -796,7 +803,11 @@ function LancarElogios() {
                                 const deveExibirVermelho = isOrigemSqlServer && !encontrada;
                                 return (
                                   <span className={`font-semibold ${deveExibirVermelho ? 'text-red-600' : ''}`}>
-                                    {nome}
+                                    <ClienteNomeDisplay
+                                      nomeEmpresa={elogio.pesquisa?.empresa}
+                                      nomeCliente={elogio.pesquisa?.cliente}
+                                      className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
+                                    />
                                   </span>
                                 );
                               })()}
@@ -811,7 +822,9 @@ function LancarElogios() {
                               }) : '-'}
                             </TableCell>
                             <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
-                              <span className="truncate block">{elogio.pesquisa?.cliente}</span>
+                              <span className="truncate block">
+                                {elogio.pesquisa?.cliente}
+                              </span>
                             </TableCell>
                             <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
                               <span className="line-clamp-2">{elogio.pesquisa?.comentario_pesquisa || '-'}</span>

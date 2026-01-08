@@ -25,6 +25,7 @@ import {
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { PesquisasExportButtons } from '@/components/admin/pesquisas-satisfacao';
 import { VisualizarPesquisasTable } from '@/components/admin/pesquisas-satisfacao';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { 
   useTodasPesquisasSatisfacao, 
   useTodasEstatisticasPesquisas
@@ -489,11 +490,19 @@ function VisualizarPesquisas() {
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-600">Empresa</label>
-                      <p className="text-sm">{pesquisaSelecionada.empresa}</p>
+                      <p className="text-sm">
+                        <ClienteNomeDisplay
+                          nomeEmpresa={pesquisaSelecionada.empresa}
+                          nomeCliente={pesquisaSelecionada.cliente}
+                          className="inline"
+                        />
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Cliente</label>
-                      <p className="text-sm">{pesquisaSelecionada.cliente}</p>
+                      <p className="text-sm">
+                        {pesquisaSelecionada.cliente}
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Email do Cliente</label>

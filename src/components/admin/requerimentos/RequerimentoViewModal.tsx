@@ -20,7 +20,7 @@ import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 import { InputHoras } from '@/components/ui/input-horas';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
-import { cn } from '@/lib/utils';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 
 interface RequerimentoViewModalProps {
   requerimento: Requerimento | null;
@@ -86,7 +86,10 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   <Select value={requerimento.cliente_id} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
                       <SelectValue>
-                        {requerimento.cliente_nome || clienteSelecionado?.nome_abreviado || 'Cliente não encontrado'}
+                        <ClienteNomeDisplay 
+                          nomeEmpresa={requerimento.cliente_nome || clienteSelecionado?.nome_abreviado}
+                          className="inline"
+                        />
                       </SelectValue>
                     </SelectTrigger>
                   </Select>
@@ -107,21 +110,6 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                     </SelectTrigger>
                   </Select>
                 </div>
-
-                {/* Linguagem Técnica - só mostrar se houver horas técnicas */}
-                {((typeof requerimento.horas_tecnico === 'string' ? parseFloat(requerimento.horas_tecnico) : requerimento.horas_tecnico) || 0) > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="linguagem">
-                      Linguagem Técnica <span className="text-gray-700 dark:text-gray-300">*</span>
-                    </Label>
-                    <Input
-                      id="linguagem"
-                      value={requerimento.linguagem || ''}
-                      readOnly
-                      className="bg-gray-50 dark:bg-gray-800"
-                    />
-                  </div>
-                )}
               </div>
 
               {/* Descrição */}
@@ -220,9 +208,6 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                     <span className="font-semibold text-lg">
                       {formatarHorasParaExibicao(horasTotal, 'completo')}
                     </span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Calculado automaticamente
                   </div>
                 </div>
               </div>

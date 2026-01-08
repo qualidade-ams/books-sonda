@@ -20,6 +20,7 @@ import {
   AlertCircle,
   XCircle
 } from 'lucide-react';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,9 +252,10 @@ const RequerimentosTableFaturamento: React.FC<RequerimentosTableFaturamentoProps
                 </TableCell>
 
                 <TableCell className="py-2 text-center max-w-[120px]">
-                  <div className="font-medium break-words whitespace-normal leading-tight text-[10px] sm:text-xs lg:text-sm" title={requerimento.cliente_nome}>
-                    {requerimento.cliente_nome}
-                  </div>
+                  <ClienteNomeDisplay
+                    nomeEmpresa={requerimento.cliente_nome}
+                    className="font-medium break-words whitespace-normal leading-tight text-[10px] sm:text-xs lg:text-sm"
+                  />
                 </TableCell>
 
                 <TableCell className="py-3">
@@ -378,7 +380,7 @@ const RequerimentosTableFaturamento: React.FC<RequerimentosTableFaturamentoProps
                             <p>Tem certeza que deseja rejeitar este requerimento?</p>
                             <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md space-y-1 text-sm">
                               <p><strong>Chamado:</strong> {requerimento.chamado}</p>
-                              <p><strong>Cliente:</strong> {requerimento.cliente_nome}</p>
+                              <p><strong>Cliente:</strong> <ClienteNomeDisplay nomeEmpresa={requerimento.cliente_nome} className="inline" /></p>
                               <p><strong>Tipo:</strong> {requerimento.tipo_cobranca}</p>
                             </div>
                             <p className="text-amber-600 dark:text-amber-400">

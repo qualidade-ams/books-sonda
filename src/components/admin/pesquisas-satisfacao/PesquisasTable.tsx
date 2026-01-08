@@ -51,6 +51,8 @@ import {
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { Pesquisa } from '@/types/pesquisasSatisfacao';
 import { getBadgeResposta } from '@/utils/badgeUtils';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
+import { isClienteEspecialBRFONSDAGUIRRE } from '@/utils/clienteEspecialUtils';
 
 interface PesquisasTableProps {
   pesquisas: Pesquisa[];
@@ -206,9 +208,23 @@ export function PesquisasTable({
                   {(() => {
                     const validacao = validarEmpresa(pesquisa.empresa);
                     const isOrigemSqlServer = pesquisa.origem === 'sql_server';
-                    // Só exibe em vermelho se for do SQL Server E não encontrada
-                    const deveExibirVermelho = isOrigemSqlServer && !validacao.encontrada;
+                    const isClienteEspecial = isClienteEspecialBRFONSDAGUIRRE(pesquisa.empresa);
                     
+                    // Só exibe em vermelho se for do SQL Server E não encontrada E não for cliente especial
+                    const deveExibirVermelho = isOrigemSqlServer && !validacao.encontrada && !isClienteEspecial;
+                    
+                    // Se for cliente especial, usa ClienteNomeDisplay
+                    if (isClienteEspecial) {
+                      return (
+                        <ClienteNomeDisplay
+                          nomeEmpresa={pesquisa.empresa}
+                          nomeCliente={pesquisa.cliente}
+                          className="inline"
+                        />
+                      );
+                    }
+                    
+                    // Para outras empresas, usa a lógica original
                     if (validacao.encontrada) {
                       return (
                         <TooltipProvider>
@@ -244,9 +260,7 @@ export function PesquisasTable({
                     } else {
                       // Lançamento manual - exibe normalmente sem vermelho
                       return (
-                        <span>
-                          {validacao.nomeExibir}
-                        </span>
+                        <span>{validacao.nomeExibir}</span>
                       );
                     }
                   })()}
@@ -257,7 +271,9 @@ export function PesquisasTable({
                 </TableCell>
                 {/* Coluna Cliente */}
                 <TableCell className="max-w-[120px] whitespace-normal text-center">
-                  <div className="break-words leading-tight text-[10px] sm:text-xs lg:text-sm">{pesquisa.cliente}</div>
+                  <div className="break-words leading-tight text-[10px] sm:text-xs lg:text-sm">
+                    {pesquisa.cliente}
+                  </div>
                 </TableCell>
                 {/* Coluna Comentário (substituiu Categoria) */}
                 <TableCell className="max-w-[200px] text-center">

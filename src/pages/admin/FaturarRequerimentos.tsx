@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, Option } from '@/components/ui/multi-select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,8 @@ import {
 
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { FaturamentoExportButtons } from '@/components/admin/requerimentos';
+import { RequerimentoViewModal } from '@/components/admin/requerimentos';
+import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { toast } from 'sonner';
 
 import { 
@@ -78,7 +81,6 @@ import {
   MODULO_OPTIONS,
   requerValorHora
 } from '@/types/requerimentos';
-
 
 import { formatarHorasParaExibicao, somarHoras } from '@/utils/horasUtils';
 
@@ -111,7 +113,6 @@ export default function FaturarRequerimentos() {
 
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
-
 
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
@@ -996,8 +997,6 @@ export default function FaturarRequerimentos() {
     }
   };
 
-
-
   const formatarData = (data: string): string => {
     try {
       // Se a data está no formato YYYY-MM-DD, trata como data local
@@ -1185,7 +1184,212 @@ export default function FaturarRequerimentos() {
           </div>
         </div>
 
+        {/* Estatísticas - Estilo similar ao Lançar Requerimentos */}
+        {abaAtiva !== 'faturados' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Card combinado: Total + Tipos Ativos */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Total
+                  </CardTitle>
+                  <CardTitle className="text-xs lg:text-sm font-medium text-purple-600 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Tipos Ativos
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-start justify-between">
+                  <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
+                    {estatisticasPeriodoFiltradas.totalRequerimentos}
+                  </div>
+                  <div className="text-xl lg:text-2xl font-bold text-purple-600">
+                    {estatisticasPeriodoFiltradas.tiposAtivos}
+                  </div>
+                </div>
+                {temFiltrosAtivos && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                      FILTRADO
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Card Total Horas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Total Horas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                  {formatarHorasParaExibicao(estatisticasPeriodoFiltradas.totalHoras, 'completo')}
+                </div>
+                {temFiltrosAtivos && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                      FILTRADO
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Card Período */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Período
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                  {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Card Valor Total Faturável */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Valor Faturável
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-green-600">
+                  R$ {estatisticasPeriodoFiltradas.valorTotalFaturavel.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </div>
+                {temFiltrosAtivos && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                      FILTRADO
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
+        {/* Cards para aba Histórico de Enviados - Estilo similar ao Lançar Requerimentos */}
+        {abaAtiva === 'faturados' && dadosFaturados && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {(() => {
+              const requerimentosSemReprovados = dadosFaturados.filter(req => req.tipo_cobranca !== 'Reprovado');
+              const requerimentosReprovados = dadosFaturados.filter(req => req.tipo_cobranca === 'Reprovado');
+              
+              let totalHoras = '0:00';
+              requerimentosSemReprovados.forEach(req => {
+                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+                totalHoras = somarHoras(totalHoras, horas.toString());
+              });
+              
+              let horasReprovadas = '0:00';
+              requerimentosReprovados.forEach(req => {
+                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+                horasReprovadas = somarHoras(horasReprovadas, horas.toString());
+              });
+              
+              const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
+                if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca)) {
+                  return acc + (req.valor_total_geral || 0);
+                }
+                return acc;
+              }, 0);
+              
+              const tiposAtivos = [...new Set(requerimentosSemReprovados.map(req => req.tipo_cobranca))].length;
+              
+              return (
+                <>
+                  {/* Card Total */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Total
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                        {requerimentosSemReprovados.length}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Excluindo reprovados
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card Total Horas */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Total Horas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl lg:text-2xl font-bold text-green-600">
+                        {formatarHoras(totalHoras)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Excluindo reprovados
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card Horas Reprovadas */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs lg:text-sm font-medium text-red-600 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Horas Reprovadas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl lg:text-2xl font-bold text-red-600">
+                        {formatarHoras(horasReprovadas)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {requerimentosReprovados.length} reprovado{requerimentosReprovados.length !== 1 ? 's' : ''}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card Valor Faturável */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
+                        <Calculator className="h-4 w-4" />
+                        Valor Faturável
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                        R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Faturado + Hora Extra + Sobreaviso + Bolsão Enel
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Navegação de Período */}
         <Card>
@@ -1220,241 +1424,6 @@ export default function FaturarRequerimentos() {
           </CardContent>
         </Card>
 
-
-
-        {/* Estatísticas - Ocultar quando estiver na aba Histórico */}
-        {abaAtiva !== 'faturados' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                    Total de Requerimentos
-                    {temFiltrosAtivos && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                        FILTRADO
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {estatisticasPeriodoFiltradas.totalRequerimentos}
-                  </p>
-                </div>
-                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                    Total de Horas
-                    {temFiltrosAtivos && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                        FILTRADO
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatarHorasParaExibicao(estatisticasPeriodoFiltradas.totalHoras, 'completo')}
-                  </p>
-                </div>
-                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                    Tipos Ativos
-                    {temFiltrosAtivos && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                        FILTRADO
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {estatisticasPeriodoFiltradas.tiposAtivos}
-                  </p>
-                </div>
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                    Período
-                  </p>
-                  <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                    {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
-                  </p>
-                </div>
-                <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                    Valor Total Faturável
-                    {temFiltrosAtivos && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                        FILTRADO
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold text-green-600">
-                    R$ {estatisticasPeriodoFiltradas.valorTotalFaturavel.toLocaleString('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1 truncate">
-                    Faturado + Hora Extra + Sobreaviso + Bolsão Enel
-                  </p>
-                </div>
-                <Calculator className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        )}
-
-        {/* Cards para aba Histórico de Enviados - Aparecem no lugar dos cards superiores */}
-        {abaAtiva === 'faturados' && dadosFaturados && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {(() => {
-              const requerimentosSemReprovados = dadosFaturados.filter(req => req.tipo_cobranca !== 'Reprovado');
-              const requerimentosReprovados = dadosFaturados.filter(req => req.tipo_cobranca === 'Reprovado');
-              
-              let totalHoras = '0:00';
-              requerimentosSemReprovados.forEach(req => {
-                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
-                totalHoras = somarHoras(totalHoras, horas.toString());
-              });
-              
-              let horasReprovadas = '0:00';
-              requerimentosReprovados.forEach(req => {
-                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
-                horasReprovadas = somarHoras(horasReprovadas, horas.toString());
-              });
-              
-              const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
-                if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca)) {
-                  return acc + (req.valor_total_geral || 0);
-                }
-                return acc;
-              }, 0);
-              
-              const tiposAtivos = [...new Set(requerimentosSemReprovados.map(req => req.tipo_cobranca))].length;
-              
-              return (
-                <>
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                            Total de Requerimentos
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                            {requerimentosSemReprovados.length}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Excluindo reprovados</p>
-                        </div>
-                        <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                            Total de Horas
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold text-green-600">
-                            {formatarHoras(totalHoras)}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Excluindo reprovados</p>
-                        </div>
-                        <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                            Horas Reprovadas
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold text-red-600">
-                            {formatarHoras(horasReprovadas)}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{requerimentosReprovados.length} reprovado{requerimentosReprovados.length !== 1 ? 's' : ''}</p>
-                        </div>
-                        <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                            Tipos Ativos
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                            {tiposAtivos}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Tipos de cobrança</p>
-                        </div>
-                        <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                            Valor Total Faturável
-                          </p>
-                          <p className="text-lg sm:text-2xl font-bold text-orange-600">
-                            R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1 truncate">
-                            Faturado + Hora Extra + Sobreaviso + Bolsão Enel
-                          </p>
-                        </div>
-                        <Calculator className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              );
-            })()}
-          </div>
-        )}
-
         {/* Conteúdo Principal */}
         {isLoading ? (
           <Card>
@@ -1487,15 +1456,6 @@ export default function FaturarRequerimentos() {
                   Históricos de Enviados ({dadosFaturados?.length || 0})
                 </TabsTrigger>
               </TabsList>
-
-              {/* Ações Principais - apenas para aba para_faturar */}
-              {abaAtiva === 'para_faturar' && requerimentosSelecionados.length > 0 && (
-                <div className="flex flex-wrap gap-4 items-center">
-                  <Badge variant="outline" className="text-xs sm:text-sm">
-                    {requerimentosSelecionados.length} selecionado{requerimentosSelecionados.length !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
-              )}
             </div>
 
             <TabsContent value="para_faturar" className="space-y-6">
@@ -1519,12 +1479,25 @@ export default function FaturarRequerimentos() {
                         >
                           <Filter className="h-4 w-4" />
                           <span>Filtros</span>
-                          {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
-                            <Badge variant="secondary" className="ml-1 text-xs px-1.5">
-                              {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
-                            </Badge>
-                          )}
                         </Button>
+                        {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
+                        {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            className="whitespace-nowrap"
+                            aria-label="Limpar todos os filtros aplicados"
+                          >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Limpar Filtro
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -1574,46 +1547,12 @@ export default function FaturarRequerimentos() {
                           {/* Período de Cobrança */}
                           <div>
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Todos os períodos" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos os períodos</SelectItem>
-                                {Array.from({ length: 12 }, (_, i) => {
-                                  const mes = String(i + 1).padStart(2, '0');
-                                  const ano = anoSelecionado;
-                                  const periodo = `${mes}/${ano}`;
-                                  const nomesMeses = [
-                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                  ];
-                                  return (
-                                    <SelectItem key={periodo} value={periodo}>
-                                      {nomesMeses[i]} {ano}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
+                            <MonthYearPicker
+                              value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
+                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              placeholder="Todos os períodos"
+                            />
                           </div>
-                        </div>
-
-                        {/* Botões de ação rápida */}
-                        <div className="flex items-center gap-2 pt-4 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
-                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
-                          >
-                            Limpar Filtros
-                          </Button>
                         </div>
                       </div>
                     )}
@@ -1654,11 +1593,6 @@ export default function FaturarRequerimentos() {
                           >
                             <Filter className="h-4 w-4" />
                             <span>Filtros</span>
-                            {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
-                              <Badge variant="secondary" className="ml-1 text-xs px-1.5">
-                                {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
-                              </Badge>
-                            )}
                           </Button>
                         </div>
                       </div>
@@ -1709,47 +1643,14 @@ export default function FaturarRequerimentos() {
                             {/* Período de Cobrança */}
                             <div>
                               <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Todos os períodos" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">Todos os períodos</SelectItem>
-                                  {Array.from({ length: 12 }, (_, i) => {
-                                    const mes = String(i + 1).padStart(2, '0');
-                                    const ano = anoSelecionado;
-                                    const periodo = `${mes}/${ano}`;
-                                    const nomesMeses = [
-                                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                    ];
-                                    return (
-                                      <SelectItem key={periodo} value={periodo}>
-                                        {nomesMeses[i]} {ano}
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
+                              <MonthYearPicker
+                                value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
+                                onChange={(value) => setFiltroPeriodo(value || 'all')}
+                                placeholder="Todos os períodos"
+                              />
                             </div>
                           </div>
 
-                          {/* Botões de ação rápida */}
-                          <div className="flex items-center gap-2 pt-4 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setBusca('');
-                                setFiltroTipoSelect([]);
-                                setFiltroModuloSelect([]);
-                                setFiltroPeriodo('all');
-                              }}
-                              disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
-                            >
-                              Limpar Filtros
-                            </Button>
-                          </div>
                         </div>
                       )}
                     </CardHeader>
@@ -1840,9 +1741,10 @@ export default function FaturarRequerimentos() {
 
                                 {/* Coluna Cliente */}
                                 <TableCell className="py-3 px-3">
-                                  <span className="text-center text-sm font-medium truncate block min-w-[120px]" title={req.cliente_nome}>
-                                    {req.cliente_nome || 'N/A'}
-                                  </span>
+                                  <ClienteNomeDisplay
+                                    nomeEmpresa={req.cliente_nome}
+                                    className="text-center text-sm font-medium truncate block min-w-[120px]"
+                                  />
                                 </TableCell>
 
                                 {/* Coluna Módulo */}
@@ -1952,7 +1854,7 @@ export default function FaturarRequerimentos() {
                                   <div className="flex items-center justify-center gap-2">
                                     <Button
                                       variant="outline"
-                                      size="xs"
+                                      size="sm"
                                       onClick={() => handleVisualizarRequerimento(req)}
                                       className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
                                       title="Visualizar detalhes do requerimento"
@@ -1963,7 +1865,7 @@ export default function FaturarRequerimentos() {
                                     <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                       <Button
                                         variant="outline"
-                                        size="xs"
+                                        size="sm"
                                         onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                         disabled={rejeitarRequerimento.isPending}
                                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -1977,7 +1879,7 @@ export default function FaturarRequerimentos() {
                                       <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                         <Button
                                           variant="outline"
-                                          size="xs"
+                                          size="sm"
                                           onClick={() => handleArquivarRequerimento(req)}
                                           disabled={marcarComoFaturados.isPending}
                                           className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
@@ -2045,6 +1947,24 @@ export default function FaturarRequerimentos() {
                           <Filter className="h-4 w-4" />
                           <span>Filtros</span>
                         </Button>
+                        {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
+                        {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            className="whitespace-nowrap"
+                            aria-label="Limpar todos os filtros aplicados"
+                          >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Limpar Filtro
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -2094,47 +2014,14 @@ export default function FaturarRequerimentos() {
                           {/* Período de Cobrança */}
                           <div>
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Todos os períodos" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos os períodos</SelectItem>
-                                {Array.from({ length: 12 }, (_, i) => {
-                                  const mes = String(i + 1).padStart(2, '0');
-                                  const ano = anoSelecionado;
-                                  const periodo = `${mes}/${ano}`;
-                                  const nomesMeses = [
-                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                  ];
-                                  return (
-                                    <SelectItem key={periodo} value={periodo}>
-                                      {nomesMeses[i]} {ano}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
+                            <MonthYearPicker
+                              value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
+                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              placeholder="Todos os períodos"
+                            />
                           </div>
                         </div>
 
-                        {/* Botões de ação rápida */}
-                        <div className="flex items-center gap-2 pt-4 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
-                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
-                          >
-                            Limpar Filtros
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </CardHeader>
@@ -2171,12 +2058,25 @@ export default function FaturarRequerimentos() {
                         >
                           <Filter className="h-4 w-4" />
                           <span>Filtros</span>
-                          {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
-                            <Badge variant="secondary" className="ml-1 text-xs px-1.5">
-                              {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
-                            </Badge>
-                          )}
                         </Button>
+                        {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
+                        {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setBusca('');
+                              setFiltroTipoSelect([]);
+                              setFiltroModuloSelect([]);
+                              setFiltroPeriodo('all');
+                            }}
+                            className="whitespace-nowrap"
+                            aria-label="Limpar todos os filtros aplicados"
+                          >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Limpar Filtro
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -2226,47 +2126,14 @@ export default function FaturarRequerimentos() {
                           {/* Período de Cobrança */}
                           <div>
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Todos os períodos" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos os períodos</SelectItem>
-                                {Array.from({ length: 12 }, (_, i) => {
-                                  const mes = String(i + 1).padStart(2, '0');
-                                  const ano = anoSelecionado;
-                                  const periodo = `${mes}/${ano}`;
-                                  const nomesMeses = [
-                                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                  ];
-                                  return (
-                                    <SelectItem key={periodo} value={periodo}>
-                                      {nomesMeses[i]} {ano}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
+                            <MonthYearPicker
+                              value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
+                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              placeholder="Todos os períodos"
+                            />
                           </div>
                         </div>
 
-                        {/* Botões de ação rápida */}
-                        <div className="flex items-center gap-2 pt-4 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
-                            disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
-                          >
-                            Limpar Filtros
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </CardHeader>
@@ -2304,12 +2171,25 @@ export default function FaturarRequerimentos() {
                           >
                             <Filter className="h-4 w-4" />
                             <span>Filtros</span>
-                            {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
-                              <Badge variant="secondary" className="ml-1 text-xs px-1.5">
-                                {[filtroTipoSelect.length, filtroModuloSelect.length, busca.trim() !== '' ? 1 : 0, filtroPeriodo !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)}
-                              </Badge>
-                            )}
                           </Button>
+                          {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
+                          {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setBusca('');
+                                setFiltroTipoSelect([]);
+                                setFiltroModuloSelect([]);
+                                setFiltroPeriodo('all');
+                              }}
+                              className="whitespace-nowrap"
+                              aria-label="Limpar todos os filtros aplicados"
+                            >
+                              <Filter className="h-4 w-4 mr-2" />
+                              Limpar Filtro
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -2359,54 +2239,18 @@ export default function FaturarRequerimentos() {
                             {/* Período de Cobrança */}
                             <div>
                               <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Todos os períodos" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">Todos os períodos</SelectItem>
-                                  {Array.from({ length: 12 }, (_, i) => {
-                                    const mes = String(i + 1).padStart(2, '0');
-                                    const ano = anoSelecionado;
-                                    const periodo = `${mes}/${ano}`;
-                                    const nomesMeses = [
-                                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                                    ];
-                                    return (
-                                      <SelectItem key={periodo} value={periodo}>
-                                        {nomesMeses[i]} {ano}
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
+                              <MonthYearPicker
+                                value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
+                                onChange={(value) => setFiltroPeriodo(value || 'all')}
+                                placeholder="Todos os períodos"
+                              />
                             </div>
                           </div>
 
-                          {/* Botões de ação rápida */}
-                          <div className="flex items-center gap-2 pt-4 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setBusca('');
-                                setFiltroTipoSelect([]);
-                                setFiltroModuloSelect([]);
-                                setFiltroPeriodo('all');
-                              }}
-                              disabled={busca === '' && filtroTipoSelect.length === 0 && filtroModuloSelect.length === 0 && filtroPeriodo === 'all'}
-                            >
-                              Limpar Filtros
-                            </Button>
-                          </div>
                         </div>
                       )}
                     </CardHeader>
                   <CardContent>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800 mb-4">
-                      {dadosFaturadosFiltrados.length} faturado{dadosFaturadosFiltrados.length !== 1 ? 's' : ''}
-                    </Badge>
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -2452,9 +2296,10 @@ export default function FaturarRequerimentos() {
 
                               {/* Coluna Cliente */}
                               <TableCell className="py-3 px-3">
-                                <span className="text-sm font-medium truncate block min-w-[120px]" title={req.cliente_nome}>
-                                  {req.cliente_nome || 'N/A'}
-                                </span>
+                                <ClienteNomeDisplay
+                                  nomeEmpresa={req.cliente_nome}
+                                  className="text-sm font-medium truncate block min-w-[120px]"
+                                />
                               </TableCell>
 
                               {/* Coluna Módulo */}
@@ -2548,7 +2393,7 @@ export default function FaturarRequerimentos() {
                                 <div className="flex items-center justify-center gap-2">
                                   <Button
                                     variant="outline"
-                                    size="xs"
+                                    size="sm"
                                     onClick={() => handleVisualizarRequerimento(req)}
                                     className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
                                     title="Visualizar detalhes do requerimento"
@@ -2559,7 +2404,7 @@ export default function FaturarRequerimentos() {
                                   <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
                                     <Button
                                       variant="outline"
-                                      size="xs"
+                                      size="sm"
                                       onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                       disabled={rejeitarRequerimento.isPending}
                                       className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -2583,189 +2428,11 @@ export default function FaturarRequerimentos() {
         )}
 
         {/* Modal de Visualização de Detalhes */}
-        <Dialog open={modalVisualizacaoAberto} onOpenChange={setModalVisualizacaoAberto}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Detalhes do Requerimento
-              </DialogTitle>
-            </DialogHeader>
-
-            {requerimentoParaVisualizar && (
-              <div className="space-y-6">
-                {/* Informações Básicas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-gray-600">Informações Básicas</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Chamado</Label>
-                        <p className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                          {requerimentoParaVisualizar.chamado}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Cliente</Label>
-                        <p className="text-sm">{requerimentoParaVisualizar.cliente_nome || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Módulo</Label>
-                        <Badge variant="outline" className="text-blue-600 border-blue-600">
-                          {requerimentoParaVisualizar.modulo}
-                        </Badge>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Tipo de Cobrança</Label>
-                        <Badge className={getBadgeClasses(requerimentoParaVisualizar.tipo_cobranca)}>
-                          {getCobrancaIcon(requerimentoParaVisualizar.tipo_cobranca)} {requerimentoParaVisualizar.tipo_cobranca}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-gray-600">Horas e Valores</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Horas Funcionais</Label>
-                        <p className="text-sm font-semibold text-blue-600">
-                          {formatarHoras(requerimentoParaVisualizar.horas_funcional)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Horas Técnicas</Label>
-                        <p className="text-sm font-semibold text-green-600">
-                          {formatarHoras(requerimentoParaVisualizar.horas_tecnico)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Total de Horas</Label>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
-                          {formatarHoras(requerimentoParaVisualizar.horas_total)}
-                        </p>
-                      </div>
-                      {requerimentoParaVisualizar.valor_total_geral && (
-                        <div>
-                          <Label className="text-xs font-medium text-gray-500">Valor Total</Label>
-                          <p className="text-lg font-bold text-green-600">
-                            R$ {requerimentoParaVisualizar.valor_total_geral.toLocaleString('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </p>
-                        </div>
-                      )}
-                      {requerimentoParaVisualizar.quantidade_tickets && requerimentoParaVisualizar.quantidade_tickets > 0 && (
-                        <div>
-                          <Label className="text-xs font-medium text-gray-500">Quantidade de Tickets</Label>
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                            🎫 {requerimentoParaVisualizar.quantidade_tickets}
-                          </Badge>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Datas */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-gray-600">Datas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Data de Envio</Label>
-                        <p className="text-sm flex items-center gap-1">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          {formatarData(requerimentoParaVisualizar.data_envio)}
-                        </p>
-                      </div>
-                      {requerimentoParaVisualizar.data_aprovacao && (
-                        <div>
-                          <Label className="text-xs font-medium text-gray-500">Data de Aprovação</Label>
-                          <p className="text-sm flex items-center gap-1">
-                            <Check className="h-4 w-4 text-green-500" />
-                            {formatarData(requerimentoParaVisualizar.data_aprovacao)}
-                          </p>
-                        </div>
-                      )}
-                      {requerimentoParaVisualizar.data_faturamento && (
-                        <div>
-                          <Label className="text-xs font-medium text-gray-500">Data de Faturamento</Label>
-                          <p className="text-sm flex items-center gap-1">
-                            <Send className="h-4 w-4 text-blue-500" />
-                            {formatarData(requerimentoParaVisualizar.data_faturamento)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Período de Cobrança */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-gray-600">Período e Autor</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-medium text-gray-500">Período de Cobrança</Label>
-                        <p className="text-sm font-medium">
-                          {requerimentoParaVisualizar.mes_cobranca || 'Não definido'}
-                        </p>
-                      </div>
-                      {requerimentoParaVisualizar.autor_nome && (
-                        <div>
-                          <Label className="text-xs font-medium text-gray-500">Autor</Label>
-                          <p className="text-sm">{requerimentoParaVisualizar.autor_nome}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Descrição */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-gray-600">Descrição</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {requerimentoParaVisualizar.descricao || 'Sem descrição'}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Observações */}
-                {requerimentoParaVisualizar.observacao && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-gray-600">Observações</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {requerimentoParaVisualizar.observacao}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setModalVisualizacaoAberto(false)}>
-                Fechar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <RequerimentoViewModal
+          requerimento={requerimentoParaVisualizar}
+          open={modalVisualizacaoAberto}
+          onClose={() => setModalVisualizacaoAberto(false)}
+        />
 
         {/* Modal de Email */}
         <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
@@ -2956,8 +2623,6 @@ export default function FaturarRequerimentos() {
           </DialogContent>
         </Dialog>
 
-
-
         {/* Confirmação de Envio */}
         <AlertDialog open={confirmacaoAberta} onOpenChange={setConfirmacaoAberta}>
           <AlertDialogContent>
@@ -3013,7 +2678,7 @@ export default function FaturarRequerimentos() {
                 <br /><br />
                 <strong>Chamado:</strong> {requerimentoParaRejeitar?.chamado}
                 <br />
-                <strong>Cliente:</strong> {requerimentoParaRejeitar?.cliente_nome || 'N/A'}
+                <strong>Cliente:</strong> <ClienteNomeDisplay nomeEmpresa={requerimentoParaRejeitar?.cliente_nome} className="inline" />
                 <br />
                 <strong>Horas Total:</strong> {requerimentoParaRejeitar ? formatarHorasParaExibicao(requerimentoParaRejeitar.horas_total?.toString() || '0', 'completo') : '0:00'}
                 <br /><br />
@@ -3046,7 +2711,6 @@ export default function FaturarRequerimentos() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
 
       </div>
     </AdminLayout>
