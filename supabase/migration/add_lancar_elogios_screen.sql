@@ -1,4 +1,4 @@
--- Migração para adicionar tela de Lançar Elogios ao sistema de permissões
+-- Migração para adicionar tela de Validar Elogios ao sistema de permissões
 
 -- Registrar a tela no sistema
 INSERT INTO screens (key, name, description, category, route)

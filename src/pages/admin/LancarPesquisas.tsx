@@ -130,7 +130,7 @@ function LancarPesquisas() {
         // Enviar para Plano de Ação
         await enviarParaPlanoAcao.mutateAsync(pesquisa.id);
       } else if (respostasPositivas.includes(pesquisa.resposta)) {
-        // Enviar para Lançar Elogios
+        // Enviar para Validar Elogios
         await enviarParaElogios.mutateAsync(pesquisa.id);
       } else if (pesquisa.resposta === 'Neutro') {
         // Para Neutro, não fazer nada aqui - será tratado pelo dropdown

@@ -259,7 +259,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       children: [
         {
           icon: Heart,
-          label: 'Lançar Elogios',
+          label: 'Validar Elogios',
           path: '/admin/lancar-elogios',
           screenKey: 'lancar_elogios'
         },

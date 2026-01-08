@@ -27,7 +27,7 @@ const Breadcrumb = () => {
     'lancar-pesquisas': 'Lançar Pesquisas',
     'visualizar-pesquisas': 'Visualizar Pesquisas',
     'plano-acao': 'Plano de Ação',
-    'lancar-elogios': 'Lançar Elogios',
+    'lancar-elogios': 'Validar Elogios',
     'enviar-elogios': 'Enviar Elogios',
     'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes'
   };
