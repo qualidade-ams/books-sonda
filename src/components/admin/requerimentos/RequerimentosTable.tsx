@@ -61,6 +61,7 @@ interface RequerimentosTableProps {
   showActions?: boolean;
   showEditDelete?: boolean; // Nova prop para controlar botões de editar/excluir
   showDataFaturamento?: boolean; // Nova prop para controlar coluna Data Faturamento
+  totalFilteredCount?: number; // Total de requerimentos filtrados (para checkbox "selecionar todos")
 }
 
 const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
@@ -77,6 +78,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   showActions = true,
   showEditDelete = true, // Por padrão, mostra botões de editar/excluir
   showDataFaturamento = false, // Por padrão, não mostra coluna Data Faturamento
+  totalFilteredCount, // Total de requerimentos filtrados
 }) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
   const enviarParaFaturamento = useEnviarParaFaturamento();
@@ -227,11 +229,21 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
           <TableRow>
             <TableHead className="w-12 text-xs py-2">
               <Checkbox
-                checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
+                checked={selectedRequerimentos.length > 0 && selectedRequerimentos.length === (totalFilteredCount || requerimentos.length)}
+                ref={(el) => {
+                  if (el) {
+                    // Estado indeterminado quando alguns (mas não todos) estão selecionados
+                    const totalCount = totalFilteredCount || requerimentos.length;
+                    el.indeterminate = selectedRequerimentos.length > 0 && selectedRequerimentos.length < totalCount;
+                  }
+                }}
                 onCheckedChange={(checked) => {
-                  if (checked) {
+                  const totalCount = totalFilteredCount || requerimentos.length;
+                  if (checked || selectedRequerimentos.length < totalCount) {
+                    // Se está marcando OU se nem todos estão selecionados, selecionar todos
                     onSelectAll();
                   } else {
+                    // Se está desmarcando E todos estão selecionados, limpar seleção
                     onClearSelection();
                   }
                 }}

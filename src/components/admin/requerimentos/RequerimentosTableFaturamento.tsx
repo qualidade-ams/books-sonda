@@ -47,6 +47,7 @@ interface RequerimentosTableFaturamentoProps {
   onToggleSelection: (id: string) => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
+  totalFilteredCount?: number; // Total de requerimentos filtrados (para checkbox "selecionar todos")
 }
 
 const RequerimentosTableFaturamento: React.FC<RequerimentosTableFaturamentoProps> = ({
@@ -57,6 +58,7 @@ const RequerimentosTableFaturamento: React.FC<RequerimentosTableFaturamentoProps
   onToggleSelection,
   onSelectAll,
   onClearSelection,
+  totalFilteredCount, // Total de requerimentos filtrados
 }) => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<string | null>(null);
 
@@ -170,11 +172,21 @@ const RequerimentosTableFaturamento: React.FC<RequerimentosTableFaturamentoProps
           <TableRow>
             <TableHead className="w-12 text-xs py-2">
               <Checkbox
-                checked={selectedRequerimentos.length === requerimentos.length && requerimentos.length > 0}
+                checked={selectedRequerimentos.length > 0 && selectedRequerimentos.length === (totalFilteredCount || requerimentos.length)}
+                ref={(el) => {
+                  if (el) {
+                    // Estado indeterminado quando alguns (mas não todos) estão selecionados
+                    const totalCount = totalFilteredCount || requerimentos.length;
+                    el.indeterminate = selectedRequerimentos.length > 0 && selectedRequerimentos.length < totalCount;
+                  }
+                }}
                 onCheckedChange={(checked) => {
-                  if (checked) {
+                  const totalCount = totalFilteredCount || requerimentos.length;
+                  if (checked || selectedRequerimentos.length < totalCount) {
+                    // Se está marcando OU se nem todos estão selecionados, selecionar todos
                     onSelectAll();
                   } else {
+                    // Se está desmarcando E todos estão selecionados, limpar seleção
                     onClearSelection();
                   }
                 }}
