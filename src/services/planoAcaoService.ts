@@ -288,18 +288,59 @@ export async function atualizarPlanoAcao(
 }
 
 /**
- * Deletar plano de ação
+ * Deletar plano de ação e pesquisa relacionada (exclusão em cascata)
  */
 export async function deletarPlanoAcao(id: string): Promise<void> {
-  const { error } = await supabase
+  console.log('🗑️ Iniciando exclusão em cascata do plano de ação:', id);
+  
+  // Primeiro, buscar o pesquisa_id do plano de ação
+  const { data: planoData, error: planoError } = await supabase
+    .from('planos_acao')
+    .select('pesquisa_id')
+    .eq('id', id)
+    .single();
+
+  if (planoError) {
+    console.error('❌ Erro ao buscar plano de ação para exclusão:', planoError);
+    throw new Error('Erro ao buscar plano de ação para exclusão');
+  }
+
+  if (!planoData?.pesquisa_id) {
+    console.error('❌ Plano de ação não possui pesquisa_id associado');
+    throw new Error('Plano de ação não possui pesquisa associada');
+  }
+
+  const pesquisaId = planoData.pesquisa_id;
+  console.log('📋 Pesquisa associada encontrada:', pesquisaId);
+
+  // Deletar o plano de ação primeiro
+  const { error: planoDeleteError } = await supabase
     .from('planos_acao')
     .delete()
     .eq('id', id);
 
-  if (error) {
-    console.error('Erro ao deletar plano de ação:', error);
+  if (planoDeleteError) {
+    console.error('❌ Erro ao deletar plano de ação:', planoDeleteError);
     throw new Error('Erro ao deletar plano de ação');
   }
+
+  console.log('✅ Plano de ação deletado com sucesso');
+
+  // Agora deletar a pesquisa de satisfação relacionada
+  const { error: pesquisaDeleteError } = await supabase
+    .from('pesquisas_satisfacao')
+    .delete()
+    .eq('id', pesquisaId);
+
+  if (pesquisaDeleteError) {
+    console.error('❌ Erro ao deletar pesquisa de satisfação:', pesquisaDeleteError);
+    // Não vamos fazer rollback do plano já deletado, mas vamos logar o erro
+    console.error('⚠️ ATENÇÃO: Plano de ação foi deletado mas a pesquisa não pôde ser removida');
+    throw new Error('Erro ao deletar pesquisa de satisfação relacionada');
+  }
+
+  console.log('✅ Pesquisa de satisfação deletada com sucesso');
+  console.log('🎯 Exclusão em cascata concluída com sucesso');
 }
 
 /**

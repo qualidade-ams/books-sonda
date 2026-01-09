@@ -19,6 +19,7 @@ import { DashboardGrid } from '@/components/admin/dashboard/DashboardGrid';
 import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
 import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { EmpresasTab } from '@/components/admin/dashboard/EmpresasTab';
+import { BotaoEnviarDashboard } from '@/components/admin/dashboard/BotaoEnviarDashboard';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
 import { useEstatisticasPesquisas, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisas';
@@ -4207,7 +4208,23 @@ const Dashboard = () => {
 
             {/* Filtros - Ocultar na aba Empresas */}
             {activeTab !== 'empresas' && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* Botão Enviar Dashboard - Posicionado antes dos filtros de data */}
+                <BotaoEnviarDashboard
+                  abaAtiva={activeTab}
+                  filtros={{
+                    ano: anoSelecionado,
+                    mes: mesSelecionado,
+                    modulo: activeTab === 'requerimentos' ? filtroModulo : undefined
+                  }}
+                  dadosDashboard={
+                    activeTab === 'requerimentos' ? statsRequerimentosFiltradas :
+                    activeTab === 'elogios' ? estatisticasElogios :
+                    activeTab === 'planos-acao' ? estatisticasPlanos :
+                    activeTab === 'empresas' ? {} : {}
+                  }
+                />
+
                 <Select value={String(anoSelecionado)} onValueChange={(v) => setAnoSelecionado(parseInt(v))}>
                   <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Ano" />
@@ -4267,7 +4284,7 @@ const Dashboard = () => {
         {isLoading ? (
           <DashboardLoading />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6" data-dashboard-content>
             {/* Conteúdo das Abas */}
             
             {/* Aba de Requerimentos */}

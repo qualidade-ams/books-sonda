@@ -303,7 +303,7 @@ export function PlanosAcaoTable({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Excluir plano</p>
+                          <p>Excluir plano e pesquisa relacionada</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

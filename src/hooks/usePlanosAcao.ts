@@ -100,7 +100,10 @@ export function useDeletarPlanoAcao() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-acao'] });
       queryClient.invalidateQueries({ queryKey: ['estatisticas-planos-acao'] });
-      toast.success('Plano de ação deletado com sucesso!');
+      // Também invalidar queries de pesquisas já que agora deletamos a pesquisa relacionada
+      queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
+      queryClient.invalidateQueries({ queryKey: ['pesquisas-satisfacao'] });
+      toast.success('Plano de ação e pesquisa relacionada deletados com sucesso!');
     },
     onError: (error) => {
       console.error('Erro ao deletar plano de ação:', error);

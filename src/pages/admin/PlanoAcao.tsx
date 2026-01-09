@@ -131,7 +131,14 @@ export default function PlanoAcao() {
   };
 
   const handleDeletar = async (id: string) => {
-    await deletarPlano.mutateAsync(id);
+    const confirmacao = window.confirm(
+      'Tem certeza que deseja excluir este plano de ação?\n\n' +
+      'ATENÇÃO: Esta ação também excluirá a pesquisa de satisfação relacionada e não pode ser desfeita.'
+    );
+    
+    if (confirmacao) {
+      await deletarPlano.mutateAsync(id);
+    }
   };
 
   const handleNovo = () => {
