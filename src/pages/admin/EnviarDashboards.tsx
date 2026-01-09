@@ -1,9 +1,9 @@
 /**
  * Página para envio de dashboards por email
- * Baseada na estrutura de EnviarElogios
+ * Sistema completo de seleção e filtragem de dashboards
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Send,
   Mail,
@@ -14,13 +14,17 @@ import {
   BarChart3,
   TrendingUp,
   Database,
-  RefreshCw
+  RefreshCw,
+  CheckSquare,
+  Square,
+  Filter
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -49,20 +53,30 @@ import {
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { useToast } from '@/hooks/use-toast';
 import { emailService } from '@/services/emailService';
+import { useDashboardsFiltrados, useEstatisticasDashboards } from '@/hooks/useDashboards';
+import { DashboardCard, DashboardFilters, DashboardPreview } from '@/components/admin/dashboards';
+import { FiltrosDashboard, Dashboard } from '@/types/dashboards';
 
 export default function EnviarDashboards() {
   // Hook para toast
   const { toast } = useToast();
 
-  // Estados
+  // Estados para navegação temporal
   const [mesAtual] = useState(new Date().getMonth() + 1);
   const [anoAtual] = useState(new Date().getFullYear());
   const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
   const [anoSelecionado, setAnoSelecionado] = useState(anoAtual);
 
+  // Estados para filtros e seleção de dashboards
+  const [filtros, setFiltros] = useState<FiltrosDashboard>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [dashboardsSelecionados, setDashboardsSelecionados] = useState<string[]>([]);
+
+  // Estados para modais
   const [modalEmailAberto, setModalEmailAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
 
+  // Estados para email
   const [destinatariosTexto, setDestinatariosTexto] = useState('');
   const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
@@ -71,11 +85,23 @@ export default function EnviarDashboards() {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [anexos, setAnexos] = useState<File[]>([]);
 
+  // Hooks para dados
+  const { data: dashboards, isLoading, estatisticas } = useDashboardsFiltrados(filtros);
+  const estatisticasGerais = useEstatisticasDashboards();
+
   // Nomes dos meses
   const nomesMeses = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
+
+  // Período formatado
+  const periodoFormatado = `${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`;
+
+  // Dashboards selecionados para preview
+  const dashboardsParaEnvio = useMemo(() => {
+    return dashboards.filter(d => dashboardsSelecionados.includes(d.id));
+  }, [dashboards, dashboardsSelecionados]);
 
   // Funções de navegação de mês
   const navegarMesAnterior = () => {
@@ -100,10 +126,52 @@ export default function EnviarDashboards() {
     }
   };
 
+  // Handlers para filtros
+  const handleFiltroChange = useCallback((key: keyof FiltrosDashboard, value: any) => {
+    setFiltros(prev => ({
+      ...prev,
+      [key]: value || undefined
+    }));
+  }, []);
+
+  const limparFiltros = () => {
+    setFiltros({});
+  };
+
+  // Handlers para seleção de dashboards
+  const handleDashboardSelection = (dashboardId: string, selected: boolean) => {
+    setDashboardsSelecionados(prev => 
+      selected 
+        ? [...prev, dashboardId]
+        : prev.filter(id => id !== dashboardId)
+    );
+  };
+
+  const selecionarTodos = () => {
+    const dashboardsAtivos = dashboards.filter(d => d.status === 'ativo');
+    setDashboardsSelecionados(dashboardsAtivos.map(d => d.id));
+  };
+
+  const limparSelecao = () => {
+    setDashboardsSelecionados([]);
+  };
+
   // Função para abrir modal de email
   const handleAbrirModalEmail = () => {
-    // Limpar campos e abrir modal
-    setAssuntoEmail(`[DASHBOARD] - Relatório Mensal (${nomesMeses[mesSelecionado - 1]} ${anoSelecionado})`);
+    if (dashboardsSelecionados.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos um dashboard para enviar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Configurar assunto padrão
+    const nomesDashboards = dashboardsParaEnvio.map(d => d.nome).join(', ');
+    setAssuntoEmail(`[DASHBOARDS] - ${nomesDashboards} (${periodoFormatado})`);
+    
+    // Limpar outros campos
     setDestinatarios([]);
     setDestinatariosCC([]);
     setDestinatariosTexto('');
@@ -254,14 +322,184 @@ export default function EnviarDashboards() {
     return true;
   };
 
-  // Gerar HTML do dashboard
-  const gerarHtmlDashboard = (): string => {
+  // Gerar HTML dos dashboards selecionados
+  const gerarHtmlDashboards = (): string => {
+    const dashboardsHtml = dashboardsParaEnvio.map(dashboard => {
+      // Conteúdo específico baseado no tipo de dashboard
+      let conteudoEspecifico = '';
+      
+      switch (dashboard.id) {
+        case 'requerimentos':
+          conteudoEspecifico = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0;">
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #0066CC;">📋</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Total de Requerimentos</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">Dados do período</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #10b981;">💰</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Valor Faturado</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">R$ --</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #8b5cf6;">⏱️</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Horas Trabalhadas</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">-- horas</div>
+              </div>
+            </div>
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-top: 16px;">
+              <p style="color: #92400e; font-size: 14px; margin: 0;">
+                <strong>📊 Conteúdo:</strong> Análise detalhada de requerimentos, faturamento por tipo de cobrança, 
+                evolução mensal, top módulos e relatórios de performance.
+              </p>
+            </div>
+          `;
+          break;
+          
+        case 'elogios':
+          conteudoEspecifico = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0;">
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #ec4899;">❤️</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Elogios Recebidos</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">Dados do período</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #10b981;">⭐</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Satisfação Média</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">-/5</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #3b82f6;">👥</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Colaboradores Destacados</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">--</div>
+              </div>
+            </div>
+            <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-top: 16px;">
+              <p style="color: #065f46; font-size: 14px; margin: 0;">
+                <strong>💝 Conteúdo:</strong> Análise de elogios por empresa, colaboradores em destaque, 
+                evolução da satisfação, mapeamento por áreas e pesquisas de qualidade.
+              </p>
+            </div>
+          `;
+          break;
+          
+        case 'planos-acao':
+          conteudoEspecifico = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0;">
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #0066CC;">🎯</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Planos Ativos</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">Dados do período</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #10b981;">✅</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Metas Alcançadas</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">--%</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #f59e0b;">📈</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Progresso Médio</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">--%</div>
+              </div>
+            </div>
+            <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 16px; margin-top: 16px;">
+              <p style="color: #1e40af; font-size: 14px; margin: 0;">
+                <strong>🚀 Conteúdo:</strong> Acompanhamento de planos de ação, progresso de metas, 
+                análise de resultados, cronogramas e indicadores de performance.
+              </p>
+            </div>
+          `;
+          break;
+          
+        case 'empresas':
+          conteudoEspecifico = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0;">
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #0066CC;">🏢</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Empresas Ativas</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">Dados do período</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #10b981;">📊</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Contratos Ativos</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">--</div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: #8b5cf6;">💼</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Relacionamento</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 4px;">Excelente</div>
+              </div>
+            </div>
+            <div style="background: #f3e8ff; border: 1px solid #8b5cf6; border-radius: 8px; padding: 16px; margin-top: 16px;">
+              <p style="color: #6b21a8; font-size: 14px; margin: 0;">
+                <strong>🤝 Conteúdo:</strong> Análise de empresas clientes, contratos vigentes, 
+                histórico de relacionamento, métricas comerciais e oportunidades de negócio.
+              </p>
+            </div>
+          `;
+          break;
+          
+        default:
+          conteudoEspecifico = `
+            <div style="text-align: center; color: #64748b; padding: 32px;">
+              <div style="font-size: 32px; margin-bottom: 16px;">📊</div>
+              <p style="margin: 0; line-height: 1.6;">
+                Conteúdo do dashboard será inserido aqui conforme necessário para o período de <strong>${periodoFormatado}</strong>.
+              </p>
+            </div>
+          `;
+      }
+
+      return `
+        <div class="dashboard-section" style="margin-bottom: 40px; page-break-inside: avoid;">
+          <div class="dashboard-header" style="background: linear-gradient(135deg, #0066CC 0%, #004499 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0; font-size: 24px; font-weight: 700;">${dashboard.nome}</h2>
+            <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">${dashboard.descricao}</p>
+            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+              <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                ${dashboard.categoria.charAt(0).toUpperCase() + dashboard.categoria.slice(1)}
+              </span>
+              <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                ${dashboard.tipo.charAt(0).toUpperCase() + dashboard.tipo.slice(1)}
+              </span>
+            </div>
+          </div>
+          
+          <div class="dashboard-content" style="background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; padding: 32px;">
+            ${conteudoEspecifico}
+            
+            ${dashboard.metricas ? `
+            <div style="margin-top: 32px; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <h4 style="margin: 0 0 16px 0; color: #374151; font-size: 16px; font-weight: 600;">📈 Métricas de Uso</h4>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+                <div>
+                  <div style="font-size: 20px; font-weight: 600; color: #0066CC;">${dashboard.metricas.total_visualizacoes}</div>
+                  <div style="font-size: 12px; color: #64748b;">Visualizações</div>
+                </div>
+                <div>
+                  <div style="font-size: 20px; font-weight: 600; color: #10b981;">${dashboard.metricas.total_envios}</div>
+                  <div style="font-size: 12px; color: #64748b;">Envios</div>
+                </div>
+                <div>
+                  <div style="font-size: 20px; font-weight: 600; color: #8b5cf6;">${dashboard.metricas.taxa_abertura?.toFixed(1)}%</div>
+                  <div style="font-size: 12px; color: #64748b;">Taxa Abertura</div>
+                </div>
+              </div>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}</title>
+  <title>Dashboards - ${periodoFormatado}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -270,40 +508,40 @@ export default function EnviarDashboards() {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       background-color: #f8fafc; 
       color: #1e293b;
+      line-height: 1.6;
     }
     .container { 
-      max-width: 800px; 
+      max-width: auto; 
       margin: 0 auto; 
       background-color: #ffffff; 
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
       overflow: hidden;
     }
-    .header { 
+    .main-header { 
       background: linear-gradient(135deg, #0066CC 0%, #004499 100%);
       color: white; 
-      padding: 32px; 
+      padding: 40px 32px; 
       text-align: center; 
     }
-    .header h1 { 
-      font-size: 28px; 
+    .main-header h1 { 
+      font-size: 32px; 
       font-weight: 700; 
       margin-bottom: 8px;
       letter-spacing: -0.025em;
     }
-    .header p { 
-      font-size: 16px; 
+    .main-header p { 
+      font-size: 18px; 
       opacity: 0.9;
       font-weight: 400;
     }
     .content { 
-      padding: 32px; 
+      padding: 40px 32px; 
     }
     .period-info {
       background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       border-radius: 8px;
       padding: 24px;
-      margin-bottom: 32px;
+      margin-bottom: 40px;
       border-left: 4px solid #0066CC;
     }
     .period-info h2 {
@@ -317,38 +555,18 @@ export default function EnviarDashboards() {
       font-size: 14px;
       line-height: 1.6;
     }
-    .dashboard-placeholder {
-      background: #f8fafc;
-      border: 2px dashed #cbd5e1;
+    .dashboards-summary {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
       border-radius: 8px;
-      padding: 48px 24px;
+      padding: 16px;
+      margin-bottom: 32px;
       text-align: center;
-      margin: 24px 0;
     }
-    .dashboard-placeholder .icon {
-      width: 64px;
-      height: 64px;
-      background: #e2e8f0;
-      border-radius: 50%;
-      margin: 0 auto 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      color: #64748b;
-    }
-    .dashboard-placeholder h3 {
-      color: #475569;
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .dashboard-placeholder p {
-      color: #64748b;
+    .dashboards-summary p {
+      color: #92400e;
       font-size: 14px;
-      max-width: 400px;
-      margin: 0 auto;
-      line-height: 1.6;
+      margin: 0;
     }
     .footer {
       background: #f8fafc;
@@ -367,61 +585,49 @@ export default function EnviarDashboards() {
     }
     @media only screen and (max-width: 600px) {
       body { padding: 10px; }
-      .header { padding: 24px 20px; }
-      .header h1 { font-size: 24px; }
+      .main-header { padding: 24px 20px; }
+      .main-header h1 { font-size: 24px; }
       .content { padding: 24px 20px; }
       .period-info { padding: 20px; }
       .footer { padding: 20px; }
+      .dashboard-content { padding: 20px !important; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <h1>📊 Dashboard Mensal</h1>
-      <p>Relatório de Performance e Indicadores</p>
+    <!-- Main Header -->
+    <div class="main-header">
+      <h1>📊 Dashboards Corporativos</h1>
+      <p>Relatórios e Indicadores de Performance</p>
     </div>
     
     <!-- Content -->
     <div class="content">
       <!-- Period Info -->
       <div class="period-info">
-        <h2>📅 Período do Relatório</h2>
-        <p><strong>${nomesMeses[mesSelecionado - 1]} de ${anoSelecionado}</strong></p>
-        <p>Este relatório contém os principais indicadores e métricas de performance do período selecionado.</p>
+        <h2>📅 Período dos Relatórios</h2>
+        <p><strong>${periodoFormatado}</strong></p>
+        <p>Este envio contém ${dashboardsParaEnvio.length} dashboard${dashboardsParaEnvio.length > 1 ? 's' : ''} com os principais indicadores e métricas de performance do período selecionado.</p>
       </div>
       
-      <!-- Dashboard Placeholder -->
-      <div class="dashboard-placeholder">
-        <div class="icon">📈</div>
-        <h3>Dashboard em Desenvolvimento</h3>
+      <!-- Dashboards Summary -->
+      <div class="dashboards-summary">
         <p>
-          O conteúdo do dashboard será inserido aqui. Esta área pode incluir gráficos, 
-          tabelas de dados, métricas de performance e outros indicadores relevantes 
-          para o período de <strong>${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}</strong>.
+          <strong>📋 Dashboards Inclusos:</strong> ${dashboardsParaEnvio.map(d => d.nome.replace('Dashboard de ', '')).join(' • ')}
         </p>
       </div>
       
-      <!-- Additional Info -->
-      <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-top: 24px;">
-        <p style="color: #92400e; font-size: 14px; margin: 0;">
-          <strong>💡 Nota:</strong> Este é um template base para envio de dashboards. 
-          O conteúdo específico do dashboard deve ser integrado conforme necessário.
-        </p>
-      </div>
+      <!-- Dashboards Content -->
+      ${dashboardsHtml}
     </div>
     
     <!-- Footer -->
     <div class="footer">
       <p>
-        <strong>Sonda - Books SND</strong><br>
         Sistema de Gestão Administrativa<br>
-        Gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')}
+        Gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
       </p>
-      <div class="logo">
-        <p style="font-size: 10px; color: #94a3b8;">📊 Dashboard System</p>
-      </div>
     </div>
   </div>
 </body>
@@ -438,8 +644,8 @@ export default function EnviarDashboards() {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
 
-      // Gerar HTML do dashboard
-      const htmlDashboard = gerarHtmlDashboard();
+      // Gerar HTML dos dashboards selecionados
+      const htmlDashboards = gerarHtmlDashboards();
 
       // Converter anexos File[] para base64
       const anexosBase64 = await Promise.all(
@@ -465,14 +671,14 @@ export default function EnviarDashboards() {
         to: emailsValidos,
         cc: emailsCCValidos.length > 0 ? emailsCCValidos : undefined,
         subject: assuntoEmail,
-        html: htmlDashboard,
+        html: htmlDashboards,
         attachments: anexosBase64.length > 0 ? anexosBase64 : undefined
       });
 
       if (resultado.success) {
         toast({
           title: "Sucesso",
-          description: `Dashboard enviado com sucesso para ${emailsValidos.length} destinatário(s)!`
+          description: `${dashboardsParaEnvio.length} dashboard${dashboardsParaEnvio.length > 1 ? 's' : ''} enviado${dashboardsParaEnvio.length > 1 ? 's' : ''} com sucesso para ${emailsValidos.length} destinatário(s)!`
         });
         
         setModalEmailAberto(false);
@@ -528,6 +734,77 @@ export default function EnviarDashboards() {
           </ProtectedAction>
         </div>
 
+        {/* Cards de Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Total Dashboards
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                {estatisticasGerais?.total || 0}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Disponíveis
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
+                <CheckSquare className="h-4 w-4" />
+                Selecionados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-green-600">
+                {dashboardsSelecionados.length}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Para envio
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-purple-600 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Período
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-purple-600">
+                {nomesMeses[mesSelecionado - 1]}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {anoSelecionado}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filtrados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                {dashboards.length}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Resultados
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Navegação de Período */}
         <Card>
           <CardContent className="py-3">
@@ -561,96 +838,103 @@ export default function EnviarDashboards() {
           </CardContent>
         </Card>
 
-        {/* Cards de Informação */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-blue-700 truncate">
-                    Período Selecionado
-                  </p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {nomesMeses[mesSelecionado - 1]}
-                  </p>
-                  <p className="text-sm text-blue-600">
-                    {anoSelecionado}
-                  </p>
+        {/* Filtros de Dashboards */}
+        <DashboardFilters
+          filtros={filtros}
+          onFiltroChange={handleFiltroChange}
+          onLimparFiltros={limparFiltros}
+          isOpen={showFilters}
+          onToggle={() => setShowFilters(!showFilters)}
+          totalResultados={dashboards.length}
+        />
+
+        {/* Ações de Seleção */}
+        {dashboards.length > 0 && (
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selecionarTodos}
+                      disabled={isLoading}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                      Selecionar Todos Ativos
+                    </Button>
+                    {dashboardsSelecionados.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limparSelecao}
+                        className="flex items-center gap-2"
+                      >
+                        <Square className="h-4 w-4" />
+                        Limpar Seleção
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <Calendar className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  {dashboardsSelecionados.length > 0 && (
+                    <Badge variant="secondary">
+                      {dashboardsSelecionados.length} selecionado{dashboardsSelecionados.length > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-green-700 truncate">
-                    Status do Dashboard
-                  </p>
-                  <p className="text-2xl font-bold text-green-900">
-                    Pronto
-                  </p>
-                  <p className="text-sm text-green-600">
-                    Para envio
-                  </p>
-                </div>
-                <BarChart3 className="h-8 w-8 text-green-600 flex-shrink-0" />
+        {/* Lista de Dashboards */}
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-sonda-blue mx-auto mb-4" />
+                <p className="text-gray-600">Carregando dashboards...</p>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-purple-700 truncate">
-                    Tipo de Relatório
-                  </p>
-                  <p className="text-2xl font-bold text-purple-900">
-                    Mensal
-                  </p>
-                  <p className="text-sm text-purple-600">
-                    Dashboard
-                  </p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-purple-600 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Preview do Dashboard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-sonda-blue" />
-              Preview do Dashboard - {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
+        ) : dashboards.length === 0 ? (
+          <Card>
+            <CardContent className="py-12">
               <div className="text-center">
                 <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Dashboard Template
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Nenhum dashboard encontrado
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Este é um template base para envio de dashboards por email.
+                <p className="text-gray-600 mb-4">
+                  Não há dashboards que correspondam aos filtros aplicados.
                 </p>
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 max-w-md mx-auto">
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    O conteúdo específico do dashboard será inserido aqui conforme necessário.
-                  </p>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={limparFiltros}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Limpar Filtros
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dashboards.map((dashboard) => (
+              <DashboardCard
+                key={dashboard.id}
+                dashboard={dashboard}
+                isSelected={dashboardsSelecionados.includes(dashboard.id)}
+                onSelectionChange={(selected) => handleDashboardSelection(dashboard.id, selected)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Modal de Email */}
         <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
@@ -854,8 +1138,17 @@ export default function EnviarDashboards() {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Envio do Dashboard</AlertDialogTitle>
               <AlertDialogDescription>
-                Você está prestes a enviar o dashboard de <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong> para:
+                Você está prestes a enviar <strong>{dashboardsParaEnvio.length} dashboard{dashboardsParaEnvio.length > 1 ? 's' : ''}</strong> referente{dashboardsParaEnvio.length > 1 ? 's' : ''} ao período de <strong>{periodoFormatado}</strong>:
                 <br /><br />
+                <strong>Dashboards:</strong>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  {dashboardsParaEnvio.map(dashboard => (
+                    <li key={dashboard.id} className="text-sm">
+                      {dashboard.nome} ({dashboard.categoria})
+                    </li>
+                  ))}
+                </ul>
+                <br />
                 <strong>Destinatários:</strong> {destinatarios.length} email(s)
                 {destinatariosCC.length > 0 && (
                   <>
