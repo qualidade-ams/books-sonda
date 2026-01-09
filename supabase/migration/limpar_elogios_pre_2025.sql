@@ -10,11 +10,11 @@ SELECT
   MIN(data_resposta) as data_mais_antiga,
   MAX(data_resposta) as data_mais_recente
 FROM pesquisas
-WHERE data_resposta < '2025-01-01T00:00:00.000Z';
+WHERE data_resposta < '2026-01-01T00:00:00.000Z';
 
 -- 2. Deletar registros anteriores a 2025 (se houver)
 DELETE FROM pesquisas
-WHERE data_resposta < '2025-01-01T00:00:00.000Z';
+WHERE data_resposta < '2026-01-01T00:00:00.000Z';
 
 -- 3. Verificar registros restantes
 SELECT 
@@ -34,4 +34,4 @@ FROM pesquisas
 GROUP BY origem;
 
 -- Mensagem
-SELECT '✅ Banco limpo - Pronto para sincronizar todos os dados de 2025!' as status;
+SELECT '✅ Banco limpo - Pronto para sincronizar todos os dados de 2026!' as status;

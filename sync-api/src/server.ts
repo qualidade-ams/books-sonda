@@ -381,7 +381,7 @@ app.post('/api/reset-sync-2025', async (req, res) => {
     const { error } = await supabase
       .from('pesquisas_satisfacao')
       .delete()
-      .gte('data_resposta', '2024-01-01T00:00:00.000Z');
+      .gte('data_resposta', '2026-01-01T00:00:00.000Z');
 
     if (error) {
       throw error;
@@ -570,7 +570,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
 
       ultimaDataSincronizacao = ultimoRegistro?.data_resposta 
         ? new Date(ultimoRegistro.data_resposta)
-        : new Date('2024-01-01T00:00:00.000Z'); // Data inicial: 01/01/2024
+        : new Date('2026-01-01T00:00:00.000Z'); // Data inicial: 01/01/2026
 
       console.log('Última sincronização:', ultimaDataSincronizacao.toISOString());
       resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
