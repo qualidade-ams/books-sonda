@@ -32,7 +32,7 @@ BEGIN
   IF v_count = 0 THEN
     RAISE NOTICE '✓ Todos os registros do SQL Server foram deletados';
     RAISE NOTICE '✓ Próxima sincronização será COMPLETA';
-    RAISE NOTICE '✓ Buscará todos os registros desde 2024-01-01';
+    RAISE NOTICE '✓ Buscará todos os registros desde 2026-01-01';
   ELSE
     RAISE WARNING '⚠ Ainda existem % registros', v_count;
   END IF;

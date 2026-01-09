@@ -192,9 +192,8 @@ function LancarPesquisas() {
     setFiltros({
       busca: '',
       origem: 'todos',
-      resposta: 'todos',
-      ano: 'todos',
-      mes: 'todos'
+      resposta: 'todas',
+      status: 'pendente' // Manter o status padrão
     });
     setPaginaAtual(1);
   };
