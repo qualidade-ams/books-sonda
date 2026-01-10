@@ -54,7 +54,7 @@ interface DadosSqlServer {
   Tipo_Caso: string;
   Ano_Abertura: string;
   Mes_abertura: string;
-  Data_Resposta: Date;
+  Data_Resposta: Date | null; // Pode ser null para pesquisas não respondidas
   Resposta: string;
   Comentario_Pesquisa: string;
 }
@@ -74,7 +74,8 @@ function gerarIdUnico(registro: DadosSqlServer): string {
     registro.Empresa,
     registro.Cliente,
     registro.Nro_Caso,
-    registro.Data_Resposta?.toISOString()
+    // Para registros sem resposta, usar 'PENDENTE' como identificador
+    registro.Data_Resposta?.toISOString() || 'PENDENTE'
   ].filter(Boolean);
   
   return partes.join('|');
@@ -550,8 +551,8 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Resposta,
           Comentario_Pesquisa
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-        WHERE [Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL
-          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+        WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+          AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     } else {
@@ -591,9 +592,16 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Resposta,
           Comentario_Pesquisa
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
-        WHERE [Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL
-          AND [Data_Resposta (Date-Hour-Minute-Second)] > @ultimaData
-          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+        WHERE (
+          -- Registros com resposta após a última sincronização
+          ([Data_Resposta (Date-Hour-Minute-Second)] IS NOT NULL 
+           AND [Data_Resposta (Date-Hour-Minute-Second)] > @ultimaData)
+          OR
+          -- Registros sem resposta (pesquisas enviadas mas não respondidas)
+          [Data_Resposta (Date-Hour-Minute-Second)] IS NULL
+        )
+        AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+        AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     }
@@ -661,6 +669,9 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           console.log(`  Comentario_Pesquisa: ${registro.Comentario_Pesquisa?.length || 0} chars`);
         }
 
+        // Usar apenas 'pendente' por enquanto até descobrir os valores aceitos no enum
+        const statusPesquisa = 'pendente' as const;
+
         const dadosPesquisa = {
           origem: 'sql_server' as const,
           id_externo: idUnico,
@@ -677,7 +688,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           data_resposta: registro.Data_Resposta?.toISOString() || null,
           resposta: registro.Resposta || null,
           comentario_pesquisa: registro.Comentario_Pesquisa || null,
-          status: 'pendente' as const
+          status: statusPesquisa
         };
 
         if (existente) {
