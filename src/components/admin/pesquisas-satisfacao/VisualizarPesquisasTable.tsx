@@ -71,6 +71,16 @@ export function VisualizarPesquisasTable({
   // Função para validar e formatar nome da empresa
   const validarEmpresa = (nomeEmpresa: string) => {
     const nomeNormalizado = nomeEmpresa.trim().toUpperCase();
+    
+    // SONDA INTERNO é sempre considerada válida (não precisa estar cadastrada)
+    if (nomeNormalizado === 'SONDA INTERNO') {
+      return {
+        encontrada: true,
+        nomeExibir: 'SONDA INTERNO',
+        nomeCompleto: 'SONDA INTERNO'
+      };
+    }
+    
     const empresaEncontrada = empresasMap.get(nomeNormalizado);
     
     return {
@@ -264,7 +274,7 @@ export function VisualizarPesquisasTable({
                           disabled={isLoading}
                           className="h-8 w-8 p-0"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 text-blue-600" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>

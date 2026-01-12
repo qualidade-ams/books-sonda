@@ -93,6 +93,7 @@ function VisualizarPesquisas() {
     cliente: '',
     email_cliente: '',
     prestador: '',
+    solicitante: '',
     categoria: '',
     grupo: '',
     tipo_caso: '',
@@ -205,6 +206,7 @@ function VisualizarPesquisas() {
       cliente: pesquisa.cliente || '',
       email_cliente: pesquisa.email_cliente || '',
       prestador: pesquisa.prestador || '',
+      solicitante: pesquisa.solicitante || '',
       categoria: pesquisa.categoria || '',
       grupo: pesquisa.grupo || '',
       tipo_caso: pesquisa.tipo_caso || '',
@@ -255,6 +257,7 @@ function VisualizarPesquisas() {
           empresa: dadosEdicao.empresa,
           cliente: dadosEdicao.cliente,
           email_cliente: dadosEdicao.email_cliente || null,
+          solicitante: dadosEdicao.solicitante || null,
           categoria: dadosEdicao.categoria || null,
           grupo: dadosEdicao.grupo || null,
           tipo_caso: dadosEdicao.tipo_caso || null,
@@ -669,6 +672,17 @@ function VisualizarPesquisas() {
                       />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
+                      <Input
+                        value={pesquisaSelecionada.solicitante || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Categorização */}
@@ -908,6 +922,18 @@ function VisualizarPesquisas() {
                         onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, especialistas_ids: value }))}
                         placeholder="Selecione os consultores..."
                         className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
+                      <Input 
+                        value={dadosEdicao.solicitante}
+                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, solicitante: e.target.value }))}
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        placeholder="Nome do solicitante"
                       />
                     </div>
                   </div>

@@ -68,6 +68,71 @@ interface DadosEspecialistaSqlServer {
 }
 
 /**
+ * Aplica transformação automática para clientes com "-AMS"
+ */
+function aplicarTransformacaoAMS(dados: {
+  empresa: string;
+  cliente: string;
+  solicitante?: string | null;
+}): {
+  empresa: string;
+  cliente: string;
+  solicitante?: string | null;
+  foiTransformado: boolean;
+  motivoTransformacao?: string;
+} {
+  // Verificar se cliente contém "-AMS"
+  const clienteContemAMS = dados.cliente && dados.cliente.includes('-AMS');
+  
+  if (!clienteContemAMS) {
+    return {
+      ...dados,
+      foiTransformado: false
+    };
+  }
+
+  // Verificar se há solicitante para substituir o cliente
+  if (!dados.solicitante || dados.solicitante.trim() === '') {
+    console.warn('⚠️ [TRANSFORMAÇÃO] Cliente contém "-AMS" mas solicitante está vazio:', {
+      cliente: dados.cliente,
+      solicitante: dados.solicitante
+    });
+    
+    return {
+      ...dados,
+      foiTransformado: false,
+      motivoTransformacao: 'Solicitante vazio - transformação não aplicada'
+    };
+  }
+
+  // Aplicar transformação
+  const dadosTransformados = {
+    empresa: 'SONDA INTERNO',
+    cliente: dados.solicitante.trim(),
+    solicitante: dados.solicitante
+  };
+
+  console.log('✅ [TRANSFORMAÇÃO] Aplicada transformação AMS:', {
+    original: {
+      empresa: dados.empresa,
+      cliente: dados.cliente,
+      solicitante: dados.solicitante
+    },
+    transformado: {
+      empresa: dadosTransformados.empresa,
+      cliente: dadosTransformados.cliente,
+      solicitante: dadosTransformados.solicitante
+    }
+  });
+
+  return {
+    ...dadosTransformados,
+    foiTransformado: true,
+    motivoTransformacao: `Cliente "${dados.cliente}" contém "-AMS" - transformado para SONDA INTERNO`
+  };
+}
+
+/**
  * Gerar ID único para registro de pesquisa
  */
 function gerarIdUnico(registro: DadosSqlServer): string {
@@ -676,16 +741,23 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         // Usar apenas 'pendente' por enquanto até descobrir os valores aceitos no enum
         const statusPesquisa = 'pendente' as const;
 
+        // Aplicar transformação automática para clientes com "-AMS"
+        const transformacao = aplicarTransformacaoAMS({
+          empresa: registro.Empresa || '',
+          cliente: registro.Cliente || '',
+          solicitante: registro.Solicitante || null
+        });
+
         const dadosPesquisa = {
           origem: 'sql_server' as const,
           id_externo: idUnico,
-          empresa: registro.Empresa || '',
+          empresa: transformacao.empresa,
           categoria: registro.Categoria || null,
           grupo: registro.Grupo || null,
-          cliente: registro.Cliente || '',
+          cliente: transformacao.cliente,
           email_cliente: registro.Email_Cliente || null,
           prestador: registro.Prestador || null,
-          solicitante: registro.Solicitante || null, // NOVO CAMPO ADICIONADO
+          solicitante: transformacao.solicitante || null,
           nro_caso: registro.Nro_Caso || null,
           tipo_caso: registro.Tipo_Caso || null,
           ano_abertura: registro.Ano_Abertura ? parseInt(registro.Ano_Abertura) : null,
@@ -695,6 +767,11 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           comentario_pesquisa: registro.Comentario_Pesquisa || null,
           status: statusPesquisa
         };
+
+        // Log da transformação se aplicada
+        if (transformacao.foiTransformado) {
+          console.log(`🔄 [SYNC] Registro ${i + 1} - ${transformacao.motivoTransformacao}`);
+        }
 
         if (existente) {
           // Atualizar registro existente

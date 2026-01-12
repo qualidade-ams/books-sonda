@@ -1856,10 +1856,10 @@ export default function FaturarRequerimentos() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleVisualizarRequerimento(req)}
-                                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                      className="h-8 w-8 p-0"
                                       title="Visualizar detalhes do requerimento"
                                     >
-                                      <Eye className="h-4 w-4" />
+                                      <Eye className="h-4 w-4 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" />
                                     </Button>
                                     
                                     <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
@@ -1868,10 +1868,10 @@ export default function FaturarRequerimentos() {
                                         size="sm"
                                         onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                         disabled={rejeitarRequerimento.isPending}
-                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                        className="h-8 w-8 p-0"
                                         title="Rejeitar requerimento"
                                       >
-                                        <X className="h-4 w-4" />
+                                        <X className="h-4 w-4 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" />
                                       </Button>
                                     </ProtectedAction>
                                     
@@ -2395,10 +2395,10 @@ export default function FaturarRequerimentos() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleVisualizarRequerimento(req)}
-                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                    className="h-8 w-8 p-0"
                                     title="Visualizar detalhes do requerimento"
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-4 w-4 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" />
                                   </Button>
                                   
                                   <ProtectedAction screenKey="faturar_requerimentos" requiredLevel="edit">
@@ -2407,10 +2407,10 @@ export default function FaturarRequerimentos() {
                                       size="sm"
                                       onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                       disabled={rejeitarRequerimento.isPending}
-                                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                      className="h-8 w-8 p-0"
                                       title="Rejeitar requerimento"
                                     >
-                                      <X className="h-4 w-4" />
+                                      <X className="h-4 w-4 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" />
                                     </Button>
                                   </ProtectedAction>
                                 </div>
