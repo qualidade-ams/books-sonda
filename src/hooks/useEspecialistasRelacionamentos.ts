@@ -102,7 +102,12 @@ export function useEspecialistasElogio(elogioId: string | undefined) {
   return useQuery({
     queryKey: ['especialistas-elogio', elogioId],
     queryFn: async (): Promise<Especialista[]> => {
-      if (!elogioId) return [];
+      if (!elogioId) {
+        console.log('🔍 [useEspecialistasElogio] Elogio ID não fornecido');
+        return [];
+      }
+
+      console.log('🔍 [useEspecialistasElogio] Buscando especialistas para elogio:', elogioId);
 
       const { data, error } = await supabase
         .from('elogio_especialistas')
@@ -113,11 +118,15 @@ export function useEspecialistasElogio(elogioId: string | undefined) {
         .eq('elogio_id', elogioId);
 
       if (error) {
-        console.error('Erro ao buscar especialistas do elogio:', error);
+        console.error('❌ [useEspecialistasElogio] Erro ao buscar especialistas do elogio:', error);
         throw error;
       }
 
-      return data?.map(item => item.especialistas).filter(Boolean) || [];
+      const especialistas = data?.map(item => item.especialistas).filter(Boolean) || [];
+      console.log('✅ [useEspecialistasElogio] Especialistas encontrados:', especialistas.length);
+      console.log('📋 [useEspecialistasElogio] Dados:', especialistas);
+
+      return especialistas;
     },
     enabled: !!elogioId,
     staleTime: 1000 * 60 * 5, // 5 minutos
@@ -211,16 +220,27 @@ export function useEspecialistasIdsPesquisa(pesquisaId: string | undefined, pres
 export function useEspecialistasIdsElogio(elogioId: string | undefined, prestador?: string) {
   const { data: especialistas = [] } = useEspecialistasElogio(elogioId);
   
+  console.log('🔍 [useEspecialistasIdsElogio] === INÍCIO ===');
+  console.log('🔍 [useEspecialistasIdsElogio] Elogio ID:', elogioId);
+  console.log('🔍 [useEspecialistasIdsElogio] Especialistas recebidos do hook:', especialistas);
+  console.log('🔍 [useEspecialistasIdsElogio] Quantidade de especialistas:', especialistas.length);
+  console.log('🔍 [useEspecialistasIdsElogio] Prestador:', prestador);
+  
   // Se já tem especialistas relacionados, usar eles
   if (especialistas.length > 0) {
-    return especialistas.map(e => e.id);
+    const ids = especialistas.map(e => e.id);
+    console.log('✅ [useEspecialistasIdsElogio] Retornando IDs dos especialistas relacionados:', ids);
+    console.log('🔍 [useEspecialistasIdsElogio] === FIM (COM ESPECIALISTAS) ===');
+    return ids;
   }
   
   // Se não tem relacionamentos mas tem prestador, tentar correlação automática
   if (prestador && prestador.trim()) {
-    console.log('🔄 [Relacionamentos] Tentando correlação automática para prestador:', prestador);
+    console.log('🔄 [useEspecialistasIdsElogio] Tentando correlação automática para prestador:', prestador);
     // Esta correlação será feita no componente que usa este hook
   }
   
+  console.log('❌ [useEspecialistasIdsElogio] Nenhum especialista encontrado, retornando array vazio');
+  console.log('🔍 [useEspecialistasIdsElogio] === FIM (SEM ESPECIALISTAS) ===');
   return [];
 }

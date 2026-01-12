@@ -1011,6 +1011,7 @@ export default function EnviarElogios() {
                       <TableHead className="w-[180px] text-center">Empresa</TableHead>
                       <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
                       <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                      <TableHead className="w-[150px] text-center">Consultor</TableHead>
                       <TableHead className="w-[200px] text-center">Comentário</TableHead>
                       <TableHead className="w-[140px] text-center">Resposta</TableHead>
                       <TableHead className="w-[100px] text-center">Ações</TableHead>
@@ -1067,6 +1068,11 @@ export default function EnviarElogios() {
                           <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
                             <span className="truncate block">
                               {elogio.pesquisa?.cliente || 'N/A'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">
+                              {elogio.pesquisa?.prestador || '-'}
                             </span>
                           </TableCell>
                           <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
@@ -1135,6 +1141,7 @@ export default function EnviarElogios() {
                           <TableHead className="w-[180px] text-center">Empresa</TableHead>
                           <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
                           <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                          <TableHead className="w-[150px] text-center">Consultor</TableHead>
                           <TableHead className="w-[200px] text-center">Comentário</TableHead>
                           <TableHead className="w-[140px] text-center">Resposta</TableHead>
                           <TableHead className="text-center w-[120px]">Status</TableHead>
@@ -1191,6 +1198,11 @@ export default function EnviarElogios() {
                               <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
                                 <span className="truncate block">
                                   {elogio.pesquisa?.cliente}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                                <span className="truncate block">
+                                  {elogio.pesquisa?.prestador || '-'}
                                 </span>
                               </TableCell>
                               <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">

@@ -27,7 +27,7 @@ export function useRealTimeNotifications(config: UseRealTimeNotificationsConfig 
     toastDuration = 5000,
     maxEvents = 100,
     eventTypes = ['job_status_changed', 'dispatch_completed', 'dispatch_failed', 'system_alert'],
-    autoConnect = true
+    autoConnect = false // Desabilitado por padrão para evitar queries excessivas
   } = config;
 
   const { toast } = useToast();

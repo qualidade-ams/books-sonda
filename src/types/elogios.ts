@@ -50,6 +50,14 @@ export interface ElogioCompleto extends Elogio {
     data_resposta?: string;
     origem?: 'sql_server' | 'manual';
   };
+  especialistas?: Array<{
+    especialista_id: string;
+    especialistas: {
+      id: string;
+      nome: string;
+      email?: string;
+    };
+  }>;
 }
 
 // Interface para formulário de criação

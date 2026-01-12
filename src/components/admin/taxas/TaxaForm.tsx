@@ -270,6 +270,13 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   const dbaRemoto = form.watch('valores_remota.dba');
   const gestorRemoto = form.watch('valores_remota.gestor');
 
+  // Monitorar campos específicos dos valores locais
+  const funcionalLocal = form.watch('valores_local.funcional');
+  const tecnicoLocal = form.watch('valores_local.tecnico');
+  const abapLocal = form.watch('valores_local.abap');
+  const dbaLocal = form.watch('valores_local.dba');
+  const gestorLocal = form.watch('valores_local.gestor');
+
   // NOVO: Calcular automaticamente valores locais quando valores remotos mudarem (10% a mais)
   useEffect(() => {
     // BLOQUEIO CRÍTICO: Se for personalizado, NÃO calcular NADA
@@ -445,29 +452,55 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
 
       // LÓGICA NORMAL: Calcular automaticamente APENAS quando NÃO é personalizado (nova taxa OU edição)
       
-      // Obter valor base atual do formulário (mais atualizado)
+      // Obter valor base atual do formulário (mais atualizado) - USAR VARIÁVEIS CORRETAS BASEADO NO TIPO
       let valorBase = 0;
       
-      if (funcao === 'Funcional') {
-        valorBase = funcionalRemoto || valores.funcional || 0;
-      } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
-        valorBase = tecnicoRemoto || valores.tecnico || 0;
-      } else if (funcao === 'ABAP - PL/SQL') {
-        valorBase = abapRemoto || valores.abap || 0;
-      } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
-        valorBase = dbaRemoto || valores.dba || 0;
-      } else if (funcao === 'Gestor') {
-        valorBase = gestorRemoto || valores.gestor || 0;
+      if (tipo === 'remota') {
+        // Para valores remotos, usar as variáveis dos valores remotos
+        if (funcao === 'Funcional') {
+          valorBase = funcionalRemoto || valores.funcional || 0;
+        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+          valorBase = tecnicoRemoto || valores.tecnico || 0;
+        } else if (funcao === 'ABAP - PL/SQL') {
+          valorBase = abapRemoto || valores.abap || 0;
+        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+          valorBase = dbaRemoto || valores.dba || 0;
+        } else if (funcao === 'Gestor') {
+          valorBase = gestorRemoto || valores.gestor || 0;
+        }
+      } else {
+        // Para valores locais, usar as variáveis dos valores locais
+        if (funcao === 'Funcional') {
+          valorBase = funcionalLocal || valores.funcional || 0;
+        } else if (funcao === 'Técnico / ABAP' || funcao === 'Técnico (Instalação / Atualização)') {
+          valorBase = tecnicoLocal || valores.tecnico || 0;
+        } else if (funcao === 'ABAP - PL/SQL') {
+          valorBase = abapLocal || valores.abap || 0;
+        } else if (funcao === 'DBA / Basis' || funcao === 'DBA') {
+          valorBase = dbaLocal || valores.dba || 0;
+        } else if (funcao === 'Gestor') {
+          valorBase = gestorLocal || valores.gestor || 0;
+        }
       }
 
-      // Preparar array com todas as funções para cálculo da média (usando valores mais atuais)
+      // Preparar array com todas as funções para cálculo da média (usando valores corretos baseado no tipo)
       const todasFuncoes = funcoes.map(f => {
         let vb = 0;
-        if (f === 'Funcional') vb = funcionalRemoto || valores.funcional || 0;
-        else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = tecnicoRemoto || valores.tecnico || 0;
-        else if (f === 'ABAP - PL/SQL') vb = abapRemoto || valores.abap || 0;
-        else if (f === 'DBA / Basis' || f === 'DBA') vb = dbaRemoto || valores.dba || 0;
-        else if (f === 'Gestor') vb = gestorRemoto || valores.gestor || 0;
+        if (tipo === 'remota') {
+          // Para valores remotos, usar as variáveis dos valores remotos
+          if (f === 'Funcional') vb = funcionalRemoto || valores.funcional || 0;
+          else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = tecnicoRemoto || valores.tecnico || 0;
+          else if (f === 'ABAP - PL/SQL') vb = abapRemoto || valores.abap || 0;
+          else if (f === 'DBA / Basis' || f === 'DBA') vb = dbaRemoto || valores.dba || 0;
+          else if (f === 'Gestor') vb = gestorRemoto || valores.gestor || 0;
+        } else {
+          // Para valores locais, usar as variáveis dos valores locais
+          if (f === 'Funcional') vb = funcionalLocal || valores.funcional || 0;
+          else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') vb = tecnicoLocal || valores.tecnico || 0;
+          else if (f === 'ABAP - PL/SQL') vb = abapLocal || valores.abap || 0;
+          else if (f === 'DBA / Basis' || f === 'DBA') vb = dbaLocal || valores.dba || 0;
+          else if (f === 'Gestor') vb = gestorLocal || valores.gestor || 0;
+        }
         return { funcao: f, valor_base: vb };
       });
 
@@ -488,7 +521,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   
   const valoresCalculadosLocal = useMemo(() => {
     return calcularValoresExibicao(valoresLocal, 'local');
-  }, [valoresLocal, personalizado, taxa, tipoProdutoSelecionado, tipoCalculoAdicional, funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto]);
+  }, [valoresLocal, personalizado, taxa, tipoProdutoSelecionado, tipoCalculoAdicional, funcionalLocal, tecnicoLocal, abapLocal, dbaLocal, gestorLocal]);
 
   // Forçar recálculo quando valores base mudam (apenas para taxas não personalizadas)
   useEffect(() => {
@@ -500,7 +533,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       
       return () => clearTimeout(timeoutId);
     }
-  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, personalizado]);
+  }, [funcionalRemoto, tecnicoRemoto, abapRemoto, dbaRemoto, gestorRemoto, funcionalLocal, tecnicoLocal, abapLocal, dbaLocal, gestorLocal, personalizado]);
 
   const funcoes = getFuncoesPorProduto(tipoProdutoSelecionado || 'GALLERY');
 
