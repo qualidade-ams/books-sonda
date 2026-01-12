@@ -27,6 +27,7 @@ export interface Pesquisa {
   cliente: string;
   email_cliente: string | null;
   prestador: string | null;
+  solicitante: string | null; // NOVO CAMPO ADICIONADO
   nro_caso: string | null;
   tipo_caso: string | null;
   ano_abertura: number | null;
@@ -67,6 +68,7 @@ export interface PesquisaFormData {
   grupo?: string;
   email_cliente?: string;
   prestador?: string;
+  solicitante?: string; // NOVO CAMPO ADICIONADO
   nro_caso?: string;
   tipo_caso?: string;
   ano_abertura?: number;
@@ -138,6 +140,7 @@ export interface DadosSqlServer {
   Cliente: string;
   Email_Cliente: string;
   Prestador: string;
+  Solicitante: string; // NOVO CAMPO ADICIONADO
   Nro_caso: string;
   Tipo_Caso: string;
   Ano_Abertura: number;

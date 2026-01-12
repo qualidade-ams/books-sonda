@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Eye, X, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,9 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
@@ -28,9 +30,17 @@ import { VisualizarPesquisasTable } from '@/components/admin/pesquisas-satisfaca
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { 
   useTodasPesquisasSatisfacao, 
-  useTodasEstatisticasPesquisas
+  useTodasEstatisticasPesquisas,
+  useAtualizarPesquisa,
+  useExcluirPesquisa
 } from '@/hooks/usePesquisasSatisfacao';
 import { useCacheManager } from '@/hooks/useCacheManager';
+import { useEmpresas } from '@/hooks/useEmpresas';
+import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
+import { useEspecialistasIdsPesquisa, useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
+import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
+import { toast } from 'sonner';
 
 import type { FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
 import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS, MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
@@ -70,10 +80,68 @@ function VisualizarPesquisas() {
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [pesquisaSelecionada, setPesquisaSelecionada] = useState<any>(null);
   const [modalDetalhesAberto, setModalDetalhesAberto] = useState(false);
+  
+  // Estados para edição e exclusão
+  const [pesquisaEditando, setPesquisaEditando] = useState<any>(null);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [pesquisaExcluindo, setPesquisaExcluindo] = useState<any>(null);
+  const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
+  
+  // Estados para formulário de edição
+  const [dadosEdicao, setDadosEdicao] = useState({
+    empresa: '',
+    cliente: '',
+    email_cliente: '',
+    prestador: '',
+    categoria: '',
+    grupo: '',
+    tipo_caso: '',
+    nro_caso: '',
+    comentario_pesquisa: '',
+    resposta: '',
+    status: '',
+    data_resposta: '',
+    observacao: '',
+    especialistas_ids: [] as string[]
+  });
+
+  // Hooks para dados de seleção
+  const { empresas } = useEmpresas();
+  const { data: categorias = [] } = useCategorias();
+  
+  // Observar mudanças na categoria selecionada para buscar grupos
+  const { data: grupos = [] } = useGruposPorCategoria(dadosEdicao.categoria);
+
+  // Buscar especialistas relacionados à pesquisa (para edição)
+  const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
+  
+  // Buscar especialistas para visualização
+  const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
+  
+  // Correlação automática baseada no campo prestador
+  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+    pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisaEditando.prestador : undefined
+  );
+  
+  // Usar relacionamentos salvos ou correlação automática
+  const especialistasIds = especialistasIdsRelacionados.length > 0 
+    ? especialistasIdsRelacionados 
+    : especialistasIdsCorrelacionados;
 
   // Queries - usando hook que traz TODAS as pesquisas sem filtros automáticos
-  const { data: pesquisas = [], isLoading } = useTodasPesquisasSatisfacao(filtros);
+  const { data: pesquisas = [], isLoading, refetch } = useTodasPesquisasSatisfacao(filtros);
   const { data: estatisticas } = useTodasEstatisticasPesquisas(filtros);
+  
+  // Mutations
+  const atualizarPesquisaMutation = useAtualizarPesquisa();
+  const excluirPesquisaMutation = useExcluirPesquisa();
+
+  // Opções de tipo de chamado
+  const tiposChamado = [
+    { value: 'IM', label: 'IM - Incidente' },
+    { value: 'PR', label: 'PR - Problema' },
+    { value: 'RF', label: 'RF - Requisição' }
+  ];
 
   // Debug: Log dos filtros aplicados
   useEffect(() => {
@@ -89,9 +157,129 @@ function VisualizarPesquisas() {
     }
   }, [filtros, pesquisas.length]);
 
+  // Preencher grupo automaticamente quando categoria for selecionada
+  useEffect(() => {
+    if (dadosEdicao.categoria && grupos.length > 0) {
+      // Se há apenas um grupo para a categoria, seleciona automaticamente
+      if (grupos.length === 1) {
+        setDadosEdicao(prev => ({ ...prev, grupo: grupos[0].value }));
+      }
+      // Se o grupo atual não está na lista de grupos válidos, limpa o campo
+      else {
+        const grupoValido = grupos.find(g => g.value === dadosEdicao.grupo);
+        if (!grupoValido) {
+          setDadosEdicao(prev => ({ ...prev, grupo: '' }));
+        }
+      }
+    } else if (!dadosEdicao.categoria) {
+      // Se categoria foi limpa, limpa o grupo também
+      setDadosEdicao(prev => ({ ...prev, grupo: '' }));
+    }
+  }, [dadosEdicao.categoria, grupos]);
+
+  // Preencher especialistas quando pesquisa for carregada
+  useEffect(() => {
+    if (pesquisaEditando && especialistasIds.length > 0) {
+      setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
+    }
+  }, [pesquisaEditando, especialistasIds]);
+
   const handleVisualizarDetalhes = (pesquisa: any) => {
     setPesquisaSelecionada(pesquisa);
     setModalDetalhesAberto(true);
+  };
+
+  const handleEditarPesquisa = (pesquisa: any) => {
+    setPesquisaEditando(pesquisa);
+    
+    // Tentar encontrar a empresa pelo nome completo ou abreviado
+    const empresaEncontrada = empresas.find(
+      e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
+    );
+    
+    // Usar o nome_completo se encontrou, senão usar o valor original
+    const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
+    
+    setDadosEdicao({
+      empresa: empresaValue || '',
+      cliente: pesquisa.cliente || '',
+      email_cliente: pesquisa.email_cliente || '',
+      prestador: pesquisa.prestador || '',
+      categoria: pesquisa.categoria || '',
+      grupo: pesquisa.grupo || '',
+      tipo_caso: pesquisa.tipo_caso || '',
+      nro_caso: pesquisa.nro_caso || '',
+      comentario_pesquisa: pesquisa.comentario_pesquisa || '',
+      resposta: pesquisa.resposta || '',
+      status: pesquisa.status || 'pendente',
+      data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta).toISOString().slice(0, 16) : '',
+      observacao: pesquisa.observacao || '',
+      especialistas_ids: [] // Será preenchido pelo useEffect
+    });
+    setModalEditarAberto(true);
+  };
+
+  const handleExcluirPesquisa = (pesquisa: any) => {
+    setPesquisaExcluindo(pesquisa);
+    setModalExcluirAberto(true);
+  };
+
+  const confirmarExclusao = async () => {
+    if (!pesquisaExcluindo) return;
+    
+    try {
+      await excluirPesquisaMutation.mutateAsync(pesquisaExcluindo.id);
+      
+      toast.success("Pesquisa excluída com sucesso!");
+      
+      setModalExcluirAberto(false);
+      setPesquisaExcluindo(null);
+      
+      // Refetch para atualizar a lista
+      refetch();
+      clearFeatureCache('pesquisas');
+      
+    } catch (error) {
+      console.error('Erro ao excluir pesquisa:', error);
+      toast.error("Erro ao excluir pesquisa. Tente novamente.");
+    }
+  };
+
+  const salvarEdicao = async () => {
+    if (!pesquisaEditando) return;
+    
+    try {
+      await atualizarPesquisaMutation.mutateAsync({
+        id: pesquisaEditando.id,
+        dados: {
+          empresa: dadosEdicao.empresa,
+          cliente: dadosEdicao.cliente,
+          email_cliente: dadosEdicao.email_cliente || null,
+          categoria: dadosEdicao.categoria || null,
+          grupo: dadosEdicao.grupo || null,
+          tipo_caso: dadosEdicao.tipo_caso || null,
+          nro_caso: dadosEdicao.nro_caso || null,
+          comentario_pesquisa: dadosEdicao.comentario_pesquisa || null,
+          resposta: dadosEdicao.resposta || null,
+          data_resposta: dadosEdicao.data_resposta ? new Date(dadosEdicao.data_resposta) : null,
+          observacao: dadosEdicao.observacao || null,
+          especialistas_ids: dadosEdicao.especialistas_ids || []
+        }
+      });
+      
+      toast.success("Pesquisa atualizada com sucesso!");
+      
+      setModalEditarAberto(false);
+      setPesquisaEditando(null);
+      
+      // Refetch para atualizar a lista
+      refetch();
+      clearFeatureCache('pesquisas');
+      
+    } catch (error) {
+      console.error('Erro ao atualizar pesquisa:', error);
+      toast.error("Erro ao atualizar pesquisa. Tente novamente.");
+    }
   };
 
   // Função para atualizar filtros
@@ -361,6 +549,8 @@ function VisualizarPesquisas() {
               pesquisas={pesquisasPaginadas}
               isLoading={isLoading}
               onVisualizarDetalhes={handleVisualizarDetalhes}
+              onEditarPesquisa={handleEditarPesquisa}
+              onExcluirPesquisa={handleExcluirPesquisa}
             />
 
             {/* Paginação no Rodapé */}
@@ -426,175 +616,585 @@ function VisualizarPesquisas() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Detalhes da Pesquisa
+                Detalhes da Pesquisa de Satisfação
               </DialogTitle>
+              <DialogDescription>
+                Visualize todas as informações detalhadas da pesquisa selecionada.
+              </DialogDescription>
             </DialogHeader>
             
             {pesquisaSelecionada && (
-              <div className="space-y-6">
-                {/* Informações Básicas */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Informações Básicas</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-6 py-4">
+                {/* Dados Principais */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Dados Principais</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600">ID da Pesquisa</label>
-                      <p className="text-sm font-mono bg-gray-100 p-2 rounded">{pesquisaSelecionada.id}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Empresa <span className="text-black">*</span>
+                      </label>
+                      <Input
+                        value={pesquisaSelecionada.empresa}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Origem</label>
-                      <p className="text-sm">{pesquisaSelecionada.origem === 'sql_server' ? 'SQL Server' : 'Manual'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cliente <span className="text-black">*</span>
+                      </label>
+                      <Input
+                        value={pesquisaSelecionada.cliente}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Status</label>
-                      <p className="text-sm">{pesquisaSelecionada.status}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
+                      <Input
+                        value={pesquisaSelecionada.email_cliente || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Data de Criação</label>
-                      <p className="text-sm">{new Date(pesquisaSelecionada.created_at).toLocaleString('pt-BR')}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
+                      <Input
+                        value={especialistasVisualizacao.length > 0 
+                          ? especialistasVisualizacao.map(e => e.nome).join(', ')
+                          : pesquisaSelecionada.prestador || 'Nenhum consultor relacionado'
+                        }
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Dados do Chamado */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados do Chamado</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Número do Caso</label>
-                      <p className="text-sm">{pesquisaSelecionada.nro_caso || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Tipo do Caso</label>
-                      <p className="text-sm">{pesquisaSelecionada.tipo_caso || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Ano de Abertura</label>
-                      <p className="text-sm">{pesquisaSelecionada.ano_abertura || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Mês de Abertura</label>
-                      <p className="text-sm">{pesquisaSelecionada.mes_abertura || '-'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Dados da Empresa e Cliente */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Empresa e Cliente</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Empresa</label>
-                      <p className="text-sm">
-                        <ClienteNomeDisplay
-                          nomeEmpresa={pesquisaSelecionada.empresa}
-                          nomeCliente={pesquisaSelecionada.cliente}
-                          className="inline"
-                        />
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Cliente</label>
-                      <p className="text-sm">
-                        {pesquisaSelecionada.cliente}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Email do Cliente</label>
-                      <p className="text-sm">{pesquisaSelecionada.email_cliente || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Prestador</label>
-                      <p className="text-sm">{pesquisaSelecionada.prestador || '-'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Categorização */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Categorização</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Categorização</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Categoria</label>
-                      <p className="text-sm">{pesquisaSelecionada.categoria || '-'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                      <Input
+                        value={pesquisaSelecionada.categoria || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Grupo</label>
-                      <p className="text-sm">{pesquisaSelecionada.grupo || '-'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+                      <Input
+                        value={pesquisaSelecionada.grupo || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                {/* Resposta da Pesquisa */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Resposta da Pesquisa</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Data da Resposta</label>
-                        <p className="text-sm">
-                          {pesquisaSelecionada.data_resposta 
-                            ? new Date(pesquisaSelecionada.data_resposta).toLocaleString('pt-BR')
-                            : '-'
-                          }
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Resposta</label>
-                        <p className="text-sm">{pesquisaSelecionada.resposta || '-'}</p>
-                      </div>
+                {/* Informações do Caso */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Informações do Caso</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo do Chamado</label>
+                      <Input
+                        value={pesquisaSelecionada.tipo_caso || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Comentário da Pesquisa</label>
-                      <div className="bg-gray-50 p-3 rounded-md min-h-[100px]">
-                        <p className="text-sm whitespace-pre-wrap">
-                          {pesquisaSelecionada.comentario_pesquisa || 'Nenhum comentário registrado'}
-                        </p>
-                      </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Número do Chamado</label>
+                      <Input
+                        value={pesquisaSelecionada.nro_caso || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900 font-mono"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                {/* Auditoria */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Informações de Auditoria</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Feedback do Cliente */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Feedback do Cliente</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Autor</label>
-                      <p className="text-sm">{pesquisaSelecionada.autor_nome || '-'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Resposta <span className="text-black">*</span>
+                      </label>
+                      <Input
+                        value={pesquisaSelecionada.resposta || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Data de Envio</label>
-                      <p className="text-sm">
-                        {pesquisaSelecionada.data_envio 
-                          ? new Date(pesquisaSelecionada.data_envio).toLocaleString('pt-BR')
-                          : '-'
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data da Resposta</label>
+                      <Input
+                        value={pesquisaSelecionada.data_resposta 
+                          ? new Date(pesquisaSelecionada.data_resposta).toLocaleString('pt-BR')
+                          : ''
                         }
-                      </p>
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-gray-600">Observação</label>
-                      <div className="bg-gray-50 p-3 rounded-md min-h-[60px]">
-                        <p className="text-sm whitespace-pre-wrap">
-                          {pesquisaSelecionada.observacao || 'Nenhuma observação registrada'}
-                        </p>
-                      </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Comentário da Pesquisa <span className="text-black">*</span>
+                    </label>
+                    <textarea 
+                      value={pesquisaSelecionada.comentario_pesquisa || 'Nenhum comentário registrado'}
+                      disabled
+                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-md min-h-[100px] text-sm text-gray-900 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Observação Interna</label>
+                    <textarea 
+                      value={pesquisaSelecionada.observacao || 'Nenhuma observação registrada'}
+                      disabled
+                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-md min-h-[80px] text-sm text-gray-900 resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Informações do Sistema */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Informações do Sistema</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ID da Pesquisa</label>
+                      <Input
+                        value={pesquisaSelecionada.id}
+                        disabled
+                        className="bg-gray-50 text-gray-900 font-mono"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
+                      <Input
+                        value={pesquisaSelecionada.origem === 'sql_server' ? 'SQL Server' : 'Manual'}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <Input
+                        value={pesquisaSelecionada.status}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação</label>
+                      <Input
+                        value={new Date(pesquisaSelecionada.created_at).toLocaleString('pt-BR')}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Autor</label>
+                      <Input
+                        value={pesquisaSelecionada.autor_nome || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data de Envio</label>
+                      <Input
+                        value={pesquisaSelecionada.data_envio 
+                          ? new Date(pesquisaSelecionada.data_envio).toLocaleString('pt-BR')
+                          : ''
+                        }
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Edição */}
+        <Dialog open={modalEditarAberto} onOpenChange={setModalEditarAberto}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                Editar Pesquisa de Satisfação
+              </DialogTitle>
+              <DialogDescription>
+                Edite as informações da pesquisa de satisfação selecionada.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {pesquisaEditando && (
+              <div className="space-y-6 py-4">
+                {/* Dados Principais */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Dados Principais</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Empresa <span className="text-black">*</span>
+                      </label>
+                      <Select 
+                        value={dadosEdicao.empresa} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, empresa: value }))}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione a empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            // Item fixo SONDA INTERNO
+                            { 
+                              id: 'sonda-interno', 
+                              nome_completo: 'SONDA INTERNO', 
+                              nome_abreviado: 'SONDA INTERNO',
+                              status: 'ativo',
+                              isFixed: true 
+                            },
+                            // Empresas reais cadastradas
+                            ...empresas.filter((empresa) => empresa.status === 'ativo')
+                          ]
+                            .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
+                            .map(item => (
+                              <SelectItem 
+                                key={item.id} 
+                                value={item.isFixed ? 'SONDA INTERNO' : item.nome_completo}
+                              >
+                                {item.nome_abreviado}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cliente <span className="text-black">*</span>
+                      </label>
+                      <Input 
+                        value={dadosEdicao.cliente}
+                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, cliente: e.target.value }))}
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        placeholder="Nome do cliente"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
+                      <Input 
+                        type="email"
+                        value={dadosEdicao.email_cliente}
+                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, email_cliente: e.target.value }))}
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
+                      <MultiSelectEspecialistas
+                        value={dadosEdicao.especialistas_ids}
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, especialistas_ids: value }))}
+                        placeholder="Selecione os consultores..."
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Categorização */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Categorização</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                      <Select 
+                        value={dadosEdicao.categoria} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, categoria: value, grupo: '' }))}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categorias.map(categoria => (
+                            <SelectItem key={categoria.value} value={categoria.value}>
+                              {categoria.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+                      {grupos.length === 1 ? (
+                        // Quando há apenas um grupo, mostra como campo readonly
+                        <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                          {grupos[0].label}
+                        </div>
+                      ) : (
+                        // Quando há múltiplos grupos, mostra como select
+                        <Select 
+                          value={dadosEdicao.grupo} 
+                          onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, grupo: value }))}
+                          disabled={!dadosEdicao.categoria || grupos.length === 0}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder={
+                              !dadosEdicao.categoria 
+                                ? "Selecione uma categoria primeiro" 
+                                : grupos.length === 0 
+                                ? "Nenhum grupo disponível" 
+                                : "Selecione o grupo"
+                            } />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {grupos.map(grupo => (
+                              <SelectItem key={grupo.value} value={grupo.value}>
+                                {grupo.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações do Caso */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Informações do Caso</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo do Chamado</label>
+                      <Select 
+                        value={dadosEdicao.tipo_caso} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, tipo_caso: value }))}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposChamado.map(tipo => (
+                            <SelectItem key={tipo.value} value={tipo.value}>
+                              {tipo.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Número do Chamado</label>
+                      <Input 
+                        value={dadosEdicao.nro_caso}
+                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, nro_caso: e.target.value }))}
+                        className="focus:ring-sonda-blue focus:border-sonda-blue font-mono"
+                        placeholder="Número do chamado"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feedback do Cliente */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Feedback do Cliente</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Resposta <span className="text-black">*</span>
+                      </label>
+                      <Select 
+                        value={dadosEdicao.resposta} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, resposta: value }))}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione a resposta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Muito Satisfeito">Muito Satisfeito</SelectItem>
+                          <SelectItem value="Satisfeito">Satisfeito</SelectItem>
+                          <SelectItem value="Neutro">Neutro</SelectItem>
+                          <SelectItem value="Insatisfeito">Insatisfeito</SelectItem>
+                          <SelectItem value="Muito Insatisfeito">Muito Insatisfeito</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data da Resposta</label>
+                      <Input 
+                        type="datetime-local"
+                        value={dadosEdicao.data_resposta}
+                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, data_resposta: e.target.value }))}
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Comentário da Pesquisa <span className="text-black">*</span>
+                    </label>
+                    <textarea 
+                      value={dadosEdicao.comentario_pesquisa}
+                      onChange={(e) => setDadosEdicao(prev => ({ ...prev, comentario_pesquisa: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-md resize-none h-32 text-sm focus:ring-2 focus:ring-sonda-blue focus:border-sonda-blue transition-colors"
+                      placeholder="Comentário obrigatório para pesquisas manuais - descreva o contexto ou motivo da pesquisa"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Observação Interna</label>
+                    <textarea 
+                      value={dadosEdicao.observacao}
+                      onChange={(e) => setDadosEdicao(prev => ({ ...prev, observacao: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-md resize-none h-24 text-sm focus:ring-2 focus:ring-sonda-blue focus:border-sonda-blue transition-colors"
+                      placeholder="Observações internas (não visível para o cliente)"
+                    />
+                  </div>
+                </div>
+
+                {/* Informações do Sistema */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Informações do Sistema</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ID da Pesquisa</label>
+                      <Input
+                        value={pesquisaEditando.id}
+                        disabled
+                        className="bg-gray-50 text-gray-900 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
+                      <Input
+                        value={pesquisaEditando.origem === 'sql_server' ? 'SQL Server' : 'Manual'}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <Select 
+                        value={dadosEdicao.status} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="enviado">Enviado</SelectItem>
+                          <SelectItem value="respondido">Respondido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação</label>
+                      <Input
+                        value={new Date(pesquisaEditando.created_at).toLocaleString('pt-BR')}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Autor</label>
+                      <Input
+                        value={pesquisaEditando.autor_nome || ''}
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data de Envio</label>
+                      <Input
+                        value={pesquisaEditando.data_envio 
+                          ? new Date(pesquisaEditando.data_envio).toLocaleString('pt-BR')
+                          : ''
+                        }
+                        disabled
+                        className="bg-gray-50 text-gray-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter className="mt-6 flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setModalEditarAberto(false)}
+                disabled={atualizarPesquisaMutation.isPending}
+                className="px-6"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={salvarEdicao}
+                disabled={atualizarPesquisaMutation.isPending}
+                className="bg-sonda-blue hover:bg-sonda-dark-blue text-white px-6"
+              >
+                {atualizarPesquisaMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Confirmação de Exclusão */}
+        <Dialog open={modalExcluirAberto} onOpenChange={setModalExcluirAberto}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
+                Confirmar Exclusão
+              </DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir esta pesquisa de satisfação? Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {pesquisaExcluindo && (
+              <div className="py-4">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium">Pesquisa selecionada:</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <strong>Empresa:</strong> {pesquisaExcluindo.empresa}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Cliente:</strong> {pesquisaExcluindo.cliente}
+                  </p>
+                  {pesquisaExcluindo.nro_caso && (
+                    <p className="text-sm text-gray-600">
+                      <strong>Nº do Caso:</strong> {pesquisaExcluindo.nro_caso}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setModalExcluirAberto(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={confirmarExclusao}
+              >
+                Excluir Pesquisa
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
