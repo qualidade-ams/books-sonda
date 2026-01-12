@@ -42,6 +42,11 @@ export const PesquisaFormSchemaBase = z.object({
     .optional()
     .nullable(),
   
+  solicitante: z.string()
+    .max(255, 'Solicitante deve ter no máximo 255 caracteres')
+    .optional()
+    .nullable(),
+  
   nro_caso: z.string()
     .max(100, 'Número do caso deve ter no máximo 100 caracteres')
     .optional()

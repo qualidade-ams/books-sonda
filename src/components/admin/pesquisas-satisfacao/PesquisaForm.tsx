@@ -70,6 +70,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
       grupo: undefined,
       email_cliente: '',
       prestador: '',
+      solicitante: '',
       nro_caso: '',
       tipo_caso: undefined,
       data_resposta: undefined, // Vem em branco
@@ -133,6 +134,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         grupo: pesquisa.grupo || undefined,
         email_cliente: pesquisa.email_cliente || '',
         prestador: pesquisa.prestador || '',
+        solicitante: pesquisa.solicitante || '',
         nro_caso: pesquisa.nro_caso || '',
         tipo_caso: pesquisa.tipo_caso || undefined,
         data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
@@ -271,6 +273,28 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       placeholder="Selecione os consultores..."
                       className={cn(
                         fieldState.error && "border-red-500"
+                      )}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="solicitante"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Solicitante</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Nome do solicitante"
+                      value={field.value || ''}
+                      className={cn(
+                        fieldState.error && "border-red-500 focus:border-red-500"
                       )}
                     />
                   </FormControl>

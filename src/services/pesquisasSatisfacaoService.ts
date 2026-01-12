@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { aplicarTodasTransformacoes } from '@/utils/pesquisasTransformations';
 import type { 
   Pesquisa, 
   PesquisaFormData, 
@@ -353,15 +354,27 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     autorNome = profile?.full_name || user.email || 'Sistema';
   }
 
+  // Aplicar transformações automáticas
+  const transformacao = aplicarTodasTransformacoes({
+    empresa: dados.empresa,
+    cliente: dados.cliente,
+    solicitante: dados.solicitante || null
+  });
+
+  if (transformacao.foiTransformado) {
+    console.log('🔄 [CRIAR] Aplicada transformação:', transformacao.motivoTransformacao);
+  }
+
   const pesquisaData: PesquisaInsert = {
     origem: 'manual',
     id_externo: null,
-    empresa: dados.empresa,
+    empresa: transformacao.dadosTransformados.empresa,
     categoria: dados.categoria || null,
     grupo: dados.grupo || null,
-    cliente: dados.cliente,
+    cliente: transformacao.dadosTransformados.cliente,
     email_cliente: dados.email_cliente || null,
     prestador: dados.prestador || null,
+    solicitante: transformacao.dadosTransformados.solicitante || null,
     nro_caso: dados.nro_caso || null,
     tipo_caso: dados.tipo_caso || null,
     ano_abertura: dados.ano_abertura || null,
@@ -396,15 +409,36 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
  * Atualizar pesquisa existente
  */
 export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormData>): Promise<Pesquisa> {
+  // Buscar dados atuais da pesquisa para aplicar transformação
+  const pesquisaAtual = await buscarPesquisaPorId(id);
+  if (!pesquisaAtual) {
+    throw new Error('Pesquisa não encontrada');
+  }
+
+  // Preparar dados para transformação (usar dados atuais como base)
+  const dadosParaTransformacao = {
+    empresa: dados.empresa !== undefined ? dados.empresa : pesquisaAtual.empresa,
+    cliente: dados.cliente !== undefined ? dados.cliente : pesquisaAtual.cliente,
+    solicitante: dados.solicitante !== undefined ? dados.solicitante : pesquisaAtual.solicitante
+  };
+
+  // Aplicar transformações automáticas
+  const transformacao = aplicarTodasTransformacoes(dadosParaTransformacao);
+
+  if (transformacao.foiTransformado) {
+    console.log('🔄 [ATUALIZAR] Aplicada transformação:', transformacao.motivoTransformacao);
+  }
+
   const updateData: PesquisaUpdate = {};
 
-  // Mapear apenas campos que foram fornecidos
-  if (dados.empresa !== undefined) updateData.empresa = dados.empresa;
+  // Mapear apenas campos que foram fornecidos, aplicando transformações quando necessário
+  if (dados.empresa !== undefined) updateData.empresa = transformacao.dadosTransformados.empresa;
   if (dados.categoria !== undefined) updateData.categoria = dados.categoria || null;
   if (dados.grupo !== undefined) updateData.grupo = dados.grupo || null;
-  if (dados.cliente !== undefined) updateData.cliente = dados.cliente;
+  if (dados.cliente !== undefined) updateData.cliente = transformacao.dadosTransformados.cliente;
   if (dados.email_cliente !== undefined) updateData.email_cliente = dados.email_cliente || null;
   if (dados.prestador !== undefined) updateData.prestador = dados.prestador || null;
+  if (dados.solicitante !== undefined) updateData.solicitante = transformacao.dadosTransformados.solicitante || null;
   if (dados.nro_caso !== undefined) updateData.nro_caso = dados.nro_caso || null;
   if (dados.tipo_caso !== undefined) updateData.tipo_caso = dados.tipo_caso || null;
   if (dados.ano_abertura !== undefined) updateData.ano_abertura = dados.ano_abertura || null;

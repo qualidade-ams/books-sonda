@@ -101,6 +101,16 @@ export function PesquisasTable({
   // Função para validar e formatar nome da empresa
   const validarEmpresa = (nomeEmpresa: string) => {
     const nomeNormalizado = nomeEmpresa.trim().toUpperCase();
+    
+    // SONDA INTERNO é sempre considerada válida (não precisa estar cadastrada)
+    if (nomeNormalizado === 'SONDA INTERNO') {
+      return {
+        encontrada: true,
+        nomeExibir: 'SONDA INTERNO',
+        nomeCompleto: 'SONDA INTERNO'
+      };
+    }
+    
     const empresaEncontrada = empresasMap.get(nomeNormalizado);
     
     return {

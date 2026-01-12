@@ -231,13 +231,6 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
             <TableHead className="w-12 text-xs py-2">
               <Checkbox
                 checked={selectedRequerimentos.length > 0 && selectedRequerimentos.length === (totalFilteredCount || requerimentos.length)}
-                ref={(el) => {
-                  if (el) {
-                    // Estado indeterminado quando alguns (mas não todos) estão selecionados
-                    const totalCount = totalFilteredCount || requerimentos.length;
-                    el.indeterminate = selectedRequerimentos.length > 0 && selectedRequerimentos.length < totalCount;
-                  }
-                }}
                 onCheckedChange={(checked) => {
                   const totalCount = totalFilteredCount || requerimentos.length;
                   if (checked || selectedRequerimentos.length < totalCount) {
