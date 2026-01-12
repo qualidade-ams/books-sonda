@@ -8,7 +8,9 @@ import { ptBR } from 'date-fns/locale';
 import { 
   Database, 
   FileEdit,
-  Eye
+  Eye,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -38,12 +40,16 @@ interface VisualizarPesquisasTableProps {
   pesquisas: Pesquisa[];
   isLoading?: boolean;
   onVisualizarDetalhes?: (pesquisa: Pesquisa) => void;
+  onEditarPesquisa?: (pesquisa: Pesquisa) => void;
+  onExcluirPesquisa?: (pesquisa: Pesquisa) => void;
 }
 
 export function VisualizarPesquisasTable({
   pesquisas,
   isLoading,
-  onVisualizarDetalhes
+  onVisualizarDetalhes,
+  onEditarPesquisa,
+  onExcluirPesquisa
 }: VisualizarPesquisasTableProps) {
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
@@ -103,7 +109,7 @@ export function VisualizarPesquisasTable({
             <TableHead className="w-[200px] text-center">Comentário</TableHead>
             <TableHead className="w-[140px] text-center">Resposta</TableHead>
             <TableHead className="w-[120px] text-center">Prestador</TableHead>
-            <TableHead className="w-[80px] text-center">Ações</TableHead>
+            <TableHead className="w-[120px] text-center">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -246,24 +252,67 @@ export function VisualizarPesquisasTable({
 
               {/* Coluna Ações */}
               <TableCell className="text-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onVisualizarDetalhes?.(pesquisa)}
-                        disabled={isLoading}
-                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Visualizar detalhes</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <div className="flex justify-center gap-1">
+                  {/* Botão Visualizar */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onVisualizarDetalhes?.(pesquisa)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Visualizar detalhes</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {/* Botão Editar */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEditarPesquisa?.(pesquisa)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Editar pesquisa</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {/* Botão Excluir */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onExcluirPesquisa?.(pesquisa)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Excluir pesquisa</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </TableCell>
             </TableRow>
           ))}

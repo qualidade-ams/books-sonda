@@ -50,6 +50,7 @@ interface DadosSqlServer {
   Cliente: string;
   Email_Cliente: string;
   Prestador: string;
+  Solicitante: string; // NOVO CAMPO ADICIONADO
   Nro_Caso: string;
   Tipo_Caso: string;
   Ano_Abertura: string;
@@ -543,6 +544,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Cliente,
           Email_Cliente,
           Prestador,
+          Solicitante,
           Nro_Caso,
           Tipo_Caso,
           Ano_Abertura,
@@ -584,6 +586,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Cliente,
           Email_Cliente,
           Prestador,
+          Solicitante,
           Nro_Caso,
           Tipo_Caso,
           Ano_Abertura,
@@ -663,6 +666,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           console.log(`  Cliente: ${registro.Cliente?.length || 0} chars`);
           console.log(`  Email_Cliente: ${registro.Email_Cliente?.length || 0} chars`);
           console.log(`  Prestador: ${registro.Prestador?.length || 0} chars`);
+          console.log(`  Solicitante: ${registro.Solicitante?.length || 0} chars`);
           console.log(`  Nro_Caso: ${registro.Nro_Caso?.length || 0} chars`);
           console.log(`  Tipo_Caso: ${registro.Tipo_Caso?.length || 0} chars`);
           console.log(`  Resposta: ${registro.Resposta?.length || 0} chars`);
@@ -681,6 +685,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           cliente: registro.Cliente || '',
           email_cliente: registro.Email_Cliente || null,
           prestador: registro.Prestador || null,
+          solicitante: registro.Solicitante || null, // NOVO CAMPO ADICIONADO
           nro_caso: registro.Nro_Caso || null,
           tipo_caso: registro.Tipo_Caso || null,
           ano_abertura: registro.Ano_Abertura ? parseInt(registro.Ano_Abertura) : null,
