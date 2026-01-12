@@ -37,6 +37,14 @@ export async function buscarElogios(
         resposta,
         data_resposta,
         origem
+      ),
+      especialistas:elogio_especialistas(
+        especialista_id,
+        especialistas(
+          id,
+          nome,
+          email
+        )
       )
     `)
     .order('criado_em', { ascending: false });
@@ -133,6 +141,14 @@ export async function buscarElogioPorId(id: string): Promise<ElogioCompleto | nu
         resposta,
         data_resposta,
         origem
+      ),
+      especialistas:elogio_especialistas(
+        especialista_id,
+        especialistas(
+          id,
+          nome,
+          email
+        )
       )
     `)
     .eq('id', id)

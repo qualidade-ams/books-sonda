@@ -52,8 +52,8 @@ import {
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { useCacheManager } from '@/hooks/useCacheManager';
-import { useElogios, useEstatisticasElogios, useDeletarElogio, useAtualizarElogio } from '@/hooks/useElogios';
-import { useCriarElogioComEspecialistas } from '@/hooks/useElogiosComEspecialistas';
+import { useElogios, useEstatisticasElogios, useDeletarElogio } from '@/hooks/useElogios';
+import { useCriarElogioComEspecialistas, useAtualizarElogioComEspecialistas } from '@/hooks/useElogiosComEspecialistas';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { ElogioForm } from '@/components/admin/elogios';
 import ElogiosExportButtons from '@/components/admin/elogios/ElogiosExportButtons';
@@ -107,7 +107,7 @@ function LancarElogios() {
 
   // Mutations
   const criarElogio = useCriarElogioComEspecialistas();
-  const atualizarElogio = useAtualizarElogio({ silent: true }); // Silenciar toasts individuais
+  const atualizarElogio = useAtualizarElogioComEspecialistas();
   const deletarElogio = useDeletarElogio();
 
   // Nomes dos meses
@@ -326,6 +326,23 @@ function LancarElogios() {
     };
   };
 
+  // Função para obter nomes dos consultores de um elogio
+  const obterNomesConsultores = (elogio: ElogioCompleto): string => {
+    if (!elogio.especialistas || elogio.especialistas.length === 0) {
+      return elogio.pesquisa?.prestador || '-';
+    }
+    
+    const nomes = elogio.especialistas
+      .map(esp => esp.especialistas?.nome)
+      .filter(Boolean);
+    
+    if (nomes.length === 0) {
+      return elogio.pesquisa?.prestador || '-';
+    }
+    
+    return nomes.join(', ');
+  };
+
   return (
     <LayoutAdmin>
       <div className="space-y-6">
@@ -529,6 +546,7 @@ function LancarElogios() {
                     <TableHead className="w-[180px] text-center">Empresa</TableHead>
                     <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
                     <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                    <TableHead className="w-[150px] text-center">Consultor</TableHead>
                     <TableHead className="w-[200px] text-center">Comentário</TableHead>
                     <TableHead className="w-[140px] text-center">Resposta</TableHead>
                     <TableHead className="text-center w-[120px]">Ações</TableHead>
@@ -537,13 +555,13 @@ function LancarElogios() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : elogiosPaginados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                         Nenhum elogio encontrado
                       </TableCell>
                     </TableRow>
@@ -602,6 +620,11 @@ function LancarElogios() {
                         <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
                           <span className="truncate block">
                             {elogio.pesquisa?.cliente}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                          <span className="truncate block" title={obterNomesConsultores(elogio)}>
+                            {obterNomesConsultores(elogio)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">
@@ -759,6 +782,7 @@ function LancarElogios() {
                         <TableHead className="w-[180px] text-center">Empresa</TableHead>
                         <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
                         <TableHead className="w-[150px] text-center">Cliente</TableHead>
+                        <TableHead className="w-[150px] text-center">Consultor</TableHead>
                         <TableHead className="w-[200px] text-center">Comentário</TableHead>
                         <TableHead className="w-[140px] text-center">Resposta</TableHead>
                         <TableHead className="text-center w-[120px]">Ações</TableHead>
@@ -767,13 +791,13 @@ function LancarElogios() {
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                             Carregando...
                           </TableCell>
                         </TableRow>
                       ) : elogiosPaginados.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                             Nenhum elogio enviado encontrado
                           </TableCell>
                         </TableRow>
@@ -824,6 +848,11 @@ function LancarElogios() {
                             <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
                               <span className="truncate block">
                                 {elogio.pesquisa?.cliente}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center text-xs sm:text-sm max-w-[150px]">
+                              <span className="truncate block" title={obterNomesConsultores(elogio)}>
+                                {obterNomesConsultores(elogio)}
                               </span>
                             </TableCell>
                             <TableCell className="text-center text-xs sm:text-sm max-w-[200px]">

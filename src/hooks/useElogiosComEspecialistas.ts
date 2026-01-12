@@ -15,19 +15,19 @@ export function useCriarElogioComEspecialistas() {
 
   return useMutation({
     mutationFn: async (dados: any) => {
-      // Primeiro, vamos simular a criação do elogio
-      // TODO: Implementar o serviço real de criação de elogios
-      const elogio = { id: 'temp-id', ...dados };
+      // Primeiro, criar o elogio usando o serviço existente
+      const elogiosService = await import('@/services/elogiosService');
+      const elogioCriado = await elogiosService.criarElogio(dados);
       
-      // Salvar especialistas se houver
+      // Depois, salvar especialistas se houver
       if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
         await salvarEspecialistas.mutateAsync({
-          elogioId: elogio.id,
+          elogioId: elogioCriado.id,
           especialistasIds: dados.especialistas_ids
         });
       }
       
-      return elogio;
+      return elogioCriado;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['elogios'] });
@@ -50,10 +50,11 @@ export function useAtualizarElogioComEspecialistas() {
 
   return useMutation({
     mutationFn: async ({ id, dados }: { id: string; dados: any }) => {
-      // TODO: Implementar o serviço real de atualização de elogios
-      const elogio = { id, ...dados };
+      // Primeiro, atualizar o elogio usando o serviço existente
+      const elogiosService = await import('@/services/elogiosService');
+      const elogioAtualizado = await elogiosService.atualizarElogio(id, dados);
       
-      // Salvar especialistas se houver
+      // Depois, salvar especialistas se houver
       if (dados.especialistas_ids !== undefined) {
         await salvarEspecialistas.mutateAsync({
           elogioId: id,
@@ -61,7 +62,7 @@ export function useAtualizarElogioComEspecialistas() {
         });
       }
       
-      return elogio;
+      return elogioAtualizado;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['elogios'] });

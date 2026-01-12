@@ -34,6 +34,7 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 import { getPesquisaFormSchema } from '@/schemas/pesquisasSatisfacaoSchemas';
 import type { PesquisaFormData, Pesquisa } from '@/types/pesquisasSatisfacao';
@@ -116,9 +117,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
     { value: 'Muito Insatisfeito', label: 'Muito Insatisfeito' }
   ];
 
-  // Preencher formulário ao editar
+  // Preencher formulário ao editar (sem especialistas)
   useEffect(() => {
-    if (pesquisa && empresas.length > 0) {
+    if (pesquisa && empresas.length > 0 && !form.formState.isDirty) {
       // Tentar encontrar a empresa pelo nome completo ou abreviado
       const empresaEncontrada = empresas.find(
         e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
@@ -143,10 +144,22 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
         observacao: pesquisa.observacao || '',
         empresa_id: pesquisa.empresa_id || undefined,
         cliente_id: pesquisa.cliente_id || undefined,
-        especialistas_ids: especialistasIds // Carregados do banco de dados
+        especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
       });
     }
-  }, [pesquisa, form, empresas, especialistasIds]);
+  }, [pesquisa, form, empresas]);
+
+  // Preencher especialistas separadamente - APENAS uma vez quando carregados
+  useEffect(() => {
+    if (especialistasIds.length > 0 && pesquisa && !form.formState.isDirty) {
+      console.log('📋 [PesquisaForm] Preenchendo especialistas (apenas uma vez):', especialistasIds);
+      form.setValue('especialistas_ids', especialistasIds, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false
+      });
+    }
+  }, [especialistasIds, pesquisa]); // Removido 'form' da dependência para evitar loops
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
@@ -169,7 +182,42 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
     }
   }, [categoriaSelecionada, grupos, form]);
 
-  const handleSubmit = (dados: PesquisaFormData) => {
+  const handleSubmit = async (dados: PesquisaFormData) => {
+    console.log('📝 [PesquisaForm] Dados do formulário antes do processamento:', dados);
+    
+    // Se há especialistas selecionados, converter para nomes e preencher o campo prestador
+    if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
+      try {
+        console.log('🔄 [PesquisaForm] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
+        
+        // Buscar nomes dos especialistas
+        const { data: especialistas, error } = await supabase
+          .from('especialistas')
+          .select('id, nome')
+          .in('id', dados.especialistas_ids)
+          .order('nome');
+
+        if (error) {
+          console.error('❌ [PesquisaForm] Erro ao buscar especialistas:', error);
+          throw error;
+        }
+
+        const nomes = especialistas?.map(esp => esp.nome) || [];
+        const nomesConcat = nomes.join(', ');
+        
+        console.log('✅ [PesquisaForm] Nomes dos especialistas:', nomes);
+        console.log('✅ [PesquisaForm] Prestador concatenado:', nomesConcat);
+        
+        // Atualizar o campo prestador com os nomes concatenados
+        dados.prestador = nomesConcat;
+        
+      } catch (error) {
+        console.error('❌ [PesquisaForm] Erro ao converter especialistas:', error);
+        // Em caso de erro, manter o valor original do prestador
+      }
+    }
+    
+    console.log('📤 [PesquisaForm] Dados finais enviados:', dados);
     onSubmit(dados);
   };
 
@@ -269,7 +317,17 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                   <FormControl>
                     <MultiSelectEspecialistas
                       value={field.value || []}
-                      onValueChange={field.onChange}
+                      onValueChange={(newValue) => {
+                        console.log('📝 [PesquisaForm] Mudança no campo especialistas_ids:', newValue);
+                        // Usar setValue com forceUpdate para garantir que a mudança seja persistida
+                        form.setValue('especialistas_ids', newValue, { 
+                          shouldValidate: true,
+                          shouldDirty: true,
+                          shouldTouch: true
+                        });
+                        // Forçar re-render do campo
+                        form.trigger('especialistas_ids');
+                      }}
                       placeholder="Selecione os consultores..."
                       className={cn(
                         fieldState.error && "border-red-500"

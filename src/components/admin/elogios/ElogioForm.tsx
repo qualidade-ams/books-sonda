@@ -33,6 +33,7 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 import type { ElogioCompleto } from '@/types/elogios';
 import { useEmpresas } from '@/hooks/useEmpresas';
@@ -112,9 +113,15 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     : especialistasIdsCorrelacionados;
 
   // Debug logs
+  console.log('🔍 [ElogioForm] Elogio ID:', elogio?.id);
+  console.log('🔍 [ElogioForm] Elogio completo:', elogio);
+  console.log('🔍 [ElogioForm] Prestador (pesquisa):', elogio?.pesquisa?.prestador);
+  console.log('🔍 [ElogioForm] Prestador (pesquisas_satisfacao):', elogio?.pesquisas_satisfacao?.prestador);
+  console.log('🔍 [ElogioForm] Especialistas IDs relacionados:', especialistasIdsRelacionados);
+  console.log('🔍 [ElogioForm] Especialistas IDs correlacionados:', especialistasIdsCorrelacionados);
+  console.log('🔍 [ElogioForm] Especialistas IDs finais:', especialistasIds);
   console.log('🔍 [ElogioForm] Categoria selecionada:', categoriaSelecionada);
   console.log('🔍 [ElogioForm] Grupos disponíveis:', grupos);
-  console.log('🔍 [ElogioForm] Especialistas IDs:', especialistasIds);
 
   const tiposChamado = [
     { value: 'IM', label: 'IM - Incidente' },
@@ -134,7 +141,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     console.log('🔄 [ELOGIOS] Categorias carregadas:', categorias.length);
     
     // Aguardar carregamento de empresas E categorias antes de preencher
-    if (elogio && empresas.length > 0 && categorias.length > 0) {
+    if (elogio && empresas.length > 0 && categorias.length > 0 && !form.formState.isDirty) {
       console.log('✅ [ELOGIOS] Todas as dependências carregadas, preenchendo formulário');
       
       const empresaEncontrada = empresas.find(
@@ -160,14 +167,26 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
         resposta: elogio.pesquisa?.resposta || 'Muito Satisfeito',
         comentario_pesquisa: elogio.pesquisa?.comentario_pesquisa || '',
         observacao: elogio.observacao || '',
-        especialistas_ids: especialistasIds // Carregados do banco de dados
+        especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
       });
       
       console.log('✅ [ELOGIOS] Formulário preenchido com sucesso');
     } else {
       console.log('⏳ [ELOGIOS] Aguardando carregamento das dependências...');
     }
-  }, [elogio, form, empresas, categorias, especialistasIds]);
+  }, [elogio, empresas, categorias]); // Removido 'form' da dependência para evitar loops
+
+  // Preencher especialistas separadamente - APENAS uma vez quando carregados
+  useEffect(() => {
+    if (especialistasIds.length > 0 && elogio && !form.formState.isDirty) {
+      console.log('📋 [ELOGIOS] Preenchendo especialistas (apenas uma vez):', especialistasIds);
+      form.setValue('especialistas_ids', especialistasIds, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false
+      });
+    }
+  }, [especialistasIds, elogio]); // Removido 'form' da dependência para evitar loops
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
@@ -208,7 +227,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     console.log('🔄 [ELOGIOS] === FIM DO PREENCHIMENTO AUTOMÁTICO ===');
   }, [categoriaSelecionada, grupos, form]);
 
-  const handleSubmit = (dados: ElogioFormData) => {
+  const handleSubmit = async (dados: ElogioFormData) => {
     // Validação manual: comentário obrigatório para elogios (sempre manuais)
     if (!dados.comentario_pesquisa || dados.comentario_pesquisa.trim() === '') {
       form.setError('comentario_pesquisa', {
@@ -218,6 +237,41 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
       return;
     }
     
+    console.log('📝 [ElogioForm] Dados do formulário antes do processamento:', dados);
+    
+    // Se há especialistas selecionados, converter para nomes e preencher o campo prestador
+    if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
+      try {
+        console.log('🔄 [ElogioForm] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
+        
+        // Buscar nomes dos especialistas
+        const { data: especialistas, error } = await supabase
+          .from('especialistas')
+          .select('id, nome')
+          .in('id', dados.especialistas_ids)
+          .order('nome');
+
+        if (error) {
+          console.error('❌ [ElogioForm] Erro ao buscar especialistas:', error);
+          throw error;
+        }
+
+        const nomes = especialistas?.map(esp => esp.nome) || [];
+        const nomesConcat = nomes.join(', ');
+        
+        console.log('✅ [ElogioForm] Nomes dos especialistas:', nomes);
+        console.log('✅ [ElogioForm] Prestador concatenado:', nomesConcat);
+        
+        // Atualizar o campo prestador com os nomes concatenados
+        dados.prestador = nomesConcat;
+        
+      } catch (error) {
+        console.error('❌ [ElogioForm] Erro ao converter especialistas:', error);
+        // Em caso de erro, manter o valor original do prestador
+      }
+    }
+    
+    console.log('📤 [ElogioForm] Dados finais enviados:', dados);
     onSubmit(dados);
   };
 
@@ -296,7 +350,17 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
                   <FormControl>
                     <MultiSelectEspecialistas
                       value={field.value || []}
-                      onValueChange={field.onChange}
+                      onValueChange={(newValue) => {
+                        console.log('📝 [ElogioForm] Mudança no campo especialistas_ids:', newValue);
+                        // Usar setValue com forceUpdate para garantir que a mudança seja persistida
+                        form.setValue('especialistas_ids', newValue, { 
+                          shouldValidate: true,
+                          shouldDirty: true,
+                          shouldTouch: true
+                        });
+                        // Forçar re-render do campo
+                        form.trigger('especialistas_ids');
+                      }}
                       placeholder="Selecione os consultores..."
                     />
                   </FormControl>

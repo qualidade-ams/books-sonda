@@ -52,13 +52,24 @@ export function MultiSelectEspecialistas({
   placeholder = "Selecione os consultores...",
   disabled = false,
   className,
-  maxCount = 2
+  maxCount = 10
 }: MultiSelectEspecialistasProps) {
   const [open, setOpen] = React.useState(false);
   const [modalNovoConsultor, setModalNovoConsultor] = React.useState(false);
   const [nomeNovoConsultor, setNomeNovoConsultor] = React.useState('');
   const [emailNovoConsultor, setEmailNovoConsultor] = React.useState('');
   const [consultoresManuais, setConsultoresManuais] = React.useState<EspecialistaOption[]>([]);
+  
+  // Estado interno para garantir que mudanças não sejam perdidas
+  const [internalValue, setInternalValue] = React.useState<string[]>(value);
+  
+  // Sincronizar estado interno com prop value apenas quando necessário
+  React.useEffect(() => {
+    if (JSON.stringify(value) !== JSON.stringify(internalValue)) {
+      console.log('🔄 [MultiSelectEspecialistas] Sincronizando valor:', value);
+      setInternalValue(value);
+    }
+  }, [value, internalValue]);
   
   const { 
     especialistas, 
@@ -94,16 +105,16 @@ export function MultiSelectEspecialistas({
     })), [especialistas]
   );
 
-  // Filtrar opções disponíveis (não selecionadas)
+  // Filtrar opções disponíveis (não selecionadas) - usar estado interno
   const selectables = React.useMemo(() => 
-    options.filter(option => !value.includes(option.value)), 
-    [options, value]
+    options.filter(option => !internalValue.includes(option.value)), 
+    [options, internalValue]
   );
 
-  // Calcular se há mais itens para carregar baseado nos dados reais
+  // Calcular se há mais itens para carregar baseado nos dados reais - usar estado interno
   const totalDisponiveis = React.useMemo(() => {
-    return todosEspecialistas.filter(esp => !value.includes(esp.id)).length;
-  }, [todosEspecialistas, value]);
+    return todosEspecialistas.filter(esp => !internalValue.includes(esp.id)).length;
+  }, [todosEspecialistas, internalValue]);
 
   const temMaisItensDisponiveis = !termoBusca.trim() && selectables.length < totalDisponiveis;
 
@@ -112,19 +123,25 @@ export function MultiSelectEspecialistas({
     if (item.startsWith('manual_')) {
       setConsultoresManuais(prev => prev.filter(c => c.value !== item));
     }
-    onValueChange?.(value.filter(id => id !== item));
+    const novoValor = internalValue.filter(id => id !== item);
+    console.log('🗑️ [MultiSelectEspecialistas] Removendo item:', item, 'Novo valor:', novoValor);
+    setInternalValue(novoValor);
+    onValueChange?.(novoValor);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const input = e.target as HTMLInputElement;
-    if (input.value === "" && value.length > 0) {
+    if (input.value === "" && internalValue.length > 0) {
       if (e.key === "Delete" || e.key === "Backspace") {
-        const ultimoItem = value[value.length - 1];
+        const ultimoItem = internalValue[internalValue.length - 1];
         // Se for um consultor manual, remover também da lista de consultores manuais
         if (ultimoItem.startsWith('manual_')) {
           setConsultoresManuais(prev => prev.filter(c => c.value !== ultimoItem));
         }
-        onValueChange?.(value.slice(0, -1));
+        const novoValor = internalValue.slice(0, -1);
+        console.log('⌫ [MultiSelectEspecialistas] Removendo último item via teclado:', ultimoItem, 'Novo valor:', novoValor);
+        setInternalValue(novoValor);
+        onValueChange?.(novoValor);
       }
     }
     // Escape closes the popover
@@ -150,7 +167,10 @@ export function MultiSelectEspecialistas({
     setConsultoresManuais(prev => [...prev, novoConsultor]);
     
     // Adicionar à seleção
-    onValueChange?.([...value, idTemporario]);
+    const novoValor = [...internalValue, idTemporario];
+    console.log('➕ [MultiSelectEspecialistas] Adicionando consultor manual:', novoConsultor.label, 'Novo valor:', novoValor);
+    setInternalValue(novoValor);
+    onValueChange?.(novoValor);
     
     // Limpar o modal
     setNomeNovoConsultor('');
@@ -192,12 +212,12 @@ export function MultiSelectEspecialistas({
             disabled={disabled}
           >
             <div className="flex gap-1 flex-wrap">
-              {value.length === 0 && (
+              {internalValue.length === 0 && (
                 <span className="text-muted-foreground">{placeholder}</span>
               )}
-              {value.length > 0 && value.length <= maxCount && (
+              {internalValue.length > 0 && internalValue.length <= maxCount && (
                 <>
-                  {value.map((item) => {
+                  {internalValue.map((item) => {
                     const option = allOptions.find((option) => option.value === item);
                     if (!option) return null;
                     return (
@@ -240,13 +260,13 @@ export function MultiSelectEspecialistas({
                   })}
                 </>
               )}
-              {value.length > maxCount && (
+              {internalValue.length > maxCount && (
                 <Badge
                   variant="secondary"
                   className="mr-1 mb-1 flex items-center gap-1"
                 >
                   <User className="h-3 w-3" />
-                  {value.length} consultores selecionados
+                  {internalValue.length} consultores selecionados
                 </Badge>
               )}
             </div>
@@ -271,13 +291,13 @@ export function MultiSelectEspecialistas({
               </CommandEmpty>
               
               {/* Seção de consultores selecionados */}
-              {value.length > 0 && (
+              {internalValue.length > 0 && (
                 <CommandGroup>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
-                    Selecionados ({value.length})
+                    Selecionados ({internalValue.length})
                   </div>
                   <div className="p-2 space-y-1">
-                    {value.map((item) => {
+                    {internalValue.map((item) => {
                       const option = allOptions.find((opt) => opt.value === item);
                       if (!option) return null;
                       return (
@@ -344,7 +364,10 @@ export function MultiSelectEspecialistas({
                     <CommandItem
                       key={option.value}
                       onSelect={() => {
-                        onValueChange?.([...value, option.value]);
+                        const novoValor = [...internalValue, option.value];
+                        console.log('➕ [MultiSelectEspecialistas] Adicionando especialista:', option.label, 'Novo valor:', novoValor);
+                        setInternalValue(novoValor);
+                        onValueChange?.(novoValor);
                         atualizarBusca("");
                       }}
                       className="flex items-center gap-2 cursor-pointer hover:bg-accent"
@@ -352,7 +375,7 @@ export function MultiSelectEspecialistas({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          value.includes(option.value)
+                          internalValue.includes(option.value)
                             ? "opacity-100"
                             : "opacity-0"
                         )}

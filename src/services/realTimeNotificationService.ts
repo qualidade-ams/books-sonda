@@ -76,6 +76,12 @@ export class RealTimeNotificationService {
    * Inicializa o serviço de notificações em tempo real
    */
   async initialize(): Promise<void> {
+    // Verificar se deve inicializar (apenas em produção ou quando explicitamente solicitado)
+    if (import.meta.env.DEV && !import.meta.env.VITE_ENABLE_REALTIME) {
+      console.log('[RealTimeNotification] Serviço desabilitado em desenvolvimento');
+      return;
+    }
+
     try {
       // Configurar subscriptions principais
       await this.setupJobStatusSubscription();
