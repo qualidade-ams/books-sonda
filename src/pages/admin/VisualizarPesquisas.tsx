@@ -144,19 +144,7 @@ function VisualizarPesquisas() {
     { value: 'RF', label: 'RF - Requisição' }
   ];
 
-  // Debug: Log dos filtros aplicados
-  useEffect(() => {
-    console.log('🔍 Filtros aplicados na página:', filtros);
-    console.log('📊 Total de pesquisas encontradas:', pesquisas.length);
-    if (pesquisas.length > 0) {
-      console.log('📋 Primeiras 3 pesquisas:', pesquisas.slice(0, 3).map(p => ({
-        id: p.id,
-        empresa: p.empresa,
-        resposta: p.resposta,
-        origem: p.origem
-      })));
-    }
-  }, [filtros, pesquisas.length]);
+  // Debug removido para evitar logs excessivos no console
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {

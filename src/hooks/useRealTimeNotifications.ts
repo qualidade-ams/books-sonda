@@ -6,6 +6,7 @@ import {
   type ProgressStatus 
 } from '@/services/realTimeNotificationService';
 import { useToast } from '@/hooks/use-toast';
+import { debugLog } from '@/utils/debugConfig';
 
 /**
  * Configuração do hook
@@ -84,9 +85,8 @@ export function useRealTimeNotifications(config: UseRealTimeNotificationsConfig 
       setIsConnected(false);
       setConnectionError(null);
       
-      if (import.meta.env.DEV) {
-        console.log('[useRealTimeNotifications] Desconectado');
-      }
+      // Log controlado por configuração de debug
+      debugLog('enableRealtimeLogs', '[useRealTimeNotifications] Desconectado');
 
     } catch (error) {
       console.error('[useRealTimeNotifications] Erro ao desconectar:', error);
