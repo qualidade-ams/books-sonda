@@ -373,12 +373,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           screenKey: 'monitoramento_vigencias'
         },
         {
-          icon: Send,
-          label: 'Enviar Dashboards',
-          path: '/admin/enviar-dashboards',
-          screenKey: 'dashboard'
-        },
-        {
           icon: Palette,
           label: 'Design System',
           path: '/admin/design-system',

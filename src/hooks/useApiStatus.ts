@@ -14,12 +14,16 @@ async function verificarStatusApi(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(3000), // Timeout de 3 segundos
+      signal: AbortSignal.timeout(5000), // Timeout de 5 segundos
     });
     
     return response.ok;
   } catch (error) {
-    console.error('Erro ao verificar status da API:', error);
+    // Log apenas em desenvolvimento e não repetidamente
+    if (import.meta.env.DEV && !window.__apiErrorLogged) {
+      console.warn('API de sincronização não disponível:', API_BASE_URL);
+      window.__apiErrorLogged = true;
+    }
     return false;
   }
 }
@@ -28,9 +32,9 @@ export function useApiStatus() {
   return useQuery({
     queryKey: ['api-status'],
     queryFn: verificarStatusApi,
-    refetchInterval: 10000, // Verifica a cada 10 segundos
-    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Verifica a cada 30 segundos (reduzido de 10s)
+    refetchOnWindowFocus: false, // Não verifica ao focar na janela
     retry: 1,
-    staleTime: 5000,
+    staleTime: 15000, // Considera dados válidos por 15 segundos
   });
 }

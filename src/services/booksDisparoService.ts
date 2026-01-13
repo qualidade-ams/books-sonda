@@ -473,7 +473,11 @@ class BooksDisparoService {
     try {
       // Consulta otimizada única com JOINs para evitar N+1 queries
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
-      const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
+      
+      // Calcular próximo mês corretamente (lidar com dezembro -> janeiro)
+      const proximoMes = mes === 12 ? 1 : mes + 1;
+      const proximoAno = mes === 12 ? ano + 1 : ano;
+      const dataFim = `${proximoAno}-${proximoMes.toString().padStart(2, '0')}-01`;
 
       // Buscar empresas com book personalizado
       const { data: empresasData, error: empresasError } = await supabase
@@ -1296,7 +1300,11 @@ class BooksDisparoService {
     try {
       // Consulta otimizada única com JOINs para evitar N+1 queries
       const dataInicio = `${ano}-${mes.toString().padStart(2, '0')}-01`;
-      const dataFim = `${ano}-${(mes + 1).toString().padStart(2, '0')}-01`;
+      
+      // Calcular próximo mês corretamente (lidar com dezembro -> janeiro)
+      const proximoMes = mes === 12 ? 1 : mes + 1;
+      const proximoAno = mes === 12 ? ano + 1 : ano;
+      const dataFim = `${proximoAno}-${proximoMes.toString().padStart(2, '0')}-01`;
 
       // Buscar empresas com book padrão (não personalizado)
       const { data: empresasData, error: empresasError } = await supabase
