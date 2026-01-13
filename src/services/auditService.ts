@@ -77,18 +77,16 @@ export class AuditService {
             };
           });
         } else {
-          // Fallback to auth.users if profiles don't exist
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          if (authUsers?.users && Array.isArray(authUsers.users)) {
-            authUsers.users.forEach((user: any) => {
-              if (user?.id && userIds.includes(user.id)) {
-                usersMap[user.id] = {
-                  email: user.email || null,
-                  full_name: user.user_metadata?.full_name || user.user_metadata?.name || null
-                };
-              }
-            });
-          }
+          // Se não há profiles, não tenta buscar auth.users (requer permissões admin)
+          console.warn('⚠️ Profiles não encontrados para alguns usuários. Usando dados limitados.');
+          userIds.forEach(userId => {
+            if (!usersMap[userId]) {
+              usersMap[userId] = {
+                email: null,
+                full_name: null
+              };
+            }
+          });
         }
       } catch (userError) {
         console.warn('Could not fetch user information:', userError);
@@ -876,17 +874,8 @@ export class AuditService {
         return profile.full_name || profile.email?.split('@')[0] || null;
       }
 
-      // Fallback to auth.users
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
-      const user = authUsers?.users?.find((u: any) => u.id === userId);
-      
-      if (user) {
-        return user.user_metadata?.full_name || 
-               user.user_metadata?.name || 
-               user.email?.split('@')[0] || 
-               null;
-      }
-
+      // Se não há profile, retorna null (não tenta buscar auth.users que requer permissões admin)
+      console.warn('⚠️ Profile não encontrado para usuário:', userId);
       return null;
     } catch (error) {
       console.warn('Error fetching user name:', error);

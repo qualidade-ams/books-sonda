@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight, DollarSign, Target, Tags } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight, DollarSign, Target, Tags, X } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -789,77 +789,56 @@ const LancarRequerimentos = () => {
                         <Card className="w-full max-[1366px]:max-w-[1190px] max-[1366px]:mx-auto">
                             <CardHeader>
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                                    <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                                    <CardTitle className="text-lg flex items-center gap-2">
                                         <FileText className="h-5 w-5" />
                                         Requerimentos Não Enviados
                                     </CardTitle>
 
-                                    <div className={cn(
-                                        "flex gap-2",
-                                        navigation.stackActions ? "flex-col" : "flex-row"
-                                    )}>
+                                    <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setShowFilters(!showFilters)}
                                             className="flex items-center justify-center space-x-2"
-                                            aria-expanded={showFilters}
-                                            aria-controls="filters-section"
                                         >
                                             <Filter className="h-4 w-4" />
                                             <span>Filtros</span>
                                         </Button>
-                                        {activeTab === 'nao-enviados' && (
-                                            <>
-                                                {selectedRequerimentos.length === 0 ? (
-                                                    // Mostrar botão "Limpar Filtro" se houver filtros ativos
-                                                    (filtros.busca || filtros.modulo || filtros.tipo_cobranca || filtros.mes_cobranca || filtros.data_inicio || filtros.data_fim) ? (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={limparFiltros}
-                                                            className="whitespace-nowrap"
-                                                            aria-label="Limpar todos os filtros aplicados"
-                                                        >
-                                                            <Filter className="h-4 w-4 mr-2" />
-                                                            Limpar Filtro
-                                                        </Button>
-                                                    ) : null
-                                                ) : (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={clearSelection}
-                                                        className="whitespace-nowrap"
-                                                        aria-label={`Limpar seleção de ${selectedRequerimentos.length} requerimentos`}
-                                                    >
-                                                        Limpar Seleção
-                                                    </Button>
-                                                )}
-                                            </>
+                                        
+                                        {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                                        {(filtros.busca || filtros.modulo || filtros.tipo_cobranca || filtros.mes_cobranca || filtros.data_inicio || filtros.data_fim) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={limparFiltros}
+                                                className="whitespace-nowrap hover:border-red-300"
+                                            >
+                                                <X className="h-4 w-4 mr-2 text-red-600" />
+                                                Limpar Filtro
+                                            </Button>
                                         )}
                                     </div>
                                 </div>
-                                {/* Filtros */}
+
+                                {/* Área de filtros expansível - PADRÃO REAL */}
                                 {showFilters && (
                                     <div className="space-y-4 pt-4 border-t">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            {/* Busca */}
+                                            {/* Campo de busca com ícone */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Buscar</div>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                                     <Input
-                                                        placeholder="Buscar por chamado, cliente ou descrição..."
+                                                        placeholder="Buscar por chamado, cliente..."
                                                         defaultValue={filtros.busca || ''}
                                                         onChange={(e) => handleFiltroChange('busca', e.target.value)}
-                                                        className="pl-10"
-                                                        aria-label="Campo de busca"
+                                                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                                                     />
                                                 </div>
                                             </div>
 
-                                            {/* Módulo */}
+                                            {/* Filtro Módulo */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Módulo</div>
                                                 <MultiSelect
@@ -871,7 +850,7 @@ const LancarRequerimentos = () => {
                                                 />
                                             </div>
 
-                                            {/* Tipo de Cobrança */}
+                                            {/* Filtro Tipo de Cobrança */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
                                                 <MultiSelect
@@ -883,7 +862,7 @@ const LancarRequerimentos = () => {
                                                 />
                                             </div>
 
-                                            {/* Período de Cobrança */}
+                                            {/* Filtro Período */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                                                 <MonthYearPicker
@@ -1000,79 +979,61 @@ const LancarRequerimentos = () => {
                         <Card className="w-full max-[1366px]:max-w-[1190px] max-[1366px]:mx-auto">
                             <CardHeader>
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                                    <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
+                                    <CardTitle className="text-lg flex items-center gap-2">
                                         <Send className="h-5 w-5" />
                                         Histórico - Requerimentos Enviados
                                     </CardTitle>
 
-                                    <div className={cn(
-                                        "flex gap-2",
-                                        navigation.stackActions ? "flex-col" : "flex-row"
-                                    )}>
+                                    <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setShowFiltersEnviados(!showFiltersEnviados)}
                                             className="flex items-center justify-center space-x-2"
-                                            aria-expanded={showFiltersEnviados}
-                                            aria-controls="filters-enviados-section"
                                         >
                                             <Filter className="h-4 w-4" />
                                             <span>Filtros</span>
                                         </Button>
-                                        {selectedRequerimentosEnviados.length === 0 ? (
-                                            // Mostrar botão "Limpar Filtro" se houver filtros ativos
-                                            (filtrosEnviados.busca || 
-                             filtrosEnviados.modulo || 
-                             filtrosEnviados.tipo_cobranca || 
-                             (filtrosEnviados.mes_cobranca && filtrosEnviados.mes_cobranca !== getDefaultMesCobranca()) ||
-                             filtrosEnviados.data_inicio || 
-                             filtrosEnviados.data_fim) ? (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={limparFiltrosEnviados}
-                                                    className="whitespace-nowrap"
-                                                    aria-label="Limpar todos os filtros aplicados"
-                                                >
-                                                    <Filter className="h-4 w-4 mr-2" />
-                                                    Limpar Filtro
-                                                </Button>
-                                            ) : null
-                                        ) : (
+                                        
+                                        {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                                        {(filtrosEnviados.busca || 
+                                         filtrosEnviados.modulo || 
+                                         filtrosEnviados.tipo_cobranca || 
+                                         (filtrosEnviados.mes_cobranca && filtrosEnviados.mes_cobranca !== getDefaultMesCobranca()) ||
+                                         filtrosEnviados.data_inicio || 
+                                         filtrosEnviados.data_fim) && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={clearSelection}
-                                                className="whitespace-nowrap"
-                                                aria-label={`Limpar seleção de ${selectedRequerimentosEnviados.length} requerimentos`}
+                                                onClick={limparFiltrosEnviados}
+                                                className="whitespace-nowrap hover:border-red-300"
                                             >
-                                                Limpar Seleção
+                                                <X className="h-4 w-4 mr-2 text-red-600" />
+                                                Limpar Filtro
                                             </Button>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Filtros para Enviados - Movidos para cima */}
+                                {/* Área de filtros expansível - PADRÃO REAL */}
                                 {showFiltersEnviados && (
                                     <div className="space-y-4 pt-4 border-t">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            {/* Busca */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            {/* Campo de busca com ícone */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Buscar</div>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                                     <Input
-                                                        placeholder="Nome ou e-mail..."
+                                                        placeholder="Buscar por chamado, cliente..."
                                                         defaultValue={filtrosEnviados.busca || ''}
                                                         onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
-                                                        className="pl-10"
-                                                        aria-label="Campo de busca"
+                                                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                                                     />
                                                 </div>
                                             </div>
 
-                                            {/* Módulo */}
+                                            {/* Filtro Módulo */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Módulo</div>
                                                 <MultiSelect
@@ -1084,7 +1045,7 @@ const LancarRequerimentos = () => {
                                                 />
                                             </div>
 
-                                            {/* Tipo de Cobrança */}
+                                            {/* Filtro Tipo de Cobrança */}
                                             <div>
                                                 <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
                                                 <MultiSelect
@@ -1096,19 +1057,18 @@ const LancarRequerimentos = () => {
                                                 />
                                             </div>
 
-                                            {/* Mês/Ano */}
+                                            {/* Filtro Período */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Mês/Ano</div>
+                                                <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                                                 <MonthYearPicker
                                                     value={filtrosEnviados.mes_cobranca || ''}
                                                     onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
-                                                    placeholder="Outubro 2025"
+                                                    placeholder="Todos os períodos"
                                                 />
                                             </div>
                                         </div>
                                     </div>
                                 )}
-
                             </CardHeader>
                             <CardContent className="space-y-4 overflow-x-auto">
 

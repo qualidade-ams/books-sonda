@@ -184,21 +184,11 @@ export class RequerimentosService {
       // Para IDs que não foram encontrados na profiles, tentar no auth.users
       const idsNaoEncontrados = userIds.filter(id => !usersMap[id]);
       if (idsNaoEncontrados.length > 0) {
-        try {
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          if (authUsers?.users && Array.isArray(authUsers.users)) {
-            authUsers.users.forEach((user: any) => {
-              if (user?.id && idsNaoEncontrados.includes(user.id)) {
-                usersMap[user.id] = user.user_metadata?.full_name || 
-                                   user.user_metadata?.name || 
-                                   user.email || 
-                                   'Usuário não identificado';
-              }
-            });
-          }
-        } catch (authError) {
-          console.warn('Não foi possível buscar usuários do auth:', authError);
-        }
+        // Para usuários não encontrados nos profiles, usar ID como fallback
+        console.warn('⚠️ Usuários não encontrados nos profiles:', idsNaoEncontrados);
+        idsNaoEncontrados.forEach(id => {
+          usersMap[id] = `Usuário ${id.substring(0, 8)}...`;
+        });
       }
     } catch (error) {
       console.warn('Erro ao resolver nomes de usuários:', error);

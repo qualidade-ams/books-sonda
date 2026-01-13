@@ -375,24 +375,28 @@ class PermissionsService implements PermissionsServiceMethods {
           throw new Error(`Failed to get user assignments: ${usersError.message}`);
         }
 
-        // Get all auth users
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        // Usar apenas dados dos profiles (não tenta buscar auth.users que requer permissões admin)
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name');
 
-        if (authError) {
-          throw new Error(`Failed to get auth users: ${authError.message}`);
+        if (profilesError) {
+          console.warn('⚠️ Erro ao buscar profiles:', profilesError);
         }
 
-        // Combine the data
-        return authUsers.users.map(user => {
-          const assignment = usersData?.find(a => a.user_id === user.id);
+        // Combinar dados dos assignments com profiles
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        
+        return usersData?.map(assignment => {
+          const profile = profilesMap.get(assignment.user_id);
           return {
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email || 'Usuário sem nome',
+            id: assignment.user_id,
+            email: profile?.email || '',
+            full_name: profile?.full_name || profile?.email || 'Usuário sem nome',
             group_id: assignment?.group_id || null,
             group_name: assignment?.user_groups?.name || null,
           };
-        });
+        }) || [];
       }
 
       // Get group assignments for profiles

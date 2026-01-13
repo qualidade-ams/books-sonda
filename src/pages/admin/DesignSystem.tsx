@@ -28,7 +28,8 @@ import {
   Loader2,
   FileX,
   Send,
-  Copy
+  Copy,
+  X
 } from 'lucide-react';
 
 import AdminLayout from '@/components/admin/LayoutAdmin';
@@ -93,6 +94,32 @@ export default function DesignSystem() {
   const [switchValue, setSwitchValue] = useState(false);
   const [progress, setProgress] = useState(33);
   const [activeCodeExample, setActiveCodeExample] = useState<string | null>(null);
+
+  // Estados dos filtros para demonstração
+  const [filtros, setFiltros] = useState({
+    busca: '',
+    modulo: 'all',
+    tipoCobranca: 'all',
+    periodo: 'all'
+  });
+
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    return filtros.busca !== '' || 
+           filtros.modulo !== 'all' || 
+           filtros.tipoCobranca !== 'all' || 
+           filtros.periodo !== 'all';
+  };
+
+  // Função para limpar filtros
+  const limparFiltros = () => {
+    setFiltros({
+      busca: '',
+      modulo: 'all',
+      tipoCobranca: 'all',
+      periodo: 'all'
+    });
+  };
 
   const handleToast = (variant: 'default' | 'destructive' | 'success') => {
     const messages = {
@@ -1566,15 +1593,19 @@ export default function DesignSystem() {
                             <Filter className="h-4 w-4" />
                             <span>Filtros</span>
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowFilters(false)}
-                            className="whitespace-nowrap"
-                          >
-                            <Filter className="h-4 w-4 mr-2" />
-                            Limpar Filtro
-                          </Button>
+                          
+                          {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                          {hasActiveFilters() && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={limparFiltros}
+                              className="whitespace-nowrap hover:border-red-300"
+                            >
+                              <X className="h-4 w-4 mr-2 text-red-600" />
+                              Limpar Filtro
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -1589,7 +1620,9 @@ export default function DesignSystem() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
                                   placeholder="Buscar por chamado, cliente..."
-                                  className="pl-10"
+                                  value={filtros.busca}
+                                  onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
+                                  className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                                 />
                               </div>
                             </div>
@@ -1597,11 +1630,15 @@ export default function DesignSystem() {
                             {/* Módulo */}
                             <div>
                               <div className="text-sm font-medium mb-2">Módulo</div>
-                              <Select>
-                                <SelectTrigger>
+                              <Select 
+                                value={filtros.modulo} 
+                                onValueChange={(value) => setFiltros({...filtros, modulo: value})}
+                              >
+                                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                                   <SelectValue placeholder="Todos os módulos" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="all">Todos os módulos</SelectItem>
                                   <SelectItem value="compra">Compra e SOCS</SelectItem>
                                   <SelectItem value="controle">Controle</SelectItem>
                                   <SelectItem value="geral">Geral</SelectItem>
@@ -1612,11 +1649,15 @@ export default function DesignSystem() {
                             {/* Tipo de Cobrança */}
                             <div>
                               <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
-                              <Select>
-                                <SelectTrigger>
+                              <Select 
+                                value={filtros.tipoCobranca} 
+                                onValueChange={(value) => setFiltros({...filtros, tipoCobranca: value})}
+                              >
+                                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                                   <SelectValue placeholder="Todos os tipos" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="all">Todos os tipos</SelectItem>
                                   <SelectItem value="horas">Horas</SelectItem>
                                   <SelectItem value="fixo">Fixo</SelectItem>
                                 </SelectContent>
@@ -1626,11 +1667,15 @@ export default function DesignSystem() {
                             {/* Período */}
                             <div>
                               <div className="text-sm font-medium mb-2">Período de Cobrança</div>
-                              <Select>
-                                <SelectTrigger>
+                              <Select 
+                                value={filtros.periodo} 
+                                onValueChange={(value) => setFiltros({...filtros, periodo: value})}
+                              >
+                                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                                   <SelectValue placeholder="Todos os períodos" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="all">Todos os períodos</SelectItem>
                                   <SelectItem value="01/2026">01/2026</SelectItem>
                                   <SelectItem value="12/2025">12/2025</SelectItem>
                                 </SelectContent>

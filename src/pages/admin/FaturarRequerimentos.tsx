@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Send,
   Mail,
@@ -106,8 +106,9 @@ interface EstatisticasPeriodo {
 
 export default function FaturarRequerimentos() {
   // Estados
-  const [mesAtual] = useState(new Date().getMonth() + 1);
-  const [anoAtual] = useState(new Date().getFullYear());
+  const hoje = new Date();
+  const [mesAtual] = useState(hoje.getMonth() + 1);
+  const [anoAtual] = useState(hoje.getFullYear());
   const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
   const [anoSelecionado, setAnoSelecionado] = useState(anoAtual);
 
@@ -131,7 +132,12 @@ export default function FaturarRequerimentos() {
   const [busca, setBusca] = useState('');
   const [filtroModuloSelect, setFiltroModuloSelect] = useState<ModuloType[]>([]);
   const [filtroTipoSelect, setFiltroTipoSelect] = useState<TipoCobrancaType[]>([]);
-  const [filtroPeriodo, setFiltroPeriodo] = useState('all');
+  const [filtroPeriodo, setFiltroPeriodo] = useState(() => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${mes}/${ano}`;
+  });
 
   // Estados para rejeição
   const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
@@ -148,6 +154,23 @@ export default function FaturarRequerimentos() {
   // Estados para filtros da aba de histórico
   const [filtroTipoHistorico, setFiltroTipoHistorico] = useState<TipoCobrancaType[]>([]);
   const [filtroModuloHistorico, setFiltroModuloHistorico] = useState<ModuloType[]>([]);
+
+  // Função para obter o mês/ano padrão (igual à LancarRequerimentos)
+  const getDefaultMesCobranca = () => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${mes}/${ano}`;
+  };
+
+  // Função para limpar filtros (igual à LancarRequerimentos)
+  const limparFiltros = () => {
+    const defaultMesCobranca = getDefaultMesCobranca();
+    setBusca('');
+    setFiltroTipoSelect([]);
+    setFiltroModuloSelect([]);
+    setFiltroPeriodo(defaultMesCobranca); // Volta para o mês atual
+  };
 
   // Hooks
   const {
@@ -826,23 +849,47 @@ export default function FaturarRequerimentos() {
     };
   };
 
-  // Funções de navegação de mês
+  // Funções de navegação de mês (igual à LancarRequerimentos)
   const navegarMesAnterior = () => {
-    if (mesSelecionado === 1) {
-      setMesSelecionado(12);
-      setAnoSelecionado(anoSelecionado - 1);
-    } else {
-      setMesSelecionado(mesSelecionado - 1);
+    const [mes, ano] = (filtroPeriodo || '').split('/');
+    const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+    const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+    let novoMes = mesAtual - 1;
+    let novoAno = anoAtual;
+
+    if (novoMes < 1) {
+      novoMes = 12;
+      novoAno = anoAtual - 1;
     }
+
+    const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+    setFiltroPeriodo(novoMesCobranca);
+    
+    // Atualizar também os estados de navegação para manter consistência
+    setMesSelecionado(novoMes);
+    setAnoSelecionado(novoAno);
   };
 
   const navegarMesProximo = () => {
-    if (mesSelecionado === 12) {
-      setMesSelecionado(1);
-      setAnoSelecionado(anoSelecionado + 1);
-    } else {
-      setMesSelecionado(mesSelecionado + 1);
+    const [mes, ano] = (filtroPeriodo || '').split('/');
+    const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+    const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+    let novoMes = mesAtual + 1;
+    let novoAno = anoAtual;
+
+    if (novoMes > 12) {
+      novoMes = 1;
+      novoAno = anoAtual + 1;
     }
+
+    const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+    setFiltroPeriodo(novoMesCobranca);
+    
+    // Atualizar também os estados de navegação para manter consistência
+    setMesSelecionado(novoMes);
+    setAnoSelecionado(novoAno);
   };
 
   // Validação silenciosa para habilitar/desabilitar botões
@@ -1491,10 +1538,10 @@ export default function FaturarRequerimentos() {
                               setFiltroModuloSelect([]);
                               setFiltroPeriodo('all');
                             }}
-                            className="whitespace-nowrap"
+                            className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
-                            <Filter className="h-4 w-4 mr-2" />
+                            <X className="h-4 w-4 mr-2 text-red-600" />
                             Limpar Filtro
                           </Button>
                         )}
@@ -1931,7 +1978,7 @@ export default function FaturarRequerimentos() {
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
-                        <Check className="h-5 w-5 text-green-600" />
+                        <Check className="h-5 w-5" />
                         Histórico - Requerimentos Enviados
                       </CardTitle>
 
@@ -1958,10 +2005,10 @@ export default function FaturarRequerimentos() {
                               setFiltroModuloSelect([]);
                               setFiltroPeriodo('all');
                             }}
-                            className="whitespace-nowrap"
+                            className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
-                            <Filter className="h-4 w-4 mr-2" />
+                            <X className="h-4 w-4 mr-2 text-red-600" />
                             Limpar Filtro
                           </Button>
                         )}
@@ -2043,7 +2090,7 @@ export default function FaturarRequerimentos() {
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
-                        <Check className="h-5 w-5 text-green-600" />
+                        <Check className="h-5 w-5" />
                         Histórico - Requerimentos Enviados
                       </CardTitle>
 
@@ -2070,10 +2117,10 @@ export default function FaturarRequerimentos() {
                               setFiltroModuloSelect([]);
                               setFiltroPeriodo('all');
                             }}
-                            className="whitespace-nowrap"
+                            className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
-                            <Filter className="h-4 w-4 mr-2" />
+                            <X className="h-4 w-4 mr-2 text-red-600" />
                             Limpar Filtro
                           </Button>
                         )}
@@ -2156,7 +2203,7 @@ export default function FaturarRequerimentos() {
                     <CardHeader>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
-                          <Check className="h-5 w-5 text-green-600" />
+                          <Check className="h-5 w-5" />
                           Histórico - Requerimentos Enviados
                         </CardTitle>
 
@@ -2183,10 +2230,10 @@ export default function FaturarRequerimentos() {
                                 setFiltroModuloSelect([]);
                                 setFiltroPeriodo('all');
                               }}
-                              className="whitespace-nowrap"
+                              className="whitespace-nowrap hover:border-red-300"
                               aria-label="Limpar todos os filtros aplicados"
                             >
-                              <Filter className="h-4 w-4 mr-2" />
+                              <X className="h-4 w-4 mr-2 text-red-600" />
                               Limpar Filtro
                             </Button>
                           )}
