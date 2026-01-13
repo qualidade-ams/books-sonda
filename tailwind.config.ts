@@ -107,11 +107,11 @@ export default {
 					gray4: '#E4E4E4',     // Gris 4 - RGB(228,228,228)
 					white: '#FFFFFF'      // Branco puro
 				},
-				// Cores do Design System Sonda
-				'sonda-blue': '#0066CC',
-				'sonda-dark-blue': '#004499',
-				'sonda-light-blue': '#3385D6',
-				'sonda-accent-blue': '#66B2FF',
+				// Cores do Design System Sonda - CORRIGIDAS para corresponder à sidebar
+				'sonda-blue': '#2563eb',      // Mesmo azul da sidebar (blue-600)
+				'sonda-dark-blue': '#1d4ed8', // blue-700 para hover
+				'sonda-light-blue': '#3b82f6', // blue-500 para variações
+				'sonda-accent-blue': '#60a5fa', // blue-400 para destaques
 				'sonda-gray': '#6B7280',
 				'sonda-light-gray': '#F3F4F6',
 				'sonda-dark-gray': '#374151',

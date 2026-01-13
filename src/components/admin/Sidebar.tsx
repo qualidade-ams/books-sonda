@@ -30,7 +30,8 @@ import {
   Heart,
   ThumbsUp,
   ClipboardCheck,
-  Eye
+  Eye,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -376,6 +377,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Enviar Dashboards',
           path: '/admin/enviar-dashboards',
           screenKey: 'dashboard'
+        },
+        {
+          icon: Palette,
+          label: 'Design System',
+          path: '/admin/design-system',
+          screenKey: 'design_system'
         }
       ]
     }
