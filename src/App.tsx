@@ -36,6 +36,7 @@ import EnviarElogios from "./pages/admin/EnviarElogios";
 import EnviarDashboards from "./pages/admin/EnviarDashboards";
 import PlanoAcao from "./pages/admin/PlanoAcao";
 import CadastroTaxasClientes from "./pages/admin/CadastroTaxasClientes";
+import DesignSystem from "./pages/admin/DesignSystem";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -85,6 +86,7 @@ const App = () => (
                   <Route path="/admin/enviar-dashboards" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><EnviarDashboards /></ProtectedRoute>} />
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />
+                  <Route path="/admin/design-system" element={<ProtectedRoute screenKey="design_system"><DesignSystem /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
