@@ -108,26 +108,69 @@ function CadastroTaxasClientes() {
   const handleDeletarTaxa = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta taxa?')) {
       try {
+        console.log('🗑️ [HANDLE DELETE] Iniciando deleção da taxa ID:', id);
+        
+        // Mostrar loading state
+        const loadingToast = toast.loading('Deletando taxa...');
+        
         await deletarTaxa.mutateAsync(id);
+        
+        console.log('✅ [HANDLE DELETE] Taxa deletada com sucesso via mutation');
+        
+        // Remover toast de loading
+        toast.dismiss(loadingToast);
+        
+        // Invalidar cache e forçar refetch
+        console.log('🔄 [HANDLE DELETE] Invalidando cache e forçando refetch...');
+        
+        // Aguardar um pouco para garantir que a deleção foi processada no servidor
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Forçar refetch imediato
         await refetch();
+        
+        console.log('✅ [HANDLE DELETE] Cache invalidado e dados recarregados');
+        
       } catch (error) {
-        console.error('Erro ao deletar taxa:', error);
+        console.error('❌ [HANDLE DELETE] Erro ao deletar taxa:', error);
+        
+        // Mostrar erro detalhado
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        console.error('❌ [HANDLE DELETE] Mensagem de erro:', errorMessage);
+        
+        toast.error(`Erro ao deletar taxa: ${errorMessage}`);
+        
+        // Se o erro mencionar RLS, dar dica específica
+        if (errorMessage.includes('RLS') || errorMessage.includes('permiss')) {
+          toast.error('Possível problema de permissões. Verifique se você tem acesso para deletar esta taxa.', {
+            duration: 5000
+          });
+        }
       }
     }
   };
 
   const handleSubmit = async (dados: TaxaFormData) => {
+    console.log('🔄 [CADASTRO TAXAS] handleSubmit chamado');
+    console.log('📊 [CADASTRO TAXAS] Dados recebidos:', dados);
+    console.log('🔧 [CADASTRO TAXAS] Taxa editando:', taxaEditando);
+    console.log('🔧 [CADASTRO TAXAS] ID da taxa:', taxaEditando?.id);
+    
     try {
       if (taxaEditando) {
+        console.log('✏️ [CADASTRO TAXAS] Atualizando taxa existente...');
         await atualizarTaxa.mutateAsync({ id: taxaEditando.id, dados });
+        console.log('✅ [CADASTRO TAXAS] Taxa atualizada com sucesso');
       } else {
+        console.log('➕ [CADASTRO TAXAS] Criando nova taxa...');
         await criarTaxa.mutateAsync(dados);
+        console.log('✅ [CADASTRO TAXAS] Taxa criada com sucesso');
       }
       setModalAberto(false);
       setTaxaEditando(null);
       await refetch();
     } catch (error) {
-      console.error('Erro ao salvar taxa:', error);
+      console.error('❌ [CADASTRO TAXAS] Erro ao salvar taxa:', error);
       toast.error(`Erro ao salvar taxa: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };

@@ -85,12 +85,25 @@ export function useDeletarTaxa() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deletarTaxa(id),
-    onSuccess: () => {
+    mutationFn: (id: string) => {
+      console.log('🔄 Hook useDeletarTaxa - iniciando mutação para ID:', id);
+      return deletarTaxa(id);
+    },
+    onSuccess: (data, variables) => {
+      console.log('✅ Hook useDeletarTaxa - sucesso para ID:', variables);
+      
+      // Invalidar todas as queries relacionadas a taxas
       queryClient.invalidateQueries({ queryKey: ['taxas'] });
+      queryClient.invalidateQueries({ queryKey: ['taxa'] });
+      
+      // Forçar refetch imediato
+      queryClient.refetchQueries({ queryKey: ['taxas'] });
+      
+      console.log('🔄 Cache invalidado e refetch forçado para queries de taxas');
       toast.success('Taxa deletada com sucesso!');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      console.error('❌ Hook useDeletarTaxa - erro para ID:', variables, error);
       toast.error(error.message || 'Erro ao deletar taxa');
     },
   });
