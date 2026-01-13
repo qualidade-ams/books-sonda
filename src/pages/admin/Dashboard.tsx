@@ -3545,6 +3545,12 @@ const Dashboard = () => {
     ano: anoSelecionado
   });
 
+  // Buscar estatísticas dos planos de ação
+  const { data: estatisticasPlanos } = useEstatisticasPlanosAcao({
+    ano: anoSelecionado,
+    mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
+  });
+
   // Definir abas disponíveis baseadas nas permissões
   const availableTabs = useMemo(() => {
     const tabs = [];
