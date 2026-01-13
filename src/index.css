@@ -163,6 +163,12 @@
   .sidebar-scroll {
     scrollbar-width: thin;
     scrollbar-color: rgba(59, 130, 246, 0.5) rgba(30, 64, 175, 0.3);
+    scroll-behavior: auto !important; /* Previne scroll automático */
+  }
+
+  /* Prevenir scroll automático em toda a sidebar */
+  .sidebar-scroll * {
+    scroll-behavior: auto !important;
   }
 
   .sidebar-scroll::-webkit-scrollbar {

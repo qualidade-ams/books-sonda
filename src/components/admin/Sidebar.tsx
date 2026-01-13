@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -57,6 +57,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+
+  // Referência para preservar scroll
+  const navRef = useRef<HTMLElement>(null);
+  const preventScrollRef = useRef<boolean>(false);
 
   // Estado para controlar o submenu flutuante quando minimizado
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
@@ -156,8 +160,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     });
   };
 
-  // Função para navegar e garantir que a seção correta esteja expandida
+  // Função para navegar sem resetar scroll
   const handleNavigation = (path: string) => {
+    // Ativar prevenção de scroll
+    preventScrollRef.current = true;
+    
+    // Salvar posição atual do scroll no sessionStorage
+    if (navRef.current) {
+      sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
+    }
+
     // Determinar qual seção deve estar expandida para esta rota
     const targetSection = getCurrentSectionForPath(path);
 
@@ -176,8 +188,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       });
     }
 
-    // Navegar após garantir que a seção esteja expandida
+    // Navegar
     navigate(path);
+
+    // Desativar prevenção após um tempo
+    setTimeout(() => {
+      preventScrollRef.current = false;
+    }, 500);
   };
 
   // Função auxiliar para determinar a seção baseada no path
@@ -408,27 +425,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   const menuItems = filterMenuItems(menuStructure);
 
-  // Effect para garantir que a seção correta esteja expandida quando a rota mudar
-  useEffect(() => {
-    const currentSection = getCurrentSection();
-    if (currentSection) {
-      setExpandedSections(prev => {
-        if (!prev.includes(currentSection)) {
-          const newState = [...prev, currentSection];
+  // Effect para restaurar posição de scroll
+  useLayoutEffect(() => {
+    const restoreScrollPosition = () => {
+      const savedPosition = sessionStorage.getItem('sidebar-scroll-position');
+      if (savedPosition && navRef.current) {
+        const position = parseInt(savedPosition, 10);
+        navRef.current.scrollTop = position;
+      }
+    };
 
-          // Salvar no localStorage
-          try {
-            localStorage.setItem('sidebar-expanded-sections', JSON.stringify(newState));
-          } catch (error) {
-            console.warn('Erro ao salvar estado da sidebar:', error);
-          }
-
-          return newState;
-        }
-        return prev;
-      });
-    }
+    // Restaurar posição após mudança de rota
+    restoreScrollPosition();
   }, [location.pathname]);
+
+  // Effect para salvar posição de scroll continuamente
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      // Se estamos prevenindo scroll, restaurar posição
+      if (preventScrollRef.current && navRef.current) {
+        const savedPosition = sessionStorage.getItem('sidebar-scroll-position');
+        if (savedPosition) {
+          e.preventDefault();
+          navRef.current.scrollTop = parseInt(savedPosition, 10);
+          return;
+        }
+      }
+
+      // Salvar posição normal
+      if (navRef.current) {
+        sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
+      }
+    };
+
+    const navElement = navRef.current;
+    if (navElement) {
+      navElement.addEventListener('scroll', handleScroll);
+      return () => navElement.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  // Effect para garantir que a seção correta esteja expandida quando a rota mudar
+  // (removido para evitar scroll automático)
 
   // Funções para controlar o submenu flutuante
   const handleMouseEnterSection = (sectionKey: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -515,7 +553,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       </div>
 
       {/* Menu Items */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
+      <nav 
+        ref={navRef} 
+        className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden sidebar-scroll" 
+        style={{ 
+          scrollBehavior: 'auto',
+          overscrollBehavior: 'contain'
+        }}
+      >
         {menuItems.map((item, index) => {
           const Icon = item.icon;
           const sectionKey = item.label.toLowerCase()

@@ -171,7 +171,7 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
 // - text-red-600 (erro)
 ```
 
-### 4. Cards de Conteúdo
+### 4. Cards de Conteúdo (Padrão Real do Sistema)
 ```tsx
 // Card padrão com conteúdo estruturado
 <Card>
@@ -189,6 +189,101 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
     </div>
   </CardContent>
 </Card>
+
+// Card de listagem com dados estruturados (padrão usado no sistema)
+<Card>
+  <CardHeader className="pb-3">
+    <div className="flex items-center justify-between">
+      <CardTitle className="text-base font-medium">RF-7874654</CardTitle>
+      <Badge className="bg-blue-100 text-blue-800 text-xs">Compras e SOCS</Badge>
+    </div>
+    <CardDescription className="text-sm text-gray-600">
+      Horas de Horas
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="pt-0">
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-gray-500">Cliente:</span>
+        <span className="font-medium">SOUZA CRUZ</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-500">Período:</span>
+        <span>01/2026</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-500">Total:</span>
+        <span className="font-semibold">10:30</span>
+      </div>
+    </div>
+    
+    <div className="flex justify-end gap-1 mt-4 pt-3 border-t">
+      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-800">
+        <Trash2 className="h-4 w-4" />
+      </Button>
+      <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800">
+        <Send className="h-4 w-4" />
+      </Button>
+    </div>
+  </CardContent>
+</Card>
+
+// Card de formulário com seções
+<Card>
+  <CardHeader>
+    <CardTitle className="text-sonda-blue flex items-center gap-2">
+      <Settings className="h-5 w-5" />
+      Configurações do Sistema
+    </CardTitle>
+    <CardDescription>
+      Configure as opções gerais do sistema
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-6">
+    {/* Seção de configurações */}
+    <div className="space-y-4">
+      <h4 className="text-sm font-medium text-gray-900 border-b pb-2">
+        Notificações
+      </h4>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">Email de notificações</Label>
+            <p className="text-xs text-gray-500">Receber alertas por email</p>
+          </div>
+          <Switch />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">Notificações push</Label>
+            <p className="text-xs text-gray-500">Alertas no navegador</p>
+          </div>
+          <Switch />
+        </div>
+      </div>
+    </div>
+
+    {/* Botões de ação */}
+    <div className="flex justify-end space-x-3 pt-4 border-t">
+      <Button variant="outline">Cancelar</Button>
+      <Button className="bg-sonda-blue hover:bg-sonda-dark-blue">
+        Salvar Configurações
+      </Button>
+    </div>
+  </CardContent>
+</Card>
+
+// IMPORTANTE: Padrões para cards de conteúdo:
+// - CardHeader com pb-3 para espaçamento reduzido quando há CardDescription
+// - CardContent com pt-0 quando segue CardHeader com descrição
+// - Badges com cores contextuais (bg-blue-100 text-blue-800)
+// - Divisores com border-t para separar seções
+// - Botões de ação sempre no final com justify-end
+// - Informações estruturadas com flex justify-between
+// - Textos auxiliares com text-gray-500 e text-sm
 ```
 
 ### 4. Botões Padronizados
@@ -324,36 +419,382 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
 </Button>
 ```
 
-### 5. Sistema de Filtros Padronizado
+### 5. Sistema de Filtros Padronizado (Padrão Real do Sistema)
 ```tsx
-// Barra de filtros com busca
-<FilterBar
-  showFilters={showFilters}
-  onToggleFilters={() => setShowFilters(!showFilters)}
-  searchValue={searchValue}
-  onSearchChange={setSearchValue}
-  searchPlaceholder="Buscar..."
-  hasActiveFilters={hasFilters}
-  onClearFilters={clearFilters}
->
-  <FilterGrid columns={3}>
-    <FilterField label="Status">
-      <Select>
-        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-          <SelectValue placeholder="Todos" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="ativo">Ativo</SelectItem>
-          <SelectItem value="inativo">Inativo</SelectItem>
-        </SelectContent>
-      </Select>
-    </FilterField>
-    {/* Mais filtros... */}
-  </FilterGrid>
-</FilterBar>
+// Estrutura completa de filtros conforme usado no sistema
+// Baseado no padrão das páginas "Requerimentos Não Enviados" e similares
+
+const [showFilters, setShowFilters] = useState(false);
+const [filtros, setFiltros] = useState({
+  busca: '',
+  modulo: 'all',
+  tipoCobranca: 'all',
+  periodo: 'all'
+});
+
+// Função para verificar se há filtros ativos
+const hasActiveFilters = () => {
+  return filtros.busca !== '' || 
+         filtros.modulo !== 'all' || 
+         filtros.tipoCobranca !== 'all' || 
+         filtros.periodo !== 'all';
+};
+
+// Função para limpar filtros
+const limparFiltros = () => {
+  setFiltros({
+    busca: '',
+    modulo: 'all',
+    tipoCobranca: 'all',
+    periodo: 'all'
+  });
+};
+
+// Estrutura do cabeçalho com filtros
+<Card>
+  <CardHeader>
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <CardTitle className="text-lg flex items-center gap-2">
+        <FileText className="h-5 w-5" />
+        Requerimentos Não Enviados
+      </CardTitle>
+
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center justify-center space-x-2"
+        >
+          <Filter className="h-4 w-4" />
+          <span>Filtros</span>
+        </Button>
+        
+        {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+        {hasActiveFilters() && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={limparFiltros}
+            className="whitespace-nowrap hover:border-red-300"
+          >
+            <X className="h-4 w-4 mr-2 text-red-600" />
+            Limpar Filtro
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {/* Área de filtros expansível - PADRÃO REAL */}
+    {showFilters && (
+      <div className="space-y-4 pt-4 border-t">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Campo de busca com ícone */}
+          <div>
+            <div className="text-sm font-medium mb-2">Buscar</div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por chamado, cliente..."
+                value={filtros.busca}
+                onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
+                className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+              />
+            </div>
+          </div>
+
+          {/* Filtro Módulo */}
+          <div>
+            <div className="text-sm font-medium mb-2">Módulo</div>
+            <Select 
+              value={filtros.modulo} 
+              onValueChange={(value) => setFiltros({...filtros, modulo: value})}
+            >
+              <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                <SelectValue placeholder="Todos os módulos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos os módulos</SelectItem>
+                <SelectItem value="compras">Compras e SOCS</SelectItem>
+                <SelectItem value="controle">Controle Horas</SelectItem>
+                <SelectItem value="financeiro">Financeiro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro Tipo de Cobrança */}
+          <div>
+            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+            <Select 
+              value={filtros.tipoCobranca} 
+              onValueChange={(value) => setFiltros({...filtros, tipoCobranca: value})}
+            >
+              <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                <SelectValue placeholder="Todos os tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos os tipos</SelectItem>
+                <SelectItem value="horas">Por Horas</SelectItem>
+                <SelectItem value="fixo">Valor Fixo</SelectItem>
+                <SelectItem value="projeto">Por Projeto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro Período */}
+          <div>
+            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+            <Select 
+              value={filtros.periodo} 
+              onValueChange={(value) => setFiltros({...filtros, periodo: value})}
+            >
+              <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                <SelectValue placeholder="Todos os períodos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos os períodos</SelectItem>
+                <SelectItem value="01/2026">01/2026</SelectItem>
+                <SelectItem value="12/2025">12/2025</SelectItem>
+                <SelectItem value="11/2025">11/2025</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    )}
+  </CardHeader>
+
+  <CardContent>
+    {/* Conteúdo da tabela aqui */}
+  </CardContent>
+</Card>
+
+// IMPORTANTE: Estrutura obrigatória para filtros:
+// 1. Botões "Filtros" e "Limpar Filtro" no cabeçalho
+// 2. Botão "Limpar Filtro" só aparece se hasActiveFilters() retorna true
+// 3. Área expansível com border-t quando showFilters = true
+// 4. Grid responsivo: grid-cols-1 md:grid-cols-4
+// 5. Campo de busca sempre com ícone Search posicionado à esquerda
+// 6. Labels com text-sm font-medium mb-2
+// 7. Todos os selects com focus:ring-sonda-blue focus:border-sonda-blue
+// 8. Placeholders descritivos ("Todos os módulos", "Buscar por chamado, cliente...")
+// 9. Botão "Limpar Filtro" com ícone vermelho (text-red-600) mas texto preto padrão
+// 10. Ícone X no botão "Limpar Filtro" em vez de Filter
 ```
 
-### 6. Formulários Padronizados
+## Códigos de Exemplo por Tipo de Campo de Filtro
+
+### Campo de Busca com Ícone
+```tsx
+// Campo de busca padrão usado em filtros
+<div>
+  <div className="text-sm font-medium mb-2">Buscar</div>
+  <div className="relative">
+    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+    <Input
+      placeholder="Buscar por chamado, cliente..."
+      value={filtros.busca}
+      onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
+      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+    />
+  </div>
+</div>
+```
+
+### Select de Módulo
+```tsx
+// Select para filtro de módulo
+<div>
+  <div className="text-sm font-medium mb-2">Módulo</div>
+  <Select 
+    value={filtros.modulo} 
+    onValueChange={(value) => setFiltros({...filtros, modulo: value})}
+  >
+    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+      <SelectValue placeholder="Todos os módulos" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos os módulos</SelectItem>
+      <SelectItem value="compras">Compras e SOCS</SelectItem>
+      <SelectItem value="controle">Controle Horas</SelectItem>
+      <SelectItem value="financeiro">Financeiro</SelectItem>
+      <SelectItem value="rh">Recursos Humanos</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Select de Tipo de Cobrança
+```tsx
+// Select para filtro de tipo de cobrança
+<div>
+  <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+  <Select 
+    value={filtros.tipoCobranca} 
+    onValueChange={(value) => setFiltros({...filtros, tipoCobranca: value})}
+  >
+    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+      <SelectValue placeholder="Todos os tipos" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos os tipos</SelectItem>
+      <SelectItem value="horas">Por Horas</SelectItem>
+      <SelectItem value="fixo">Valor Fixo</SelectItem>
+      <SelectItem value="projeto">Por Projeto</SelectItem>
+      <SelectItem value="mensal">Mensalidade</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Select de Período de Cobrança
+```tsx
+// Select para filtro de período
+<div>
+  <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+  <Select 
+    value={filtros.periodo} 
+    onValueChange={(value) => setFiltros({...filtros, periodo: value})}
+  >
+    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+      <SelectValue placeholder="Todos os períodos" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos os períodos</SelectItem>
+      <SelectItem value="01/2026">01/2026</SelectItem>
+      <SelectItem value="12/2025">12/2025</SelectItem>
+      <SelectItem value="11/2025">11/2025</SelectItem>
+      <SelectItem value="10/2025">10/2025</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Select de Status
+```tsx
+// Select para filtro de status
+<div>
+  <div className="text-sm font-medium mb-2">Status</div>
+  <Select 
+    value={filtros.status} 
+    onValueChange={(value) => setFiltros({...filtros, status: value})}
+  >
+    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+      <SelectValue placeholder="Todos os status" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos os status</SelectItem>
+      <SelectItem value="pendente">Pendente</SelectItem>
+      <SelectItem value="aprovado">Aprovado</SelectItem>
+      <SelectItem value="rejeitado">Rejeitado</SelectItem>
+      <SelectItem value="enviado">Enviado</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Campo de Data (Período)
+```tsx
+// Campos de data para filtro por período
+<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+  <div>
+    <div className="text-sm font-medium mb-2">Data Início</div>
+    <Input
+      type="date"
+      value={filtros.dataInicio}
+      onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})}
+      className="focus:ring-sonda-blue focus:border-sonda-blue"
+    />
+  </div>
+  <div>
+    <div className="text-sm font-medium mb-2">Data Fim</div>
+    <Input
+      type="date"
+      value={filtros.dataFim}
+      onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})}
+      className="focus:ring-sonda-blue focus:border-sonda-blue"
+    />
+  </div>
+</div>
+```
+
+### Select de Cliente/Empresa
+```tsx
+// Select para filtro de cliente
+<div>
+  <div className="text-sm font-medium mb-2">Cliente</div>
+  <Select 
+    value={filtros.cliente} 
+    onValueChange={(value) => setFiltros({...filtros, cliente: value})}
+  >
+    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+      <SelectValue placeholder="Todos os clientes" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos os clientes</SelectItem>
+      <SelectItem value="souza-cruz">SOUZA CRUZ</SelectItem>
+      <SelectItem value="whirlpool">WHIRLPOOL</SelectItem>
+      <SelectItem value="citrosuco">CITROSUCO</SelectItem>
+      <SelectItem value="petrobras">PETROBRAS</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+### Campo Numérico (Valor)
+```tsx
+// Campo numérico para filtros de valor
+<div>
+  <div className="text-sm font-medium mb-2">Valor Mínimo</div>
+  <Input
+    type="number"
+    placeholder="R$ 0,00"
+    value={filtros.valorMinimo}
+    onChange={(e) => setFiltros({...filtros, valorMinimo: e.target.value})}
+    className="focus:ring-sonda-blue focus:border-sonda-blue"
+  />
+</div>
+```
+
+### Checkbox para Filtros Múltiplos
+```tsx
+// Checkbox para filtros de múltipla seleção
+<div>
+  <div className="text-sm font-medium mb-2">Opções</div>
+  <div className="space-y-2">
+    <div className="flex items-center space-x-2">
+      <Checkbox 
+        id="opcao1"
+        checked={filtros.opcoes.includes('opcao1')}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setFiltros({...filtros, opcoes: [...filtros.opcoes, 'opcao1']});
+          } else {
+            setFiltros({...filtros, opcoes: filtros.opcoes.filter(o => o !== 'opcao1')});
+          }
+        }}
+      />
+      <Label htmlFor="opcao1" className="text-sm">Opção 1</Label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <Checkbox 
+        id="opcao2"
+        checked={filtros.opcoes.includes('opcao2')}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setFiltros({...filtros, opcoes: [...filtros.opcoes, 'opcao2']});
+          } else {
+            setFiltros({...filtros, opcoes: filtros.opcoes.filter(o => o !== 'opcao2')});
+          }
+        }}
+      />
+      <Label htmlFor="opcao2" className="text-sm">Opção 2</Label>
+    </div>
+  </div>
+</div>
+```
+
+### 6. Formulários Padronizados (Padrão Real do Sistema)
 ```tsx
 // Estrutura padrão de formulário
 <Card>
@@ -376,16 +817,30 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
         <p className="text-xs text-gray-500">Texto de ajuda opcional</p>
       </div>
 
-      {/* Campo com erro */}
+      {/* Campo com erro - PADRÃO REAL DO SISTEMA */}
       <div className="space-y-2">
-        <Label htmlFor="campo-erro" className="text-sm font-medium text-gray-700">
-          Campo com Erro
+        <Label htmlFor="input-error" className="text-sm font-medium text-gray-700">
+          Input com Erro
         </Label>
         <Input 
-          id="campo-erro"
+          id="input-error"
+          placeholder="Campo obrigatório"
           className="border-red-500 focus:ring-red-500 focus:border-red-500"
         />
-        <p className="text-sm text-red-500">Mensagem de erro</p>
+        <p className="text-sm text-red-500">Este campo é obrigatório</p>
+      </div>
+
+      {/* Campo obrigatório com asterisco */}
+      <div className="space-y-2">
+        <Label htmlFor="campo-obrigatorio" className="text-sm font-medium text-gray-700">
+          Campo Obrigatório <span className="text-red-500">*</span>
+        </Label>
+        <Input 
+          id="campo-obrigatorio"
+          placeholder="Digite o valor..."
+          className="focus:ring-sonda-blue focus:border-sonda-blue"
+          required
+        />
       </div>
 
       {/* Select padrão */}
@@ -402,6 +857,23 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
         </Select>
       </div>
 
+      {/* Select com erro */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-gray-700">
+          Select com Erro <span className="text-red-500">*</span>
+        </Label>
+        <Select>
+          <SelectTrigger className="border-red-500 focus:ring-red-500 focus:border-red-500">
+            <SelectValue placeholder="Selecione uma opção" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="opcao1">Opção 1</SelectItem>
+            <SelectItem value="opcao2">Opção 2</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-red-500">Seleção obrigatória</p>
+      </div>
+
       {/* Textarea */}
       <div className="space-y-2">
         <Label htmlFor="textarea" className="text-sm font-medium text-gray-700">
@@ -411,41 +883,122 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
           id="textarea"
           placeholder="Digite uma mensagem..."
           className="focus:ring-sonda-blue focus:border-sonda-blue"
+          rows={4}
         />
+      </div>
+
+      {/* Textarea com erro */}
+      <div className="space-y-2">
+        <Label htmlFor="textarea-error" className="text-sm font-medium text-gray-700">
+          Comentários <span className="text-red-500">*</span>
+        </Label>
+        <Textarea
+          id="textarea-error"
+          placeholder="Campo obrigatório"
+          className="border-red-500 focus:ring-red-500 focus:border-red-500"
+          rows={4}
+        />
+        <p className="text-sm text-red-500">Comentário é obrigatório</p>
       </div>
 
       {/* Controles */}
       <div className="flex items-center space-x-2">
         <Checkbox id="checkbox" />
-        <Label htmlFor="checkbox">Checkbox</Label>
+        <Label htmlFor="checkbox" className="text-sm">
+          Aceito os termos e condições
+        </Label>
       </div>
 
       <div className="flex items-center space-x-2">
         <Switch id="switch" />
-        <Label htmlFor="switch">Switch</Label>
+        <Label htmlFor="switch" className="text-sm">
+          Receber notificações por email
+        </Label>
+      </div>
+
+      {/* Grupo de campos em linha */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="data-inicio" className="text-sm font-medium text-gray-700">
+            Data Início
+          </Label>
+          <Input 
+            id="data-inicio"
+            type="date"
+            className="focus:ring-sonda-blue focus:border-sonda-blue"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="data-fim" className="text-sm font-medium text-gray-700">
+            Data Fim
+          </Label>
+          <Input 
+            id="data-fim"
+            type="date"
+            className="focus:ring-sonda-blue focus:border-sonda-blue"
+          />
+        </div>
       </div>
       
       {/* Botões do formulário */}
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="outline">Cancelar</Button>
+      <div className="flex justify-end space-x-3 pt-6 border-t">
+        <Button type="button" variant="outline">
+          Cancelar
+        </Button>
         <Button type="submit" className="bg-sonda-blue hover:bg-sonda-dark-blue">
+          <Save className="h-4 w-4 mr-2" />
           Salvar
         </Button>
       </div>
     </form>
   </CardContent>
 </Card>
+
+// IMPORTANTE: Padrões para formulários:
+// 1. Labels sempre com text-sm font-medium text-gray-700
+// 2. Campos obrigatórios marcados com asterisco vermelho: <span className="text-red-500">*</span>
+// 3. Estados de erro: border-red-500 focus:ring-red-500 focus:border-red-500
+// 4. Mensagens de erro: text-sm text-red-500
+// 5. Estados normais: focus:ring-sonda-blue focus:border-sonda-blue
+// 6. Textos de ajuda: text-xs text-gray-500
+// 7. Espaçamento entre campos: space-y-6 no form, space-y-2 nos grupos
+// 8. Botões sempre no final com border-t e pt-6
+// 9. Grid responsivo para campos em linha: grid-cols-1 md:grid-cols-2
+// 10. Placeholders descritivos e contextuais
 ```
 
 ### 7. Tabelas Padronizadas (Padrão Real do Sistema)
 ```tsx
 // Estrutura completa de tabela conforme usado no sistema
+// Baseado no padrão "Requerimentos Não Enviados" e páginas similares
+
+const [showFilters, setShowFilters] = useState(false);
+const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+// Função para selecionar todos os itens
+const handleSelectAll = (checked: boolean) => {
+  if (checked) {
+    setSelectedItems(data.map(item => item.id));
+  } else {
+    setSelectedItems([]);
+  }
+};
+
+// Função para selecionar item individual
+const handleSelectItem = (itemId: string, checked: boolean) => {
+  if (checked) {
+    setSelectedItems([...selectedItems, itemId]);
+  } else {
+    setSelectedItems(selectedItems.filter(id => id !== itemId));
+  }
+};
+
 <Card>
   <CardHeader>
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
       <CardTitle className="text-lg flex items-center gap-2">
         <FileText className="h-5 w-5" />
-        Título da Tabela
+        Requerimentos Não Enviados
       </CardTitle>
 
       <div className="flex gap-2">
@@ -474,31 +1027,7 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
     {showFilters && (
       <div className="space-y-4 pt-4 border-t">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Campo de busca */}
-          <div>
-            <div className="text-sm font-medium mb-2">Buscar</div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por..."
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          {/* Outros filtros */}
-          <div>
-            <div className="text-sm font-medium mb-2">Categoria</div>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="opcao1">Opção 1</SelectItem>
-                <SelectItem value="opcao2">Opção 2</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Filtros aqui - ver seção Sistema de Filtros */}
         </div>
       </div>
     )}
@@ -509,50 +1038,141 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
       <TableHeader>
         <TableRow className="bg-gray-50">
           <TableHead className="w-12">
-            <Checkbox />
+            <Checkbox 
+              checked={selectedItems.length === data.length && data.length > 0}
+              onCheckedChange={handleSelectAll}
+            />
           </TableHead>
-          <TableHead className="font-semibold text-gray-700">Coluna 1</TableHead>
-          <TableHead className="font-semibold text-gray-700">Coluna 2</TableHead>
-          <TableHead className="font-semibold text-gray-700 w-24">Ações</TableHead>
+          <TableHead className="font-semibold text-gray-700">Chamado</TableHead>
+          <TableHead className="font-semibold text-gray-700">Cliente</TableHead>
+          <TableHead className="font-semibold text-gray-700">Módulo</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">H Func</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">H Tec</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">Total</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">Data Envio</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">Data Aprovação</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">Valor Total</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center">Período</TableHead>
+          <TableHead className="font-semibold text-gray-700 text-center w-24">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow className="hover:bg-gray-50">
-          <TableCell>
-            <Checkbox />
-          </TableCell>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">Valor Principal</span>
-            </div>
-            <Badge className="mt-1 bg-blue-100 text-blue-800 text-xs">Status</Badge>
-          </TableCell>
-          <TableCell>Valor Secundário</TableCell>
-          <TableCell>
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-800">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800">
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </TableCell>
-        </TableRow>
+        {data.map((item) => (
+          <TableRow key={item.id} className="hover:bg-gray-50">
+            <TableCell>
+              <Checkbox 
+                checked={selectedItems.includes(item.id)}
+                onCheckedChange={(checked) => handleSelectItem(item.id, checked)}
+              />
+            </TableCell>
+            
+            {/* Coluna Chamado com ícone e badge */}
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-blue-600">RF-7874654</span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Horas de Horas</div>
+            </TableCell>
+            
+            {/* Cliente */}
+            <TableCell>
+              <span className="font-medium">SOUZA CRUZ</span>
+            </TableCell>
+            
+            {/* Módulo com badge colorido */}
+            <TableCell>
+              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                Compras e SOCS
+              </Badge>
+              <div className="text-xs text-gray-500 mt-1">Módulo Horas</div>
+            </TableCell>
+            
+            {/* Horas - centralizadas */}
+            <TableCell className="text-center">
+              <span className="font-mono text-sm">2:30</span>
+            </TableCell>
+            <TableCell className="text-center">
+              <span className="font-mono text-sm">8:00</span>
+            </TableCell>
+            <TableCell className="text-center">
+              <span className="font-mono text-sm font-semibold">10:30</span>
+            </TableCell>
+            
+            {/* Datas */}
+            <TableCell className="text-center">
+              <span className="text-sm">12/01/2026</span>
+            </TableCell>
+            <TableCell className="text-center">
+              <span className="text-sm">12/01/2026</span>
+            </TableCell>
+            
+            {/* Valor */}
+            <TableCell className="text-center">
+              <span className="font-semibold">R$ 2.450,00</span>
+            </TableCell>
+            
+            {/* Período */}
+            <TableCell className="text-center">
+              <span className="text-sm">01/2026</span>
+            </TableCell>
+            
+            {/* Ações */}
+            <TableCell className="text-center">
+              <div className="flex justify-center gap-1">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-800">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
+
+    {/* Paginação (opcional) */}
+    <div className="flex items-center justify-between px-2 py-4">
+      <div className="text-sm text-gray-500">
+        Mostrando {startIndex} a {endIndex} de {totalItems} resultados
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button variant="outline" size="sm" disabled={currentPage === 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm">
+          Página {currentPage} de {totalPages}
+        </span>
+        <Button variant="outline" size="sm" disabled={currentPage === totalPages}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   </CardContent>
 </Card>
 
-// IMPORTANTE: Botões de ação devem ser:
-// - variant="outline" size="sm" className="h-8 w-8 p-0"
-// - Ícones com className="h-4 w-4"
-// - Agrupados em div com gap-1
-// - Cores específicas: text-red-600 hover:text-red-800 (excluir), text-blue-600 hover:text-blue-800 (enviar)
+// IMPORTANTE: Padrões obrigatórios para tabelas:
+// 1. TableHeader com bg-gray-50 para destacar cabeçalho
+// 2. TableHead com font-semibold text-gray-700 para títulos
+// 3. TableRow com hover:bg-gray-50 para feedback visual
+// 4. Checkbox na primeira coluna para seleção múltipla
+// 5. Colunas numéricas (horas, valores) centralizadas com text-center
+// 6. Badges coloridos para categorização (bg-blue-100 text-blue-800)
+// 7. Botões de ação: variant="outline" size="sm" className="h-8 w-8 p-0"
+// 8. Ícones com className="h-4 w-4"
+// 9. Cores específicas: text-red-600 hover:text-red-800 (excluir), text-blue-600 hover:text-blue-800 (enviar)
+// 10. Overflow horizontal: CardContent com overflow-x-auto
+// 11. Informações secundárias com text-xs text-gray-500
+// 12. Links/IDs importantes com text-blue-600 e font-medium
+// 13. Valores monetários e totais com font-semibold
+// 14. Horas com font-mono para alinhamento
 ```
 
 ### 8. Modais Padronizados
