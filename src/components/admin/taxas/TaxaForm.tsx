@@ -214,24 +214,50 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
   }, [taxa, empresas, form]);
 
   const handleSubmit = (data: any) => {
+    console.log('🔄 [TAXA FORM] handleSubmit chamado');
+    console.log('📊 [TAXA FORM] Dados do formulário:', data);
+    console.log('🔧 [TAXA FORM] É edição de taxa existente?', !!taxa);
+    console.log('🎨 [TAXA FORM] É personalizado?', data.personalizado);
+    console.log('⚡ [TAXA FORM] Estado isLoading:', isLoading);
+    
+    // TESTE: Verificar se o botão está sendo clicado
+    if (taxa) {
+      console.log('✏️ [TAXA FORM] MODO EDIÇÃO - Botão Atualizar clicado!');
+      console.log('📋 [TAXA FORM] Taxa sendo editada:', {
+        id: taxa.id,
+        cliente: taxa.cliente?.nome_abreviado,
+        tipo_produto: taxa.tipo_produto
+      });
+    } else {
+      console.log('➕ [TAXA FORM] MODO CRIAÇÃO - Botão Criar clicado!');
+    }
+    
     // Encontrar ID da empresa pelo nome abreviado
     const empresa = empresas.find(e => e.nome_abreviado === data.cliente_id);
     
     if (!empresa) {
+      console.error('❌ [TAXA FORM] Cliente não encontrado:', data.cliente_id);
       form.setError('cliente_id', { message: 'Cliente não encontrado' });
       return;
     }
 
     // Validar campos obrigatórios
     if (!data.vigencia_inicio) {
+      console.error('❌ [TAXA FORM] Vigência início não fornecida');
       form.setError('vigencia_inicio', { message: 'Vigência início é obrigatória' });
       return;
     }
 
     if (!data.tipo_produto) {
+      console.error('❌ [TAXA FORM] Tipo de produto não fornecido');
       form.setError('tipo_produto', { message: 'Tipo de produto é obrigatório' });
       return;
     }
+
+    // CORREÇÃO CRÍTICA: Log detalhado dos dados enviados
+    console.log('📝 [TAXA FORM] Dados brutos do formulário:', data);
+    console.log('📊 [TAXA FORM] Valores remotos enviados:', data.valores_remota);
+    console.log('📊 [TAXA FORM] Valores locais enviados:', data.valores_local);
 
     const dadosFormatados: TaxaFormData = {
       cliente_id: empresa.id,
@@ -255,7 +281,15 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       ticket_excedente: data.ticket_excedente,
     };
 
-    onSubmit(dadosFormatados);
+    console.log('📤 [TAXA FORM] Dados formatados para envio:', dadosFormatados);
+    console.log('🚀 [TAXA FORM] Chamando onSubmit...');
+
+    try {
+      onSubmit(dadosFormatados);
+      console.log('✅ [TAXA FORM] onSubmit chamado com sucesso');
+    } catch (error) {
+      console.error('❌ [TAXA FORM] Erro ao chamar onSubmit:', error);
+    }
   };
 
   // Calcular valores em tempo real
@@ -539,7 +573,19 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form 
+        onSubmit={(e) => {
+          console.log('📝 [TAXA FORM] Form onSubmit event triggered');
+          console.log('🔧 [TAXA FORM] Event:', e);
+          console.log('📋 [TAXA FORM] Form state:', {
+            isValid: form.formState.isValid,
+            isSubmitting: form.formState.isSubmitting,
+            errors: form.formState.errors
+          });
+          form.handleSubmit(handleSubmit)(e);
+        }} 
+        className="space-y-6"
+      >
         {/* Dados Principais */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Dados Principais</h3>
@@ -1304,7 +1350,17 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            onClick={() => {
+              console.log('🖱️ [TAXA FORM] Botão clicado!');
+              console.log('🔧 [TAXA FORM] Tipo do botão:', taxa ? 'Atualizar' : 'Criar');
+              console.log('⚡ [TAXA FORM] Estado isLoading:', isLoading);
+              console.log('📋 [TAXA FORM] Formulário válido?', form.formState.isValid);
+              console.log('❌ [TAXA FORM] Erros do formulário:', form.formState.errors);
+            }}
+          >
             {isLoading ? 'Salvando...' : taxa ? 'Atualizar' : 'Criar'}
           </Button>
         </div>
