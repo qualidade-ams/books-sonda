@@ -164,36 +164,89 @@ export class RequerimentosService {
    * Resolver nomes de usuários baseado nos IDs
    */
   private async resolverNomesUsuarios(userIds: string[]): Promise<Record<string, string>> {
-    if (userIds.length === 0) return {};
+    console.log('🔍 resolverNomesUsuarios - Iniciando busca para IDs:', userIds);
+    
+    if (userIds.length === 0) {
+      console.log('⚠️ resolverNomesUsuarios - Nenhum ID fornecido');
+      return {};
+    }
 
     const usersMap: Record<string, string> = {};
 
     try {
       // Primeiro tentar buscar na tabela profiles
-      const { data: profiles } = await supabase
+      console.log('📊 resolverNomesUsuarios - Buscando na tabela profiles...');
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
         .in('id', userIds);
 
+      console.log('📊 resolverNomesUsuarios - Resultado da busca profiles:', {
+        encontrados: profiles?.length || 0,
+        erro: profilesError,
+        dados: profiles
+      });
+
+      if (profilesError) {
+        console.error('❌ Erro ao buscar profiles:', profilesError);
+      }
+
       if (profiles && profiles.length > 0) {
         profiles.forEach(profile => {
-          usersMap[profile.id] = profile.full_name || profile.email || 'Usuário não identificado';
+          // Priorizar full_name, depois email
+          const nome = profile.full_name?.trim() || profile.email || 'Usuário não identificado';
+          usersMap[profile.id] = nome;
+          console.log(`✅ Profile encontrado: ${profile.id.substring(0, 8)}... -> "${nome}"`);
         });
+      } else {
+        console.warn('⚠️ Nenhum profile encontrado na busca inicial');
       }
 
-      // Para IDs que não foram encontrados na profiles, tentar no auth.users
+      // Para IDs que não foram encontrados na profiles, buscar diretamente no auth.users via RPC
       const idsNaoEncontrados = userIds.filter(id => !usersMap[id]);
       if (idsNaoEncontrados.length > 0) {
-        // Para usuários não encontrados nos profiles, usar ID como fallback
-        console.warn('⚠️ Usuários não encontrados nos profiles:', idsNaoEncontrados);
-        idsNaoEncontrados.forEach(id => {
-          usersMap[id] = `Usuário ${id.substring(0, 8)}...`;
-        });
+        console.warn('⚠️ Usuários não encontrados nos profiles:', idsNaoEncontrados.map(id => id.substring(0, 8) + '...'));
+        
+        // Tentar buscar via função RPC que acessa auth.users
+        try {
+          console.log('🔄 Tentando buscar via RPC get_users_by_ids...');
+          const { data: authUsers, error: authError } = await supabase.rpc('get_users_by_ids', {
+            user_ids: idsNaoEncontrados
+          });
+
+          console.log('🔄 Resultado RPC:', {
+            encontrados: authUsers?.length || 0,
+            erro: authError,
+            dados: authUsers
+          });
+
+          if (authError) {
+            console.error('❌ Erro ao buscar auth.users via RPC:', authError);
+          } else if (authUsers && authUsers.length > 0) {
+            authUsers.forEach((user: any) => {
+              const nome = user.raw_user_meta_data?.full_name || user.email || `Usuário ${user.id.substring(0, 8)}...`;
+              usersMap[user.id] = nome;
+              console.log(`✅ Auth user encontrado via RPC: ${user.id.substring(0, 8)}... -> "${nome}"`);
+            });
+          }
+        } catch (rpcError) {
+          console.warn('⚠️ Função RPC get_users_by_ids não disponível ou erro:', rpcError);
+        }
+
+        // Para IDs ainda não encontrados, usar fallback
+        const idsAindaNaoEncontrados = idsNaoEncontrados.filter(id => !usersMap[id]);
+        if (idsAindaNaoEncontrados.length > 0) {
+          console.warn('⚠️ Usuários não encontrados em nenhuma fonte, usando fallback:', idsAindaNaoEncontrados.map(id => id.substring(0, 8) + '...'));
+          idsAindaNaoEncontrados.forEach(id => {
+            usersMap[id] = `Usuário ${id.substring(0, 8)}...`;
+          });
+        }
       }
     } catch (error) {
-      console.warn('Erro ao resolver nomes de usuários:', error);
+      console.error('❌ Erro geral ao resolver nomes de usuários:', error);
     }
 
+    console.log('📋 Mapa final de usuários:', Object.entries(usersMap).map(([id, nome]) => `${id.substring(0, 8)}... -> "${nome}"`));
     return usersMap;
   }
 
