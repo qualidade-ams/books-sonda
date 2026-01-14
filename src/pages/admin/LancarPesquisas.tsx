@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Database, ChevronLeft, ChevronRight, Filter, Activity } from 'lucide-react';
+import { Plus, Database, ChevronLeft, ChevronRight, Filter, Search, X, FileText, Server, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,6 @@ import {
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { PesquisaForm, PesquisasTable, PesquisasExportButtons, SyncProgressModal } from '@/components/admin/pesquisas-satisfacao';
-import { DiagnosticoApi } from '@/components/admin/DiagnosticoApi';
 import { 
   usePesquisasSatisfacao, 
   useExcluirPesquisa,
@@ -70,7 +69,6 @@ function LancarPesquisas() {
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalSyncAberto, setModalSyncAberto] = useState(false);
-  const [modalDiagnosticoAberto, setModalDiagnosticoAberto] = useState(false);
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
@@ -198,6 +196,13 @@ function LancarPesquisas() {
     setPaginaAtual(1);
   };
 
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    return filtros.busca !== '' || 
+           filtros.origem !== 'todos' || 
+           (filtros.resposta !== 'todas' && filtros.resposta !== '');
+  };
+
   // Calcular paginação
   const totalPaginas = Math.ceil(pesquisas.length / itensPorPagina);
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
@@ -281,14 +286,6 @@ function LancarPesquisas() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button
-              variant="outline"
-              onClick={() => setModalDiagnosticoAberto(true)}
-              className="flex items-center gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              Diagnóstico API
-            </Button>
             <Button onClick={handleNovoPesquisa}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Pesquisa
@@ -300,39 +297,32 @@ function LancarPesquisas() {
       {estatisticas && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</div>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-gray-500" />
+                <p className="text-xs font-medium text-gray-500">Total</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
-                SQL Server
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                {estatisticas.sql_server}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Server className="h-4 w-4 text-blue-500" />
+                <p className="text-xs font-medium text-blue-500">SQL Server</p>
               </div>
+              <p className="text-2xl font-bold text-blue-600">{estatisticas.sql_server}</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
-                Manuais
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-purple-600">
-                {estatisticas.manuais}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileEdit className="h-4 w-4 text-purple-500" />
+                <p className="text-xs font-medium text-purple-500">Manuais</p>
               </div>
+              <p className="text-2xl font-bold text-purple-600">{estatisticas.manuais}</p>
             </CardContent>
           </Card>
         </div>
@@ -343,8 +333,8 @@ function LancarPesquisas() {
       {/* Tabela */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
               Pesquisas ({pesquisas.length})
               {selecionados.length > 0 && (
                 <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -352,70 +342,93 @@ function LancarPesquisas() {
                 </span>
               )}
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </Button>
-          </div>
 
-          {/* Filtros Colapsáveis */}
-          {mostrarFiltros && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
-              <Input
-                placeholder="Buscar por empresa, cliente, prestador..."
-                value={filtros.busca}
-                onChange={(e) => handleAtualizarFiltro('busca', e.target.value)}
-              />
-
-              <Select
-                value={filtros.origem}
-                onValueChange={(value) => handleAtualizarFiltro('origem', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Origem" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ORIGEM_PESQUISA_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filtros.resposta || 'todas'}
-                onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Resposta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Botão Limpar Filtros */}
+            <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={limparFiltros}
-                disabled={
-                  filtros.busca === '' && 
-                  filtros.origem === 'todos' && 
-                  (filtros.resposta === 'todas' || !filtros.resposta)
-                }
-                className="h-10"
+                size="sm"
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                className="flex items-center justify-center space-x-2"
               >
-                Limpar Filtros
+                <Filter className="h-4 w-4" />
+                <span>Filtros</span>
               </Button>
+              
+              {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+              {hasActiveFilters() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={limparFiltros}
+                  className="whitespace-nowrap hover:border-red-300"
+                >
+                  <X className="h-4 w-4 mr-2 text-red-600" />
+                  Limpar Filtro
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+          {mostrarFiltros && (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Campo de busca com ícone */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Buscar</div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por empresa, cliente..."
+                      value={filtros.busca}
+                      onChange={(e) => handleAtualizarFiltro('busca', e.target.value)}
+                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro Origem */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Origem</div>
+                  <Select
+                    value={filtros.origem}
+                    onValueChange={(value) => handleAtualizarFiltro('origem', value)}
+                    defaultValue="todos"
+                  >
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Todas as origens" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ORIGEM_PESQUISA_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro Resposta */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Resposta</div>
+                  <Select
+                    value={filtros.resposta || 'todas'}
+                    onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
+                    defaultValue="todas"
+                  >
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Todas as respostas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           )}
         </CardHeader>
@@ -517,16 +530,6 @@ function LancarPesquisas() {
         isLoading={sincronizarSqlServer.isPending}
         resultado={sincronizarSqlServer.data}
       />
-
-      {/* Modal de Diagnóstico da API */}
-      <Dialog open={modalDiagnosticoAberto} onOpenChange={setModalDiagnosticoAberto}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Diagnóstico da API de Sincronização</DialogTitle>
-          </DialogHeader>
-          <DiagnosticoApi />
-        </DialogContent>
-      </Dialog>
 
       </div>
     </LayoutAdmin>
