@@ -22,7 +22,9 @@ import {
   TIPO_COBRANCA_OPTIONS,
   TIPO_HORA_EXTRA_OPTIONS,
   requerValorHora,
-  TipoHoraExtraType
+  TipoHoraExtraType,
+  ModuloType,
+  LinguagemType
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { cn } from '@/lib/utils';
@@ -84,13 +86,13 @@ export function RequerimentoForm({
     defaultValues: {
       chamado: requerimento?.chamado || '',
       cliente_id: requerimento?.cliente_id || '',
-      modulo: requerimento?.modulo || 'Comply',
+      modulo: (requerimento?.modulo || '') as ModuloType,
       descricao: requerimento?.descricao || '',
       data_envio: requerimento?.data_envio || '',
       data_aprovacao: requerimento?.data_aprovacao || '', // Deixar em branco por padrão
       horas_funcional: requerimento?.horas_funcional || 0,
       horas_tecnico: requerimento?.horas_tecnico || 0,
-      linguagem: requerimento?.linguagem || 'Técnico',
+      linguagem: (requerimento?.linguagem || '') as LinguagemType,
       tipo_cobranca: requerimento?.tipo_cobranca || 'Banco de Horas',
       mes_cobranca: requerimento?.mes_cobranca || '',
       observacao: requerimento?.observacao || '',
@@ -169,6 +171,12 @@ export function RequerimentoForm({
   const mostrarCamposValor = useMemo(() => {
     return tipoCobranca && requerValorHora(tipoCobranca);
   }, [tipoCobranca]);
+
+  // Verificar se deve mostrar campo de atendimento presencial
+  // Não exibir para "Sobreaviso"
+  const mostrarAtendimentoPresencial = useMemo(() => {
+    return mostrarCamposValor && tipoCobranca !== 'Sobreaviso';
+  }, [mostrarCamposValor, tipoCobranca]);
 
   // Verificar se deve mostrar campo de tipo de hora extra
   const mostrarTipoHoraExtra = useMemo(() => {
@@ -1221,8 +1229,8 @@ export function RequerimentoForm({
                   )}
                 />
 
-                {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores) */}
-                {mostrarCamposValor && (
+                {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores, exceto Sobreaviso) */}
+                {mostrarAtendimentoPresencial && (
                   <FormField
                     control={form.control}
                     name="atendimento_presencial"
