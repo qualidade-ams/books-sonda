@@ -18,6 +18,8 @@ import {
   Minus,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Database,
   AlertCircle,
@@ -29,7 +31,9 @@ import {
   FileX,
   Send,
   Copy,
-  X
+  X,
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 
 import AdminLayout from '@/components/admin/LayoutAdmin';
@@ -1452,111 +1456,443 @@ export default function DesignSystem() {
 
             {/* Seção: Cards */}
             <TabsContent value="cards" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-6">
                 {/* Cards de Estatísticas - Padrão Real do Sistema */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Total de Elogios
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">1,234</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                      Compartilhados
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl lg:text-2xl font-bold text-green-600">856</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                      Registrados
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl lg:text-2xl font-bold text-orange-600">378</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Card Padrão com Conteúdo */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sonda-blue">Card Padrão</CardTitle>
-                  <CardDescription>
-                    Exemplo de card com conteúdo estruturado
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    Este é um exemplo de card padrão utilizado no sistema. 
-                    Ele contém um cabeçalho com título e descrição, seguido do conteúdo principal.
+                <div>
+                  <h4 className="text-lg font-semibold mb-4">Cards de Estatísticas (Padrão do Sistema)</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Padrão usado nas páginas do sistema. Ícone e label na mesma linha, número embaixo. Clique em um card para ver o código.
                   </p>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" size="sm">Cancelar</Button>
-                    <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue">
-                      Confirmar
-                    </Button>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                    <CodeExample
+                      id="card-stat-total"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <FileText className="h-4 w-4 text-gray-500" />
+      <p className="text-xs font-medium text-gray-500">Total</p>
+    </div>
+    <p className="text-2xl font-bold text-gray-900">21</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <p className="text-xs font-medium text-gray-500">Total</p>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900">21</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-stat-tipo-cobranca"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <Database className="h-4 w-4 text-purple-500" />
+      <p className="text-xs font-medium text-purple-500">Tipos de Cobrança</p>
+    </div>
+    <p className="text-2xl font-bold text-purple-600">2</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Database className="h-4 w-4 text-purple-500" />
+                            <p className="text-xs font-medium text-purple-500">Tipos de Cobrança</p>
+                          </div>
+                          <p className="text-2xl font-bold text-purple-600">2</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-stat-horas"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <Clock className="h-4 w-4 text-blue-500" />
+      <p className="text-xs font-medium text-blue-500">Total Horas</p>
+    </div>
+    <p className="text-2xl font-bold text-blue-600">405h20min</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="h-4 w-4 text-blue-500" />
+                            <p className="text-xs font-medium text-blue-500">Total Horas</p>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600">405h20min</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-stat-valor"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <TrendingUp className="h-4 w-4 text-green-500" />
+      <p className="text-xs font-medium text-green-500">Valor Total</p>
+    </div>
+    <p className="text-2xl font-bold text-green-600">R$ 26.554,92</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="h-4 w-4 text-green-500" />
+                            <p className="text-xs font-medium text-green-500">Valor Total</p>
+                          </div>
+                          <p className="text-2xl font-bold text-green-600">R$ 26.554,92</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Exemplos de Cards com Diferentes Cores */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Variações de Cards de Estatísticas</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-sonda-blue">
-                        Azul Sonda
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-bold text-sonda-blue">1,234</div>
-                    </CardContent>
-                  </Card>
+                {/* Variações de Cores */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-4">Variações de Cores para Cards de Estatísticas</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Cores disponíveis para diferentes tipos de estatísticas. Clique em um card para ver o código.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+                    <CodeExample
+                      id="card-stat-gray"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <FileText className="h-4 w-4 text-gray-500" />
+      <p className="text-xs font-medium text-gray-500">Cinza (Neutro)</p>
+    </div>
+    <p className="text-2xl font-bold text-gray-600">1,234</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <p className="text-xs font-medium text-gray-500">Cinza (Neutro)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-600">1,234</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-green-600">
-                        Verde (Sucesso)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-bold text-green-600">856</div>
-                    </CardContent>
-                  </Card>
+                    <CodeExample
+                      id="card-stat-blue"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <TrendingUp className="h-4 w-4 text-blue-500" />
+      <p className="text-xs font-medium text-blue-500">Azul</p>
+    </div>
+    <p className="text-2xl font-bold text-blue-600">856</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="h-4 w-4 text-blue-500" />
+                            <p className="text-xs font-medium text-blue-500">Azul</p>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600">856</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-orange-600">
-                        Laranja (Aviso)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-bold text-orange-600">378</div>
-                    </CardContent>
-                  </Card>
+                    <CodeExample
+                      id="card-stat-green"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <CheckCircle className="h-4 w-4 text-green-500" />
+      <p className="text-xs font-medium text-green-500">Verde (Sucesso)</p>
+    </div>
+    <p className="text-2xl font-bold text-green-600">378</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <p className="text-xs font-medium text-green-500">Verde (Sucesso)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-green-600">378</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-red-600">
-                        Vermelho (Erro)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-bold text-red-600">42</div>
-                    </CardContent>
-                  </Card>
+                    <CodeExample
+                      id="card-stat-orange"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <AlertCircle className="h-4 w-4 text-orange-500" />
+      <p className="text-xs font-medium text-orange-500">Laranja (Aviso)</p>
+    </div>
+    <p className="text-2xl font-bold text-orange-600">42</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="h-4 w-4 text-orange-500" />
+                            <p className="text-xs font-medium text-orange-500">Laranja (Aviso)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-orange-600">42</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-stat-red"
+                      code={`<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center gap-2 mb-2">
+      <XCircle className="h-4 w-4 text-red-500" />
+      <p className="text-xs font-medium text-red-500">Vermelho (Erro)</p>
+    </div>
+    <p className="text-2xl font-bold text-red-600">15</p>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <p className="text-xs font-medium text-red-500">Vermelho (Erro)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-red-600">15</p>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+                  </div>
+                </div>
+
+                {/* Card Padrão com Conteúdo */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-4">Card Padrão com Conteúdo</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Card padrão para conteúdo estruturado. Clique no card para ver o código.
+                  </p>
+                  
+                  <CodeExample
+                    id="card-padrao-conteudo"
+                    code={`<Card>
+  <CardHeader>
+    <CardTitle className="text-sonda-blue">Card Padrão</CardTitle>
+    <CardDescription>
+      Exemplo de card com conteúdo estruturado
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p className="text-gray-600 mb-4">
+      Este é um exemplo de card padrão utilizado no sistema. 
+      Ele contém um cabeçalho com título e descrição, seguido do conteúdo principal.
+    </p>
+    <div className="flex justify-end space-x-2">
+      <Button variant="outline" size="sm">Cancelar</Button>
+      <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue">
+        Confirmar
+      </Button>
+    </div>
+  </CardContent>
+</Card>`}
+                  >
+                    <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <CardTitle className="text-sonda-blue">Card Padrão</CardTitle>
+                        <CardDescription>
+                          Exemplo de card com conteúdo estruturado
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-600 mb-4">
+                          Este é um exemplo de card padrão utilizado no sistema. 
+                          Ele contém um cabeçalho com título e descrição, seguido do conteúdo principal.
+                        </p>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" size="sm">Cancelar</Button>
+                          <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue">
+                            Confirmar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CodeExample>
+                </div>
+
+                {/* Cards de Dashboard */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-4">Cards de Dashboard</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Cards usados em dashboards com título, valor principal, variação percentual e ícone. Clique em um card para ver o código.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <CodeExample
+                      id="card-dashboard-requerimentos"
+                      code={`<Card>
+  <CardContent className="p-6">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <p className="text-sm text-gray-600 mb-1">Requerimentos</p>
+        <p className="text-2xl font-bold text-gray-900">0</p>
+        <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+          <FileText className="h-5 w-5 text-blue-600" />
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-600 mb-1">Requerimentos</p>
+                              <p className="text-2xl font-bold text-gray-900">0</p>
+                              <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                <FileText className="h-5 w-5 text-blue-600" />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-dashboard-horas"
+                      code={`<Card>
+  <CardContent className="p-6">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <p className="text-sm text-gray-600 mb-1">Total Horas</p>
+        <p className="text-2xl font-bold text-gray-900">0:00</p>
+        <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+          <Clock className="h-5 w-5 text-purple-600" />
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-600 mb-1">Total Horas</p>
+                              <p className="text-2xl font-bold text-gray-900">0:00</p>
+                              <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                                <Clock className="h-5 w-5 text-purple-600" />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-dashboard-faturamento"
+                      code={`<Card>
+  <CardContent className="p-6">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <p className="text-sm text-gray-600 mb-1">Faturamento</p>
+        <p className="text-2xl font-bold text-gray-900">R$ 0,00</p>
+        <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+          <TrendingUp className="h-5 w-5 text-green-600" />
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-600 mb-1">Faturamento</p>
+                              <p className="text-2xl font-bold text-gray-900">R$ 0,00</p>
+                              <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                                <TrendingUp className="h-5 w-5 text-green-600" />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+
+                    <CodeExample
+                      id="card-dashboard-tickets"
+                      code={`<Card>
+  <CardContent className="p-6">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <p className="text-sm text-gray-600 mb-1">Tickets</p>
+        <p className="text-2xl font-bold text-gray-900">0</p>
+        <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+          <AlertCircle className="h-5 w-5 text-orange-600" />
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>`}
+                    >
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-600 mb-1">Tickets</p>
+                              <p className="text-2xl font-bold text-gray-900">0</p>
+                              <p className="text-xs text-gray-500 mt-1">+0,0%</p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                                <AlertCircle className="h-5 w-5 text-orange-600" />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CodeExample>
+                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -1570,10 +1906,12 @@ export default function DesignSystem() {
                     Tabelas Padronizadas
                   </CardTitle>
                   <CardDescription>
-                    Estrutura padrão para exibição de dados tabulares conforme usado no sistema
+                    Estrutura padrão para exibição de dados tabulares conforme usado no sistema. 
+                    Para ver o código completo dos exemplos abaixo, consulte o arquivo de steering <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">design-system.md</code>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  
                   {/* Exemplo de Tabela Completa */}
                   <Card className="w-full">
                     <CardHeader>
@@ -1824,6 +2162,85 @@ export default function DesignSystem() {
                       </Table>
                     </CardContent>
                   </Card>
+                </CardContent>
+              </Card>
+
+              {/* Card de Navegação de Período */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-sonda-blue">
+                    <Database className="h-5 w-5 mr-2" />
+                    Card de Navegação de Período
+                  </CardTitle>
+                  <CardDescription>
+                    Card para navegação entre meses/períodos. Clique no card para ver o código.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CodeExample
+                    id="card-navegacao-periodo"
+                    code={`<Card>
+  <CardContent className="py-3">
+    <div className="flex items-center justify-between gap-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={navegarMesAnterior}
+        className="flex items-center gap-2"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Anterior
+      </Button>
+
+      <div className="text-center">
+        <div className="text-lg font-semibold text-gray-900 dark:text-white">
+          Janeiro 2026
+        </div>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={navegarMesProximo}
+        className="flex items-center gap-2"
+      >
+        Próximo
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  </CardContent>
+</Card>`}
+                  >
+                    <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                      <CardContent className="py-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Anterior
+                          </Button>
+
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Janeiro 2026
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            Próximo
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CodeExample>
                 </CardContent>
               </Card>
             </TabsContent>
