@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import {
   Dialog,
   DialogContent,
@@ -57,10 +58,10 @@ function VisualizarPesquisas() {
   const [filtrosBusca, setFiltrosBusca] = useState({
     busca: '',
     origem: 'todos',
-    resposta: 'todas',
-    ano: 'todos',
-    mes: 'todos'
+    resposta: 'todas'
   });
+  const [filtroMesPeriodo, setFiltroMesPeriodo] = useState<number | null>(null);
+  const [filtroAnoPeriodo, setFiltroAnoPeriodo] = useState<number | null>(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   
   // Filtros aplicados
@@ -68,12 +69,12 @@ function VisualizarPesquisas() {
     // Incluir busca apenas se não estiver vazia
     ...(filtrosBusca.busca.trim() && { busca: filtrosBusca.busca }),
     // Incluir origem apenas se não for 'todos'
-    ...(filtrosBusca.origem !== 'todos' && { origem: filtrosBusca.origem }),
+    ...(filtrosBusca.origem !== 'todos' && { origem: filtrosBusca.origem as 'sql_server' | 'manual' }),
     // Incluir resposta apenas se não for 'todas'
     ...(filtrosBusca.resposta !== 'todas' && { resposta: filtrosBusca.resposta }),
-    // Converter ano e mês para números se não for 'todos'
-    ...(filtrosBusca.ano !== 'todos' && { ano: parseInt(filtrosBusca.ano) }),
-    ...(filtrosBusca.mes !== 'todos' && { mes: parseInt(filtrosBusca.mes) })
+    // Incluir ano e mês se estiverem definidos
+    ...(filtroAnoPeriodo !== null && { ano: filtroAnoPeriodo }),
+    ...(filtroMesPeriodo !== null && { mes: filtroMesPeriodo })
   };
   
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -288,10 +289,10 @@ function VisualizarPesquisas() {
     setFiltrosBusca({
       busca: '',
       origem: 'todos',
-      resposta: 'todas',
-      ano: 'todos',
-      mes: 'todos'
+      resposta: 'todas'
     });
+    setFiltroMesPeriodo(null);
+    setFiltroAnoPeriodo(null);
     setPaginaAtual(1);
     clearFeatureCache('pesquisas');
   };
@@ -301,8 +302,8 @@ function VisualizarPesquisas() {
     return filtrosBusca.busca !== '' || 
            filtrosBusca.origem !== 'todos' || 
            filtrosBusca.resposta !== 'todas' || 
-           filtrosBusca.ano !== 'todos' || 
-           filtrosBusca.mes !== 'todos';
+           filtroMesPeriodo !== null || 
+           filtroAnoPeriodo !== null;
   };
 
   // Código de agrupamento por mês removido
@@ -453,7 +454,7 @@ function VisualizarPesquisas() {
             {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
             {mostrarFiltros && (
               <div className="space-y-4 pt-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Campo de busca com ícone */}
                   <div>
                     <div className="text-sm font-medium mb-2">Buscar</div>
@@ -510,51 +511,28 @@ function VisualizarPesquisas() {
                     </Select>
                   </div>
 
-                  {/* Filtro Ano */}
+                  {/* Filtro Data da Resposta */}
                   <div>
-                    <div className="text-sm font-medium mb-2">Ano</div>
-                    <Select
-                      value={filtrosBusca.ano}
-                      onValueChange={(value) => handleAtualizarFiltro('ano', value)}
-                      defaultValue="todos"
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os anos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos os Anos</SelectItem>
-                        {Array.from({ length: 10 }, (_, i) => {
-                          const ano = new Date().getFullYear() - i;
-                          return (
-                            <SelectItem key={ano} value={ano.toString()}>
-                              {ano}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Filtro Mês */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Mês</div>
-                    <Select
-                      value={filtrosBusca.mes}
-                      onValueChange={(value) => handleAtualizarFiltro('mes', value)}
-                      defaultValue="todos"
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os meses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos os Meses</SelectItem>
-                        {MESES_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value.toString()}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                    <MonthYearPicker
+                      value={
+                        filtroMesPeriodo !== null && filtroAnoPeriodo !== null
+                          ? `${filtroMesPeriodo.toString().padStart(2, '0')}/${filtroAnoPeriodo}`
+                          : ''
+                      }
+                      onChange={(value) => {
+                        if (value) {
+                          const [mes, ano] = value.split('/');
+                          setFiltroMesPeriodo(parseInt(mes));
+                          setFiltroAnoPeriodo(parseInt(ano));
+                        } else {
+                          setFiltroMesPeriodo(null);
+                          setFiltroAnoPeriodo(null);
+                        }
+                      }}
+                      placeholder="Todos os períodos"
+                      className="focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
                   </div>
                 </div>
               </div>
@@ -899,7 +877,7 @@ function VisualizarPesquisas() {
                             .map(item => (
                               <SelectItem 
                                 key={item.id} 
-                                value={item.isFixed ? 'SONDA INTERNO' : item.nome_completo}
+                                value={'isFixed' in item && item.isFixed ? 'SONDA INTERNO' : item.nome_completo}
                               >
                                 {item.nome_abreviado}
                               </SelectItem>
