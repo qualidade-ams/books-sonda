@@ -491,15 +491,69 @@ const ControleDisparosPersonalizados = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header com botões de ação */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Disparos Personalizados
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               Acompanhe e gerencie o envio de books mensais personalizados
             </p>
+          </div>
+
+          <div className="flex gap-2">
+            <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+              <Button
+                onClick={handleDispararSelecionados}
+                disabled={isDisparandoSelecionados || isUploadingAnexos || contadoresInteligentes.paraDisparar === 0}
+                size="sm"
+                title={
+                  isUploadingAnexos
+                    ? 'Aguarde o upload dos anexos'
+                    : contadoresInteligentes.paraDisparar === 0
+                      ? 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios'
+                      : `Disparar books personalizados de ${contadoresInteligentes.paraDisparar} empresa(s) selecionada(s)`
+                }
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
+              </Button>
+            </ProtectedAction>
+
+            <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+              <Button
+                variant="outline"
+                onClick={handleReenviarSelecionados}
+                disabled={isUploadingAnexos || contadoresInteligentes.paraReenviar === 0}
+                size="sm"
+                title={
+                  isUploadingAnexos
+                    ? 'Aguarde o upload dos anexos'
+                    : contadoresInteligentes.paraReenviar === 0
+                      ? 'Nenhuma empresa selecionada precisa ser reenviada'
+                      : 'Reenviar empresas já processadas (força novo processamento)'
+                }
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reenviar Selecionados ({contadoresInteligentes.paraReenviar})
+              </Button>
+            </ProtectedAction>
+
+            {stats.falhas > 0 && (
+              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                <Button
+                  variant="outline"
+                  onClick={handleReenvioFalhas}
+                  disabled={isReenviando || isUploadingAnexos}
+                  size="sm"
+                  title={isUploadingAnexos ? 'Aguarde o upload dos anexos' : `Reenviar ${stats.falhas} empresa(s) com falha`}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                </Button>
+              </ProtectedAction>
+            )}
           </div>
         </div>
 
@@ -561,7 +615,7 @@ const ControleDisparosPersonalizados = () => {
               </Button>
 
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {nomesMeses[mesAtual - 1]} {anoAtual}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -588,71 +642,6 @@ const ControleDisparosPersonalizados = () => {
                   className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${stats.percentualConcluido}%` }}
                 ></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ações Principais */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ações de Disparo Personalizado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-4 items-center">
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    onClick={handleDispararSelecionados}
-                    disabled={isDisparandoSelecionados || isUploadingAnexos || contadoresInteligentes.paraDisparar === 0}
-                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
-                    title={
-                      isUploadingAnexos
-                        ? 'Aguarde o upload dos anexos'
-                        : contadoresInteligentes.paraDisparar === 0
-                          ? 'Nenhuma empresa selecionada precisa ser disparada ou faltam anexos obrigatórios'
-                          : undefined
-                    }
-                  >
-                    <Send className="h-4 w-4" />
-                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
-                  </Button>
-                </ProtectedAction>
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    variant="outline"
-                    onClick={handleReenviarSelecionados}
-                    disabled={isUploadingAnexos || contadoresInteligentes.paraReenviar === 0}
-                    className="flex items-center gap-2"
-                    title={
-                      isUploadingAnexos
-                        ? 'Aguarde o upload dos anexos'
-                        : contadoresInteligentes.paraReenviar === 0
-                          ? 'Nenhuma empresa selecionada precisa ser reenviada'
-                          : 'Reenviar empresas já processadas (força novo processamento)'
-                    }
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {`Reenviar Selecionados (${contadoresInteligentes.paraReenviar})`}
-                  </Button>
-                </ProtectedAction>
-
-                <div className="ml-auto flex gap-2 items-center">
-                  <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                    <Button
-                      variant="outline"
-                      onClick={handleReenvioFalhas}
-                      disabled={isReenviando || isUploadingAnexos || stats.falhas === 0}
-                      className="flex items-center gap-2"
-                      title={isUploadingAnexos ? 'Aguarde o upload dos anexos' : undefined}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
-                    </Button>
-                  </ProtectedAction>
-
-
-                </div>
               </div>
             </div>
           </CardContent>

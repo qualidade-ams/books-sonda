@@ -421,7 +421,7 @@ const ControleDisparos = () => {
                 </Button>
 
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {nomesMeses[mesAtual - 1]} {anoAtual}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -459,7 +459,7 @@ const ControleDisparos = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header com botões de ação */}
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -468,6 +468,48 @@ const ControleDisparos = () => {
             <p className="text-gray-600 dark:text-gray-400">
               Acompanhe e gerencie o envio mensal de books
             </p>
+          </div>
+
+          <div className="flex gap-2">
+            <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+              <Button
+                onClick={handleDispararSelecionados}
+                disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
+                size="sm"
+                title={contadoresInteligentes.paraDisparar === 0 ? 'Nenhuma empresa selecionada precisa ser disparada' : `Disparar books de ${contadoresInteligentes.paraDisparar} empresa(s) selecionada(s)`}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
+              </Button>
+            </ProtectedAction>
+
+            <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+              <Button
+                variant="outline"
+                onClick={handleReenviarSelecionados}
+                disabled={contadoresInteligentes.paraReenviar === 0}
+                size="sm"
+                title={contadoresInteligentes.paraReenviar === 0 ? 'Nenhuma empresa selecionada precisa ser reenviada' : 'Reenviar empresas já processadas (força novo processamento)'}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reenviar Selecionados ({contadoresInteligentes.paraReenviar})
+              </Button>
+            </ProtectedAction>
+
+            {stats.falhas > 0 && (
+              <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
+                <Button
+                  variant="outline"
+                  onClick={handleReenvioFalhas}
+                  disabled={isReenviando}
+                  size="sm"
+                  title={`Reenviar ${stats.falhas} empresa(s) com falha`}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                </Button>
+              </ProtectedAction>
+            )}
           </div>
         </div>
 
@@ -529,7 +571,7 @@ const ControleDisparos = () => {
               </Button>
 
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {nomesMeses[mesAtual - 1]} {anoAtual}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -558,58 +600,6 @@ const ControleDisparos = () => {
                 ></div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Ações Principais */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ações de Disparo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-4 items-center">
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    onClick={handleDispararSelecionados}
-                    disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
-                    className="flex items-center gap-2"
-                    title={contadoresInteligentes.paraDisparar === 0 ? 'Nenhuma empresa selecionada precisa ser disparada' : undefined}
-                  >
-                    <Send className="h-4 w-4" />
-                    {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
-                  </Button>
-                </ProtectedAction>
-                <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                  <Button
-                    variant="outline"
-                    onClick={handleReenviarSelecionados}
-                    disabled={contadoresInteligentes.paraReenviar === 0}
-                    className="flex items-center gap-2"
-                    title={contadoresInteligentes.paraReenviar === 0 ? 'Nenhuma empresa selecionada precisa ser reenviada' : 'Reenviar empresas já processadas (força novo processamento)'}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {`Reenviar Selecionados (${contadoresInteligentes.paraReenviar})`}
-                  </Button>
-                </ProtectedAction>
-
-                <div className="ml-auto flex gap-2 items-center">
-                  <ProtectedAction screenKey="controle_disparos" requiredLevel="edit">
-                    <Button
-                      variant="outline"
-                      onClick={handleReenvioFalhas}
-                      disabled={isReenviando || stats.falhas === 0}
-                      className="flex items-center gap-2"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
-                    </Button>
-                  </ProtectedAction>
-                </div>
-              </div>
-            </div>
-
-
           </CardContent>
         </Card>
 
