@@ -30,7 +30,7 @@ export function RequerimentoMultiploForm({
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
   const [clienteId, setClienteId] = useState('');
-  const [modulo, setModulo] = useState('Comply');
+  const [modulo, setModulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [dataEnvio, setDataEnvio] = useState('');
   const [dataAprovacao, setDataAprovacao] = useState('');
@@ -43,7 +43,7 @@ export function RequerimentoMultiploForm({
       tipo_cobranca: 'Banco de Horas',
       horas_funcional: 0,
       horas_tecnico: 0,
-      linguagem: 'Técnico'
+      linguagem: ''
     }
   ]);
 
@@ -73,7 +73,7 @@ export function RequerimentoMultiploForm({
       tipo_cobranca: 'Banco de Horas',
       horas_funcional: 0,
       horas_tecnico: 0,
-      linguagem: 'Técnico'
+      linguagem: ''
     };
     setBlocos([...blocos, novoBloco]);
   };

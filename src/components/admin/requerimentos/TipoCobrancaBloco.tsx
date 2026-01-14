@@ -419,6 +419,10 @@ export function TipoCobrancaBloco({
   const mostrarCamposValor = bloco.tipo_cobranca && 
     ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(bloco.tipo_cobranca);
 
+  // Verificar se deve mostrar campo de atendimento presencial
+  // Não exibir para "Sobreaviso"
+  const mostrarAtendimentoPresencial = mostrarCamposValor && bloco.tipo_cobranca !== 'Sobreaviso';
+
   // Verificar se deve mostrar campo de tipo de hora extra
   const mostrarTipoHoraExtra = bloco.tipo_cobranca === 'Hora Extra';
 
@@ -558,8 +562,8 @@ export function TipoCobrancaBloco({
                 ))}
               </SelectContent>
             </Select>
-            {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores) */}
-          {mostrarCamposValor && (
+            {/* Atendimento Presencial (condicional - apenas para tipos que requerem valores, exceto Sobreaviso) */}
+          {mostrarAtendimentoPresencial && (
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
