@@ -19,7 +19,8 @@ import {
   Square,
   TrendingUp,
   Database,
-  Eye
+  Eye,
+  Search
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,6 +136,10 @@ export default function EnviarElogios() {
   const [elogiosSelecionados, setElogiosSelecionados] = useState<string[]>([]);
   const [elogiosEnviadosSelecionados, setElogiosEnviadosSelecionados] = useState<string[]>([]);
   const [templateSelecionado, setTemplateSelecionado] = useState<string>('');
+  const [filtroBusca, setFiltroBusca] = useState('');
+  const [filtroResposta, setFiltroResposta] = useState<string>('todas');
+  const [filtroMesPeriodo, setFiltroMesPeriodo] = useState<number | null>(mesAtual);
+  const [filtroAnoPeriodo, setFiltroAnoPeriodo] = useState<number | null>(anoAtual);
 
   // Filtros - Buscar apenas elogios com status "compartilhado"
   const [filtros, setFiltros] = useState<FiltrosElogio>({
@@ -139,7 +152,7 @@ export default function EnviarElogios() {
   const filtrosComAba = useMemo(() => {
     return {
       ...filtros,
-      status: abaAtiva === 'enviar-colaboradores' ? ['compartilhado'] : ['enviado']
+      status: abaAtiva === 'enviar-colaboradores' ? ['compartilhado' as const] : ['enviado' as const]
     };
   }, [filtros, abaAtiva]);
 
@@ -147,6 +160,45 @@ export default function EnviarElogios() {
   const { data: elogios = [], isLoading, error, refetch } = useElogios(filtrosComAba);
   const atualizarElogio = useAtualizarElogio({ silent: true }); // Silenciar toasts individuais
   const { elogiosTemplateOptions } = useElogiosTemplates();
+  
+  // Filtrar elogios com base na busca
+  const elogiosFiltrados = useMemo(() => {
+    let resultado = [...elogios];
+    
+    // Filtro de busca
+    if (filtroBusca) {
+      const buscaLower = filtroBusca.toLowerCase();
+      resultado = resultado.filter(elogio => 
+        elogio.pesquisa?.empresa?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.cliente?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.prestador?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.nro_caso?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.comentario_pesquisa?.toLowerCase().includes(buscaLower)
+      );
+    }
+    
+    // Filtro de resposta
+    if (filtroResposta && filtroResposta !== 'todas') {
+      resultado = resultado.filter(elogio => 
+        elogio.pesquisa?.resposta === filtroResposta
+      );
+    }
+    
+    // Filtro de período (data da resposta)
+    if (filtroMesPeriodo !== null && filtroAnoPeriodo !== null) {
+      resultado = resultado.filter(elogio => {
+        if (!elogio.data_resposta) return false;
+        
+        const dataResposta = new Date(elogio.data_resposta + 'T00:00:00');
+        const mesResposta = dataResposta.getMonth() + 1;
+        const anoResposta = dataResposta.getFullYear();
+        
+        return mesResposta === filtroMesPeriodo && anoResposta === filtroAnoPeriodo;
+      });
+    }
+    
+    return resultado;
+  }, [elogios, filtroBusca, filtroResposta, filtroMesPeriodo, filtroAnoPeriodo]);
   
   // Estatísticas separadas para cada status (para contadores das abas)
   const { data: estatisticasColaboradores } = useEstatisticasElogios({
@@ -184,6 +236,36 @@ export default function EnviarElogios() {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    setFiltroBusca('');
+    setFiltroResposta('todas');
+    setFiltroMesPeriodo(mesVigente);
+    setFiltroAnoPeriodo(anoVigente);
+    
+    // Sincronizar navegação de meses
+    setMesSelecionado(mesVigente);
+    setAnoSelecionado(anoVigente);
+    setFiltros(prev => ({ ...prev, mes: mesVigente, ano: anoVigente }));
+  };
+
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    const periodoAlterado = filtroMesPeriodo !== mesVigente || filtroAnoPeriodo !== anoVigente;
+    
+    return filtroBusca !== '' || 
+           (filtroResposta && filtroResposta !== 'todas') ||
+           periodoAlterado;
+  };
+
   // Funções de navegação de mês
   const navegarMesAnterior = () => {
     if (mesSelecionado === 1) {
@@ -191,10 +273,16 @@ export default function EnviarElogios() {
       setMesSelecionado(12);
       setAnoSelecionado(novoAno);
       setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno, status: ['compartilhado'] }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(12);
+      setFiltroAnoPeriodo(novoAno);
     } else {
       const novoMes = mesSelecionado - 1;
       setMesSelecionado(novoMes);
       setFiltros(prev => ({ ...prev, mes: novoMes, status: ['compartilhado'] }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(novoMes);
+      setFiltroAnoPeriodo(anoSelecionado);
     }
   };
 
@@ -204,10 +292,16 @@ export default function EnviarElogios() {
       setMesSelecionado(1);
       setAnoSelecionado(novoAno);
       setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno, status: ['compartilhado'] }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(1);
+      setFiltroAnoPeriodo(novoAno);
     } else {
       const novoMes = mesSelecionado + 1;
       setMesSelecionado(novoMes);
       setFiltros(prev => ({ ...prev, mes: novoMes, status: ['compartilhado'] }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(novoMes);
+      setFiltroAnoPeriodo(anoSelecionado);
     }
   };
 
@@ -806,6 +900,51 @@ export default function EnviarElogios() {
           </div>
         </div>
 
+        {/* Cards de Estatísticas */}
+        {estatisticas && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="h-4 w-4 text-green-500" />
+                  <p className="text-xs font-medium text-green-500">Total de Elogios</p>
+                </div>
+                <p className="text-3xl font-bold text-green-600">{estatisticas.total}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <p className="text-xs font-medium text-gray-500">Registrados</p>
+                </div>
+                <p className="text-3xl font-bold text-gray-600">{estatisticas.registrados}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <p className="text-xs font-medium text-blue-500">Compartilhados</p>
+                </div>
+                <p className="text-3xl font-bold text-blue-600">{estatisticas.compartilhados}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-orange-500" />
+                  <p className="text-xs font-medium text-orange-500">Arquivados</p>
+                </div>
+                <p className="text-3xl font-bold text-orange-600">{estatisticas.arquivados}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Navegação de Período */}
         <Card>
           <CardContent className="py-3">
@@ -838,77 +977,6 @@ export default function EnviarElogios() {
             </div>
           </CardContent>
         </Card>
-
-
-
-        {/* Estatísticas */}
-        {estatisticas && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                      Total de Elogios
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-600">
-                      {estatisticas.total}
-                    </p>
-                  </div>
-                  <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                      Registrados
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-600">
-                      {estatisticas.registrados}
-                    </p>
-                  </div>
-                  <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-gray-600 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                      Compartilhados
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                      {estatisticas.compartilhados}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                      Período
-                    </p>
-                    <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                      {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
-                    </p>
-                  </div>
-                  <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Sistema de Abas */}
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full space-y-4 max-w-full overflow-hidden">
@@ -947,62 +1015,149 @@ export default function EnviarElogios() {
           </div>
 
           <TabsContent value="enviar-colaboradores" className="space-y-4">
-            {/* Tabela de Elogios */}
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-8">
-              <div className="flex items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                <span>Carregando elogios...</span>
-              </div>
-            </CardContent>
-          </Card>
-        ) : error ? (
-          <Card>
-            <CardContent className="p-8">
-              <div className="text-center text-red-600">
-                <p>Erro ao carregar elogios</p>
-                <Button onClick={() => refetch()} className="mt-4">
-                  Tentar novamente
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : elogios.length === 0 ? (
-          <Card>
-            <CardContent className="p-8">
-              <div className="text-center text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">
-                  Nenhum elogio encontrado
-                </h3>
-                <p>
-                  Não há elogios no período de{' '}
-                  <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg lg:text-xl">
-                  Elogios Disponíveis
-                </CardTitle>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  {elogios.length} elogio{elogios.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
+            {/* Card de Filtros - sempre visível */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Elogios Disponíveis ({elogiosFiltrados.length})
+                  </CardTitle>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    
+                    {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                    {hasActiveFilters() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limparFiltros}
+                        className="whitespace-nowrap hover:border-red-300"
+                      >
+                        <X className="h-4 w-4 mr-2 text-red-600" />
+                        Limpar Filtro
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+                {filtrosExpandidos && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Campo de busca com ícone */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por empresa, cliente..."
+                            value={filtroBusca}
+                            onChange={(e) => setFiltroBusca(e.target.value)}
+                            className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtro Resposta */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Resposta</div>
+                        <Select
+                          value={filtroResposta}
+                          onValueChange={(value) => setFiltroResposta(value)}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todas as Respostas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todas">Todas as Respostas</SelectItem>
+                            <SelectItem value="Muito Insatisfeito">Muito Insatisfeito</SelectItem>
+                            <SelectItem value="Insatisfeito">Insatisfeito</SelectItem>
+                            <SelectItem value="Neutro">Neutro</SelectItem>
+                            <SelectItem value="Satisfeito">Satisfeito</SelectItem>
+                            <SelectItem value="Muito Satisfeito">Muito Satisfeito</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro Período (Data da Resposta) */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                        <MonthYearPicker
+                          value={
+                            filtroMesPeriodo !== null && filtroAnoPeriodo !== null
+                              ? `${filtroMesPeriodo.toString().padStart(2, '0')}/${filtroAnoPeriodo}`
+                              : ''
+                          }
+                          onChange={(value) => {
+                            if (value) {
+                              const [mes, ano] = value.split('/');
+                              const novoMes = parseInt(mes);
+                              const novoAno = parseInt(ano);
+                              
+                              setFiltroMesPeriodo(novoMes);
+                              setFiltroAnoPeriodo(novoAno);
+                              
+                              // Sincronizar com navegação de meses
+                              setMesSelecionado(novoMes);
+                              setAnoSelecionado(novoAno);
+                              setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                            } else {
+                              setFiltroMesPeriodo(null);
+                              setFiltroAnoPeriodo(null);
+                            }
+                          }}
+                          placeholder="Todos os períodos"
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardHeader>
+
+              <CardContent>
+                {/* Estados de loading, erro e vazio */}
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    <span>Carregando elogios...</span>
+                  </div>
+                ) : error ? (
+                  <div className="text-center text-red-600 py-12">
+                    <p>Erro ao carregar elogios</p>
+                    <Button onClick={() => refetch()} className="mt-4">
+                      Tentar novamente
+                    </Button>
+                  </div>
+                ) : elogiosFiltrados.length === 0 ? (
+                  <div className="text-center text-gray-500 py-12">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">
+                      Nenhum elogio encontrado
+                    </h3>
+                    <p>
+                      Não há elogios no período de{' '}
+                      <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
                         <Checkbox
-                          checked={elogios.length > 0 && elogios.every(e => elogiosSelecionados.includes(e.id))}
+                          checked={elogiosFiltrados.length > 0 && elogiosFiltrados.every(e => elogiosSelecionados.includes(e.id))}
                           onCheckedChange={handleSelecionarTodos}
                           aria-label="Selecionar todos"
                         />
@@ -1018,7 +1173,7 @@ export default function EnviarElogios() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {elogios.map((elogio) => {
+                    {elogiosFiltrados.map((elogio) => {
                       const { nome: nomeEmpresa, encontrada: empresaEncontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
                       
                       return (
@@ -1102,18 +1257,120 @@ export default function EnviarElogios() {
                   </TableBody>
                 </Table>
               </div>
-            </CardContent>
-          </Card>
-        )}
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="historico-enviados" className="space-y-4">
             {/* Tabela para Histórico de Enviados */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg lg:text-xl">
-                  Histórico de Enviados ({elogios.length})
-                </CardTitle>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Histórico de Enviados ({elogiosFiltrados.length})
+                  </CardTitle>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    
+                    {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                    {hasActiveFilters() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limparFiltros}
+                        className="whitespace-nowrap hover:border-red-300"
+                      >
+                        <X className="h-4 w-4 mr-2 text-red-600" />
+                        Limpar Filtro
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+                {filtrosExpandidos && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Campo de busca com ícone */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por empresa, cliente..."
+                            value={filtroBusca}
+                            onChange={(e) => setFiltroBusca(e.target.value)}
+                            className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtro Resposta */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Resposta</div>
+                        <Select
+                          value={filtroResposta}
+                          onValueChange={(value) => setFiltroResposta(value)}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todas as Respostas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todas">Todas as Respostas</SelectItem>
+                            <SelectItem value="Muito Insatisfeito">Muito Insatisfeito</SelectItem>
+                            <SelectItem value="Insatisfeito">Insatisfeito</SelectItem>
+                            <SelectItem value="Neutro">Neutro</SelectItem>
+                            <SelectItem value="Satisfeito">Satisfeito</SelectItem>
+                            <SelectItem value="Muito Satisfeito">Muito Satisfeito</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro Período (Data da Resposta) */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                        <MonthYearPicker
+                          value={
+                            filtroMesPeriodo !== null && filtroAnoPeriodo !== null
+                              ? `${filtroMesPeriodo.toString().padStart(2, '0')}/${filtroAnoPeriodo}`
+                              : ''
+                          }
+                          onChange={(value) => {
+                            if (value) {
+                              const [mes, ano] = value.split('/');
+                              const novoMes = parseInt(mes);
+                              const novoAno = parseInt(ano);
+                              
+                              setFiltroMesPeriodo(novoMes);
+                              setFiltroAnoPeriodo(novoAno);
+                              
+                              // Sincronizar com navegação de meses
+                              setMesSelecionado(novoMes);
+                              setAnoSelecionado(novoAno);
+                              setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                            } else {
+                              setFiltroMesPeriodo(null);
+                              setFiltroAnoPeriodo(null);
+                            }
+                          }}
+                          placeholder="Todos os períodos"
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -1121,7 +1378,7 @@ export default function EnviarElogios() {
                     <RefreshCw className="h-6 w-6 animate-spin mr-2" />
                     <span>Carregando elogios...</span>
                   </div>
-                ) : elogios.length === 0 ? (
+                ) : elogiosFiltrados.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     Nenhum elogio enviado por email encontrado
                   </div>
@@ -1132,7 +1389,7 @@ export default function EnviarElogios() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={elogios.length > 0 && elogios.every(e => elogiosEnviadosSelecionados.includes(e.id))}
+                              checked={elogiosFiltrados.length > 0 && elogiosFiltrados.every(e => elogiosEnviadosSelecionados.includes(e.id))}
                               onCheckedChange={handleSelecionarTodosEnviados}
                               aria-label="Selecionar todos"
                             />
@@ -1149,7 +1406,7 @@ export default function EnviarElogios() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {elogios.map((elogio) => {
+                        {elogiosFiltrados.map((elogio) => {
                           const { nome: nomeEmpresa, encontrada: empresaEncontrada } = obterDadosEmpresa(elogio.pesquisa?.empresa);
                           
                           return (

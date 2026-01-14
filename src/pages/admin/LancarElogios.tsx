@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send } from 'lucide-react';
+import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send, Search, X, Clock, TrendingUp, XCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,10 @@ function LancarElogios() {
     status: ['registrado' as const] // Mostrar apenas elogios registrados (não compartilhados)
   });
 
+  const [filtroResposta, setFiltroResposta] = useState<string>('todas');
+  const [filtroMesPeriodo, setFiltroMesPeriodo] = useState<number | null>(mesAtual);
+  const [filtroAnoPeriodo, setFiltroAnoPeriodo] = useState<number | null>(anoAtual);
+
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [elogioVisualizando, setElogioVisualizando] = useState<ElogioCompleto | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
@@ -123,10 +128,16 @@ function LancarElogios() {
       setMesSelecionado(12);
       setAnoSelecionado(novoAno);
       setFiltros(prev => ({ ...prev, mes: 12, ano: novoAno }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(12);
+      setFiltroAnoPeriodo(novoAno);
     } else {
       const novoMes = mesSelecionado - 1;
       setMesSelecionado(novoMes);
       setFiltros(prev => ({ ...prev, mes: novoMes }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(novoMes);
+      setFiltroAnoPeriodo(anoSelecionado);
     }
     setPaginaAtual(1);
   };
@@ -137,16 +148,61 @@ function LancarElogios() {
       setMesSelecionado(1);
       setAnoSelecionado(novoAno);
       setFiltros(prev => ({ ...prev, mes: 1, ano: novoAno }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(1);
+      setFiltroAnoPeriodo(novoAno);
     } else {
       const novoMes = mesSelecionado + 1;
       setMesSelecionado(novoMes);
       setFiltros(prev => ({ ...prev, mes: novoMes }));
+      // Sincronizar com filtro de período
+      setFiltroMesPeriodo(novoMes);
+      setFiltroAnoPeriodo(anoSelecionado);
     }
     setPaginaAtual(1);
   };
 
   // Queries
   const { data: elogios = [], isLoading, refetch } = useElogios(filtrosComAba);
+  
+  // Filtrar elogios com base nos filtros adicionais
+  const elogiosFiltrados = useMemo(() => {
+    let resultado = [...elogios];
+    
+    // Filtro de busca
+    if (filtros.busca) {
+      const buscaLower = filtros.busca.toLowerCase();
+      resultado = resultado.filter(elogio => 
+        elogio.pesquisa?.empresa?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.cliente?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.prestador?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.nro_caso?.toLowerCase().includes(buscaLower) ||
+        elogio.pesquisa?.comentario_pesquisa?.toLowerCase().includes(buscaLower)
+      );
+    }
+    
+    // Filtro de resposta
+    if (filtroResposta && filtroResposta !== 'todas') {
+      resultado = resultado.filter(elogio => 
+        elogio.pesquisa?.resposta === filtroResposta
+      );
+    }
+    
+    // Filtro de período (data da resposta)
+    if (filtroMesPeriodo !== null && filtroAnoPeriodo !== null) {
+      resultado = resultado.filter(elogio => {
+        if (!elogio.data_resposta) return false;
+        
+        const dataResposta = new Date(elogio.data_resposta + 'T00:00:00');
+        const mesResposta = dataResposta.getMonth() + 1;
+        const anoResposta = dataResposta.getFullYear();
+        
+        return mesResposta === filtroMesPeriodo && anoResposta === filtroAnoPeriodo;
+      });
+    }
+    
+    return resultado;
+  }, [elogios, filtros.busca, filtroResposta, filtroMesPeriodo, filtroAnoPeriodo]);
   
   // Estatísticas separadas para cada status (para contadores das abas)
   const { data: estatisticasNaoEnviados } = useEstatisticasElogios({
@@ -263,7 +319,7 @@ function LancarElogios() {
 
   const handleSelecionarTodos = (selecionado: boolean) => {
     if (selecionado) {
-      setSelecionados(elogios.map(e => e.id));
+      setSelecionados(elogiosFiltrados.map(e => e.id));
     } else {
       setSelecionados([]);
     }
@@ -282,22 +338,46 @@ function LancarElogios() {
     setPaginaAtual(1);
   };
 
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    const periodoAlterado = filtroMesPeriodo !== mesVigente || filtroAnoPeriodo !== anoVigente;
+    
+    return (filtros.busca && filtros.busca !== '') || 
+           (filtroResposta && filtroResposta !== 'todas') ||
+           periodoAlterado;
+  };
+
   const limparFiltros = () => {
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
     setFiltros({
       busca: '',
-      mes: mesAtual,
-      ano: anoAtual
+      mes: mesVigente,
+      ano: anoVigente
     });
+    setFiltroResposta('todas');
+    setFiltroMesPeriodo(mesVigente);
+    setFiltroAnoPeriodo(anoVigente);
+    
+    // Sincronizar navegação de meses
+    setMesSelecionado(mesVigente);
+    setAnoSelecionado(anoVigente);
   };
 
   // Paginação
-  const totalPaginas = Math.ceil(elogios.length / itensPorPagina);
+  const totalPaginas = Math.ceil(elogiosFiltrados.length / itensPorPagina);
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
   const indiceFinal = indiceInicial + itensPorPagina;
-  const elogiosPaginados = elogios.slice(indiceInicial, indiceFinal);
+  const elogiosPaginados = elogiosFiltrados.slice(indiceInicial, indiceFinal);
 
   const handleAlterarItensPorPagina = (valor: string) => {
-    const novoValor = valor === 'todos' ? elogios.length : parseInt(valor);
+    const novoValor = valor === 'todos' ? elogiosFiltrados.length : parseInt(valor);
     setItensPorPagina(novoValor);
     setPaginaAtual(1);
   };
@@ -381,6 +461,51 @@ function LancarElogios() {
           </div>
         </div>
 
+        {/* Cards de Estatísticas */}
+        {estatisticas && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="h-4 w-4 text-green-500" />
+                  <p className="text-xs font-medium text-green-500">Total de Elogios</p>
+                </div>
+                <p className="text-3xl font-bold text-green-600">{estatisticas.total}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <p className="text-xs font-medium text-gray-500">Registrados</p>
+                </div>
+                <p className="text-3xl font-bold text-gray-600">{estatisticas.registrados}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <p className="text-xs font-medium text-blue-500">Compartilhados</p>
+                </div>
+                <p className="text-3xl font-bold text-blue-600">{estatisticas.compartilhados}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <XCircle className="h-4 w-4 text-orange-500" />
+                  <p className="text-xs font-medium text-orange-500">Arquivados</p>
+                </div>
+                <p className="text-3xl font-bold text-orange-600">{estatisticas.arquivados}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Navegação de Período */}
         <Card>
           <CardContent className="py-3">
@@ -414,63 +539,6 @@ function LancarElogios() {
           </CardContent>
         </Card>
 
-
-
-        {/* Cards de Estatísticas */}
-        {estatisticas && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Total de Elogios
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-green-600">{estatisticas.total}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
-                  Registrados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-gray-600">
-                  {estatisticas.registrados}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
-                  Compartilhados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                  {estatisticas.compartilhados}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                  Arquivados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                  {estatisticas.arquivados}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Sistema de Abas */}
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full space-y-4 max-w-full overflow-hidden">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -497,35 +565,108 @@ function LancarElogios() {
             {/* Tabela para Elogios Não Enviados */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-lg lg:text-xl">
-                Elogios ({elogios.length})
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Elogios ({elogiosFiltrados.length})
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+                
+                {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                {hasActiveFilters() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={limparFiltros}
+                    className="whitespace-nowrap hover:border-red-300"
+                  >
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Filtros */}
+            {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
             {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
-                <div>
-                  <Input
-                    placeholder="Buscar por empresa, cliente..."
-                    value={filtros.busca || ''}
-                    onChange={(e) => handleFiltroChange('busca', e.target.value)}
-                  />
-                </div>
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Campo de busca com ícone */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Buscar</div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por empresa, cliente..."
+                        value={filtros.busca || ''}
+                        onChange={(e) => handleFiltroChange('busca', e.target.value)}
+                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
 
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={limparFiltros}>
-                    Limpar Filtros
-                  </Button>
+                  {/* Filtro Resposta */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Resposta</div>
+                    <Select
+                      value={filtroResposta}
+                      onValueChange={(value) => setFiltroResposta(value)}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todas as Respostas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas as Respostas</SelectItem>
+                        <SelectItem value="Muito Insatisfeito">Muito Insatisfeito</SelectItem>
+                        <SelectItem value="Insatisfeito">Insatisfeito</SelectItem>
+                        <SelectItem value="Neutro">Neutro</SelectItem>
+                        <SelectItem value="Satisfeito">Satisfeito</SelectItem>
+                        <SelectItem value="Muito Satisfeito">Muito Satisfeito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Período (Data da Resposta) */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                    <MonthYearPicker
+                      value={
+                        filtroMesPeriodo !== null && filtroAnoPeriodo !== null
+                          ? `${filtroMesPeriodo.toString().padStart(2, '0')}/${filtroAnoPeriodo}`
+                          : ''
+                      }
+                      onChange={(value) => {
+                        if (value) {
+                          const [mes, ano] = value.split('/');
+                          const novoMes = parseInt(mes);
+                          const novoAno = parseInt(ano);
+                          
+                          setFiltroMesPeriodo(novoMes);
+                          setFiltroAnoPeriodo(novoAno);
+                          
+                          // Sincronizar com navegação de meses
+                          setMesSelecionado(novoMes);
+                          setAnoSelecionado(novoAno);
+                          setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                        } else {
+                          setFiltroMesPeriodo(null);
+                          setFiltroAnoPeriodo(null);
+                        }
+                      }}
+                      placeholder="Todos os períodos"
+                      className="focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -729,7 +870,7 @@ function LancarElogios() {
 
               {/* Contador de registros */}
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {indiceInicial + 1}-{Math.min(indiceFinal, elogios.length)} de {elogios.length} elogios
+                {indiceInicial + 1}-{Math.min(indiceFinal, elogiosFiltrados.length)} de {elogiosFiltrados.length} elogios
               </div>
             </div>
           </CardContent>
@@ -740,35 +881,108 @@ function LancarElogios() {
             {/* Tabela para Histórico de Enviados */}
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg lg:text-xl">
-                    Histórico de Enviados ({elogios.length})
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Histórico de Enviados ({elogiosFiltrados.length})
                   </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros
-                  </Button>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    
+                    {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                    {hasActiveFilters() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limparFiltros}
+                        className="whitespace-nowrap hover:border-red-300"
+                      >
+                        <X className="h-4 w-4 mr-2 text-red-600" />
+                        Limpar Filtro
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Filtros */}
+                {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
                 {mostrarFiltros && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
-                    <div>
-                      <Input
-                        placeholder="Buscar por empresa, cliente..."
-                        value={filtros.busca || ''}
-                        onChange={(e) => handleFiltroChange('busca', e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Campo de busca com ícone */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por empresa, cliente..."
+                            value={filtros.busca || ''}
+                            onChange={(e) => handleFiltroChange('busca', e.target.value)}
+                            className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                          />
+                        </div>
+                      </div>
 
-                    <div className="flex justify-end">
-                      <Button variant="outline" size="sm" onClick={limparFiltros}>
-                        Limpar Filtros
-                      </Button>
+                      {/* Filtro Resposta */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Resposta</div>
+                        <Select
+                          value={filtroResposta}
+                          onValueChange={(value) => setFiltroResposta(value)}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todas as Respostas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todas">Todas as Respostas</SelectItem>
+                            <SelectItem value="Muito Insatisfeito">Muito Insatisfeito</SelectItem>
+                            <SelectItem value="Insatisfeito">Insatisfeito</SelectItem>
+                            <SelectItem value="Neutro">Neutro</SelectItem>
+                            <SelectItem value="Satisfeito">Satisfeito</SelectItem>
+                            <SelectItem value="Muito Satisfeito">Muito Satisfeito</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro Período (Data da Resposta) */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                        <MonthYearPicker
+                          value={
+                            filtroMesPeriodo !== null && filtroAnoPeriodo !== null
+                              ? `${filtroMesPeriodo.toString().padStart(2, '0')}/${filtroAnoPeriodo}`
+                              : ''
+                          }
+                          onChange={(value) => {
+                            if (value) {
+                              const [mes, ano] = value.split('/');
+                              const novoMes = parseInt(mes);
+                              const novoAno = parseInt(ano);
+                              
+                              setFiltroMesPeriodo(novoMes);
+                              setFiltroAnoPeriodo(novoAno);
+                              
+                              // Sincronizar com navegação de meses
+                              setMesSelecionado(novoMes);
+                              setAnoSelecionado(novoAno);
+                              setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                            } else {
+                              setFiltroMesPeriodo(null);
+                              setFiltroAnoPeriodo(null);
+                            }
+                          }}
+                          placeholder="Todos os períodos"
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -939,7 +1153,7 @@ function LancarElogios() {
 
                   {/* Contador de registros */}
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {indiceInicial + 1}-{Math.min(indiceFinal, elogios.length)} de {elogios.length} elogios
+                    {indiceInicial + 1}-{Math.min(indiceFinal, elogiosFiltrados.length)} de {elogiosFiltrados.length} elogios
                   </div>
                 </div>
               </CardContent>
