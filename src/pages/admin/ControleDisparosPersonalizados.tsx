@@ -11,7 +11,8 @@ import {
   Paperclip,
   FileText,
   Filter,
-  Search
+  Search,
+  X
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,8 @@ import DisparosLoadingSkeleton from '@/components/admin/DisparosLoadingSkeleton'
 import FiltrosStatusDisparos from '@/components/admin/FiltrosStatusDisparos';
 import type {
   AgendamentoDisparo,
-  StatusControleMensal
+  StatusControleMensal,
+  StatusMensal
 } from '@/types/clientBooks';
 import {
   STATUS_CONTROLE_MENSAL_OPTIONS
@@ -92,7 +94,7 @@ const ControleDisparosPersonalizados = () => {
 
   // Hooks
   const {
-    statusMensal,
+    statusMensal = [] as StatusMensal[],
     isLoading,
     isDisparandoSelecionados,
     isReenviando,
@@ -113,8 +115,10 @@ const ControleDisparosPersonalizados = () => {
   } = useAnexos();
 
   // Filtrar dados baseado no status e busca por nome de empresa
-  const statusMensalFiltrado = useMemo(() => {
-    let filtrados = statusMensal;
+  const statusMensalFiltrado = useMemo<StatusMensal[]>(() => {
+    if (!Array.isArray(statusMensal)) return [];
+    
+    let filtrados: StatusMensal[] = statusMensal;
     
     // Filtrar por status
     if (statusFiltro !== 'todos') {
@@ -159,8 +163,10 @@ const ControleDisparosPersonalizados = () => {
 
   // Status das empresas selecionadas
   const empresasSelecionadasStatus = useMemo(() => {
+    if (!Array.isArray(statusMensal)) return [];
+    
     return selecionadas.map(id => {
-      const status = statusMensal.find(s => s.empresaId === id);
+      const status = (statusMensal as StatusMensal[]).find(s => s.empresaId === id);
       return {
         empresaId: id,
         status: status?.status || 'pendente'
@@ -170,11 +176,15 @@ const ControleDisparosPersonalizados = () => {
 
   // Contadores inteligentes baseados no status e anexos
   const contadoresInteligentes = useMemo(() => {
+    if (!Array.isArray(statusMensal)) {
+      return { paraDisparar: 0, paraReenviar: 0 };
+    }
+    
     const paraDisparar = empresasSelecionadasStatus.filter(empresa => {
       const status = empresa.status === 'pendente' || empresa.status === 'agendado' || empresa.status === 'falhou';
 
       // Verificar se empresa tem anexo obrigatório
-      const empresaData = statusMensal.find(s => s.empresaId === empresa.empresaId)?.empresa;
+      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresa.empresaId)?.empresa;
       if (empresaData?.anexo) {
         const anexos = obterAnexosPorEmpresa(empresa.empresaId);
         const temAnexosValidos = anexos.length > 0 && anexos.every(a => a.status !== 'erro');
@@ -193,6 +203,19 @@ const ControleDisparosPersonalizados = () => {
 
   // Estatísticas do mês
   const stats = useMemo(() => {
+    if (!Array.isArray(statusMensal)) {
+      return {
+        total: 0,
+        enviados: 0,
+        pendentes: 0,
+        falhas: 0,
+        agendados: 0,
+        totalEmails: 0,
+        totalClientes: 0,
+        percentualConcluido: 0
+      };
+    }
+    
     const total = statusMensal.length;
     const enviados = statusMensal.filter(s => s.status === 'enviado').length;
     const pendentes = statusMensal.filter(s => s.status === 'pendente').length;
@@ -236,16 +259,25 @@ const ControleDisparosPersonalizados = () => {
   // Handlers para ações
   const handleDispararSelecionados = async () => {
     if (selecionadas.length === 0) return;
+    
+    if (!Array.isArray(statusMensal)) {
+      toast({
+        title: 'Erro',
+        description: 'Dados de status não disponíveis',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // Validar anexos obrigatórios antes do disparo
     const empresasComAnexoObrigatorio = selecionadas.filter(empresaId => {
-      const empresaData = statusMensal.find(s => s.empresaId === empresaId)?.empresa;
+      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresaId)?.empresa;
       return empresaData?.anexo === true;
     });
 
     for (const empresaId of empresasComAnexoObrigatorio) {
       const anexos = obterAnexosPorEmpresa(empresaId);
-      const empresaData = statusMensal.find(s => s.empresaId === empresaId)?.empresa;
+      const empresaData = (statusMensal as StatusMensal[]).find(s => s.empresaId === empresaId)?.empresa;
 
       if (anexos.length === 0) {
         toast({
@@ -471,16 +503,53 @@ const ControleDisparosPersonalizados = () => {
           </div>
         </div>
 
+        {/* Estatísticas - Cards no padrão do Design System */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-gray-500" />
+                <p className="text-xs font-medium text-gray-500">Total de Empresas</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} clientes</p>
+            </CardContent>
+          </Card>
 
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <p className="text-xs font-medium text-green-500">Enviados</p>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{stats.enviados}</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} e-mails</p>
+            </CardContent>
+          </Card>
 
-        {/* Seletor de Mês/Ano */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="h-4 w-4 text-red-500" />
+                <p className="text-xs font-medium text-red-500">Falhas</p>
+              </div>
+              <p className="text-2xl font-bold text-red-600">{stats.falhas}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                <p className="text-xs font-medium text-yellow-500">Pendentes</p>
+              </div>
+              <p className="text-2xl font-bold text-yellow-600">{stats.pendentes}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Seletor de Mês/Ano - Movido para baixo dos cards */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Período de Controle
-            </CardTitle>
-          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <Button
@@ -523,69 +592,6 @@ const ControleDisparosPersonalizados = () => {
             </div>
           </CardContent>
         </Card>
-
-
-
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total de Empresas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.total}
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stats.totalClientes} clientes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-600">
-                Enviados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {stats.enviados}
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stats.totalEmails} e-mails
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-600">
-                Falhas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {stats.falhas}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-yellow-600">
-                Pendentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {stats.pendentes}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Ações Principais */}
         <Card>
@@ -666,132 +672,70 @@ const ControleDisparosPersonalizados = () => {
                 )}
               </CardTitle>
               
-              <div className="flex items-center gap-2">
-                {statusFiltro !== 'todos' && (
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Filtrado: {statusMensalFiltrado.length} de {statusMensal.length} empresas
-                  </div>
-                )}
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center space-x-2"
                 >
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
+                
+                {(statusFiltro !== 'todos' || buscaEmpresa) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setStatusFiltro('todos');
+                      setBuscaEmpresa('');
+                    }}
+                    className="whitespace-nowrap hover:border-red-300"
+                  >
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
+                  </Button>
+                )}
               </div>
             </div>
             
             {/* Filtros */}
             {mostrarFiltros && (
               <div className="space-y-4 pt-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Busca por Nome de Empresa */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Buscar Empresa</label>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Buscar Empresa</div>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         placeholder="Nome da empresa..."
                         value={buscaEmpresa}
                         onChange={(e) => setBuscaEmpresa(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                       />
                     </div>
                   </div>
 
                   {/* Status do Disparo */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Status do Disparo</label>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Status do Disparo</div>
                     <Select
                       value={statusFiltro}
                       onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o status" />
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">
-                          <div className="flex items-center justify-between w-full">
-                            <span>Todos os Status</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {stats.total}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="enviado">
-                          <div className="flex items-center justify-between w-full">
-                            <span>Enviados</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {stats.enviados}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="pendente">
-                          <div className="flex items-center justify-between w-full">
-                            <span>Pendentes</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {stats.pendentes}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="falhou">
-                          <div className="flex items-center justify-between w-full">
-                            <span>Falhas</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {stats.falhas}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="agendado">
-                          <div className="flex items-center justify-between w-full">
-                            <span>Agendados</span>
-                            <Badge variant="secondary" className="ml-2">
-                              {stats.agendados}
-                            </Badge>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="todos">Todos os Status ({stats.total})</SelectItem>
+                        <SelectItem value="enviado">Enviados ({stats.enviados})</SelectItem>
+                        <SelectItem value="pendente">Pendentes ({stats.pendentes})</SelectItem>
+                        <SelectItem value="falhou">Falhas ({stats.falhas})</SelectItem>
+                        <SelectItem value="agendado">Agendados ({stats.agendados})</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  {/* Status Atual */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Status Atual</label>
-                    <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50 dark:bg-gray-800">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {statusFiltro === 'todos' ? 'Todos os Status' : 
-                         statusFiltro === 'enviado' ? 'Enviados' :
-                         statusFiltro === 'pendente' ? 'Pendentes' :
-                         statusFiltro === 'falhou' ? 'Falhas' :
-                         statusFiltro === 'agendado' ? 'Agendados' : 'Nenhum filtro'}
-                      </span>
-                      <Badge variant="secondary" className="ml-2">
-                        {statusFiltro === 'todos' ? stats.total :
-                         statusFiltro === 'enviado' ? stats.enviados :
-                         statusFiltro === 'pendente' ? stats.pendentes :
-                         statusFiltro === 'falhou' ? stats.falhas :
-                         statusFiltro === 'agendado' ? stats.agendados : 0}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Ações */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Ações</label>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setStatusFiltro('todos');
-                        setBuscaEmpresa('');
-                      }}
-                      disabled={statusFiltro === 'todos' && !buscaEmpresa}
-                      className="w-full h-10"
-                    >
-                      Limpar Filtros
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -971,9 +915,9 @@ const ControleDisparosPersonalizados = () => {
               <DialogTitle className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5" />
                 Gerenciar Anexos
-                {empresaAnexoSelecionada && (
+                {empresaAnexoSelecionada && Array.isArray(statusMensal) && (
                   <span className="text-sm font-normal text-muted-foreground">
-                    - {statusMensal.find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_abreviado}
+                    - {(statusMensal as StatusMensal[]).find(s => s.empresaId === empresaAnexoSelecionada)?.empresa.nome_abreviado}
                   </span>
                 )}
               </DialogTitle>
