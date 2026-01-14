@@ -1257,13 +1257,6 @@ export default function FaturarRequerimentos() {
                     {estatisticasPeriodoFiltradas.tiposAtivos}
                   </div>
                 </div>
-                {temFiltrosAtivos && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                      FILTRADO
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
             
@@ -1279,13 +1272,6 @@ export default function FaturarRequerimentos() {
                 <div className="text-xl lg:text-2xl font-bold text-blue-600">
                   {formatarHorasParaExibicao(estatisticasPeriodoFiltradas.totalHoras, 'completo')}
                 </div>
-                {temFiltrosAtivos && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                      FILTRADO
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
             
@@ -1319,13 +1305,6 @@ export default function FaturarRequerimentos() {
                     maximumFractionDigits: 2
                   })}
                 </div>
-                {temFiltrosAtivos && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                      FILTRADO
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
