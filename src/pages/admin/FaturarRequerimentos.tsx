@@ -132,12 +132,7 @@ export default function FaturarRequerimentos() {
   const [busca, setBusca] = useState('');
   const [filtroModuloSelect, setFiltroModuloSelect] = useState<ModuloType[]>([]);
   const [filtroTipoSelect, setFiltroTipoSelect] = useState<TipoCobrancaType[]>([]);
-  const [filtroPeriodo, setFiltroPeriodo] = useState(() => {
-    const hoje = new Date();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const ano = hoje.getFullYear();
-    return `${mes}/${ano}`;
-  });
+  const [filtroPeriodo, setFiltroPeriodo] = useState<string>('all');
 
   // Estados para rejeição
   const [requerimentoParaRejeitar, setRequerimentoParaRejeitar] = useState<Requerimento | null>(null);
@@ -155,21 +150,20 @@ export default function FaturarRequerimentos() {
   const [filtroTipoHistorico, setFiltroTipoHistorico] = useState<TipoCobrancaType[]>([]);
   const [filtroModuloHistorico, setFiltroModuloHistorico] = useState<ModuloType[]>([]);
 
-  // Função para obter o mês/ano padrão (igual à LancarRequerimentos)
-  const getDefaultMesCobranca = () => {
-    const hoje = new Date();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const ano = hoje.getFullYear();
-    return `${mes}/${ano}`;
-  };
-
   // Função para limpar filtros (igual à LancarRequerimentos)
   const limparFiltros = () => {
-    const defaultMesCobranca = getDefaultMesCobranca();
     setBusca('');
     setFiltroTipoSelect([]);
     setFiltroModuloSelect([]);
-    setFiltroPeriodo(defaultMesCobranca); // Volta para o mês atual
+    
+    // Voltar para o mês vigente e aplicar filtro
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    setMesSelecionado(mesVigente);
+    setAnoSelecionado(anoVigente);
+    setFiltroPeriodo(`${String(mesVigente).padStart(2, '0')}/${anoVigente}`);
   };
 
   // Hooks
@@ -197,7 +191,7 @@ export default function FaturarRequerimentos() {
     let filtrados = [...dadosFaturados];
     
     // Aplicar filtros dos novos campos (estilo Lançar Requerimentos)
-    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || (filtroPeriodo !== 'all' && filtroPeriodo !== 'all')) {
+    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo !== 'all') {
       filtrados = filtrados.filter(req => {
         // Filtro de busca (chamado, cliente, descrição)
         if (busca.trim() !== '') {
@@ -220,7 +214,7 @@ export default function FaturarRequerimentos() {
         }
 
         // Filtro por período de cobrança
-        if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+        if (filtroPeriodo !== 'all') {
           if (req.mes_cobranca !== filtroPeriodo) return false;
         }
 
@@ -317,7 +311,7 @@ export default function FaturarRequerimentos() {
       return busca.trim() !== '' || 
              filtroTipoSelect.length > 0 || 
              filtroModuloSelect.length > 0 || 
-             (filtroPeriodo !== 'all' && filtroPeriodo !== 'all');
+             filtroPeriodo !== 'all';
     };
 
     // Se não há filtros ativos, retorna as estatísticas normais
@@ -378,7 +372,7 @@ export default function FaturarRequerimentos() {
       }
 
       // Filtro por período de cobrança
-      if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+      if (filtroPeriodo !== 'all') {
         if (req.mes_cobranca !== filtroPeriodo) {
           console.log('❌ Rejeitado por período:', req.chamado, req.mes_cobranca);
           return false;
@@ -432,13 +426,13 @@ export default function FaturarRequerimentos() {
   const temFiltrosAtivos = busca.trim() !== '' || 
                           filtroTipoSelect.length > 0 || 
                           filtroModuloSelect.length > 0 || 
-                          (filtroPeriodo !== 'all' && filtroPeriodo !== 'all');
+                          filtroPeriodo !== 'all';
 
   const gruposFiltrados = useMemo(() => {
     let grupos = Object.values(requerimentosAgrupados);
 
     // Aplicar filtros dos novos campos (estilo Lançar Requerimentos)
-    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || (filtroPeriodo !== 'all' && filtroPeriodo !== 'all')) {
+    if (busca.trim() !== '' || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo !== 'all') {
       grupos = grupos.map(grupo => ({
         ...grupo,
         requerimentos: grupo.requerimentos.filter(req => {
@@ -463,7 +457,7 @@ export default function FaturarRequerimentos() {
           }
 
           // Filtro por período de cobrança
-          if (filtroPeriodo !== 'all' && filtroPeriodo !== 'all') {
+          if (filtroPeriodo !== 'all') {
             if (req.mes_cobranca !== filtroPeriodo) return false;
           }
 
@@ -849,47 +843,53 @@ export default function FaturarRequerimentos() {
     };
   };
 
-  // Funções de navegação de mês (igual à LancarRequerimentos)
+  // Funções de navegação de mês
   const navegarMesAnterior = () => {
-    const [mes, ano] = (filtroPeriodo || '').split('/');
-    const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
-    const anoAtual = parseInt(ano) || new Date().getFullYear();
-
-    let novoMes = mesAtual - 1;
-    let novoAno = anoAtual;
+    let novoMes = mesSelecionado - 1;
+    let novoAno = anoSelecionado;
 
     if (novoMes < 1) {
       novoMes = 12;
-      novoAno = anoAtual - 1;
+      novoAno = anoSelecionado - 1;
     }
 
-    const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-    setFiltroPeriodo(novoMesCobranca);
-    
-    // Atualizar também os estados de navegação para manter consistência
+    // Atualizar estados de navegação e aplicar filtro
     setMesSelecionado(novoMes);
     setAnoSelecionado(novoAno);
+    setFiltroPeriodo(`${String(novoMes).padStart(2, '0')}/${novoAno}`);
   };
 
   const navegarMesProximo = () => {
-    const [mes, ano] = (filtroPeriodo || '').split('/');
-    const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
-    const anoAtual = parseInt(ano) || new Date().getFullYear();
-
-    let novoMes = mesAtual + 1;
-    let novoAno = anoAtual;
+    let novoMes = mesSelecionado + 1;
+    let novoAno = anoSelecionado;
 
     if (novoMes > 12) {
       novoMes = 1;
-      novoAno = anoAtual + 1;
+      novoAno = anoSelecionado + 1;
     }
 
-    const novoMesCobranca = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-    setFiltroPeriodo(novoMesCobranca);
-    
-    // Atualizar também os estados de navegação para manter consistência
+    // Atualizar estados de navegação e aplicar filtro
     setMesSelecionado(novoMes);
     setAnoSelecionado(novoAno);
+    setFiltroPeriodo(`${String(novoMes).padStart(2, '0')}/${novoAno}`);
+  };
+
+  // Função para lidar com mudança do filtro de período (via dropdown)
+  const handleFiltroPeriodoChange = (value: string | null) => {
+    const novoValor = value || 'all';
+    setFiltroPeriodo(novoValor);
+    
+    // Se não for 'all', atualizar também os estados de navegação
+    if (novoValor !== 'all') {
+      const [mes, ano] = novoValor.split('/');
+      const mesNum = parseInt(mes);
+      const anoNum = parseInt(ano);
+      
+      if (!isNaN(mesNum) && !isNaN(anoNum)) {
+        setMesSelecionado(mesNum);
+        setAnoSelecionado(anoNum);
+      }
+    }
   };
 
   // Validação silenciosa para habilitar/desabilitar botões
@@ -1532,12 +1532,7 @@ export default function FaturarRequerimentos() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
+                            onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
@@ -1596,7 +1591,7 @@ export default function FaturarRequerimentos() {
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
-                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              onChange={handleFiltroPeriodoChange}
                               placeholder="Todos os períodos"
                             />
                           </div>
@@ -1692,7 +1687,7 @@ export default function FaturarRequerimentos() {
                               <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                               <MonthYearPicker
                                 value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
-                                onChange={(value) => setFiltroPeriodo(value || 'all')}
+                                onChange={handleFiltroPeriodoChange}
                                 placeholder="Todos os períodos"
                               />
                             </div>
@@ -1999,12 +1994,7 @@ export default function FaturarRequerimentos() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
+                            onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
@@ -2063,7 +2053,7 @@ export default function FaturarRequerimentos() {
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
-                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              onChange={handleFiltroPeriodoChange}
                               placeholder="Todos os períodos"
                             />
                           </div>
@@ -2111,12 +2101,7 @@ export default function FaturarRequerimentos() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setBusca('');
-                              setFiltroTipoSelect([]);
-                              setFiltroModuloSelect([]);
-                              setFiltroPeriodo('all');
-                            }}
+                            onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
                             aria-label="Limpar todos os filtros aplicados"
                           >
@@ -2175,7 +2160,7 @@ export default function FaturarRequerimentos() {
                             <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
-                              onChange={(value) => setFiltroPeriodo(value || 'all')}
+                              onChange={handleFiltroPeriodoChange}
                               placeholder="Todos os períodos"
                             />
                           </div>
@@ -2224,12 +2209,7 @@ export default function FaturarRequerimentos() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setBusca('');
-                                setFiltroTipoSelect([]);
-                                setFiltroModuloSelect([]);
-                                setFiltroPeriodo('all');
-                              }}
+                              onClick={limparFiltros}
                               className="whitespace-nowrap hover:border-red-300"
                               aria-label="Limpar todos os filtros aplicados"
                             >
@@ -2288,7 +2268,7 @@ export default function FaturarRequerimentos() {
                               <div className="text-sm font-medium mb-2">Período de Cobrança</div>
                               <MonthYearPicker
                                 value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
-                                onChange={(value) => setFiltroPeriodo(value || 'all')}
+                                onChange={handleFiltroPeriodoChange}
                                 placeholder="Todos os períodos"
                               />
                             </div>
