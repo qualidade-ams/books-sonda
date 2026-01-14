@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2, Search, FileText, Clock, CheckCircle, Server, FileEdit } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -288,12 +288,21 @@ function VisualizarPesquisas() {
     setFiltrosBusca({
       busca: '',
       origem: 'todos',
-      resposta: 'todos',
+      resposta: 'todas',
       ano: 'todos',
       mes: 'todos'
     });
     setPaginaAtual(1);
     clearFeatureCache('pesquisas');
+  };
+
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    return filtrosBusca.busca !== '' || 
+           filtrosBusca.origem !== 'todos' || 
+           filtrosBusca.resposta !== 'todas' || 
+           filtrosBusca.ano !== 'todos' || 
+           filtrosBusca.mes !== 'todos';
   };
 
   // Código de agrupamento por mês removido
@@ -353,67 +362,52 @@ function VisualizarPesquisas() {
         {estatisticas && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Total
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                  {estatisticas.total}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  <p className="text-xs font-medium text-gray-500">Total</p>
                 </div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                  Pendentes
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                  {estatisticas.pendentes}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  <p className="text-xs font-medium text-orange-500">Pendentes</p>
                 </div>
+                <p className="text-2xl font-bold text-orange-600">{estatisticas.pendentes}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                  Enviados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-green-600">
-                  {estatisticas.enviados}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <p className="text-xs font-medium text-green-500">Enviados</p>
                 </div>
+                <p className="text-2xl font-bold text-green-600">{estatisticas.enviados}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
-                  SQL Server
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                  {estatisticas.sql_server}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Server className="h-4 w-4 text-blue-500" />
+                  <p className="text-xs font-medium text-blue-500">SQL Server</p>
                 </div>
+                <p className="text-2xl font-bold text-blue-600">{estatisticas.sql_server}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
-                  Manuais
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-purple-600">
-                  {estatisticas.manuais}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileEdit className="h-4 w-4 text-purple-500" />
+                  <p className="text-xs font-medium text-purple-500">Manuais</p>
                 </div>
+                <p className="text-2xl font-bold text-purple-600">{estatisticas.manuais}</p>
               </CardContent>
             </Card>
           </div>
@@ -424,114 +418,145 @@ function VisualizarPesquisas() {
         {/* Tabela */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
                 <Eye className="h-5 w-5" />
                 Todas as Pesquisas ({pesquisas.length})
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+                
+                {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                {hasActiveFilters() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={limparFiltros}
+                    className="whitespace-nowrap hover:border-red-300"
+                  >
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Filtros Colapsáveis */}
+            {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
             {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mt-4 pt-4 border-t">
-              <Input
-                placeholder="Buscar por empresa, cliente, prestador..."
-                value={filtrosBusca.busca}
-                onChange={(e) => handleAtualizarFiltro('busca', e.target.value)}
-              />
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Campo de busca com ícone */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Buscar</div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por empresa, cliente..."
+                        value={filtrosBusca.busca}
+                        onChange={(e) => handleAtualizarFiltro('busca', e.target.value)}
+                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
 
-              <Select
-                value={filtrosBusca.origem}
-                onValueChange={(value) => handleAtualizarFiltro('origem', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas as Origens" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ORIGEM_PESQUISA_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  {/* Filtro Origem */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Origem</div>
+                    <Select
+                      value={filtrosBusca.origem}
+                      onValueChange={(value) => handleAtualizarFiltro('origem', value)}
+                      defaultValue="todos"
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todas as origens" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORIGEM_PESQUISA_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select
-                value={filtrosBusca.resposta}
-                onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas as Respostas" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  {/* Filtro Resposta */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Resposta</div>
+                    <Select
+                      value={filtrosBusca.resposta}
+                      onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
+                      defaultValue="todas"
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todas as respostas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select
-                value={filtrosBusca.ano}
-                onValueChange={(value) => handleAtualizarFiltro('ano', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os Anos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Anos</SelectItem>
-                  {Array.from({ length: 10 }, (_, i) => {
-                    const ano = new Date().getFullYear() - i;
-                    return (
-                      <SelectItem key={ano} value={ano.toString()}>
-                        {ano}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                  {/* Filtro Ano */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Ano</div>
+                    <Select
+                      value={filtrosBusca.ano}
+                      onValueChange={(value) => handleAtualizarFiltro('ano', value)}
+                      defaultValue="todos"
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os anos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os Anos</SelectItem>
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const ano = new Date().getFullYear() - i;
+                          return (
+                            <SelectItem key={ano} value={ano.toString()}>
+                              {ano}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select
-                value={filtrosBusca.mes}
-                onValueChange={(value) => handleAtualizarFiltro('mes', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os Meses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Meses</SelectItem>
-                  {MESES_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value.toString()}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Botão Limpar Filtros */}
-              <Button
-                variant="outline"
-                onClick={limparFiltros}
-                disabled={
-                  filtrosBusca.busca === '' && 
-                  filtrosBusca.origem === 'todos' && 
-                  filtrosBusca.resposta === 'todos' && 
-                  filtrosBusca.ano === 'todos' && 
-                  filtrosBusca.mes === 'todos'
-                }
-                className="h-10"
-              >
-                Limpar Filtros
-              </Button>
+                  {/* Filtro Mês */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Mês</div>
+                    <Select
+                      value={filtrosBusca.mes}
+                      onValueChange={(value) => handleAtualizarFiltro('mes', value)}
+                      defaultValue="todos"
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os meses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os Meses</SelectItem>
+                        {MESES_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             )}
           </CardHeader>

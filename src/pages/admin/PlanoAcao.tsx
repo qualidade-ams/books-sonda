@@ -3,7 +3,7 @@
 // =====================================================
 
 import { useState, useEffect } from 'react';
-import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight, X, FileText, FolderOpen, PlayCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import {
   Dialog,
   DialogContent,
@@ -159,10 +160,29 @@ export default function PlanoAcao() {
   // Função para limpar todos os filtros
   const limparFiltros = () => {
     const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    setMesSelecionado(mesVigente);
+    setAnoSelecionado(anoVigente);
     setFiltros({
-      mes: hoje.getMonth() + 1,
-      ano: hoje.getFullYear()
+      mes: mesVigente,
+      ano: anoVigente
     });
+  };
+
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    const hoje = new Date();
+    const mesVigente = hoje.getMonth() + 1;
+    const anoVigente = hoje.getFullYear();
+    
+    const periodoAlterado = filtros.mes !== mesVigente || filtros.ano !== anoVigente;
+    
+    return (filtros.busca && filtros.busca !== '') || 
+           (filtros.prioridade && filtros.prioridade.length > 0) || 
+           (filtros.status && filtros.status.length > 0) || 
+           periodoAlterado;
   };
 
   return (
@@ -181,6 +201,71 @@ export default function PlanoAcao() {
           Novo Plano
         </Button>
       </div>
+
+      {/* Cards de Estatísticas */}
+      {estatisticas && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-gray-500" />
+                <p className="text-xs font-medium text-gray-500">Total</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FolderOpen className="h-4 w-4 text-gray-500" />
+                <p className="text-xs font-medium text-gray-500">Abertos</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-600">{estatisticas.abertos}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <PlayCircle className="h-4 w-4 text-blue-500" />
+                <p className="text-xs font-medium text-blue-500">Em Andamento</p>
+              </div>
+              <p className="text-2xl font-bold text-blue-600">{estatisticas.em_andamento}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-yellow-500" />
+                <p className="text-xs font-medium text-yellow-500">Aguardando</p>
+              </div>
+              <p className="text-2xl font-bold text-yellow-600">{estatisticas.aguardando_retorno}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <p className="text-xs font-medium text-green-500">Concluídos</p>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{estatisticas.concluidos}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="h-4 w-4 text-red-500" />
+                <p className="text-xs font-medium text-red-500">Cancelados</p>
+              </div>
+              <p className="text-2xl font-bold text-red-600">{estatisticas.cancelados}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Navegação de Período */}
       <Card>
@@ -215,175 +300,129 @@ export default function PlanoAcao() {
         </CardContent>
       </Card>
 
-      {/* Cards de Estatísticas */}
-      {estatisticas && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{estatisticas.total}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Abertos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-600">{estatisticas.abertos}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Em Andamento
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{estatisticas.em_andamento}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Aguardando
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {estatisticas.aguardando_retorno}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Concluídos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{estatisticas.concluidos}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Cancelados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{estatisticas.cancelados}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Filtros */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Planos de Ação ({planos.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </Button>
-          </div>
-          {mostrarFiltros && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
-              {/* Busca */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar..."
-                  value={filtros.busca || ''}
-                  onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
-                  className="pl-9"
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              Planos de Ação ({planos.length})
+            </CardTitle>
 
-              {/* Prioridade */}
-              <Select
-                value={filtros.prioridade?.[0] || '__todos__'}
-                onValueChange={(value) =>
-                  setFiltros({
-                    ...filtros,
-                    prioridade: value === '__todos__' ? [] : [value as any],
-                  })
-                }
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                className="flex items-center justify-center space-x-2"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas as prioridades" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__todos__">Todas as prioridades</SelectItem>
-                  {PRIORIDADE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Status */}
-              <Select
-                value={filtros.status?.[0] || '__todos__'}
-                onValueChange={(value) =>
-                  setFiltros({
-                    ...filtros,
-                    status: value === '__todos__' ? [] : [value as any],
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__todos__">Todos os status</SelectItem>
-                  {STATUS_PLANO_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Empresa */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Filtrar por empresa"
-                  value={filtros.empresa || ''}
-                  onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
-                  className="flex-1"
-                />
-                
-                {/* Botão Limpar Filtros */}
+                <Filter className="h-4 w-4" />
+                <span>Filtros</span>
+              </Button>
+              
+              {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+              {hasActiveFilters() && (
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={limparFiltros}
-                  disabled={
-                    !filtros.busca && 
-                    (!filtros.prioridade || filtros.prioridade.length === 0) && 
-                    (!filtros.status || filtros.status.length === 0) && 
-                    !filtros.empresa
-                  }
-                  className="h-10 px-3"
+                  className="whitespace-nowrap hover:border-red-300"
                 >
-                  Limpar
+                  <X className="h-4 w-4 mr-2 text-red-600" />
+                  Limpar Filtro
                 </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+          {mostrarFiltros && (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Campo de busca com ícone */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Buscar</div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={filtros.busca || ''}
+                      onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
+                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro Prioridade */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Prioridade</div>
+                  <Select
+                    value={filtros.prioridade?.[0] || '__todos__'}
+                    onValueChange={(value) =>
+                      setFiltros({
+                        ...filtros,
+                        prioridade: value === '__todos__' ? [] : [value as any],
+                      })
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Todas as prioridades" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos__">Todas as prioridades</SelectItem>
+                      {PRIORIDADE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro Status */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Status</div>
+                  <Select
+                    value={filtros.status?.[0] || '__todos__'}
+                    onValueChange={(value) =>
+                      setFiltros({
+                        ...filtros,
+                        status: value === '__todos__' ? [] : [value as any],
+                      })
+                    }
+                  >
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__todos__">Todos os status</SelectItem>
+                      {STATUS_PLANO_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro Data da Resposta */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                  <MonthYearPicker
+                    value={`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`}
+                    onChange={(value) => {
+                      if (value) {
+                        const [mes, ano] = value.split('/');
+                        const novoMes = parseInt(mes);
+                        const novoAno = parseInt(ano);
+                        setMesSelecionado(novoMes);
+                        setAnoSelecionado(novoAno);
+                        setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                      }
+                    }}
+                    placeholder="Selecione o período"
+                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                  />
+                </div>
               </div>
             </div>
           )}
