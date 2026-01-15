@@ -49,6 +49,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Pesquisa } from '@/types/pesquisasSatisfacao';
 import { getBadgeResposta } from '@/utils/badgeUtils';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
@@ -83,6 +85,65 @@ export function PesquisasTable({
 
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
+  
+  // Buscar usuário logado e permissões
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  // Verificar se usuário tem permissões completas (3 telas)
+  const temPermissoesCompletas = useMemo(() => {
+    const temLancarPesquisas = hasPermission('lancar_pesquisas', 'view');
+    const temPlanoAcao = hasPermission('plano_acao', 'view');
+    const temVisualizarPesquisas = hasPermission('visualizar_pesquisas', 'view');
+    
+    console.log('🔐 [PesquisasTable] Verificando permissões completas:', {
+      temLancarPesquisas,
+      temPlanoAcao,
+      temVisualizarPesquisas,
+      resultado: temLancarPesquisas && temPlanoAcao && temVisualizarPesquisas
+    });
+    
+    return temLancarPesquisas && temPlanoAcao && temVisualizarPesquisas;
+  }, [hasPermission]);
+
+  // Função para verificar se usuário pode editar/excluir uma pesquisa
+  const podeEditarExcluir = (pesquisa: Pesquisa): boolean => {
+    // Se tem permissões completas, pode editar/excluir qualquer pesquisa
+    if (temPermissoesCompletas) {
+      console.log('✅ [PesquisasTable] Usuário tem permissões completas - pode editar/excluir qualquer pesquisa');
+      return true;
+    }
+    
+    // Se tem apenas permissão de "Lançar Pesquisas", só pode editar/excluir se for o autor
+    const temLancarPesquisas = hasPermission('lancar_pesquisas', 'view');
+    if (temLancarPesquisas) {
+      const ehAutor = pesquisa.autor_id === user?.id;
+      console.log('🔍 [PesquisasTable] Verificando autoria:', {
+        pesquisaId: pesquisa.id,
+        autorPesquisa: pesquisa.autor_id,
+        usuarioLogado: user?.id,
+        ehAutor,
+        podeEditar: ehAutor
+      });
+      return ehAutor;
+    }
+    
+    // Sem permissão
+    console.log('❌ [PesquisasTable] Usuário sem permissão para editar/excluir');
+    return false;
+  };
+
+  // Função para verificar se usuário pode enviar uma pesquisa
+  const podeEnviar = (pesquisa: Pesquisa): boolean => {
+    // Apenas usuários com permissões completas podem enviar
+    const pode = temPermissoesCompletas;
+    console.log('📤 [PesquisasTable] Verificando permissão de envio:', {
+      pesquisaId: pesquisa.id,
+      temPermissoesCompletas,
+      podeEnviar: pode
+    });
+    return pode;
+  };
 
   // Criar mapa de empresas para validação rápida
   const empresasMap = useMemo(() => {
@@ -177,15 +238,23 @@ export function PesquisasTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pesquisas.map((pesquisa) => (
-              <TableRow key={pesquisa.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selecionados.includes(pesquisa.id)}
-                    onCheckedChange={() => onSelecionarItem(pesquisa.id)}
-                    aria-label={`Selecionar ${pesquisa.cliente}`}
-                  />
-                </TableCell>
+            {pesquisas.map((pesquisa) => {
+              const podeEditarExcluirPesquisa = podeEditarExcluir(pesquisa);
+              const podeEnviarPesquisa = podeEnviar(pesquisa);
+              const ehAutor = pesquisa.autor_id === user?.id;
+              
+              return (
+                <TableRow 
+                  key={pesquisa.id}
+                  className={ehAutor ? "bg-blue-50 hover:bg-blue-100 border-l-4 border-l-blue-500" : "hover:bg-gray-50"}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selecionados.includes(pesquisa.id)}
+                      onCheckedChange={() => onSelecionarItem(pesquisa.id)}
+                      aria-label={`Selecionar ${pesquisa.cliente}`}
+                    />
+                  </TableCell>
                 {/* Coluna Chamado com ícone de origem + tipo + número */}
                 <TableCell className="text-center">
                   {pesquisa.nro_caso ? (
@@ -310,80 +379,86 @@ export function PesquisasTable({
                 </TableCell>
                 {/* Coluna Ações */}
                 <TableCell className="text-center">
-                  <div className="flex justify-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditar(pesquisa)}
-                      disabled={isLoading}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExcluirClick(pesquisa.id)}
-                      disabled={isLoading}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    {/* Botão de Envio - Condicional para Neutro */}
-                    {pesquisa.resposta?.toLowerCase() === 'neutro' ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                  {podeEditarExcluirPesquisa || podeEnviarPesquisa ? (
+                    <div className="flex justify-center gap-1">
+                      {/* Botão Editar - Só exibe se tiver permissão */}
+                      {podeEditarExcluirPesquisa && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEditar(pesquisa)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      {/* Botão Excluir - Só exibe se tiver permissão */}
+                      {podeEditarExcluirPesquisa && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleExcluirClick(pesquisa.id)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      {/* Botão de Envio - Só exibe se tiver permissão */}
+                      {podeEnviarPesquisa && (
+                        pesquisa.resposta?.toLowerCase() === 'neutro' ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isLoading || !pesquisa.resposta}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => onEnviarParaPlanoAcao?.(pesquisa)}
+                                className="cursor-pointer"
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Enviar para Plano de Ação
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => onEnviarParaElogios?.(pesquisa)}
+                                className="cursor-pointer"
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Enviar para Elogios
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => onEnviar(pesquisa)}
                             disabled={isLoading || !pesquisa.resposta}
                             className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                            title="Enviar pesquisa"
                           >
                             <Send className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => onEnviarParaPlanoAcao?.(pesquisa)}
-                            className="cursor-pointer"
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Enviar para Plano de Ação
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => onEnviarParaElogios?.(pesquisa)}
-                            className="cursor-pointer"
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Enviar para Elogios
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onEnviar(pesquisa)}
-                              disabled={isLoading || !pesquisa.resposta}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                              title="Enviar pesquisa"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Enviar pesquisa</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </TableCell>
               </TableRow>
-            ))}
+            );
+            })}
           </TableBody>
         </Table>
       </div>

@@ -177,9 +177,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
     console.log('🔄 [PesquisaForm useEffect] especialistasIds:', especialistasIds);
     console.log('🔄 [PesquisaForm useEffect] especialistasIds.length:', especialistasIds.length);
     console.log('🔄 [PesquisaForm useEffect] pesquisa:', pesquisa?.id);
-    console.log('🔄 [PesquisaForm useEffect] form.formState.isDirty:', form.formState.isDirty);
     
-    if (especialistasIds.length > 0 && pesquisa && !form.formState.isDirty) {
+    if (especialistasIds.length > 0 && pesquisa) {
       console.log('📋 [PesquisaForm useEffect] ✅ Condições atendidas, processando...');
       console.log('📋 [PesquisaForm useEffect] Preenchendo especialistas:', especialistasIds);
       console.log('📋 [PesquisaForm useEffect] Valor atual do campo:', form.getValues('especialistas_ids'));
@@ -208,7 +207,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       console.log('📋 [PesquisaForm useEffect] ❌ Condições NÃO atendidas, pulando...');
     }
     console.log('🔄 [PesquisaForm useEffect] === FIM EXECUÇÃO DO USEEFFECT ===');
-  }, [especialistasIds, pesquisa]); // Removido 'form' da dependência para evitar loops
+  }, [especialistasIds, pesquisa?.id]); // Usar pesquisa?.id em vez de pesquisa completo
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
