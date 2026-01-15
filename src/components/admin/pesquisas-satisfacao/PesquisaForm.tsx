@@ -3,6 +3,7 @@
  */
 
 import { useEffect } from 'react';
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarIcon } from 'lucide-react';
@@ -50,14 +51,18 @@ interface PesquisaFormProps {
   onSubmit: (dados: PesquisaFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  showSolicitante?: boolean; // Controla se o campo Solicitante deve ser exibido
 }
 
-export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: PesquisaFormProps) {
+export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSolicitante = true }: PesquisaFormProps) {
   // Buscar empresas para o select
   const { empresas } = useEmpresas();
   
   // Buscar categorias e grupos da tabela DE-PARA
   const { data: categorias = [] } = useCategorias();
+
+  // Estado para armazenar consultores manuais
+  const [consultoresManuais, setConsultoresManuais] = React.useState<Array<{ label: string; value: string; email?: string }>>([]);
 
   // Determinar se é pesquisa manual (nova pesquisa ou pesquisa existente com origem manual)
   const isPesquisaManual = !pesquisa || pesquisa.origem === 'manual';
@@ -67,7 +72,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
     defaultValues: {
       empresa: '',
       cliente: '',
-      categoria: undefined,
+      categoria: '', // Mudado de undefined para string vazia
       grupo: undefined,
       email_cliente: '',
       prestador: '',
@@ -91,15 +96,32 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
   // Buscar especialistas relacionados à pesquisa (para edição)
   const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisa?.id);
   
+  console.log('🔍 [PesquisaForm] === DADOS DE ESPECIALISTAS ===');
+  console.log('🔍 [PesquisaForm] Pesquisa ID:', pesquisa?.id);
+  console.log('🔍 [PesquisaForm] Prestador:', pesquisa?.prestador);
+  console.log('🔍 [PesquisaForm] IDs Relacionados (do banco):', especialistasIdsRelacionados);
+  console.log('🔍 [PesquisaForm] Quantidade de IDs Relacionados:', especialistasIdsRelacionados.length);
+  
   // Correlação automática baseada no campo prestador
   const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
     pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisa.prestador : undefined
   );
   
-  // Usar relacionamentos salvos ou correlação automática
-  const especialistasIds = especialistasIdsRelacionados.length > 0 
-    ? especialistasIdsRelacionados 
-    : especialistasIdsCorrelacionados;
+  console.log('🔍 [PesquisaForm] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
+  console.log('🔍 [PesquisaForm] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
+  
+  // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
+  const especialistasIdsUnicos = [...new Set(
+    especialistasIdsRelacionados.length > 0 
+      ? especialistasIdsRelacionados 
+      : especialistasIdsCorrelacionados
+  )];
+  
+  console.log('🔍 [PesquisaForm] IDs Únicos (após Set):', especialistasIdsUnicos);
+  console.log('🔍 [PesquisaForm] Quantidade de IDs Únicos:', especialistasIdsUnicos.length);
+  console.log('🔍 [PesquisaForm] === FIM DADOS DE ESPECIALISTAS ===');
+  
+  const especialistasIds = especialistasIdsUnicos;
 
   // Opções de tipo de chamado
   const tiposChamado = [
@@ -151,14 +173,41 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
   useEffect(() => {
+    console.log('🔄 [PesquisaForm useEffect] === EXECUÇÃO DO USEEFFECT ===');
+    console.log('🔄 [PesquisaForm useEffect] especialistasIds:', especialistasIds);
+    console.log('🔄 [PesquisaForm useEffect] especialistasIds.length:', especialistasIds.length);
+    console.log('🔄 [PesquisaForm useEffect] pesquisa:', pesquisa?.id);
+    console.log('🔄 [PesquisaForm useEffect] form.formState.isDirty:', form.formState.isDirty);
+    
     if (especialistasIds.length > 0 && pesquisa && !form.formState.isDirty) {
-      console.log('📋 [PesquisaForm] Preenchendo especialistas (apenas uma vez):', especialistasIds);
-      form.setValue('especialistas_ids', especialistasIds, {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
+      console.log('📋 [PesquisaForm useEffect] ✅ Condições atendidas, processando...');
+      console.log('📋 [PesquisaForm useEffect] Preenchendo especialistas:', especialistasIds);
+      console.log('📋 [PesquisaForm useEffect] Valor atual do campo:', form.getValues('especialistas_ids'));
+      
+      // Verificar se os valores já estão corretos para evitar duplicação
+      const valoresAtuais = form.getValues('especialistas_ids') || [];
+      console.log('📋 [PesquisaForm useEffect] Valores atuais:', valoresAtuais);
+      console.log('📋 [PesquisaForm useEffect] Valores atuais (sorted):', [...valoresAtuais].sort());
+      console.log('📋 [PesquisaForm useEffect] Valores novos (sorted):', [...especialistasIds].sort());
+      
+      const valoresIguais = JSON.stringify([...valoresAtuais].sort()) === JSON.stringify([...especialistasIds].sort());
+      console.log('📋 [PesquisaForm useEffect] Valores são iguais?', valoresIguais);
+      
+      if (!valoresIguais) {
+        console.log('📋 [PesquisaForm useEffect] ⚠️ Valores diferentes, atualizando...');
+        form.setValue('especialistas_ids', especialistasIds, {
+          shouldValidate: false,
+          shouldDirty: false,
+          shouldTouch: false
+        });
+        console.log('📋 [PesquisaForm useEffect] ✅ Campo atualizado com:', especialistasIds);
+      } else {
+        console.log('📋 [PesquisaForm useEffect] ✅ Valores já estão corretos, não atualizando');
+      }
+    } else {
+      console.log('📋 [PesquisaForm useEffect] ❌ Condições NÃO atendidas, pulando...');
     }
+    console.log('🔄 [PesquisaForm useEffect] === FIM EXECUÇÃO DO USEEFFECT ===');
   }, [especialistasIds, pesquisa]); // Removido 'form' da dependência para evitar loops
 
   // Preencher grupo automaticamente quando categoria for selecionada
@@ -184,32 +233,56 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
 
   const handleSubmit = async (dados: PesquisaFormData) => {
     console.log('📝 [PesquisaForm] Dados do formulário antes do processamento:', dados);
+    console.log('📝 [PesquisaForm] Consultores manuais:', consultoresManuais);
     
     // Se há especialistas selecionados, converter para nomes e preencher o campo prestador
     if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
       try {
         console.log('🔄 [PesquisaForm] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
         
-        // Buscar nomes dos especialistas
-        const { data: especialistas, error } = await supabase
-          .from('especialistas')
-          .select('id, nome')
-          .in('id', dados.especialistas_ids)
-          .order('nome');
+        // Separar IDs do banco de dados e IDs manuais
+        const idsDb = dados.especialistas_ids.filter(id => !id.startsWith('manual_'));
+        const idsManuais = dados.especialistas_ids.filter(id => id.startsWith('manual_'));
+        
+        const nomes: string[] = [];
+        
+        // Buscar nomes dos especialistas do banco de dados
+        if (idsDb.length > 0) {
+          const { data: especialistas, error } = await supabase
+            .from('especialistas')
+            .select('id, nome')
+            .in('id', idsDb)
+            .order('nome');
 
-        if (error) {
-          console.error('❌ [PesquisaForm] Erro ao buscar especialistas:', error);
-          throw error;
+          if (error) {
+            console.error('❌ [PesquisaForm] Erro ao buscar especialistas:', error);
+            throw error;
+          }
+
+          if (especialistas) {
+            nomes.push(...especialistas.map(esp => esp.nome));
+          }
         }
-
-        const nomes = especialistas?.map(esp => esp.nome) || [];
+        
+        // Adicionar nomes dos consultores manuais
+        if (idsManuais.length > 0) {
+          const nomesManuais = consultoresManuais
+            .filter(c => idsManuais.includes(c.value))
+            .map(c => c.label);
+          nomes.push(...nomesManuais);
+          console.log('✅ [PesquisaForm] Nomes dos consultores manuais:', nomesManuais);
+        }
+        
         const nomesConcat = nomes.join(', ');
         
-        console.log('✅ [PesquisaForm] Nomes dos especialistas:', nomes);
+        console.log('✅ [PesquisaForm] Nomes dos especialistas do banco:', nomes);
         console.log('✅ [PesquisaForm] Prestador concatenado:', nomesConcat);
         
         // Atualizar o campo prestador com os nomes concatenados
         dados.prestador = nomesConcat;
+        
+        // Filtrar apenas IDs do banco de dados para salvar no relacionamento
+        dados.especialistas_ids = idsDb;
         
       } catch (error) {
         console.error('❌ [PesquisaForm] Erro ao converter especialistas:', error);
@@ -328,6 +401,10 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                         // Forçar re-render do campo
                         form.trigger('especialistas_ids');
                       }}
+                      onConsultoresManuaisChange={(consultores) => {
+                        console.log('📝 [PesquisaForm] Consultores manuais atualizados:', consultores);
+                        setConsultoresManuais(consultores);
+                      }}
                       placeholder="Selecione os consultores..."
                       className={cn(
                         fieldState.error && "border-red-500"
@@ -339,27 +416,29 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="solicitante"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Solicitante</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Nome do solicitante"
-                      value={field.value || ''}
-                      className={cn(
-                        fieldState.error && "border-red-500 focus:border-red-500"
-                      )}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
+          {showSolicitante && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="solicitante"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Solicitante</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="Nome do solicitante"
+                        value={field.value || ''}
+                        className={cn(
+                          fieldState.error && "border-red-500 focus:border-red-500"
+                        )}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
         </div>
 
         {/* Seção: Categorização */}
@@ -372,7 +451,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
               name="categoria"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Categoria</FormLabel>
+                  <FormLabel>Categoria <span className="text-foreground">*</span></FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
@@ -392,6 +471,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -460,8 +540,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                 <FormItem>
                   <FormLabel>Tipo do Chamado</FormLabel>
                   <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
+                    value={field.value || 'none'}
+                    onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
                   >
                     <FormControl>
                       <SelectTrigger className={cn(
@@ -471,6 +551,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading }: Pesqui
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="none">Selecione o tipo</SelectItem>
                       {tiposChamado.map(tipo => (
                         <SelectItem key={tipo.value} value={tipo.value}>
                           {tipo.label}

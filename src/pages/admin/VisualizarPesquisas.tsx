@@ -117,18 +117,43 @@ function VisualizarPesquisas() {
   // Buscar especialistas relacionados à pesquisa (para edição)
   const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
   
+  console.log('🔍 [VisualizarPesquisas] === DADOS DE ESPECIALISTAS ===');
+  console.log('🔍 [VisualizarPesquisas] Pesquisa Editando:', pesquisaEditando?.id);
+  console.log('🔍 [VisualizarPesquisas] Prestador:', pesquisaEditando?.prestador);
+  console.log('🔍 [VisualizarPesquisas] IDs Relacionados (do banco):', especialistasIdsRelacionados);
+  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Relacionados:', especialistasIdsRelacionados.length);
+  
   // Buscar especialistas para visualização
   const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
   
-  // Correlação automática baseada no campo prestador
+  // Correlação automática baseada no campo prestador - CORRIGIDO
   const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
-    pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisaEditando.prestador : undefined
+    pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0 
+      ? pesquisaEditando.prestador 
+      : undefined
   );
   
-  // Usar relacionamentos salvos ou correlação automática
-  const especialistasIds = especialistasIdsRelacionados.length > 0 
-    ? especialistasIdsRelacionados 
-    : especialistasIdsCorrelacionados;
+  console.log('🔍 [VisualizarPesquisas] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
+  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
+  console.log('🔍 [VisualizarPesquisas] Condição para correlação:', {
+    temPrestador: !!pesquisaEditando?.prestador,
+    prestador: pesquisaEditando?.prestador,
+    relacionadosVazio: especialistasIdsRelacionados.length === 0,
+    deveCorrelacionar: !!(pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0)
+  });
+  
+  // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
+  const especialistasIdsUnicos = [...new Set(
+    especialistasIdsRelacionados.length > 0 
+      ? especialistasIdsRelacionados 
+      : especialistasIdsCorrelacionados
+  )];
+  
+  console.log('🔍 [VisualizarPesquisas] IDs Únicos (após Set):', especialistasIdsUnicos);
+  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Únicos:', especialistasIdsUnicos.length);
+  console.log('🔍 [VisualizarPesquisas] === FIM DADOS DE ESPECIALISTAS ===');
+  
+  const especialistasIds = especialistasIdsUnicos;
 
   // Queries - usando hook que traz TODAS as pesquisas sem filtros automáticos
   const { data: pesquisas = [], isLoading, refetch } = useTodasPesquisasSatisfacao(filtros);
@@ -169,10 +194,18 @@ function VisualizarPesquisas() {
 
   // Preencher especialistas quando pesquisa for carregada
   useEffect(() => {
-    if (pesquisaEditando && especialistasIds.length > 0) {
+    console.log('🔄 [VisualizarPesquisas useEffect] === EXECUÇÃO ===');
+    console.log('🔄 [VisualizarPesquisas useEffect] pesquisaEditando:', pesquisaEditando?.id);
+    console.log('🔄 [VisualizarPesquisas useEffect] especialistasIds:', especialistasIds);
+    console.log('🔄 [VisualizarPesquisas useEffect] dadosEdicao.especialistas_ids atual:', dadosEdicao.especialistas_ids);
+    
+    if (pesquisaEditando) {
+      // SEMPRE atualizar, mesmo se especialistasIds estiver vazio
+      // Isso garante que o campo seja limpo se não houver especialistas
+      console.log('✅ [VisualizarPesquisas useEffect] Atualizando especialistas_ids para:', especialistasIds);
       setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
     }
-  }, [pesquisaEditando, especialistasIds]);
+  }, [pesquisaEditando?.id, especialistasIds.length]); // Usar apenas ID e length para evitar loops
 
   const handleVisualizarDetalhes = (pesquisa: any) => {
     setPesquisaSelecionada(pesquisa);
@@ -180,6 +213,11 @@ function VisualizarPesquisas() {
   };
 
   const handleEditarPesquisa = (pesquisa: any) => {
+    console.log('📝 [handleEditarPesquisa] === INÍCIO ===');
+    console.log('📝 [handleEditarPesquisa] Pesquisa:', pesquisa);
+    console.log('📝 [handleEditarPesquisa] Pesquisa ID:', pesquisa.id);
+    console.log('📝 [handleEditarPesquisa] Prestador:', pesquisa.prestador);
+    
     setPesquisaEditando(pesquisa);
     
     // Tentar encontrar a empresa pelo nome completo ou abreviado
@@ -189,6 +227,8 @@ function VisualizarPesquisas() {
     
     // Usar o nome_completo se encontrou, senão usar o valor original
     const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
+    
+    console.log('📝 [handleEditarPesquisa] Inicializando dadosEdicao com especialistas_ids: []');
     
     setDadosEdicao({
       empresa: empresaValue || '',
@@ -207,6 +247,8 @@ function VisualizarPesquisas() {
       observacao: pesquisa.observacao || '',
       especialistas_ids: [] // Será preenchido pelo useEffect
     });
+    
+    console.log('📝 [handleEditarPesquisa] === FIM ===');
     setModalEditarAberto(true);
   };
 
@@ -935,7 +977,9 @@ function VisualizarPesquisas() {
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Categorização</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Categoria <span className="text-black">*</span>
+                      </label>
                       <Select 
                         value={dadosEdicao.categoria} 
                         onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, categoria: value, grupo: '' }))}
@@ -995,13 +1039,14 @@ function VisualizarPesquisas() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Tipo do Chamado</label>
                       <Select 
-                        value={dadosEdicao.tipo_caso} 
-                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, tipo_caso: value }))}
+                        value={dadosEdicao.tipo_caso || 'none'} 
+                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, tipo_caso: value === 'none' ? '' : value }))}
                       >
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                           <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">Selecione o tipo</SelectItem>
                           {tiposChamado.map(tipo => (
                             <SelectItem key={tipo.value} value={tipo.value}>
                               {tipo.label}

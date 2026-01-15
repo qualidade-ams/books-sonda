@@ -40,6 +40,7 @@ export interface EspecialistaOption {
 interface MultiSelectEspecialistasProps {
   value?: string[]; // Array de IDs dos especialistas selecionados
   onValueChange?: (value: string[]) => void;
+  onConsultoresManuaisChange?: (consultores: EspecialistaOption[]) => void; // Callback para consultores manuais
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -49,6 +50,7 @@ interface MultiSelectEspecialistasProps {
 export function MultiSelectEspecialistas({
   value = [],
   onValueChange,
+  onConsultoresManuaisChange,
   placeholder = "Selecione os consultores...",
   disabled = false,
   className,
@@ -121,7 +123,10 @@ export function MultiSelectEspecialistas({
   const handleUnselect = (item: string) => {
     // Se for um consultor manual, remover também da lista de consultores manuais
     if (item.startsWith('manual_')) {
-      setConsultoresManuais(prev => prev.filter(c => c.value !== item));
+      const novosConsultoresManuais = consultoresManuais.filter(c => c.value !== item);
+      setConsultoresManuais(novosConsultoresManuais);
+      // Notificar o componente pai
+      onConsultoresManuaisChange?.(novosConsultoresManuais);
     }
     const novoValor = internalValue.filter(id => id !== item);
     console.log('🗑️ [MultiSelectEspecialistas] Removendo item:', item, 'Novo valor:', novoValor);
@@ -136,7 +141,10 @@ export function MultiSelectEspecialistas({
         const ultimoItem = internalValue[internalValue.length - 1];
         // Se for um consultor manual, remover também da lista de consultores manuais
         if (ultimoItem.startsWith('manual_')) {
-          setConsultoresManuais(prev => prev.filter(c => c.value !== ultimoItem));
+          const novosConsultoresManuais = consultoresManuais.filter(c => c.value !== ultimoItem);
+          setConsultoresManuais(novosConsultoresManuais);
+          // Notificar o componente pai
+          onConsultoresManuaisChange?.(novosConsultoresManuais);
         }
         const novoValor = internalValue.slice(0, -1);
         console.log('⌫ [MultiSelectEspecialistas] Removendo último item via teclado:', ultimoItem, 'Novo valor:', novoValor);
@@ -164,7 +172,11 @@ export function MultiSelectEspecialistas({
     };
     
     // Adicionar à lista de consultores manuais
-    setConsultoresManuais(prev => [...prev, novoConsultor]);
+    const novosConsultoresManuais = [...consultoresManuais, novoConsultor];
+    setConsultoresManuais(novosConsultoresManuais);
+    
+    // Notificar o componente pai sobre os consultores manuais
+    onConsultoresManuaisChange?.(novosConsultoresManuais);
     
     // Adicionar à seleção
     const novoValor = [...internalValue, idTemporario];
@@ -225,20 +237,24 @@ export function MultiSelectEspecialistas({
                         variant="secondary"
                         key={item}
                         className={cn(
-                          "mr-1 mb-1 flex items-center gap-1 hover:bg-destructive/10 cursor-pointer",
+                          "mr-1 mb-1 flex items-center gap-1 hover:bg-destructive/10",
                           item.startsWith('manual_') && "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200"
                         )}
-                        title={`Clique para remover ${option.label}${item.startsWith('manual_') ? ' (Manual)' : ''}`}
+                        title={`${option.label}${item.startsWith('manual_') ? ' (Manual)' : ''}`}
                       >
                         <User className="h-3 w-3" />
                         <span className="max-w-[120px] truncate">{option.label}</span>
                         {item.startsWith('manual_') && (
                           <span className="text-xs opacity-75">(M)</span>
                         )}
-                        <button
-                          className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-destructive hover:text-destructive-foreground"
+                        <span
+                          className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-destructive hover:text-destructive-foreground cursor-pointer inline-flex items-center justify-center"
+                          role="button"
+                          tabIndex={0}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
                               handleUnselect(item);
                             }
                           }}
@@ -254,7 +270,7 @@ export function MultiSelectEspecialistas({
                           title="Remover"
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </span>
                       </Badge>
                     );
                   })}
@@ -274,29 +290,33 @@ export function MultiSelectEspecialistas({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-full p-0 max-h-96 overflow-hidden"
+          className="w-full p-0"
           side="bottom"
           align="start"
+          style={{ maxHeight: '600px' }}
         >
-          <Command className="overflow-hidden" shouldFilter={false}>
+          <Command className="overflow-hidden" shouldFilter={false} style={{ maxHeight: '600px' }}>
             <CommandInput
               placeholder={`Buscar consultor... (${filtrados}/${total})`}
               value={termoBusca}
               onValueChange={atualizarBusca}
               onKeyDown={handleKeyDown}
             />
-            <CommandList className="max-h-80 overflow-hidden">
+            <CommandList className="overflow-hidden" style={{ maxHeight: '550px' }}>
               <CommandEmpty>
                 {isLoading ? "Carregando..." : "Nenhum consultor encontrado."}
               </CommandEmpty>
               
-              {/* Seção de consultores selecionados */}
-              {internalValue.length > 0 && (
+              {/* Seção de consultores selecionados - só mostra se há resultados disponíveis ou não há busca ativa */}
+              {internalValue.length > 0 && (selectables.length > 0 || !termoBusca.trim()) && (
                 <CommandGroup>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
                     Selecionados ({internalValue.length})
                   </div>
-                  <div className="p-2 space-y-1">
+                  <div className="p-2 space-y-1 max-h-40 overflow-y-auto" style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 #f1f5f9'
+                  }}>
                     {internalValue.map((item) => {
                       const option = allOptions.find((opt) => opt.value === item);
                       if (!option) return null;
@@ -341,93 +361,98 @@ export function MultiSelectEspecialistas({
                 </CommandGroup>
               )}
               
-              <CommandGroup className="overflow-hidden">
-                {selectables.length > 0 && (
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
-                    Disponíveis ({selectables.length})
-                  </div>
-                )}
-                <div 
-                  className="max-h-64 overflow-y-auto overflow-x-hidden"
-                  style={{
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#cbd5e1 #f1f5f9',
-                    overflowY: 'scroll'
-                  }}
-                  onWheel={(e) => {
-                    // Permitir scroll nativo
-                    e.stopPropagation();
-                  }}
-                >
-                  {/* Opções paginadas */}
-                  {selectables.map((option) => (
-                    <CommandItem
-                      key={option.value}
-                      onSelect={() => {
-                        const novoValor = [...internalValue, option.value];
-                        console.log('➕ [MultiSelectEspecialistas] Adicionando especialista:', option.label, 'Novo valor:', novoValor);
-                        setInternalValue(novoValor);
-                        onValueChange?.(novoValor);
-                        atualizarBusca("");
-                      }}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-accent"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          internalValue.includes(option.value)
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <div className="flex flex-col flex-1">
-                        <span className="font-medium">{option.label}</span>
-                        {option.email && (
-                          <span className="text-xs text-muted-foreground">
-                            {option.email}
-                          </span>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </div>
-                
-                {/* Botão "Carregar Mais" - fora da área de scroll */}
-                {temMaisItensDisponiveis && (
-                  <div className="p-2 border-t bg-background">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={carregarProximaPagina}
-                      className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Carregar mais ({totalDisponiveis - selectables.length} restantes)
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Botão "Adicionar Consultor Manual" */}
-                <div className="p-2 border-t bg-background">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setModalNovoConsultor(true)}
-                    className="w-full justify-center gap-2 text-blue-600 hover:text-blue-800 border-blue-200 hover:border-blue-300"
+              {/* Só mostra a seção de disponíveis se houver resultados */}
+              {selectables.length > 0 && (
+                <CommandGroup className="overflow-hidden">
+                  {selectables.length > 0 && (
+                    <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                      Disponíveis ({selectables.length})
+                    </div>
+                  )}
+                  <div 
+                    className="overflow-y-auto overflow-x-hidden"
+                    style={{
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#cbd5e1 #f1f5f9',
+                      overflowY: 'scroll',
+                      minHeight: '200px',
+                      maxHeight: '300px'
+                    }}
+                    onWheel={(e) => {
+                      // Permitir scroll nativo
+                      e.stopPropagation();
+                    }}
                   >
-                    <Plus className="h-4 w-4" />
-                    Adicionar Consultor Manual
-                  </Button>
-                </div>
-                
-                {/* Indicador de fim da lista */}
-                {!temMaisPaginas && itensCarregados > 10 && (
-                  <div className="p-2 text-center text-xs text-muted-foreground border-t bg-background">
-                    Todos os {itensCarregados} consultores carregados
+                    {/* Opções paginadas */}
+                    {selectables.map((option) => (
+                      <CommandItem
+                        key={option.value}
+                        onSelect={() => {
+                          const novoValor = [...internalValue, option.value];
+                          console.log('➕ [MultiSelectEspecialistas] Adicionando especialista:', option.label, 'Novo valor:', novoValor);
+                          setInternalValue(novoValor);
+                          onValueChange?.(novoValor);
+                          atualizarBusca("");
+                        }}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-accent"
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            internalValue.includes(option.value)
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex flex-col flex-1">
+                          <span className="font-medium">{option.label}</span>
+                          {option.email && (
+                            <span className="text-xs text-muted-foreground">
+                              {option.email}
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
                   </div>
-                )}
-              </CommandGroup>
+                  
+                  {/* Botão "Carregar Mais" - fora da área de scroll */}
+                  {temMaisItensDisponiveis && (
+                    <div className="p-2 border-t bg-background">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={carregarProximaPagina}
+                        className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Carregar mais ({totalDisponiveis - selectables.length} restantes)
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Indicador de fim da lista */}
+                  {!temMaisPaginas && itensCarregados > 10 && (
+                    <div className="p-2 text-center text-xs text-muted-foreground border-t bg-background">
+                      Todos os {itensCarregados} consultores carregados
+                    </div>
+                  )}
+                </CommandGroup>
+              )}
+              
+              {/* Botão "Adicionar Consultor Manual" - sempre visível */}
+              <div className="p-2 border-t bg-background">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setModalNovoConsultor(true)}
+                  className="w-full justify-center gap-2 text-blue-600 hover:text-blue-800 border-blue-200 hover:border-blue-300"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Consultor Manual
+                </Button>
+              </div>
             </CommandList>
           </Command>
         </PopoverContent>
