@@ -402,6 +402,28 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     throw new Error(`Erro ao criar pesquisa: ${error.message}`);
   }
 
+  // Salvar relacionamentos com especialistas (se houver)
+  if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
+    console.log('🔗 [CRIAR] Salvando relacionamentos com especialistas:', dados.especialistas_ids);
+    
+    const relacionamentos = dados.especialistas_ids.map(especialistaId => ({
+      pesquisa_id: data.id,
+      especialista_id: especialistaId
+    }));
+    
+    const { error: errorRelacionamentos } = await supabase
+      .from('pesquisa_especialistas')
+      .insert(relacionamentos);
+    
+    if (errorRelacionamentos) {
+      console.error('❌ [CRIAR] Erro ao salvar relacionamentos:', errorRelacionamentos);
+      // Não falhar a operação inteira, apenas logar o erro
+      console.warn('⚠️ [CRIAR] Pesquisa criada mas relacionamentos não foram salvos');
+    } else {
+      console.log('✅ [CRIAR] Relacionamentos salvos com sucesso');
+    }
+  }
+
   return data;
 }
 
@@ -460,6 +482,44 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
   if (error) {
     console.error('Erro ao atualizar pesquisa:', error);
     throw new Error(`Erro ao atualizar pesquisa: ${error.message}`);
+  }
+
+  // Atualizar relacionamentos com especialistas (se fornecido)
+  if (dados.especialistas_ids !== undefined) {
+    console.log('🔗 [ATUALIZAR] Atualizando relacionamentos com especialistas:', dados.especialistas_ids);
+    
+    // Remover relacionamentos antigos
+    const { error: errorDelete } = await supabase
+      .from('pesquisa_especialistas')
+      .delete()
+      .eq('pesquisa_id', id);
+    
+    if (errorDelete) {
+      console.error('❌ [ATUALIZAR] Erro ao remover relacionamentos antigos:', errorDelete);
+    } else {
+      console.log('✅ [ATUALIZAR] Relacionamentos antigos removidos');
+    }
+    
+    // Inserir novos relacionamentos (se houver)
+    if (dados.especialistas_ids.length > 0) {
+      const relacionamentos = dados.especialistas_ids.map(especialistaId => ({
+        pesquisa_id: id,
+        especialista_id: especialistaId
+      }));
+      
+      const { error: errorInsert } = await supabase
+        .from('pesquisa_especialistas')
+        .insert(relacionamentos);
+      
+      if (errorInsert) {
+        console.error('❌ [ATUALIZAR] Erro ao salvar novos relacionamentos:', errorInsert);
+        console.warn('⚠️ [ATUALIZAR] Pesquisa atualizada mas relacionamentos não foram salvos');
+      } else {
+        console.log('✅ [ATUALIZAR] Novos relacionamentos salvos com sucesso');
+      }
+    } else {
+      console.log('ℹ️ [ATUALIZAR] Nenhum relacionamento para salvar (lista vazia)');
+    }
   }
 
   return data;
