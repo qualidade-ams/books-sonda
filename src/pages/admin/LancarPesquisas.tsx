@@ -288,7 +288,7 @@ function LancarPesquisas() {
             </TooltipProvider>
             <Button onClick={handleNovoPesquisa}>
               <Plus className="h-4 w-4 mr-2" />
-              Novo Pesquisa
+              Nova Pesquisa
             </Button>
           </div>
         </div>
@@ -519,6 +519,7 @@ function LancarPesquisas() {
               setPesquisaEditando(null);
             }}
             isLoading={criarPesquisa.isPending || atualizarPesquisa.isPending}
+            showSolicitante={!!pesquisaEditando} // Só mostra o campo Solicitante ao editar
           />
         </DialogContent>
       </Dialog>

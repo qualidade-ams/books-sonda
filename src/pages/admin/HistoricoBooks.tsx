@@ -347,111 +347,51 @@ const HistoricoBooks = () => {
           </div>
         </div>
 
-        {/* Filtros Ativos */}
-        {(filtros.mes || filtros.ano || filtros.empresaId || filtros.status?.length) && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {filtros.mes && filtros.ano && (
-                    <Badge variant="secondary">
-                      {nomesMeses[filtros.mes - 1]} {filtros.ano}
-                    </Badge>
-                  )}
-                  {filtros.empresaId && (
-                    <Badge variant="secondary">
-                      Empresa: {empresas.find(e => e.id === filtros.empresaId)?.nome_completo}
-                    </Badge>
-                  )}
-                  {filtros.status && filtros.status.length > 0 && (
-                    <Badge variant="secondary">
-                      Status: {filtros.status.join(', ')}
-                    </Badge>
-                  )}
-                  {filtros.apenasComFalhas && (
-                    <Badge variant="destructive">
-                      Apenas Falhas
-                    </Badge>
-                  )}
-                  {filtros.apenasComSucesso && (
-                    <Badge variant="default">
-                      Apenas Sucessos
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLimparFiltros}
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Estatísticas Gerais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Total de Disparos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {statsHistorico.total}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-4 w-4 text-gray-500" />
+                <p className="text-xs font-medium text-gray-500">Total de Disparos</p>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-2xl font-bold text-gray-900">{statsHistorico.total}</p>
+              <p className="text-xs text-gray-500 mt-1">
                 {statsHistorico.empresasUnicas} empresas • {statsHistorico.clientesUnicos} clientes
               </p>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-600 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Sucessos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {statsHistorico.enviados}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <p className="text-xs font-medium text-green-500">Sucessos</p>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-2xl font-bold text-green-600">{statsHistorico.enviados}</p>
+              <p className="text-xs text-gray-500 mt-1">
                 {statsHistorico.taxaSucesso}% de sucesso
               </p>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                Falhas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {statsHistorico.falhas}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="h-4 w-4 text-red-500" />
+                <p className="text-xs font-medium text-red-500">Falhas</p>
               </div>
+              <p className="text-2xl font-bold text-red-600">{statsHistorico.falhas}</p>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-blue-600 flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Agendados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {statsHistorico.agendados}
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                <p className="text-xs font-medium text-blue-500">Agendados</p>
               </div>
+              <p className="text-2xl font-bold text-blue-600">{statsHistorico.agendados}</p>
             </CardContent>
           </Card>
         </div>
@@ -466,27 +406,53 @@ const HistoricoBooks = () => {
 
           {/* Aba Histórico */}
           <TabsContent value="historico" className="space-y-4">
-            {/* Busca */}
+            {/* Tabela de Histórico */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Histórico de Disparos
+                  </CardTitle>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFiltrosModal(true)}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    
+                    {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                    {(filtros.mes || filtros.ano || filtros.empresaId || filtros.status?.length) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLimparFiltros}
+                        className="whitespace-nowrap hover:border-red-300"
+                      >
+                        <X className="h-4 w-4 mr-2 text-red-600" />
+                        Limpar Filtro
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Área de busca - sempre visível */}
+                <div className="pt-4 border-t">
+                  <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Buscar por empresa, cliente, e-mail ou assunto..."
                       value={termoBusca}
                       onChange={(e) => setTermoBusca(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Tabela de Histórico */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico de Disparos</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -599,47 +565,51 @@ const HistoricoBooks = () => {
                 {relatorioMensal ? (
                   <div className="space-y-6">
                     {/* Métricas do Relatório */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                       <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Users className="h-4 w-4 text-gray-500" />
+                            <p className="text-xs font-medium text-gray-500">Empresas Ativas</p>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900">
                             {relatorioMensal.metricas.empresasAtivas}
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Empresas Ativas
                           </p>
                         </CardContent>
                       </Card>
                       
                       <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-2xl font-bold text-green-600">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Mail className="h-4 w-4 text-green-500" />
+                            <p className="text-xs font-medium text-green-500">E-mails Enviados</p>
+                          </div>
+                          <p className="text-2xl font-bold text-green-600">
                             {relatorioMensal.metricas.emailsEnviadosMes}
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            E-mails Enviados
                           </p>
                         </CardContent>
                       </Card>
                       
                       <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-2xl font-bold text-red-600">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <p className="text-xs font-medium text-red-500">E-mails com Falha</p>
+                          </div>
+                          <p className="text-2xl font-bold text-red-600">
                             {relatorioMensal.metricas.emailsFalharamMes}
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            E-mails com Falha
                           </p>
                         </CardContent>
                       </Card>
                       
                       <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-2xl font-bold text-blue-600">
-                            {relatorioMensal.metricas.taxaSucessoMes}%
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="h-4 w-4 text-blue-500" />
+                            <p className="text-xs font-medium text-blue-500">Taxa de Sucesso</p>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Taxa de Sucesso
+                          <p className="text-2xl font-bold text-blue-600">
+                            {relatorioMensal.metricas.taxaSucessoMes}%
                           </p>
                         </CardContent>
                       </Card>
@@ -776,14 +746,58 @@ const HistoricoBooks = () => {
               <DialogTitle>Filtros Avançados</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Filtros Ativos */}
+              {(filtros.mes || filtros.ano || filtros.empresaId || filtros.status?.length || filtros.apenasComFalhas || filtros.apenasComSucesso) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-blue-900">Filtros Ativos:</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLimparFiltros}
+                      className="h-6 text-xs text-blue-700 hover:text-blue-900"
+                    >
+                      Limpar Todos
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filtros.mes && filtros.ano && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        {nomesMeses[filtros.mes - 1]} {filtros.ano}
+                      </Badge>
+                    )}
+                    {filtros.empresaId && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        Empresa: {empresas.find(e => e.id === filtros.empresaId)?.nome_completo}
+                      </Badge>
+                    )}
+                    {filtros.status && filtros.status.length > 0 && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        Status: {filtros.status.join(', ')}
+                      </Badge>
+                    )}
+                    {filtros.apenasComFalhas && (
+                      <Badge variant="destructive">
+                        Apenas Falhas
+                      </Badge>
+                    )}
+                    {filtros.apenasComSucesso && (
+                      <Badge className="bg-green-100 text-green-800">
+                        Apenas Sucessos
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="mes-filtro">Mês</Label>
+                  <div className="text-sm font-medium mb-2">Mês</div>
                   <Select
                     value={filtros.mes?.toString()}
                     onValueChange={(value) => handleFiltroChange('mes', parseInt(value))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                       <SelectValue placeholder="Selecione o mês" />
                     </SelectTrigger>
                     <SelectContent>
@@ -797,12 +811,12 @@ const HistoricoBooks = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="ano-filtro">Ano</Label>
+                  <div className="text-sm font-medium mb-2">Ano</div>
                   <Select
                     value={filtros.ano?.toString()}
                     onValueChange={(value) => handleFiltroChange('ano', parseInt(value))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                       <SelectValue placeholder="Selecione o ano" />
                     </SelectTrigger>
                     <SelectContent>
@@ -817,12 +831,12 @@ const HistoricoBooks = () => {
               </div>
 
               <div>
-                <Label htmlFor="empresa-filtro">Empresa</Label>
+                <div className="text-sm font-medium mb-2">Empresa</div>
                 <Select
                   value={filtros.empresaId || 'todas'}
                   onValueChange={(value) => handleFiltroChange('empresaId', value === 'todas' ? undefined : value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                     <SelectValue placeholder="Todas as empresas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -837,7 +851,7 @@ const HistoricoBooks = () => {
               </div>
 
               <div>
-                <Label>Status</Label>
+                <div className="text-sm font-medium mb-2">Status</div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {STATUS_DISPARO_OPTIONS.map((option) => (
                     <div key={option.value} className="flex items-center space-x-2">
@@ -896,14 +910,17 @@ const HistoricoBooks = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button
                   variant="outline"
                   onClick={() => setShowFiltrosModal(false)}
                 >
                   Cancelar
                 </Button>
-                <Button onClick={handleAplicarFiltros}>
+                <Button 
+                  onClick={handleAplicarFiltros}
+                  className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                >
                   Aplicar Filtros
                 </Button>
               </div>
@@ -919,14 +936,14 @@ const HistoricoBooks = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Formato</Label>
+                <div className="text-sm font-medium mb-2">Formato</div>
                 <Select
                   value={configExportacao.formato}
                   onValueChange={(value: 'csv' | 'excel' | 'pdf') => 
                     setConfigExportacao(prev => ({ ...prev, formato: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -965,7 +982,7 @@ const HistoricoBooks = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button
                   variant="outline"
                   onClick={() => setShowExportModal(false)}
@@ -975,6 +992,7 @@ const HistoricoBooks = () => {
                 <Button
                   onClick={handleExportar}
                   disabled={isExportando}
+                  className="bg-sonda-blue hover:bg-sonda-dark-blue"
                 >
                   {isExportando ? 'Exportando...' : 'Exportar'}
                 </Button>
@@ -993,9 +1011,9 @@ const HistoricoBooks = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Empresa
-                    </Label>
+                    </div>
                     <p className="font-medium">{itemSelecionado.empresas_clientes?.nome_completo}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {itemSelecionado.empresas_clientes?.nome_abreviado}
@@ -1003,9 +1021,9 @@ const HistoricoBooks = () => {
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Cliente(s)
-                    </Label>
+                    </div>
                     {/* Verificar se é e-mail consolidado baseado nos detalhes do erro */}
                     {itemSelecionado.erro_detalhes && itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? (
                       <div className="space-y-1">
@@ -1026,9 +1044,9 @@ const HistoricoBooks = () => {
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Status
-                    </Label>
+                    </div>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(itemSelecionado.status as StatusDisparo)}
                       <Badge className={getStatusColor(itemSelecionado.status as StatusDisparo)}>
@@ -1038,9 +1056,9 @@ const HistoricoBooks = () => {
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Data/Hora
-                    </Label>
+                    </div>
                     <p>
                       {itemSelecionado.data_disparo 
                         ? formatDateTime(itemSelecionado.data_disparo)
@@ -1054,27 +1072,27 @@ const HistoricoBooks = () => {
 
                 {itemSelecionado.assunto && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Assunto
-                    </Label>
+                    </div>
                     <p>{itemSelecionado.assunto}</p>
                   </div>
                 )}
 
                 {itemSelecionado.emails_cc && itemSelecionado.emails_cc.length > 0 && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       E-mails em Cópia
-                    </Label>
+                    </div>
                     <p className="text-sm">{itemSelecionado.emails_cc.join(', ')}</p>
                   </div>
                 )}
 
                 {itemSelecionado.erro_detalhes && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? 'Detalhes do Envio' : 'Detalhes do Erro'}
-                    </Label>
+                    </div>
                     <div className={`p-3 border rounded-lg ${
                       itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
@@ -1091,7 +1109,7 @@ const HistoricoBooks = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-4 border-t">
                   <Button
                     variant="outline"
                     onClick={() => setShowDetalhesModal(false)}
