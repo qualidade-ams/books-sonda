@@ -95,16 +95,35 @@ function LancarPesquisas() {
   };
 
   const handleSubmitForm = async (dados: PesquisaFormData) => {
-    if (pesquisaEditando) {
-      await atualizarPesquisa.mutateAsync({
-        id: pesquisaEditando.id,
-        dados
-      });
-    } else {
-      await criarPesquisa.mutateAsync(dados);
+    console.log('📥 [LancarPesquisas handleSubmitForm] === INÍCIO ===');
+    console.log('📥 [LancarPesquisas handleSubmitForm] Dados recebidos:', dados);
+    console.log('📥 [LancarPesquisas handleSubmitForm] pesquisaEditando:', pesquisaEditando);
+    console.log('📥 [LancarPesquisas handleSubmitForm] É edição?', !!pesquisaEditando);
+    
+    try {
+      if (pesquisaEditando) {
+        console.log('📝 [LancarPesquisas handleSubmitForm] Atualizando pesquisa...');
+        await atualizarPesquisa.mutateAsync({
+          id: pesquisaEditando.id,
+          dados
+        });
+        console.log('✅ [LancarPesquisas handleSubmitForm] Pesquisa atualizada com sucesso');
+      } else {
+        console.log('➕ [LancarPesquisas handleSubmitForm] Criando nova pesquisa...');
+        await criarPesquisa.mutateAsync(dados);
+        console.log('✅ [LancarPesquisas handleSubmitForm] Pesquisa criada com sucesso');
+      }
+      
+      console.log('🔄 [LancarPesquisas handleSubmitForm] Fechando modal...');
+      setModalAberto(false);
+      setPesquisaEditando(null);
+      console.log('✅ [LancarPesquisas handleSubmitForm] Modal fechado');
+    } catch (error) {
+      console.error('❌ [LancarPesquisas handleSubmitForm] Erro:', error);
+      throw error; // Re-throw para que o React Query possa tratar
     }
-    setModalAberto(false);
-    setPesquisaEditando(null);
+    
+    console.log('📥 [LancarPesquisas handleSubmitForm] === FIM ===');
   };
 
   const handleExcluir = async (id: string) => {

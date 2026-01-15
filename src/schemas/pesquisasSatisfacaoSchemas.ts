@@ -90,7 +90,19 @@ export const PesquisaFormSchemaBase = z.object({
     .nullable(),
   
   // Especialistas/Consultores
-  especialistas_ids: z.array(z.string().uuid())
+  // Aceita UUIDs (do banco) ou IDs manuais (começam com "manual_")
+  especialistas_ids: z.array(
+    z.string().refine(
+      (val) => {
+        // Aceitar IDs manuais (começam com "manual_")
+        if (val.startsWith('manual_')) return true;
+        // Aceitar UUIDs válidos
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(val);
+      },
+      { message: 'ID de especialista inválido' }
+    )
+  )
     .optional()
     .default([]),
   

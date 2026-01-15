@@ -172,42 +172,166 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   }, [pesquisa, form, empresas]);
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
+  // NÃO atualizar se o formulário já foi modificado pelo usuário
+  // Usar ref para rastrear se já foi inicializado
+  const especialistasInicializados = React.useRef(false);
+  const processamentoEmAndamento = React.useRef(false);
+  
   useEffect(() => {
     console.log('🔄 [PesquisaForm useEffect] === EXECUÇÃO DO USEEFFECT ===');
     console.log('🔄 [PesquisaForm useEffect] especialistasIds:', especialistasIds);
     console.log('🔄 [PesquisaForm useEffect] especialistasIds.length:', especialistasIds.length);
     console.log('🔄 [PesquisaForm useEffect] pesquisa:', pesquisa?.id);
+    console.log('🔄 [PesquisaForm useEffect] form.formState.isDirty:', form.formState.isDirty);
+    console.log('🔄 [PesquisaForm useEffect] form.formState.isSubmitting:', form.formState.isSubmitting);
+    console.log('🔄 [PesquisaForm useEffect] especialistasInicializados.current:', especialistasInicializados.current);
+    console.log('🔄 [PesquisaForm useEffect] processamentoEmAndamento.current:', processamentoEmAndamento.current);
     
-    if (especialistasIds.length > 0 && pesquisa) {
+    // NÃO atualizar se:
+    // 1. Formulário está sendo enviado (isSubmitting)
+    // 2. Especialistas já foram inicializados
+    // 3. Processamento já está em andamento
+    if (form.formState.isSubmitting || especialistasInicializados.current || processamentoEmAndamento.current) {
+      console.log('📋 [PesquisaForm useEffect] ⚠️ Pulando atualização - formulário em uso ou já inicializado');
+      return;
+    }
+    
+    // Preencher especialistas apenas na primeira vez
+    if (pesquisa && pesquisa.prestador) {
       console.log('📋 [PesquisaForm useEffect] ✅ Condições atendidas, processando...');
-      console.log('📋 [PesquisaForm useEffect] Preenchendo especialistas:', especialistasIds);
-      console.log('📋 [PesquisaForm useEffect] Valor atual do campo:', form.getValues('especialistas_ids'));
       
-      // Verificar se os valores já estão corretos para evitar duplicação
-      const valoresAtuais = form.getValues('especialistas_ids') || [];
-      console.log('📋 [PesquisaForm useEffect] Valores atuais:', valoresAtuais);
-      console.log('📋 [PesquisaForm useEffect] Valores atuais (sorted):', [...valoresAtuais].sort());
-      console.log('📋 [PesquisaForm useEffect] Valores novos (sorted):', [...especialistasIds].sort());
+      // Marcar processamento como em andamento
+      processamentoEmAndamento.current = true;
       
-      const valoresIguais = JSON.stringify([...valoresAtuais].sort()) === JSON.stringify([...especialistasIds].sort());
-      console.log('📋 [PesquisaForm useEffect] Valores são iguais?', valoresIguais);
+      // Função assíncrona para processar especialistas
+      const processarEspecialistas = async () => {
+        console.log('🔍 [processarEspecialistas] === INÍCIO ===');
+        console.log('🔍 [processarEspecialistas] pesquisa.prestador:', pesquisa.prestador);
+        console.log('🔍 [processarEspecialistas] especialistasIds:', especialistasIds);
+        
+        try {
+          // Combinar especialistas do banco com consultores manuais extraídos do prestador
+          const todosIds: string[] = [...especialistasIds];
+          const consultoresManuaisExtraidos: Array<{ label: string; value: string; email?: string }> = [];
+          
+          // Se há campo prestador, extrair consultores manuais
+          if (pesquisa.prestador) {
+            console.log('📋 [processarEspecialistas] Prestador encontrado:', pesquisa.prestador);
+            
+            // Buscar nomes dos especialistas do banco para comparação
+            const nomesEspecialistasDb = new Set<string>();
+            if (especialistasIds.length > 0) {
+              console.log('📋 [processarEspecialistas] Buscando nomes dos especialistas do banco...');
+              const { data, error } = await supabase
+                .from('especialistas')
+                .select('nome')
+                .in('id', especialistasIds);
+              
+              if (error) {
+                console.error('❌ [processarEspecialistas] Erro ao buscar nomes:', error);
+              } else if (data) {
+                console.log('✅ [processarEspecialistas] Dados recebidos do banco:', data);
+                data.forEach(esp => {
+                  nomesEspecialistasDb.add(esp.nome);
+                  console.log('  ➕ Nome adicionado ao Set:', esp.nome);
+                });
+                console.log('📋 [processarEspecialistas] Set completo de nomes do banco:', Array.from(nomesEspecialistasDb));
+              }
+            } else {
+              console.log('⚠️ [processarEspecialistas] Nenhum especialista do banco para buscar');
+            }
+            
+            // Separar nomes do prestador
+            const nomesPrestador = pesquisa.prestador.split(',').map(n => n.trim()).filter(n => n);
+            console.log('📋 [processarEspecialistas] Nomes no prestador (após split):', nomesPrestador);
+            console.log('📋 [processarEspecialistas] Quantidade de nomes:', nomesPrestador.length);
+            
+            // Identificar quais nomes NÃO estão na tabela especialistas (são manuais)
+            nomesPrestador.forEach((nome, index) => {
+              console.log(`🔍 [processarEspecialistas] Verificando nome ${index + 1}/${nomesPrestador.length}: "${nome}"`);
+              const estaNoSet = nomesEspecialistasDb.has(nome);
+              console.log(`  🔍 Está no Set? ${estaNoSet}`);
+              
+              if (!estaNoSet) {
+                // Este é um consultor manual
+                const idManual = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const consultor = {
+                  label: nome,
+                  value: idManual,
+                  email: undefined
+                };
+                consultoresManuaisExtraidos.push(consultor);
+                todosIds.push(idManual);
+                console.log('  ➕ [processarEspecialistas] Consultor manual extraído:', consultor);
+              } else {
+                console.log('  ✅ [processarEspecialistas] Consultor do banco, ignorando');
+              }
+            });
+            
+            console.log('📊 [processarEspecialistas] RESUMO:');
+            console.log('  - Total de nomes no prestador:', nomesPrestador.length);
+            console.log('  - Nomes do banco:', nomesEspecialistasDb.size);
+            console.log('  - Consultores manuais extraídos:', consultoresManuaisExtraidos.length);
+            console.log('  - Consultores manuais:', consultoresManuaisExtraidos);
+            
+            // Atualizar consultores manuais no estado PRIMEIRO
+            if (consultoresManuaisExtraidos.length > 0) {
+              console.log('📋 [processarEspecialistas] Atualizando estado com consultores manuais:', consultoresManuaisExtraidos);
+              setConsultoresManuais(consultoresManuaisExtraidos);
+              
+              // Aguardar um pouco para garantir que o estado foi atualizado
+              await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+              console.log('⚠️ [processarEspecialistas] Nenhum consultor manual para adicionar ao estado');
+            }
+          } else {
+            console.log('⚠️ [processarEspecialistas] Sem campo prestador');
+          }
+          
+          // Atualizar campo com todos os IDs (banco + manuais)
+          console.log('📋 [processarEspecialistas] Todos os IDs finais (banco + manuais):', todosIds);
+          console.log('📋 [processarEspecialistas] Quantidade total de IDs:', todosIds.length);
+          
+          // Usar setValue com shouldDirty: false para não marcar como modificado
+          form.setValue('especialistas_ids', todosIds, {
+            shouldValidate: false,
+            shouldDirty: false,
+            shouldTouch: false
+          });
+          
+          // Aguardar um pouco e forçar re-render
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Marcar como inicializado
+          especialistasInicializados.current = true;
+          processamentoEmAndamento.current = false;
+          
+          console.log('✅ [processarEspecialistas] Campo atualizado e marcado como inicializado');
+          console.log('✅ [processarEspecialistas] Estado final do formulário:', form.getValues());
+          console.log('🔍 [processarEspecialistas] === FIM ===');
+        } catch (error) {
+          console.error('❌ [processarEspecialistas] Erro durante processamento:', error);
+          processamentoEmAndamento.current = false;
+        }
+      };
       
-      if (!valoresIguais) {
-        console.log('📋 [PesquisaForm useEffect] ⚠️ Valores diferentes, atualizando...');
-        form.setValue('especialistas_ids', especialistasIds, {
-          shouldValidate: false,
-          shouldDirty: false,
-          shouldTouch: false
-        });
-        console.log('📋 [PesquisaForm useEffect] ✅ Campo atualizado com:', especialistasIds);
-      } else {
-        console.log('📋 [PesquisaForm useEffect] ✅ Valores já estão corretos, não atualizando');
-      }
+      // Executar processamento assíncrono
+      processarEspecialistas();
     } else {
       console.log('📋 [PesquisaForm useEffect] ❌ Condições NÃO atendidas, pulando...');
+      if (!pesquisa) console.log('  - Sem pesquisa');
+      if (pesquisa && !pesquisa.prestador) console.log('  - Sem campo prestador');
     }
     console.log('🔄 [PesquisaForm useEffect] === FIM EXECUÇÃO DO USEEFFECT ===');
-  }, [especialistasIds, pesquisa?.id]); // Usar pesquisa?.id em vez de pesquisa completo
+  }, [especialistasIds, pesquisa?.id, pesquisa?.prestador, form]); // Adicionar prestador nas dependências
+  
+  // Resetar flags quando pesquisa mudar (abrir outro modal)
+  useEffect(() => {
+    console.log('🔄 [PesquisaForm] Resetando flags para nova pesquisa:', pesquisa?.id);
+    especialistasInicializados.current = false;
+    processamentoEmAndamento.current = false;
+    setConsultoresManuais([]); // Limpar consultores manuais ao trocar de pesquisa
+  }, [pesquisa?.id]);
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {
@@ -231,22 +355,41 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   }, [categoriaSelecionada, grupos, form]);
 
   const handleSubmit = async (dados: PesquisaFormData) => {
-    console.log('📝 [PesquisaForm] Dados do formulário antes do processamento:', dados);
-    console.log('📝 [PesquisaForm] Consultores manuais:', consultoresManuais);
+    console.log('📝 [PesquisaForm handleSubmit] === INÍCIO ===');
+    console.log('📝 [PesquisaForm handleSubmit] Dados do formulário antes do processamento:', dados);
+    console.log('📝 [PesquisaForm handleSubmit] Consultores manuais:', consultoresManuais);
+    console.log('📝 [PesquisaForm handleSubmit] form.formState.isValid:', form.formState.isValid);
+    console.log('📝 [PesquisaForm handleSubmit] form.formState.errors:', form.formState.errors);
+    console.log('📝 [PesquisaForm handleSubmit] form.formState.isSubmitting:', form.formState.isSubmitting);
+    
+    // Validar manualmente antes de processar
+    const isValid = await form.trigger();
+    console.log('📝 [PesquisaForm handleSubmit] Validação manual (trigger):', isValid);
+    
+    if (!isValid) {
+      console.error('❌ [PesquisaForm handleSubmit] Formulário inválido após trigger');
+      console.error('❌ [PesquisaForm handleSubmit] Erros:', form.formState.errors);
+      return; // Não prosseguir se inválido
+    }
     
     // Se há especialistas selecionados, converter para nomes e preencher o campo prestador
     if (dados.especialistas_ids && dados.especialistas_ids.length > 0) {
+      console.log('🔄 [PesquisaForm handleSubmit] Entrando no bloco de conversão de especialistas');
       try {
-        console.log('🔄 [PesquisaForm] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
+        console.log('🔄 [PesquisaForm handleSubmit] Convertendo especialistas IDs para nomes:', dados.especialistas_ids);
         
         // Separar IDs do banco de dados e IDs manuais
         const idsDb = dados.especialistas_ids.filter(id => !id.startsWith('manual_'));
         const idsManuais = dados.especialistas_ids.filter(id => id.startsWith('manual_'));
         
+        console.log('🔄 [PesquisaForm handleSubmit] IDs do banco:', idsDb);
+        console.log('🔄 [PesquisaForm handleSubmit] IDs manuais:', idsManuais);
+        
         const nomes: string[] = [];
         
         // Buscar nomes dos especialistas do banco de dados
         if (idsDb.length > 0) {
+          console.log('🔄 [PesquisaForm handleSubmit] Buscando especialistas do banco...');
           const { data: especialistas, error } = await supabase
             .from('especialistas')
             .select('id, nome')
@@ -254,43 +397,59 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             .order('nome');
 
           if (error) {
-            console.error('❌ [PesquisaForm] Erro ao buscar especialistas:', error);
+            console.error('❌ [PesquisaForm handleSubmit] Erro ao buscar especialistas:', error);
             throw error;
           }
 
           if (especialistas) {
+            console.log('✅ [PesquisaForm handleSubmit] Especialistas encontrados:', especialistas);
             nomes.push(...especialistas.map(esp => esp.nome));
           }
+        } else {
+          console.log('⚠️ [PesquisaForm handleSubmit] Nenhum ID do banco para buscar');
         }
         
-        // Adicionar nomes dos consultores manuais
+        // Adicionar nomes dos consultores manuais (apenas os nomes, sem criar no banco)
         if (idsManuais.length > 0) {
+          console.log('🔄 [PesquisaForm handleSubmit] Processando consultores manuais...');
           const nomesManuais = consultoresManuais
             .filter(c => idsManuais.includes(c.value))
             .map(c => c.label);
           nomes.push(...nomesManuais);
-          console.log('✅ [PesquisaForm] Nomes dos consultores manuais:', nomesManuais);
+          console.log('✅ [PesquisaForm handleSubmit] Nomes dos consultores manuais:', nomesManuais);
+          console.log('ℹ️ [PesquisaForm handleSubmit] Consultores manuais serão salvos apenas no campo prestador (não na tabela especialistas)');
+        } else {
+          console.log('⚠️ [PesquisaForm handleSubmit] Nenhum consultor manual para processar');
         }
         
         const nomesConcat = nomes.join(', ');
         
-        console.log('✅ [PesquisaForm] Nomes dos especialistas do banco:', nomes);
-        console.log('✅ [PesquisaForm] Prestador concatenado:', nomesConcat);
+        console.log('✅ [PesquisaForm handleSubmit] Todos os nomes:', nomes);
+        console.log('✅ [PesquisaForm handleSubmit] Prestador concatenado:', nomesConcat);
+        console.log('✅ [PesquisaForm handleSubmit] IDs para relacionamento (apenas do banco):', idsDb);
         
-        // Atualizar o campo prestador com os nomes concatenados
+        // Atualizar o campo prestador com os nomes concatenados (inclui manuais)
         dados.prestador = nomesConcat;
         
-        // Filtrar apenas IDs do banco de dados para salvar no relacionamento
+        // Usar apenas IDs do banco para relacionamentos (consultores manuais ficam só no prestador)
         dados.especialistas_ids = idsDb;
         
+        console.log('✅ [PesquisaForm handleSubmit] Dados atualizados - prestador:', dados.prestador);
+        console.log('✅ [PesquisaForm handleSubmit] Dados atualizados - especialistas_ids:', dados.especialistas_ids);
+        
       } catch (error) {
-        console.error('❌ [PesquisaForm] Erro ao converter especialistas:', error);
+        console.error('❌ [PesquisaForm handleSubmit] Erro ao converter especialistas:', error);
         // Em caso de erro, manter o valor original do prestador
       }
+    } else {
+      console.log('⚠️ [PesquisaForm handleSubmit] Nenhum especialista selecionado');
     }
     
-    console.log('📤 [PesquisaForm] Dados finais enviados:', dados);
+    console.log('📤 [PesquisaForm handleSubmit] Dados finais enviados:', dados);
+    console.log('📤 [PesquisaForm handleSubmit] Chamando onSubmit...');
     onSubmit(dados);
+    console.log('✅ [PesquisaForm handleSubmit] onSubmit chamado com sucesso');
+    console.log('📝 [PesquisaForm handleSubmit] === FIM ===');
   };
 
   const isOrigemSqlServer = pesquisa?.origem === 'sql_server';
@@ -299,7 +458,17 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form 
+        onSubmit={(e) => {
+          console.log('📝 [PesquisaForm] === EVENTO SUBMIT CAPTURADO ===');
+          console.log('📝 [PesquisaForm] Event:', e);
+          console.log('📝 [PesquisaForm] form.formState.isSubmitting:', form.formState.isSubmitting);
+          console.log('📝 [PesquisaForm] form.formState.isValid:', form.formState.isValid);
+          console.log('📝 [PesquisaForm] form.formState.errors:', form.formState.errors);
+          form.handleSubmit(handleSubmit)(e);
+        }} 
+        className="space-y-6"
+      >
 
         {/* Seção: Dados Principais */}
         <div className="space-y-4">
@@ -401,13 +570,16 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                         form.trigger('especialistas_ids');
                       }}
                       onConsultoresManuaisChange={(consultores) => {
-                        console.log('📝 [PesquisaForm] Consultores manuais atualizados:', consultores);
+                        console.log('📝 [PesquisaForm] Consultores manuais atualizados via callback:', consultores);
                         setConsultoresManuais(consultores);
                       }}
+                      initialConsultoresManuais={consultoresManuais}
                       placeholder="Selecione os consultores..."
                       className={cn(
                         fieldState.error && "border-red-500"
                       )}
+                      // Usar key para forçar re-render quando consultores manuais mudarem
+                      key={`especialistas-${pesquisa?.id || 'novo'}-${consultoresManuais.length}`}
                     />
                   </FormControl>
                 </FormItem>
@@ -726,7 +898,21 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            onClick={(e) => {
+              console.log('🖱️ [PesquisaForm] === BOTÃO ATUALIZAR CLICADO ===');
+              console.log('🖱️ [PesquisaForm] Event:', e);
+              console.log('🖱️ [PesquisaForm] isLoading:', isLoading);
+              console.log('🖱️ [PesquisaForm] form.formState.isSubmitting:', form.formState.isSubmitting);
+              console.log('🖱️ [PesquisaForm] form.formState.isValid:', form.formState.isValid);
+              console.log('🖱️ [PesquisaForm] form.formState.errors:', form.formState.errors);
+              console.log('🖱️ [PesquisaForm] form.formState.isDirty:', form.formState.isDirty);
+              console.log('🖱️ [PesquisaForm] Valores do formulário:', form.getValues());
+              // Não prevenir o comportamento padrão - deixar o submit acontecer naturalmente
+            }}
+          >
             {isLoading ? 'Salvando...' : pesquisa ? 'Atualizar' : 'Criar'}
           </Button>
         </div>

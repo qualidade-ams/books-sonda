@@ -473,7 +473,10 @@ export function PesquisasTable({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmarExclusao}>
+            <AlertDialogAction 
+              onClick={handleConfirmarExclusao}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
