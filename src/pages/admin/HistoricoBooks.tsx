@@ -15,7 +15,11 @@ import {
   Clock,
   RefreshCw,
   FileText,
-  Eye
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Copy
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -34,6 +38,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,6 +62,7 @@ import { useHistorico } from '@/hooks/useHistorico';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useClientes } from '@/hooks/useClientes';
 import ProtectedAction from '@/components/auth/ProtectedAction';
+import { HistoricoExportButtons } from '@/components/admin/client-books/HistoricoExportButtons';
 import type {
   HistoricoDisparoCompleto,
   FiltrosAvancados,
@@ -70,30 +80,32 @@ const HistoricoBooks = () => {
   
   // Estados para filtros
   const currentDate = new Date();
+  const mesAtual = currentDate.getMonth() + 1; // 1-12
+  const anoAtual = currentDate.getFullYear();
+  
   const [filtros, setFiltros] = useState<FiltrosAvancados>({
-    // Não definir mês e ano por padrão para mostrar todos os registros
-    incluirInativos: true, // ✅ ALTERADO: Incluir inativos por padrão para mostrar todos os registros
+    mes: mesAtual, // ✅ Mês atual por padrão
+    ano: anoAtual, // ✅ Ano atual por padrão
+    incluirInativos: true,
     apenasComFalhas: false,
     apenasComSucesso: false
   });
   
+  // Estado para rastrear se o período foi alterado pelo usuário
+  const [periodoAlterado, setPeriodoAlterado] = useState(false);
+  
   // Estados para modais
-  const [showFiltrosModal, setShowFiltrosModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [showDetalhesModal, setShowDetalhesModal] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState<HistoricoDisparoCompleto | null>(null);
-  
-  // Estados para exportação
-  const [configExportacao, setConfigExportacao] = useState<ExportacaoConfig>({
-    formato: 'csv',
-    incluirDetalhes: true,
-    incluirMetricas: true,
-    filtros: filtros
-  });
 
   // Estados para busca
   const [termoBusca, setTermoBusca] = useState('');
   const [abaSelecionada, setAbaSelecionada] = useState('historico');
+  const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Hooks
   const {
@@ -106,7 +118,6 @@ const HistoricoBooks = () => {
     isExportando,
     buscarHistorico,
     gerarRelatorio,
-    exportarDados,
     refetch
   } = useHistorico(filtros);
 
@@ -125,6 +136,14 @@ const HistoricoBooks = () => {
       item.assunto?.toLowerCase().includes(termo)
     );
   }, [historico, termoBusca]);
+
+  // Paginação
+  const totalPages = Math.ceil(historicoFiltrado.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = historicoFiltrado.slice(startIndex, endIndex);
+  const hasPrevPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
 
   // Função auxiliar para extrair número de clientes do e-mail consolidado
   const extrairNumeroClientesConsolidado = (erroDetalhes: string | null): number => {
@@ -181,66 +200,44 @@ const HistoricoBooks = () => {
 
   // Handlers para filtros
   const handleFiltroChange = (campo: keyof FiltrosAvancados, valor: any) => {
+    // Detectar se o período (mês ou ano) foi alterado
+    if (campo === 'mes' || campo === 'ano') {
+      const mesAlterado = campo === 'mes' ? valor : filtros.mes;
+      const anoAlterado = campo === 'ano' ? valor : filtros.ano;
+      
+      // Marcar como alterado se for diferente do período atual
+      if (mesAlterado !== mesAtual || anoAlterado !== anoAtual) {
+        setPeriodoAlterado(true);
+      } else {
+        setPeriodoAlterado(false);
+      }
+    }
+    
     setFiltros(prev => ({
       ...prev,
       [campo]: valor
     }));
-  };
-
-  const handleAplicarFiltros = () => {
-    setShowFiltrosModal(false);
-    buscarHistorico(filtros);
+    // Aplicar filtros automaticamente ao mudar
+    buscarHistorico({
+      ...filtros,
+      [campo]: valor
+    });
   };
 
   const handleLimparFiltros = () => {
     const filtrosLimpos: FiltrosAvancados = {
-      // Não definir mês e ano por padrão para mostrar todos os registros
-      incluirInativos: true, // ✅ ALTERADO: Incluir inativos por padrão
+      mes: mesAtual, // ✅ Voltar para mês atual
+      ano: anoAtual, // ✅ Voltar para ano atual
+      incluirInativos: true,
       apenasComFalhas: false,
       apenasComSucesso: false
     };
     setFiltros(filtrosLimpos);
+    setTermoBusca(''); // Limpar busca também
+    setPeriodoAlterado(false); // ✅ Resetar flag de período alterado
     buscarHistorico(filtrosLimpos);
   };
 
-  // Handlers para exportação
-  const handleExportar = async () => {
-    try {
-      const configFinal = {
-        ...configExportacao,
-        filtros: filtros
-      };
-      
-      const resultado = await exportarDados(configFinal);
-      
-      // Simular download do arquivo
-      const blob = new Blob([JSON.stringify(resultado.dados, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${resultado.nomeArquivo}.${resultado.tipo}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      setShowExportModal(false);
-      
-      toast({
-        title: "Exportação concluída",
-        description: `Arquivo ${resultado.nomeArquivo}.${resultado.tipo} baixado com sucesso`,
-      });
-
-    } catch (error) {
-      toast({
-        title: "Erro na exportação",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Handlers para visualização
   const handleVerDetalhes = (item: HistoricoDisparoCompleto) => {
@@ -248,30 +245,6 @@ const HistoricoBooks = () => {
     setShowDetalhesModal(true);
   };
 
-  const handleGerarRelatorio = async () => {
-    if (!filtros.mes || !filtros.ano) {
-      toast({
-        title: "Filtros obrigatórios",
-        description: "Selecione um mês e ano para gerar o relatório",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await gerarRelatorio(filtros.mes, filtros.ano);
-      toast({
-        title: "Relatório gerado",
-        description: "Relatório mensal gerado com sucesso",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao gerar relatório",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Função para obter ícone do status
   const getStatusIcon = (status: StatusDisparo) => {
@@ -324,26 +297,12 @@ const HistoricoBooks = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFiltrosModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Filtros
-            </Button>
             <ProtectedAction screenKey="historico_books" requiredLevel="view">
-              <Button
-                variant="outline"
-                onClick={() => setShowExportModal(true)}
-                disabled={isExportando}
-                className="flex items-center gap-2"
-              >
-                <Download className={`h-4 w-4 ${isExportando ? 'animate-spin' : ''}`} />
-                Exportar
-              </Button>
+              <HistoricoExportButtons 
+                historico={historicoFiltrado}
+                disabled={isLoading}
+              />
             </ProtectedAction>
-
           </div>
         </div>
 
@@ -396,6 +355,92 @@ const HistoricoBooks = () => {
           </Card>
         </div>
 
+        {/* Card de Navegação de Período */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const mesAtual = filtros.mes || currentDate.getMonth() + 1;
+                  const anoAtual = filtros.ano || currentDate.getFullYear();
+                  
+                  let novoMes = mesAtual - 1;
+                  let novoAno = anoAtual;
+                  
+                  if (novoMes < 1) {
+                    novoMes = 12;
+                    novoAno = anoAtual - 1;
+                  }
+                  
+                  setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                  setCurrentPage(1); // Reset página ao mudar período
+                  
+                  // Detectar se foi alterado
+                  const mesOriginal = currentDate.getMonth() + 1;
+                  const anoOriginal = currentDate.getFullYear();
+                  if (novoMes !== mesOriginal || novoAno !== anoOriginal) {
+                    setPeriodoAlterado(true);
+                  } else {
+                    setPeriodoAlterado(false);
+                  }
+                  
+                  buscarHistorico({ ...filtros, mes: novoMes, ano: novoAno });
+                }}
+                className="flex items-center gap-1"
+              >
+                <span className="text-lg">←</span>
+                <span className="hidden sm:inline">Anterior</span>
+              </Button>
+
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {nomesMeses[(filtros.mes || mesAtual) - 1]} {filtros.ano || anoAtual}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {historicoFiltrado.length} {historicoFiltrado.length === 1 ? 'requerimento' : 'requerimentos'}
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const mesAtualFiltro = filtros.mes || currentDate.getMonth() + 1;
+                  const anoAtualFiltro = filtros.ano || currentDate.getFullYear();
+                  
+                  let novoMes = mesAtualFiltro + 1;
+                  let novoAno = anoAtualFiltro;
+                  
+                  if (novoMes > 12) {
+                    novoMes = 1;
+                    novoAno = anoAtualFiltro + 1;
+                  }
+                  
+                  setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                  setCurrentPage(1); // Reset página ao mudar período
+                  
+                  // Detectar se foi alterado
+                  const mesOriginal = currentDate.getMonth() + 1;
+                  const anoOriginal = currentDate.getFullYear();
+                  if (novoMes !== mesOriginal || novoAno !== anoOriginal) {
+                    setPeriodoAlterado(true);
+                  } else {
+                    setPeriodoAlterado(false);
+                  }
+                  
+                  buscarHistorico({ ...filtros, mes: novoMes, ano: novoAno });
+                }}
+                className="flex items-center gap-1"
+              >
+                <span className="hidden sm:inline">Próximo</span>
+                <span className="text-lg">→</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Abas Principais */}
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada}>
           <TabsList className="grid w-full grid-cols-3">
@@ -419,7 +464,7 @@ const HistoricoBooks = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setShowFiltrosModal(true)}
+                      onClick={() => setFiltrosExpandidos(!filtrosExpandidos)}
                       className="flex items-center justify-center space-x-2"
                     >
                       <Filter className="h-4 w-4" />
@@ -427,7 +472,7 @@ const HistoricoBooks = () => {
                     </Button>
                     
                     {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
-                    {(filtros.mes || filtros.ano || filtros.empresaId || filtros.status?.length) && (
+                    {(periodoAlterado || filtros.status?.length || termoBusca) && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -441,18 +486,134 @@ const HistoricoBooks = () => {
                   </div>
                 </div>
 
-                {/* Área de busca - sempre visível */}
-                <div className="pt-4 border-t">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar por empresa, cliente, e-mail ou assunto..."
-                      value={termoBusca}
-                      onChange={(e) => setTermoBusca(e.target.value)}
-                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
-                    />
+                {/* Área de filtros expansível */}
+                {filtrosExpandidos && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Campo de busca com ícone */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por empresa, cliente..."
+                            value={termoBusca}
+                            onChange={(e) => setTermoBusca(e.target.value)}
+                            className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtro Status */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Status</div>
+                        <Select
+                          value={filtros.status && filtros.status.length > 0 ? filtros.status[0] : 'all'}
+                          onValueChange={(value) => handleFiltroChange('status', value === 'all' ? [] : [value])}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todos os status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos os status</SelectItem>
+                            {STATUS_DISPARO_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro Período de Envio */}
+                      <div className="md:col-span-2">
+                        <div className="text-sm font-medium mb-2">Período de Envio</div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between focus:ring-sonda-blue focus:border-sonda-blue"
+                            >
+                              <span>
+                                {filtros.mes && filtros.ano
+                                  ? `${filtros.mes.toString().padStart(2, '0')}/${filtros.ano}`
+                                  : 'Todos os períodos'}
+                              </span>
+                              <Calendar className="h-4 w-4 ml-2 text-gray-500" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4" align="start">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium text-sm mb-3">Selecionar Mês/Ano</h4>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-3">
+                                {/* Select Mês */}
+                                <div className="space-y-2">
+                                  <Label className="text-xs text-gray-600">Mês</Label>
+                                  <Select
+                                    value={filtros.mes?.toString() || 'all'}
+                                    onValueChange={(value) => {
+                                      if (value === 'all') {
+                                        handleFiltroChange('mes', undefined);
+                                      } else {
+                                        handleFiltroChange('mes', parseInt(value));
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                                      <SelectValue placeholder="Mês" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="all">Todos</SelectItem>
+                                      {nomesMeses.map((nome, index) => (
+                                        <SelectItem key={index} value={(index + 1).toString()}>
+                                          {nome}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {/* Select Ano */}
+                                <div className="space-y-2">
+                                  <Label className="text-xs text-gray-600">Ano</Label>
+                                  <Select
+                                    value={filtros.ano?.toString() || 'all'}
+                                    onValueChange={(value) => {
+                                      if (value === 'all') {
+                                        handleFiltroChange('ano', undefined);
+                                      } else {
+                                        handleFiltroChange('ano', parseInt(value));
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                                      <SelectValue placeholder="Ano" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="all">Todos</SelectItem>
+                                      {/* Gerar anos de 2025 até ano atual + 1 */}
+                                      {Array.from(
+                                        { length: currentDate.getFullYear() + 1 - 2025 + 1 }, 
+                                        (_, i) => currentDate.getFullYear() + 1 - i
+                                      ).map((ano) => (
+                                        <SelectItem key={ano} value={ano.toString()}>
+                                          {ano}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -481,7 +642,7 @@ const HistoricoBooks = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {historicoFiltrado.map((item) => (
+                        {paginatedData.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>
                               {item.data_disparo 
@@ -526,17 +687,77 @@ const HistoricoBooks = () => {
                             </TableCell>
                             <TableCell>
                               <Button
+                                variant="outline"
                                 size="sm"
-                                variant="ghost"
+                                className="h-8 w-8 p-0"
                                 onClick={() => handleVerDetalhes(item)}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+                
+                {/* Paginação no Rodapé */}
+                {!isLoading && historicoFiltrado.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                    {/* Select de itens por página */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(parseInt(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                          <SelectItem value="500">500</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Navegação de páginas */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={!hasPrevPage}
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                          Página {currentPage} de {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={!hasNextPage}
+                          aria-label="Próxima página"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Contador de registros */}
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {startIndex + 1}-{Math.min(endIndex, historicoFiltrado.length)} de {historicoFiltrado.length} {historicoFiltrado.length === 1 ? 'registro' : 'registros'}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -547,19 +768,7 @@ const HistoricoBooks = () => {
           <TabsContent value="relatorio" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Relatório Mensal</CardTitle>
-                  <ProtectedAction screenKey="historico_books" requiredLevel="view">
-                    <Button
-                      onClick={handleGerarRelatorio}
-                      disabled={!filtros.mes || !filtros.ano}
-                      className="flex items-center gap-2"
-                    >
-                      <FileText className="h-4 w-4" />
-                      Gerar Relatório
-                    </Button>
-                  </ProtectedAction>
-                </div>
+                <CardTitle>Relatório Mensal</CardTitle>
               </CardHeader>
               <CardContent>
                 {relatorioMensal ? (
@@ -683,7 +892,7 @@ const HistoricoBooks = () => {
                   <div className="text-center py-8">
                     <FileText className="h-8 w-8 mx-auto text-gray-400" />
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      Selecione um mês e ano nos filtros e clique em "Gerar Relatório"
+                      Selecione um mês e ano nos filtros para visualizar o relatório
                     </p>
                   </div>
                 )}
@@ -739,376 +948,232 @@ const HistoricoBooks = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Modal de Filtros */}
-        <Dialog open={showFiltrosModal} onOpenChange={setShowFiltrosModal}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Filtros Avançados</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {/* Filtros Ativos */}
-              {(filtros.mes || filtros.ano || filtros.empresaId || filtros.status?.length || filtros.apenasComFalhas || filtros.apenasComSucesso) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-blue-900">Filtros Ativos:</p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleLimparFiltros}
-                      className="h-6 text-xs text-blue-700 hover:text-blue-900"
-                    >
-                      Limpar Todos
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {filtros.mes && filtros.ano && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        {nomesMeses[filtros.mes - 1]} {filtros.ano}
-                      </Badge>
-                    )}
-                    {filtros.empresaId && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        Empresa: {empresas.find(e => e.id === filtros.empresaId)?.nome_completo}
-                      </Badge>
-                    )}
-                    {filtros.status && filtros.status.length > 0 && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        Status: {filtros.status.join(', ')}
-                      </Badge>
-                    )}
-                    {filtros.apenasComFalhas && (
-                      <Badge variant="destructive">
-                        Apenas Falhas
-                      </Badge>
-                    )}
-                    {filtros.apenasComSucesso && (
-                      <Badge className="bg-green-100 text-green-800">
-                        Apenas Sucessos
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-medium mb-2">Mês</div>
-                  <Select
-                    value={filtros.mes?.toString()}
-                    onValueChange={(value) => handleFiltroChange('mes', parseInt(value))}
-                  >
-                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Selecione o mês" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nomesMeses.map((nome, index) => (
-                        <SelectItem key={index} value={(index + 1).toString()}>
-                          {nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <div className="text-sm font-medium mb-2">Ano</div>
-                  <Select
-                    value={filtros.ano?.toString()}
-                    onValueChange={(value) => handleFiltroChange('ano', parseInt(value))}
-                  >
-                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Selecione o ano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i).map((ano) => (
-                        <SelectItem key={ano} value={ano.toString()}>
-                          {ano}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div>
-                <div className="text-sm font-medium mb-2">Empresa</div>
-                <Select
-                  value={filtros.empresaId || 'todas'}
-                  onValueChange={(value) => handleFiltroChange('empresaId', value === 'todas' ? undefined : value)}
-                >
-                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                    <SelectValue placeholder="Todas as empresas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas as empresas</SelectItem>
-                    {empresas.map((empresa) => (
-                      <SelectItem key={empresa.id} value={empresa.id}>
-                        {empresa.nome_completo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium mb-2">Status</div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {STATUS_DISPARO_OPTIONS.map((option) => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`status-${option.value}`}
-                        checked={filtros.status?.includes(option.value as StatusDisparo) || false}
-                        onCheckedChange={(checked) => {
-                          const currentStatus = filtros.status || [];
-                          if (checked) {
-                            handleFiltroChange('status', [...currentStatus, option.value]);
-                          } else {
-                            handleFiltroChange('status', currentStatus.filter(s => s !== option.value));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`status-${option.value}`} className="text-sm">
-                        {option.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="incluir-inativos"
-                    checked={filtros.incluirInativos || false}
-                    onCheckedChange={(checked) => handleFiltroChange('incluirInativos', checked)}
-                  />
-                  <Label htmlFor="incluir-inativos" className="text-sm">
-                    Incluir empresas e clientes inativos
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="apenas-falhas"
-                    checked={filtros.apenasComFalhas || false}
-                    onCheckedChange={(checked) => handleFiltroChange('apenasComFalhas', checked)}
-                  />
-                  <Label htmlFor="apenas-falhas" className="text-sm">
-                    Apenas registros com falhas
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="apenas-sucessos"
-                    checked={filtros.apenasComSucesso || false}
-                    onCheckedChange={(checked) => handleFiltroChange('apenasComSucesso', checked)}
-                  />
-                  <Label htmlFor="apenas-sucessos" className="text-sm">
-                    Apenas registros com sucesso
-                  </Label>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFiltrosModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleAplicarFiltros}
-                  className="bg-sonda-blue hover:bg-sonda-dark-blue"
-                >
-                  Aplicar Filtros
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal de Exportação */}
-        <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Exportar Dados</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-medium mb-2">Formato</div>
-                <Select
-                  value={configExportacao.formato}
-                  onValueChange={(value: 'csv' | 'excel' | 'pdf') => 
-                    setConfigExportacao(prev => ({ ...prev, formato: value }))
-                  }
-                >
-                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="csv">CSV</SelectItem>
-                    <SelectItem value="excel">Excel</SelectItem>
-                    <SelectItem value="pdf">PDF</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="incluir-detalhes"
-                    checked={configExportacao.incluirDetalhes}
-                    onCheckedChange={(checked) => 
-                      setConfigExportacao(prev => ({ ...prev, incluirDetalhes: !!checked }))
-                    }
-                  />
-                  <Label htmlFor="incluir-detalhes" className="text-sm">
-                    Incluir detalhes dos disparos
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="incluir-metricas"
-                    checked={configExportacao.incluirMetricas}
-                    onCheckedChange={(checked) => 
-                      setConfigExportacao(prev => ({ ...prev, incluirMetricas: !!checked }))
-                    }
-                  />
-                  <Label htmlFor="incluir-metricas" className="text-sm">
-                    Incluir métricas resumidas
-                  </Label>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowExportModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleExportar}
-                  disabled={isExportando}
-                  className="bg-sonda-blue hover:bg-sonda-dark-blue"
-                >
-                  {isExportando ? 'Exportando...' : 'Exportar'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Modal de Detalhes */}
         <Dialog open={showDetalhesModal} onOpenChange={setShowDetalhesModal}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalhes do Disparo</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">
+                Detalhes do Disparo
+              </DialogTitle>
             </DialogHeader>
             {itemSelecionado && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <div className="space-y-6 py-4">
+                {/* Grid Principal com Dados */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Empresa */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Empresa
+                    </label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {itemSelecionado.empresas_clientes?.nome_completo}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {itemSelecionado.empresas_clientes?.nome_abreviado}
+                      </p>
                     </div>
-                    <p className="font-medium">{itemSelecionado.empresas_clientes?.nome_completo}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {itemSelecionado.empresas_clientes?.nome_abreviado}
-                    </p>
                   </div>
                   
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {/* Cliente(s) */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Cliente(s)
+                    </label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      {itemSelecionado.erro_detalhes && itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-blue-600 dark:text-blue-400">
+                            E-mail Consolidado
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {itemSelecionado.erro_detalhes.match(/enviado para (\d+) clientes?:/)?.[1] || 'Múltiplos'} cliente(s)
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {itemSelecionado.clientes?.nome_completo}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {itemSelecionado.clientes?.email}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {/* Verificar se é e-mail consolidado baseado nos detalhes do erro */}
-                    {itemSelecionado.erro_detalhes && itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? (
-                      <div className="space-y-1">
-                        <p className="font-medium text-blue-600">E-mail Consolidado</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {/* Extrair informações dos detalhes do erro */}
-                          {itemSelecionado.erro_detalhes.match(/enviado para (\d+) clientes?:/)?.[1] || 'Múltiplos'} cliente(s)
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="font-medium">{itemSelecionado.clientes?.nome_completo}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {itemSelecionado.clientes?.email}
-                        </p>
-                      </div>
-                    )}
                   </div>
                   
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {/* Status */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Status
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(itemSelecionado.status as StatusDisparo)}
-                      <Badge className={getStatusColor(itemSelecionado.status as StatusDisparo)}>
-                        {STATUS_DISPARO_OPTIONS.find(opt => opt.value === itemSelecionado.status)?.label}
-                      </Badge>
+                    </label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(itemSelecionado.status as StatusDisparo)}
+                        <Badge className={getStatusColor(itemSelecionado.status as StatusDisparo)}>
+                          {STATUS_DISPARO_OPTIONS.find(opt => opt.value === itemSelecionado.status)?.label}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {/* Data/Hora */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Data/Hora
+                    </label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {itemSelecionado.data_disparo 
+                          ? formatDateTime(itemSelecionado.data_disparo)
+                          : itemSelecionado.data_agendamento
+                          ? `Agendado: ${formatDateTime(itemSelecionado.data_agendamento)}`
+                          : '-'
+                        }
+                      </p>
                     </div>
-                    <p>
-                      {itemSelecionado.data_disparo 
-                        ? formatDateTime(itemSelecionado.data_disparo)
-                        : itemSelecionado.data_agendamento
-                        ? `Agendado: ${formatDateTime(itemSelecionado.data_agendamento)}`
-                        : '-'
-                      }
-                    </p>
                   </div>
                 </div>
 
+                {/* Assunto */}
                 {itemSelecionado.assunto && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Assunto
-                    </div>
-                    <p>{itemSelecionado.assunto}</p>
-                  </div>
-                )}
-
-                {itemSelecionado.emails_cc && itemSelecionado.emails_cc.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      E-mails em Cópia
-                    </div>
-                    <p className="text-sm">{itemSelecionado.emails_cc.join(', ')}</p>
-                  </div>
-                )}
-
-                {itemSelecionado.erro_detalhes && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? 'Detalhes do Envio' : 'Detalhes do Erro'}
-                    </div>
-                    <div className={`p-3 border rounded-lg ${
-                      itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                    }`}>
-                      <p className={`text-sm ${
-                        itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
-                          ? 'text-blue-800 dark:text-blue-200'
-                          : 'text-red-800 dark:text-red-200'
-                      }`}>
-                        {itemSelecionado.erro_detalhes}
+                    </label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {itemSelecionado.assunto}
                       </p>
                     </div>
                   </div>
                 )}
 
+                {/* Detalhes do Envio - MOVIDO PARA CIMA */}
+                {itemSelecionado.erro_detalhes && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? 'Detalhes do Envio' : 'Detalhes do Erro'}
+                      </label>
+                      {/* Botão Copiar - só aparece para e-mails consolidados */}
+                      {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') && (() => {
+                        const emailsText = itemSelecionado.erro_detalhes.split(':')[1]?.trim() || '';
+                        const emails = emailsText.split(',').map(e => e.trim()).filter(e => e);
+                        
+                        return (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const emailsFormatted = emails.join('; ');
+                              navigator.clipboard.writeText(emailsFormatted);
+                              toast({
+                                title: "E-mails copiados!",
+                                description: `${emails.length} e-mails copiados para a área de transferência`,
+                              });
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Copy className="h-4 w-4" />
+                            Copiar E-mails
+                          </Button>
+                        );
+                      })()}
+                    </div>
+                    <div className={`p-4 rounded-lg border ${
+                      itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para')
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    }`}>
+                      {/* Extrair e-mails do texto de detalhes */}
+                      {(() => {
+                        const detalhes = itemSelecionado.erro_detalhes;
+                        const isConsolidado = detalhes.includes('E-mail consolidado enviado para');
+                        
+                        if (isConsolidado) {
+                          // Extrair número de clientes e lista de e-mails
+                          const numClientesMatch = detalhes.match(/enviado para (\d+) clientes?:/);
+                          const numClientes = numClientesMatch ? numClientesMatch[1] : 'Múltiplos';
+                          
+                          // Extrair e-mails (tudo após os dois pontos)
+                          const emailsText = detalhes.split(':')[1]?.trim() || '';
+                          const emails = emailsText.split(',').map(e => e.trim()).filter(e => e);
+                          
+                          return (
+                            <div className="space-y-3">
+                              <p className="font-semibold text-blue-800 dark:text-blue-200">
+                                E-mail consolidado enviado para {numClientes} cliente(s):
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {emails.map((email, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+                                  >
+                                    {email}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <p className="text-sm text-red-800 dark:text-red-200">
+                              {detalhes}
+                            </p>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* E-mails em Cópia - MOVIDO PARA BAIXO */}
+                {itemSelecionado.emails_cc && itemSelecionado.emails_cc.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        E-mails em Cópia
+                      </label>
+                      {/* Botão Copiar */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const emailsFormatted = itemSelecionado.emails_cc.join('; ');
+                          navigator.clipboard.writeText(emailsFormatted);
+                          toast({
+                            title: "E-mails copiados!",
+                            description: `${itemSelecionado.emails_cc.length} e-mails copiados para a área de transferência`,
+                          });
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copiar E-mails
+                      </Button>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div className="flex flex-wrap gap-2">
+                        {itemSelecionado.emails_cc.map((email, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          >
+                            {email}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botão Fechar */}
                 <div className="flex justify-end pt-4 border-t">
                   <Button
                     variant="outline"
