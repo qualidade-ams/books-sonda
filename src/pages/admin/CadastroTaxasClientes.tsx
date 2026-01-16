@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -68,6 +68,8 @@ function CadastroTaxasClientes() {
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroTipoProduto, setFiltroTipoProduto] = useState<string>('todos');
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
+  const [filtroTipoTaxa, setFiltroTipoTaxa] = useState<string>('todos'); // Novo filtro
+  const [filtroTipoCalculo, setFiltroTipoCalculo] = useState<string>('todos'); // Novo filtro
   const [exportando, setExportando] = useState(false);
   
   // Estados de paginação
@@ -216,6 +218,8 @@ function CadastroTaxasClientes() {
     setFiltroCliente('');
     setFiltroTipoProduto('todos');
     setFiltroStatus('todos');
+    setFiltroTipoTaxa('todos');
+    setFiltroTipoCalculo('todos');
     setCurrentPage(1);
   };
 
@@ -244,8 +248,21 @@ function CadastroTaxasClientes() {
       });
     }
 
+    // Filtro por tipo de taxa (Personalizada/Automática)
+    if (filtroTipoTaxa !== 'todos') {
+      resultado = resultado.filter(taxa => {
+        const isPersonalizada = taxa.personalizado === true;
+        return filtroTipoTaxa === 'personalizada' ? isPersonalizada : !isPersonalizada;
+      });
+    }
+
+    // Filtro por tipo de cálculo
+    if (filtroTipoCalculo !== 'todos') {
+      resultado = resultado.filter(taxa => taxa.tipo_calculo_adicional === filtroTipoCalculo);
+    }
+
     return resultado;
-  }, [taxas, filtroCliente, filtroTipoProduto, filtroStatus]);
+  }, [taxas, filtroCliente, filtroTipoProduto, filtroStatus, filtroTipoTaxa, filtroTipoCalculo]);
 
   // Ordenar taxas filtradas
   const taxasOrdenadas = useMemo(() => {
@@ -654,10 +671,13 @@ function CadastroTaxasClientes() {
         {/* Tabela de Taxas */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg lg:text-xl">Taxas Cadastradas ({taxasOrdenadas.length})</CardTitle>
-              {/* Botão de Filtros */}
-              <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Taxas Cadastradas ({taxasOrdenadas.length})
+              </CardTitle>
+
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -667,82 +687,127 @@ function CadastroTaxasClientes() {
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
+                
+                {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                {(filtroCliente !== '' || filtroTipoProduto !== 'todos' || filtroStatus !== 'todos' || filtroTipoTaxa !== 'todos' || filtroTipoCalculo !== 'todos') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={limparFiltros}
+                    className="whitespace-nowrap hover:border-red-300"
+                  >
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
+                  </Button>
+                )}
               </div>
             </div>
-            {/* Filtros */}
+
+            {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
             {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-              {/* Filtro por Cliente */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Buscar
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar por cliente..."
-                    value={filtroCliente}
-                    onChange={(e) => {
-                      setFiltroCliente(e.target.value);
-                      setCurrentPage(1); // Reset página ao filtrar
-                    }}
-                    className="pl-10"
-                  />
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Campo de busca com ícone */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Buscar</div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por cliente..."
+                        value={filtroCliente}
+                        onChange={(e) => {
+                          setFiltroCliente(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filtro Tipo de Produto */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Tipo de Produto</div>
+                    <Select 
+                      value={filtroTipoProduto} 
+                      onValueChange={(value) => {
+                        setFiltroTipoProduto(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os tipos</SelectItem>
+                        <SelectItem value="GALLERY">GALLERY</SelectItem>
+                        <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Status */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Status</div>
+                    <Select 
+                      value={filtroStatus} 
+                      onValueChange={(value) => {
+                        setFiltroStatus(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os status</SelectItem>
+                        <SelectItem value="vigente">Vigente</SelectItem>
+                        <SelectItem value="nao_vigente">Não Vigente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Tipo de Taxa */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Tipo de Taxa</div>
+                    <Select 
+                      value={filtroTipoTaxa} 
+                      onValueChange={(value) => {
+                        setFiltroTipoTaxa(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os tipos</SelectItem>
+                        <SelectItem value="personalizada">Personalizada</SelectItem>
+                        <SelectItem value="automatica">Automática</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Tipo de Cálculo */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Tipo de Cálculo</div>
+                    <Select 
+                      value={filtroTipoCalculo} 
+                      onValueChange={(value) => {
+                        setFiltroTipoCalculo(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os tipos</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="media">Média</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-
-              {/* Filtro por Tipo de Produto */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Tipo de Produto
-                </label>
-                <Select value={filtroTipoProduto} onValueChange={(value) => {
-                  setFiltroTipoProduto(value);
-                  setCurrentPage(1); // Reset página ao filtrar
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os tipos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os tipos</SelectItem>
-                    <SelectItem value="GALLERY">GALLERY</SelectItem>
-                    <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filtro por Status */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Status
-                </label>
-                <Select value={filtroStatus} onValueChange={(value) => {
-                  setFiltroStatus(value);
-                  setCurrentPage(1); // Reset página ao filtrar
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os status</SelectItem>
-                    <SelectItem value="vigente">Vigente</SelectItem>
-                    <SelectItem value="nao_vigente">Não Vigente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Botão Limpar Filtros */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Ações</label>
-                <Button
-                  variant="outline"
-                  onClick={limparFiltros}
-                  disabled={filtroCliente === '' && filtroTipoProduto === 'todos' && filtroStatus === 'todos'}
-                  className="w-full h-10"
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
               </div>
             )}
           </CardHeader>
@@ -797,19 +862,21 @@ function CadastroTaxasClientes() {
                         {renderIconeOrdenacao('status')}
                       </div>
                     </TableHead>
+                    <TableHead className="text-center">Tipo de Taxa</TableHead>
+                    <TableHead className="text-center">Tipo de Cálculo</TableHead>
                     <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : taxasOrdenadas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         Nenhuma taxa cadastrada
                       </TableCell>
                     </TableRow>
@@ -838,8 +905,8 @@ function CadastroTaxasClientes() {
                             <Badge 
                               variant={taxa.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
                               className={taxa.tipo_produto === 'GALLERY' 
-                                ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
-                                : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
+                                ? 'bg-sonda-blue text-white hover:bg-sonda-dark-blue' 
+                                : 'border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50'
                               }
                             >
                               {tipoProdutoTexto}
@@ -854,34 +921,59 @@ function CadastroTaxasClientes() {
                               : 'Indefinida'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={vigente ? 'default' : 'secondary'} className={vigente ? 'bg-green-600' : ''}>
-                              {vigente ? 'Vigente' : 'Não Vigente'}
+                            {vigente ? (
+                              <Badge className="bg-green-600 hover:bg-green-700">
+                                Vigente
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-red-600 text-red-600">
+                                Não Vigente
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant={taxa.personalizado ? 'default' : 'secondary'}
+                              className={taxa.personalizado 
+                                ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                                : 'bg-gray-200 text-gray-700'
+                              }
+                            >
+                              {taxa.personalizado ? 'Personalizada' : 'Automática'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant="outline"
+                              className="border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50"
+                            >
+                              {taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-center gap-1">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={() => handleVisualizarTaxa(taxa)}
                                 title="Visualizar"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={() => handleEditarTaxa(taxa)}
                                 title="Editar"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                                 onClick={() => handleDeletarTaxa(taxa.id)}
                                 title="Excluir"
                               >
@@ -981,7 +1073,7 @@ function CadastroTaxasClientes() {
         <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
           <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalhes da Taxa</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">Detalhes da Taxa</DialogTitle>
             </DialogHeader>
             {taxaVisualizando && (() => {
               // Obter nomes dos produtos do cliente
@@ -999,57 +1091,62 @@ function CadastroTaxasClientes() {
               return (
               <div className="space-y-6">
                 {/* Informações Gerais */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Cliente</p>
-                    <p className="text-lg font-semibold">{taxaVisualizando.cliente?.nome_completo}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Tipo de Produto</p>
-                    <Badge 
-                      variant={taxaVisualizando.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
-                      className={taxaVisualizando.tipo_produto === 'GALLERY' 
-                        ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' 
-                        : 'border-[#0066FF] text-[#0066FF] bg-white hover:bg-blue-50'
-                      }
-                    >
-                      {tipoProdutoTexto}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Vigência Início</p>
-                    <p className="text-lg">
-                      {format(new Date(taxaVisualizando.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Vigência Fim</p>
-                    <p className="text-lg">
-                      {taxaVisualizando.vigencia_fim 
-                        ? format(new Date(taxaVisualizando.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
-                        : 'Indefinida'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Tipo de Taxa</p>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={taxaVisualizando.personalizado ? 'default' : 'secondary'}
-                        className={taxaVisualizando.personalizado 
-                          ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                          : 'bg-gray-200 text-gray-700'
-                        }
-                      >
-                        {taxaVisualizando.personalizado ? 'Personalizada' : 'Automática'}
-                      </Badge>
+                <Card className="bg-gray-50">
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Cliente</p>
+                        <p className="text-lg font-semibold text-gray-900">{taxaVisualizando.cliente?.nome_completo}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-2">Tipo de Produto</p>
+                        <Badge 
+                          variant={taxaVisualizando.tipo_produto === 'GALLERY' ? 'default' : 'outline'}
+                          className={taxaVisualizando.tipo_produto === 'GALLERY' 
+                            ? 'bg-sonda-blue text-white hover:bg-sonda-dark-blue' 
+                            : 'border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50'
+                          }
+                        >
+                          {tipoProdutoTexto}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Vigência Início</p>
+                        <p className="text-lg text-gray-900">
+                          {format(new Date(taxaVisualizando.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Vigência Fim</p>
+                        <p className="text-lg text-gray-900">
+                          {taxaVisualizando.vigencia_fim 
+                            ? format(new Date(taxaVisualizando.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Indefinida'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-2">Tipo de Taxa</p>
+                        <Badge 
+                          variant={taxaVisualizando.personalizado ? 'default' : 'secondary'}
+                          className={taxaVisualizando.personalizado 
+                            ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                            : 'bg-gray-200 text-gray-700'
+                          }
+                        >
+                          {taxaVisualizando.personalizado ? 'Personalizada' : 'Automática'}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
                 {/* Tabela de Valores Remotos */}
                 <div>
-                  <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white">Valores Hora Remota</h3>
-                  <div className="overflow-x-auto rounded-lg border-gray-200 dark:border-gray-700">
+                  <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-sonda-blue" />
+                    Valores Hora Remota
+                  </h3>
+                  <div className="overflow-x-auto rounded-lg">
                     <table className="w-full border-collapse table-fixed">
                       <colgroup>
                         <col style={{ width: '200px' }} />
@@ -1061,7 +1158,7 @@ function CadastroTaxasClientes() {
                         <col style={{ width: '130px' }} />
                       </colgroup>
                       <thead>
-                        <tr className="bg-[#0066FF] text-white">
+                        <tr className="bg-sonda-blue text-white">
                           <th className="border-r border-white/20 px-3 py-2.5 text-left text-xs font-semibold">Função</th>
                           <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>08h30-17h30</th>
                           <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>17h30-19h30</th>
@@ -1135,8 +1232,11 @@ function CadastroTaxasClientes() {
 
                 {/* Tabela de Valores Locais */}
                 <div>
-                  <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white">Valores Hora Local</h3>
-                  <div className="rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <h3 className="text-base font-semibold mb-3 text-gray-900 dark:text-white flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-sonda-blue" />
+                    Valores Hora Local
+                  </h3>
+                  <div className="rounded-lg overflow-hidden">
                     <table className="w-full border-collapse table-fixed">
                       <colgroup>
                         <col style={{ width: '200px' }} />
@@ -1148,7 +1248,7 @@ function CadastroTaxasClientes() {
                         <col style={{ width: '130px' }} />
                       </colgroup>
                       <thead>
-                        <tr className="bg-[#0066FF] text-white">
+                        <tr className="bg-sonda-blue text-white">
                           <th className="border-r border-white/20 px-3 py-2.5 text-left text-xs font-semibold rounded-tl-lg">Função</th>
                           <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>08h30-17h30</th>
                           <th className="border-r border-white/20 px-3 py-2.5 text-center text-xs font-semibold">Seg-Sex<br/>17h30-19h30</th>
@@ -1217,8 +1317,11 @@ function CadastroTaxasClientes() {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button onClick={() => setModalVisualizarAberto(false)}>
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    onClick={() => setModalVisualizarAberto(false)}
+                    className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                  >
                     Fechar
                   </Button>
                 </div>
