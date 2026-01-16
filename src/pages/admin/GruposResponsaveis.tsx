@@ -7,7 +7,9 @@ import {
   Plus, 
   Search, 
   Users, 
-  Filter
+  Filter,
+  Mail,
+  UserCheck
 } from 'lucide-react';
 import { GruposTable } from '@/components/admin/grupos/GruposTable';
 import { GrupoFormModal } from '@/components/admin/grupos/GrupoFormModal';
@@ -126,47 +128,41 @@ export default function GruposResponsaveis() {
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Grupos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{grupos.length}</div>
-            <p className="text-xs text-muted-foreground">
-              grupos cadastrados
-            </p>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4 text-gray-600" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total de Grupos</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{grupos.length}</p>
+            <p className="text-xs text-gray-500 mt-1">grupos cadastrados</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de E-mails</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="h-4 w-4 text-blue-600" />
+              <p className="text-sm text-blue-600">Total de E-mails</p>
+            </div>
+            <p className="text-2xl font-bold text-blue-600">
               {grupos.reduce((total, grupo) => total + (grupo.emails?.length || 0), 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              e-mails cadastrados
             </p>
+            <p className="text-xs text-gray-500 mt-1">e-mails cadastrados</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Grupos com E-mails</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {grupos.filter(grupo => grupo.emails && grupo.emails.length > 0).length}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck className="h-4 w-4 text-green-600" />
+              <p className="text-sm text-green-600">Grupos com E-mails</p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              grupos ativos
+            <p className="text-2xl font-bold text-green-600">
+              {grupos.filter(grupo => grupo.emails && grupo.emails.length > 0).length}
             </p>
+            <p className="text-xs text-gray-500 mt-1">grupos ativos</p>
           </CardContent>
         </Card>
       </div>

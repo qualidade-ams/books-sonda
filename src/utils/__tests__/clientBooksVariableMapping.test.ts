@@ -38,6 +38,30 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['disparo.mesNome']).toBeDefined();
       expect(variaveis['disparo.mesNomeEn']).toBeDefined();
       expect(variaveis['disparo.dataDisparo']).toBeDefined();
+      expect(variaveis['disparo.anoAtual']).toBeDefined();
+      expect(variaveis['disparo.mesAtual']).toBeDefined();
+    });
+
+    it('deve mapear corretamente disparo.anoAtual e disparo.mesAtual', () => {
+      // Criar dados de teste com mês específico (Janeiro/2025)
+      const dadosJaneiro = {
+        ...dadosExemplo,
+        disparo: {
+          mes: 1, // Janeiro
+          ano: 2025,
+          dataDisparo: new Date(2025, 0, 15) // 15 de Janeiro de 2025
+        }
+      };
+
+      const variaveis = mapearVariaveisClientBooks(dadosJaneiro);
+
+      // disparo.anoAtual e disparo.mesAtual devem retornar o mês/ano do disparo
+      expect(variaveis['disparo.anoAtual']).toBe('2025');
+      expect(variaveis['disparo.mesAtual']).toBe('1');
+      
+      // disparo.ano e disparo.mes devem retornar o mês/ano de referência (mês anterior)
+      expect(variaveis['disparo.ano']).toBe('2024');
+      expect(variaveis['disparo.mes']).toBe('12');
     });
 
     it('deve mapear nomes de mês em português e inglês corretamente', () => {
@@ -197,6 +221,17 @@ describe('clientBooksVariableMapping', () => {
       expect(variaveis['Dados do Cliente']).toContain('cliente.nomeCompleto');
       expect(variaveis['Dados do Cliente']).toContain('cliente.email');
       expect(variaveis['Dados do Cliente']).toContain('cliente.funcao');
+    });
+
+    it('deve incluir variáveis essenciais de disparo', () => {
+      const variaveis = obterVariaveisClientBooksDisponiveis();
+      
+      expect(variaveis['Dados do Disparo']).toContain('disparo.mes');
+      expect(variaveis['Dados do Disparo']).toContain('disparo.ano');
+      expect(variaveis['Dados do Disparo']).toContain('disparo.mesNome');
+      expect(variaveis['Dados do Disparo']).toContain('disparo.mesNomeEn');
+      expect(variaveis['Dados do Disparo']).toContain('disparo.anoAtual');
+      expect(variaveis['Dados do Disparo']).toContain('disparo.mesAtual');
     });
 
     it('deve incluir variáveis de sistema incluindo nomes de mês atual', () => {

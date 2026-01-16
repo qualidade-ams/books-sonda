@@ -35,7 +35,9 @@ import {
   Users,
   Eye,
   Filter,
-  Search
+  Search,
+  FileText,
+  X
 } from 'lucide-react';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { GrupoResponsavelCompleto } from '@/types/clientBooksTypes';
@@ -121,33 +123,54 @@ export function GruposTable({
     <>
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-lg lg:text-xl">Grupos de Responsáveis ({grupos.length})</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Grupos de Responsáveis ({grupos.length})
+            </CardTitle>
+
             {onSearchChange && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                className="flex items-center space-x-2"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filtros</span>
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+                
+                {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                {searchTerm !== '' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSearchChange('')}
+                    className="whitespace-nowrap hover:border-red-300"
+                  >
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
-          {/* Filtros */}
+          {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
           {mostrarFiltros && onSearchChange && (
-            <div className="pt-4 border-t">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
+            <div className="space-y-4 pt-4 border-t">
+              <div className="grid grid-cols-1 gap-4">
+                {/* Campo de busca com ícone */}
+                <div>
+                  <div className="text-sm font-medium mb-2">Buscar</div>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Buscar por nome, descrição ou e-mail..."
                       value={searchTerm}
                       onChange={(e) => onSearchChange(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                     />
                   </div>
                 </div>
