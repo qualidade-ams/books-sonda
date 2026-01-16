@@ -28,7 +28,9 @@ import {
   Star,
   Building2,
   CheckCircle,
-  XCircle
+  XCircle,
+  FileText,
+  X
 } from 'lucide-react';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type { 
@@ -148,90 +150,101 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg lg:text-xl">Clientes ({clientes.length})</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            className="flex items-center space-x-2"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filtros</span>
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Clientes ({clientes.length})
+          </CardTitle>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              className="flex items-center justify-center space-x-2"
+            >
+              <Filter className="h-4 w-4" />
+              <span>Filtros</span>
+            </Button>
+            
+            {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+            {(buscaLocal !== '' || filtros.status || filtros.empresaId) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={limparFiltros}
+                className="whitespace-nowrap hover:border-red-300"
+              >
+                <X className="h-4 w-4 mr-2 text-red-600" />
+                Limpar Filtro
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Filtros */}
+        {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
         {mostrarFiltros && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Buscar</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Nome ou e-mail..."
-                  value={buscaLocal}
-                  onChange={(e) => handleBuscaChange(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="space-y-4 pt-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Campo de busca com ícone */}
+              <div>
+                <div className="text-sm font-medium mb-2">Buscar</div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Nome ou e-mail..."
+                    value={buscaLocal}
+                    onChange={(e) => handleBuscaChange(e.target.value)}
+                    className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select
-                value={filtros.status?.[0] || 'todos'}
-                onValueChange={handleStatusChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os status</SelectItem>
-                  {STATUS_Cliente_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {showEmpresaColumn && empresasAtivas.length > 0 && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Empresa</label>
+              {/* Filtro Status */}
+              <div>
+                <div className="text-sm font-medium mb-2">Status</div>
                 <Select
-                  value={filtros.empresaId || 'todas'}
-                  onValueChange={handleEmpresaChange}
+                  value={filtros.status?.[0] || 'todos'}
+                  onValueChange={handleStatusChange}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as empresas" />
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todas">Todas as empresas</SelectItem>
-                    {empresasAtivas
-                      .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
-                      .map((empresa) => (
-                        <SelectItem key={empresa.id} value={empresa.id}>
-                          {empresa.nome_abreviado}
-                        </SelectItem>
-                      ))}
+                    <SelectItem value="todos">Todos os status</SelectItem>
+                    {STATUS_Cliente_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* Botão Limpar Filtros */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ações</label>
-              <Button
-                variant="outline"
-                onClick={limparFiltros}
-                disabled={!filtros.busca && !filtros.status && !filtros.empresaId}
-                className="w-full h-10"
-              >
-                Limpar Filtros
-              </Button>
+              {/* Filtro Empresa */}
+              {showEmpresaColumn && empresasAtivas.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2">Empresa</div>
+                  <Select
+                    value={filtros.empresaId || 'todas'}
+                    onValueChange={handleEmpresaChange}
+                  >
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Todas as empresas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as empresas</SelectItem>
+                      {empresasAtivas
+                        .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
+                        .map((empresa) => (
+                          <SelectItem key={empresa.id} value={empresa.id}>
+                            {empresa.nome_abreviado}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         )}
