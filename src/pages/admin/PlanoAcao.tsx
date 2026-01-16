@@ -95,7 +95,10 @@ export default function PlanoAcao() {
   // Queries
   const { data: planos = [], isLoading } = usePlanosAcao(filtros);
   const { data: estatisticas } = useEstatisticasPlanos(filtros);
-  const { data: historico = [] } = useHistoricoPlano(planoSelecionado?.id || '');
+  const { data: historicoData = [] } = useHistoricoPlano(planoSelecionado?.id || '');
+  
+  // Garantir que o histórico tenha o tipo correto
+  const historico = historicoData as any[];
 
   // Debug: Log dos dados
   console.log('🔍 Debug Plano de Ação:', {
@@ -196,10 +199,7 @@ export default function PlanoAcao() {
               Gerenciamento de planos de ação para pesquisas de satisfação
           </p>
         </div>
-        <Button onClick={handleNovo} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Plano
-        </Button>
+
       </div>
 
       {/* Cards de Estatísticas */}
