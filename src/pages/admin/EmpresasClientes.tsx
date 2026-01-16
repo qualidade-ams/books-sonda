@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Filter, Search, ChevronLeft, ChevronRight, FileText, X, Building2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -271,53 +271,44 @@ const EmpresasClientes = () => {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.total}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="h-4 w-4 text-gray-600" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
               </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                Ativas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-green-600">
-                {stats.ativas}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <p className="text-sm text-green-600">Ativas</p>
               </div>
+              <p className="text-2xl font-bold text-green-600">{stats.ativas}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
-                Inativas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-red-600">
-                {stats.inativas}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <p className="text-sm text-red-600">Inativas</p>
               </div>
+              <p className="text-2xl font-bold text-red-600">{stats.inativas}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-yellow-600">
-                Suspensas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-yellow-600">
-                {stats.suspensas}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+                <p className="text-sm text-orange-600">Suspensas</p>
               </div>
+              <p className="text-2xl font-bold text-orange-600">{stats.suspensas}</p>
             </CardContent>
           </Card>
         </div>
@@ -326,9 +317,12 @@ const EmpresasClientes = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <CardTitle className="text-lg lg:text-xl">Empresas Cadastradas ({empresas.length})</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Empresas Cadastradas ({empresas.length})
+              </CardTitle>
 
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -338,121 +332,129 @@ const EmpresasClientes = () => {
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </Button>
-              </div>
-            </div>
-            {/* Filtros */}
-            {mostrarFiltros && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Buscar</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Nome, e-mail gestor..."
-                      value={buscaLocal}
-                      onChange={(e) => handleBuscaChange(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select
-                    value={filtros.status?.[0] || '__todos_status__'}
-                    onValueChange={handleStatusSelectChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos_status__">Todos os status</SelectItem>
-                      {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Produtos</label>
-                  <Select
-                    value={filtros.produtos?.[0] || '__todos_produtos__'}
-                    onValueChange={handleProdutoSelectChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os produtos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
-                      {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Tem AMS</label>
-                  <Select
-                    value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
-                    onValueChange={(value) => {
-                      if (value === '__todos_ams__') {
-                        handleFiltroChange('temAms', undefined);
-                      } else {
-                        handleFiltroChange('temAms', value === 'sim');
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos_ams__">Todos</SelectItem>
-                      <SelectItem value="sim">Sim</SelectItem>
-                      <SelectItem value="nao">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Em Projeto</label>
-                  <Select
-                    value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
-                    onValueChange={(value) => {
-                      if (value === '__todos_projeto__') {
-                        handleFiltroChange('emProjeto', undefined);
-                      } else {
-                        handleFiltroChange('emProjeto', value === 'sim');
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos_projeto__">Todos</SelectItem>
-                      <SelectItem value="sim">Sim</SelectItem>
-                      <SelectItem value="nao">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Botão Limpar Filtros */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Ações</label>
+                
+                {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                {(buscaLocal !== '' || filtros.status || filtros.produtos || filtros.temAms !== undefined || filtros.emProjeto !== undefined) && (
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={limparFiltros}
-                    disabled={!filtros.busca && !filtros.status && !filtros.produtos && filtros.temAms === undefined && filtros.emProjeto === undefined}
-                    className="w-full h-10"
+                    className="whitespace-nowrap hover:border-red-300"
                   >
-                    Limpar Filtros
+                    <X className="h-4 w-4 mr-2 text-red-600" />
+                    Limpar Filtro
                   </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+            {mostrarFiltros && (
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Campo de busca com ícone */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Buscar</div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Nome, e-mail gestor..."
+                        value={buscaLocal}
+                        onChange={(e) => handleBuscaChange(e.target.value)}
+                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filtro Status */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Status</div>
+                    <Select
+                      value={filtros.status?.[0] || '__todos_status__'}
+                      onValueChange={handleStatusSelectChange}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__todos_status__">Todos os status</SelectItem>
+                        {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Produtos */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Produtos</div>
+                    <Select
+                      value={filtros.produtos?.[0] || '__todos_produtos__'}
+                      onValueChange={handleProdutoSelectChange}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos os produtos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
+                        {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Tem AMS */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Tem AMS</div>
+                    <Select
+                      value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
+                      onValueChange={(value) => {
+                        if (value === '__todos_ams__') {
+                          handleFiltroChange('temAms', undefined);
+                        } else {
+                          handleFiltroChange('temAms', value === 'sim');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__todos_ams__">Todos</SelectItem>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtro Em Projeto */}
+                  <div>
+                    <div className="text-sm font-medium mb-2">Em Projeto</div>
+                    <Select
+                      value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
+                      onValueChange={(value) => {
+                        if (value === '__todos_projeto__') {
+                          handleFiltroChange('emProjeto', undefined);
+                        } else {
+                          handleFiltroChange('emProjeto', value === 'sim');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__todos_projeto__">Todos</SelectItem>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
