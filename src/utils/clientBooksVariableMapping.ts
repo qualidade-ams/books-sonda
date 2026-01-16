@@ -40,6 +40,8 @@ export interface ClientBooksVariaveis {
   'disparo.mesNomeEn': string; // Nome do mês de referência (mês anterior) em inglês
   'disparo.dataDisparo': string;
   'disparo.dataDisparoFormatada': string;
+  'disparo.anoAtual': string; // NOVO: Ano atual do disparo (não o ano de referência)
+  'disparo.mesAtual': string; // NOVO: Mês atual do disparo (não o mês de referência)
   
   // Variáveis de sistema
   'sistema.dataAtual': string;
@@ -182,6 +184,8 @@ export const mapearVariaveisClientBooks = (dados: ClientBooksTemplateData): Clie
     'disparo.mesNomeEn': obterNomeMesIngles(mesReferencia),
     'disparo.dataDisparo': formatarData(disparo.dataDisparo),
     'disparo.dataDisparoFormatada': formatarDataCompleta(disparo.dataDisparo),
+    'disparo.anoAtual': String(disparo.ano), // NOVO: Ano atual do disparo
+    'disparo.mesAtual': String(disparo.mes), // NOVO: Mês atual do disparo
     
     // Variáveis de sistema
     'sistema.dataAtual': formatarData(dataAtual),
@@ -260,7 +264,9 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
       'disparo.mesNome',
       'disparo.mesNomeEn',
       'disparo.dataDisparo',
-      'disparo.dataDisparoFormatada'
+      'disparo.dataDisparoFormatada',
+      'disparo.anoAtual',
+      'disparo.mesAtual'
     ],
     'Sistema': [
       'sistema.dataAtual',
