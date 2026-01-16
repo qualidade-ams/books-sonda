@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Users, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Users, AlertCircle, ChevronLeft, ChevronRight, UserCheck, UserX, Star } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -232,53 +232,44 @@ const Clientes: React.FC = () => {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.total}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4 text-gray-600" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
               </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
-                Ativos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                {stats.ativos}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <p className="text-sm text-blue-600">Ativos</p>
               </div>
+              <p className="text-2xl font-bold text-blue-600">{stats.ativos}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
-                Inativos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-gray-600">
-                {stats.inativos}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <UserX className="h-4 w-4 text-gray-600" />
+                <p className="text-sm text-gray-600">Inativos</p>
               </div>
+              <p className="text-2xl font-bold text-gray-600">{stats.inativos}</p>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                Principais
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                {stats.principais}
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="h-4 w-4 text-orange-600" />
+                <p className="text-sm text-orange-600">Principais</p>
               </div>
+              <p className="text-2xl font-bold text-orange-600">{stats.principais}</p>
             </CardContent>
           </Card>
         </div>
