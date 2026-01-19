@@ -3,7 +3,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Filter, Download, ChevronDown, FileSpreadsheet, FileText, Search, ChevronLeft, ChevronRight, X, AlertTriangle, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { TaxaForm, TaxaPadraoForm, TaxaPadraoHistorico } from '@/components/admin/taxas';
 import type { TaxaPadraoData } from '@/components/admin/taxas/TaxaPadraoForm';
 import { useTaxas, useCriarTaxa, useAtualizarTaxa, useDeletarTaxa } from '@/hooks/useTaxasClientes';
+import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCriarTaxaPadrao } from '@/hooks/useTaxasPadrao';
 import type { TaxaClienteCompleta, TaxaFormData } from '@/types/taxasClientes';
 import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
@@ -63,7 +64,10 @@ function CadastroTaxasClientes() {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>('cliente');
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc');
   
-  // Estados de filtro
+  // Estado da aba ativa
+  const [abaAtiva, setAbaAtiva] = useState<'taxas_cadastradas' | 'clientes_sem_taxa'>('taxas_cadastradas');
+  
+  // Estados de filtro - Aba 1
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroTipoProduto, setFiltroTipoProduto] = useState<string>('todos');
@@ -72,12 +76,19 @@ function CadastroTaxasClientes() {
   const [filtroTipoCalculo, setFiltroTipoCalculo] = useState<string>('todos'); // Novo filtro
   const [exportando, setExportando] = useState(false);
   
+  // Estados de filtro - Aba 2 (Clientes Sem Taxa)
+  const [mostrarFiltrosAba2, setMostrarFiltrosAba2] = useState(false);
+  const [filtroClienteAba2, setFiltroClienteAba2] = useState('');
+  const [filtroTipoProdutoAba2, setFiltroTipoProdutoAba2] = useState<string>('todos');
+  const [filtroStatusAba2, setFiltroStatusAba2] = useState<string>('todos');
+  
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Queries e mutations
   const { data: taxas = [], isLoading, refetch } = useTaxas();
+  const { empresas = [], isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo'] });
   const criarTaxa = useCriarTaxa();
   const atualizarTaxa = useAtualizarTaxa();
   const deletarTaxa = useDeletarTaxa();
@@ -223,6 +234,14 @@ function CadastroTaxasClientes() {
     setCurrentPage(1);
   };
 
+  // Função para limpar filtros da Aba 2
+  const limparFiltrosAba2 = () => {
+    setFiltroClienteAba2('');
+    setFiltroTipoProdutoAba2('todos');
+    setFiltroStatusAba2('todos');
+    setCurrentPage(1);
+  };
+
   // Filtrar e ordenar taxas
   const taxasFiltradas = useMemo(() => {
     let resultado = [...taxas];
@@ -237,7 +256,19 @@ function CadastroTaxasClientes() {
 
     // Filtro por tipo de produto
     if (filtroTipoProduto !== 'todos') {
-      resultado = resultado.filter(taxa => taxa.tipo_produto === filtroTipoProduto);
+      resultado = resultado.filter(taxa => {
+        if (filtroTipoProduto === 'GALLERY') {
+          return taxa.tipo_produto === 'GALLERY';
+        } else {
+          // Para COMEX ou FISCAL, verificar se o cliente tem esse produto
+          if (taxa.tipo_produto === 'OUTROS') {
+            const cliente = taxa.cliente as TaxaClienteCompleta['cliente'];
+            const produtosCliente = cliente?.produtos?.map((p) => p.produto) || [];
+            return produtosCliente.includes(filtroTipoProduto);
+          }
+          return false;
+        }
+      });
     }
 
     // Filtro por status
@@ -305,6 +336,72 @@ function CadastroTaxasClientes() {
 
   // Paginação
   const paginatedData = useVirtualPagination(taxasOrdenadas, itemsPerPage, currentPage);
+
+  // Identificar clientes sem taxa ou com taxa vencida
+  const clientesSemTaxa = useMemo(() => {
+    if (!empresas || empresas.length === 0) return [];
+
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    return empresas.filter(empresa => {
+      // Buscar todas as taxas deste cliente
+      const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
+      
+      // Se não tem nenhuma taxa cadastrada
+      if (taxasCliente.length === 0) {
+        return true;
+      }
+      
+      // Verificar se todas as taxas estão vencidas (não vigentes)
+      const todasVencidas = taxasCliente.every(taxa => {
+        const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
+        return !vigente;
+      });
+      
+      return todasVencidas;
+    });
+  }, [empresas, taxas]);
+
+  // Filtrar clientes sem taxa (Aba 2)
+  const clientesSemTaxaFiltrados = useMemo(() => {
+    let resultado = [...clientesSemTaxa];
+
+    // Filtro por cliente
+    if (filtroClienteAba2) {
+      resultado = resultado.filter(empresa =>
+        empresa.nome_abreviado?.toLowerCase().includes(filtroClienteAba2.toLowerCase()) ||
+        empresa.nome_completo?.toLowerCase().includes(filtroClienteAba2.toLowerCase())
+      );
+    }
+
+    // Filtro por tipo de produto
+    if (filtroTipoProdutoAba2 !== 'todos') {
+      resultado = resultado.filter(empresa => {
+        const produtos = empresa.produtos?.map(p => p.produto) || [];
+        // Filtrar por produto específico (GALLERY, COMEX ou FISCAL)
+        return produtos.includes(filtroTipoProdutoAba2);
+      });
+    }
+
+    // Filtro por status
+    if (filtroStatusAba2 !== 'todos') {
+      resultado = resultado.filter(empresa => {
+        const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
+        const temTaxaVencida = taxasCliente.length > 0;
+        
+        if (filtroStatusAba2 === 'taxa_vencida') {
+          return temTaxaVencida;
+        } else {
+          return !temTaxaVencida;
+        }
+      });
+    }
+
+    return resultado;
+  }, [clientesSemTaxa, filtroClienteAba2, filtroTipoProdutoAba2, filtroStatusAba2, taxas]);
+
+  // Paginação para clientes sem taxa
+  const paginatedClientesSemTaxa = useVirtualPagination(clientesSemTaxaFiltrados, itemsPerPage, currentPage);
 
   // Funções de exportação
   const exportarParaExcel = async () => {
@@ -668,14 +765,29 @@ function CadastroTaxasClientes() {
           </div>
         </div>
 
-        {/* Tabela de Taxas */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Taxas Cadastradas ({taxasOrdenadas.length})
-              </CardTitle>
+        {/* Sistema de Abas - Taxas Cadastradas e Clientes Sem Taxa */}
+        <Tabs value={abaAtiva} onValueChange={(value) => {
+          setAbaAtiva(value as 'taxas_cadastradas' | 'clientes_sem_taxa');
+          setCurrentPage(1);
+        }} className="w-full space-y-4">
+          <TabsList>
+            <TabsTrigger value="taxas_cadastradas">
+              Taxas Cadastradas ({taxasOrdenadas.length})
+            </TabsTrigger>
+            <TabsTrigger value="clientes_sem_taxa">
+              Clientes Sem Taxa ({clientesSemTaxa.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Aba 1: Taxas Cadastradas */}
+          <TabsContent value="taxas_cadastradas">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Taxas Cadastradas
+                  </CardTitle>
 
               <div className="flex gap-2">
                 <Button
@@ -740,7 +852,8 @@ function CadastroTaxasClientes() {
                       <SelectContent>
                         <SelectItem value="todos">Todos os tipos</SelectItem>
                         <SelectItem value="GALLERY">GALLERY</SelectItem>
-                        <SelectItem value="OUTROS">COMEX, FISCAL</SelectItem>
+                        <SelectItem value="COMEX">COMEX</SelectItem>
+                        <SelectItem value="FISCAL">FISCAL</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1048,8 +1161,269 @@ function CadastroTaxasClientes() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+            </TabsContent>
+
+            {/* Aba 2: Clientes Sem Taxa */}
+            <TabsContent value="clientes_sem_taxa">
+              <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    Clientes Sem Taxa ou com Taxa Vencida
+                  </CardTitle>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrarFiltrosAba2(!mostrarFiltrosAba2)}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Filtros</span>
+                    </Button>
+                    
+                    {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                    {(filtroClienteAba2 !== '' || filtroTipoProdutoAba2 !== 'todos' || filtroStatusAba2 !== 'todos') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limparFiltrosAba2}
+                        className="whitespace-nowrap hover:border-red-300"
+                      >
+                        <X className="h-4 w-4 mr-2 text-red-600" />
+                        Limpar Filtro
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+                {mostrarFiltrosAba2 && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Campo de busca com ícone */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por cliente..."
+                            value={filtroClienteAba2}
+                            onChange={(e) => {
+                              setFiltroClienteAba2(e.target.value);
+                              setCurrentPage(1);
+                            }}
+                            className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtro Tipo de Produto */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Tipo de Produto</div>
+                        <Select 
+                          value={filtroTipoProdutoAba2} 
+                          onValueChange={(value) => {
+                            setFiltroTipoProdutoAba2(value);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todos os tipos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos os tipos</SelectItem>
+                            <SelectItem value="GALLERY">GALLERY</SelectItem>
+                            <SelectItem value="COMEX">COMEX</SelectItem>
+                            <SelectItem value="FISCAL">FISCAL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro Status */}
+                      <div>
+                        <div className="text-sm font-medium mb-2">Status</div>
+                        <Select 
+                          value={filtroStatusAba2} 
+                          onValueChange={(value) => {
+                            setFiltroStatusAba2(value);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                            <SelectValue placeholder="Todos os status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos os status</SelectItem>
+                            <SelectItem value="sem_taxa">Sem Taxa</SelectItem>
+                            <SelectItem value="taxa_vencida">Taxa Vencida</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardHeader>
+
+              <CardContent>
+                <div className="rounded-md overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="font-semibold text-gray-700">Cliente</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Produtos</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Status</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingEmpresas ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                            Carregando...
+                          </TableCell>
+                        </TableRow>
+                      ) : clientesSemTaxaFiltrados.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                            <div className="flex flex-col items-center gap-2">
+                              <Check className="h-12 w-12 text-green-600" />
+                              <p className="font-medium">
+                                {filtroClienteAba2 || filtroTipoProdutoAba2 !== 'todos' || filtroStatusAba2 !== 'todos'
+                                  ? 'Nenhum cliente encontrado com os filtros aplicados'
+                                  : 'Todos os clientes ativos possuem taxas vigentes!'}
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedClientesSemTaxa.items.map((empresa) => {
+                          const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
+                          const temTaxaVencida = taxasCliente.length > 0;
+                          
+                          return (
+                            <TableRow key={empresa.id} className="hover:bg-gray-50">
+                              <TableCell className="font-medium">
+                                {empresa.nome_abreviado}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {empresa.produtos?.map((p, idx) => (
+                                    <Badge 
+                                      key={idx}
+                                      variant={p.produto === 'GALLERY' ? 'default' : 'outline'}
+                                      className={p.produto === 'GALLERY' 
+                                        ? 'bg-sonda-blue text-white hover:bg-sonda-dark-blue text-xs' 
+                                        : 'border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50 text-xs'
+                                      }
+                                    >
+                                      {p.produto}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {temTaxaVencida ? (
+                                  <Badge variant="outline" className="border-orange-600 text-orange-600">
+                                    Taxa Vencida
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="border-red-600 text-red-600">
+                                    Sem Taxa
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                                    onClick={() => {
+                                      setTaxaEditando(null);
+                                      setModalAberto(true);
+                                    }}
+                                    title="Cadastrar Taxa"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Controles de Paginação */}
+                {!isLoadingEmpresas && clientesSemTaxaFiltrados.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          const newValue = value === 'todos' ? clientesSemTaxaFiltrados.length : parseInt(value);
+                          setItemsPerPage(newValue);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                          <SelectItem value="500">500</SelectItem>
+                          <SelectItem value="todos">Todos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Navegação de páginas */}
+                    {paginatedClientesSemTaxa.totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={!paginatedClientesSemTaxa.hasPrevPage}
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                          Página {currentPage} de {paginatedClientesSemTaxa.totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(paginatedClientesSemTaxa.totalPages, prev + 1))}
+                          disabled={!paginatedClientesSemTaxa.hasNextPage}
+                          aria-label="Próxima página"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Contador de registros */}
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {paginatedClientesSemTaxa.startIndex}-{paginatedClientesSemTaxa.endIndex} de {paginatedClientesSemTaxa.totalItems} clientes
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
         {/* Modal de Criar/Editar */}
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
