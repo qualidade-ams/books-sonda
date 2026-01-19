@@ -36,7 +36,7 @@ export function useUltimaSincronizacao() {
 
 /**
  * Hook para sincronizar dados do SQL Server
- * AGORA INCLUI: Pesquisas + Especialistas
+ * AGORA INCLUI: Pesquisas + Especialistas + Apontamentos
  */
 export function useSincronizarSqlServer() {
   const queryClient = useQueryClient();
@@ -44,11 +44,13 @@ export function useSincronizarSqlServer() {
   return useMutation({
     mutationFn: () => sqlServerSyncService.sincronizarDados(),
     onSuccess: (resultado) => {
-      // Invalidar todas as queries relacionadas a pesquisas E especialistas
+      // Invalidar todas as queries relacionadas a pesquisas, especialistas E apontamentos
       queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
       queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
       queryClient.invalidateQueries({ queryKey: ['especialistas'] });
       queryClient.invalidateQueries({ queryKey: ['especialistas-estatisticas'] });
+      queryClient.invalidateQueries({ queryKey: ['apontamentos-aranda'] });
+      queryClient.invalidateQueries({ queryKey: ['estatisticas-apontamentos'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ultimaSincronizacao });
       queryClient.invalidateQueries({ queryKey: ['ultima-sincronizacao-especialistas'] });
 
@@ -75,6 +77,21 @@ export function useSincronizarSqlServer() {
         } else {
           toast.warning(
             `Especialistas com erros: ${resultado.especialistas.erros} falhas`,
+            { duration: 4000 }
+          );
+        }
+      }
+
+      // Mostrar resultado dos apontamentos
+      if (resultado.apontamentos) {
+        if (resultado.apontamentos.sucesso) {
+          toast.success(
+            `Apontamentos sincronizados! ${resultado.apontamentos.novos} novos, ${resultado.apontamentos.atualizados} atualizados`,
+            { duration: 4000 }
+          );
+        } else {
+          toast.warning(
+            `Apontamentos com erros: ${resultado.apontamentos.erros} falhas`,
             { duration: 4000 }
           );
         }

@@ -1,6 +1,12 @@
-# API de Sincronização de Pesquisas - SQL Server
+# API de Sincronização - SQL Server → Supabase
 
-API Node.js para sincronizar pesquisas do SQL Server (Aranda) para o Supabase.
+API Node.js para sincronizar dados do SQL Server (Aranda) para o Supabase.
+
+## 📊 Tabelas Sincronizadas
+
+1. **AMSpesquisa** → `pesquisas_satisfacao` (Pesquisas de satisfação)
+2. **AMSespecialistas** → `especialistas` (Especialistas/Analistas)
+3. **AMSapontamento** → `apontamentos_aranda` (Apontamentos de chamados - desde 01/01/2026)
 
 ## ⚠️ IMPORTANTE: VPN Necessária
 
@@ -73,7 +79,9 @@ A API estará disponível em `http://localhost:3001`
 
 ## 📡 Endpoints
 
-### 1. Health Check
+### Pesquisas de Satisfação
+
+#### 1. Health Check
 
 ```bash
 GET /health
@@ -92,7 +100,7 @@ GET /health
 }
 ```
 
-### 2. Testar Conexão SQL Server
+#### 2. Testar Conexão SQL Server
 
 ```bash
 GET /api/test-connection
@@ -107,7 +115,7 @@ GET /api/test-connection
 }
 ```
 
-### 3. Sincronizar Pesquisas
+#### 3. Sincronizar Pesquisas (Incremental)
 
 ```bash
 POST /api/sync-pesquisas
@@ -131,7 +139,13 @@ POST /api/sync-pesquisas
 }
 ```
 
-### 4. Estatísticas
+#### 4. Sincronizar Pesquisas (Completa)
+
+```bash
+POST /api/sync-pesquisas-full
+```
+
+#### 5. Estatísticas de Pesquisas
 
 ```bash
 GET /api/stats
@@ -145,6 +159,137 @@ GET /api/stats
   "manuais": 10
 }
 ```
+
+### Especialistas
+
+#### 1. Testar Conexão Especialistas
+
+```bash
+GET /api/test-connection-especialistas
+```
+
+#### 2. Consultar Estrutura da Tabela
+
+```bash
+GET /api/table-structure-especialistas
+```
+
+#### 3. Sincronizar Especialistas
+
+```bash
+POST /api/sync-especialistas
+```
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "total_processados": 50,
+  "novos": 5,
+  "atualizados": 45,
+  "removidos": 0,
+  "erros": 0,
+  "mensagens": [
+    "Iniciando sincronização com SQL Server (AMSespecialistas)...",
+    "Conectado ao SQL Server",
+    "50 registros encontrados no SQL Server",
+    "Sincronização concluída: 5 novos, 45 atualizados, 0 removidos, 0 erros"
+  ]
+}
+```
+
+### Apontamentos (Novo!)
+
+#### 1. Testar Conexão Apontamentos
+
+```bash
+GET /api/test-connection-apontamentos
+```
+
+**Resposta:**
+```json
+{
+  "success": true,
+  "message": "Conexão com AMSapontamento estabelecida com sucesso",
+  "sample_record": { ... }
+}
+```
+
+#### 2. Consultar Estrutura da Tabela
+
+```bash
+GET /api/table-structure-apontamentos
+```
+
+**Resposta:**
+```json
+{
+  "success": true,
+  "table": "AMSapontamento",
+  "columns": [
+    {
+      "COLUMN_NAME": "Nro_Chamado",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": -1,
+      "IS_NULLABLE": "YES"
+    },
+    ...
+  ]
+}
+```
+
+#### 3. Sincronizar Apontamentos (Incremental)
+
+```bash
+POST /api/sync-apontamentos
+```
+
+Sincroniza apenas registros novos desde a última sincronização.
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "total_processados": 150,
+  "novos": 120,
+  "atualizados": 30,
+  "erros": 0,
+  "mensagens": [
+    "Iniciando sincronização com SQL Server (AMSapontamento)...",
+    "Conectado ao SQL Server",
+    "Modo: Sincronização INCREMENTAL",
+    "Última sincronização: 2026-01-15T10:30:00.000Z",
+    "150 registros encontrados no SQL Server",
+    "Sincronização concluída: 120 novos, 30 atualizados, 0 erros"
+  ]
+}
+```
+
+#### 4. Sincronizar Apontamentos (Completa)
+
+```bash
+POST /api/sync-apontamentos-full
+```
+
+Sincroniza todos os registros desde 01/01/2026 (limitado a 500 por vez).
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "total_processados": 500,
+  "novos": 450,
+  "atualizados": 50,
+  "erros": 0,
+  "mensagens": [
+    "Modo: Sincronização COMPLETA (até 500 registros por vez)",
+    "500 registros encontrados no SQL Server",
+    "Sincronização concluída: 450 novos, 50 atualizados, 0 erros"
+  ]
+}
+```
+
+**📖 Documentação completa:** Ver `docs/sincronizacao-apontamentos-aranda.md`
 
 ## 🔧 Estrutura da Tabela SQL Server
 
