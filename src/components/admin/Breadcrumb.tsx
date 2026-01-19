@@ -29,7 +29,8 @@ const Breadcrumb = () => {
     'plano-acao': 'Plano de Ação',
     'lancar-elogios': 'Validar Elogios',
     'enviar-elogios': 'Enviar Elogios',
-    'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes'
+    'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes',
+    'design-system': 'Design System'
   };
 
   return (

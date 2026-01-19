@@ -304,6 +304,157 @@ export default function FaturarRequerimentos() {
     };
   }, [dadosFaturamento, requerimentosAgrupados]);
 
+  // Calcular horas de banco de horas baseado na seleção
+  const horasBancoDeHoras = useMemo((): string => {
+    if (!dadosFaturamento?.requerimentos) return '0:00';
+
+    // Se nenhum ou todos estão selecionados, mostrar total
+    const todosRequerimentos = dadosFaturamento.requerimentos;
+    const requerimentosBancoHoras = todosRequerimentos.filter(req => req.tipo_cobranca === 'Banco de Horas');
+    
+    if (requerimentosSelecionados.length === 0 || requerimentosSelecionados.length === todosRequerimentos.length) {
+      // Mostrar total de todos os banco de horas
+      let totalHoras = '0:00';
+      requerimentosBancoHoras.forEach(req => {
+        if (req.horas_total) {
+          totalHoras = somarHoras(totalHoras, req.horas_total.toString());
+        }
+      });
+      return totalHoras;
+    }
+
+    // Calcular apenas dos selecionados que são banco de horas
+    let horasSelecionadas = '0:00';
+    requerimentosBancoHoras
+      .filter(req => requerimentosSelecionados.includes(req.id))
+      .forEach(req => {
+        if (req.horas_total) {
+          horasSelecionadas = somarHoras(horasSelecionadas, req.horas_total.toString());
+        }
+      });
+    
+    return horasSelecionadas;
+  }, [dadosFaturamento, requerimentosSelecionados]);
+
+  // Calcular valor faturável baseado na seleção
+  const valorFaturavel = useMemo((): number => {
+    if (!dadosFaturamento?.requerimentos) return 0;
+
+    const todosRequerimentos = dadosFaturamento.requerimentos;
+    const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    
+    // Se nenhum ou todos estão selecionados, mostrar total
+    if (requerimentosSelecionados.length === 0 || requerimentosSelecionados.length === todosRequerimentos.length) {
+      // Calcular total de todos os requerimentos com valor
+      return todosRequerimentos
+        .filter(req => tiposComValor.includes(req.tipo_cobranca))
+        .reduce((acc, req) => acc + (req.valor_total_geral || 0), 0);
+    }
+
+    // Calcular apenas dos selecionados que têm valor monetário
+    return todosRequerimentos
+      .filter(req => requerimentosSelecionados.includes(req.id) && tiposComValor.includes(req.tipo_cobranca))
+      .reduce((acc, req) => acc + (req.valor_total_geral || 0), 0);
+  }, [dadosFaturamento, requerimentosSelecionados]);
+
+  // Calcular estatísticas da aba Histórico baseadas na seleção
+  const estatisticasHistorico = useMemo(() => {
+    if (!dadosFaturados) {
+      return {
+        total: 0,
+        totalHoras: '0:00',
+        horasBancoDeHoras: '0:00',
+        horasReprovadas: '0:00',
+        totalReprovados: 0,
+        valorFaturavel: 0
+      };
+    }
+
+    const todosRequerimentos = dadosFaturados;
+    const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+    
+    // Se nenhum ou todos selecionados, calcular total
+    if (requerimentosSelecionados.length === 0 || requerimentosSelecionados.length === todosRequerimentos.length) {
+      const requerimentosSemReprovados = todosRequerimentos.filter(req => req.tipo_cobranca !== 'Reprovado');
+      const requerimentosReprovados = todosRequerimentos.filter(req => req.tipo_cobranca === 'Reprovado');
+      const requerimentosBancoHoras = todosRequerimentos.filter(req => req.tipo_cobranca === 'Banco de Horas');
+      
+      let totalHoras = '0:00';
+      requerimentosSemReprovados.forEach(req => {
+        const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+        totalHoras = somarHoras(totalHoras, horas.toString());
+      });
+      
+      let horasReprovadas = '0:00';
+      requerimentosReprovados.forEach(req => {
+        const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+        horasReprovadas = somarHoras(horasReprovadas, horas.toString());
+      });
+
+      let horasBancoDeHoras = '0:00';
+      requerimentosBancoHoras.forEach(req => {
+        const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+        horasBancoDeHoras = somarHoras(horasBancoDeHoras, horas.toString());
+      });
+      
+      const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
+        if (tiposComValor.includes(req.tipo_cobranca)) {
+          return acc + (req.valor_total_geral || 0);
+        }
+        return acc;
+      }, 0);
+      
+      return {
+        total: requerimentosSemReprovados.length,
+        totalHoras,
+        horasBancoDeHoras,
+        horasReprovadas,
+        totalReprovados: requerimentosReprovados.length,
+        valorFaturavel: totalValor
+      };
+    }
+
+    // Calcular apenas dos selecionados
+    const requerimentosSelecionadosData = todosRequerimentos.filter(req => requerimentosSelecionados.includes(req.id));
+    const requerimentosSemReprovados = requerimentosSelecionadosData.filter(req => req.tipo_cobranca !== 'Reprovado');
+    const requerimentosReprovados = requerimentosSelecionadosData.filter(req => req.tipo_cobranca === 'Reprovado');
+    const requerimentosBancoHoras = requerimentosSelecionadosData.filter(req => req.tipo_cobranca === 'Banco de Horas');
+    
+    let totalHoras = '0:00';
+    requerimentosSemReprovados.forEach(req => {
+      const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+      totalHoras = somarHoras(totalHoras, horas.toString());
+    });
+    
+    let horasReprovadas = '0:00';
+    requerimentosReprovados.forEach(req => {
+      const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+      horasReprovadas = somarHoras(horasReprovadas, horas.toString());
+    });
+
+    let horasBancoDeHoras = '0:00';
+    requerimentosBancoHoras.forEach(req => {
+      const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
+      horasBancoDeHoras = somarHoras(horasBancoDeHoras, horas.toString());
+    });
+    
+    const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
+      if (tiposComValor.includes(req.tipo_cobranca)) {
+        return acc + (req.valor_total_geral || 0);
+      }
+      return acc;
+    }, 0);
+    
+    return {
+      total: requerimentosSemReprovados.length,
+      totalHoras,
+      horasBancoDeHoras,
+      horasReprovadas,
+      totalReprovados: requerimentosReprovados.length,
+      valorFaturavel: totalValor
+    };
+  }, [dadosFaturados, requerimentosSelecionados]);
+
   // Calcular estatísticas filtradas baseadas nos filtros aplicados
   const estatisticasPeriodoFiltradas = useMemo((): EstatisticasPeriodo => {
     // Função auxiliar para verificar se há filtros ativos
@@ -1233,7 +1384,7 @@ export default function FaturarRequerimentos() {
 
         {/* Estatísticas - Estilo similar ao Lançar Requerimentos */}
         {abaAtiva !== 'faturados' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Card combinado: Total + Tipos Ativos */}
             <Card>
               <CardHeader className="pb-2">
@@ -1275,6 +1426,26 @@ export default function FaturarRequerimentos() {
               </CardContent>
             </Card>
             
+            {/* Card Banco de Horas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-indigo-600 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Banco de Horas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-indigo-600">
+                  {formatarHorasParaExibicao(horasBancoDeHoras, 'completo')}
+                </div>
+                {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < (dadosFaturamento?.requerimentos?.length || 0) && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Selecionados
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
             {/* Card Período */}
             <Card>
               <CardHeader className="pb-2">
@@ -1300,11 +1471,16 @@ export default function FaturarRequerimentos() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="text-xl lg:text-2xl font-bold text-green-600">
-                  R$ {estatisticasPeriodoFiltradas.valorTotalFaturavel.toLocaleString('pt-BR', {
+                  R$ {valorFaturavel.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })}
                 </div>
+                {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < (dadosFaturamento?.requerimentos?.length || 0) && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Selecionados
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1312,108 +1488,104 @@ export default function FaturarRequerimentos() {
 
         {/* Cards para aba Histórico de Enviados - Estilo similar ao Lançar Requerimentos */}
         {abaAtiva === 'faturados' && dadosFaturados && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {(() => {
-              const requerimentosSemReprovados = dadosFaturados.filter(req => req.tipo_cobranca !== 'Reprovado');
-              const requerimentosReprovados = dadosFaturados.filter(req => req.tipo_cobranca === 'Reprovado');
-              
-              let totalHoras = '0:00';
-              requerimentosSemReprovados.forEach(req => {
-                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
-                totalHoras = somarHoras(totalHoras, horas.toString());
-              });
-              
-              let horasReprovadas = '0:00';
-              requerimentosReprovados.forEach(req => {
-                const horas = req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0');
-                horasReprovadas = somarHoras(horasReprovadas, horas.toString());
-              });
-              
-              const totalValor = requerimentosSemReprovados.reduce((acc, req) => {
-                if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(req.tipo_cobranca)) {
-                  return acc + (req.valor_total_geral || 0);
-                }
-                return acc;
-              }, 0);
-              
-              const tiposAtivos = [...new Set(requerimentosSemReprovados.map(req => req.tipo_cobranca))].length;
-              
-              return (
-                <>
-                  {/* Card Total */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Total
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                        {requerimentosSemReprovados.length}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Excluindo reprovados
-                      </div>
-                    </CardContent>
-                  </Card>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Card Total */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Total
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                  {estatisticasHistorico.total}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? 'Selecionados' : 'Excluindo reprovados'}
+                </div>
+              </CardContent>
+            </Card>
 
-                  {/* Card Total Horas */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Total Horas
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl lg:text-2xl font-bold text-green-600">
-                        {formatarHoras(totalHoras)}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Excluindo reprovados
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Card Total Horas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Total Horas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-green-600">
+                  {formatarHoras(estatisticasHistorico.totalHoras)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? 'Selecionados' : 'Excluindo reprovados'}
+                </div>
+              </CardContent>
+            </Card>
 
-                  {/* Card Horas Reprovadas */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs lg:text-sm font-medium text-red-600 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        Horas Reprovadas
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl lg:text-2xl font-bold text-red-600">
-                        {formatarHoras(horasReprovadas)}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {requerimentosReprovados.length} reprovado{requerimentosReprovados.length !== 1 ? 's' : ''}
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Card Banco de Horas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-indigo-600 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Banco de Horas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-indigo-600">
+                  {formatarHoras(estatisticasHistorico.horasBancoDeHoras)}
+                </div>
+                {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Selecionados
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  {/* Card Valor Faturável */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
-                        <Calculator className="h-4 w-4" />
-                        Valor Faturável
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                        R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Faturado + Hora Extra + Sobreaviso + Bolsão Enel
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              );
-            })()}
+            {/* Card Horas Reprovadas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-red-600 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Horas Reprovadas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-red-600">
+                  {formatarHoras(estatisticasHistorico.horasReprovadas)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {estatisticasHistorico.totalReprovados} reprovado{estatisticasHistorico.totalReprovados !== 1 ? 's' : ''}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card Valor Faturável */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Valor Faturável
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-orange-600">
+                  R$ {estatisticasHistorico.valorFaturavel.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Selecionados
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Faturado + Hora Extra + Sobreaviso + Bolsão Enel
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 

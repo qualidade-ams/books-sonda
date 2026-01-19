@@ -13,6 +13,7 @@ import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { LoadingSpinner } from './LoadingStates';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface RequerimentoMultiploFormProps {
   onSubmit: (requerimentos: any[]) => Promise<void>;
@@ -26,6 +27,16 @@ export function RequerimentoMultiploForm({
   isLoading = false
 }: RequerimentoMultiploFormProps) {
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
+
+  // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
+  const [tentouSubmeter, setTentouSubmeter] = useState(false);
+  
+  // Função helper para obter classes de erro para campos obrigatórios
+  const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
+    if (!tentouSubmeter || !isRequired) return '';
+    const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
+    return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+  };
 
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
@@ -234,6 +245,9 @@ export function RequerimentoMultiploForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Marcar que houve tentativa de submissão
+    setTentouSubmeter(true);
+
     const { valido, erros } = validarFormulario();
 
     if (!valido) {
@@ -270,6 +284,8 @@ export function RequerimentoMultiploForm({
     try {
       await onSubmit(requerimentos);
       toast.success(`${requerimentos.length} requerimento(s) criado(s) com sucesso!`);
+      // Resetar flag de tentativa após sucesso
+      setTentouSubmeter(false);
     } catch (error) {
       console.error('Erro ao criar requerimentos:', error);
       toast.error('Erro ao criar requerimentos');
@@ -294,7 +310,7 @@ export function RequerimentoMultiploForm({
                 value={chamado}
                 onChange={(e) => setChamado(e.target.value)}
                 placeholder="Ex: RF-6017993"
-                className="uppercase"
+                className={cn("uppercase", getErrorClasses(chamado))}
                 disabled={isLoading}
               />
             </div>
@@ -308,7 +324,7 @@ export function RequerimentoMultiploForm({
                 onValueChange={setClienteId}
                 disabled={isLoading || isLoadingClientes}
               >
-                <SelectTrigger>
+                <SelectTrigger className={cn(getErrorClasses(clienteId))}>
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
@@ -339,7 +355,7 @@ export function RequerimentoMultiploForm({
                 Módulo <span className="text-red-500">*</span>
               </Label>
               <Select value={modulo} onValueChange={setModulo} disabled={isLoading}>
-                <SelectTrigger>
+                <SelectTrigger className={cn(getErrorClasses(modulo))}>
                   <SelectValue placeholder="Selecione um módulo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -362,7 +378,7 @@ export function RequerimentoMultiploForm({
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Descreva o requerimento..."
-              className="min-h-[100px]"
+              className={cn("min-h-[100px]", getErrorClasses(descricao))}
               disabled={isLoading}
             />
             <p className="text-sm text-muted-foreground">
@@ -382,6 +398,7 @@ export function RequerimentoMultiploForm({
                   type="date"
                   value={dataEnvio}
                   onChange={(e) => setDataEnvio(e.target.value)}
+                  className={cn(getErrorClasses(dataEnvio))}
                   disabled={isLoading}
                 />
               </div>
@@ -420,6 +437,7 @@ export function RequerimentoMultiploForm({
                   canRemove={blocos.length > 1}
                   empresaTipoCobranca={clienteSelecionado?.tipo_cobranca}
                   clienteId={clienteId}
+                  tentouSubmeter={tentouSubmeter}
                 />
               </React.Fragment>
             ))}

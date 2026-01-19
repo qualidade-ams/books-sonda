@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { emailService, EmailData } from './emailService';
+import { converterParaHorasDecimal, converterDeHorasDecimal } from '@/utils/horasUtils';
 import type {
   Requerimento,
   TipoCobrancaType,
@@ -73,10 +74,10 @@ export class FaturamentoService {
         linguagem: item.linguagem as any,
         tipo_cobranca: item.tipo_cobranca as any,
         status: item.status as any,
-        // Garantir que horas_total seja sempre number
-        horas_total: typeof item.horas_total === 'string' ? parseFloat(item.horas_total) : item.horas_total,
-        horas_funcional: typeof item.horas_funcional === 'string' ? parseFloat(item.horas_funcional) : item.horas_funcional,
-        horas_tecnico: typeof item.horas_tecnico === 'string' ? parseFloat(item.horas_tecnico) : item.horas_tecnico
+        // Converter horas de string HH:MM para decimal
+        horas_total: typeof item.horas_total === 'string' ? converterParaHorasDecimal(item.horas_total) : item.horas_total,
+        horas_funcional: typeof item.horas_funcional === 'string' ? converterParaHorasDecimal(item.horas_funcional) : item.horas_funcional,
+        horas_tecnico: typeof item.horas_tecnico === 'string' ? converterParaHorasDecimal(item.horas_tecnico) : item.horas_tecnico
       })) as Requerimento[];
     } catch (error) {
       console.error('Erro no faturamentoService.buscarRequerimentosParaFaturamento:', error);
@@ -103,7 +104,7 @@ export class FaturamentoService {
       const tipo = req.tipo_cobranca;
       const tipoFaturamento = tipo as TipoCobrancaType;
       grupos[tipoFaturamento].quantidade += 1;
-      grupos[tipoFaturamento].horas_total += typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+      grupos[tipoFaturamento].horas_total += typeof req.horas_total === 'string' ? converterParaHorasDecimal(req.horas_total) : req.horas_total;
       grupos[tipoFaturamento].requerimentos.push(req);
     });
 
@@ -133,7 +134,7 @@ export class FaturamentoService {
     // Calcular totais por tipo
     requerimentos.forEach(req => {
       const tipo = req.tipo_cobranca;
-      const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+      const horas = typeof req.horas_total === 'string' ? converterParaHorasDecimal(req.horas_total) : req.horas_total;
       const valorTotal = req.valor_total_geral || 0;
 
       totais.tipos_cobranca[tipo as TipoCobrancaType].quantidade += 1;
@@ -273,15 +274,26 @@ export class FaturamentoService {
             <td style="padding:30px 20px;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" width="30%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                  <td align="center" width="25%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
                     <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total de Requerimentos</h3>
                     <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">${relatorio.totais_gerais.total_requerimentos}</p>
                   </td>
-                  <td align="center" width="35%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                  <td align="center" width="25%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
                     <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total de Horas</h3>
                     <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">${(() => { const total = relatorio.totais_gerais.total_horas; const horas = Math.floor(total); const minutos = Math.round((total - horas) * 60); return `${horas}h ${minutos.toString().padStart(2, '0')}min`; })()}</p>
                   </td>
-                  <td align="center" width="35%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                  <td align="center" width="25%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Banco de Horas</h3>
+                    <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">${(() => { 
+                      const bancoHoras = relatorio.requerimentos_por_tipo['Banco de Horas'];
+                      if (!bancoHoras || bancoHoras.quantidade === 0) return '-';
+                      const total = bancoHoras.horas_total; 
+                      const horas = Math.floor(total); 
+                      const minutos = Math.round((total - horas) * 60); 
+                      return `${horas}h ${minutos.toString().padStart(2, '0')}min`; 
+                    })()}</p>
+                  </td>
+                  <td align="center" width="25%" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
                     <h3 style="margin:0; font-size:13px; color:#64748b; text-transform:uppercase;">Total Faturamento</h3>
                     <p style="margin:8px 0 0 0; font-size:28px; color:#2563eb; font-weight:bold;">R$ ${relatorio.totais_gerais.total_faturado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     
@@ -348,7 +360,7 @@ export class FaturamentoService {
                                 <td style="padding:10px;">${req.linguagem}</td>
                                 <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
                                   ${(() => {
-                      const horas = typeof req.horas_funcional === 'string' ? parseFloat(req.horas_funcional) : req.horas_funcional;
+                      const horas = typeof req.horas_funcional === 'string' ? converterParaHorasDecimal(req.horas_funcional) : req.horas_funcional;
                       const horasInt = Math.floor(horas);
                       const minutos = Math.round((horas - horasInt) * 60);
                       return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
@@ -356,7 +368,7 @@ export class FaturamentoService {
                                 </td>
                                 <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
                                   ${(() => {
-                      const horas = typeof req.horas_tecnico === 'string' ? parseFloat(req.horas_tecnico) : req.horas_tecnico;
+                      const horas = typeof req.horas_tecnico === 'string' ? converterParaHorasDecimal(req.horas_tecnico) : req.horas_tecnico;
                       const horasInt = Math.floor(horas);
                       const minutos = Math.round((horas - horasInt) * 60);
                       return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
@@ -365,7 +377,7 @@ export class FaturamentoService {
                                 <td align="center" style="padding:10px; color:#059669; font-weight:bold;">
                                   <div>
                                     ${(() => {
-                      const horas = typeof req.horas_total === 'string' ? parseFloat(req.horas_total) : req.horas_total;
+                      const horas = typeof req.horas_total === 'string' ? converterParaHorasDecimal(req.horas_total) : req.horas_total;
                       const horasInt = Math.floor(horas);
                       const minutos = Math.round((horas - horasInt) * 60);
                       return `${horasInt}:${minutos.toString().padStart(2, '0')}`;
@@ -587,7 +599,7 @@ export class FaturamentoService {
       const requerimentosParciais = (data || []).map(item => ({
         ...item,
         tipo_cobranca: item.tipo_cobranca as any,
-        horas_total: typeof item.horas_total === 'string' ? parseFloat(item.horas_total) : item.horas_total
+        horas_total: typeof item.horas_total === 'string' ? converterParaHorasDecimal(item.horas_total) : item.horas_total
       })) as Requerimento[];
 
       return this.calcularTotaisPorCategoria(requerimentosParciais);
