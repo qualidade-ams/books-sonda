@@ -67,6 +67,39 @@ interface DadosEspecialistaSqlServer {
   user_active: boolean;
 }
 
+// Interface dos dados de apontamentos (estrutura da tabela AMSapontamento)
+interface DadosApontamentoSqlServer {
+  Nro_Chamado: string;
+  Tipo_Chamado: string;
+  Org_Us_Final: string;
+  categoria: string;
+  Causa_Raiz: string;
+  Solicitante: string;
+  Us_Final_Afetado: string;
+  Data_Abertura: Date | null;
+  Data_Sistema: Date | null;
+  Data_Atividade: Date | null;
+  Data_Fechamento: Date | null;
+  Data_Ult_Modificacao: Date | null;
+  Ativi_Interna: string;
+  Caso_Estado: string;
+  Caso_Grupo: string;
+  Nro_Tarefa: string;
+  Descricao_Tarefa: string;
+  Tempo_Gasto_Segundos: number | null;
+  Tempo_Gasto_Minutos: number | null;
+  Tempo_Gasto_Horas: string;
+  Item_Configuracao: string;
+  Analista_Tarefa: string;
+  Analista_Caso: string;
+  Estado_Tarefa: string;
+  Resumo_Tarefa: string;
+  Grupo_Tarefa: string;
+  Problema: string;
+  Cod_Resolucao: string;
+  LOG: Date | null;
+}
+
 /**
  * Aplica transformação automática para clientes com "-AMS"
  */
@@ -161,6 +194,31 @@ function gerarIdUnicoEspecialista(registro: DadosEspecialistaSqlServer): string 
     'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
     registro.user_name.trim(),
     registro.user_email?.trim() || 'sem_email'
+  ].filter(Boolean);
+  
+  return partes.join('|');
+}
+
+/**
+ * Gerar ID único para registro de apontamento
+ */
+function gerarIdUnicoApontamento(registro: DadosApontamentoSqlServer): string {
+  // Validar se os campos obrigatórios existem
+  if (!registro.Nro_Chamado || registro.Nro_Chamado.trim() === '') {
+    console.error('Erro: Nro_Chamado é obrigatório para gerar ID único', registro);
+    throw new Error(`Nro_Chamado é obrigatório para gerar ID único. Registro: ${JSON.stringify(registro)}`);
+  }
+  
+  if (!registro.Nro_Tarefa || registro.Nro_Tarefa.trim() === '') {
+    console.error('Erro: Nro_Tarefa é obrigatório para gerar ID único', registro);
+    throw new Error(`Nro_Tarefa é obrigatório para gerar ID único. Registro: ${JSON.stringify(registro)}`);
+  }
+  
+  const partes = [
+    'AMSapontamento', // Prefixo para diferenciar de outras tabelas
+    registro.Nro_Chamado.trim(),
+    registro.Nro_Tarefa.trim(),
+    registro.Data_Atividade?.toISOString() || 'sem_data'
   ].filter(Boolean);
   
   return partes.join('|');
@@ -691,8 +749,23 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
     await pool.close();
 
     if (registros.length === 0) {
+      console.log('⚠️ [PESQUISAS] Nenhum registro novo encontrado no SQL Server');
+      
+      // Buscar total de registros no Supabase para exibir no modal
+      try {
+        const { count: totalSupabase } = await supabase
+          .from('pesquisas_satisfacao')
+          .select('*', { count: 'exact', head: true })
+          .eq('origem', 'sql_server');
+        
+        console.log(`📊 [PESQUISAS] Total de registros no Supabase: ${totalSupabase || 0}`);
+        resultado.total_processados = totalSupabase || 0;
+      } catch (error) {
+        console.warn('⚠️ [PESQUISAS] Erro ao buscar total do Supabase:', error);
+      }
+      
       resultado.sucesso = true;
-      resultado.mensagens.push('Nenhum registro para sincronizar');
+      resultado.mensagens.push('Nenhum registro novo para sincronizar');
       return res.json(resultado);
     }
 
@@ -774,19 +847,12 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         }
 
         if (existente) {
-          // Atualizar registro existente
-          const { error } = await supabase
-            .from('pesquisas_satisfacao')
-            .update(dadosPesquisa)
-            .eq('id', existente.id);
-
-          if (error) {
-            console.error('Erro ao atualizar:', error);
-            throw error;
-          }
-          resultado.atualizados++;
+          // ✅ Registro já existe - PULAR (não atualizar para preservar edições manuais)
+          console.log(`⏭️ [PESQUISAS] Registro ${i + 1} já existe - pulando (ID: ${idUnico})`);
+          // Não incrementar nenhum contador - registro ignorado
+          continue;
         } else {
-          // Inserir novo registro
+          // ✅ Inserir novo registro
           const { error } = await supabase
             .from('pesquisas_satisfacao')
             .insert({
@@ -1281,6 +1347,413 @@ app.get('/api/debug-grupos', async (req, res) => {
     });
   }
 });
+
+// ============================================
+// ENDPOINTS PARA APONTAMENTOS
+// ============================================
+
+/**
+ * Testar conexão com tabela AMSapontamento
+ */
+app.get('/api/test-connection-apontamentos', async (req, res) => {
+  try {
+    console.log('Testando conexão com tabela AMSapontamento...');
+    const pool = await sql.connect(sqlConfig);
+    
+    const result = await pool.request().query(`
+      SELECT TOP 1 * 
+      FROM AMSapontamento 
+      WHERE Data_Abertura >= '2026-01-01 00:00:00'
+    `);
+    
+    await pool.close();
+    
+    res.json({
+      success: true,
+      message: 'Conexão com AMSapontamento estabelecida com sucesso',
+      sample_record: result.recordset[0] || null
+    });
+    
+  } catch (error) {
+    console.error('Erro ao testar conexão AMSapontamento:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Consultar estrutura da tabela AMSapontamento
+ */
+app.get('/api/table-structure-apontamentos', async (req, res) => {
+  try {
+    console.log('Consultando estrutura da tabela AMSapontamento...');
+    const pool = await sql.connect(sqlConfig);
+    
+    const query = `
+      SELECT 
+        COLUMN_NAME,
+        DATA_TYPE,
+        CHARACTER_MAXIMUM_LENGTH,
+        IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME = 'AMSapontamento'
+      ORDER BY ORDINAL_POSITION
+    `;
+    
+    const result = await pool.request().query(query);
+    await pool.close();
+    
+    res.json({
+      success: true,
+      table: 'AMSapontamento',
+      columns: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('Erro ao consultar estrutura AMSapontamento:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Sincronizar apontamentos do SQL Server (incremental)
+ */
+app.post('/api/sync-apontamentos', async (req, res) => {
+  await sincronizarApontamentos(req, res, false);
+});
+
+/**
+ * Sincronização completa de apontamentos (todos os registros desde 01/01/2026)
+ */
+app.post('/api/sync-apontamentos-full', async (req, res) => {
+  await sincronizarApontamentos(req, res, true);
+});
+
+/**
+ * Função principal de sincronização de apontamentos
+ */
+async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta: boolean = false) {
+  const resultado = {
+    sucesso: false,
+    total_processados: 0,
+    novos: 0,
+    atualizados: 0,
+    erros: 0,
+    mensagens: [] as string[],
+    detalhes_erros: [] as any[]
+  };
+
+  try {
+    console.log('🔄 [APONTAMENTOS] Iniciando sincronização de apontamentos...');
+    resultado.mensagens.push('Iniciando sincronização com SQL Server (AMSapontamento)...');
+
+    // Conectar ao SQL Server
+    console.log('🔌 [APONTAMENTOS] Tentando conectar ao SQL Server...');
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [APONTAMENTOS] Conectado ao SQL Server');
+    resultado.mensagens.push('Conectado ao SQL Server');
+
+    let query: string;
+    let ultimaDataSincronizacao: Date | null = null;
+
+    if (sincronizacaoCompleta) {
+      // Sincronização completa - buscar todos os registros desde 01/01/2026 (limitado a 500 por vez)
+      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (desde 01/01/2026)');
+      resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
+      
+      query = `
+        SELECT TOP 500
+          Nro_Chamado,
+          Tipo_Chamado,
+          Org_Us_Final,
+          categoria,
+          Causa_Raiz,
+          Solicitante,
+          Us_Final_Afetado,
+          [Data_Abertura (Date-Hour-Minute-Second)] as Data_Abertura,
+          [Data_Sistema (Date-Hour-Minute-Second)] as Data_Sistema,
+          [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
+          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+          [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
+          Ativi_Interna,
+          Caso_Estado,
+          Caso_Grupo,
+          Nro_Tarefa,
+          Descricao_Tarefa,
+          Tempo_Gasto_Segundos,
+          Tempo_Gasto_Minutos,
+          Tempo_Gasto_Horas,
+          Item_Configuracao,
+          Analista_Tarefa,
+          Analista_Caso,
+          Estado_Tarefa,
+          Resumo_Tarefa,
+          Grupo_Tarefa,
+          Problema,
+          Cod_Resolucao,
+          LOG
+        FROM AMSapontamento
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
+      `;
+    } else {
+      // Sincronização incremental - buscar apenas registros novos
+      console.log('📋 [APONTAMENTOS] Modo: Sincronização INCREMENTAL');
+      resultado.mensagens.push('Modo: Sincronização INCREMENTAL');
+
+      // Buscar última data de sincronização no Supabase
+      const { data: ultimoRegistro } = await supabase
+        .from('apontamentos_aranda')
+        .select('data_abertura')
+        .eq('origem', 'sql_server')
+        .order('data_abertura', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
+        ? new Date(ultimoRegistro.data_abertura)
+        : new Date('2026-01-01T00:00:00.000Z'); // Data inicial: 01/01/2026
+
+      console.log('📅 [APONTAMENTOS] Última sincronização:', ultimaDataSincronizacao.toISOString());
+      resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
+
+      query = `
+        SELECT
+          Nro_Chamado,
+          Tipo_Chamado,
+          Org_Us_Final,
+          categoria,
+          Causa_Raiz,
+          Solicitante,
+          Us_Final_Afetado,
+          [Data_Abertura (Date-Hour-Minute-Second)] as Data_Abertura,
+          [Data_Sistema (Date-Hour-Minute-Second)] as Data_Sistema,
+          [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
+          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+          [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
+          Ativi_Interna,
+          Caso_Estado,
+          Caso_Grupo,
+          Nro_Tarefa,
+          Descricao_Tarefa,
+          Tempo_Gasto_Segundos,
+          Tempo_Gasto_Minutos,
+          Tempo_Gasto_Horas,
+          Item_Configuracao,
+          Analista_Tarefa,
+          Analista_Caso,
+          Estado_Tarefa,
+          Resumo_Tarefa,
+          Grupo_Tarefa,
+          Problema,
+          Cod_Resolucao,
+          LOG
+        FROM AMSapontamento
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+          AND [Data_Abertura (Date-Hour-Minute-Second)] > @ultimaData
+        ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
+      `;
+    }
+
+    const request = pool.request();
+    
+    // Adicionar parâmetro apenas para sincronização incremental
+    if (!sincronizacaoCompleta && ultimaDataSincronizacao) {
+      request.input('ultimaData', sql.DateTime, ultimaDataSincronizacao);
+    }
+    
+    const result = await request.query(query);
+    const registros = result.recordset as DadosApontamentoSqlServer[];
+    
+    resultado.total_processados = registros.length;
+    resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
+    console.log(`📊 [APONTAMENTOS] ${registros.length} registros encontrados`);
+
+    await pool.close();
+    console.log('🔌 [APONTAMENTOS] Conexão SQL Server fechada');
+
+    if (registros.length === 0) {
+      console.log('⚠️ [APONTAMENTOS] Nenhum registro novo encontrado no SQL Server');
+      
+      // Buscar total de registros no Supabase para exibir no modal
+      try {
+        const { count: totalSupabase } = await supabase
+          .from('apontamentos_aranda')
+          .select('*', { count: 'exact', head: true })
+          .eq('origem', 'sql_server');
+        
+        console.log(`📊 [APONTAMENTOS] Total de registros no Supabase: ${totalSupabase || 0}`);
+        resultado.total_processados = totalSupabase || 0;
+      } catch (error) {
+        console.warn('⚠️ [APONTAMENTOS] Erro ao buscar total do Supabase:', error);
+      }
+      
+      resultado.sucesso = true;
+      resultado.mensagens.push('Nenhum registro novo para sincronizar');
+      return res.json(resultado);
+    }
+
+    // Processar cada registro
+    console.log('🔄 [APONTAMENTOS] Iniciando processamento de registros...');
+    resultado.mensagens.push('Iniciando processamento de registros...');
+    
+    for (let i = 0; i < registros.length; i++) {
+      const registro = registros[i];
+      
+      if (i % 50 === 0) {
+        console.log(`📝 [APONTAMENTOS] Processando registro ${i + 1}/${registros.length}...`);
+      }
+      
+      try {
+        // Validar dados do registro antes de processar
+        if (!registro.Nro_Chamado || registro.Nro_Chamado.trim() === '') {
+          console.error(`❌ [APONTAMENTOS] Registro ${i + 1} tem Nro_Chamado inválido:`, registro);
+          resultado.erros++;
+          resultado.detalhes_erros.push({
+            registro: {
+              Nro_Chamado: registro.Nro_Chamado,
+              Nro_Tarefa: registro.Nro_Tarefa
+            },
+            erro: 'Nro_Chamado é obrigatório mas está vazio/nulo'
+          });
+          continue; // Pular este registro
+        }
+
+        if (!registro.Nro_Tarefa || registro.Nro_Tarefa.trim() === '') {
+          console.error(`❌ [APONTAMENTOS] Registro ${i + 1} tem Nro_Tarefa inválido:`, registro);
+          resultado.erros++;
+          resultado.detalhes_erros.push({
+            registro: {
+              Nro_Chamado: registro.Nro_Chamado,
+              Nro_Tarefa: registro.Nro_Tarefa
+            },
+            erro: 'Nro_Tarefa é obrigatório mas está vazio/nulo'
+          });
+          continue; // Pular este registro
+        }
+        
+        const idUnico = gerarIdUnicoApontamento(registro);
+
+        // Verificar se já existe
+        const { data: existente, error: erroConsulta } = await supabase
+          .from('apontamentos_aranda')
+          .select('id')
+          .eq('id_externo', idUnico)
+          .maybeSingle();
+        
+        if (erroConsulta) {
+          console.error('❌ [APONTAMENTOS] Erro ao consultar registro existente:', erroConsulta);
+          throw erroConsulta;
+        }
+
+        const dadosApontamento = {
+          origem: 'sql_server' as const,
+          id_externo: idUnico,
+          nro_chamado: registro.Nro_Chamado || null,
+          tipo_chamado: registro.Tipo_Chamado || null,
+          org_us_final: registro.Org_Us_Final || null,
+          categoria: registro.categoria || null,
+          causa_raiz: registro.Causa_Raiz || null,
+          solicitante: registro.Solicitante || null,
+          us_final_afetado: registro.Us_Final_Afetado || null,
+          data_abertura: registro.Data_Abertura?.toISOString() || null,
+          data_sistema: registro.Data_Sistema?.toISOString() || null,
+          data_atividade: registro.Data_Atividade?.toISOString() || null,
+          data_fechamento: registro.Data_Fechamento?.toISOString() || null,
+          data_ult_modificacao: registro.Data_Ult_Modificacao?.toISOString() || null,
+          ativi_interna: registro.Ativi_Interna || null,
+          caso_estado: registro.Caso_Estado || null,
+          caso_grupo: registro.Caso_Grupo || null,
+          nro_tarefa: registro.Nro_Tarefa || null,
+          descricao_tarefa: registro.Descricao_Tarefa || null,
+          tempo_gasto_segundos: registro.Tempo_Gasto_Segundos || null,
+          tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
+          tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
+          item_configuracao: registro.Item_Configuracao || null,
+          analista_tarefa: registro.Analista_Tarefa || null,
+          analista_caso: registro.Analista_Caso || null,
+          estado_tarefa: registro.Estado_Tarefa || null,
+          resumo_tarefa: registro.Resumo_Tarefa || null,
+          grupo_tarefa: registro.Grupo_Tarefa || null,
+          problema: registro.Problema || null,
+          cod_resolucao: registro.Cod_Resolucao || null,
+          log: registro.LOG?.toISOString() || null
+        };
+
+        if (existente) {
+          // ✅ Registro já existe - PULAR (não atualizar para preservar edições manuais)
+          console.log(`⏭️ [APONTAMENTOS] Registro ${i + 1} já existe - pulando (ID: ${idUnico})`);
+          // Não incrementar nenhum contador - registro ignorado
+          continue;
+        } else {
+          // ✅ Inserir novo registro
+          const { error } = await supabase
+            .from('apontamentos_aranda')
+            .insert({
+              ...dadosApontamento,
+              autor_id: null,
+              autor_nome: 'SQL Server Sync'
+            });
+
+          if (error) {
+            console.error('❌ [APONTAMENTOS] Erro ao inserir:', error);
+            throw error;
+          }
+          resultado.novos++;
+        }
+      } catch (erro) {
+        console.error(`💥 [APONTAMENTOS] Erro no registro ${i + 1}:`, erro);
+        resultado.erros++;
+        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
+        resultado.detalhes_erros.push({
+          registro: {
+            Nro_Chamado: registro.Nro_Chamado,
+            Nro_Tarefa: registro.Nro_Tarefa
+          },
+          erro: erroMsg
+        });
+        
+        // Se houver muitos erros, parar
+        if (resultado.erros >= 10) {
+          console.log('🛑 [APONTAMENTOS] Muitos erros detectados, parando sincronização...');
+          resultado.mensagens.push('Sincronização interrompida devido a múltiplos erros');
+          break;
+        }
+      }
+    }
+    
+    console.log('✅ [APONTAMENTOS] Processamento concluído');
+
+    resultado.sucesso = resultado.erros === 0;
+    resultado.mensagens.push(
+      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`
+    );
+
+    console.log('📊 [APONTAMENTOS] Sincronização de apontamentos concluída:', resultado);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('💥 [APONTAMENTOS] Erro crítico na sincronização de apontamentos:', error);
+    console.error('🔍 [APONTAMENTOS] Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    
+    resultado.sucesso = false;
+    resultado.mensagens.push(`Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    
+    // Adicionar detalhes do erro para debug
+    resultado.detalhes_erros.push({
+      registro: { acao: 'sincronizacao_geral' },
+      erro: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+    
+    res.status(500).json(resultado);
+  }
+}
 
 const PORT = process.env.PORT || 3001;
 

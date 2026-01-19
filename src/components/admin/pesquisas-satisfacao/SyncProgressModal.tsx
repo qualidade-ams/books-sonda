@@ -32,6 +32,14 @@ interface SyncProgressModalProps {
       erros: number;
       mensagens: string[];
     };
+    apontamentos?: {
+      sucesso: boolean;
+      total_processados: number;
+      novos: number;
+      atualizados: number;
+      erros: number;
+      mensagens: string[];
+    };
   };
 }
 
@@ -55,25 +63,28 @@ export function SyncProgressModal({
       setTotal(0);
       setCurrentMessage('Conectando ao SQL Server...');
       
-      // Simular progresso suave para ambas as sincronizações
+      // Simular progresso suave para as 3 sincronizações
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += 0.4;
-        if (currentProgress <= 20) {
+        currentProgress += 0.3;
+        if (currentProgress <= 15) {
           setProgress(currentProgress);
           setCurrentMessage('Conectando ao SQL Server...');
-        } else if (currentProgress <= 35) {
+        } else if (currentProgress <= 30) {
           setProgress(currentProgress);
           setCurrentMessage('Sincronizando pesquisas (AMSpesquisa)...');
-        } else if (currentProgress <= 50) {
+        } else if (currentProgress <= 45) {
           setProgress(currentProgress);
           setCurrentMessage('Processando dados de pesquisas...');
-        } else if (currentProgress <= 65) {
+        } else if (currentProgress <= 60) {
           setProgress(currentProgress);
           setCurrentMessage('Sincronizando especialistas (AMSespecialistas)...');
-        } else if (currentProgress <= 80) {
+        } else if (currentProgress <= 75) {
           setProgress(currentProgress);
           setCurrentMessage('Processando dados de especialistas...');
+        } else if (currentProgress <= 90) {
+          setProgress(currentProgress);
+          setCurrentMessage('Sincronizando apontamentos (AMSapontamento)...');
         } else if (currentProgress <= 95) {
           setProgress(currentProgress);
           setCurrentMessage('Finalizando sincronização...');
@@ -102,7 +113,7 @@ export function SyncProgressModal({
             Sincronização SQL Server
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Sincronizando pesquisas e especialistas
+            Sincronizando pesquisas, especialistas e apontamentos
           </p>
         </DialogHeader>
 
@@ -207,6 +218,41 @@ export function SyncProgressModal({
                     </div>
                     <div>
                       <p className="text-lg font-bold text-red-600">{resultado.especialistas.erros}</p>
+                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Resumo dos Apontamentos */}
+              {resultado.apontamentos && (
+                <div className="p-3 bg-teal-50 dark:bg-teal-900 rounded-lg border-l-4 border-teal-600">
+                  <p className="text-sm font-medium text-teal-900 dark:text-teal-100 mb-1">
+                    📝 Apontamentos (AMSapontamento)
+                  </p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-teal-600">
+                        {resultado.apontamentos.total_processados || 0}
+                      </p>
+                      <p className="text-xs text-teal-700 dark:text-teal-300">Total</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-green-600">
+                        {resultado.apontamentos.novos || 0}
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-orange-600">
+                        {resultado.apontamentos.atualizados || 0}
+                      </p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-red-600">
+                        {resultado.apontamentos.erros || 0}
+                      </p>
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>
                   </div>

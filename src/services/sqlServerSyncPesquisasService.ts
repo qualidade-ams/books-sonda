@@ -84,16 +84,16 @@ function gerarIdUnico(registro: DadosSqlServer): string {
 /**
  * Sincronizar dados do SQL Server para Supabase
  * Agora usa a API Node.js que faz todo o processamento
- * INCLUI sincronização de pesquisas E especialistas
+ * INCLUI sincronização de pesquisas, especialistas E apontamentos
  */
-export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any }> {
+export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any; apontamentos?: any }> {
   const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   try {
-    console.log('Iniciando sincronização completa (pesquisas + especialistas)...');
+    console.log('Iniciando sincronização completa (pesquisas + especialistas + apontamentos)...');
     
     // 1. Sincronizar pesquisas (funcionalidade existente)
-    console.log('1/2 - Sincronizando pesquisas...');
+    console.log('1/3 - Sincronizando pesquisas...');
     const responsePesquisas = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
       method: 'POST',
       headers: {
@@ -125,8 +125,8 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
 
     console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
 
-    // 2. Sincronizar especialistas (nova funcionalidade)
-    console.log('2/2 - Sincronizando especialistas...');
+    // 2. Sincronizar especialistas
+    console.log('2/3 - Sincronizando especialistas...');
     const responseEspecialistas = await safeFetch(`${API_URL}/api/sync-especialistas`, {
       method: 'POST',
       headers: {
@@ -158,25 +158,65 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
         }
       }
     } else {
-      console.warn('Erro na sincronização de especialistas, continuando apenas com pesquisas');
+      console.warn('Erro na sincronização de especialistas, continuando...');
       resultadoEspecialistas = {
         sucesso: false,
         mensagens: [`Erro HTTP: ${responseEspecialistas.status}`]
       };
     }
 
-    // 3. Combinar resultados
+    // 3. Sincronizar apontamentos (nova funcionalidade)
+    console.log('3/3 - Sincronizando apontamentos...');
+    const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let resultadoApontamentos = null;
+    if (responseApontamentos.status === 404) {
+      resultadoApontamentos = {
+        sucesso: false,
+        mensagens: [
+          'Endpoint de sincronização de apontamentos não implementado na API.',
+          'A API está online mas o endpoint /api/sync-apontamentos não existe.'
+        ]
+      };
+    } else if (responseApontamentos.ok) {
+      resultadoApontamentos = await responseApontamentos.json();
+      console.log('✅ [APONTAMENTOS] Resultado da sincronização de apontamentos:', resultadoApontamentos);
+      console.log('📊 [DEBUG] Apontamentos - Total:', resultadoApontamentos.total_processados);
+      console.log('📊 [DEBUG] Apontamentos - Novos:', resultadoApontamentos.novos);
+      console.log('📊 [DEBUG] Apontamentos - Atualizados:', resultadoApontamentos.atualizados);
+      console.log('📊 [DEBUG] Apontamentos - Erros:', resultadoApontamentos.erros);
+      console.log('📊 [DEBUG] Apontamentos - Objeto completo:', JSON.stringify(resultadoApontamentos, null, 2));
+    } else {
+      console.warn('Erro na sincronização de apontamentos, continuando...');
+      resultadoApontamentos = {
+        sucesso: false,
+        mensagens: [`Erro HTTP: ${responseApontamentos.status}`]
+      };
+    }
+
+    // 4. Combinar resultados
     const resultadoCombinado = {
       ...resultadoPesquisas,
       especialistas: resultadoEspecialistas,
+      apontamentos: resultadoApontamentos,
       mensagens: [
         ...resultadoPesquisas.mensagens,
         '--- Especialistas ---',
-        ...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas'])
+        ...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas']),
+        '--- Apontamentos ---',
+        ...(resultadoApontamentos?.mensagens || ['Erro na sincronização de apontamentos'])
       ]
     };
 
-    console.log('Sincronização completa finalizada:', resultadoCombinado);
+    console.log('✅ [FINAL] Sincronização completa finalizada');
+    console.log('📊 [DEBUG] Resultado final - apontamentos:', resultadoCombinado.apontamentos);
+    console.log('📊 [DEBUG] Resultado final - apontamentos.total_processados:', resultadoCombinado.apontamentos?.total_processados);
+    console.log('📊 [DEBUG] Resultado final completo:', JSON.stringify(resultadoCombinado, null, 2));
     return resultadoCombinado;
 
   } catch (erro) {
@@ -190,7 +230,8 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
       erros: 1,
       mensagens: [`Erro ao conectar com API: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`],
       detalhes_erros: [],
-      especialistas: null
+      especialistas: null,
+      apontamentos: null
     };
   }
 }
