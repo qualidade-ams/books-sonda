@@ -124,9 +124,11 @@ export default function EnviarElogios() {
 
   const [destinatariosTexto, setDestinatariosTexto] = useState('');
   const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
+  const [destinatariosBCCTexto, setDestinatariosBCCTexto] = useState('');
   const [abaAtiva, setAbaAtiva] = useState('enviar-colaboradores');
   const [destinatarios, setDestinatarios] = useState<string[]>([]);
   const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
+  const [destinatariosBCC, setDestinatariosBCC] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
@@ -574,8 +576,10 @@ export default function EnviarElogios() {
     setCorpoEmail(''); // Será gerado quando template for selecionado
     setDestinatarios([]);
     setDestinatariosCC([]);
+    setDestinatariosBCC([]);
     setDestinatariosTexto('');
     setDestinatariosCCTexto('');
+    setDestinatariosBCCTexto('');
     setAnexos([]);
     
     // Auto-selecionar primeiro template disponível se nenhum estiver selecionado
@@ -611,7 +615,7 @@ export default function EnviarElogios() {
   };
 
   // Função para colar emails
-  const handleColarEmails = (texto: string, tipo: 'destinatarios' | 'cc') => {
+  const handleColarEmails = (texto: string, tipo: 'destinatarios' | 'cc' | 'bcc') => {
     const partes = texto.split(/[;\n,]+/);
     const emailsExtraidos: string[] = [];
 
@@ -628,11 +632,16 @@ export default function EnviarElogios() {
         const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
         setDestinatariosTexto(todosEmails.join('; '));
         setDestinatarios(todosEmails);
-      } else {
+      } else if (tipo === 'cc') {
         const emailsAtuais = destinatariosCCTexto.split(';').map(e => e.trim()).filter(e => e.length > 0);
         const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
         setDestinatariosCCTexto(todosEmails.join('; '));
         setDestinatariosCC(todosEmails);
+      } else if (tipo === 'bcc') {
+        const emailsAtuais = destinatariosBCCTexto.split(';').map(e => e.trim()).filter(e => e.length > 0);
+        const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
+        setDestinatariosBCCTexto(todosEmails.join('; '));
+        setDestinatariosBCC(todosEmails);
       }
       toast({
         title: "Sucesso",
@@ -652,6 +661,12 @@ export default function EnviarElogios() {
     setDestinatariosCCTexto(texto);
     const emails = texto.split(';').map(e => e.trim()).filter(e => e.length > 0);
     setDestinatariosCC(emails);
+  };
+
+  const handleAtualizarBCCTexto = (texto: string) => {
+    setDestinatariosBCCTexto(texto);
+    const emails = texto.split(';').map(e => e.trim()).filter(e => e.length > 0);
+    setDestinatariosBCC(emails);
   };
 
   // Gerenciar anexos
@@ -704,8 +719,10 @@ export default function EnviarElogios() {
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
     const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
     const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
+    const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
+    const emailsBCCInvalidos = emailsBCCValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) return false;
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) return false;
     if (!assuntoEmail.trim()) return false;
 
     return true;
@@ -727,9 +744,11 @@ export default function EnviarElogios() {
     const emailsInvalidos = emailsValidos.filter(email => !emailRegex.test(email));
     const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
     const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
+    const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
+    const emailsBCCInvalidos = emailsBCCValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
-      const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) {
+      const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos, ...emailsBCCInvalidos];
       toast({
         title: "Erro",
         description: `E-mails inválidos: ${todosInvalidos.join(', ')}`,
@@ -759,6 +778,7 @@ export default function EnviarElogios() {
     try {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
+      const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
 
       // Converter anexos File[] para base64
       const anexosBase64 = await Promise.all(
@@ -783,6 +803,7 @@ export default function EnviarElogios() {
       const resultado = await emailService.sendEmail({
         to: emailsValidos,
         cc: emailsCCValidos.length > 0 ? emailsCCValidos : undefined,
+        bcc: emailsBCCValidos.length > 0 ? emailsBCCValidos : undefined,
         subject: assuntoEmail,
         html: corpoEmail,
         attachments: anexosBase64.length > 0 ? anexosBase64 : undefined
@@ -825,8 +846,10 @@ export default function EnviarElogios() {
         limparTodasSelecoes(); // Limpar seleções de ambas as abas
         setDestinatarios([]);
         setDestinatariosCC([]);
+        setDestinatariosBCC([]);
         setDestinatariosTexto('');
         setDestinatariosCCTexto('');
+        setDestinatariosBCCTexto('');
         setAssuntoEmail('');
         setAnexos([]);
         
@@ -1501,7 +1524,11 @@ export default function EnviarElogios() {
         </Tabs>
 
         {/* Modal de Email */}
-        <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
+        <Dialog 
+          key={modalEmailAberto ? 'modal-open' : 'modal-closed'} 
+          open={modalEmailAberto} 
+          onOpenChange={setModalEmailAberto}
+        >
           <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1556,6 +1583,31 @@ export default function EnviarElogios() {
                   {destinatariosCC.length > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                       ✓ {destinatariosCC.length} email(s) em cópia adicionado(s)
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Campo BCC */}
+              <div>
+                <Label className="text-base font-medium">Destinatários em Cópia Oculta (Cco) - Opcional</Label>
+                
+                {/* Campo único para emails BCC separados por ponto e vírgula */}
+                <div className="mt-2">
+                  <textarea
+                    placeholder="Cole ou digite emails em cópia oculta separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                    className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
+                    value={destinatariosBCCTexto}
+                    onChange={(e) => handleAtualizarBCCTexto(e.target.value)}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const texto = e.clipboardData.getData('text');
+                      handleColarEmails(texto, 'bcc');
+                    }}
+                  />
+                  {destinatariosBCC.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      ✓ {destinatariosBCC.length} email(s) em cópia oculta adicionado(s)
                     </p>
                   )}
                 </div>

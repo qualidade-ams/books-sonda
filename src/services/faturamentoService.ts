@@ -479,9 +479,12 @@ export class FaturamentoService {
 
       // Validar formato de email (CC)
       const emailsCCInvalidos = (emailFaturamento.destinatariosCC || []).filter(email => !emailRegex.test(email));
+      
+      // Validar formato de email (BCC)
+      const emailsBCCInvalidos = (emailFaturamento.destinatariosBCC || []).filter(email => !emailRegex.test(email));
 
-      if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
-        const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
+      if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) {
+        const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos, ...emailsBCCInvalidos];
         throw new Error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
       }
 
@@ -489,6 +492,7 @@ export class FaturamentoService {
       const emailData: EmailData = {
         to: emailFaturamento.destinatarios,
         cc: emailFaturamento.destinatariosCC && emailFaturamento.destinatariosCC.length > 0 ? emailFaturamento.destinatariosCC : undefined,
+        bcc: emailFaturamento.destinatariosBCC && emailFaturamento.destinatariosBCC.length > 0 ? emailFaturamento.destinatariosBCC : undefined,
         subject: emailFaturamento.assunto,
         html: emailFaturamento.corpo,
         anexos: emailFaturamento.anexos
@@ -502,18 +506,20 @@ export class FaturamentoService {
         await this.registrarLogFaturamento({
           destinatarios: emailFaturamento.destinatarios,
           destinatariosCC: emailFaturamento.destinatariosCC,
+          destinatariosBCC: emailFaturamento.destinatariosBCC,
           assunto: emailFaturamento.assunto,
           status: 'enviado',
           data_envio: new Date().toISOString()
         });
 
-        const totalDestinatarios = emailFaturamento.destinatarios.length + (emailFaturamento.destinatariosCC?.length || 0);
+        const totalDestinatarios = emailFaturamento.destinatarios.length + (emailFaturamento.destinatariosCC?.length || 0) + (emailFaturamento.destinatariosBCC?.length || 0);
         return {
           success: true,
           message: `Relatório de faturamento enviado com sucesso para ${totalDestinatarios} destinatário(s)`,
           detalhes: {
             destinatarios: emailFaturamento.destinatarios,
             destinatariosCC: emailFaturamento.destinatariosCC,
+            destinatariosBCC: emailFaturamento.destinatariosBCC,
             data_envio: new Date().toISOString()
           }
         };
@@ -527,6 +533,7 @@ export class FaturamentoService {
       await this.registrarLogFaturamento({
         destinatarios: emailFaturamento.destinatarios,
         destinatariosCC: emailFaturamento.destinatariosCC,
+        destinatariosBCC: emailFaturamento.destinatariosBCC,
         assunto: emailFaturamento.assunto,
         status: 'erro',
         erro: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -546,6 +553,7 @@ export class FaturamentoService {
   private async registrarLogFaturamento(dados: {
     destinatarios: string[];
     destinatariosCC?: string[];
+    destinatariosBCC?: string[];
     assunto: string;
     status: 'enviado' | 'erro';
     erro?: string;
@@ -554,7 +562,8 @@ export class FaturamentoService {
     try {
       const todosDestinatarios = [
         ...dados.destinatarios,
-        ...(dados.destinatariosCC || []).map(email => `CC: ${email}`)
+        ...(dados.destinatariosCC || []).map(email => `CC: ${email}`),
+        ...(dados.destinatariosBCC || []).map(email => `BCC: ${email}`)
       ];
 
       await supabase
