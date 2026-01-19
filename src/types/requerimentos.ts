@@ -148,6 +148,7 @@ export interface FaturamentoData {
 export interface EmailFaturamento {
   destinatarios: string[];
   destinatariosCC?: string[];
+  destinatariosBCC?: string[];
   assunto: string;
   corpo: string;
   anexos?: {

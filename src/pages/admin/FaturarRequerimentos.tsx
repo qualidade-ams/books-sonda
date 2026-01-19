@@ -119,6 +119,8 @@ export default function FaturarRequerimentos() {
   const [destinatariosCC, setDestinatariosCC] = useState<string[]>([]);
   const [destinatariosTexto, setDestinatariosTexto] = useState('');
   const [destinatariosCCTexto, setDestinatariosCCTexto] = useState('');
+  const [destinatariosBCCTexto, setDestinatariosBCCTexto] = useState('');
+  const [destinatariosBCC, setDestinatariosBCC] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
@@ -757,8 +759,10 @@ export default function FaturarRequerimentos() {
       setCorpoEmail(htmlTemplate);
       setDestinatarios([]);
       setDestinatariosCC([]);
+      setDestinatariosBCC([]);
       setDestinatariosTexto(''); // Limpar campo de texto
       setDestinatariosCCTexto(''); // Limpar campo CC
+      setDestinatariosBCCTexto(''); // Limpar campo BCC
       setAnexos([]); // Limpar anexos
       setModalEmailAberto(true);
     } catch (error) {
@@ -818,7 +822,7 @@ export default function FaturarRequerimentos() {
   };
 
   // Função para processar múltiplos emails colados
-  const handleColarEmails = (texto: string, tipo: 'destinatarios' | 'cc') => {
+  const handleColarEmails = (texto: string, tipo: 'destinatarios' | 'cc' | 'bcc') => {
     // Separar por ponto e vírgula, vírgula ou quebra de linha
     const partes = texto.split(/[;\n,]+/);
     const emailsExtraidos: string[] = [];
@@ -847,7 +851,7 @@ export default function FaturarRequerimentos() {
         
         // Atualizar array para validação
         setDestinatarios(todosEmails);
-      } else {
+      } else if (tipo === 'cc') {
         // Obter emails já existentes no campo CC
         const emailsAtuais = destinatariosCCTexto
           .split(';')
@@ -862,6 +866,21 @@ export default function FaturarRequerimentos() {
         
         // Atualizar array para validação
         setDestinatariosCC(todosEmails);
+      } else if (tipo === 'bcc') {
+        // Obter emails já existentes no campo BCC
+        const emailsAtuais = destinatariosBCCTexto
+          .split(';')
+          .map(e => e.trim())
+          .filter(e => e.length > 0);
+        
+        // Combinar e remover duplicatas
+        const todosEmails = [...new Set([...emailsAtuais, ...emailsUnicos])];
+        
+        // Atualizar campo de texto com emails separados por ponto e vírgula
+        setDestinatariosBCCTexto(todosEmails.join('; '));
+        
+        // Atualizar array para validação
+        setDestinatariosBCC(todosEmails);
       }
       toast.success(`${emailsUnicos.length} email(s) adicionado(s) com sucesso!`);
     }
@@ -891,6 +910,19 @@ export default function FaturarRequerimentos() {
       .filter(e => e.length > 0);
     
     setDestinatariosCC(emails);
+  };
+
+  // Função para atualizar BCC a partir do campo de texto
+  const handleAtualizarBCCTexto = (texto: string) => {
+    setDestinatariosBCCTexto(texto);
+    
+    // Extrair emails do texto
+    const emails = texto
+      .split(';')
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+    
+    setDestinatariosBCC(emails);
   };
 
   // Funções para gerenciar anexos
@@ -1058,7 +1090,11 @@ export default function FaturarRequerimentos() {
     const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
     const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
+    // Validar BCC também
+    const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
+    const emailsBCCInvalidos = emailsBCCValidos.filter(email => !emailRegex.test(email));
+
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) {
       return false;
     }
 
@@ -1085,8 +1121,12 @@ export default function FaturarRequerimentos() {
     const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
     const emailsCCInvalidos = emailsCCValidos.filter(email => !emailRegex.test(email));
 
-    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0) {
-      const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos];
+    // Validar BCC também
+    const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
+    const emailsBCCInvalidos = emailsBCCValidos.filter(email => !emailRegex.test(email));
+
+    if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) {
+      const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos, ...emailsBCCInvalidos];
       toast.error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
       return false;
     }
@@ -1107,6 +1147,7 @@ export default function FaturarRequerimentos() {
     try {
       const emailsValidos = destinatarios.filter(email => email.trim() !== '');
       const emailsCCValidos = destinatariosCC.filter(email => email.trim() !== '');
+      const emailsBCCValidos = destinatariosBCC.filter(email => email.trim() !== '');
 
       // Buscar requerimentos selecionados dependendo da aba ativa
       let requerimentosSelecionadosData: Requerimento[] = [];
@@ -1154,6 +1195,7 @@ export default function FaturarRequerimentos() {
       const emailFaturamento: EmailFaturamento = {
         destinatarios: emailsValidos,
         destinatariosCC: emailsCCValidos,
+        destinatariosBCC: emailsBCCValidos,
         assunto: assuntoEmail,
         corpo: htmlTemplate,
         anexos: dadosAnexos
@@ -1180,8 +1222,10 @@ export default function FaturarRequerimentos() {
         setRequerimentosSelecionados([]);
         setDestinatarios([]);
         setDestinatariosCC([]);
+        setDestinatariosBCC([]);
         setDestinatariosTexto('');
         setDestinatariosCCTexto('');
+        setDestinatariosBCCTexto('');
         setAssuntoEmail('');
         setAnexos([]);
       } else {
@@ -2613,7 +2657,11 @@ export default function FaturarRequerimentos() {
         />
 
         {/* Modal de Email */}
-        <Dialog open={modalEmailAberto} onOpenChange={setModalEmailAberto}>
+        <Dialog 
+          key={modalEmailAberto ? 'modal-open' : 'modal-closed'} 
+          open={modalEmailAberto} 
+          onOpenChange={setModalEmailAberto}
+        >
           <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -2668,6 +2716,31 @@ export default function FaturarRequerimentos() {
                   {destinatariosCC.length > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                       ✓ {destinatariosCC.length} email(s) em cópia adicionado(s)
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Campo BCC */}
+              <div>
+                <Label className="text-base font-medium">Destinatários em Cópia Oculta (BCC) - Opcional</Label>
+                
+                {/* Campo único para emails BCC separados por ponto e vírgula */}
+                <div className="mt-2">
+                  <textarea
+                    placeholder="Cole ou digite emails em cópia oculta separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                    className="w-full p-3 border rounded-md text-sm min-h-[100px] bg-white dark:bg-gray-800 font-mono"
+                    value={destinatariosBCCTexto}
+                    onChange={(e) => handleAtualizarBCCTexto(e.target.value)}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const texto = e.clipboardData.getData('text');
+                      handleColarEmails(texto, 'bcc');
+                    }}
+                  />
+                  {destinatariosBCC.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      ✓ {destinatariosBCC.length} email(s) em cópia oculta adicionado(s)
                     </p>
                   )}
                 </div>

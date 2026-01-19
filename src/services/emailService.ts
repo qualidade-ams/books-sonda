@@ -2,6 +2,7 @@
 export interface EmailData {
   to: string | string[];  // ✅ CORREÇÃO: Aceita string ou array de e-mails
   cc?: string | string[];  // Aceita um único e-mail ou array de e-mails
+  bcc?: string | string[];  // ✅ NOVO: Aceita um único e-mail ou array de e-mails em cópia oculta
   subject: string;
   html: string;
   attachments?: Array<{
@@ -213,6 +214,8 @@ export const emailService = {
         email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
         // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
         email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
+        // ✅ NOVO: Garantir que email_bcc seja sempre array (ou array vazio)
+        email_bcc: emailData.bcc ? (Array.isArray(emailData.bcc) ? emailData.bcc : [emailData.bcc]) : [],
         mensagem: emailData.html // Enviar HTML completo
       };
 
