@@ -951,6 +951,19 @@ export default function DesignSystem() {
                         </Button>
                         <p className="text-xs text-gray-500 mt-1">Enviar</p>
                       </div>
+
+                      {/* Botão Cadastrar/Adicionar - Azul */}
+                      <div className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                          onClick={() => toggleCodeExample('btn-table-add')}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-1">Cadastrar</p>
+                      </div>
                     </div>
 
                     {/* Área dos códigos - sempre abaixo dos botões */}
@@ -1078,6 +1091,40 @@ export default function DesignSystem() {
   className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
 >
   <Send className="h-4 w-4" />
+</Button>`}
+                          </pre>
+                        </div>
+                      )}
+
+                      {activeCodeExample === 'btn-table-add' && (
+                        <div className="bg-gray-100 p-4 rounded-lg border">
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="font-semibold text-sm">Código - Botão Cadastrar:</h5>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(`<Button
+  variant="outline"
+  size="sm"
+  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+  title="Cadastrar Taxa"
+>
+  <Plus className="h-4 w-4" />
+</Button>`, 'Código')}
+                              className="h-8 px-2"
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copiar
+                            </Button>
+                          </div>
+                          <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+{`<Button
+  variant="outline"
+  size="sm"
+  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+  title="Cadastrar Taxa"
+>
+  <Plus className="h-4 w-4" />
 </Button>`}
                           </pre>
                         </div>
@@ -2618,6 +2665,60 @@ toast({
                             </TabsContent>
                             <TabsContent value="tab3" className="mt-4 p-4 border rounded-lg">
                               <p className="text-sm text-gray-600">Conteúdo da Tab 3</p>
+                            </TabsContent>
+                          </Tabs>
+                        </CodeExample>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Tabs com contador (padrão usado em Cadastro de Taxas)</p>
+                        <CodeExample
+                          id="tabs-counter"
+                          code={`<Tabs defaultValue="taxas_cadastradas" className="w-full">
+  <TabsList className="bg-gray-100 p-1 rounded-lg">
+    <TabsTrigger 
+      value="taxas_cadastradas"
+      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+    >
+      Taxas Cadastradas (107)
+    </TabsTrigger>
+    <TabsTrigger 
+      value="clientes_sem_taxa"
+      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+    >
+      Clientes Sem Taxa (87)
+    </TabsTrigger>
+  </TabsList>
+  <TabsContent value="taxas_cadastradas" className="mt-4">
+    {/* Conteúdo da aba Taxas Cadastradas */}
+  </TabsContent>
+  <TabsContent value="clientes_sem_taxa" className="mt-4">
+    {/* Conteúdo da aba Clientes Sem Taxa */}
+  </TabsContent>
+</Tabs>`}
+                        >
+                          <Tabs defaultValue="taxas_cadastradas" className="w-full">
+                            <TabsList className="bg-gray-100 p-1 rounded-lg">
+                              <TabsTrigger 
+                                value="taxas_cadastradas"
+                                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                              >
+                                Taxas Cadastradas (107)
+                              </TabsTrigger>
+                              <TabsTrigger 
+                                value="clientes_sem_taxa"
+                                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                              >
+                                Clientes Sem Taxa (87)
+                              </TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="taxas_cadastradas" className="mt-4 p-4 border rounded-lg">
+                              <p className="text-sm text-gray-600">Conteúdo da aba Taxas Cadastradas</p>
+                              <p className="text-xs text-gray-500 mt-2">Aqui seriam exibidas as taxas cadastradas no sistema</p>
+                            </TabsContent>
+                            <TabsContent value="clientes_sem_taxa" className="mt-4 p-4 border rounded-lg">
+                              <p className="text-sm text-gray-600">Conteúdo da aba Clientes Sem Taxa</p>
+                              <p className="text-xs text-gray-500 mt-2">Aqui seriam exibidos os clientes que não possuem taxas cadastradas</p>
                             </TabsContent>
                           </Tabs>
                         </CodeExample>
