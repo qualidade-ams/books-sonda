@@ -38,6 +38,7 @@ interface TipoCobrancaBlocoProps {
   canRemove: boolean;
   empresaTipoCobranca?: string;
   clienteId?: string; // NOVO: ID do cliente para buscar taxa
+  tentouSubmeter?: boolean; // NOVO: Flag para mostrar erros visuais
 }
 
 export function TipoCobrancaBloco({
@@ -48,7 +49,8 @@ export function TipoCobrancaBloco({
   onRemove,
   canRemove,
   empresaTipoCobranca,
-  clienteId
+  clienteId,
+  tentouSubmeter = false
 }: TipoCobrancaBlocoProps) {
   console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', { 
     index, 
@@ -58,6 +60,13 @@ export function TipoCobrancaBloco({
     valorHoraFuncional: bloco.valor_hora_funcional,
     valorHoraTecnico: bloco.valor_hora_tecnico
   });
+
+  // Função helper para obter classes de erro para campos obrigatórios
+  const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
+    if (!tentouSubmeter || !isRequired) return '';
+    const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
+    return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+  };
 
   // Estado para taxa vigente do cliente
   const [taxaVigente, setTaxaVigente] = useState<TaxaClienteCompleta | null>(null);
@@ -628,7 +637,7 @@ export function TipoCobrancaBloco({
                 Linguagem Técnica <span className="text-red-500">*</span>
               </Label>
               <Select value={bloco.linguagem || ''} onValueChange={(valor) => onUpdate(bloco.id, 'linguagem', valor)}>
-                <SelectTrigger>
+                <SelectTrigger className={cn(getErrorClasses(bloco.linguagem))}>
                   <SelectValue placeholder="Selecione uma linguagem técnica" />
                 </SelectTrigger>
                 <SelectContent>

@@ -75,6 +75,16 @@ export function RequerimentoForm({
     tecnico: false
   });
   
+  // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
+  const [tentouSubmeter, setTentouSubmeter] = useState(false);
+  
+  // Função helper para obter classes de erro para campos obrigatórios
+  const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
+    if (!tentouSubmeter || !isRequired) return '';
+    const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
+    return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+  };
+  
   console.log('📊 Estados iniciais:', {
     taxaVigente: !!taxaVigente,
     carregandoTaxa,
@@ -950,7 +960,7 @@ export function RequerimentoForm({
                       <Input
                         {...field}
                         placeholder="Ex: RF-6017993, Projeto, Treinamento, entre outros"
-                        className="uppercase"
+                        className={cn("uppercase", getErrorClasses(field.value))}
                         aria-describedby="chamado-help"
                         disabled={isLoading}
                       />
@@ -979,7 +989,10 @@ export function RequerimentoForm({
                         value={field.value}
                         disabled={isLoading || isLoadingClientes}
                       >
-                        <SelectTrigger aria-describedby="cliente-help">
+                        <SelectTrigger 
+                          aria-describedby="cliente-help"
+                          className={cn(getErrorClasses(field.value))}
+                        >
                           <SelectValue placeholder="Selecione um cliente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1017,7 +1030,7 @@ export function RequerimentoForm({
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={cn(getErrorClasses(field.value))}>
                             <SelectValue placeholder="Selecione um módulo" />
                           </SelectTrigger>
                         </FormControl>
@@ -1048,7 +1061,7 @@ export function RequerimentoForm({
                     <FormControl>
                       <Textarea
                         placeholder="Descreva o requerimento..."
-                        className="min-h-[100px]"
+                        className={cn("min-h-[100px]", getErrorClasses(field.value))}
                         {...field}
                       />
                     </FormControl>
@@ -1083,6 +1096,7 @@ export function RequerimentoForm({
                           {...field}
                           disabled={isLoading}
                           min="1900-01-01"
+                          className={cn(getErrorClasses(field.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1204,7 +1218,7 @@ export function RequerimentoForm({
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={cn(getErrorClasses(field.value))}>
                             <SelectValue placeholder="Selecione o tipo de cobrança" />
                           </SelectTrigger>
                         </FormControl>
