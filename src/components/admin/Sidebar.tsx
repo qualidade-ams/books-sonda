@@ -31,7 +31,8 @@ import {
   ThumbsUp,
   ClipboardCheck,
   Eye,
-  Palette
+  Palette,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -74,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas')) {
       return 'comunicacao';
     }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
@@ -202,7 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas')) {
       return 'comunicacao';
     }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
@@ -310,6 +311,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Histórico de Books',
           path: '/admin/historico-books',
           screenKey: 'historico_books'
+        },
+        {
+          icon: FileText,
+          label: 'Geração de Books',
+          path: '/admin/geracao-books',
+          screenKey: 'geracao_books'
+        },
+        {
+          icon: Clock,
+          label: 'Banco de Horas',
+          path: '/admin/controle-banco-horas',
+          screenKey: 'controle_banco_horas'
         }
       ]
     },

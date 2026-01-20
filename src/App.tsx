@@ -23,6 +23,8 @@ import GruposResponsaveis from "./pages/admin/GruposResponsaveis";
 import ControleDisparos from "./pages/admin/ControleDisparos";
 import ControleDisparosPersonalizados from "./pages/admin/ControleDisparosPersonalizados";
 import HistoricoBooks from "./pages/admin/HistoricoBooks";
+import GeracaoBooks from "./pages/admin/GeracaoBooks";
+import ControleBancoHoras from "./pages/admin/ControleBancoHoras";
 import ConfigurarPermissoesClientBooks from "./pages/admin/ConfigurarPermissoesClientBooks";
 import ConfigurarPermissoesVigencias from "./pages/admin/ConfigurarPermissoesVigencias";
 import AuditLogs from "./pages/admin/AuditLogs";
@@ -73,6 +75,8 @@ const App = () => (
                   <Route path="/admin/controle-disparos" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparos /></ProtectedRoute>} />
                   <Route path="/admin/disparos-personalizados" element={<ProtectedRoute screenKey="controle_disparos"><ControleDisparosPersonalizados /></ProtectedRoute>} />
                   <Route path="/admin/historico-books" element={<ProtectedRoute screenKey="historico_books"><HistoricoBooks /></ProtectedRoute>} />
+                  <Route path="/admin/geracao-books" element={<ProtectedRoute screenKey="geracao_books"><GeracaoBooks /></ProtectedRoute>} />
+                  <Route path="/admin/controle-banco-horas" element={<ProtectedRoute screenKey="controle_banco_horas"><ControleBancoHoras /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-client-books" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesClientBooks /></ProtectedRoute>} />
                   <Route path="/admin/configurar-permissoes-vigencias" element={<ProtectedRoute screenKey="dashboard" requiredLevel="edit"><ConfigurarPermissoesVigencias /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute screenKey="audit-logs"><AuditLogs /></ProtectedRoute>} />
