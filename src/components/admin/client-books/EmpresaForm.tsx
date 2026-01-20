@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { Save, X } from 'lucide-react';
+import { Save, X, FileText } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -170,6 +171,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   mode,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('informacoes');
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -358,6 +360,25 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Tabs de Navegação */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-gray-100 p-1 rounded-lg">
+            <TabsTrigger 
+              value="informacoes"
+              className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+            >
+              Informações Principais
+            </TabsTrigger>
+            <TabsTrigger 
+              value="parametros"
+              className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+            >
+              Parâmetros Book
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Informações Principais */}
+          <TabsContent value="informacoes" className="mt-4 space-y-6">
         {/* Informações Básicas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -365,14 +386,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="nomeCompleto"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nome Completo *</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Nome Completo *</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Digite o nome completo da empresa"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                     disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.nomeCompleto ? 'border-red-500 focus:border-red-500' : ''}
+                    className={form.formState.errors.nomeCompleto ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -385,14 +406,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="nomeAbreviado"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nome Abreviado *</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Nome Abreviado *</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Nome para uso no assunto dos e-mails"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                     disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.nomeAbreviado ? 'border-red-500 focus:border-red-500' : ''}
+                    className={form.formState.errors.nomeAbreviado ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -407,14 +428,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="temAms"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tem AMS? *</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Tem AMS? *</FormLabel>
                 <Select
                   onValueChange={(value) => field.onChange(value === 'true')}
                   value={field.value ? 'true' : 'false'}
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className={form.formState.errors.temAms ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                   </FormControl>
@@ -433,14 +454,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status *</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Status *</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
                   disabled={isSubmitting || isLoading}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className={form.formState.errors.status ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
                       <SelectValue placeholder="Selecione o status" />
                     </SelectTrigger>
                   </FormControl>
@@ -465,14 +486,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="descricaoStatus"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Justificativa do Status *</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Justificativa do Status *</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Descreva o motivo da alteração do status"
                     {...field}
                     disabled={isSubmitting || isLoading}
                     rows={3}
-                    className={form.formState.errors.descricaoStatus ? 'border-red-500 focus:border-red-500' : ''}
+                    className={form.formState.errors.descricaoStatus ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -488,14 +509,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           name="emProjeto"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Em Projeto</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-700">Em Projeto</FormLabel>
               <Select
                 onValueChange={(value) => field.onChange(value === 'true')}
                 value={field.value ? 'true' : 'false'}
                 disabled={isSubmitting || isLoading}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={form.formState.errors.emProjeto ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
                     <SelectValue placeholder="Selecione uma opção" />
                   </SelectTrigger>
                 </FormControl>
@@ -515,14 +536,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           name="emailGestor"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>E-mail do Customer Success *</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-700">E-mail do Customer Success *</FormLabel>
               <FormControl>
                 <Input
                   type="email"
                   placeholder="gestor@sonda.com"
                   {...field}
                   disabled={isSubmitting || isLoading}
-                  className={form.formState.errors.emailGestor ? 'border-red-500 focus:border-red-500' : ''}
+                  className={form.formState.errors.emailGestor ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                 />
               </FormControl>
               <FormMessage />
@@ -538,13 +559,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="vigenciaInicial"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Vigência Inicial</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Vigência Inicial</FormLabel>
                 <FormControl>
                   <Input
                     type="date"
                     {...field}
                     disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:border-red-500' : ''}
+                    className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -557,13 +578,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             name="vigenciaFinal"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Vigência Final</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Vigência Final</FormLabel>
                 <FormControl>
                   <Input
                     type="date"
                     {...field}
                     disabled={isSubmitting || isLoading}
-                    className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:border-red-500' : ''}
+                    className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -581,7 +602,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 name="tipoBook"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Book *</FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Tipo de Book *</FormLabel>
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
@@ -595,7 +616,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                       disabled={isSubmitting || isLoading}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className={form.formState.errors.tipoBook ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
                           <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                       </FormControl>
@@ -619,14 +640,14 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   name="templatePadrao"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Template Padrão *</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Template Padrão *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                         disabled={isSubmitting || isLoading || templatesLoading}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={form.formState.errors.templatePadrao ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
                             <SelectValue placeholder="Selecione o template" />
                           </SelectTrigger>
                         </FormControl>
@@ -655,13 +676,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   name="linkSharepoint"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Link SharePoint *</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Link SharePoint *</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="https://..."
                           {...field}
                           disabled={isSubmitting || isLoading}
-                          className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:border-red-500' : ''}
+                          className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                         />
                       </FormControl>
                       <FormMessage />
@@ -793,7 +814,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               name="produtos"
               render={() => (
                 <FormItem>
-                  <FormLabel className={form.formState.errors.produtos ? 'text-red-500' : ''}>Produtos Contratados *</FormLabel>
+                  <FormLabel className={form.formState.errors.produtos ? 'text-sm font-medium text-red-500' : 'text-sm font-medium text-gray-700'}>Produtos Contratados *</FormLabel>
                   <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${form.formState.errors.produtos ? 'border border-red-500 rounded-md p-3' : ''}`}>
                     {PRODUTOS_OPTIONS.map((produto) => (
                       <FormItem
@@ -831,7 +852,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 name="grupos"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Grupos de Responsáveis</FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Grupos de Responsáveis</FormLabel>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {grupos.map((grupo) => (
                         <FormItem
@@ -874,7 +895,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
           name="observacao"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Observações</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-700">Observações</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Digite observações gerais sobre a empresa (máximo 500 caracteres)"
@@ -882,7 +903,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   disabled={isSubmitting || isLoading}
                   rows={4}
                   maxLength={500}
-                  className={form.formState.errors.observacao ? 'border-red-500 focus:border-red-500' : ''}
+                  className={form.formState.errors.observacao ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                 />
               </FormControl>
               <FormDescription>
@@ -892,6 +913,28 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             </FormItem>
           )}
         />
+
+        </TabsContent>
+
+          {/* Tab: Parâmetros Book */}
+          <TabsContent value="parametros" className="mt-4 space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2 font-medium">
+                      Parâmetros Book
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Os campos desta seção serão adicionados em breve
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Botões de Ação */}
         <div className="flex justify-end space-x-4 pt-6">

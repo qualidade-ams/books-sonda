@@ -190,7 +190,7 @@ export default function DesignSystem() {
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
-        <div className="container mx-auto px-4 py-6 space-y-8">
+        <div className="px-6 py-6 space-y-8">
           {/* Header */}
           <PageHeader
             title="Design System"
@@ -2556,6 +2556,125 @@ toast({
                       }
                     />
                   </CodeExample>
+                </CardContent>
+              </Card>
+
+              {/* Modais e Diálogos */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sonda-blue">Modais e Diálogos</CardTitle>
+                  <CardDescription>Componentes de modal padronizados. Clique nos botões para abrir os modais e ver o código.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Modal Simples */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Modal Simples</h4>
+                    <CodeExample
+                      id="modal-simples"
+                      code={`<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent className="sm:max-w-[600px]">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-semibold text-sonda-blue">
+        Título do Modal
+      </DialogTitle>
+      <DialogDescription className="text-sm text-gray-500">
+        Descrição opcional do que o modal faz
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="py-4">
+      <p className="text-gray-600">Conteúdo do modal aqui...</p>
+    </div>
+    
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setOpen(false)}>
+        Cancelar
+      </Button>
+      <Button className="bg-sonda-blue hover:bg-sonda-dark-blue">
+        Confirmar
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>`}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDialog(true)}
+                      >
+                        Abrir Modal Simples
+                      </Button>
+                    </CodeExample>
+                  </div>
+
+                  {/* Alert Dialog */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Alert Dialog (Confirmação)</h4>
+                    <CodeExample
+                      id="alert-dialog"
+                      code={`<AlertDialog open={open} onOpenChange={setOpen}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle className="text-xl font-semibold text-sonda-blue">
+        Confirmar Ação
+      </AlertDialogTitle>
+      <AlertDialogDescription className="text-sm text-gray-500">
+        Esta ação não pode ser desfeita. Tem certeza de que deseja continuar?
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+      <AlertDialogAction className="bg-sonda-blue hover:bg-sonda-dark-blue">
+        Confirmar
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>`}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAlertDialog(true)}
+                      >
+                        Abrir Alert Dialog
+                      </Button>
+                    </CodeExample>
+                  </div>
+
+                  {/* Padrões Obrigatórios */}
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-2">📋 Padrões Obrigatórios para Modais</h4>
+                    <div className="space-y-2 text-sm text-blue-800">
+                      <p><strong>Títulos:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>DialogTitle: <code className="bg-blue-100 px-1 rounded">className="text-xl font-semibold text-sonda-blue"</code></li>
+                        <li>DialogDescription: <code className="bg-blue-100 px-1 rounded">className="text-sm text-gray-500"</code></li>
+                      </ul>
+                      
+                      <p className="mt-3"><strong>FormLabel:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Normal: <code className="bg-blue-100 px-1 rounded">className="text-sm font-medium text-gray-700"</code></li>
+                        <li>Com erro: <code className="bg-blue-100 px-1 rounded">className="text-sm font-medium text-red-500"</code></li>
+                      </ul>
+                      
+                      <p className="mt-3"><strong>Inputs/Selects/Textareas:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Normal: <code className="bg-blue-100 px-1 rounded">className="focus:ring-sonda-blue focus:border-sonda-blue"</code></li>
+                        <li>Com erro: <code className="bg-blue-100 px-1 rounded">className="border-red-500 focus:ring-red-500 focus:border-red-500"</code></li>
+                      </ul>
+                      
+                      <p className="mt-3"><strong>Botões:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Cancelar: <code className="bg-blue-100 px-1 rounded">variant="outline"</code></li>
+                        <li>Confirmar/Salvar: <code className="bg-blue-100 px-1 rounded">className="bg-sonda-blue hover:bg-sonda-dark-blue"</code></li>
+                      </ul>
+                      
+                      <p className="mt-3"><strong>Tamanhos:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Modal simples: <code className="bg-blue-100 px-1 rounded">className="sm:max-w-[600px]"</code></li>
+                        <li>Modal com formulário: <code className="bg-blue-100 px-1 rounded">className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"</code></li>
+                        <li>Modal com tabs: <code className="bg-blue-100 px-1 rounded">className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"</code></li>
+                      </ul>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

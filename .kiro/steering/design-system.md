@@ -71,7 +71,7 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
   - **Caption**: `text-xs` (12px) - Labels e metadados
 
 ### Espaçamento e Layout
-- **Container**: `container mx-auto px-4 py-6` - Layout principal das páginas
+- **Layout de páginas**: `px-6 py-6` - Espaçamento padrão para novas páginas (⚠️ NÃO use `container mx-auto px-4`)
 - **Espaçamento entre seções**: `space-y-6` ou `space-y-8`
 - **Espaçamento interno de cards**: `p-6` (header) e `p-6 pt-6` (content)
 - **Grid responsivo**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
@@ -84,32 +84,141 @@ ON CONFLICT (group_id, screen_key) DO UPDATE SET permission_level = EXCLUDED.per
 
 ## Componentes Padronizados
 
-### 1. Layout Base
+### 1. Layout Base (PADRÃO OFICIAL - Atualizado 2026-01-20)
+
+**⚠️ IMPORTANTE**: Use `px-6` em vez de `container mx-auto px-4` para evitar espaçamento lateral excessivo.
+
 ```tsx
-// Estrutura padrão para páginas administrativas
+// ✅ ESTRUTURA PADRÃO CORRETA para novas páginas administrativas
 <AdminLayout>
   <div className="min-h-screen bg-bg-secondary">
-    <div className="container mx-auto px-4 py-6 space-y-8">
-      <PageHeader 
-        title="Título da Página" 
-        subtitle="Descrição opcional"
-        actions={
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm">Ação Secundária</Button>
-            <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue">
-              Ação Principal
-            </Button>
+    <div className="px-6 py-6 space-y-8">
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Título da Página
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Descrição ou contexto da página
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+          <Button size="sm" className="bg-sonda-blue hover:bg-sonda-dark-blue">
+            <Plus className="h-4 w-4 mr-2" />
+            Ação Principal
+          </Button>
+        </div>
+      </div>
+
+      {/* Cards de Estatísticas (opcional) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Total
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">24</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs lg:text-sm font-medium text-sonda-blue">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Métrica 2
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl lg:text-2xl font-bold text-sonda-blue">455h20min</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Métrica 3
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl lg:text-2xl font-bold text-green-600">R$ 26.554,92</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Métrica 4
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl lg:text-2xl font-bold text-orange-600">R$ 0,00</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Card Principal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Título do Card Principal
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Conteúdo da página */}
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-4">
+                Os componentes desta tela serão adicionados em breve
+              </p>
+              <Button className="bg-sonda-blue hover:bg-sonda-dark-blue">
+                <Plus className="h-4 w-4 mr-2" />
+                Ação Principal
+              </Button>
+            </div>
           </div>
-        }
-      />
-      
-      <main className="space-y-6">
-        {/* Conteúdo da página */}
-      </main>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </AdminLayout>
+
+// ❌ NÃO USE (espaçamento lateral excessivo):
+// <div className="container mx-auto px-4 py-6 space-y-8">
+
+// ✅ USE (espaçamento correto):
+// <div className="px-6 py-6 space-y-8">
 ```
+
+**Padrões Obrigatórios**:
+- ✅ `px-6 py-6` para espaçamento lateral e vertical consistente
+- ✅ `space-y-8` para espaçamento entre seções
+- ✅ Cabeçalho com título H1 e subtítulo
+- ✅ Botões de ação no canto superior direito
+- ✅ Cards de estatísticas em grid responsivo (opcional)
+- ✅ Card principal com conteúdo da página
+- ✅ Estado vazio com ícone, mensagem e botão de ação
+
+**Exemplo Real**: Veja as páginas `GeracaoBooks.tsx` e `ControleBancoHoras.tsx`
 
 ### 2. PageHeader Padronizado
 ```tsx
@@ -1176,15 +1285,17 @@ const handleSelectItem = (itemId: string, checked: boolean) => {
 ```
 
 ### 8. Modais Padronizados
+
+#### Modal Simples (Padrão Básico)
 ```tsx
-// Modal padrão
+// Modal padrão para ações simples
 <Dialog open={open} onOpenChange={setOpen}>
   <DialogContent className="sm:max-w-[600px]">
     <DialogHeader>
       <DialogTitle className="text-xl font-semibold text-sonda-blue">
         Título do Modal
       </DialogTitle>
-      <DialogDescription>
+      <DialogDescription className="text-sm text-gray-500">
         Descrição opcional do que o modal faz
       </DialogDescription>
     </DialogHeader>
@@ -1203,15 +1314,215 @@ const handleSelectItem = (itemId: string, checked: boolean) => {
     </DialogFooter>
   </DialogContent>
 </Dialog>
+```
 
-// Alert Dialog (confirmação)
+#### Modal com Formulário (Padrão Completo)
+```tsx
+// Modal com formulário padronizado - USAR ESTE PADRÃO PARA CADASTROS/EDIÇÕES
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-semibold text-sonda-blue">
+        {mode === 'create' ? 'Novo Registro' : 'Editar Registro'}
+      </DialogTitle>
+      <DialogDescription className="text-sm text-gray-500">
+        Preencha os dados do formulário
+      </DialogDescription>
+    </DialogHeader>
+
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Campos do formulário */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="campo1"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium text-gray-700">
+                  Campo 1 *
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Digite o valor"
+                    {...field}
+                    className={form.formState.errors.campo1 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="campo2"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium text-gray-700">
+                  Campo 2 *
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className={form.formState.errors.campo2 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                    }>
+                      <SelectValue placeholder="Selecione uma opção" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="opcao1">Opção 1</SelectItem>
+                    <SelectItem value="opcao2">Opção 2</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Botões de ação */}
+        <DialogFooter className="pt-6 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            className="bg-sonda-blue hover:bg-sonda-dark-blue"
+          >
+            {mode === 'create' ? 'Criar' : 'Salvar Alterações'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  </DialogContent>
+</Dialog>
+```
+
+#### Modal com Tabs (Padrão para Formulários Complexos)
+```tsx
+// Modal com tabs para organizar formulários complexos
+// USAR ESTE PADRÃO quando houver muitos campos ou seções distintas
+const [activeTab, setActiveTab] = useState('principal');
+
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-semibold text-sonda-blue">
+        {mode === 'create' ? 'Novo Registro' : 'Editar Registro'}
+      </DialogTitle>
+      <DialogDescription className="text-sm text-gray-500">
+        Preencha os dados do formulário
+      </DialogDescription>
+    </DialogHeader>
+
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Sistema de Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-gray-100 p-1 rounded-lg">
+            <TabsTrigger 
+              value="principal"
+              className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+            >
+              Informações Principais
+            </TabsTrigger>
+            <TabsTrigger 
+              value="adicionais"
+              className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+            >
+              Informações Adicionais
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab 1: Informações Principais */}
+          <TabsContent value="principal" className="mt-4 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="campo1"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Campo 1 *
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Digite o valor"
+                        {...field}
+                        className={form.formState.errors.campo1 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Tab 2: Informações Adicionais */}
+          <TabsContent value="adicionais" className="mt-4 space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2 font-medium">
+                      Informações Adicionais
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Os campos desta seção serão adicionados em breve
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Botões de ação - FORA das tabs */}
+        <DialogFooter className="pt-6 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            className="bg-sonda-blue hover:bg-sonda-dark-blue"
+          >
+            {mode === 'create' ? 'Criar' : 'Salvar Alterações'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  </DialogContent>
+</Dialog>
+```
+
+#### Alert Dialog (Confirmação)
+```tsx
+// Alert Dialog para confirmações de ações destrutivas
 <AlertDialog open={open} onOpenChange={setOpen}>
   <AlertDialogContent>
     <AlertDialogHeader>
-      <AlertDialogTitle className="text-sonda-blue">
+      <AlertDialogTitle className="text-xl font-semibold text-sonda-blue">
         Confirmar Ação
       </AlertDialogTitle>
-      <AlertDialogDescription>
+      <AlertDialogDescription className="text-sm text-gray-500">
         Esta ação não pode ser desfeita. Tem certeza de que deseja continuar?
       </AlertDialogDescription>
     </AlertDialogHeader>
@@ -1223,6 +1534,40 @@ const handleSelectItem = (itemId: string, checked: boolean) => {
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
+```
+
+#### Padrões Obrigatórios para Modais
+
+**Títulos:**
+- DialogTitle: `className="text-xl font-semibold text-sonda-blue"`
+- DialogDescription: `className="text-sm text-gray-500"`
+
+**FormLabel:**
+- Normal: `className="text-sm font-medium text-gray-700"`
+- Com erro: `className="text-sm font-medium text-red-500"`
+
+**Inputs/Selects/Textareas:**
+- Normal: `className="focus:ring-sonda-blue focus:border-sonda-blue"`
+- Com erro: `className="border-red-500 focus:ring-red-500 focus:border-red-500"`
+
+**Tabs (quando necessário):**
+- TabsList: `className="bg-gray-100 p-1 rounded-lg"`
+- TabsTrigger ativa: `className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"`
+- TabsContent: `className="mt-4 space-y-6"`
+
+**Botões:**
+- Cancelar: `variant="outline"`
+- Confirmar/Salvar: `className="bg-sonda-blue hover:bg-sonda-dark-blue"`
+
+**Espaçamento:**
+- Entre campos: `space-y-6` no form
+- Entre grupos de campos: `gap-4` no grid
+- DialogFooter: `className="pt-6 border-t"` (separador visual)
+
+**Tamanhos:**
+- Modal simples: `className="sm:max-w-[600px]"`
+- Modal com formulário: `className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"`
+- Modal com tabs: `className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"`
 ```
 
 ### 9. Sistema de Badges
@@ -1317,7 +1662,43 @@ toast({
 
 ## Padrões de UX
 ```tsx
-// Tabs com cores Sonda padronizadas
+// Tabs com fundo branco quando ativa (PADRÃO OFICIAL)
+<Tabs defaultValue="tab1" className="w-full">
+  <TabsList className="bg-gray-100 p-1 rounded-lg">
+    <TabsTrigger 
+      value="tab1"
+      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+    >
+      Tab 1
+    </TabsTrigger>
+    <TabsTrigger 
+      value="tab2"
+      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+    >
+      Tab 2
+    </TabsTrigger>
+    <TabsTrigger 
+      value="tab3"
+      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+    >
+      Tab 3
+    </TabsTrigger>
+  </TabsList>
+  <TabsContent value="tab1" className="mt-4">
+    {/* Conteúdo da tab */}
+  </TabsContent>
+</Tabs>
+
+// Classes obrigatórias para tabs (PADRÃO OFICIAL):
+// - TabsList: "bg-gray-100 p-1 rounded-lg" (fundo cinza claro com bordas arredondadas)
+// - TabsTrigger: "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+// - TabsContent: "mt-4" (espaçamento superior)
+
+// ❌ NÃO USE MAIS (padrão antigo com azul Sonda):
+// - TabsList: "grid w-full grid-cols-3 bg-gray-100 p-1"
+// - TabsTrigger: "data-[state=active]:bg-sonda-blue data-[state=active]:text-white text-gray-700 hover:text-sonda-blue"
+
+// Tabs com cores Sonda (APENAS para páginas especiais como Design System)
 <Tabs defaultValue="tab1" className="w-full">
   <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1">
     <TabsTrigger 
@@ -1344,8 +1725,8 @@ toast({
   </TabsContent>
 </Tabs>
 
-// Classes obrigatórias para tabs Sonda:
-// - TabsList: "bg-gray-100 p-1" (fundo cinza claro)
+// Classes para tabs Sonda (uso especial):
+// - TabsList: "grid w-full grid-cols-3 bg-gray-100 p-1" (grid com colunas iguais)
 // - TabsTrigger: "data-[state=active]:bg-sonda-blue data-[state=active]:text-white text-gray-700 hover:text-sonda-blue"
 ```
 

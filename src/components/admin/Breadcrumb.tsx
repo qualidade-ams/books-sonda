@@ -30,7 +30,9 @@ const Breadcrumb = () => {
     'lancar-elogios': 'Validar Elogios',
     'enviar-elogios': 'Enviar Elogios',
     'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes',
-    'design-system': 'Design System'
+    'design-system': 'Design System',
+    'controle-banco-horas': 'Banco de Horas',
+    'geracao-books': 'Geração de Books'
   };
 
   return (

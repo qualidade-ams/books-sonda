@@ -534,8 +534,8 @@ const EmpresasClientes = () => {
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Empresa</DialogTitle>
-              <p>Preencha os dados para cadastrar um novo cliente</p>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">Nova Empresa</DialogTitle>
+              <p className="text-sm text-gray-500">Preencha os dados para cadastrar um novo cliente</p>
             </DialogHeader>
             <EmpresaForm
               mode="create"
@@ -551,7 +551,7 @@ const EmpresasClientes = () => {
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Editar Empresa</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">Editar Empresa</DialogTitle>
             </DialogHeader>
             {selectedEmpresa && (
               <EmpresaForm
