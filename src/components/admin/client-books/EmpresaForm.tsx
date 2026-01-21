@@ -44,6 +44,7 @@ import {
   TIPO_COBRANCA_OPTIONS,
 } from '@/types/clientBooks';
 import { Card, CardContent } from '@/components/ui/card';
+import { parametrosContratoSchema } from '@/schemas/bancoHorasSchemas';
 
 // Schema de validação com Zod
 const empresaSchema = z.object({
@@ -81,6 +82,17 @@ const empresaSchema = z.object({
   bookPersonalizado: z.boolean().optional(),
   anexo: z.boolean().optional(),
   observacao: z.string().max(500, 'Observação deve ter no máximo 500 caracteres').optional(),
+  
+  // NOVO: Parâmetros de Banco de Horas
+  tipo_contrato: z.enum(['horas', 'tickets', 'ambos']).optional(),
+  periodo_apuracao: z.number().int().min(1).max(12).optional(),
+  inicio_vigencia_banco_horas: z.string().optional(),
+  baseline_horas_mensal: z.string().optional(),
+  baseline_tickets_mensal: z.number().min(0).max(99999.99).optional(),
+  possui_repasse_especial: z.boolean().optional(),
+  ciclos_para_zerar: z.number().int().min(1).max(12).optional(),
+  percentual_repasse_mensal: z.number().int().min(0).max(100).optional(),
+  percentual_repasse_especial: z.number().int().min(0).max(100).optional(),
 }).refine((data) => {
   // Validação condicional para descrição do status
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -151,6 +163,55 @@ const empresaSchema = z.object({
 }, {
   message: 'Link SharePoint deve ser uma URL válida',
   path: ['linkSharepoint'],
+}).refine((data) => {
+  // Validação condicional: Se tipo_contrato inclui 'horas', baseline_horas_mensal é obrigatório
+  if ((data.tipo_contrato === 'horas' || data.tipo_contrato === 'ambos') && 
+      (!data.baseline_horas_mensal || data.baseline_horas_mensal === '')) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Baseline de horas mensal é obrigatório quando tipo de contrato é "horas" ou "ambos"',
+  path: ['baseline_horas_mensal']
+}).refine((data) => {
+  // Validação condicional: Se tipo_contrato inclui 'tickets', baseline_tickets_mensal é obrigatório
+  if ((data.tipo_contrato === 'tickets' || data.tipo_contrato === 'ambos') && 
+      (data.baseline_tickets_mensal === undefined || data.baseline_tickets_mensal === null)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Baseline de tickets mensal é obrigatório quando tipo de contrato é "tickets" ou "ambos"',
+  path: ['baseline_tickets_mensal']
+}).refine((data) => {
+  // Validação de formato de tempo (HH:MM) para baseline_horas_mensal
+  if (data.baseline_horas_mensal && data.baseline_horas_mensal !== '') {
+    const timeRegex = /^\d{1,4}:[0-5]\d$/;
+    if (!timeRegex.test(data.baseline_horas_mensal)) {
+      return false;
+    }
+    const [horas, minutos] = data.baseline_horas_mensal.split(':').map(Number);
+    return horas >= 0 && horas <= 9999 && minutos >= 0 && minutos < 60;
+  }
+  return true;
+}, {
+  message: 'Formato deve ser HH:MM (ex: 160:00, 08:30)',
+  path: ['baseline_horas_mensal']
+}).refine((data) => {
+  // Validação de formato MM/YYYY para inicio_vigencia_banco_horas
+  if (data.inicio_vigencia_banco_horas && data.inicio_vigencia_banco_horas !== '') {
+    const mesAnoRegex = /^(0[1-9]|1[0-2])\/\d{4}$/;
+    if (!mesAnoRegex.test(data.inicio_vigencia_banco_horas)) {
+      return false;
+    }
+    const [mes, ano] = data.inicio_vigencia_banco_horas.split('/').map(Number);
+    const anoAtual = new Date().getFullYear();
+    return ano >= 2020 && ano <= anoAtual + 10;
+  }
+  return true;
+}, {
+  message: 'Formato deve ser MM/YYYY (ex: 01/2024)',
+  path: ['inicio_vigencia_banco_horas']
 });
 
 interface EmpresaFormProps {
@@ -159,7 +220,7 @@ interface EmpresaFormProps {
   onSubmit: (data: EmpresaFormData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
-  mode: 'create' | 'edit';
+  mode: 'create' | 'edit' | 'view';
 }
 
 const EmpresaForm: React.FC<EmpresaFormProps> = ({
@@ -175,6 +236,10 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Desabilitar todos os campos quando estiver no modo view
+  const isViewMode = mode === 'view';
+  const isFieldDisabled = isSubmitting || isLoading || isViewMode;
 
   const form = useForm<EmpresaFormData>({
     resolver: zodResolver(empresaSchema),
@@ -197,6 +262,16 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       bookPersonalizado: false,
       anexo: false,
       observacao: '',
+      // NOVO: Parâmetros de Banco de Horas - valores padrão
+      tipo_contrato: undefined,
+      periodo_apuracao: undefined,
+      inicio_vigencia_banco_horas: '',
+      baseline_horas_mensal: '00:00',
+      baseline_tickets_mensal: undefined,
+      possui_repasse_especial: false,
+      ciclos_para_zerar: 1,
+      percentual_repasse_mensal: 0,
+      percentual_repasse_especial: 0,
       ...initialData,
     } as EmpresaFormData,
   });
@@ -204,6 +279,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   const watchStatus = form.watch('status');
   const watchTipoBook = form.watch('tipoBook') as TipoBook;
   const watchTemAms = form.watch('temAms');
+  const watchTipoContrato = form.watch('tipo_contrato');
 
   // Reset form quando initialData mudar
   useEffect(() => {
@@ -227,12 +303,28 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         bookPersonalizado: false,
         anexo: false,
         observacao: '',
+        // NOVO: Parâmetros de Banco de Horas - valores padrão
+        tipo_contrato: undefined,
+        periodo_apuracao: undefined,
+        inicio_vigencia_banco_horas: '',
+        baseline_horas_mensal: '00:00',
+        baseline_tickets_mensal: undefined,
+        possui_repasse_especial: false,
+        ciclos_para_zerar: 1,
+        percentual_repasse_mensal: 0,
+        percentual_repasse_especial: 0,
         ...initialData,
       } as EmpresaFormData);
     }
   }, [initialData, form]);
 
   const handleSubmit = async (data: EmpresaFormData) => {
+    // Não fazer nada se estiver no modo view
+    if (isViewMode) {
+      onCancel();
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       // Verificar se o status está sendo alterado para inativo
@@ -392,7 +484,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     placeholder="Digite o nome completo da empresa"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     className={form.formState.errors.nomeCompleto ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
@@ -412,7 +504,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     placeholder="Nome para uso no assunto dos e-mails"
                     {...field}
                     onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     className={form.formState.errors.nomeAbreviado ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
@@ -432,7 +524,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 <Select
                   onValueChange={(value) => field.onChange(value === 'true')}
                   value={field.value ? 'true' : 'false'}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                 >
                   <FormControl>
                     <SelectTrigger className={form.formState.errors.temAms ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
@@ -458,7 +550,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                 >
                   <FormControl>
                     <SelectTrigger className={form.formState.errors.status ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
@@ -491,7 +583,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   <Textarea
                     placeholder="Descreva o motivo da alteração do status"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     rows={3}
                     className={form.formState.errors.descricaoStatus ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
@@ -513,7 +605,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
               <Select
                 onValueChange={(value) => field.onChange(value === 'true')}
                 value={field.value ? 'true' : 'false'}
-                disabled={isSubmitting || isLoading}
+                disabled={isFieldDisabled}
               >
                 <FormControl>
                   <SelectTrigger className={form.formState.errors.emProjeto ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
@@ -542,7 +634,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   type="email"
                   placeholder="gestor@sonda.com"
                   {...field}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                   className={form.formState.errors.emailGestor ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                 />
               </FormControl>
@@ -564,7 +656,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   <Input
                     type="date"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     className={form.formState.errors.vigenciaInicial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
@@ -583,7 +675,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   <Input
                     type="date"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     className={form.formState.errors.vigenciaFinal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                   />
                 </FormControl>
@@ -613,7 +705,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                         }
                       }}
                       value={field.value}
-                      disabled={isSubmitting || isLoading}
+                      disabled={isFieldDisabled}
                     >
                       <FormControl>
                         <SelectTrigger className={form.formState.errors.tipoBook ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
@@ -644,7 +736,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
-                        disabled={isSubmitting || isLoading || templatesLoading}
+                        disabled={isFieldDisabled || templatesLoading}
                       >
                         <FormControl>
                           <SelectTrigger className={form.formState.errors.templatePadrao ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
@@ -681,7 +773,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                         <Input
                           placeholder="https://..."
                           {...field}
-                          disabled={isSubmitting || isLoading}
+                          disabled={isFieldDisabled}
                           className={form.formState.errors.linkSharepoint ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                         />
                       </FormControl>
@@ -711,7 +803,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                           <Checkbox
                             checked={field.value || false}
                             onCheckedChange={field.onChange}
-                            disabled={isSubmitting || isLoading}
+                            disabled={isFieldDisabled}
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -735,7 +827,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                           <Checkbox
                             checked={field.value || false}
                             onCheckedChange={field.onChange}
-                            disabled={isSubmitting || isLoading}
+                            disabled={isFieldDisabled}
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
@@ -778,7 +870,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                               value={option.value}
                               checked={field.value === option.value}
                               onChange={() => field.onChange(option.value)}
-                              disabled={isSubmitting || isLoading}
+                              disabled={isFieldDisabled}
                               className="mt-1"
                             />
                           </FormControl>
@@ -827,7 +919,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                             onCheckedChange={(checked) =>
                               handleProdutoChange(produto.value as Produto, checked as boolean)
                             }
-                            disabled={isSubmitting || isLoading}
+                            disabled={isFieldDisabled}
                           />
                         </FormControl>
                         <FormLabel className="font-normal">
@@ -865,7 +957,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                               onCheckedChange={(checked) =>
                                 handleGrupoChange(grupo.id, checked as boolean)
                               }
-                              disabled={isSubmitting || isLoading}
+                              disabled={isFieldDisabled}
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
@@ -900,7 +992,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 <Textarea
                   placeholder="Digite observações gerais sobre a empresa (máximo 500 caracteres)"
                   {...field}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                   rows={4}
                   maxLength={500}
                   className={form.formState.errors.observacao ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
@@ -918,18 +1010,414 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
           {/* Tab: Parâmetros Book */}
           <TabsContent value="parametros" className="mt-4 space-y-6">
+            {/* Tipo de Contrato */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tipo_contrato"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Tipo de Contrato
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isFieldDisabled}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={form.formState.errors.tipo_contrato ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}>
+                          <SelectValue placeholder="Selecione o tipo de contrato" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="horas">Horas</SelectItem>
+                        <SelectItem value="tickets">Tickets</SelectItem>
+                        <SelectItem value="ambos">Ambos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="periodo_apuracao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Período de Apuração (meses)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="1 a 12 meses"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            field.onChange(undefined);
+                            return;
+                          }
+                          const numValue = parseInt(value);
+                          // Validar entre 1 e 12
+                          if (numValue >= 1 && numValue <= 12) {
+                            field.onChange(numValue);
+                          } else if (numValue > 12) {
+                            field.onChange(12);
+                            e.target.value = '12';
+                          } else if (numValue < 1) {
+                            field.onChange(1);
+                            e.target.value = '1';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Garantir valor válido ao sair do campo
+                          const value = e.target.value;
+                          if (value !== '' && (parseInt(value) < 1 || parseInt(value) > 12)) {
+                            field.onChange(1);
+                            e.target.value = '1';
+                          }
+                        }}
+                        value={field.value || ''}
+                        disabled={isFieldDisabled}
+                        min={1}
+                        max={12}
+                        className={form.formState.errors.periodo_apuracao ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="inicio_vigencia_banco_horas"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Início da Vigência
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="MM/YYYY (ex: 01/2024)"
+                        {...field}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(/\D/g, ''); // Remove não-dígitos
+                          
+                          // Limitar a 6 dígitos (MMYYYY)
+                          if (value.length > 6) {
+                            value = value.slice(0, 6);
+                          }
+                          
+                          // Aplicar máscara MM/YYYY
+                          if (value.length >= 2) {
+                            const mes = value.slice(0, 2);
+                            const ano = value.slice(2);
+                            
+                            // Validar mês (01-12)
+                            let mesValidado = parseInt(mes);
+                            if (mesValidado > 12) {
+                              mesValidado = 12;
+                            } else if (mesValidado < 1 && mes.length === 2) {
+                              mesValidado = 1;
+                            }
+                            
+                            const mesFormatado = mesValidado.toString().padStart(2, '0');
+                            value = ano ? `${mesFormatado}/${ano}` : mesFormatado;
+                          }
+                          
+                          field.onChange(value);
+                        }}
+                        onBlur={(e) => {
+                          // Validar formato completo ao sair do campo
+                          const value = e.target.value;
+                          if (value && value.length > 0 && value.length < 7) {
+                            // Se não está completo, limpar
+                            field.onChange('');
+                          }
+                        }}
+                        disabled={isFieldDisabled}
+                        maxLength={7}
+                        className={form.formState.errors.inicio_vigencia_banco_horas ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Percentual de Repasse Mensal - Sempre visível */}
+              <FormField
+                control={form.control}
+                name="percentual_repasse_mensal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Percentual de Repasse Mensal (%)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0 a 100%"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            field.onChange(0);
+                            return;
+                          }
+                          const numValue = parseInt(value);
+                          // Validar entre 0 e 100
+                          if (numValue >= 0 && numValue <= 100) {
+                            field.onChange(numValue);
+                          } else if (numValue > 100) {
+                            field.onChange(100);
+                            e.target.value = '100';
+                          } else if (numValue < 0) {
+                            field.onChange(0);
+                            e.target.value = '0';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Garantir valor válido ao sair do campo
+                          const value = e.target.value;
+                          if (value === '' || parseInt(value) < 0 || parseInt(value) > 100) {
+                            field.onChange(0);
+                            e.target.value = '0';
+                          }
+                        }}
+                        value={field.value ?? 0}
+                        disabled={isFieldDisabled}
+                        min={0}
+                        max={100}
+                        className={form.formState.errors.percentual_repasse_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Baseline - Campos condicionais baseados no tipo de contrato */}
+            {watchTipoContrato && (
+              <Card>
+                <CardContent className="pt-6">
+                  <FormLabel className="text-base font-semibold mb-4 block">Baseline Mensal</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Baseline Horas - só aparece se tipo_contrato for 'horas' ou 'ambos' */}
+                    {(watchTipoContrato === 'horas' || watchTipoContrato === 'ambos') && (
+                      <FormField
+                        control={form.control}
+                        name="baseline_horas_mensal"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Baseline de Horas Mensal {(watchTipoContrato === 'horas' || watchTipoContrato === 'ambos') && <span className="text-red-500">*</span>}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="HH:MM (ex: 160:00)"
+                                {...field}
+                                onChange={(e) => {
+                                  let value = e.target.value.replace(/\D/g, ''); // Remove não-dígitos
+                                  
+                                  // Limitar a 6 dígitos (HHHHMM)
+                                  if (value.length > 6) {
+                                    value = value.slice(0, 6);
+                                  }
+                                  
+                                  // Aplicar máscara HH:MM ou HHH:MM ou HHHH:MM
+                                  if (value.length >= 2) {
+                                    const minutos = value.slice(-2);
+                                    const horas = value.slice(0, -2);
+                                    
+                                    // Validar minutos (00-59)
+                                    let minutosValidados = parseInt(minutos);
+                                    if (minutosValidados > 59) {
+                                      minutosValidados = 59;
+                                    }
+                                    
+                                    const minutosFormatados = minutosValidados.toString().padStart(2, '0');
+                                    value = horas ? `${horas}:${minutosFormatados}` : minutosFormatados;
+                                  }
+                                  
+                                  field.onChange(value || '00:00');
+                                }}
+                                onBlur={(e) => {
+                                  // Garantir formato válido ao sair do campo
+                                  const value = e.target.value;
+                                  if (!value || value === '') {
+                                    field.onChange('00:00');
+                                  } else if (value.length > 0 && !value.includes(':')) {
+                                    // Se não tem dois pontos, adicionar
+                                    field.onChange('00:00');
+                                  }
+                                }}
+                                value={field.value || '00:00'}
+                                disabled={isFieldDisabled}
+                                maxLength={10}
+                                className={form.formState.errors.baseline_horas_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* Baseline Tickets - só aparece se tipo_contrato for 'tickets' ou 'ambos' */}
+                    {(watchTipoContrato === 'tickets' || watchTipoContrato === 'ambos') && (
+                      <FormField
+                        control={form.control}
+                        name="baseline_tickets_mensal"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Baseline de Tickets Mensal {(watchTipoContrato === 'tickets' || watchTipoContrato === 'ambos') && <span className="text-red-500">*</span>}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                value={field.value || ''}
+                                disabled={isFieldDisabled}
+                                step="0.01"
+                                min={0}
+                                max={99999.99}
+                                className={form.formState.errors.baseline_tickets_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs text-gray-500">
+                              Quantidade mensal de tickets contratados (decimal com 2 casas)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Configurações de Repasse */}
             <Card>
               <CardContent className="pt-6">
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2 font-medium">
-                      Parâmetros Book
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      Os campos desta seção serão adicionados em breve
-                    </p>
-                  </div>
+                <FormLabel className="text-base font-semibold mb-4 block">Configurações de Repasse</FormLabel>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="possui_repasse_especial"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                            disabled={isFieldDisabled}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Possui Repasse Especial
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Se marcado, o saldo positivo ao final do período será repassado para o próximo período
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Campos de Repasse Especial - Só aparecem se checkbox marcado */}
+                  {form.watch('possui_repasse_especial') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                      <FormField
+                        control={form.control}
+                        name="ciclos_para_zerar"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Ciclos para Zerar
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="1 a 12 ciclos"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                value={field.value || ''}
+                                disabled={isFieldDisabled}
+                                min={1}
+                                max={12}
+                                className={form.formState.errors.ciclos_para_zerar ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="percentual_repasse_especial"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Percentual de Repasse Especial (%)
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0 a 100%"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '') {
+                                    field.onChange(0);
+                                    return;
+                                  }
+                                  const numValue = parseInt(value);
+                                  // Validar entre 0 e 100
+                                  if (numValue >= 0 && numValue <= 100) {
+                                    field.onChange(numValue);
+                                  } else if (numValue > 100) {
+                                    field.onChange(100);
+                                    e.target.value = '100';
+                                  } else if (numValue < 0) {
+                                    field.onChange(0);
+                                    e.target.value = '0';
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  // Garantir valor válido ao sair do campo
+                                  const value = e.target.value;
+                                  if (value === '' || parseInt(value) < 0 || parseInt(value) > 100) {
+                                    field.onChange(0);
+                                    e.target.value = '0';
+                                  }
+                                }}
+                                value={field.value ?? 0}
+                                disabled={isFieldDisabled}
+                                min={0}
+                                max={100}
+                                className={form.formState.errors.percentual_repasse_especial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -946,22 +1434,24 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
             className="flex items-center space-x-2"
           >
             <X className="h-4 w-4" />
-            <span>Cancelar</span>
+            <span>{mode === 'view' ? 'Fechar' : 'Cancelar'}</span>
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || isLoading}
-            className="flex items-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>
-              {isSubmitting
-                ? 'Salvando...'
-                : mode === 'create'
-                  ? 'Criar Empresa'
-                  : 'Salvar Alterações'}
-            </span>
-          </Button>
+          {mode !== 'view' && (
+            <Button
+              type="submit"
+              disabled={isFieldDisabled}
+              className="flex items-center space-x-2"
+            >
+              <Save className="h-4 w-4" />
+              <span>
+                {isSubmitting
+                  ? 'Salvando...'
+                  : mode === 'create'
+                    ? 'Criar Empresa'
+                    : 'Salvar Alterações'}
+              </span>
+            </Button>
+          )}
         </div>
       </form>
     </Form>

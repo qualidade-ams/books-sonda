@@ -72,7 +72,7 @@ interface ClienteFormProps {
   onSubmit: (data: ClienteFormData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
-  mode: 'create' | 'edit';
+  mode: 'create' | 'edit' | 'view';
   empresaIdPredefinida?: string; // Para quando vier de uma página específica de empresa
 }
 
@@ -87,6 +87,10 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
+  
+  // Desabilitar todos os campos quando estiver no modo view
+  const isViewMode = mode === 'view';
+  const isFieldDisabled = isSubmitting || isLoading || isViewMode;
 
   // Preparar valores padrão
   const getDefaultValues = (): ClienteFormData => ({
@@ -149,6 +153,12 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
   }, [initialData, formInitialized, empresaIdPredefinida, form]);
 
   const handleSubmit = async (data: ClienteFormData) => {
+    // Não fazer nada se estiver no modo view
+    if (isViewMode) {
+      onCancel();
+      return;
+    }
+    
     console.log('🔍 Dados do formulário antes do envio:', data);
 
     setIsSubmitting(true);
@@ -189,7 +199,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                   <Input
                     placeholder="Digite o nome completo"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                   />
                 </FormControl>
                 <FormMessage />
@@ -208,7 +218,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                     type="email"
                     placeholder="cliente@empresa.com"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                   />
                 </FormControl>
                 <FormMessage />
@@ -228,7 +238,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                   <Input
                     placeholder="Ex: Gerente, Analista, Diretor"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                   />
                 </FormControl>
                 <FormDescription>
@@ -248,7 +258,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -280,7 +290,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -314,7 +324,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  disabled={isSubmitting || isLoading}
+                  disabled={isFieldDisabled}
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
@@ -339,7 +349,7 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                   <Textarea
                     placeholder="Descreva o motivo da inativação"
                     {...field}
-                    disabled={isSubmitting || isLoading}
+                    disabled={isFieldDisabled}
                     rows={3}
                   />
                 </FormControl>
@@ -362,22 +372,24 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
             className="flex items-center space-x-2"
           >
             <X className="h-4 w-4" />
-            <span>Cancelar</span>
+            <span>{mode === 'view' ? 'Fechar' : 'Cancelar'}</span>
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || isLoading}
-            className="flex items-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>
-              {isSubmitting
-                ? 'Salvando...'
-                : mode === 'create'
-                  ? 'Criar Cliente'
-                  : 'Salvar Alterações'}
-            </span>
-          </Button>
+          {mode !== 'view' && (
+            <Button
+              type="submit"
+              disabled={isFieldDisabled}
+              className="flex items-center space-x-2"
+            >
+              <Save className="h-4 w-4" />
+              <span>
+                {isSubmitting
+                  ? 'Salvando...'
+                  : mode === 'create'
+                    ? 'Criar Cliente'
+                    : 'Salvar Alterações'}
+              </span>
+            </Button>
+          )}
         </div>
       </form>
     </Form>

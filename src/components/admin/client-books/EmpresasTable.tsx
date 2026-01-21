@@ -22,7 +22,8 @@ import {
   ExternalLink,
   Mail,
   Settings,
-  ClipboardPenLine
+  ClipboardPenLine,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +37,7 @@ import type {
 interface EmpresasTableProps {
   empresas: EmpresaClienteCompleta[];
   loading: boolean;
+  onView?: (empresa: EmpresaClienteCompleta) => void;
   onEdit: (empresa: EmpresaClienteCompleta) => void;
   onDelete: (empresa: EmpresaClienteCompleta) => void;
 }
@@ -43,6 +45,7 @@ interface EmpresasTableProps {
 const EmpresasTable: React.FC<EmpresasTableProps> = ({
   empresas,
   loading,
+  onView,
   onEdit,
   onDelete,
 }) => {
@@ -343,6 +346,19 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">
+                  {onView && (
+                    <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onView(empresa)}
+                        className="h-8 w-8 p-0"
+                        title="Visualizar"
+                      >
+                        <Eye className="h-4 w-4 text-blue-600" />
+                      </Button>
+                    </ProtectedAction>
+                  )}
                   <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
                     <Button
                       variant="outline"

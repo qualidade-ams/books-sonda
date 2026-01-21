@@ -38,6 +38,7 @@ import type {
 const Clientes: React.FC = () => {
   // Estados para modais
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalVisualizacao, setModalVisualizacao] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<ClienteCompleto | null>(null);
   const [clienteExcluindo, setClienteExcluindo] = useState<ClienteCompleto | null>(null);
   
@@ -74,6 +75,11 @@ const Clientes: React.FC = () => {
   const handleNovoCliente = () => {
     setClienteEditando(null);
     setModalAberto(true);
+  };
+
+  const handleVisualizarCliente = (cliente: ClienteCompleto) => {
+    setClienteEditando(cliente);
+    setModalVisualizacao(true);
   };
 
   const handleEditarCliente = (cliente: ClienteCompleto) => {
@@ -281,6 +287,7 @@ const Clientes: React.FC = () => {
           loading={isLoading}
           filtros={filtrosAtivos}
           onFiltrosChange={handleFiltrosChange}
+          onView={handleVisualizarCliente}
           onEdit={handleEditarCliente}
           onDelete={handleExcluirCliente}
           showEmpresaColumn={true}
@@ -368,6 +375,32 @@ const Clientes: React.FC = () => {
               isLoading={isCriando || isAtualizando}
               mode={clienteEditando ? 'edit' : 'create'}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Visualização */}
+        <Dialog open={modalVisualizacao} onOpenChange={setModalVisualizacao}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Visualizar Cliente</DialogTitle>
+              <DialogDescription>
+                Informações detalhadas do cliente
+              </DialogDescription>
+            </DialogHeader>
+
+            {clienteEditando && (
+              <ClienteForm
+                initialData={dadosIniciais}
+                empresas={empresasArray}
+                onSubmit={async () => {}} // Não faz nada no modo view
+                onCancel={() => {
+                  setModalVisualizacao(false);
+                  setClienteEditando(null);
+                }}
+                isLoading={false}
+                mode="view"
+              />
+            )}
           </DialogContent>
         </Dialog>
 
