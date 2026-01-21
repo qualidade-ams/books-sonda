@@ -481,7 +481,22 @@ function CadastroTaxasClientes() {
         });
       });
 
-      // Criar workbook com duas abas
+      // ✅ NOVO: Aba 3 - Clientes Sem Taxa
+      const dadosClientesSemTaxa = clientesSemTaxaFiltrados.map(cliente => ({
+        'Cliente': cliente.nome_abreviado,
+        'Nome Completo': cliente.nome_completo,
+        // ✅ CORREÇÃO: Extrair o nome do produto do objeto
+        'Produtos': Array.isArray(cliente.produtos) 
+          ? cliente.produtos.map((p: any) => p.produto || p).join(', ')
+          : '-',
+        'Status': cliente.status === 'ativo' ? 'Ativo' : cliente.status === 'inativo' ? 'Inativo' : 'Suspenso',
+        'Tem AMS': cliente.tem_ams ? 'Sim' : 'Não',
+        'Email Gestor': cliente.email_gestor || '-',
+        'Vigência Inicial': cliente.vigencia_inicial ? format(new Date(cliente.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+        'Vigência Final': cliente.vigencia_final ? format(new Date(cliente.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-'
+      }));
+
+      // Criar workbook com três abas
       const wb = XLSX.utils.book_new();
       
       const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
@@ -490,10 +505,14 @@ function CadastroTaxasClientes() {
       const wsDetalhes = XLSX.utils.json_to_sheet(dadosDetalhes);
       XLSX.utils.book_append_sheet(wb, wsDetalhes, 'Detalhes das Taxas');
 
+      // ✅ NOVO: Adicionar aba de Clientes Sem Taxa
+      const wsClientesSemTaxa = XLSX.utils.json_to_sheet(dadosClientesSemTaxa);
+      XLSX.utils.book_append_sheet(wb, wsClientesSemTaxa, 'Clientes Sem Taxa');
+
       const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       XLSX.writeFile(wb, `taxas-clientes-${dataAtual}.xlsx`);
 
-      toast.success(`${taxasOrdenadas.length} taxas exportadas para Excel com sucesso!`);
+      toast.success(`${taxasOrdenadas.length} taxas e ${clientesSemTaxaFiltrados.length} clientes sem taxa exportados para Excel com sucesso!`);
     } catch (error) {
       console.error('Erro ao exportar para Excel:', error);
       toast.error('Erro ao exportar para Excel');
@@ -702,10 +721,106 @@ function CadastroTaxasClientes() {
         yPos += 8;
       });
 
+      // ✅ NOVO: Adicionar página com Clientes Sem Taxa
+      if (clientesSemTaxaFiltrados.length > 0) {
+        doc.addPage();
+        yPos = 15;
+
+        // Cabeçalho da seção
+        doc.setFillColor(0, 102, 255);
+        doc.rect(0, 0, pageWidth, 25, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        const tituloClientesSemTaxa = 'Clientes Sem Taxa Cadastrada';
+        const tituloClientesSemTaxaWidth = doc.getTextWidth(tituloClientesSemTaxa);
+        doc.text(tituloClientesSemTaxa, (pageWidth - tituloClientesSemTaxaWidth) / 2, 16);
+
+        // Informações da seção
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Total de clientes sem taxa: ${clientesSemTaxaFiltrados.length}`, margin, 35);
+
+        yPos = 43;
+        const lineHeightClientes = 7;
+        const colWidthsClientes = [50, 40, 30, 20, 20, 30]; // Cliente, Produtos, Status, AMS, Vigência Inicial, Vigência Final
+
+        // Cabeçalho da tabela
+        doc.setFillColor(0, 102, 255);
+        doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeightClientes, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Cliente', margin + 2, yPos + 5);
+        doc.text('Produtos', margin + colWidthsClientes[0] + 2, yPos + 5);
+        doc.text('Status', margin + colWidthsClientes[0] + colWidthsClientes[1] + 2, yPos + 5);
+        doc.text('AMS', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + 2, yPos + 5);
+        doc.text('Vigência Inicial', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + 2, yPos + 5);
+        doc.text('Vigência Final', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + colWidthsClientes[4] + 2, yPos + 5);
+
+        yPos += lineHeightClientes;
+
+        // Dados dos clientes sem taxa
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        
+        clientesSemTaxaFiltrados.forEach((cliente, index) => {
+          if (yPos > pageHeight - 15) {
+            doc.addPage();
+            yPos = 15;
+          }
+
+          doc.setTextColor(0, 0, 0);
+          const bgColor = index % 2 === 0 ? [245, 245, 245] : [255, 255, 255];
+          doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+          doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeightClientes, 'F');
+
+          // Truncar nome do cliente se for muito longo
+          const nomeCliente = cliente.nome_abreviado.length > 25 
+            ? cliente.nome_abreviado.substring(0, 22) + '...' 
+            : cliente.nome_abreviado;
+          
+          doc.text(nomeCliente, margin + 2, yPos + 4.5);
+          // ✅ CORREÇÃO: Extrair o nome do produto do objeto
+          const produtosTexto = Array.isArray(cliente.produtos) 
+            ? cliente.produtos.map((p: any) => p.produto || p).join(', ')
+            : '-';
+          doc.text(produtosTexto, margin + colWidthsClientes[0] + 2, yPos + 4.5);
+          
+          // Status com cor
+          const statusTexto = cliente.status === 'ativo' ? 'Ativo' : cliente.status === 'inativo' ? 'Inativo' : 'Suspenso';
+          if (cliente.status === 'ativo') {
+            doc.setTextColor(0, 128, 0); // Verde
+          } else if (cliente.status === 'inativo') {
+            doc.setTextColor(255, 0, 0); // Vermelho
+          } else {
+            doc.setTextColor(255, 165, 0); // Laranja
+          }
+          doc.text(statusTexto, margin + colWidthsClientes[0] + colWidthsClientes[1] + 2, yPos + 4.5);
+          doc.setTextColor(0, 0, 0); // Voltar para preto
+          
+          doc.text(cliente.tem_ams ? 'Sim' : 'Não', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + 2, yPos + 4.5);
+          doc.text(
+            cliente.vigencia_inicial ? format(new Date(cliente.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+            margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + 2,
+            yPos + 4.5
+          );
+          doc.text(
+            cliente.vigencia_final ? format(new Date(cliente.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+            margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + colWidthsClientes[4] + 2,
+            yPos + 4.5
+          );
+
+          yPos += lineHeightClientes;
+        });
+      }
+
       const dataArquivo = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       doc.save(`taxas-clientes-${dataArquivo}.pdf`);
 
-      toast.success(`Relatório PDF gerado com ${taxasOrdenadas.length} taxas!`);
+      toast.success(`Relatório PDF gerado com ${taxasOrdenadas.length} taxas e ${clientesSemTaxaFiltrados.length} clientes sem taxa!`);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       toast.error('Erro ao gerar relatório PDF');
