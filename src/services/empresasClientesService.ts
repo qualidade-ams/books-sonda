@@ -71,7 +71,17 @@ export class EmpresasClientesService {
       anexo: data.anexo || false,
       vigencia_inicial: data.vigenciaInicial || null,
       vigencia_final: data.vigenciaFinal || null,
-      observacao: data.observacao || null
+      observacao: data.observacao || null,
+      // NOVO: Campos de Banco de Horas
+      tipo_contrato: data.tipo_contrato || null,
+      periodo_apuracao: data.periodo_apuracao || null,
+      inicio_vigencia: data.inicio_vigencia_banco_horas ? this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas) : null,
+      baseline_horas_mensal: data.baseline_horas_mensal || null,
+      baseline_tickets_mensal: data.baseline_tickets_mensal || null,
+      possui_repasse_especial: data.possui_repasse_especial || false,
+      ciclos_para_zerar: data.ciclos_para_zerar || null,
+      percentual_repasse_mensal: data.percentual_repasse_mensal || null,
+      percentual_repasse_especial: data.percentual_repasse_especial || null
     };
 
     // Inserir empresa
@@ -388,6 +398,17 @@ export class EmpresasClientesService {
       // Incluir campo de observação
       if (data.observacao !== undefined) updateData.observacao = data.observacao || null;
 
+      // NOVO: Incluir campos de Banco de Horas
+      if (data.tipo_contrato !== undefined) updateData.tipo_contrato = data.tipo_contrato || null;
+      if (data.periodo_apuracao !== undefined) updateData.periodo_apuracao = data.periodo_apuracao || null;
+      if (data.inicio_vigencia_banco_horas !== undefined) updateData.inicio_vigencia = data.inicio_vigencia_banco_horas ? this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas) : null;
+      if (data.baseline_horas_mensal !== undefined) updateData.baseline_horas_mensal = data.baseline_horas_mensal || null;
+      if (data.baseline_tickets_mensal !== undefined) updateData.baseline_tickets_mensal = data.baseline_tickets_mensal || null;
+      if (data.possui_repasse_especial !== undefined) updateData.possui_repasse_especial = data.possui_repasse_especial;
+      if (data.ciclos_para_zerar !== undefined) updateData.ciclos_para_zerar = data.ciclos_para_zerar || null;
+      if (data.percentual_repasse_mensal !== undefined) updateData.percentual_repasse_mensal = data.percentual_repasse_mensal || null;
+      if (data.percentual_repasse_especial !== undefined) updateData.percentual_repasse_especial = data.percentual_repasse_especial || null;
+
       // Se status mudou, atualizar data e descrição
       if (data.status) {
         updateData.status = data.status;
@@ -691,6 +712,16 @@ export class EmpresasClientesService {
     if (grupoIds.length > 0) {
       await this.associarGrupos(empresaId, grupoIds);
     }
+  }
+
+  /**
+   * Converter formato MM/YYYY para DATE (primeiro dia do mês)
+   * @param mesAno String no formato MM/YYYY (ex: "01/2024")
+   * @returns String no formato YYYY-MM-DD (ex: "2024-01-01")
+   */
+  private converterMesAnoParaDate(mesAno: string): string {
+    const [mes, ano] = mesAno.split('/');
+    return `${ano}-${mes.padStart(2, '0')}-01`;
   }
 }
 

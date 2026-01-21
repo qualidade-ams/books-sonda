@@ -82,6 +82,17 @@ export interface EmpresaFormData {
   bookPersonalizado?: boolean;
   anexo?: boolean;
   observacao?: string;
+  
+  // NOVO: Parâmetros de Banco de Horas
+  tipo_contrato?: 'horas' | 'tickets' | 'ambos';
+  periodo_apuracao?: number;
+  inicio_vigencia_banco_horas?: string;
+  baseline_horas_mensal?: string;
+  baseline_tickets_mensal?: number;
+  possui_repasse_especial?: boolean;
+  ciclos_para_zerar?: number;
+  percentual_repasse_mensal?: number;
+  percentual_repasse_especial?: number;
 }
 
 export interface ClienteFormData {

@@ -4,6 +4,9 @@ export * from './database';
 export * from './api';
 export * from './constants';
 
+// Export banco de horas types
+export * from './bancoHoras';
+
 // Re-export commonly used types for convenience
 export type {
   PermissionLevel,
@@ -44,3 +47,17 @@ export type {
   PermissionCheckRequest,
   PermissionCheckResponse
 } from './api';
+
+export type {
+  ParametrosContrato,
+  Alocacao,
+  BancoHorasCalculo,
+  BancoHorasCalculoSegmentado,
+  BancoHorasReajuste,
+  BancoHorasVersao,
+  BancoHorasAuditLog,
+  DiferencasVersao,
+  ValidacaoDadosIntegrados,
+  ResultadoExcedente,
+  DescricaoFaturamento
+} from './bancoHoras';

@@ -231,6 +231,65 @@ export function somarHoras(horas1: string, horas2: string): string {
 }
 
 /**
+ * Subtrai duas strings de horas no formato HH:MM ou números
+ * @param horas1 - Primeira string de horas (minuendo)
+ * @param horas2 - Segunda string de horas (subtraendo)
+ * @returns String no formato HH:MM com o resultado (pode ser negativo)
+ */
+export function subtrairHoras(horas1: string, horas2: string): string {
+  try {
+    // Validar entradas
+    if (!horas1 || horas1 === 'null' || horas1 === 'undefined' || horas1 === 'NaN') {
+      console.warn('Horas1 inválida na subtração:', horas1);
+      horas1 = '0';
+    }
+    
+    if (!horas2 || horas2 === 'null' || horas2 === 'undefined' || horas2 === 'NaN') {
+      console.warn('Horas2 inválida na subtração:', horas2);
+      horas2 = '0';
+    }
+    
+    const minutos1 = converterHorasParaMinutos(horas1);
+    const minutos2 = converterHorasParaMinutos(horas2);
+    
+    // Verificar se as conversões resultaram em números válidos
+    if (isNaN(minutos1) || isNaN(minutos2)) {
+      console.warn('Conversão para minutos resultou em NaN:', { horas1, horas2, minutos1, minutos2 });
+      return '0:00';
+    }
+    
+    const totalMinutos = minutos1 - minutos2;
+    
+    // Verificar se o total é válido
+    if (isNaN(totalMinutos)) {
+      console.warn('Total de minutos é NaN:', { minutos1, minutos2, totalMinutos });
+      return '0:00';
+    }
+    
+    // Permitir valores negativos
+    if (totalMinutos < 0) {
+      const minutosPositivos = Math.abs(totalMinutos);
+      const horas = Math.floor(minutosPositivos / 60);
+      const minutos = minutosPositivos % 60;
+      return `-${horas}:${minutos.toString().padStart(2, '0')}`;
+    }
+    
+    const resultado = converterMinutosParaHoras(totalMinutos);
+    
+    // Verificar se o resultado é válido
+    if (!resultado || resultado.includes('NaN')) {
+      console.warn('Resultado da conversão é inválido:', resultado);
+      return '0:00';
+    }
+    
+    return resultado;
+  } catch (error) {
+    console.error('Erro na função subtrairHoras:', error, { horas1, horas2 });
+    return '0:00';
+  }
+}
+
+/**
  * Formata horas para exibição amigável
  * @param horasString - String de horas
  * @param formato - Formato de saída ('HHMM' | 'decimal' | 'completo')

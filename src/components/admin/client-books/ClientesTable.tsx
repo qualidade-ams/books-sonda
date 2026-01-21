@@ -30,7 +30,8 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import type { 
@@ -47,6 +48,7 @@ interface ClientesTableProps {
   loading: boolean;
   filtros: ClienteFiltros;
   onFiltrosChange: (filtros: ClienteFiltros) => void;
+  onView?: (cliente: ClienteCompleto) => void;
   onEdit: (cliente: ClienteCompleto) => void;
   onDelete: (cliente: ClienteCompleto) => void;
   showEmpresaColumn?: boolean; // Para quando não estiver filtrado por empresa específica
@@ -60,6 +62,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   loading,
   filtros,
   onFiltrosChange,
+  onView,
   onEdit,
   onDelete,
   paginationControls,
@@ -331,6 +334,19 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
 
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {onView && (
+                        <ProtectedAction screenKey="clientes" requiredLevel="view">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onView(cliente)}
+                            className='h-8 w-8 p-0'
+                            title="Visualizar cliente"
+                          >
+                            <Eye className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        </ProtectedAction>
+                      )}
                       <ProtectedAction screenKey="clientes" requiredLevel="edit">
                         <Button
                           size="sm"

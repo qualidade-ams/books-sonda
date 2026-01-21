@@ -60,6 +60,7 @@ const EmpresasClientes = () => {
   // Estados para modais
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -187,6 +188,11 @@ const EmpresasClientes = () => {
     setShowCreateModal(false);
   };
 
+  const handleView = (empresa: EmpresaClienteCompleta) => {
+    setSelectedEmpresa(empresa);
+    setShowViewModal(true);
+  };
+
   const handleEdit = (empresa: EmpresaClienteCompleta) => {
     setSelectedEmpresa(empresa);
     setShowEditModal(true);
@@ -213,6 +219,30 @@ const EmpresasClientes = () => {
 
   // Preparar dados iniciais para edição
   const getInitialDataForEdit = (empresa: EmpresaClienteCompleta): Partial<EmpresaFormData> => {
+    // Converter inicio_vigencia (DATE) para formato MM/YYYY
+    let inicioVigenciaFormatado = '';
+    if (empresa.inicio_vigencia) {
+      const data = new Date(empresa.inicio_vigencia);
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const ano = data.getFullYear();
+      inicioVigenciaFormatado = `${mes}/${ano}`;
+    }
+
+    // Converter baseline_horas_mensal de HH:MM:SS para HH:MM
+    let baselineHorasFormatado = '';
+    if (empresa.baseline_horas_mensal) {
+      const horasStr = empresa.baseline_horas_mensal.toString();
+      // Se está no formato HH:MM:SS (ex: "60:00:00"), converter para HH:MM
+      if (horasStr.includes(':')) {
+        const partes = horasStr.split(':');
+        if (partes.length >= 2) {
+          baselineHorasFormatado = `${partes[0]}:${partes[1]}`;
+        }
+      } else {
+        baselineHorasFormatado = horasStr;
+      }
+    }
+
     return {
       id: empresa.id, // IMPORTANTE: Incluir o ID da empresa
       nomeCompleto: empresa.nome_completo,
@@ -233,6 +263,16 @@ const EmpresasClientes = () => {
       bookPersonalizado: empresa.book_personalizado || false,
       anexo: empresa.anexo || false,
       observacao: empresa.observacao || '',
+      // NOVO: Parâmetros de Banco de Horas
+      tipo_contrato: empresa.tipo_contrato as any || undefined,
+      periodo_apuracao: empresa.periodo_apuracao || undefined,
+      inicio_vigencia_banco_horas: inicioVigenciaFormatado,
+      baseline_horas_mensal: baselineHorasFormatado || '00:00',
+      baseline_tickets_mensal: empresa.baseline_tickets_mensal || undefined,
+      possui_repasse_especial: empresa.possui_repasse_especial || false,
+      ciclos_para_zerar: empresa.ciclos_para_zerar || undefined,
+      percentual_repasse_mensal: empresa.percentual_repasse_mensal || 0,
+      percentual_repasse_especial: empresa.percentual_repasse_especial || 0,
     };
   };
 
@@ -464,6 +504,7 @@ const EmpresasClientes = () => {
             <EmpresasTable
               empresas={paginatedData.items}
               loading={isLoading}
+              onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -544,6 +585,29 @@ const EmpresasClientes = () => {
               onCancel={() => setShowCreateModal(false)}
               isLoading={isCreating}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Visualização */}
+        <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-sonda-blue">Visualizar Empresa</DialogTitle>
+              <p className="text-sm text-gray-500">Informações detalhadas da empresa</p>
+            </DialogHeader>
+            {selectedEmpresa && (
+              <EmpresaForm
+                mode="view"
+                initialData={getInitialDataForEdit(selectedEmpresa)}
+                grupos={grupos}
+                onSubmit={async () => {}} // Não faz nada no modo view
+                onCancel={() => {
+                  setShowViewModal(false);
+                  setSelectedEmpresa(null);
+                }}
+                isLoading={false}
+              />
+            )}
           </DialogContent>
         </Dialog>
 
