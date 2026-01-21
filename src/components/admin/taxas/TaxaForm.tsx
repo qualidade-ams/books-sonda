@@ -34,7 +34,8 @@ interface TaxaFormProps {
 }
 
 export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps) {
-  const { empresas } = useEmpresas();
+  // ✅ CORREÇÃO: Filtrar apenas empresas com status ativo
+  const { empresas } = useEmpresas({ status: ['ativo'] });
   const [tipoProdutoSelecionado, setTipoProdutoSelecionado] = useState<TipoProduto | ''>(taxa?.tipo_produto || '');
   const [tipoCalculoAdicional, setTipoCalculoAdicional] = useState<'normal' | 'media'>(taxa?.tipo_calculo_adicional || 'media');
   const [produtosCliente, setProdutosCliente] = useState<string[]>([]);
