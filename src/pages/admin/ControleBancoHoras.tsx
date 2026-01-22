@@ -19,7 +19,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, 
-  Download, 
   ChevronLeft, 
   ChevronRight, 
   RefreshCw,
@@ -40,13 +39,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { VisaoConsolidada } from '@/components/admin/banco-horas/VisaoConsolidada';
 import { VisaoSegmentada } from '@/components/admin/banco-horas/VisaoSegmentada';
-import { ModalReajuste } from '@/components/admin/banco-horas/ModalReajuste';
 import { ModalHistorico } from '@/components/admin/banco-horas/ModalHistorico';
 
 import { 
@@ -57,6 +54,7 @@ import {
 } from '@/hooks/useBancoHoras';
 import { useHistoricoVersoes } from '@/hooks/useBancoHorasVersoes';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useToast } from '@/hooks/use-toast';
 import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
@@ -91,7 +89,6 @@ export default function ControleBancoHoras() {
   const [activeTab, setActiveTab] = useState<'consolidada' | 'segmentada'>('consolidada');
   
   // Estado de modais
-  const [modalReajusteAberto, setModalReajusteAberto] = useState(false);
   const [modalHistoricoAberto, setModalHistoricoAberto] = useState(false);
   
   // Buscar empresas
@@ -102,46 +99,88 @@ export default function ControleBancoHoras() {
     return empresas?.find(e => e.id === empresaSelecionada);
   }, [empresas, empresaSelecionada]);
   
+  // Calcular os meses do período baseado na vigência
+  const mesesDoPeriodo = useMemo(() => {
+    if (!empresaAtual?.inicio_vigencia || !empresaAtual?.periodo_apuracao) {
+      // Fallback: usar meses sequenciais
+      return [
+        { mes: mesAno.mes, ano: mesAno.ano },
+        { mes: mesAno.mes + 1 > 12 ? mesAno.mes + 1 - 12 : mesAno.mes + 1, ano: mesAno.mes + 1 > 12 ? mesAno.ano + 1 : mesAno.ano },
+        { mes: mesAno.mes + 2 > 12 ? mesAno.mes + 2 - 12 : mesAno.mes + 2, ano: mesAno.mes + 2 > 12 ? mesAno.ano + 1 : mesAno.ano }
+      ];
+    }
+
+    const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
+    const mesInicio = inicioVigencia.getUTCMonth() + 1;
+    const anoInicio = inicioVigencia.getUTCFullYear();
+    const periodoApuracao = empresaAtual.periodo_apuracao;
+
+    // Calcular quantos meses se passaram desde o início da vigência até o mês atual
+    const mesesPassados = ((mesAno.ano - anoInicio) * 12) + (mesAno.mes - mesInicio);
+    
+    // Calcular o início do período atual (múltiplo do período de apuração)
+    const periodosCompletos = Math.floor(mesesPassados / periodoApuracao);
+    const mesesAteInicioPeriodo = periodosCompletos * periodoApuracao;
+    
+    // Calcular o primeiro mês do período atual
+    let mesInicioPeriodo = mesInicio + mesesAteInicioPeriodo;
+    let anoInicioPeriodo = anoInicio;
+    
+    while (mesInicioPeriodo > 12) {
+      mesInicioPeriodo -= 12;
+      anoInicioPeriodo += 1;
+    }
+    
+    // Gerar array com todos os meses do período
+    const meses = [];
+    for (let i = 0; i < periodoApuracao; i++) {
+      let mes = mesInicioPeriodo + i;
+      let ano = anoInicioPeriodo;
+      
+      while (mes > 12) {
+        mes -= 12;
+        ano += 1;
+      }
+      
+      meses.push({ mes, ano });
+    }
+    
+    return meses;
+  }, [mesAno, empresaAtual]);
+
   // Buscar cálculo do primeiro mês (sempre necessário)
   const {
     calculo: calculo1,
     isLoading: isLoading1,
     isFetching: isFetching1,
     recalcular: recalcular1,
-    isRecalculating: isRecalculating1,
-    refetch: refetch1
-  } = useBancoHorasCalculos(empresaSelecionada, mesAno.mes, mesAno.ano);
+    isRecalculating: isRecalculating1
+  } = useBancoHorasCalculos(empresaSelecionada, mesesDoPeriodo[0].mes, mesesDoPeriodo[0].ano);
   
   // Buscar cálculo do segundo mês (condicional ao período)
-  const mes2 = mesAno.mes + 1 > 12 ? mesAno.mes + 1 - 12 : mesAno.mes + 1;
-  const ano2 = mesAno.mes + 1 > 12 ? mesAno.ano + 1 : mesAno.ano;
   const {
     calculo: calculo2,
     isLoading: isLoading2,
     isFetching: isFetching2,
     recalcular: recalcular2,
-    isRecalculating: isRecalculating2,
-    refetch: refetch2
+    isRecalculating: isRecalculating2
   } = useBancoHorasCalculos(
     empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 2 ? empresaSelecionada : undefined,
-    mes2,
-    ano2
+    mesesDoPeriodo[1]?.mes,
+    mesesDoPeriodo[1]?.ano
   );
   
   // Buscar cálculo do terceiro mês (condicional ao período)
-  const mes3 = mesAno.mes + 2 > 12 ? mesAno.mes + 2 - 12 : mesAno.mes + 2;
-  const ano3 = mesAno.mes + 2 > 12 ? mesAno.ano + 1 : mesAno.ano;
   const {
     calculo: calculo3,
     isLoading: isLoading3,
     isFetching: isFetching3,
     recalcular: recalcular3,
-    isRecalculating: isRecalculating3,
-    refetch: refetch3
+    isRecalculating: isRecalculating3
   } = useBancoHorasCalculos(
     empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 3 ? empresaSelecionada : undefined,
-    mes3,
-    ano3
+    mesesDoPeriodo[2]?.mes,
+    mesesDoPeriodo[2]?.ano
   );
   
   // Montar array de cálculos baseado no período
@@ -178,6 +217,27 @@ export default function ControleBancoHoras() {
     isLoading: isLoadingVersoes
   } = useVersoes(empresaSelecionada, mesAno.mes, mesAno.ano);
   
+  // Buscar requerimentos do período
+  const { data: requerimentosTodos, isLoading: isLoadingRequerimentos } = useRequerimentos(
+    empresaSelecionada ? {
+      cliente_id: empresaSelecionada,
+      tipo_cobranca: 'Banco de Horas'
+    } : undefined
+  );
+  
+  // Filtrar requerimentos do período atual
+  const requerimentosPeriodo = useMemo(() => {
+    if (!requerimentosTodos || !mesesDoPeriodo) return [];
+    
+    const mesesPeriodoStr = mesesDoPeriodo.map(m => 
+      `${String(m.mes).padStart(2, '0')}/${m.ano}`
+    );
+    
+    return requerimentosTodos.filter(req => 
+      req.mes_cobranca && mesesPeriodoStr.includes(req.mes_cobranca)
+    );
+  }, [requerimentosTodos, mesesDoPeriodo]);
+  
   // Hook de histórico com função de comparação
   const { compararVersoes } = useHistoricoVersoes(
     empresaSelecionada || '',
@@ -193,14 +253,55 @@ export default function ControleBancoHoras() {
     }
   }, [empresas, empresaSelecionada]);
   
-  // Verificar se há excedentes
-  const temExcedentes = useMemo(() => {
-    if (!calculos[0] || !calculos[0].excedentes_horas) return false;
-    const minutos = converterHorasParaMinutos(calculos[0].excedentes_horas);
-    return minutos > 0;
-  }, [calculos]);
+  // Calcular trimestre sequencialmente quando empresa muda
+  useEffect(() => {
+    if (!empresaSelecionada || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return;
+    
+    const calcularTrimestreSequencial = async () => {
+      try {
+        console.log('🔄 Calculando trimestre sequencialmente...');
+        
+        // Calcular cada mês em sequência (não em paralelo!)
+        for (let i = 0; i < mesesDoPeriodo.length; i++) {
+          const { mes, ano } = mesesDoPeriodo[i];
+          console.log(`📅 Calculando mês ${mes}/${ano}...`);
+          
+          // Forçar recálculo para garantir que o repasse do mês anterior seja buscado
+          if (i === 0) {
+            await recalcular1();
+          } else if (i === 1) {
+            await recalcular2();
+          } else if (i === 2) {
+            await recalcular3();
+          }
+          
+          // Aguardar um pouco para garantir que o banco salvou
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        console.log('✅ Trimestre calculado com sucesso!');
+        
+        // Exibir toast apenas uma vez no final
+        toast({
+          title: 'Cálculo concluído',
+          description: `${mesesDoPeriodo.length} mês(es) calculado(s) com sucesso`,
+        });
+      } catch (error) {
+        console.error('❌ Erro ao calcular trimestre:', error);
+        toast({
+          title: 'Erro ao calcular',
+          description: error instanceof Error ? error.message : 'Erro desconhecido',
+          variant: 'destructive',
+        });
+      }
+    };
+    
+    // Executar apenas uma vez quando a empresa muda
+    calcularTrimestreSequencial();
+  }, [empresaSelecionada]); // Apenas quando empresa muda
   
-  // Navegação temporal
+  // Verificar se há alocações
+  const temAlocacoes = alocacoes && alocacoes.length > 0;
   const handleMesAnterior = () => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
     
@@ -225,26 +326,30 @@ export default function ControleBancoHoras() {
     });
   };
   
-  // Formatar período (mês ou trimestre)
+  // Formatar período baseado nos meses reais do período
   const formatarPeriodo = useMemo(() => {
-    const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-    
-    if (periodoApuracao === 1) {
-      // Mensal
-      return `${MESES[mesAno.mes - 1]} ${mesAno.ano}`;
-    } else if (periodoApuracao === 3) {
-      // Trimestral
-      const trimestre = Math.ceil(mesAno.mes / 3);
-      const mesInicio = (trimestre - 1) * 3 + 1;
-      const mesFim = trimestre * 3;
-      return `${MESES[mesInicio - 1]} - ${MESES[mesFim - 1]} ${mesAno.ano}`;
+    if (mesesDoPeriodo.length === 1) {
+      // Mensal - ano abreviado (ex: Novembro/25)
+      const anoAbreviado = String(mesesDoPeriodo[0].ano).slice(-2);
+      return `${MESES[mesesDoPeriodo[0].mes - 1]}/${anoAbreviado}`;
     } else {
-      // Outros períodos (semestral, anual, etc.)
-      const mesInicio = Math.floor((mesAno.mes - 1) / periodoApuracao) * periodoApuracao + 1;
-      const mesFim = mesInicio + periodoApuracao - 1;
-      return `${MESES[mesInicio - 1]} - ${MESES[Math.min(mesFim, 12) - 1]} ${mesAno.ano}`;
+      // Múltiplos meses - mostrar intervalo
+      const primeiro = mesesDoPeriodo[0];
+      const ultimo = mesesDoPeriodo[mesesDoPeriodo.length - 1];
+      
+      // Anos abreviados (ex: 2025 -> 25)
+      const anoAbreviadoPrimeiro = String(primeiro.ano).slice(-2);
+      const anoAbreviadoUltimo = String(ultimo.ano).slice(-2);
+      
+      if (primeiro.ano === ultimo.ano) {
+        // Mesmo ano (ex: Novembro - Dezembro/25)
+        return `${MESES[primeiro.mes - 1]} - ${MESES[ultimo.mes - 1]}/${anoAbreviadoPrimeiro}`;
+      } else {
+        // Anos diferentes (ex: Novembro/25 - Janeiro/26)
+        return `${MESES[primeiro.mes - 1]}/${anoAbreviadoPrimeiro} - ${MESES[ultimo.mes - 1]}/${anoAbreviadoUltimo}`;
+      }
     }
-  }, [mesAno, empresaAtual]);
+  }, [mesesDoPeriodo]);
   
   // Handler de recálculo
   const handleRecalcular = async () => {
@@ -287,65 +392,85 @@ export default function ControleBancoHoras() {
     setModalHistoricoAberto(true);
   };
   
-  // Handler de sucesso do reajuste
-  const handleReajusteSucesso = () => {
-    const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
-    
-    // Refetch baseado no período
-    refetch1();
-    if (periodoApuracao >= 2) refetch2();
-    if (periodoApuracao >= 3) refetch3();
-  };
-  
   // Calcular estatísticas
   const estatisticas = useMemo(() => {
     if (!calculos[0]) {
       return {
         baseline: '00:00',
-        saldo: '00:00',
-        repasse: '00:00',
+        saldoMesVigente: '00:00',
+        requerimentosTrimestre: '00:00',
         excedentes: 'R$ 0,00'
       };
     }
     
+    // Saldo do mês vigente (último mês do período)
+    const mesVigente = calculos[calculos.length - 1];
+    
+    // Totalizar requerimentos do trimestre
+    let totalRequerimentosMinutos = 0;
+    calculos.forEach(calculo => {
+      if (calculo.requerimentos_horas) {
+        totalRequerimentosMinutos += converterHorasParaMinutos(calculo.requerimentos_horas);
+      }
+    });
+    
+    const requerimentosHoras = Math.floor(totalRequerimentosMinutos / 60);
+    const requerimentosMinutos = totalRequerimentosMinutos % 60;
+    const requerimentosFormatado = `${String(requerimentosHoras).padStart(2, '0')}:${String(requerimentosMinutos).padStart(2, '0')}`;
+    
+    // Calcular valor total dos excedentes (último mês do período)
+    const valorExcedentes = mesVigente.valor_a_faturar 
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
+      : 'R$ 0,00';
+    
     return {
       baseline: calculos[0].baseline_horas || '00:00',
-      saldo: calculos[0].saldo_horas || '00:00',
-      repasse: calculos[0].repasse_horas || '00:00',
-      excedentes: calculos[0].valor_a_faturar 
-        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculos[0].valor_a_faturar)
-        : 'R$ 0,00'
+      saldoMesVigente: mesVigente.saldo_horas || '00:00',
+      requerimentosTrimestre: requerimentosFormatado,
+      excedentes: valorExcedentes
     };
   }, [calculos]);
   
-  // Determinar cor do saldo
+  // Determinar cor do saldo do mês vigente
   const saldoColor = useMemo(() => {
-    if (!calculos[0] || !calculos[0].saldo_horas) return 'text-gray-900';
-    const minutos = converterHorasParaMinutos(calculos[0].saldo_horas);
+    if (calculos.length === 0) return 'text-gray-900';
+    const mesVigente = calculos[calculos.length - 1];
+    if (!mesVigente || !mesVigente.saldo_horas) return 'text-gray-900';
+    const minutos = converterHorasParaMinutos(mesVigente.saldo_horas);
     if (minutos > 0) return 'text-green-600';
     if (minutos < 0) return 'text-red-600';
     return 'text-gray-900';
   }, [calculos]);
   
-  // Verificar se há alocações
-  const temAlocacoes = alocacoes && alocacoes.length > 0;
-  
   // Loading state
-  const isLoading = isLoadingEmpresas || isLoadingCalculos || isLoadingAlocacoes;
+  const isLoading = isLoadingEmpresas || isLoadingCalculos || isLoadingAlocacoes || isLoadingRequerimentos;
   
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
         <div className="px-6 py-6 space-y-8">
           {/* Cabeçalho */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Controle de Banco de Horas
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Gerencie o banco de horas por contratos de empresas clientes
-              </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                  Controle de Banco de Horas
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                  Gerencie o banco de horas por contratos de empresas clientes
+                </p>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRecalcular}
+                disabled={!empresaSelecionada || isRecalculatingAny || isLoading}
+                className="flex items-center gap-2 w-full sm:w-auto"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRecalculatingAny ? 'animate-spin' : ''}`} />
+                <span className="text-sm">{isRecalculatingAny ? 'Recalculando...' : 'Recalcular'}</span>
+              </Button>
             </div>
           </div>
 
@@ -386,13 +511,13 @@ export default function ControleBancoHoras() {
                   <CardTitle className={`text-xs lg:text-sm font-medium ${saldoColor}`}>
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4" />
-                      Saldo
+                      Saldo Mês Vigente
                     </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className={`text-xl lg:text-2xl font-bold ${saldoColor}`}>
-                    {estatisticas.saldo}
+                    {estatisticas.saldoMesVigente}
                   </div>
                 </CardContent>
               </Card>
@@ -401,14 +526,14 @@ export default function ControleBancoHoras() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs lg:text-sm font-medium text-sonda-blue">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Repasse
+                      <FileText className="h-4 w-4" />
+                      Requerimentos Trimestre
                     </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl lg:text-2xl font-bold text-sonda-blue">
-                    {estatisticas.repasse}
+                    {estatisticas.requerimentosTrimestre}
                   </div>
                 </CardContent>
               </Card>
@@ -417,7 +542,7 @@ export default function ControleBancoHoras() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
+                      <AlertCircle className="h-4 w-4" />
                       Excedentes
                     </div>
                   </CardTitle>
@@ -431,75 +556,37 @@ export default function ControleBancoHoras() {
             </div>
           ) : null}
 
-          {/* Seletor de Empresa */}
+          {/* Navegação Temporal */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Empresa / Cliente
-                </label>
-                <Select
-                  value={empresaSelecionada}
-                  onValueChange={setEmpresaSelecionada}
-                  disabled={isLoadingEmpresas}
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMesAnterior}
+                  disabled={isLoading}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
                 >
-                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                    <SelectValue placeholder="Selecione uma empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {empresas?.map((empresa) => (
-                      <SelectItem key={empresa.id} value={empresa.id}>
-                        {empresa.nome_abreviado || empresa.nome_completo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Navegação Temporal - SEPARADA */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Período
-                </label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleMesAnterior}
-                    disabled={isLoading}
-                    className="h-10 w-10 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <div className="flex-1 text-center">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatarPeriodo}
-                    </div>
-                    {temExcedentes && (
-                      <Badge className="bg-red-100 text-red-800 text-xs mt-1">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Excedentes
-                      </Badge>
-                    )}
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                
+                <div className="text-center flex-1">
+                  <div className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-white">
+                    {formatarPeriodo}
                   </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleProximoMes}
-                    disabled={isLoading}
-                    className="h-10 w-10 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleProximoMes}
+                  disabled={isLoading}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
+                >
+                  <span className="hidden sm:inline">Próximo</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -578,11 +665,43 @@ export default function ControleBancoHoras() {
                 </TabsTrigger>
               </TabsList>
 
+              {/* Seletor de Empresa - Movido para abaixo das tabs */}
+              <div className="mt-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Empresa / Cliente
+                      </label>
+                      <Select
+                        value={empresaSelecionada}
+                        onValueChange={setEmpresaSelecionada}
+                        disabled={isLoadingEmpresas}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Selecione uma empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empresas?.map((empresa) => (
+                            <SelectItem key={empresa.id} value={empresa.id}>
+                              {empresa.nome_abreviado || empresa.nome_completo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <TabsContent value="consolidada" className="mt-6">
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  onReajusteClick={() => setModalReajusteAberto(true)}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  mesesDoPeriodo={mesesDoPeriodo}
+                  requerimentos={requerimentosPeriodo || []}
                   onHistoricoClick={handleHistorico}
                   onExportClick={handleExportar}
                   disabled={isFetchingCalculos || isRecalculatingAny}
@@ -628,19 +747,6 @@ export default function ControleBancoHoras() {
           )}
         </div>
       </div>
-
-      {/* Modal de Reajuste */}
-      {empresaSelecionada && calculos[0] && (
-        <ModalReajuste
-          open={modalReajusteAberto}
-          onClose={() => setModalReajusteAberto(false)}
-          empresaId={empresaSelecionada}
-          mes={calculos[0].mes}
-          ano={calculos[0].ano}
-          calculoAtual={calculos[0]}
-          onSuccess={handleReajusteSucesso}
-        />
-      )}
 
       {/* Modal de Histórico */}
       {empresaSelecionada && calculos[0] && (

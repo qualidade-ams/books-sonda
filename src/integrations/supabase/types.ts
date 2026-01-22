@@ -482,66 +482,93 @@ export type Database = {
       empresas_clientes: {
         Row: {
           anexo: boolean | null
+          baseline_horas_mensal: string | null
+          baseline_tickets_mensal: number | null
           book_personalizado: boolean | null
+          ciclo_atual: number | null
+          ciclos_para_zerar: number | null
           created_at: string | null
           data_status: string | null
           descricao_status: string | null
           email_gestor: string | null
           em_projeto: boolean | null
           id: string
+          inicio_vigencia: string | null
           link_sharepoint: string | null
           nome_abreviado: string
           nome_completo: string
           observacao: string | null
+          percentual_repasse_mensal: number | null
+          periodo_apuracao: number | null
+          possui_repasse_especial: boolean | null
           status: string | null
           tem_ams: boolean | null
           template_padrao: string | null
           tipo_book: Database["public"]["Enums"]["tipo_book_enum"] | null
           tipo_cobranca: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
+          tipo_contrato: string | null
           updated_at: string | null
           vigencia_final: string | null
           vigencia_inicial: string | null
         }
         Insert: {
           anexo?: boolean | null
+          baseline_horas_mensal?: string | null
+          baseline_tickets_mensal?: number | null
           book_personalizado?: boolean | null
+          ciclo_atual?: number | null
+          ciclos_para_zerar?: number | null
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
           email_gestor?: string | null
           em_projeto?: boolean | null
           id?: string
+          inicio_vigencia?: string | null
           link_sharepoint?: string | null
           nome_abreviado: string
           nome_completo: string
           observacao?: string | null
+          percentual_repasse_mensal?: number | null
+          periodo_apuracao?: number | null
+          possui_repasse_especial?: boolean | null
           status?: string | null
           tem_ams?: boolean | null
           template_padrao?: string | null
           tipo_book?: Database["public"]["Enums"]["tipo_book_enum"] | null
           tipo_cobranca?: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
+          tipo_contrato?: string | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null
         }
         Update: {
           anexo?: boolean | null
+          baseline_horas_mensal?: string | null
+          baseline_tickets_mensal?: number | null
           book_personalizado?: boolean | null
+          ciclo_atual?: number | null
+          ciclos_para_zerar?: number | null
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
           email_gestor?: string | null
           em_projeto?: boolean | null
           id?: string
+          inicio_vigencia?: string | null
           link_sharepoint?: string | null
           nome_abreviado?: string
           nome_completo?: string
           observacao?: string | null
+          percentual_repasse_mensal?: number | null
+          periodo_apuracao?: number | null
+          possui_repasse_especial?: boolean | null
           status?: string | null
           tem_ams?: boolean | null
           template_padrao?: string | null
           tipo_book?: Database["public"]["Enums"]["tipo_book_enum"] | null
           tipo_cobranca?: Database["public"]["Enums"]["tipo_cobranca_enum"] | null
+          tipo_contrato?: string | null
           updated_at?: string | null
           vigencia_final?: string | null
           vigencia_inicial?: string | null

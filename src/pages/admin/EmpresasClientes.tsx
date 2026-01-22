@@ -220,11 +220,13 @@ const EmpresasClientes = () => {
   // Preparar dados iniciais para edição
   const getInitialDataForEdit = (empresa: EmpresaClienteCompleta): Partial<EmpresaFormData> => {
     // Converter inicio_vigencia (DATE) para formato MM/YYYY
+    // IMPORTANTE: Usar UTC para evitar problemas de timezone
     let inicioVigenciaFormatado = '';
     if (empresa.inicio_vigencia) {
       const data = new Date(empresa.inicio_vigencia);
-      const mes = String(data.getMonth() + 1).padStart(2, '0');
-      const ano = data.getFullYear();
+      // Usar getUTCMonth e getUTCFullYear para evitar conversão de timezone
+      const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+      const ano = data.getUTCFullYear();
       inicioVigenciaFormatado = `${mes}/${ano}`;
     }
 

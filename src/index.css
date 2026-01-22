@@ -236,3 +236,209 @@
   min-width: 1300px;
   width: auto;
 }
+
+
+/* ========================================
+   ESTILOS DE IMPRESSÃO
+   ======================================== */
+@media print {
+  /* Ocultar elementos desnecessários */
+  .print\\:hidden,
+  nav,
+  aside,
+  header,
+  footer,
+  button:not(.print\\:block),
+  .no-print {
+    display: none !important;
+  }
+
+  /* Configurações gerais de página */
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt;
+  }
+
+  /* Remover sombras e bordas desnecessárias */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Otimizar tabelas para impressão */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: avoid;
+    font-size: 9pt !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    padding: 6px 8px !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Cabeçalhos da tabela */
+  th {
+    background-color: #2563eb !important;
+    color: white !important;
+    font-weight: bold !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Linhas alternadas */
+  tbody tr:nth-child(even) {
+    background-color: #f9fafb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Linhas com fundo escuro */
+  tbody tr.bg-gray-700,
+  tbody tr.bg-gray-200 {
+    background-color: #e5e7eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Preservar cores importantes */
+  .text-green-600,
+  .text-green-700 {
+    color: #16a34a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .text-red-600,
+  .text-red-700 {
+    color: #dc2626 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .text-blue-600,
+  .text-sonda-blue {
+    color: #2563eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .text-orange-600 {
+    color: #ea580c !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cards e containers */
+  .card,
+  [class*="Card"] {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Títulos */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    color: black !important;
+  }
+
+  /* Adicionar cabeçalho de impressão */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2563eb;
+  }
+
+  .print-header h1 {
+    font-size: 18pt;
+    margin: 0;
+    color: #2563eb !important;
+  }
+
+  .print-header p {
+    font-size: 10pt;
+    margin: 5px 0 0 0;
+    color: #666 !important;
+  }
+
+  /* Remover scroll e overflow */
+  * {
+    overflow: visible !important;
+  }
+
+  /* Ajustar largura da tabela */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  /* Inputs (para o campo de reajuste) */
+  input {
+    border: 1px solid #ddd !important;
+    background: white !important;
+  }
+
+  /* Garantir que cores de fundo sejam impressas */
+  .bg-sonda-blue,
+  .bg-blue-600 {
+    background-color: #2563eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bg-gray-700 {
+    background-color: #374151 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bg-gray-200 {
+    background-color: #e5e7eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bg-gray-50 {
+    background-color: #f9fafb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Texto branco em fundos escuros */
+  .text-white {
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Rodapé de impressão */
+  .print-footer {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8pt;
+    color: #666;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+  }
+}

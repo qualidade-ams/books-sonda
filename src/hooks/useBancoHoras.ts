@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { bancoHorasService } from '@/services/bancoHorasService';
-import { bancoHorasReajustesService } from '@/services/bancoHorasReajustesService';
+import { reajustesService } from '@/services/bancoHorasReajustesService';
 import { bancoHorasVersionamentoService } from '@/services/bancoHorasVersionamentoService';
 import { alocacoesService } from '@/services/bancoHorasAlocacoesService';
 import type {
@@ -94,7 +94,7 @@ export const useBancoHorasCalculos = (
         queryKey: ['banco-horas-versoes', empresaId, mes, ano]
       });
 
-      toast.success('Cálculo recalculado com sucesso!');
+      // NÃO exibir toast aqui - será exibido apenas no final do recálculo completo
     },
     onError: (error: any) => {
       console.error('Erro ao recalcular:', error);
@@ -224,8 +224,8 @@ export const useCalculosSegmentados = (
   });
 
   return {
-    // Dados
-    calculosSegmentados: calculosSegmentados || [],
+    // Dados - garantir que sempre seja um array
+    calculosSegmentados: (calculosSegmentados || []) as Omit<BancoHorasCalculoSegmentado, 'created_at'>[],
 
     // Estados
     isLoading,
@@ -268,7 +268,7 @@ export const useReajustes = (
       if (!empresaId) {
         throw new Error('ID da empresa é obrigatório');
       }
-      return await bancoHorasReajustesService.listarReajustes(empresaId, mes, ano);
+      return await reajustesService.listarReajustes(empresaId, mes, ano);
     },
     enabled: !!empresaId,
     staleTime: 1 * 60 * 1000, // 1 minuto
@@ -373,7 +373,7 @@ export const useReajuste = (reajusteId: string | undefined) => {
       if (!reajusteId) {
         throw new Error('ID do reajuste é obrigatório');
       }
-      return await bancoHorasReajustesService.buscarReajuste(reajusteId);
+      return await reajustesService.buscarReajuste(reajusteId);
     },
     enabled: !!reajusteId,
     staleTime: 5 * 60 * 1000, // 5 minutos
@@ -476,7 +476,7 @@ export const useCriarReajuste = () => {
 
   const mutation = useMutation({
     mutationFn: async (input: CriarReajusteInput) => {
-      return await bancoHorasReajustesService.criarReajuste(input);
+      return await reajustesService.criarReajuste(input);
     },
     onMutate: async (input) => {
       // Optimistic update: adicionar reajuste temporário à lista

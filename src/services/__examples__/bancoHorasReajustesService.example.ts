@@ -7,7 +7,7 @@
  * @module examples/bancoHorasReajustesService
  */
 
-import { bancoHorasReajustesService } from '../bancoHorasReajustesService';
+import { reajustesService } from '../bancoHorasReajustesService';
 
 /**
  * Exemplo 1: Criar e aplicar reajuste positivo de horas

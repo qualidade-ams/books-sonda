@@ -49,9 +49,9 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
             Visualizar Requerimento
-            <Badge variant="secondary" className="ml-2">Somente Leitura</Badge>
+            <Badge variant="secondary" className="ml-2 text-xs">Somente Leitura</Badge>
           </DialogTitle>
         </DialogHeader>
 
@@ -59,7 +59,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
           <CardContent className="space-y-6 p-6">
             {/* Seção: Informações Básicas */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 Informações Básicas
                 <HelpCircle className="h-4 w-4 text-gray-400" />
               </h4>
@@ -67,8 +67,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Chamado */}
                 <div className="space-y-2">
-                  <Label htmlFor="chamado">
-                    Chamado <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="chamado" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Chamado <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="chamado"
@@ -80,8 +80,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Cliente */}
                 <div className="space-y-2">
-                  <Label htmlFor="cliente">
-                    Cliente <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="cliente" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Cliente <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.cliente_id} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -99,8 +99,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Módulo */}
                 <div className="space-y-2">
-                  <Label htmlFor="modulo">
-                    Módulo <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="modulo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Módulo <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.modulo} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -114,8 +114,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
               {/* Descrição */}
               <div className="space-y-2">
-                <Label htmlFor="descricao">
-                  Descrição <span className="text-gray-700 dark:text-gray-300">*</span>
+                <Label htmlFor="descricao" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Descrição <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
                   id="descricao"
@@ -134,13 +134,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Datas */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Datas</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Datas</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Data de Envio */}
                 <div className="space-y-2">
-                  <Label htmlFor="data_envio">
-                    Data de Envio do Orçamento <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="data_envio" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Data de Envio do Orçamento <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="data_envio"
@@ -153,7 +153,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Data de Aprovação */}
                 <div className="space-y-2">
-                  <Label htmlFor="data_aprovacao">Data de Aprovação do Orçamento</Label>
+                  <Label htmlFor="data_aprovacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">Data de Aprovação do Orçamento</Label>
                   <Input
                     id="data_aprovacao"
                     type="date"
@@ -169,7 +169,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Horas */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
                 Controle de Horas
               </h4>
@@ -177,8 +177,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Horas Funcionais */}
                 <div className="space-y-2">
-                  <Label htmlFor="horas_funcional">
-                    Horas Funcionais <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="horas_funcional" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Horas Funcionais <span className="text-red-500">*</span>
                   </Label>
                   <InputHoras
                     id="horas_funcional"
@@ -190,8 +190,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Horas Técnicas */}
                 <div className="space-y-2">
-                  <Label htmlFor="horas_tecnico">
-                    Horas Técnicas <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="horas_tecnico" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Horas Técnicas <span className="text-red-500">*</span>
                   </Label>
                   <InputHoras
                     id="horas_tecnico"
@@ -203,7 +203,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Horas Total */}
                 <div className="space-y-2">
-                  <Label>Horas Total</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Horas Total</Label>
                   <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                     <span className="font-semibold text-lg">
                       {formatarHorasParaExibicao(horasTotal, 'completo')}
@@ -217,13 +217,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Cobrança */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Informações de Cobrança</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Informações de Cobrança</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Tipo de Cobrança */}
                 <div className="space-y-2">
-                  <Label htmlFor="tipo_cobranca">
-                    Tipo de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="tipo_cobranca" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tipo de Cobrança <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.tipo_cobranca} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -239,7 +239,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Mês/Ano de Cobrança */}
                 <div className="space-y-2">
-                  <Label htmlFor="mes_cobranca">Mês/Ano de Cobrança</Label>
+                  <Label htmlFor="mes_cobranca" className="text-sm font-medium text-gray-700 dark:text-gray-300">Mês/Ano de Cobrança</Label>
                   <MonthYearPicker
                     value={requerimento.mes_cobranca || ''}
                     onChange={() => {}} // No-op function for readonly mode
@@ -252,8 +252,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               {/* Linguagem Técnica - só mostrar se houver horas técnicas e não foi mostrado acima */}
               {((typeof requerimento.horas_tecnico === 'string' ? parseFloat(requerimento.horas_tecnico) : requerimento.horas_tecnico) || 0) > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="linguagem_tecnica">
-                    Linguagem Técnica <span className="text-gray-700 dark:text-gray-300">*</span>
+                  <Label htmlFor="linguagem_tecnica" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Linguagem Técnica <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="linguagem_tecnica"
@@ -276,7 +276,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="valor_hora_funcional">Valor/Hora Funcional</Label>
+                      <Label htmlFor="valor_hora_funcional" className="text-sm font-medium text-gray-700 dark:text-gray-300">Valor/Hora Funcional</Label>
                       <Input
                         id="valor_hora_funcional"
                         type="number"
@@ -288,7 +288,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="valor_hora_tecnico">Valor/Hora Técnico</Label>
+                      <Label htmlFor="valor_hora_tecnico" className="text-sm font-medium text-gray-700 dark:text-gray-300">Valor/Hora Técnico</Label>
                       <Input
                         id="valor_hora_tecnico"
                         type="number"
@@ -327,7 +327,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                     </span>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quantidade_tickets">Quantidade de Tickets</Label>
+                    <Label htmlFor="quantidade_tickets" className="text-sm font-medium text-gray-700 dark:text-gray-300">Quantidade de Tickets</Label>
                     <Input
                       id="quantidade_tickets"
                       type="number"
@@ -344,10 +344,10 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Observações */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Observações</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Observações</h4>
               
               <div className="space-y-2">
-                <Label htmlFor="observacao">Observações adicionais (opcional)</Label>
+                <Label htmlFor="observacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">Observações adicionais (opcional)</Label>
                 <Textarea
                   id="observacao"
                   value={requerimento.observacao || ''}

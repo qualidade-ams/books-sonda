@@ -111,21 +111,64 @@ export class BancoHorasIntegracaoService {
       const dataInicio = new Date(ano, mes - 1, 1);
       const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
 
+      // Códigos de resolução válidos para banco de horas
+      const codigosResolucaoValidos = [
+        'Alocação - T&M',
+        'AMS SAP',
+        'Aplicação de Nota / Licença - Contratados',
+        'Consultoria',
+        'Consultoria - Banco de Dados',
+        'Consultoria - Nota Publicada',
+        'Consultoria - Solução Paliativa',
+        'Dúvida',
+        'Erro de classificação na abertura',
+        'Erro de programa específico (SEM SLA)',
+        'Levantamento de Versão / Orçamento',
+        'Monitoramento DBA',
+        'Nota Publicada',
+        'Parametrização / Cadastro',
+        'Parametrização / Funcionalidade',
+        'Validação de Arquivo'
+      ];
+
       console.log('📅 Período de busca:', {
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
-        empresaNome: empresa.nome_abreviado || empresa.nome_completo
+        empresaNome: empresa.nome_abreviado || empresa.nome_completo,
+        codigosResolucao: codigosResolucaoValidos.length
       });
 
-      // Buscar apontamentos onde ativi_interna = "Não"
-      // Filtrar por caso_grupo (nome da empresa) e período
-      const { data: apontamentos, error: apontamentosError } = await supabase
-        .from('apontamentos_aranda')
-        .select('tempo_gasto_horas, tempo_gasto_minutos')
+      // Buscar apontamentos onde:
+      // - ativi_interna = "Não"
+      // - org_us_final = nome da empresa (abreviado ou completo)
+      // - cod_resolucao IN (códigos válidos)
+      // - data_atividade dentro do período
+      
+      // Construir query base (usando any para evitar problemas de tipo com tabela externa)
+      let query = supabase
+        .from('apontamentos_aranda' as any)
+        .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final')
         .eq('ativi_interna', 'Não')
-        .or(`caso_grupo.ilike.%${empresa.nome_abreviado}%,caso_grupo.ilike.%${empresa.nome_completo}%`)
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString());
+
+      // Adicionar filtro de empresa (nome abreviado OU nome completo)
+      const nomeAbreviado = empresa.nome_abreviado;
+      const nomeCompleto = empresa.nome_completo;
+      
+      if (nomeAbreviado && nomeCompleto) {
+        query = query.or(`org_us_final.ilike.%${nomeAbreviado}%,org_us_final.ilike.%${nomeCompleto}%`);
+      } else if (nomeAbreviado) {
+        query = query.ilike('org_us_final', `%${nomeAbreviado}%`);
+      } else if (nomeCompleto) {
+        query = query.ilike('org_us_final', `%${nomeCompleto}%`);
+      }
+
+      // Adicionar filtro de códigos de resolução
+      query = query.in('cod_resolucao', codigosResolucaoValidos);
+
+      // Executar query
+      const { data: apontamentos, error: apontamentosError } = await query as any;
 
       if (apontamentosError) {
         console.error('❌ Erro ao buscar apontamentos:', apontamentosError);
@@ -271,7 +314,7 @@ export class BancoHorasIntegracaoService {
       // - cliente_id = empresaId
       const { data: requerimentos, error: requerimentosError } = await supabase
         .from('requerimentos')
-        .select('horas_funcional, horas_tecnico, quantidade_tickets')
+        .select('horas_funcional, horas_tecnico')
         .eq('tipo_cobranca', 'Banco de Horas')
         .in('status', ['faturado', 'lancado'])
         .eq('mes_cobranca', mesCobranca)
@@ -308,10 +351,8 @@ export class BancoHorasIntegracaoService {
             totalHorasDecimal += requerimento.horas_tecnico;
           }
 
-          // Somar tickets
-          if (requerimento.quantidade_tickets) {
-            totalTickets += requerimento.quantidade_tickets;
-          }
+          // Contar cada requerimento como 1 ticket
+          totalTickets++;
         }
       }
 
