@@ -30,7 +30,6 @@ export interface BancoHorasCalculo {
   empresa_id: string;
   mes: number;
   ano: number;
-  versao: number;
   
   // Campos calculados - Horas
   baseline_horas?: string;
@@ -234,6 +233,8 @@ export class BancoHorasService {
       console.log('🏁 Fim de período:', isFimPeriodo);
 
       // 10. Calcular repasse
+      console.log('📊 Percentual de repasse configurado:', parametros.percentual_repasse_mensal);
+      
       const resultadoRepasseHoras = repasseService.calcularRepasseCompleto(
         saldoHoras,
         mes,
@@ -446,15 +447,13 @@ export class BancoHorasService {
         ano
       });
 
-      // Buscar cálculo existente (versão mais recente)
+      // Buscar cálculo existente (sem versão)
       const { data: calculoExistente, error } = await supabase
         .from('banco_horas_calculos')
         .select('*')
         .eq('empresa_id', empresaId)
         .eq('mes', mes)
         .eq('ano', ano)
-        .order('versao', { ascending: false })
-        .limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = not found
@@ -603,7 +602,7 @@ imPeriodo(
       baseline_tickets_mensal: empresa.baseline_tickets_mensal,
       possui_repasse_especial: empresa.possui_repasse_especial || false,
       ciclos_para_zerar: empresa.ciclos_para_zerar || 1,
-      percentual_repasse_mensal: empresa.percentual_repasse_mensal || 0,
+      percentual_repasse_mensal: empresa.percentual_repasse_mensal ?? 100, // Padrão 100% se não configurado
       ciclo_atual: empresa.ciclo_atual || 1
     };
   }
@@ -625,32 +624,63 @@ imPeriodo(
       anoAnterior = ano - 1;
     }
 
-    // Buscar cálculo do mês anterior
+    console.log('🔍 Buscando repasse do mês anterior:', {
+      empresaId,
+      mesAtual: mes,
+      anoAtual: ano,
+      mesAnterior,
+      anoAnterior
+    });
+
+    // Buscar cálculo do mês anterior (sem versão)
     const { data: calculoAnterior, error } = await supabase
       .from('banco_horas_calculos')
       .select('repasse_horas, repasse_tickets')
       .eq('empresa_id', empresaId)
       .eq('mes', mesAnterior)
       .eq('ano', anoAnterior)
-      .order('versao', { ascending: false })
-      .limit(1)
-      .single();
+      .maybeSingle(); // Usar maybeSingle() em vez de single() para evitar erro 406
 
-    if (error && error.code !== 'PGRST116') {
-      throw new CalculationError(
-        'buscar_repasses_mes_anterior',
-        `Erro ao buscar repasses do mês anterior: ${error.message}`,
-        { empresaId, mes, ano }
-      );
-    }
+    console.log('📊 Resultado da busca:', {
+      encontrado: !!calculoAnterior,
+      repasseHoras: calculoAnterior?.repasse_horas,
+      repasseTickets: calculoAnterior?.repasse_tickets,
+      error: error?.message,
+      errorCode: error?.code
+    });
 
-    // Se não encontrou cálculo anterior, retornar zero
-    if (!calculoAnterior) {
+    // Ignorar TODOS os erros ao buscar repasse do mês anterior
+    // Erros comuns:
+    // - PGRST116: Registro não encontrado
+    // - 406 (Not Acceptable): Tabela vazia ou problema de formato
+    // - Outros: Problemas de conectividade, permissões, etc.
+    if (error) {
+      console.warn('⚠️ Erro ao buscar repasse do mês anterior (será ignorado):', {
+        code: error.code,
+        message: error.message,
+        mesAnterior,
+        anoAnterior
+      });
+      // Não lançar erro, apenas retornar zero
       return {
         repasseHoras: '0:00',
         repasseTickets: 0
       };
     }
+
+    // Se não encontrou cálculo anterior, retornar zero
+    if (!calculoAnterior) {
+      console.log('⚠️ Nenhum cálculo anterior encontrado, retornando 0:00');
+      return {
+        repasseHoras: '0:00',
+        repasseTickets: 0
+      };
+    }
+
+    console.log('✅ Repasse do mês anterior encontrado:', {
+      repasseHoras: calculoAnterior.repasse_horas || '0:00',
+      repasseTickets: calculoAnterior.repasse_tickets || 0
+    });
 
     return {
       repasseHoras: calculoAnterior.repasse_horas || '0:00',
@@ -675,11 +705,12 @@ imPeriodo(
       .eq('ativo', true);
 
     if (error) {
-      throw new CalculationError(
-        'buscar_reajustes',
-        `Erro ao buscar reajustes: ${error.message}`,
-        { empresaId, mes, ano }
-      );
+      console.warn('⚠️ Erro ao buscar reajustes (não crítico):', error.message);
+      // Não lançar erro, apenas retornar valores zerados
+      return {
+        horas: '0:00',
+        tickets: 0
+      };
     }
 
     if (!reajustes || reajustes.length === 0) {
@@ -774,42 +805,113 @@ imPeriodo(
 
   /**
    * Persiste cálculo no banco de dados
+   * 
+   * IMPORTANTE: Não cria versões aqui! Versões são criadas apenas quando há reajuste manual.
+   * Se já existe um cálculo para o mês/ano, faz UPDATE. Senão, faz INSERT.
    */
   private async persistirCalculo(dados: Partial<BancoHorasCalculo>): Promise<BancoHorasCalculo> {
-    // Buscar versão atual
+    // Buscar cálculo existente (sem versão)
     const { data: calculoExistente } = await supabase
       .from('banco_horas_calculos')
-      .select('versao')
+      .select('id')
       .eq('empresa_id', dados.empresa_id!)
       .eq('mes', dados.mes!)
       .eq('ano', dados.ano!)
-      .order('versao', { ascending: false })
-      .limit(1)
       .single();
 
-    const novaVersao = calculoExistente ? calculoExistente.versao + 1 : 1;
+    if (calculoExistente) {
+      // UPDATE: Atualizar cálculo existente
+      console.log('🔄 Atualizando cálculo existente:', calculoExistente.id);
+      
+      const { data: calculo, error } = await supabase
+        .from('banco_horas_calculos')
+        .update({
+          ...dados,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', calculoExistente.id)
+        .select()
+        .single();
 
-    // Inserir novo cálculo
-    const { data: calculo, error } = await supabase
-      .from('banco_horas_calculos')
-      .insert({
-        ...dados,
-        versao: novaVersao,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+      if (error) {
+        throw new CalculationError(
+          'atualizar_calculo',
+          `Erro ao atualizar cálculo: ${error.message}`,
+          dados
+        );
+      }
 
-    if (error) {
+      return calculo as BancoHorasCalculo;
+    } else {
+      // INSERT: Criar novo cálculo
+      console.log('➕ Criando novo cálculo');
+      
+      const { data: calculo, error } = await supabase
+        .from('banco_horas_calculos')
+        .insert({
+          ...dados,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new CalculationError(
+          'criar_calculo',
+          `Erro ao criar cálculo: ${error.message}`,
+          dados
+        );
+      }
+
+      return calculo as BancoHorasCalculo;
+    }
+  }
+
+  /**
+   * Calcula todos os meses de um trimestre de uma vez
+   * 
+   * Quando o usuário abre a tela, calcula automaticamente os 3 meses do trimestre
+   * para garantir que os repasses estejam corretos entre os meses.
+   * 
+   * @param empresaId - ID da empresa
+   * @param mesInicial - Primeiro mês do trimestre (1, 4, 7, 10)
+   * @param ano - Ano
+   * @returns Array com os 3 cálculos do trimestre
+   */
+  async calcularTrimestre(
+    empresaId: string,
+    mesInicial: number,
+    ano: number
+  ): Promise<BancoHorasCalculo[]> {
+    try {
+      console.log('📅 Calculando trimestre completo:', {
+        empresaId,
+        mesInicial,
+        ano
+      });
+
+      const calculos: BancoHorasCalculo[] = [];
+
+      // Calcular os 3 meses sequencialmente
+      for (let i = 0; i < 3; i++) {
+        const mes = mesInicial + i;
+        console.log(`🔄 Calculando mês ${mes}/${ano}...`);
+        
+        const calculo = await this.calcularMes(empresaId, mes, ano);
+        calculos.push(calculo);
+      }
+
+      console.log('✅ Trimestre calculado com sucesso');
+      return calculos;
+    } catch (error) {
+      console.error('❌ Erro ao calcular trimestre:', error);
       throw new CalculationError(
-        'persistir_calculo',
-        `Erro ao persistir cálculo: ${error.message}`,
-        dados
+        'calcular_trimestre',
+        `Erro ao calcular trimestre: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        { empresaId, mesInicial, ano }
       );
     }
-
-    return calculo as BancoHorasCalculo;
   }
 }
 

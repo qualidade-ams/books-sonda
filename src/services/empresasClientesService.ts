@@ -716,12 +716,23 @@ export class EmpresasClientesService {
 
   /**
    * Converter formato MM/YYYY para DATE (primeiro dia do mês)
-   * @param mesAno String no formato MM/YYYY (ex: "01/2024")
-   * @returns String no formato YYYY-MM-DD (ex: "2024-01-01")
+   * 
+   * IMPORTANTE: Retorna data em formato ISO com timezone UTC para evitar
+   * problemas de conversão de timezone que podem fazer a data "voltar" um dia.
+   * 
+   * @param mesAno String no formato MM/YYYY (ex: "11/2025")
+   * @returns String no formato YYYY-MM-DDT00:00:00.000Z (ex: "2025-11-01T00:00:00.000Z")
+   * 
+   * @example
+   * converterMesAnoParaDate("11/2025") // "2025-11-01T00:00:00.000Z"
+   * converterMesAnoParaDate("01/2024") // "2024-01-01T00:00:00.000Z"
    */
   private converterMesAnoParaDate(mesAno: string): string {
     const [mes, ano] = mesAno.split('/');
-    return `${ano}-${mes.padStart(2, '0')}-01`;
+    // Criar data em UTC para evitar problemas de timezone
+    // Usar Date.UTC retorna timestamp, depois converter para ISO string
+    const date = new Date(Date.UTC(parseInt(ano), parseInt(mes) - 1, 1));
+    return date.toISOString();
   }
 }
 

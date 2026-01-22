@@ -19,7 +19,7 @@
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 import { bancoHorasService } from '../../services/bancoHorasService';
 import { bancoHorasAlocacoesService } from '../../services/bancoHorasAlocacoesService';
-import { bancoHorasReajustesService } from '../../services/bancoHorasReajustesService';
+import { reajustesService } from '../../services/bancoHorasReajustesService';
 import { bancoHorasVersionamentoService } from '../../services/bancoHorasVersionamentoService';
 import { bancoHorasExportUtils } from '../../utils/bancoHorasExportUtils';
 

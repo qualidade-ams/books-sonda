@@ -37,7 +37,7 @@ import type { BancoHorasCalculoSegmentado, Alocacao } from '@/types/bancoHoras';
  */
 export interface VisaoSegmentadaProps {
   /** Array of segmented calculations, one per allocation */
-  calculos: BancoHorasCalculoSegmentado[];
+  calculos: Omit<BancoHorasCalculoSegmentado, 'created_at'>[];
   
   /** Array of allocations for reference */
   alocacoes: Alocacao[];
@@ -48,6 +48,11 @@ export interface VisaoSegmentadaProps {
  */
 const formatarHoras = (horas?: string): string => {
   if (!horas) return '00:00';
+  // Garantir formato HH:MM (remover segundos se existir)
+  const parts = horas.split(':');
+  if (parts.length >= 2) {
+    return `${parts[0]}:${parts[1]}`;
+  }
   return horas;
 };
 
@@ -74,7 +79,7 @@ const getValorStatus = (horas?: string): 'positivo' | 'negativo' | 'zero' => {
  * Component to display a single allocation's segmented values
  */
 interface AlocacaoCardProps {
-  calculo: BancoHorasCalculoSegmentado;
+  calculo: Omit<BancoHorasCalculoSegmentado, 'created_at'>;
   alocacao: Alocacao;
 }
 

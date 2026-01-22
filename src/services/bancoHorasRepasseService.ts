@@ -89,7 +89,18 @@ export function calcularRepasse(
   
   // Se saldo é positivo, aplica percentual
   const repasseMinutos = Math.floor(saldoMinutos * (percentualRepasse / 100));
-  return converterMinutosParaHoras(repasseMinutos);
+  const repasseCalculado = converterMinutosParaHoras(repasseMinutos);
+  
+  // Log de debug
+  console.log('🔄 Cálculo de Repasse:', {
+    saldo,
+    saldoMinutos,
+    percentualRepasse,
+    repasseMinutos,
+    repasseCalculado
+  });
+  
+  return repasseCalculado;
 }
 
 /**
@@ -146,7 +157,21 @@ export function isFimPeriodo(
   
   // Verificar se o mês atual completa um período de apuração
   // Um período é completado quando mesesPassados é múltiplo de periodoApuracao
-  return mesesPassados > 0 && mesesPassados % periodoApuracao === 0;
+  const resultado = mesesPassados > 0 && mesesPassados % periodoApuracao === 0;
+  
+  // Log de debug
+  console.log('🔍 isFimPeriodo - Debug:', {
+    mes,
+    ano,
+    mesInicio,
+    anoInicio,
+    periodoApuracao,
+    mesesPassados,
+    'mesesPassados % periodoApuracao': mesesPassados % periodoApuracao,
+    resultado
+  });
+  
+  return resultado;
 }
 
 /**

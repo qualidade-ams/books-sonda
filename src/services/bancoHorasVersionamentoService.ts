@@ -203,6 +203,25 @@ export class BancoHorasVersionamentoService {
         ano
       });
 
+      // NOVA ESTRUTURA: Buscar versões diretamente por empresa_id, mes e ano
+      // (após migration 20260122000006_fix_banco_horas_versoes_structure.sql)
+      const { data: versoesNovaEstrutura, error: erroNovaEstrutura } = await supabase
+        .from('banco_horas_versoes')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .order('created_at', { ascending: false });
+
+      // Se encontrou versões na nova estrutura, retornar
+      if (!erroNovaEstrutura && versoesNovaEstrutura && versoesNovaEstrutura.length > 0) {
+        console.log(`✅ ${versoesNovaEstrutura.length} versões encontradas (nova estrutura)`);
+        return versoesNovaEstrutura as BancoHorasVersao[];
+      }
+
+      // FALLBACK: Buscar pela estrutura antiga (via calculo_id)
+      console.log('ℹ️ Tentando buscar versões pela estrutura antiga...');
+
       // Buscar todos os cálculos do período
       const { data: calculos, error: erroCalculos } = await supabase
         .from('banco_horas_calculos')
@@ -241,7 +260,7 @@ export class BancoHorasVersionamentoService {
         );
       }
 
-      console.log(`✅ ${versoes?.length || 0} versões encontradas`);
+      console.log(`✅ ${versoes?.length || 0} versões encontradas (estrutura antiga)`);
 
       return (versoes || []) as BancoHorasVersao[];
     } catch (error) {

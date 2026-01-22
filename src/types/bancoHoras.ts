@@ -83,6 +83,8 @@ export interface Alocacao {
  * Represents the complete calculation for a specific company and month, including all
  * formulas: baseline, consumption, rollovers, adjustments, balance, and overages.
  * This is the "consolidated view" that aggregates all values.
+ * 
+ * IMPORTANTE: Apenas 1 registro por empresa/mês/ano. Versionamento é feito na tabela banco_horas_versoes.
  */
 export interface BancoHorasCalculo {
   /** Unique identifier */
@@ -96,9 +98,6 @@ export interface BancoHorasCalculo {
   
   /** Year (e.g., 2024) */
   ano: number;
-  
-  /** Version number (increments with each recalculation) */
-  versao: number;
   
   // ===== Calculated Values - Hours =====
   
