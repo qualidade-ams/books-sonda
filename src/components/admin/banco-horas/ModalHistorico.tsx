@@ -15,7 +15,7 @@
  * @requirements 12.4-12.10
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -55,10 +55,13 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { BancoHorasVersao, DiferencasVersao } from '@/types/bancoHoras';
+import { supabase } from '@/integrations/supabase/client';
+import type { BancoHorasVersao, DiferencasVersao, BancoHorasReajuste } from '@/types/bancoHoras';
 
 /**
  * Props do componente ModalHistorico
@@ -73,13 +76,13 @@ export interface ModalHistoricoProps {
   /** ID da empresa */
   empresaId: string;
   
-  /** Mês (1-12) */
+  /** Mês (1-12) - usado para exibição no título */
   mes: number;
   
-  /** Ano (ex: 2024) */
+  /** Ano (ex: 2024) - usado para exibição no título */
   ano: number;
   
-  /** Lista de versões a exibir */
+  /** Lista de versões a exibir (pode conter versões de múltiplos meses) */
   versoes: BancoHorasVersao[];
   
   /** Estado de carregamento */
@@ -125,59 +128,162 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   isLoading = false,
   onCompararVersoes,
 }) => {
-  // Estado de filtros
-  const [showFilters, setShowFilters] = useState(false);
-  const [filtroTipo, setFiltroTipo] = useState<TipoMudancaFiltro>('todos');
-  const [filtroDataInicio, setFiltroDataInicio] = useState('');
-  const [filtroDataFim, setFiltroDataFim] = useState('');
-  
   // Estado de comparação
   const [versoesParaComparar, setVersoesParaComparar] = useState<string[]>([]);
   const [comparacaoAtiva, setComparacaoAtiva] = useState(false);
   const [diferencas, setDiferencas] = useState<DiferencasVersao | null>(null);
+  
+  // Estado para dados de reajustes
+  const [reajustes, setReajustes] = useState<Record<string, BancoHorasReajuste>>({});
+  const [loadingReajustes, setLoadingReajustes] = useState(false);
+  
+  // Estado para nomes de usuários
+  const [usuarios, setUsuarios] = useState<Record<string, string>>({});
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
 
   /**
-   * Versões filtradas
+   * Busca dados de reajustes para versões
    */
-  const versoesFiltradas = useMemo(() => {
-    let resultado = [...versoes];
+  useEffect(() => {
+    const buscarReajustes = async () => {
+      console.log('🔍 Total de versões recebidas:', versoes.length);
+      console.log('🔍 Tipos de mudança nas versões:', versoes.map(v => ({
+        versao: v.versao_nova,
+        tipo_mudanca: v.tipo_mudanca,
+        motivo: v.motivo,
+        calculo_id: v.calculo_id
+      })));
+      
+      if (versoes.length === 0) {
+        return;
+      }
 
-    // Filtrar por tipo
-    if (filtroTipo !== 'todos') {
-      resultado = resultado.filter(v => v.tipo_mudanca === filtroTipo);
+      setLoadingReajustes(true);
+      
+      try {
+        // Buscar TODOS os reajustes da empresa (não filtrar por mês/ano)
+        // porque o período pode ser trimestral (múltiplos meses)
+        console.log('🔍 Buscando TODOS os reajustes para empresa:', empresaId);
+        
+        const { data, error } = await supabase
+          .from('banco_horas_reajustes')
+          .select('*')
+          .eq('empresa_id', empresaId)
+          .eq('ativo', true)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('❌ Erro ao buscar reajustes:', error);
+          return;
+        }
+
+        console.log('✅ Reajustes encontrados:', data);
+
+        // Mapear reajustes de múltiplas formas para garantir match
+        const reajustesMap: Record<string, BancoHorasReajuste> = {};
+        
+        data?.forEach(reajuste => {
+          // 1. Mapear por calculo_id se existir
+          if (reajuste.calculo_id) {
+            reajustesMap[reajuste.calculo_id] = reajuste;
+            console.log('🔗 Mapeado por calculo_id:', reajuste.calculo_id);
+          }
+          
+          // 2. Mapear por chave composta empresa+mes+ano
+          const chaveComposta = `${reajuste.empresa_id}_${reajuste.mes}_${reajuste.ano}`;
+          reajustesMap[chaveComposta] = reajuste;
+          console.log('🔗 Mapeado por chave composta:', chaveComposta);
+        });
+
+        console.log('📊 Reajustes mapeados:', reajustesMap);
+        
+        // Tentar relacionar versões com reajustes
+        versoes.forEach(versao => {
+          console.log('🔍 Tentando relacionar versão:', {
+            versao: versao.versao_nova,
+            calculo_id: versao.calculo_id,
+            tem_reajuste_por_calculo: !!reajustesMap[versao.calculo_id]
+          });
+          
+          // Se não tem reajuste por calculo_id, tentar por chave composta
+          if (!reajustesMap[versao.calculo_id]) {
+            // Tentar com o mês/ano do modal
+            const chaveVersao = `${empresaId}_${mes}_${ano}`;
+            if (reajustesMap[chaveVersao]) {
+              reajustesMap[versao.calculo_id] = reajustesMap[chaveVersao];
+              console.log('✅ Relacionado por chave composta (mes/ano do modal):', {
+                versao: versao.versao_nova,
+                calculo_id: versao.calculo_id,
+                reajuste: reajustesMap[chaveVersao]
+              });
+            } else {
+              console.log('⚠️ Não encontrou reajuste para chave:', chaveVersao);
+              console.log('⚠️ Chaves disponíveis:', Object.keys(reajustesMap).filter(k => k.includes('_')));
+            }
+          }
+        });
+
+        console.log('📊 Mapeamento final:', reajustesMap);
+        setReajustes(reajustesMap);
+      } catch (error) {
+        console.error('❌ Erro ao buscar reajustes:', error);
+      } finally {
+        setLoadingReajustes(false);
+      }
+    };
+
+    if (open && versoes.length > 0) {
+      buscarReajustes();
     }
-
-    // Filtrar por data início
-    if (filtroDataInicio) {
-      const dataInicio = new Date(filtroDataInicio);
-      resultado = resultado.filter(v => new Date(v.created_at) >= dataInicio);
-    }
-
-    // Filtrar por data fim
-    if (filtroDataFim) {
-      const dataFim = new Date(filtroDataFim);
-      dataFim.setHours(23, 59, 59, 999); // Incluir o dia inteiro
-      resultado = resultado.filter(v => new Date(v.created_at) <= dataFim);
-    }
-
-    return resultado;
-  }, [versoes, filtroTipo, filtroDataInicio, filtroDataFim]);
+  }, [open, versoes, empresaId, mes, ano]);
 
   /**
-   * Verifica se há filtros ativos
+   * Busca nomes dos usuários
    */
-  const hasActiveFilters = () => {
-    return filtroTipo !== 'todos' || filtroDataInicio !== '' || filtroDataFim !== '';
-  };
+  useEffect(() => {
+    const buscarUsuarios = async () => {
+      // Coletar IDs únicos de usuários das versões
+      const userIds = versoes
+        .map(v => v.created_by)
+        .filter((id): id is string => !!id)
+        .filter((id, index, self) => self.indexOf(id) === index); // unique
 
-  /**
-   * Limpa todos os filtros
-   */
-  const limparFiltros = () => {
-    setFiltroTipo('todos');
-    setFiltroDataInicio('');
-    setFiltroDataFim('');
-  };
+      if (userIds.length === 0) {
+        return;
+      }
+
+      setLoadingUsuarios(true);
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, nome')
+          .in('id', userIds);
+
+        if (error) {
+          console.error('❌ Erro ao buscar usuários:', error);
+          return;
+        }
+
+        // Mapear usuários por ID
+        const usuariosMap: Record<string, string> = {};
+        data?.forEach(user => {
+          usuariosMap[user.id] = user.nome || 'Usuário sem nome';
+        });
+
+        console.log('👥 Usuários encontrados:', usuariosMap);
+        setUsuarios(usuariosMap);
+      } catch (error) {
+        console.error('❌ Erro ao buscar usuários:', error);
+      } finally {
+        setLoadingUsuarios(false);
+      }
+    };
+
+    if (open && versoes.length > 0) {
+      buscarUsuarios();
+    }
+  }, [open, versoes]);
 
   /**
    * Seleciona versão para comparação
@@ -232,6 +338,32 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         return <Badge className="bg-green-100 text-green-800 text-xs">Correção</Badge>;
       default:
         return <Badge variant="secondary" className="text-xs">{tipo}</Badge>;
+    }
+  };
+
+  /**
+   * Retorna badge de tipo de reajuste (entrada/saída)
+   */
+  const getBadgeTipoReajuste = (tipo: string) => {
+    switch (tipo) {
+      case 'entrada':
+      case 'positivo':
+        return (
+          <Badge className="bg-green-100 text-green-800 text-xs flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            Entrada
+          </Badge>
+        );
+      case 'saida':
+      case 'negativo':
+        return (
+          <Badge className="bg-red-100 text-red-800 text-xs flex items-center gap-1">
+            <TrendingDown className="h-3 w-3" />
+            Saída
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
@@ -372,38 +504,14 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
             Histórico de Versões
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            Visualize todas as mudanças realizadas no cálculo de {mes}/{ano}
+            Visualize todas as mudanças realizadas no período selecionado
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Barra de ações */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center justify-center space-x-2"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filtros</span>
-              </Button>
-              
-              {hasActiveFilters() && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={limparFiltros}
-                  className="whitespace-nowrap hover:border-red-300"
-                >
-                  <X className="h-4 w-4 mr-2 text-red-600" />
-                  Limpar Filtro
-                </Button>
-              )}
-            </div>
-
-            {versoesParaComparar.length === 2 && (
+          {/* Barra de ações - apenas botão de comparar */}
+          {versoesParaComparar.length === 2 && (
+            <div className="flex justify-end">
               <Button
                 size="sm"
                 onClick={handleComparar}
@@ -412,57 +520,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                 <GitCompare className="h-4 w-4 mr-2" />
                 Comparar Versões
               </Button>
-            )}
-          </div>
-
-          {/* Área de filtros expansível */}
-          {showFilters && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Filtro Tipo de Mudança */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Tipo de Mudança</div>
-                    <Select 
-                      value={filtroTipo} 
-                      onValueChange={(value) => setFiltroTipo(value as TipoMudancaFiltro)}
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os tipos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos os tipos</SelectItem>
-                        <SelectItem value="reajuste">Reajuste</SelectItem>
-                        <SelectItem value="recalculo">Recálculo</SelectItem>
-                        <SelectItem value="correcao">Correção</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Filtro Data Início */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Data Início</div>
-                    <input
-                      type="date"
-                      value={filtroDataInicio}
-                      onChange={(e) => setFiltroDataInicio(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-sonda-blue focus:border-sonda-blue text-sm"
-                    />
-                  </div>
-
-                  {/* Filtro Data Fim */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Data Fim</div>
-                    <input
-                      type="date"
-                      value={filtroDataFim}
-                      onChange={(e) => setFiltroDataFim(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-sonda-blue focus:border-sonda-blue text-sm"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
           {/* Visualização de comparação */}
@@ -471,11 +529,11 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
           {/* Tabela de versões */}
           <Card>
             <CardContent className="pt-6">
-              {isLoading ? (
+              {isLoading || loadingReajustes || loadingUsuarios ? (
                 <div className="flex justify-center items-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
                 </div>
-              ) : versoesFiltradas.length === 0 ? (
+              ) : versoes.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -483,10 +541,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                       Nenhuma versão encontrada
                     </p>
                     <p className="text-sm text-gray-400">
-                      {hasActiveFilters() 
-                        ? 'Tente ajustar os filtros para ver mais resultados'
-                        : 'Não há histórico de versões para este período'
-                      }
+                      Não há histórico de versões para este período
                     </p>
                   </div>
                 </div>
@@ -498,68 +553,115 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                         <TableHead className="w-12">
                           <span className="sr-only">Selecionar</span>
                         </TableHead>
-                        <TableHead className="font-semibold text-gray-700">Versão</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Data/Hora</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Usuário</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Versão</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Tipo</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Data/Hora</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Usuário</TableHead>
                         <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Entrada/Saída</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {versoesFiltradas.map((versao) => (
-                        <TableRow key={versao.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <Checkbox
-                              checked={versoesParaComparar.includes(versao.id)}
-                              onCheckedChange={(checked) => 
-                                handleSelecionarVersao(versao.id, checked as boolean)
-                              }
-                              disabled={
-                                versoesParaComparar.length >= 2 && 
-                                !versoesParaComparar.includes(versao.id)
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-gray-500" />
-                              <span className="font-medium text-sonda-blue">
-                                v{versao.versao_nova}
-                              </span>
-                              {versao.versao_anterior > 0 && (
-                                <>
-                                  <ChevronRight className="h-3 w-3 text-gray-400" />
-                                  <span className="text-xs text-gray-500">
-                                    v{versao.versao_anterior}
-                                  </span>
-                                </>
+                      {versoes.map((versao) => {
+                        // Tentar múltiplas formas de encontrar o reajuste
+                        let reajuste = reajustes[versao.calculo_id];
+                        
+                        // Se não encontrou por calculo_id, tentar por chave composta usando mes/ano do modal
+                        if (!reajuste) {
+                          const chaveComposta = `${empresaId}_${mes}_${ano}`;
+                          reajuste = reajustes[chaveComposta];
+                        }
+                        
+                        // Debug log SEMPRE
+                        console.log('🔍 Renderizando versão:', {
+                          versao: versao.versao_nova,
+                          calculo_id: versao.calculo_id,
+                          tipo_mudanca: versao.tipo_mudanca,
+                          motivo: versao.motivo,
+                          reajuste_encontrado: !!reajuste,
+                          reajuste_dados: reajuste,
+                          todas_chaves_reajustes: Object.keys(reajustes),
+                          tentou_chave_composta: `${empresaId}_${mes}_${ano}`
+                        });
+                        
+                        return (
+                          <TableRow key={versao.id} className="hover:bg-gray-50">
+                            <TableCell>
+                              <Checkbox
+                                checked={versoesParaComparar.includes(versao.id)}
+                                onCheckedChange={(checked) => 
+                                  handleSelecionarVersao(versao.id, checked as boolean)
+                                }
+                                disabled={
+                                  versoesParaComparar.length >= 2 && 
+                                  !versoesParaComparar.includes(versao.id)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <span className="font-medium text-sonda-blue">
+                                  v{versao.versao_nova}
+                                </span>
+                                {versao.versao_anterior > 0 && (
+                                  <>
+                                    <ChevronRight className="h-3 w-3 text-gray-400" />
+                                    <span className="text-xs text-gray-500">
+                                      v{versao.versao_anterior}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {getBadgeTipoMudanca(versao.tipo_mudanca)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2 text-sm">
+                                <Clock className="h-4 w-4 text-gray-400" />
+                                {formatarDataHora(versao.created_at)}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2 text-sm">
+                                <User className="h-4 w-4 text-gray-400" />
+                                <span className="text-gray-700">
+                                  {versao.created_by ? (
+                                    usuarios[versao.created_by] || 'Carregando...'
+                                  ) : (
+                                    'Sistema'
+                                  )}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {/* Observação do reajuste - mostrar APENAS a observação, sem duplicar */}
+                                {reajuste && reajuste.observacao ? (
+                                  <div className="text-sm text-gray-600">
+                                    {reajuste.observacao}
+                                  </div>
+                                ) : versao.motivo ? (
+                                  <div className="text-sm text-gray-600">
+                                    {versao.motivo}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">Sem motivo registrado</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {/* Mostrar tipo de reajuste para QUALQUER versão que tenha reajuste */}
+                              {reajuste && reajuste.tipo_reajuste ? (
+                                getBadgeTipoReajuste(reajuste.tipo_reajuste)
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
                               )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {getBadgeTipoMudanca(versao.tipo_mudanca)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Clock className="h-4 w-4 text-gray-400" />
-                              {formatarDataHora(versao.created_at)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <span className="text-gray-700">
-                                {versao.created_by || 'Sistema'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-gray-600 max-w-md truncate">
-                              {versao.motivo}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -568,9 +670,9 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
           </Card>
 
           {/* Informações adicionais */}
-          {!isLoading && versoesFiltradas.length > 0 && (
+          {!isLoading && !loadingReajustes && !loadingUsuarios && versoes.length > 0 && (
             <div className="text-sm text-gray-500 text-center">
-              Mostrando {versoesFiltradas.length} de {versoes.length} versões
+              Mostrando {versoes.length} versão(ões)
               {versoesParaComparar.length > 0 && (
                 <span className="ml-2">
                   • {versoesParaComparar.length} versão(ões) selecionada(s) para comparação

@@ -292,8 +292,8 @@ export interface BancoHorasReajuste {
   /** Unique identifier */
   id: string;
   
-  /** Reference to calculation being adjusted */
-  calculo_id: string;
+  /** Reference to calculation being adjusted (optional) */
+  calculo_id?: string;
   
   /** Reference to company */
   empresa_id: string;
@@ -310,17 +310,17 @@ export interface BancoHorasReajuste {
   /** Adjustment value for tickets (can be positive or negative) */
   valor_reajuste_tickets?: number;
   
-  /** Type of adjustment based on value sign */
-  tipo_reajuste: 'positivo' | 'negativo';
+  /** Type of adjustment: entrada (adds hours/tickets) or saida (removes hours/tickets) */
+  tipo_reajuste: 'entrada' | 'saida' | 'positivo' | 'negativo';
   
-  /** Mandatory private observation explaining the adjustment (minimum 10 characters) */
-  observacao_privada: string;
+  /** Mandatory observation explaining the adjustment (minimum 10 characters) */
+  observacao: string;
   
   /** Timestamp when adjustment was created */
   created_at: Date;
   
-  /** User who created this adjustment */
-  created_by: string;
+  /** User who created this adjustment (optional, can be null for system) */
+  created_by?: string;
   
   /** Whether this adjustment is currently active (soft delete) */
   ativo: boolean;

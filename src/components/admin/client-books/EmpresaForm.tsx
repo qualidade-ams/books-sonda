@@ -1247,19 +1247,23 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                                     value = horas ? `${horas}:${minutosFormatados}` : minutosFormatados;
                                   }
                                   
-                                  field.onChange(value || '00:00');
+                                  field.onChange(value || '');
                                 }}
                                 onBlur={(e) => {
                                   // Garantir formato válido ao sair do campo
-                                  const value = e.target.value;
+                                  const value = e.target.value.trim();
                                   if (!value || value === '') {
-                                    field.onChange('00:00');
+                                    field.onChange('');
                                   } else if (value.length > 0 && !value.includes(':')) {
-                                    // Se não tem dois pontos, adicionar
-                                    field.onChange('00:00');
+                                    // Se digitou apenas números, formatar como HH:MM
+                                    const num = parseInt(value);
+                                    if (!isNaN(num)) {
+                                      field.onChange(`${num}:00`);
+                                    }
                                   }
                                 }}
-                                value={field.value || '00:00'}
+                                value={field.value || ''}
+                                placeholder="00:00"
                                 disabled={isFieldDisabled}
                                 maxLength={10}
                                 className={form.formState.errors.baseline_horas_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
@@ -1283,20 +1287,55 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                             </FormLabel>
                             <FormControl>
                               <Input
-                                type="number"
-                                placeholder="0.00"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                value={field.value || ''}
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0"
+                                value={field.value !== undefined && field.value !== null ? String(field.value) : ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  
+                                  // Se vazio, setar como undefined
+                                  if (value === '' || value === null) {
+                                    field.onChange(undefined);
+                                    return;
+                                  }
+                                  
+                                  // Permitir apenas números, ponto e vírgula
+                                  const sanitized = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                                  
+                                  // Se ficou vazio após sanitização, setar como undefined
+                                  if (sanitized === '') {
+                                    field.onChange(undefined);
+                                    return;
+                                  }
+                                  
+                                  // Converter para número
+                                  const numValue = parseFloat(sanitized);
+                                  
+                                  // Validar range
+                                  if (!isNaN(numValue) && numValue >= 0 && numValue <= 99999.99) {
+                                    field.onChange(numValue);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  // Bloquear letras e caracteres especiais (exceto números, ponto, vírgula, backspace, delete, tab, arrows)
+                                  const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '.', ','];
+                                  const isNumber = /^[0-9]$/.test(e.key);
+                                  
+                                  if (!isNumber && !allowedKeys.includes(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  // Selecionar todo o texto ao focar (facilita substituir o valor)
+                                  e.target.select();
+                                }}
                                 disabled={isFieldDisabled}
-                                step="0.01"
-                                min={0}
-                                max={99999.99}
                                 className={form.formState.errors.baseline_tickets_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                               />
                             </FormControl>
                             <FormDescription className="text-xs text-gray-500">
-                              Quantidade mensal de tickets contratados (decimal com 2 casas)
+                              Quantidade mensal de tickets contratados (apenas números)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

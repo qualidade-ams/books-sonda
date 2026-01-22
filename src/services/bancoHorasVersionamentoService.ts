@@ -213,10 +213,29 @@ export class BancoHorasVersionamentoService {
         .eq('ano', ano)
         .order('created_at', { ascending: false });
 
+      // Log detalhado do erro se houver
+      if (erroNovaEstrutura) {
+        console.error('❌ Erro ao buscar versões (nova estrutura):', {
+          code: erroNovaEstrutura.code,
+          message: erroNovaEstrutura.message,
+          details: erroNovaEstrutura.details,
+          hint: erroNovaEstrutura.hint
+        });
+      }
+
       // Se encontrou versões na nova estrutura, retornar
       if (!erroNovaEstrutura && versoesNovaEstrutura && versoesNovaEstrutura.length > 0) {
         console.log(`✅ ${versoesNovaEstrutura.length} versões encontradas (nova estrutura)`);
         return versoesNovaEstrutura as BancoHorasVersao[];
+      }
+
+      // Se houve erro de RLS (código 42501 ou PGRST301), lançar erro específico
+      if (erroNovaEstrutura && (erroNovaEstrutura.code === '42501' || erroNovaEstrutura.code === 'PGRST301')) {
+        throw new VersionamentoError(
+          'permissao_negada',
+          'Permissão negada para acessar versões. Verifique as políticas RLS.',
+          { empresaId, mes, ano, erro: erroNovaEstrutura }
+        );
       }
 
       // FALLBACK: Buscar pela estrutura antiga (via calculo_id)
