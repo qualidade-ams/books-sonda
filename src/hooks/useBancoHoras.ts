@@ -341,6 +341,70 @@ export const useVersoes = (
 };
 
 /**
+ * Hook para buscar versões de todos os meses do período
+ * 
+ * @param empresaId - ID da empresa
+ * @param mesesDoPeriodo - Array com os meses do período
+ * @returns Query com versões de todos os meses
+ * 
+ * @example
+ * const { versoes, isLoading } = useVersoesPeriodo('uuid-empresa', [
+ *   { mes: 11, ano: 2025 },
+ *   { mes: 12, ano: 2025 },
+ *   { mes: 1, ano: 2026 }
+ * ]);
+ * 
+ * **Validates: Requirements 12.1-12.10**
+ */
+export const useVersoesPeriodo = (
+  empresaId: string | undefined,
+  mesesDoPeriodo: Array<{ mes: number; ano: number }> | undefined
+) => {
+  const {
+    data: versoes,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['banco-horas-versoes-periodo', empresaId, mesesDoPeriodo],
+    queryFn: async () => {
+      if (!empresaId || !mesesDoPeriodo || mesesDoPeriodo.length === 0) {
+        throw new Error('ID da empresa e meses do período são obrigatórios');
+      }
+      
+      // Buscar versões de todos os meses do período
+      const todasVersoes = await Promise.all(
+        mesesDoPeriodo.map(({ mes, ano }) =>
+          bancoHorasVersionamentoService.listarVersoes(empresaId, mes, ano)
+        )
+      );
+      
+      // Combinar e ordenar todas as versões por data (mais recente primeiro)
+      const versoesCombinadasOrdenadas = todasVersoes
+        .flat()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      return versoesCombinadasOrdenadas;
+    },
+    enabled: !!empresaId && !!mesesDoPeriodo && mesesDoPeriodo.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
+  });
+
+  return {
+    // Dados
+    versoes: versoes || [],
+
+    // Estados
+    isLoading,
+    error,
+
+    // Ações
+    refetch,
+  };
+};
+
+/**
  * Hook para buscar versão específica por ID
  * 
  * @param versaoId - ID da versão

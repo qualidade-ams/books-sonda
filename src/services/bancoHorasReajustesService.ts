@@ -132,6 +132,7 @@ export class BancoHorasReajustesService {
 
       // 4. Criar registro de reajuste na tabela banco_horas_reajustes
       const dadosInsert = {
+        calculo_id: calculoAtual.id, // ← ADICIONAR calculo_id
         empresa_id: dados.empresa_id,
         mes: dados.mes,
         ano: dados.ano,
@@ -155,6 +156,15 @@ export class BancoHorasReajustesService {
         .single();
 
       if (reajusteError) {
+        console.error('❌ Erro detalhado ao criar reajuste:', {
+          error: reajusteError,
+          message: reajusteError.message,
+          details: reajusteError.details,
+          hint: reajusteError.hint,
+          code: reajusteError.code,
+          dadosInsert
+        });
+        
         throw new ReajusteError(
           'ERRO_CRIAR_REAJUSTE',
           `Erro ao criar reajuste: ${reajusteError.message}`,
@@ -162,16 +172,18 @@ export class BancoHorasReajustesService {
         );
       }
 
-      console.log('✅ Reajuste criado:', reajuste.id);
+      console.log('✅ Reajuste criado:', reajuste);
 
       // 5. Criar versão para auditoria
       const versaoId = await this.criarVersao(
+        calculoAtual.id,
         dados.empresa_id,
         dados.mes,
         dados.ano,
         calculoAtual,
         reajuste.id,
-        dados.observacao
+        dados.observacao,
+        dados.created_by // ← PASSAR o created_by
       );
 
       console.log('✅ Versão criada:', versaoId);
@@ -401,38 +413,43 @@ export class BancoHorasReajustesService {
    * Cria versão para auditoria
    */
   private async criarVersao(
+    calculoId: string,
     empresaId: string,
     mes: number,
     ano: number,
     calculoAnterior: any,
     reajusteId: string,
-    observacao: string
+    observacao: string,
+    createdBy?: string // ← ADICIONAR parâmetro
   ): Promise<string> {
     // Buscar última versão para incrementar
     const { data: ultimaVersao } = await supabase
       .from('banco_horas_versoes')
-      .select('versao')
-      .eq('empresa_id', empresaId)
-      .eq('mes', mes)
-      .eq('ano', ano)
-      .order('versao', { ascending: false })
+      .select('versao_nova')
+      .eq('calculo_id', calculoId)
+      .order('versao_nova', { ascending: false })
       .limit(1)
       .single();
 
-    const novaVersao = (ultimaVersao?.versao || 0) + 1;
+    const versaoAnterior = ultimaVersao?.versao_nova || 0;
+    const versaoNova = versaoAnterior + 1;
 
     // Criar versão
     const { data: versao, error } = await supabase
       .from('banco_horas_versoes')
       .insert({
-        empresa_id: empresaId,
-        mes,
-        ano,
-        versao: novaVersao,
-        reajuste_id: reajusteId,
-        snapshot_calculo: calculoAnterior,
-        observacao,
-        tipo_alteracao: 'reajuste'
+        calculo_id: calculoId,
+        versao_anterior: versaoAnterior,
+        versao_nova: versaoNova,
+        dados_anteriores: calculoAnterior || {},
+        dados_novos: {
+          ...calculoAnterior,
+          reajuste_aplicado: true,
+          reajuste_id: reajusteId
+        },
+        motivo: observacao,
+        tipo_mudanca: 'reajuste',
+        created_by: createdBy || null // ← USAR o parâmetro
       })
       .select()
       .single();

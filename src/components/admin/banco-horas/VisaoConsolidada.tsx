@@ -7,12 +7,14 @@
  * @module components/admin/banco-horas/VisaoConsolidada
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Download,
   History,
   Eye,
-  FileText
+  FileText,
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,11 +45,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { getCobrancaIcon } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
+import { useAuth } from '@/hooks/useAuth'; // ← ADICIONAR
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 /**
  * Props for VisaoConsolidada component
@@ -82,7 +89,7 @@ export interface VisaoConsolidadaProps {
  * Formats hours from HH:MM string to display format
  */
 const formatarHoras = (horas?: string): string => {
-  if (!horas) return '00:00';
+  if (!horas || horas === '0:00' || horas === '00:00') return '';
   // Garantir formato HH:MM (remover segundos se existir)
   const parts = horas.split(':');
   if (parts.length >= 2) {
@@ -136,6 +143,9 @@ export function VisaoConsolidada({
   mesesDoPeriodo,
   requerimentos = []
 }: VisaoConsolidadaProps) {
+  // Hook de autenticação
+  const { user } = useAuth();
+  
   // Hook de reajustes
   const { criarReajuste, isCreating } = useBancoHorasReajustes();
   
@@ -153,6 +163,42 @@ export function VisaoConsolidada({
   // Estados para visualização de requerimento
   const [requerimentoSelecionado, setRequerimentoSelecionado] = useState<Requerimento | null>(null);
   const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
+  
+  // Estado para última sincronização de apontamentos
+  const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
+  const [carregandoSincronizacao, setCarregandoSincronizacao] = useState(true);
+  
+  // Buscar data da última sincronização de apontamentos_aranda
+  useEffect(() => {
+    const buscarUltimaSincronizacao = async () => {
+      try {
+        setCarregandoSincronizacao(true);
+        
+        // Buscar o registro mais recente da tabela apontamentos_aranda
+        const { data, error } = await supabase
+          .from('apontamentos_aranda' as any)
+          .select('created_at, updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (error) {
+          console.error('Erro ao buscar última sincronização:', error);
+          setUltimaSincronizacao(null);
+        } else if (data) {
+          // Usar updated_at como referência da última sincronização
+          setUltimaSincronizacao(new Date((data as any).updated_at));
+        }
+      } catch (error) {
+        console.error('Erro ao buscar última sincronização:', error);
+        setUltimaSincronizacao(null);
+      } finally {
+        setCarregandoSincronizacao(false);
+      }
+    };
+    
+    buscarUltimaSincronizacao();
+  }, []); // Executar apenas uma vez ao montar o componente
   
   // Usar primeiro cálculo para informações gerais
   const calculoPrincipal = calculos[0];
@@ -199,7 +245,8 @@ export function VisaoConsolidada({
         ano: reajusteEditando.ano,
         valor_horas: reajusteEditando.horas,
         tipo: tipoReajuste,
-        observacao: observacaoReajuste
+        observacao: observacaoReajuste,
+        created_by: user?.id // ← ADICIONAR created_by
       });
       
       // Fechar modal e limpar estados
@@ -380,7 +427,7 @@ export function VisaoConsolidada({
                   <TableCell key={index} className="text-center">
                     <Input
                       type="text"
-                      placeholder="00:00"
+                      placeholder=""
                       defaultValue={formatarHoras(calculo.reajustes_horas)}
                       onBlur={(e) => handleReajusteBlur(calculo.mes, calculo.ano, e.target.value, calculo.empresa_id)}
                       disabled={disabled || isCreating}
@@ -456,6 +503,30 @@ export function VisaoConsolidada({
           </Table>
           </div>
         </div>
+
+        {/* Alerta de Última Sincronização */}
+        <Alert className="mt-6 border-blue-200 bg-blue-50">
+          <Clock className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-sm text-blue-800">
+            {carregandoSincronizacao ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                <span>Verificando última sincronização...</span>
+              </div>
+            ) : ultimaSincronizacao ? (
+              <>
+                <strong>Dados de Consumo Chamados:</strong> Os dados são equivalentes à última sincronização realizada em{' '}
+                <strong>
+                  {format(ultimaSincronizacao, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </strong>
+              </>
+            ) : (
+              <>
+                <strong>Dados de Consumo Chamados:</strong> Não foi possível verificar a data da última sincronização.
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
 
         {/* Observação Pública */}
         {calculoPrincipal?.observacao_publica && (

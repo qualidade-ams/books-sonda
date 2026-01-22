@@ -50,7 +50,7 @@ import {
   useBancoHorasCalculos,
   useAlocacoes,
   useCalculosSegmentados,
-  useVersoes
+  useVersoesPeriodo
 } from '@/hooks/useBancoHoras';
 import { useHistoricoVersoes } from '@/hooks/useBancoHorasVersoes';
 import { useEmpresas } from '@/hooks/useEmpresas';
@@ -211,11 +211,11 @@ export default function ControleBancoHoras() {
     isLoading: isLoadingSegmentados
   } = useCalculosSegmentados(empresaSelecionada, mesAno.mes, mesAno.ano);
   
-  // Buscar versões
+  // Buscar versões de todos os meses do período
   const {
     versoes,
     isLoading: isLoadingVersoes
-  } = useVersoes(empresaSelecionada, mesAno.mes, mesAno.ano);
+  } = useVersoesPeriodo(empresaSelecionada, mesesDoPeriodo);
   
   // Buscar requerimentos do período
   const { data: requerimentosTodos, isLoading: isLoadingRequerimentos } = useRequerimentos(

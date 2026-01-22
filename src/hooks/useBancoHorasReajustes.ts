@@ -45,10 +45,10 @@ export function useBancoHorasReajustes() {
         queryKey: ['banco-horas-calculos', dados.empresa_id] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['banco-horas-versoes', dados.empresa_id, dados.mes, dados.ano] 
+        queryKey: ['banco-horas-versoes'] // ← Invalidar TODAS as versões
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['banco-horas-reajustes', dados.empresa_id, dados.mes, dados.ano] 
+        queryKey: ['banco-horas-reajustes'] // ← Invalidar TODOS os reajustes
       });
     },
     onError: (error: any) => {
