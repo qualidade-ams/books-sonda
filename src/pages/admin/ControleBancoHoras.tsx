@@ -272,13 +272,8 @@ export default function ControleBancoHoras() {
     
     return naoConcluidos;
   }, [requerimentosTodos, mesesDoPeriodo]);
-  
-  // Selecionar primeira empresa automaticamente
-  useEffect(() => {
-    if (!empresaSelecionada && empresas && empresas.length > 0) {
-      setEmpresaSelecionada(empresas[0].id);
-    }
-  }, [empresas, empresaSelecionada]);
+  // ✅ REMOVIDO: Não selecionar empresa automaticamente
+  // Usuário deve escolher manualmente no dropdown
   
   // Calcular trimestre sequencialmente quando empresa muda
   useEffect(() => {
@@ -582,6 +577,34 @@ export default function ControleBancoHoras() {
             </div>
           ) : null}
 
+          {/* Seletor de Empresa */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Empresa / Cliente
+                </label>
+                <Select
+                  value={empresaSelecionada}
+                  onValueChange={setEmpresaSelecionada}
+                  disabled={isLoadingEmpresas}
+                >
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas?.map((empresa) => (
+                      <SelectItem key={empresa.id} value={empresa.id}>
+                        {empresa.nome_abreviado || empresa.nome_completo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Navegação Temporal */}
           <Card>
             <CardContent className="py-3">
@@ -690,36 +713,6 @@ export default function ControleBancoHoras() {
                   )}
                 </TabsTrigger>
               </TabsList>
-
-              {/* Seletor de Empresa - Movido para abaixo das tabs */}
-              <div className="mt-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Empresa / Cliente
-                      </label>
-                      <Select
-                        value={empresaSelecionada}
-                        onValueChange={setEmpresaSelecionada}
-                        disabled={isLoadingEmpresas}
-                      >
-                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Selecione uma empresa" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {empresas?.map((empresa) => (
-                            <SelectItem key={empresa.id} value={empresa.id}>
-                              {empresa.nome_abreviado || empresa.nome_completo}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
 
               <TabsContent value="consolidada" className="mt-6">
                 <VisaoConsolidada
