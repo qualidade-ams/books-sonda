@@ -131,6 +131,23 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
   const valoresLocal = form.watch('valores_local');
   const taxaReajuste = form.watch('taxa_reajuste');
 
+  // ✅ NOVO: Alterar automaticamente tipo de cálculo para "média" quando taxa de reajuste for preenchida
+  useEffect(() => {
+    console.log('🔍 [TAXA PADRAO FORM] useEffect taxaReajuste executado:', { taxaReajuste, tipoCalculoAtual: form.getValues('tipo_calculo_adicional') });
+    
+    if (taxaReajuste && taxaReajuste > 0) {
+      // Alterar automaticamente para "média" quando taxa de reajuste for inserida
+      console.log('✅ [TAXA PADRAO FORM] Alterando tipo de cálculo para média devido à taxa de reajuste:', taxaReajuste);
+      form.setValue('tipo_calculo_adicional', 'media', { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      setTipoCalculoAdicional('media');
+      
+      // Forçar re-render do componente
+      setTimeout(() => {
+        console.log('🔄 [TAXA PADRAO FORM] Valor após setTimeout:', form.getValues('tipo_calculo_adicional'));
+      }, 100);
+    }
+  }, [taxaReajuste, form]);
+
   // Recalcular valores e vigências quando taxa de reajuste mudar (apenas em edição)
   useEffect(() => {
     if (taxaPadrao && valoresOriginais && taxaReajuste && taxaReajuste > 0) {
@@ -365,6 +382,15 @@ export function TaxaPadraoForm({ taxaPadrao, onSubmit, onCancel, isLoading }: Ta
                         onChange={(e) => {
                           const valor = e.target.value ? parseFloat(e.target.value) : undefined;
                           field.onChange(valor);
+                          
+                          // ✅ MUDANÇA AUTOMÁTICA: Quando digitar qualquer valor, mudar para "média"
+                          if (valor && valor > 0) {
+                            console.log('✅ [TAXA PADRAO FORM] Valor digitado no campo Taxa de Reajuste:', valor);
+                            console.log('🔄 [TAXA PADRAO FORM] Alterando tipo de cálculo para média...');
+                            form.setValue('tipo_calculo_adicional', 'media', { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                            setTipoCalculoAdicional('media');
+                            console.log('✅ [TAXA PADRAO FORM] Tipo de cálculo alterado para:', form.getValues('tipo_calculo_adicional'));
+                          }
                         }}
                       />
                     </FormControl>
