@@ -440,6 +440,8 @@ function CadastroTaxasClientes() {
             
             dadosDetalhes.push({
               'Cliente': taxa.cliente?.nome_abreviado || '-',
+              'Vigência Início': taxa.vigencia_inicio ? format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+              'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
               'Tipo Hora': 'Remota',
               'Função': funcao,
@@ -467,6 +469,8 @@ function CadastroTaxasClientes() {
             
             dadosDetalhes.push({
               'Cliente': taxa.cliente?.nome_abreviado || '-',
+              'Vigência Início': taxa.vigencia_inicio ? format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+              'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
               'Tipo Hora': 'Local',
               'Função': funcao,
@@ -628,7 +632,10 @@ function CadastroTaxasClientes() {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${taxa.cliente?.nome_abreviado || '-'} - ${taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL'}`, margin + 2, yPos + 5.5);
+        const vigenciaTexto = taxa.vigencia_inicio && taxa.vigencia_fim 
+          ? ` (${format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })} - ${format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })})`
+          : '';
+        doc.text(`${taxa.cliente?.nome_abreviado || '-'} - ${taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL'}${vigenciaTexto}`, margin + 2, yPos + 5.5);
         yPos += 12; // Aumentado de 10 para 12 para dar mais espaço
 
         // Tabela de valores remotos
