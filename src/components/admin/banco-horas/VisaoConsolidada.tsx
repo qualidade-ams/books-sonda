@@ -505,9 +505,9 @@ export function VisaoConsolidada({
         </div>
 
         {/* Alerta de Última Sincronização */}
-        <Alert className="mt-6 border-blue-200 bg-blue-50">
-          <Clock className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-sm text-blue-800">
+        <div className='flex gap-2 mt-2 items-center'>
+          <Clock className="h-3 w-3 text-blue-600" />
+          <AlertDescription className="text-sm text-blue-600">
             {carregandoSincronizacao ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-3 w-3 animate-spin" />
@@ -526,7 +526,7 @@ export function VisaoConsolidada({
               </>
             )}
           </AlertDescription>
-        </Alert>
+        </div>
 
         {/* Observação Pública */}
         {calculoPrincipal?.observacao_publica && (
