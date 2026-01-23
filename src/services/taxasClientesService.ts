@@ -949,20 +949,10 @@ export async function atualizarTaxa(
       valoresLocaisFinais = calcularValoresLocaisAutomaticos(dados.valores_remota);
     }
 
-    // Deletar valores antigos
-    const { error: deleteError } = await supabase
-      .from('valores_taxas_funcoes' as any)
-      .delete()
-      .eq('taxa_id', id);
-
-    if (deleteError) {
-      console.error('Erro ao deletar valores antigos:', deleteError);
-      throw new Error('Erro ao deletar valores antigos da taxa');
-    }
-
-    // Inserir novos valores PRESERVANDO valores não alterados
+    // CORREÇÃO: Usar UPSERT em vez de DELETE + INSERT para evitar erro de constraint
+    // Não deletar valores antigos - usar UPSERT para atualizar ou inserir
     const funcoes = getFuncoesPorProduto(taxaAtualizada.tipo_produto);
-    const valoresParaInserir: any[] = [];
+    const valoresParaUpsert: any[] = [];
 
     funcoes.forEach(funcao => {
       // CORREÇÃO: Buscar valores existentes para esta função
@@ -1031,7 +1021,7 @@ export async function atualizarTaxa(
         valorRemotaData.valor_standby = valorExistenteRemoto.valor_standby || 0;
       }
 
-      valoresParaInserir.push(valorRemotaData);
+      valoresParaUpsert.push(valorRemotaData);
 
       // Valor local
       const valorLocalData: any = {
@@ -1062,31 +1052,34 @@ export async function atualizarTaxa(
         valorLocalData.valor_fim_semana = valorExistenteLocal.valor_fim_semana || 0;
       }
 
-      valoresParaInserir.push(valorLocalData);
+      valoresParaUpsert.push(valorLocalData);
     });
 
-    console.log('💾 [ATUALIZAR TAXA] Valores finais para inserir:', valoresParaInserir);
+    console.log('💾 [ATUALIZAR TAXA] Valores finais para UPSERT:', valoresParaUpsert);
 
-    // Inserir novos valores com timeout
+    // CORREÇÃO CRÍTICA: Usar UPSERT em vez de INSERT para evitar erro de constraint
     const valoresTimeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout: Inserção de valores demorou mais que 30 segundos')), 30000);
+      setTimeout(() => reject(new Error('Timeout: UPSERT de valores demorou mais que 30 segundos')), 30000);
     });
 
     const valoresPromise = supabase
       .from('valores_taxas_funcoes' as any)
-      .insert(valoresParaInserir);
+      .upsert(valoresParaUpsert, {
+        onConflict: 'taxa_id,funcao,tipo_hora',
+        ignoreDuplicates: false
+      });
 
     try {
       const valoresResult = await Promise.race([valoresPromise, valoresTimeoutPromise]) as any;
       if (valoresResult.error) {
-        console.error('Erro ao inserir novos valores:', valoresResult.error);
+        console.error('Erro ao fazer UPSERT de valores:', valoresResult.error);
         throw new Error(`Erro ao atualizar valores da taxa: ${valoresResult.error.message || 'Erro desconhecido'}`);
       }
-      console.log('✅ [ATUALIZAR TAXA] Valores atualizados com sucesso');
+      console.log('✅ [ATUALIZAR TAXA] Valores atualizados com sucesso via UPSERT');
     } catch (error: any) {
-      console.error('Erro ao inserir novos valores:', error);
+      console.error('Erro ao fazer UPSERT de valores:', error);
       if (error.message?.includes('Timeout')) {
-        throw new Error('A inserção dos valores está demorando muito. Tente novamente.');
+        throw new Error('O UPSERT dos valores está demorando muito. Tente novamente.');
       }
       throw new Error(`Erro ao atualizar valores da taxa: ${error.message || 'Erro desconhecido'}`);
     }

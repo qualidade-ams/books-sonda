@@ -137,7 +137,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   const [reajustes, setReajustes] = useState<Record<string, BancoHorasReajuste>>({});
   const [loadingReajustes, setLoadingReajustes] = useState(false);
   
-  // Estado para nomes de usuários
+  // Estado para nomes de usuários (tanto de versões quanto de reajustes)
   const [usuarios, setUsuarios] = useState<Record<string, string>>({});
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
 
@@ -146,87 +146,47 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
    */
   useEffect(() => {
     const buscarReajustes = async () => {
-      console.log('🔍 Total de versões recebidas:', versoes.length);
-      console.log('🔍 Tipos de mudança nas versões:', versoes.map(v => ({
-        versao: v.versao_nova,
-        tipo_mudanca: v.tipo_mudanca,
-        motivo: v.motivo,
-        calculo_id: v.calculo_id
-      })));
-      
-      if (versoes.length === 0) {
-        return;
-      }
+      if (versoes.length === 0) return;
 
       setLoadingReajustes(true);
       
       try {
-        // Buscar TODOS os reajustes da empresa (não filtrar por mês/ano)
-        // porque o período pode ser trimestral (múltiplos meses)
-        console.log('🔍 Buscando TODOS os reajustes para empresa:', empresaId);
+        // Coletar IDs únicos de cálculos
+        const calculoIds = versoes
+          .map(v => v.calculo_id)
+          .filter((id, index, self) => self.indexOf(id) === index); // unique
+
+        console.log('🔍 [REAJUSTES] Buscando reajustes para calculo_ids:', calculoIds);
         
+        // Buscar reajustes APENAS pelos calculo_ids das versões
         const { data, error } = await supabase
           .from('banco_horas_reajustes')
           .select('*')
-          .eq('empresa_id', empresaId)
-          .eq('ativo', true)
-          .order('created_at', { ascending: false });
+          .in('calculo_id', calculoIds)
+          .eq('ativo', true);
 
         if (error) {
-          console.error('❌ Erro ao buscar reajustes:', error);
+          console.error('❌ [REAJUSTES] Erro ao buscar:', error);
           return;
         }
 
-        console.log('✅ Reajustes encontrados:', data);
+        console.log('✅ [REAJUSTES] Reajustes encontrados:', data);
 
-        // Mapear reajustes de múltiplas formas para garantir match
+        // Mapear reajustes por calculo_id (simples e direto)
         const reajustesMap: Record<string, BancoHorasReajuste> = {};
-        
         data?.forEach(reajuste => {
-          // 1. Mapear por calculo_id se existir
-          if (reajuste.calculo_id) {
-            reajustesMap[reajuste.calculo_id] = reajuste;
-            console.log('🔗 Mapeado por calculo_id:', reajuste.calculo_id);
-          }
-          
-          // 2. Mapear por chave composta empresa+mes+ano
-          const chaveComposta = `${reajuste.empresa_id}_${reajuste.mes}_${reajuste.ano}`;
-          reajustesMap[chaveComposta] = reajuste;
-          console.log('🔗 Mapeado por chave composta:', chaveComposta);
-        });
-
-        console.log('📊 Reajustes mapeados:', reajustesMap);
-        
-        // Tentar relacionar versões com reajustes
-        versoes.forEach(versao => {
-          console.log('🔍 Tentando relacionar versão:', {
-            versao: versao.versao_nova,
-            calculo_id: versao.calculo_id,
-            tem_reajuste_por_calculo: !!reajustesMap[versao.calculo_id]
+          reajustesMap[reajuste.calculo_id] = reajuste;
+          console.log('  ✅ Mapeado:', {
+            calculo_id: reajuste.calculo_id,
+            valor_reajuste_horas: reajuste.valor_reajuste_horas,
+            tipo_reajuste: reajuste.tipo_reajuste,
+            created_by: reajuste.created_by
           });
-          
-          // Se não tem reajuste por calculo_id, tentar por chave composta
-          if (!reajustesMap[versao.calculo_id]) {
-            // Tentar com o mês/ano do modal
-            const chaveVersao = `${empresaId}_${mes}_${ano}`;
-            if (reajustesMap[chaveVersao]) {
-              reajustesMap[versao.calculo_id] = reajustesMap[chaveVersao];
-              console.log('✅ Relacionado por chave composta (mes/ano do modal):', {
-                versao: versao.versao_nova,
-                calculo_id: versao.calculo_id,
-                reajuste: reajustesMap[chaveVersao]
-              });
-            } else {
-              console.log('⚠️ Não encontrou reajuste para chave:', chaveVersao);
-              console.log('⚠️ Chaves disponíveis:', Object.keys(reajustesMap).filter(k => k.includes('_')));
-            }
-          }
         });
 
-        console.log('📊 Mapeamento final:', reajustesMap);
         setReajustes(reajustesMap);
       } catch (error) {
-        console.error('❌ Erro ao buscar reajustes:', error);
+        console.error('❌ [REAJUSTES] Erro:', error);
       } finally {
         setLoadingReajustes(false);
       }
@@ -235,20 +195,29 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
     if (open && versoes.length > 0) {
       buscarReajustes();
     }
-  }, [open, versoes, empresaId, mes, ano]);
+  }, [open, versoes]);
 
   /**
-   * Busca nomes dos usuários
+   * Busca nomes dos usuários (versões + reajustes)
    */
   useEffect(() => {
     const buscarUsuarios = async () => {
-      // Coletar IDs únicos de usuários das versões
-      const userIds = versoes
+      // Coletar IDs únicos de usuários das versões E dos reajustes
+      const userIdsVersoes = versoes
         .map(v => v.created_by)
-        .filter((id): id is string => !!id)
+        .filter((id): id is string => !!id);
+      
+      const userIdsReajustes = Object.values(reajustes)
+        .map(r => r.created_by)
+        .filter((id): id is string => !!id);
+      
+      const userIds = [...userIdsVersoes, ...userIdsReajustes]
         .filter((id, index, self) => self.indexOf(id) === index); // unique
 
+      console.log('👥 [USUARIOS] IDs para buscar:', userIds);
+
       if (userIds.length === 0) {
+        console.log('⚠️ [USUARIOS] Nenhum ID para buscar');
         return;
       }
 
@@ -257,33 +226,46 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, nome')
+          .select('id, nome, email')
           .in('id', userIds);
 
         if (error) {
-          console.error('❌ Erro ao buscar usuários:', error);
+          console.error('❌ [USUARIOS] Erro ao buscar:', error);
+          // Fallback: usar IDs truncados
+          const usuariosMap: Record<string, string> = {};
+          userIds.forEach(id => {
+            usuariosMap[id] = `Usuário ${id.substring(0, 8)}`;
+          });
+          setUsuarios(usuariosMap);
           return;
         }
 
         // Mapear usuários por ID
         const usuariosMap: Record<string, string> = {};
         data?.forEach(user => {
-          usuariosMap[user.id] = user.nome || 'Usuário sem nome';
+          // Priorizar nome, depois email, depois ID
+          usuariosMap[user.id] = user.nome || user.email?.split('@')[0] || `Usuário ${user.id.substring(0, 8)}`;
         });
 
-        console.log('👥 Usuários encontrados:', usuariosMap);
+        console.log('✅ [USUARIOS] Usuários encontrados:', usuariosMap);
         setUsuarios(usuariosMap);
       } catch (error) {
-        console.error('❌ Erro ao buscar usuários:', error);
+        console.error('❌ [USUARIOS] Erro:', error);
+        // Fallback final: usar IDs
+        const usuariosMap: Record<string, string> = {};
+        userIds.forEach(id => {
+          usuariosMap[id] = `Usuário ${id.substring(0, 8)}`;
+        });
+        setUsuarios(usuariosMap);
       } finally {
         setLoadingUsuarios(false);
       }
     };
 
-    if (open && versoes.length > 0) {
+    if (open && (versoes.length > 0 || Object.keys(reajustes).length > 0)) {
       buscarUsuarios();
     }
-  }, [open, versoes]);
+  }, [open, versoes, reajustes]);
 
   /**
    * Seleciona versão para comparação
@@ -563,25 +545,16 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                     </TableHeader>
                     <TableBody>
                       {versoes.map((versao) => {
-                        // Tentar múltiplas formas de encontrar o reajuste
-                        let reajuste = reajustes[versao.calculo_id];
+                        // Buscar reajuste pelo calculo_id (simples e direto)
+                        const reajuste = reajustes[versao.calculo_id];
                         
-                        // Se não encontrou por calculo_id, tentar por chave composta usando mes/ano do modal
-                        if (!reajuste) {
-                          const chaveComposta = `${empresaId}_${mes}_${ano}`;
-                          reajuste = reajustes[chaveComposta];
-                        }
-                        
-                        // Debug log SEMPRE
-                        console.log('🔍 Renderizando versão:', {
+                        // Log simplificado
+                        console.log('🔍 [RENDER] Versão:', {
                           versao: versao.versao_nova,
                           calculo_id: versao.calculo_id,
                           tipo_mudanca: versao.tipo_mudanca,
-                          motivo: versao.motivo,
                           reajuste_encontrado: !!reajuste,
-                          reajuste_dados: reajuste,
-                          todas_chaves_reajustes: Object.keys(reajustes),
-                          tentou_chave_composta: `${empresaId}_${mes}_${ano}`
+                          valor_reajuste_horas: reajuste?.valor_reajuste_horas
                         });
                         
                         return (
@@ -615,7 +588,24 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              {getBadgeTipoMudanca(versao.tipo_mudanca)}
+                              {/* Mostrar valor_reajuste_horas do reajuste */}
+                              {reajuste && reajuste.valor_reajuste_horas ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="font-semibold text-sonda-blue text-base">
+                                    {reajuste.valor_reajuste_horas}
+                                  </span>
+                                  {getBadgeTipoMudanca(versao.tipo_mudanca)}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1">
+                                  {getBadgeTipoMudanca(versao.tipo_mudanca)}
+                                  {versao.tipo_mudanca === 'reajuste' && (
+                                    <span className="text-xs text-gray-400 italic">
+                                      Sem dados de horas
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-2 text-sm">
@@ -627,7 +617,10 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                               <div className="flex items-center justify-center gap-2 text-sm">
                                 <User className="h-4 w-4 text-gray-400" />
                                 <span className="text-gray-700">
-                                  {versao.created_by ? (
+                                  {/* Mostrar autor do reajuste se existir, senão autor da versão */}
+                                  {reajuste && reajuste.created_by ? (
+                                    usuarios[reajuste.created_by] || 'Carregando...'
+                                  ) : versao.created_by ? (
                                     usuarios[versao.created_by] || 'Carregando...'
                                   ) : (
                                     'Sistema'
@@ -637,10 +630,10 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">
-                                {/* Observação do reajuste - mostrar APENAS a observação, sem duplicar */}
-                                {reajuste && reajuste.observacao ? (
+                                {/* Mostrar observacao_privada do reajuste ou motivo da versão */}
+                                {reajuste && reajuste.observacao_privada ? (
                                   <div className="text-sm text-gray-600">
-                                    {reajuste.observacao}
+                                    {reajuste.observacao_privada}
                                   </div>
                                 ) : versao.motivo ? (
                                   <div className="text-sm text-gray-600">
@@ -652,7 +645,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              {/* Mostrar tipo de reajuste para QUALQUER versão que tenha reajuste */}
+                              {/* Mostrar tipo de reajuste */}
                               {reajuste && reajuste.tipo_reajuste ? (
                                 getBadgeTipoReajuste(reajuste.tipo_reajuste)
                               ) : (
