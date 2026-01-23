@@ -2,20 +2,19 @@
  * Modal de Histórico de Versões - Banco de Horas
  * 
  * Componente que exibe o histórico completo de versões de um cálculo mensal,
- * permitindo visualização de mudanças, comparação entre versões e filtros.
+ * permitindo visualização de mudanças e exclusão de versões.
  * 
  * Funcionalidades:
  * - Lista de versões com timestamp e usuário
- * - Botão "Comparar" entre duas versões
- * - Diff visual entre versões
  * - Exibição do motivo da mudança
- * - Filtros por data e tipo de mudança
+ * - Botão de exclusão para cada versão
  * 
  * @module components/admin/banco-horas/ModalHistorico
  * @requirements 12.4-12.10
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -33,35 +42,24 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import {
   History,
-  GitCompare,
-  Filter,
-  X,
   Clock,
   User,
   FileText,
-  AlertCircle,
   ChevronRight,
   Loader2,
   TrendingUp,
   TrendingDown,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import type { BancoHorasVersao, DiferencasVersao, BancoHorasReajuste } from '@/types/bancoHoras';
+import { bancoHorasService } from '@/services/bancoHorasService';
+import type { BancoHorasVersao, BancoHorasReajuste } from '@/types/bancoHoras';
 
 /**
  * Props do componente ModalHistorico
@@ -87,21 +85,13 @@ export interface ModalHistoricoProps {
   
   /** Estado de carregamento */
   isLoading?: boolean;
-  
-  /** Callback para comparar versões */
-  onCompararVersoes?: (versao1: BancoHorasVersao, versao2: BancoHorasVersao) => DiferencasVersao;
 }
-
-/**
- * Tipo de mudança para filtro
- */
-type TipoMudancaFiltro = 'todos' | 'reajuste' | 'recalculo' | 'correcao';
 
 /**
  * Componente ModalHistorico
  * 
  * Modal para visualização do histórico completo de versões de um cálculo mensal.
- * Permite filtrar, comparar e visualizar detalhes de cada mudança.
+ * Permite visualizar detalhes de cada mudança e excluir versões.
  * 
  * @example
  * <ModalHistorico
@@ -112,7 +102,6 @@ type TipoMudancaFiltro = 'todos' | 'reajuste' | 'recalculo' | 'correcao';
  *   ano={2024}
  *   versoes={versoes}
  *   isLoading={false}
- *   onCompararVersoes={handleComparar}
  * />
  * 
  * **Validates: Requirements 12.4-12.10**
@@ -126,13 +115,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   ano,
   versoes,
   isLoading = false,
-  onCompararVersoes,
 }) => {
-  // Estado de comparação
-  const [versoesParaComparar, setVersoesParaComparar] = useState<string[]>([]);
-  const [comparacaoAtiva, setComparacaoAtiva] = useState(false);
-  const [diferencas, setDiferencas] = useState<DiferencasVersao | null>(null);
-  
   // Estado para dados de reajustes
   const [reajustes, setReajustes] = useState<Record<string, BancoHorasReajuste>>({});
   const [loadingReajustes, setLoadingReajustes] = useState(false);
@@ -140,6 +123,13 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   // Estado para nomes de usuários (tanto de versões quanto de reajustes)
   const [usuarios, setUsuarios] = useState<Record<string, string>>({});
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+
+  // Estado para confirmação de exclusão
+  const [versaoParaExcluir, setVersaoParaExcluir] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   /**
    * Busca dados de reajustes para versões
@@ -151,19 +141,28 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       setLoadingReajustes(true);
       
       try {
-        // Coletar IDs únicos de cálculos
-        const calculoIds = versoes
-          .map(v => v.calculo_id)
+        // Coletar IDs únicos de reajustes das versões
+        const reajusteIds = versoes
+          .map(v => v.reajuste_id)
+          .filter((id): id is string => !!id) // Remove nulls/undefined
           .filter((id, index, self) => self.indexOf(id) === index); // unique
 
-        console.log('🔍 [REAJUSTES] Buscando reajustes para calculo_ids:', calculoIds);
+        console.log('🔍 [REAJUSTES] Buscando reajustes para reajuste_ids:', reajusteIds);
         
-        // Buscar reajustes APENAS pelos calculo_ids das versões
-        const { data, error } = await supabase
+        if (reajusteIds.length === 0) {
+          console.log('⚠️ [REAJUSTES] Nenhum reajuste_id encontrado nas versões');
+          setReajustes({});
+          setLoadingReajustes(false);
+          return;
+        }
+        
+        // Buscar reajustes pelos IDs
+        const { data, error } = await (supabase as any)
           .from('banco_horas_reajustes')
           .select('*')
-          .in('calculo_id', calculoIds)
-          .eq('ativo', true);
+          .in('id', reajusteIds)
+          .eq('ativo', true)
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('❌ [REAJUSTES] Erro ao buscar:', error);
@@ -171,12 +170,21 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         }
 
         console.log('✅ [REAJUSTES] Reajustes encontrados:', data);
+        console.log('📊 [REAJUSTES] Total de reajustes:', data?.length);
+        console.log('📊 [REAJUSTES] Detalhes dos reajustes:', data?.map(r => ({
+          id: r.id,
+          valor_reajuste_horas: r.valor_reajuste_horas,
+          tipo_reajuste: r.tipo_reajuste,
+          mes: r.mes,
+          ano: r.ano
+        })));
 
-        // Mapear reajustes por calculo_id (simples e direto)
+        // Mapear reajustes por ID do reajuste
         const reajustesMap: Record<string, BancoHorasReajuste> = {};
         data?.forEach(reajuste => {
-          reajustesMap[reajuste.calculo_id] = reajuste;
+          reajustesMap[reajuste.id] = reajuste;
           console.log('  ✅ Mapeado:', {
+            reajuste_id: reajuste.id,
             calculo_id: reajuste.calculo_id,
             valor_reajuste_horas: reajuste.valor_reajuste_horas,
             tipo_reajuste: reajuste.tipo_reajuste,
@@ -214,7 +222,11 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       const userIds = [...userIdsVersoes, ...userIdsReajustes]
         .filter((id, index, self) => self.indexOf(id) === index); // unique
 
-      console.log('👥 [USUARIOS] IDs para buscar:', userIds);
+      console.log('👥 [USUARIOS] IDs das versões:', userIdsVersoes);
+      console.log('👥 [USUARIOS] IDs dos reajustes:', userIdsReajustes);
+      console.log('👥 [USUARIOS] IDs únicos para buscar:', userIds);
+      console.log('👥 [USUARIOS] Total de reajustes:', Object.keys(reajustes).length);
+      console.log('👥 [USUARIOS] Reajustes com created_by:', Object.values(reajustes).filter(r => r.created_by).length);
 
       if (userIds.length === 0) {
         console.log('⚠️ [USUARIOS] Nenhum ID para buscar');
@@ -226,7 +238,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, nome, email')
+          .select('id, full_name, email')
           .in('id', userIds);
 
         if (error) {
@@ -243,8 +255,8 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         // Mapear usuários por ID
         const usuariosMap: Record<string, string> = {};
         data?.forEach(user => {
-          // Priorizar nome, depois email, depois ID
-          usuariosMap[user.id] = user.nome || user.email?.split('@')[0] || `Usuário ${user.id.substring(0, 8)}`;
+          // Priorizar full_name, depois email (parte antes do @), depois ID truncado
+          usuariosMap[user.id] = user.full_name || user.email?.split('@')[0] || `Usuário ${user.id.substring(0, 8)}`;
         });
 
         console.log('✅ [USUARIOS] Usuários encontrados:', usuariosMap);
@@ -268,43 +280,124 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   }, [open, versoes, reajustes]);
 
   /**
-   * Seleciona versão para comparação
+   * Exclui uma versão do histórico
    */
-  const handleSelecionarVersao = (versaoId: string, checked: boolean) => {
-    if (checked) {
-      if (versoesParaComparar.length < 2) {
-        setVersoesParaComparar([...versoesParaComparar, versaoId]);
+  const handleExcluirVersao = async (versaoId: string) => {
+    setVersaoParaExcluir(versaoId);
+  };
+
+  /**
+   * Confirma a exclusão da versão
+   */
+  const confirmarExclusao = async () => {
+    if (!versaoParaExcluir) return;
+
+    setExcluindo(true);
+
+    try {
+      // Buscar a versão para obter o reajuste_id
+      const versao = versoes.find(v => v.id === versaoParaExcluir);
+      
+      if (!versao) {
+        throw new Error('Versão não encontrada');
       }
-    } else {
-      setVersoesParaComparar(versoesParaComparar.filter(id => id !== versaoId));
+
+      console.log('🗑️ Iniciando exclusão da versão:', versaoParaExcluir);
+
+      // Se a versão tem um reajuste associado, desativar o reajuste
+      if (versao.reajuste_id) {
+        const { error: reajusteError } = await (supabase as any)
+          .from('banco_horas_reajustes')
+          .update({ ativo: false })
+          .eq('id', versao.reajuste_id);
+
+        if (reajusteError) {
+          console.error('❌ Erro ao desativar reajuste:', reajusteError);
+          throw reajusteError;
+        }
+
+        console.log('✅ Reajuste desativado:', versao.reajuste_id);
+      }
+
+      // Excluir a versão
+      const { error: versaoError } = await (supabase as any)
+        .from('banco_horas_versoes')
+        .delete()
+        .eq('id', versaoParaExcluir);
+
+      if (versaoError) {
+        console.error('❌ Erro ao excluir versão:', versaoError);
+        throw versaoError;
+      }
+
+      console.log('✅ Versão excluída:', versaoParaExcluir);
+
+      // Buscar o cálculo associado para obter mês e ano
+      const { data: calculo, error: calculoError } = await (supabase as any)
+        .from('banco_horas_calculos')
+        .select('mes, ano')
+        .eq('id', versao.calculo_id)
+        .single();
+
+      if (calculoError) {
+        console.error('❌ Erro ao buscar cálculo:', calculoError);
+      } else if (calculo) {
+        console.log('🔄 Recalculando valores a partir de', (calculo as any).mes, '/', (calculo as any).ano);
+        
+        // Recalcular os valores a partir do mês afetado
+        try {
+          await bancoHorasService.recalcularAPartirDe(empresaId, (calculo as any).mes, (calculo as any).ano);
+          console.log('✅ Recálculo concluído');
+        } catch (recalcError) {
+          console.error('❌ Erro ao recalcular:', recalcError);
+          // Não lançar erro aqui para não bloquear a exclusão
+        }
+      }
+
+      // Fechar o modal de confirmação ANTES de invalidar queries
+      setVersaoParaExcluir(null);
+
+      console.log('🔄 Invalidando e refetchando queries em paralelo...');
+
+      // ✅ OTIMIZAÇÃO: Invalidar e refetch em paralelo (muito mais rápido!)
+      await Promise.all([
+        // Invalidar queries
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-calculo'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-calculos-segmentados'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-versoes'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-reajustes'], refetchType: 'all' }),
+        
+        // Refetch queries principais
+        queryClient.refetchQueries({ queryKey: ['banco-horas-calculo', empresaId], type: 'all' }),
+        queryClient.refetchQueries({ queryKey: ['banco-horas-calculos-segmentados', empresaId], type: 'all' })
+      ]);
+
+      console.log('✅ Queries atualizadas - exclusão concluída!');
+
+      toast({
+        title: 'Versão excluída',
+        description: 'A versão foi excluída e os valores foram recalculados.',
+      });
+
+      // Fechar o modal de histórico APÓS todas as atualizações
+      onClose();
+    } catch (error) {
+      console.error('❌ Erro ao excluir versão:', error);
+      toast({
+        title: 'Erro ao excluir',
+        description: 'Ocorreu um erro ao excluir a versão. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExcluindo(false);
     }
   };
 
   /**
-   * Compara as versões selecionadas
+   * Cancela a exclusão
    */
-  const handleComparar = () => {
-    if (versoesParaComparar.length !== 2 || !onCompararVersoes) {
-      return;
-    }
-
-    const versao1 = versoes.find(v => v.id === versoesParaComparar[0]);
-    const versao2 = versoes.find(v => v.id === versoesParaComparar[1]);
-
-    if (versao1 && versao2) {
-      const diff = onCompararVersoes(versao1, versao2);
-      setDiferencas(diff);
-      setComparacaoAtiva(true);
-    }
-  };
-
-  /**
-   * Cancela comparação
-   */
-  const handleCancelarComparacao = () => {
-    setComparacaoAtiva(false);
-    setDiferencas(null);
-    setVersoesParaComparar([]);
+  const cancelarExclusao = () => {
+    setVersaoParaExcluir(null);
   };
 
   /**
@@ -358,128 +451,19 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   };
 
   /**
-   * Renderiza visualização de comparação
+   * Formata mês/ano para exibição
    */
-  const renderizarComparacao = () => {
-    if (!diferencas) return null;
-
-    const versao1 = versoes.find(v => v.id === versoesParaComparar[0]);
-    const versao2 = versoes.find(v => v.id === versoesParaComparar[1]);
-
-    return (
-      <Card className="mt-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-sonda-blue" />
-              Comparação de Versões
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancelarComparacao}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {/* Cabeçalho da comparação */}
-          <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-1">Versão {versao1?.versao_nova}</div>
-              <div className="text-xs text-gray-500">
-                {versao1 && formatarDataHora(versao1.created_at)}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-1">Versão {versao2?.versao_nova}</div>
-              <div className="text-xs text-gray-500">
-                {versao2 && formatarDataHora(versao2.created_at)}
-              </div>
-            </div>
-          </div>
-
-          {/* Campos modificados */}
-          {diferencas.campos_modificados.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Campos Modificados ({diferencas.campos_modificados.length})
-              </h4>
-              <div className="space-y-2">
-                {diferencas.campos_modificados.map((campo, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-3 gap-2 p-3 bg-gray-50 rounded-lg text-sm"
-                  >
-                    <div className="font-medium text-gray-700">
-                      {campo.campo.replace(/_/g, ' ')}
-                    </div>
-                    <div className="text-red-600">
-                      <span className="text-xs text-gray-500 block mb-1">Anterior:</span>
-                      {String(campo.valor_anterior || '-')}
-                    </div>
-                    <div className="text-green-600">
-                      <span className="text-xs text-gray-500 block mb-1">Novo:</span>
-                      {String(campo.valor_novo || '-')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Campos adicionados */}
-          {diferencas.campos_adicionados.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Campos Adicionados ({diferencas.campos_adicionados.length})
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {diferencas.campos_adicionados.map((campo, index) => (
-                  <Badge key={index} className="bg-green-100 text-green-800">
-                    {campo.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Campos removidos */}
-          {diferencas.campos_removidos.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Campos Removidos ({diferencas.campos_removidos.length})
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {diferencas.campos_removidos.map((campo, index) => (
-                  <Badge key={index} className="bg-red-100 text-red-800">
-                    {campo.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Mensagem se não houver diferenças */}
-          {diferencas.campos_modificados.length === 0 &&
-           diferencas.campos_adicionados.length === 0 &&
-           diferencas.campos_removidos.length === 0 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Nenhuma diferença encontrada entre as versões selecionadas.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-    );
+  const formatarMesAno = (mes: number, ano: number) => {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return `${meses[mes - 1]}/${ano}`;
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] lg:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
             <History className="h-5 w-5" />
@@ -491,23 +475,6 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Barra de ações - apenas botão de comparar */}
-          {versoesParaComparar.length === 2 && (
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleComparar}
-                className="bg-sonda-blue hover:bg-sonda-dark-blue"
-              >
-                <GitCompare className="h-4 w-4 mr-2" />
-                Comparar Versões
-              </Button>
-            </div>
-          )}
-
-          {/* Visualização de comparação */}
-          {comparacaoAtiva && renderizarComparacao()}
-
           {/* Tabela de versões */}
           <Card>
             <CardContent className="pt-6">
@@ -528,49 +495,38 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div>
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50">
-                        <TableHead className="w-12">
-                          <span className="sr-only">Selecionar</span>
-                        </TableHead>
                         <TableHead className="font-semibold text-gray-700 text-center">Versão</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">Mês/Ano</TableHead>
                         <TableHead className="font-semibold text-gray-700 text-center">Tipo</TableHead>
                         <TableHead className="font-semibold text-gray-700 text-center">Data/Hora</TableHead>
                         <TableHead className="font-semibold text-gray-700 text-center">Usuário</TableHead>
                         <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
                         <TableHead className="font-semibold text-gray-700 text-center">Entrada/Saída</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center w-24">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {versoes.map((versao) => {
-                        // Buscar reajuste pelo calculo_id (simples e direto)
-                        const reajuste = reajustes[versao.calculo_id];
+                        // Buscar reajuste pelo reajuste_id da versão (correto!)
+                        const reajuste = versao.reajuste_id ? reajustes[versao.reajuste_id] : null;
                         
-                        // Log simplificado
+                        // Log detalhado para debug
                         console.log('🔍 [RENDER] Versão:', {
-                          versao: versao.versao_nova,
-                          calculo_id: versao.calculo_id,
+                          versao_id: versao.id,
+                          versao_numero: versao.versao_nova,
+                          reajuste_id: versao.reajuste_id,
                           tipo_mudanca: versao.tipo_mudanca,
                           reajuste_encontrado: !!reajuste,
-                          valor_reajuste_horas: reajuste?.valor_reajuste_horas
+                          valor_reajuste_horas: reajuste?.valor_reajuste_horas,
+                          reajuste_completo: reajuste
                         });
                         
                         return (
                           <TableRow key={versao.id} className="hover:bg-gray-50">
-                            <TableCell>
-                              <Checkbox
-                                checked={versoesParaComparar.includes(versao.id)}
-                                onCheckedChange={(checked) => 
-                                  handleSelecionarVersao(versao.id, checked as boolean)
-                                }
-                                disabled={
-                                  versoesParaComparar.length >= 2 && 
-                                  !versoesParaComparar.includes(versao.id)
-                                }
-                              />
-                            </TableCell>
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-2">
                                 <FileText className="h-4 w-4 text-gray-500" />
@@ -586,6 +542,18 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                   </>
                                 )}
                               </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {/* Mostrar mês/ano do reajuste se existir, senão usar mês/ano do modal */}
+                              {reajuste && reajuste.mes && reajuste.ano ? (
+                                <span className="text-sm font-medium text-gray-700">
+                                  {formatarMesAno(reajuste.mes, reajuste.ano)}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-gray-500">
+                                  {formatarMesAno(mes, ano)}
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell className="text-center">
                               {/* Mostrar valor_reajuste_horas do reajuste */}
@@ -652,6 +620,18 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                 <span className="text-xs text-gray-400">-</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                  onClick={() => handleExcluirVersao(versao.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -666,15 +646,49 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
           {!isLoading && !loadingReajustes && !loadingUsuarios && versoes.length > 0 && (
             <div className="text-sm text-gray-500 text-center">
               Mostrando {versoes.length} versão(ões)
-              {versoesParaComparar.length > 0 && (
-                <span className="ml-2">
-                  • {versoesParaComparar.length} versão(ões) selecionada(s) para comparação
-                </span>
-              )}
             </div>
           )}
         </div>
       </DialogContent>
+
+      {/* AlertDialog de confirmação de exclusão */}
+      <AlertDialog open={!!versaoParaExcluir} onOpenChange={(open) => !open && cancelarExclusao()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta versão do histórico? Esta ação não pode ser desfeita.
+              {versaoParaExcluir && versoes.find(v => v.id === versaoParaExcluir)?.reajuste_id && (
+                <span className="block mt-2 text-orange-600 font-medium">
+                  ⚠️ O reajuste associado a esta versão também será desativado.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelarExclusao} disabled={excluindo}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              disabled={excluindo}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {excluindo ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

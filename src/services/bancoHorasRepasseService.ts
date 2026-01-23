@@ -88,7 +88,8 @@ export function calcularRepasse(
   }
   
   // Se saldo é positivo, aplica percentual
-  const repasseMinutos = Math.floor(saldoMinutos * (percentualRepasse / 100));
+  // CORREÇÃO: Usar Math.round() em vez de Math.floor() para evitar perda de precisão
+  const repasseMinutos = Math.round(saldoMinutos * (percentualRepasse / 100));
   const repasseCalculado = converterMinutosParaHoras(repasseMinutos);
   
   // Log de debug
@@ -97,7 +98,8 @@ export function calcularRepasse(
     saldoMinutos,
     percentualRepasse,
     repasseMinutos,
-    repasseCalculado
+    repasseCalculado,
+    metodoArredondamento: 'Math.round (arredonda para o mais próximo)'
   });
   
   return repasseCalculado;

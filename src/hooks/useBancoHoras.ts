@@ -64,10 +64,11 @@ export const useBancoHorasCalculos = (
       return await bancoHorasService.obterOuCalcular(empresaId, mes, ano);
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 2 * 60 * 1000, // 2 minutos
+    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
     gcTime: 10 * 60 * 1000, // 10 minutos
     retry: 2,
     refetchOnMount: true,
+    refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
   // Mutation para forçar recálculo
@@ -271,8 +272,10 @@ export const useReajustes = (
       return await reajustesService.listarReajustes(empresaId, mes, ano);
     },
     enabled: !!empresaId,
-    staleTime: 1 * 60 * 1000, // 1 minuto
+    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
     gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnMount: true, // Refetch ao montar componente
+    refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
   return {
@@ -323,8 +326,10 @@ export const useVersoes = (
       return await bancoHorasVersionamentoService.listarVersoes(empresaId, mes, ano);
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
     gcTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnMount: true, // Refetch ao montar componente
+    refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
   return {
@@ -387,8 +392,10 @@ export const useVersoesPeriodo = (
       return versoesCombinadasOrdenadas;
     },
     enabled: !!empresaId && !!mesesDoPeriodo && mesesDoPeriodo.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
     gcTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnMount: true, // Refetch ao montar componente
+    refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
   return {

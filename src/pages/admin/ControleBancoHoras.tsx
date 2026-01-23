@@ -52,7 +52,6 @@ import {
   useCalculosSegmentados,
   useVersoesPeriodo
 } from '@/hooks/useBancoHoras';
-import { useHistoricoVersoes } from '@/hooks/useBancoHorasVersoes';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useToast } from '@/hooks/use-toast';
@@ -214,19 +213,21 @@ export default function ControleBancoHoras() {
   // Buscar versões de todos os meses do período
   const {
     versoes,
-    isLoading: isLoadingVersoes
+    isLoading: isLoadingVersoes,
+    refetch: refetchVersoes
   } = useVersoesPeriodo(empresaSelecionada, mesesDoPeriodo);
   
   // Buscar requerimentos do período
+  // ✅ Buscar TODOS os requerimentos do cliente primeiro
   const { data: requerimentosTodos, isLoading: isLoadingRequerimentos } = useRequerimentos(
     empresaSelecionada ? {
-      cliente_id: empresaSelecionada,
-      tipo_cobranca: 'Banco de Horas'
+      cliente_id: empresaSelecionada
     } : undefined
   );
   
-  // Filtrar requerimentos do período atual
-  const requerimentosPeriodo = useMemo(() => {
+  // Filtrar requerimentos CONCLUÍDOS do período atual (com data de aprovação)
+  // ✅ CORRIGIDO: Filtrar apenas tipo_cobranca = 'Banco de Horas'
+  const requerimentosConcluidos = useMemo(() => {
     if (!requerimentosTodos || !mesesDoPeriodo) return [];
     
     const mesesPeriodoStr = mesesDoPeriodo.map(m => 
@@ -234,17 +235,43 @@ export default function ControleBancoHoras() {
     );
     
     return requerimentosTodos.filter(req => 
-      req.mes_cobranca && mesesPeriodoStr.includes(req.mes_cobranca)
+      req.mes_cobranca && 
+      mesesPeriodoStr.includes(req.mes_cobranca) &&
+      req.data_aprovacao && // Apenas requerimentos com data de aprovação
+      req.tipo_cobranca === 'Banco de Horas' // ✅ ADICIONADO: Apenas Banco de Horas
     );
   }, [requerimentosTodos, mesesDoPeriodo]);
   
-  // Hook de histórico com função de comparação
-  const { compararVersoes } = useHistoricoVersoes(
-    empresaSelecionada || '',
-    mesAno.mes,
-    mesAno.ano,
-    false // Não buscar automaticamente, já temos as versões
-  );
+  // Filtrar requerimentos NÃO CONCLUÍDOS do período atual (sem data de aprovação)
+  // ✅ CORRIGIDO: Filtrar apenas tipo_cobranca = 'Banco de Horas'
+  const requerimentosNaoConcluidos = useMemo(() => {
+    if (!requerimentosTodos || !mesesDoPeriodo) return [];
+    
+    const mesesPeriodoStr = mesesDoPeriodo.map(m => 
+      `${String(m.mes).padStart(2, '0')}/${m.ano}`
+    );
+    
+    const naoConcluidos = requerimentosTodos.filter(req => 
+      req.mes_cobranca && 
+      mesesPeriodoStr.includes(req.mes_cobranca) &&
+      !req.data_aprovacao && // Apenas requerimentos SEM data de aprovação
+      req.tipo_cobranca === 'Banco de Horas' // ✅ ADICIONADO: Apenas Banco de Horas
+    );
+    
+    console.log('🔍 [DEBUG] Requerimentos Não Concluídos:', {
+      total: requerimentosTodos.length,
+      mesesPeriodo: mesesPeriodoStr,
+      naoConcluidos: naoConcluidos.length,
+      detalhes: naoConcluidos.map(r => ({
+        chamado: r.chamado,
+        mes_cobranca: r.mes_cobranca,
+        data_aprovacao: r.data_aprovacao,
+        tipo_cobranca: r.tipo_cobranca // ✅ ADICIONADO para debug
+      }))
+    });
+    
+    return naoConcluidos;
+  }, [requerimentosTodos, mesesDoPeriodo]);
   
   // Selecionar primeira empresa automaticamente
   useEffect(() => {
@@ -379,16 +406,15 @@ export default function ControleBancoHoras() {
     }
   };
   
-  // Handler de exportação
-  const handleExportar = () => {
-    toast({
-      title: 'Exportação em desenvolvimento',
-      description: 'A funcionalidade de exportação será implementada em breve.',
-    });
-  };
-  
   // Handler de histórico
-  const handleHistorico = () => {
+  const handleHistorico = async () => {
+    console.log('📖 Abrindo histórico...');
+    console.log('🔄 Forçando refetch de versões...');
+    
+    // Forçar refetch das versões antes de abrir o modal
+    await refetchVersoes();
+    
+    console.log('✅ Versões atualizadas, abrindo modal...');
     setModalHistoricoAberto(true);
   };
   
@@ -701,9 +727,9 @@ export default function ControleBancoHoras() {
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
                   percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
                   mesesDoPeriodo={mesesDoPeriodo}
-                  requerimentos={requerimentosPeriodo || []}
+                  requerimentos={requerimentosConcluidos || []}
+                  requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
                   onHistoricoClick={handleHistorico}
-                  onExportClick={handleExportar}
                   disabled={isFetchingCalculos || isRecalculatingAny}
                 />
               </TabsContent>
@@ -758,7 +784,6 @@ export default function ControleBancoHoras() {
           ano={calculos[0].ano}
           versoes={versoes || []}
           isLoading={isLoadingVersoes}
-          onCompararVersoes={compararVersoes}
         />
       )}
     </AdminLayout>
