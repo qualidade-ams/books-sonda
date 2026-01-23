@@ -249,9 +249,29 @@ function LancarElogios() {
   const handleDeletarElogio = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este elogio?')) {
       try {
+        console.log('🗑️ Iniciando exclusão do elogio:', id);
+        
         await deletarElogio.mutateAsync(id);
-      } catch (error) {
-        console.error('Erro ao deletar elogio:', error);
+        
+        console.log('✅ Exclusão concluída, limpando cache...');
+        clearFeatureCache('pesquisas');
+        
+        console.log('🔄 Recarregando dados...');
+        const resultado = await refetch();
+        console.log('📊 Dados recarregados:', resultado.data?.length, 'elogios');
+        
+        toast.success('Elogio excluído com sucesso!');
+      } catch (error: any) {
+        console.error('❌ Erro ao deletar elogio:', error);
+        
+        // Mensagem de erro mais específica
+        const mensagemErro = error?.message || 'Erro desconhecido';
+        
+        if (mensagemErro.includes('Permissão negada')) {
+          toast.error('Você não tem permissão para excluir este elogio. Contate o administrador.');
+        } else {
+          toast.error('Erro ao excluir elogio: ' + mensagemErro);
+        }
       }
     }
   };

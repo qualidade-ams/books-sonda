@@ -166,20 +166,42 @@ export class BancoHorasService {
       );
 
       console.log('📥 Repasses mês anterior:', {
+        mesAtual: `${mes}/${ano}`,
+        mesAnterior: mes === 1 ? `12/${ano - 1}` : `${mes - 1}/${ano}`,
         horas: repasseHoras,
-        tickets: repasseTickets
+        tickets: repasseTickets,
+        observacao: 'Este valor vem do campo repasse_horas do mês anterior'
       });
 
-      // 4. Calcular saldo a utilizar = baseline + repasses_mes_anterior
-      const saldoAUtilizarHoras = somarHoras(baselineHoras, repasseHoras);
-      const saldoAUtilizarTickets = baselineTickets + repasseTickets;
+      // 4. Buscar reajustes de entrada e saída
+      const { horas: reajustesEntradaHoras, tickets: reajustesEntradaTickets } = 
+        await this.buscarReajustesEntrada(empresaId, mes, ano);
+
+      const { horas: reajustesSaidaHoras, tickets: reajustesSaidaTickets } = 
+        await this.buscarReajustesSaida(empresaId, mes, ano);
+
+      console.log('➕ Reajustes de entrada:', {
+        horas: reajustesEntradaHoras,
+        tickets: reajustesEntradaTickets
+      });
+
+      console.log('➖ Reajustes de saída:', {
+        horas: reajustesSaidaHoras,
+        tickets: reajustesSaidaTickets
+      });
+
+      // 5. Calcular saldo a utilizar = baseline + repasses_mes_anterior + reajustes_entrada - reajustes_saida
+      const saldoComRepasse = somarHoras(baselineHoras, repasseHoras);
+      const saldoComEntradas = somarHoras(saldoComRepasse, reajustesEntradaHoras);
+      const saldoAUtilizarHoras = subtrairHoras(saldoComEntradas, reajustesSaidaHoras);
+      const saldoAUtilizarTickets = baselineTickets + repasseTickets + reajustesEntradaTickets - reajustesSaidaTickets;
 
       console.log('💰 Saldo a utilizar:', {
         horas: saldoAUtilizarHoras,
         tickets: saldoAUtilizarTickets
       });
 
-      // 5. Buscar consumo e requerimentos
+      // 6. Buscar consumo e requerimentos
       const { horas: consumoHoras, tickets: consumoTickets } = 
         await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
       
@@ -191,29 +213,25 @@ export class BancoHorasService {
         requerimentos: { horas: requerimentosHoras, tickets: requerimentosTickets }
       });
 
-      // 6. Buscar reajustes (se existirem)
-      const { horas: reajustesHoras, tickets: reajustesTickets } = 
-        await this.buscarReajustes(empresaId, mes, ano);
+      // 7. Calcular total de reajustes (entradas - saídas) para exibição
+      const reajustesTotalHoras = subtrairHoras(reajustesEntradaHoras, reajustesSaidaHoras);
+      const reajustesTotalTickets = reajustesEntradaTickets - reajustesSaidaTickets;
 
-      console.log('🔧 Reajustes:', {
-        horas: reajustesHoras,
-        tickets: reajustesTickets
+      console.log('� Total de reajustes (entradas - saídas):', {
+        horas: reajustesTotalHoras,
+        tickets: reajustesTotalTickets
       });
 
-      // 7. Calcular consumo total = consumo + requerimentos - reajustes
-      const consumoTotalHoras = this.calcularConsumoTotal(
-        consumoHoras,
-        requerimentosHoras,
-        reajustesHoras
-      );
-      const consumoTotalTickets = consumoTickets + requerimentosTickets - reajustesTickets;
+      // 8. Calcular consumo total = consumo + requerimentos (SEM reajustes, pois já estão no saldo)
+      const consumoTotalHoras = somarHoras(consumoHoras, requerimentosHoras);
+      const consumoTotalTickets = consumoTickets + requerimentosTickets;
 
       console.log('📈 Consumo total:', {
         horas: consumoTotalHoras,
         tickets: consumoTotalTickets
       });
 
-      // 8. Calcular saldo = saldo_a_utilizar - consumo_total
+      // 9. Calcular saldo = saldo_a_utilizar - consumo_total
       const saldoHoras = subtrairHoras(saldoAUtilizarHoras, consumoTotalHoras);
       const saldoTickets = saldoAUtilizarTickets - consumoTotalTickets;
 
@@ -260,6 +278,11 @@ export class BancoHorasService {
       );
 
       console.log('🔄 Repasse:', {
+        mesAtual: `${mes}/${ano}`,
+        saldoAtual: saldoHoras,
+        percentualRepasse: parametros.percentual_repasse_mensal,
+        repasseCalculado: resultadoRepasseHoras.repasse,
+        observacao: 'Este valor será usado como repasse_mes_anterior no próximo mês',
         horas: resultadoRepasseHoras.repasse,
         tickets: resultadoRepasseTickets.repasse,
         gerarExcedente: resultadoRepasseHoras.gerarExcedente || resultadoRepasseTickets.gerarExcedente
@@ -383,8 +406,8 @@ export class BancoHorasService {
         consumo_tickets: consumoTickets,
         requerimentos_horas: requerimentosHoras,
         requerimentos_tickets: requerimentosTickets,
-        reajustes_horas: reajustesHoras,
-        reajustes_tickets: reajustesTickets,
+        reajustes_horas: reajustesTotalHoras,
+        reajustes_tickets: reajustesTotalTickets,
         consumo_total_horas: consumoTotalHoras,
         consumo_total_tickets: consumoTotalTickets,
         saldo_horas: saldoHoras,
@@ -402,7 +425,13 @@ export class BancoHorasService {
         taxa_ticket_utilizada: taxaTicketUtilizada
       });
 
-      console.log('✅ Cálculo persistido:', calculo.id);
+      console.log('✅ Cálculo persistido:', {
+        id: calculo.id,
+        mes: `${mes}/${ano}`,
+        saldoHoras: saldoHoras,
+        repasseHoras: resultadoRepasseHoras.repasse,
+        observacao: '⚠️ IMPORTANTE: O valor de repasse_horas salvo aqui será usado como repasse_mes_anterior no próximo mês'
+      });
 
       return calculo;
     } catch (error) {
@@ -449,7 +478,7 @@ export class BancoHorasService {
 
       // Buscar cálculo existente (sem versão)
       const { data: calculoExistente, error } = await supabase
-        .from('banco_horas_calculos')
+        .from('banco_horas_calculos' as any)
         .select('*')
         .eq('empresa_id', empresaId)
         .eq('mes', mes)
@@ -462,8 +491,8 @@ export class BancoHorasService {
 
       // Se encontrou cálculo, retornar
       if (calculoExistente) {
-        console.log('✅ Cálculo existente encontrado:', calculoExistente.id);
-        return calculoExistente as BancoHorasCalculo;
+        console.log('✅ Cálculo existente encontrado:', (calculoExistente as any).id);
+        return calculoExistente as any as BancoHorasCalculo;
       }
 
       // Se não encontrou, calcular novo
@@ -510,8 +539,7 @@ export class BancoHorasService {
       const parametros = await this.buscarParametrosEmpresa(empresaId);
 
       // Calcular quantos meses recalcular até fim do período
-      const mesesARecalcular = this.calcularMesesAteF
-imPeriodo(
+      const mesesARecalcular = this.calcularMesesAteFimPeriodo(
         mes,
         ano,
         parametros.inicio_vigencia,
@@ -595,7 +623,7 @@ imPeriodo(
 
     return {
       id: empresa.id,
-      tipo_contrato: empresa.tipo_contrato,
+      tipo_contrato: empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos',
       periodo_apuracao: empresa.periodo_apuracao,
       inicio_vigencia: new Date(empresa.inicio_vigencia),
       baseline_horas_mensal: empresa.baseline_horas_mensal,
@@ -634,7 +662,7 @@ imPeriodo(
 
     // Buscar cálculo do mês anterior (sem versão)
     const { data: calculoAnterior, error } = await supabase
-      .from('banco_horas_calculos')
+      .from('banco_horas_calculos' as any)
       .select('repasse_horas, repasse_tickets')
       .eq('empresa_id', empresaId)
       .eq('mes', mesAnterior)
@@ -643,8 +671,8 @@ imPeriodo(
 
     console.log('📊 Resultado da busca:', {
       encontrado: !!calculoAnterior,
-      repasseHoras: calculoAnterior?.repasse_horas,
-      repasseTickets: calculoAnterior?.repasse_tickets,
+      repasseHoras: (calculoAnterior as any)?.repasse_horas,
+      repasseTickets: (calculoAnterior as any)?.repasse_tickets,
       error: error?.message,
       errorCode: error?.code
     });
@@ -678,80 +706,130 @@ imPeriodo(
     }
 
     console.log('✅ Repasse do mês anterior encontrado:', {
-      repasseHoras: calculoAnterior.repasse_horas || '0:00',
-      repasseTickets: calculoAnterior.repasse_tickets || 0
+      repasseHoras: (calculoAnterior as any).repasse_horas || '0:00',
+      repasseTickets: (calculoAnterior as any).repasse_tickets || 0
     });
 
     return {
-      repasseHoras: calculoAnterior.repasse_horas || '0:00',
-      repasseTickets: calculoAnterior.repasse_tickets || 0
+      repasseHoras: (calculoAnterior as any).repasse_horas || '0:00',
+      repasseTickets: (calculoAnterior as any).repasse_tickets || 0
     };
   }
 
   /**
-   * Busca reajustes do mês
+   * Busca reajustes de ENTRADA do mês
+   * 
+   * Entradas adicionam horas ao saldo disponível, NÃO afetam o consumo.
+   * Retorna o total de entradas para somar no "Saldo a Utilizar".
    */
-  private async buscarReajustes(
+  private async buscarReajustesEntrada(
     empresaId: string,
     mes: number,
     ano: number
   ): Promise<{ horas: string; tickets: number }> {
     const { data: reajustes, error } = await supabase
-      .from('banco_horas_reajustes')
-      .select('valor_reajuste_horas, valor_reajuste_tickets')
+      .from('banco_horas_reajustes' as any)
+      .select('valor_reajuste_horas, valor_reajuste_tickets, tipo_reajuste')
       .eq('empresa_id', empresaId)
       .eq('mes', mes)
       .eq('ano', ano)
+      .eq('tipo_reajuste', 'entrada')
       .eq('ativo', true);
 
     if (error) {
-      console.warn('⚠️ Erro ao buscar reajustes (não crítico):', error.message);
-      // Não lançar erro, apenas retornar valores zerados
-      return {
-        horas: '0:00',
-        tickets: 0
-      };
+      console.warn('⚠️ Erro ao buscar reajustes de entrada (não crítico):', error.message);
+      return { horas: '0:00', tickets: 0 };
     }
 
     if (!reajustes || reajustes.length === 0) {
-      return {
-        horas: '0:00',
-        tickets: 0
-      };
+      return { horas: '0:00', tickets: 0 };
     }
 
-    // Somar todos os reajustes
-    let totalHorasMinutos = 0;
-    let totalTickets = 0;
+    // Somar todas as entradas
+    let totalEntradasMinutos = 0;
+    let totalEntradasTickets = 0;
 
     for (const reajuste of reajustes) {
-      if (reajuste.valor_reajuste_horas) {
-        totalHorasMinutos += converterHorasParaMinutos(reajuste.valor_reajuste_horas);
+      if ((reajuste as any).valor_reajuste_horas) {
+        const valorMinutos = converterHorasParaMinutos((reajuste as any).valor_reajuste_horas);
+        totalEntradasMinutos += valorMinutos;
       }
-      if (reajuste.valor_reajuste_tickets) {
-        totalTickets += reajuste.valor_reajuste_tickets;
+      if ((reajuste as any).valor_reajuste_tickets) {
+        totalEntradasTickets += (reajuste as any).valor_reajuste_tickets;
       }
     }
 
+    const horasFormatadas = converterMinutosParaHoras(totalEntradasMinutos);
+
+    console.log('➕ Reajustes de entrada calculados:', {
+      totalReajustes: reajustes.length,
+      totalEntradasMinutos,
+      horasFormatadas,
+      totalEntradasTickets
+    });
+
     return {
-      horas: converterMinutosParaHoras(totalHorasMinutos),
-      tickets: totalTickets
+      horas: horasFormatadas,
+      tickets: totalEntradasTickets
     };
   }
 
   /**
-   * Calcula consumo total = consumo + requerimentos - reajustes
+   * Busca reajustes de SAÍDA do mês
+   * 
+   * Saídas removem horas do saldo e AUMENTAM o consumo.
+   * Retorna o total de saídas para somar no "Consumo Total".
    */
-  private calcularConsumoTotal(
-    consumo: string,
-    requerimentos: string,
-    reajustes: string
-  ): string {
-    // Somar consumo + requerimentos
-    const somaConsumoRequerimentos = somarHoras(consumo, requerimentos);
-    
-    // Subtrair reajustes
-    return subtrairHoras(somaConsumoRequerimentos, reajustes);
+  private async buscarReajustesSaida(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<{ horas: string; tickets: number }> {
+    const { data: reajustes, error } = await supabase
+      .from('banco_horas_reajustes' as any)
+      .select('valor_reajuste_horas, valor_reajuste_tickets, tipo_reajuste')
+      .eq('empresa_id', empresaId)
+      .eq('mes', mes)
+      .eq('ano', ano)
+      .eq('tipo_reajuste', 'saida')
+      .eq('ativo', true);
+
+    if (error) {
+      console.warn('⚠️ Erro ao buscar reajustes de saída (não crítico):', error.message);
+      return { horas: '0:00', tickets: 0 };
+    }
+
+    if (!reajustes || reajustes.length === 0) {
+      return { horas: '0:00', tickets: 0 };
+    }
+
+    // Somar todas as saídas
+    let totalSaidasMinutos = 0;
+    let totalSaidasTickets = 0;
+
+    for (const reajuste of reajustes) {
+      if ((reajuste as any).valor_reajuste_horas) {
+        const valorMinutos = converterHorasParaMinutos((reajuste as any).valor_reajuste_horas);
+        totalSaidasMinutos += valorMinutos;
+      }
+      if ((reajuste as any).valor_reajuste_tickets) {
+        totalSaidasTickets += (reajuste as any).valor_reajuste_tickets;
+      }
+    }
+
+    const horasFormatadas = converterMinutosParaHoras(totalSaidasMinutos);
+
+    console.log('➖ Reajustes de saída calculados:', {
+      totalReajustes: reajustes.length,
+      totalSaidasMinutos,
+      horasFormatadas,
+      totalSaidasTickets
+    });
+
+    return {
+      horas: horasFormatadas,
+      tickets: totalSaidasTickets
+    };
   }
 
   /**
@@ -812,7 +890,7 @@ imPeriodo(
   private async persistirCalculo(dados: Partial<BancoHorasCalculo>): Promise<BancoHorasCalculo> {
     // Buscar cálculo existente (sem versão)
     const { data: calculoExistente } = await supabase
-      .from('banco_horas_calculos')
+      .from('banco_horas_calculos' as any)
       .select('id')
       .eq('empresa_id', dados.empresa_id!)
       .eq('mes', dados.mes!)
@@ -821,15 +899,15 @@ imPeriodo(
 
     if (calculoExistente) {
       // UPDATE: Atualizar cálculo existente
-      console.log('🔄 Atualizando cálculo existente:', calculoExistente.id);
+      console.log('🔄 Atualizando cálculo existente:', (calculoExistente as any).id);
       
       const { data: calculo, error } = await supabase
-        .from('banco_horas_calculos')
+        .from('banco_horas_calculos' as any)
         .update({
           ...dados,
           updated_at: new Date().toISOString()
         })
-        .eq('id', calculoExistente.id)
+        .eq('id', (calculoExistente as any).id)
         .select()
         .single();
 
@@ -841,13 +919,13 @@ imPeriodo(
         );
       }
 
-      return calculo as BancoHorasCalculo;
+      return calculo as any as BancoHorasCalculo;
     } else {
       // INSERT: Criar novo cálculo
       console.log('➕ Criando novo cálculo');
       
       const { data: calculo, error } = await supabase
-        .from('banco_horas_calculos')
+        .from('banco_horas_calculos' as any)
         .insert({
           ...dados,
           created_at: new Date().toISOString(),
@@ -864,7 +942,7 @@ imPeriodo(
         );
       }
 
-      return calculo as BancoHorasCalculo;
+      return calculo as any as BancoHorasCalculo;
     }
   }
 

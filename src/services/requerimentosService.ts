@@ -68,7 +68,7 @@ export class RequerimentosService {
       data_aprovacao: data.data_aprovacao?.trim() || null,
       horas_funcional: horasFuncionalDecimal,
       horas_tecnico: horasTecnicoDecimal,
-      linguagem: data.linguagem,
+      linguagem: data.linguagem?.trim() || null, // ✅ CORRIGIDO: Enviar null se vazio
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca?.trim() || null,
       observacao: data.observacao?.trim() || null,
@@ -122,7 +122,7 @@ export class RequerimentosService {
         data_aprovacao: data.data_aprovacao?.trim() || null,
         horas_funcional: horasAnaliseEFDecimal, // Usar horas de análise EF
         horas_tecnico: 0,
-        linguagem: data.linguagem,
+        linguagem: data.linguagem?.trim() || null, // ✅ CORRIGIDO: Enviar null se vazio
         tipo_cobranca: 'Banco de Horas',
         mes_cobranca: data.mes_cobranca?.trim() || null,
         observacao: 'Horas referentes a análise e elaboração da EF',
@@ -999,13 +999,14 @@ export class RequerimentosService {
       if (horasFuncional + horasTecnico === 0) {
         errors.push('Deve haver pelo menos uma hora (funcional ou técnica)');
       }
-    }
-
-    if (!isUpdate || data.linguagem !== undefined) {
-      if (!data.linguagem) {
-        errors.push('Linguagem é obrigatória');
+      
+      // Linguagem só é obrigatória se houver horas técnicas > 0
+      if (horasTecnico > 0 && !data.linguagem) {
+        errors.push('Linguagem é obrigatória quando há horas técnicas');
       }
     }
+
+    // Validação de linguagem removida daqui - agora está dentro do bloco de horas acima
 
     if (!isUpdate || data.tipo_cobranca !== undefined) {
       if (!data.tipo_cobranca) {

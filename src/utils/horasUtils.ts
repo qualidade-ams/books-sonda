@@ -13,8 +13,9 @@ export interface HorasConvertidas {
 
 /**
  * Converte string no formato HH:MM para minutos totais
+ * Suporta valores negativos (ex: "-5:30" = -330 minutos)
  * @param horasString - String no formato "HH:MM" ou número como string
- * @returns Número total de minutos
+ * @returns Número total de minutos (pode ser negativo)
  */
 export function converterHorasParaMinutos(horasString: string): number {
   if (!horasString || horasString.trim() === '' || horasString === 'null' || horasString === 'undefined' || horasString === 'NaN') {
@@ -25,7 +26,11 @@ export function converterHorasParaMinutos(horasString: string): number {
 
   // Se contém ":", trata como HH:MM
   if (valor.includes(':')) {
-    const [horasStr, minutosStr] = valor.split(':');
+    // Verificar se é negativo
+    const isNegativo = valor.startsWith('-');
+    const valorSemSinal = isNegativo ? valor.substring(1) : valor;
+    
+    const [horasStr, minutosStr] = valorSemSinal.split(':');
     const horas = parseInt(horasStr);
     const minutos = parseInt(minutosStr);
     
@@ -40,10 +45,12 @@ export function converterHorasParaMinutos(horasString: string): number {
       console.warn('Minutos >= 60, corrigindo:', { horas, minutos });
       const horasAdicionais = Math.floor(minutos / 60);
       const minutosRestantes = minutos % 60;
-      return ((horas + horasAdicionais) * 60) + minutosRestantes;
+      const totalMinutos = ((horas + horasAdicionais) * 60) + minutosRestantes;
+      return isNegativo ? -totalMinutos : totalMinutos;
     }
     
-    return (horas * 60) + minutos;
+    const totalMinutos = (horas * 60) + minutos;
+    return isNegativo ? -totalMinutos : totalMinutos;
   }
 
   // Se não contém ":", trata como número inteiro de horas

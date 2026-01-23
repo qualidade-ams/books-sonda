@@ -316,6 +316,9 @@ export interface BancoHorasReajuste {
   /** Mandatory observation explaining the adjustment (minimum 10 characters) */
   observacao: string;
   
+  /** Private observation for internal use only (not visible to client) */
+  observacao_privada?: string;
+  
   /** Timestamp when adjustment was created */
   created_at: Date;
   
@@ -339,6 +342,15 @@ export interface BancoHorasVersao {
   
   /** Reference to calculation */
   calculo_id: string;
+  
+  /** Reference to adjustment (if this version was created by an adjustment) */
+  reajuste_id?: string;
+  
+  /** Month (1-12) - inherited from calculation or adjustment */
+  mes?: number;
+  
+  /** Year (e.g., 2024) - inherited from calculation or adjustment */
+  ano?: number;
   
   /** Previous version number */
   versao_anterior: number;

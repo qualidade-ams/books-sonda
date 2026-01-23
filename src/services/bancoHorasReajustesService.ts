@@ -146,7 +146,9 @@ export class BancoHorasReajustesService {
       console.log('📝 Dados para inserir:', {
         ...dadosInsert,
         observacao_length: dados.observacao?.length,
-        observacao_preview: dados.observacao?.substring(0, 50)
+        observacao_preview: dados.observacao?.substring(0, 50),
+        created_by: dados.created_by,
+        created_by_presente: !!dados.created_by
       });
 
       const { data: reajuste, error: reajusteError } = await supabase
@@ -173,6 +175,13 @@ export class BancoHorasReajustesService {
       }
 
       console.log('✅ Reajuste criado:', reajuste);
+      console.log('✅ Reajuste criado - Detalhes:', {
+        id: reajuste.id,
+        valor_reajuste_horas: reajuste.valor_reajuste_horas,
+        tipo_reajuste: reajuste.tipo_reajuste,
+        created_by: reajuste.created_by,
+        created_by_presente: !!reajuste.created_by
+      });
 
       // 5. Criar versão para auditoria
       const versaoId = await this.criarVersao(
@@ -191,7 +200,7 @@ export class BancoHorasReajustesService {
       // 6. Buscar parâmetros da empresa para saber quantos meses recalcular
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('periodo_apuracao')
+        .select('periodo_apuracao, inicio_vigencia')
         .eq('id', dados.empresa_id)
         .single();
 
@@ -204,22 +213,28 @@ export class BancoHorasReajustesService {
       }
 
       const periodoApuracao = empresa.periodo_apuracao || 3;
+      const inicioVigencia = new Date(empresa.inicio_vigencia);
 
       // 7. Calcular quantos meses faltam até o fim do período
       const mesesParaRecalcular = this.calcularMesesParaRecalcular(
         dados.mes,
         dados.ano,
-        periodoApuracao
+        periodoApuracao,
+        inicioVigencia
       );
 
       console.log('📅 Meses para recalcular:', mesesParaRecalcular);
 
       // 8. Recalcular mês atual e subsequentes
+      console.log(`🔄 Iniciando recálculo de ${mesesParaRecalcular.length} meses...`);
+      
       for (const { mes, ano } of mesesParaRecalcular) {
         console.log(`🔄 Recalculando ${mes}/${ano}...`);
         await bancoHorasService.calcularMes(dados.empresa_id, mes, ano);
+        console.log(`✅ Mês ${mes}/${ano} recalculado com sucesso!`);
       }
 
+      console.log('✅ Todos os meses foram recalculados com sucesso!');
       console.log('✅ Reajuste concluído com sucesso!');
 
       return {
@@ -439,6 +454,9 @@ export class BancoHorasReajustesService {
       .from('banco_horas_versoes')
       .insert({
         calculo_id: calculoId,
+        empresa_id: empresaId, // ← ADICIONAR empresa_id
+        mes: mes, // ← ADICIONAR mes
+        ano: ano, // ← ADICIONAR ano
         versao_anterior: versaoAnterior,
         versao_nova: versaoNova,
         dados_anteriores: calculoAnterior || {},
@@ -449,7 +467,8 @@ export class BancoHorasReajustesService {
         },
         motivo: observacao,
         tipo_mudanca: 'reajuste',
-        created_by: createdBy || null // ← USAR o parâmetro
+        reajuste_id: reajusteId, // ← ADICIONAR reajuste_id como campo direto
+        created_by: createdBy || null
       })
       .select()
       .single();
@@ -468,40 +487,70 @@ export class BancoHorasReajustesService {
   /**
    * Calcula quais meses precisam ser recalculados
    * 
-   * Exemplo:
-   * - Se reajuste em novembro (mês 11) e período é trimestral (3 meses):
-   *   - Recalcula: novembro, dezembro, janeiro
-   * - Se reajuste em dezembro (mês 12):
-   *   - Recalcula: dezembro, janeiro
-   * - Se reajuste em janeiro (mês 1):
-   *   - Recalcula: apenas janeiro
+   * IMPORTANTE: Considera o início de vigência para determinar corretamente
+   * quais meses fazem parte do período atual.
+   * 
+   * Exemplo 1:
+   * - Início vigência: 01/11/2025 (Novembro)
+   * - Período: 3 meses (Novembro, Dezembro, Janeiro)
+   * - Reajuste em Dezembro (12/2025):
+   *   - Recalcula: Dezembro, Janeiro ✅
+   * 
+   * Exemplo 2:
+   * - Início vigência: 01/11/2025 (Novembro)
+   * - Período: 3 meses (Novembro, Dezembro, Janeiro)
+   * - Reajuste em Novembro (11/2025):
+   *   - Recalcula: Novembro, Dezembro, Janeiro ✅
+   * 
+   * Exemplo 3:
+   * - Início vigência: 01/01/2025 (Janeiro)
+   * - Período: 3 meses (Janeiro, Fevereiro, Março)
+   * - Reajuste em Fevereiro (02/2025):
+   *   - Recalcula: Fevereiro, Março ✅
    */
   private calcularMesesParaRecalcular(
     mesInicial: number,
     anoInicial: number,
-    periodoApuracao: number
+    periodoApuracao: number,
+    inicioVigencia: Date
   ): Array<{ mes: number; ano: number }> {
     const meses: Array<{ mes: number; ano: number }> = [];
     
-    let mesAtual = mesInicial;
-    let anoAtual = anoInicial;
-
-    // Adicionar mês inicial
-    meses.push({ mes: mesAtual, ano: anoAtual });
-
-    // Calcular quantos meses faltam até completar o período
-    // Exemplo: se período é 3 e estamos no mês 2 do período, faltam 1 mês
-    const posicaoNoPeriodo = (mesInicial - 1) % periodoApuracao;
-    const mesesRestantes = periodoApuracao - posicaoNoPeriodo - 1;
-
+    // Extrair mês e ano de início da vigência
+    const mesInicioVigencia = inicioVigencia.getUTCMonth() + 1; // 0-11 → 1-12
+    const anoInicioVigencia = inicioVigencia.getUTCFullYear();
+    
     console.log('📊 Cálculo de meses para recalcular:', {
       mesInicial,
+      anoInicial,
       periodoApuracao,
-      posicaoNoPeriodo,
-      mesesRestantes
+      mesInicioVigencia,
+      anoInicioVigencia
     });
-
-    // Adicionar meses subsequentes
+    
+    // Calcular quantos meses se passaram desde o início da vigência até o mês do reajuste
+    const mesesDesdeInicio = ((anoInicial - anoInicioVigencia) * 12) + (mesInicial - mesInicioVigencia);
+    
+    // Calcular em qual posição do período atual estamos (0-indexed)
+    // Exemplo: se período é 3 e passaram 5 meses, estamos na posição 2 do segundo período
+    const posicaoNoPeriodo = mesesDesdeInicio % periodoApuracao;
+    
+    // Calcular quantos meses faltam até o fim do período atual
+    const mesesRestantes = periodoApuracao - posicaoNoPeriodo - 1;
+    
+    console.log('📊 Detalhes do cálculo:', {
+      mesesDesdeInicio,
+      posicaoNoPeriodo,
+      mesesRestantes,
+      explicacao: `Estamos na posição ${posicaoNoPeriodo} de um período de ${periodoApuracao} meses. Faltam ${mesesRestantes} meses até o fim.`
+    });
+    
+    // Adicionar mês inicial (onde o reajuste foi feito)
+    let mesAtual = mesInicial;
+    let anoAtual = anoInicial;
+    meses.push({ mes: mesAtual, ano: anoAtual });
+    
+    // Adicionar meses subsequentes até o fim do período
     for (let i = 0; i < mesesRestantes; i++) {
       mesAtual++;
       if (mesAtual > 12) {
@@ -510,7 +559,9 @@ export class BancoHorasReajustesService {
       }
       meses.push({ mes: mesAtual, ano: anoAtual });
     }
-
+    
+    console.log('📅 Meses que serão recalculados:', meses);
+    
     return meses;
   }
 }

@@ -293,15 +293,29 @@ export async function atualizarElogio(
  * Deletar elogio
  */
 export async function deletarElogio(id: string): Promise<void> {
-  const { error } = await supabase
+  console.log('🗑️ Deletando elogio:', id);
+  
+  const { data, error, count } = await supabase
     .from('elogios' as any)
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .select();  // Retorna os registros deletados para verificação
 
   if (error) {
-    console.error('Erro ao deletar elogio:', error);
-    throw new Error('Erro ao deletar elogio');
+    console.error('❌ Erro ao deletar elogio:', error);
+    throw new Error('Erro ao deletar elogio: ' + error.message);
   }
+
+  // Verificar se algo foi realmente deletado
+  if (!data || data.length === 0) {
+    console.error('⚠️ Nenhum registro foi deletado. Possíveis causas:');
+    console.error('  1. Elogio não existe');
+    console.error('  2. Permissão insuficiente (RLS bloqueou)');
+    console.error('  3. Política RLS exige permissão admin (você tem apenas edit?)');
+    throw new Error('Permissão negada ou elogio não encontrado. Verifique suas permissões.');
+  }
+
+  console.log('✅ Elogio deletado com sucesso:', data);
 }
 
 /**

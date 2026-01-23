@@ -8,8 +8,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
-  Download,
   History,
   Eye,
   FileText,
@@ -18,9 +18,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -29,13 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -50,11 +40,13 @@ import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { getCobrancaIcon } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
+import { BotaoReajusteHoras } from './BotaoReajusteHoras';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
-import { useAuth } from '@/hooks/useAuth'; // ← ADICIONAR
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONADO
 
 /**
  * Props for VisaoConsolidada component
@@ -69,9 +61,6 @@ export interface VisaoConsolidadaProps {
   /** Callback when "Ver Histórico" button is clicked */
   onHistoricoClick: () => void;
   
-  /** Callback when "Exportar" button is clicked */
-  onExportClick: () => void;
-  
   /** Whether actions are disabled (e.g., during loading) */
   disabled?: boolean;
   
@@ -81,21 +70,29 @@ export interface VisaoConsolidadaProps {
   /** Array com os meses reais do período (calculados baseado na vigência) */
   mesesDoPeriodo?: Array<{ mes: number; ano: number }>;
   
-  /** Requerimentos do período para exibição */
+  /** Requerimentos concluídos do período para exibição */
   requerimentos?: Requerimento[];
+  
+  /** Requerimentos não concluídos do período para exibição */
+  requerimentosNaoConcluidos?: Requerimento[];
 }
 
 /**
  * Formats hours from HH:MM string to display format
+ * Remove o sinal de menos para valores negativos (serão exibidos em vermelho)
  */
 const formatarHoras = (horas?: string): string => {
   if (!horas || horas === '0:00' || horas === '00:00') return '';
+  
+  // Remover sinal de menos se existir
+  const horasSemSinal = horas.startsWith('-') ? horas.substring(1) : horas;
+  
   // Garantir formato HH:MM (remover segundos se existir)
-  const parts = horas.split(':');
+  const parts = horasSemSinal.split(':');
   if (parts.length >= 2) {
     return `${parts[0]}:${parts[1]}`;
   }
-  return horas;
+  return horasSemSinal;
 };
 
 /**
@@ -111,10 +108,17 @@ const formatarMoeda = (valor?: number): string => {
 
 /**
  * Converts HH:MM to minutes for comparison
+ * Lida com valores negativos (com sinal de menos)
  */
 const horasParaMinutos = (horas: string): number => {
-  const [h, m] = horas.split(':').map(Number);
-  return (h * 60) + m;
+  // Verificar se é negativo
+  const isNegativo = horas.startsWith('-');
+  const horasSemSinal = isNegativo ? horas.substring(1) : horas;
+  
+  const [h, m] = horasSemSinal.split(':').map(Number);
+  const minutos = (h * 60) + m;
+  
+  return isNegativo ? -minutos : minutos;
 };
 
 /**
@@ -122,9 +126,16 @@ const horasParaMinutos = (horas: string): number => {
  */
 const getColorClass = (horas?: string): string => {
   if (!horas) return 'text-gray-900';
+  
+  // Verificar se é negativo pelo sinal de menos
+  const isNegativo = horas.startsWith('-');
+  
+  if (isNegativo) return 'text-red-600';
+  
+  // Se não tem sinal de menos, verificar se é positivo
   const minutos = horasParaMinutos(horas);
   if (minutos > 0) return 'text-green-600';
-  if (minutos < 0) return 'text-red-600';
+  
   return 'text-gray-900';
 };
 
@@ -137,28 +148,26 @@ export function VisaoConsolidada({
   calculos,
   periodoApuracao,
   onHistoricoClick,
-  onExportClick,
   disabled = false,
   percentualRepasseMensal = 100,
   mesesDoPeriodo,
-  requerimentos = []
+  requerimentos = [],
+  requerimentosNaoConcluidos = []
 }: VisaoConsolidadaProps) {
+  // Log para debug
+  console.log('📊 [VisaoConsolidada] Props recebidas:', {
+    requerimentosConcluidos: requerimentos.length,
+    requerimentosNaoConcluidos: requerimentosNaoConcluidos.length
+  });
+  
   // Hook de autenticação
   const { user } = useAuth();
   
   // Hook de reajustes
   const { criarReajuste, isCreating } = useBancoHorasReajustes();
   
-  // Estados para edição de reajuste
-  const [reajusteEditando, setReajusteEditando] = React.useState<{
-    mes: number;
-    ano: number;
-    horas: string;
-    empresaId: string;
-  } | null>(null);
-  const [modalReajusteAberto, setModalReajusteAberto] = React.useState(false);
-  const [tipoReajuste, setTipoReajuste] = React.useState<'entrada' | 'saida'>('entrada');
-  const [observacaoReajuste, setObservacaoReajuste] = React.useState('');
+  // Query client para invalidar cache
+  const queryClient = useQueryClient();
   
   // Estados para visualização de requerimento
   const [requerimentoSelecionado, setRequerimentoSelecionado] = useState<Requerimento | null>(null);
@@ -210,67 +219,99 @@ export function VisaoConsolidada({
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
-  // Função para abrir modal de confirmação de reajuste (quando usuário sai do campo)
-  const handleReajusteBlur = (mes: number, ano: number, valor: string, empresaId: string) => {
-    // Só abre modal se houver valor digitado
-    if (!valor || valor === '00:00' || valor === '') {
-      return;
-    }
-    
-    // Validar formato HH:MM
-    const regex = /^\d{1,4}:[0-5]\d$/;
-    if (!regex.test(valor)) {
-      alert('Formato inválido! Use o formato HH:MM (exemplo: 10:30)');
-      return;
-    }
-    
-    setReajusteEditando({ mes, ano, horas: valor, empresaId });
-    setModalReajusteAberto(true);
-  };
-
-  // Função para salvar reajuste
-  const handleSalvarReajuste = async () => {
-    if (!observacaoReajuste.trim()) {
-      alert('Observação é obrigatória!');
-      return;
-    }
-    
-    if (!reajusteEditando) return;
-    
+  // Função para salvar reajuste (chamada pelo BotaoReajusteHoras)
+  const handleSalvarReajuste = async (dados: {
+    mes: number;
+    ano: number;
+    empresaId: string;
+    horas: string;
+    tipo: 'entrada' | 'saida';
+    observacao: string;
+  }) => {
     try {
-      // Criar reajuste usando o serviço
-      await criarReajuste({
-        empresa_id: reajusteEditando.empresaId,
-        mes: reajusteEditando.mes,
-        ano: reajusteEditando.ano,
-        valor_horas: reajusteEditando.horas,
-        tipo: tipoReajuste,
-        observacao: observacaoReajuste,
-        created_by: user?.id // ← ADICIONAR created_by
+      console.log('💾 Salvando reajuste...');
+      
+      // IMPORTANTE: criarReajuste JÁ recalcula todos os meses subsequentes no backend
+      // Aguardar a conclusão completa do recálculo antes de invalidar cache
+      const resultado = await criarReajuste({
+        empresa_id: dados.empresaId,
+        mes: dados.mes,
+        ano: dados.ano,
+        valor_horas: dados.horas,
+        tipo: dados.tipo,
+        observacao: dados.observacao,
+        created_by: user?.id
       });
       
-      // Fechar modal e limpar estados
-      setModalReajusteAberto(false);
-      setReajusteEditando(null);
-      setObservacaoReajuste('');
-      setTipoReajuste('entrada');
+      console.log('✅ Reajuste salvo e meses recalculados:', {
+        reajuste_id: resultado.reajuste_id,
+        versao_id: resultado.versao_id,
+        meses_recalculados: resultado.meses_recalculados
+      });
       
-      // Abrir histórico automaticamente após salvar
-      setTimeout(() => {
-        onHistoricoClick();
-      }, 500);
+      console.log('⏳ Aguardando estabilização do banco de dados...');
+      
+      // Aguardar um pouco para garantir que todas as transações foram commitadas
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      console.log('🔄 Invalidando cache e forçando refetch...');
+      
+      // Invalidar TODOS os caches relacionados
+      await Promise.all([
+        queryClient.invalidateQueries({ 
+          queryKey: ['banco-horas-versoes'],
+          refetchType: 'all'
+        }),
+        queryClient.invalidateQueries({ 
+          queryKey: ['banco-horas-reajustes'],
+          refetchType: 'all'
+        }),
+        queryClient.invalidateQueries({ 
+          queryKey: ['banco-horas-calculo'],
+          refetchType: 'all'
+        }),
+        queryClient.invalidateQueries({ 
+          queryKey: ['banco-horas-calculos-segmentados'],
+          refetchType: 'all'
+        })
+      ]);
+      
+      console.log('🔄 Forçando refetch imediato de TODOS os meses...');
+      
+      // Forçar refetch imediato de TODAS as queries relacionadas em paralelo
+      await Promise.all([
+        queryClient.refetchQueries({ 
+          queryKey: ['banco-horas-versoes'],
+          type: 'all'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: ['banco-horas-reajustes'],
+          type: 'all'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: ['banco-horas-calculo'],
+          type: 'all'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: ['banco-horas-calculos-segmentados'],
+          type: 'all'
+        })
+      ]);
+      
+      console.log('✅ Cache invalidado e dados recarregados!');
+      console.log('⏳ Aguardando renderização final...');
+      
+      // Aguardar mais um pouco para garantir que o React Query processou tudo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('✅ Reajuste concluído com sucesso! Todos os meses foram recalculados e atualizados.');
+      
+      // NÃO abrir histórico automaticamente - deixar usuário decidir
+      // onHistoricoClick();
     } catch (error) {
-      console.error('Erro ao salvar reajuste:', error);
-      // O erro já é tratado pelo hook useBancoHorasReajustes
+      console.error('❌ Erro ao salvar reajuste:', error);
+      throw error; // Propagar erro para o componente filho tratar
     }
-  };
-
-  // Função para cancelar reajuste
-  const handleCancelarReajuste = () => {
-    setModalReajusteAberto(false);
-    setReajusteEditando(null);
-    setObservacaoReajuste('');
-    setTipoReajuste('entrada');
   };
 
   // Função para visualizar requerimento
@@ -304,19 +345,6 @@ export function VisaoConsolidada({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.print()}
-              disabled={disabled}
-              className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
-            >
-              <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Imprimir
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
               onClick={onHistoricoClick}
               disabled={disabled}
               className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
@@ -324,17 +352,6 @@ export function VisaoConsolidada({
               <History className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Ver Histórico</span>
               <span className="sm:hidden">Histórico</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onExportClick}
-              disabled={disabled}
-              className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
-            >
-              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-              Exportar
             </Button>
           </div>
         </div>
@@ -420,18 +437,20 @@ export function VisaoConsolidada({
                 ))}
               </TableRow>
 
-              {/* Reajuste (editável) */}
+              {/* Reajuste (botão com modal) */}
               <TableRow>
                 <TableCell className="font-medium text-center">Reajuste</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center">
-                    <Input
-                      type="text"
-                      placeholder=""
-                      defaultValue={formatarHoras(calculo.reajustes_horas)}
-                      onBlur={(e) => handleReajusteBlur(calculo.mes, calculo.ano, e.target.value, calculo.empresa_id)}
-                      disabled={disabled || isCreating}
-                      className="w-24 mx-auto text-center focus:ring-sonda-blue focus:border-sonda-blue"
+                    <BotaoReajusteHoras
+                      horasAtuais={calculo.reajustes_horas}
+                      mes={calculo.mes}
+                      ano={calculo.ano}
+                      empresaId={calculo.empresa_id}
+                      nomeMes={MESES[calculo.mes - 1]}
+                      onSalvar={handleSalvarReajuste}
+                      disabled={disabled}
+                      isSaving={isCreating}
                     />
                   </TableCell>
                 ))}
@@ -506,8 +525,8 @@ export function VisaoConsolidada({
 
         {/* Alerta de Última Sincronização */}
         <div className='flex gap-2 mt-2 items-center'>
-          <Clock className="h-3 w-3 text-blue-600" />
-          <AlertDescription className="text-sm text-blue-600">
+          <Clock className="h-3 w-3 text-gray-300" />
+          <AlertDescription className="text-xs text-gray-400">
             {carregandoSincronizacao ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-3 w-3 animate-spin" />
@@ -567,11 +586,12 @@ export function VisaoConsolidada({
                 </TableHeader>
                 <TableBody>
                   {requerimentos.map((req) => {
+                    // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
                     const horasFuncional = typeof req.horas_funcional === 'string' 
-                      ? parseFloat(req.horas_funcional.replace(':', '.')) 
+                      ? converterParaHorasDecimal(req.horas_funcional)
                       : (req.horas_funcional || 0);
                     const horasTecnico = typeof req.horas_tecnico === 'string'
-                      ? parseFloat(req.horas_tecnico.replace(':', '.'))
+                      ? converterParaHorasDecimal(req.horas_tecnico)
                       : (req.horas_tecnico || 0);
                     const totalHoras = horasFuncional + horasTecnico;
                     
@@ -668,96 +688,146 @@ export function VisaoConsolidada({
             </div>
           </div>
         )}
-      </CardContent>
 
-      {/* Modal de Confirmação de Reajuste */}
-      <Dialog open={modalReajusteAberto} onOpenChange={setModalReajusteAberto}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              Confirmar Reajuste
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500">
-              Informe o tipo de reajuste e adicione uma observação obrigatória
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Informações do reajuste */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Mês:</span>
-                  <span className="ml-2 font-semibold">{reajusteEditando && MESES[reajusteEditando.mes - 1]}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Ano:</span>
-                  <span className="ml-2 font-semibold">{reajusteEditando?.ano}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-600">Horas:</span>
-                  <span className="ml-2 font-semibold text-sonda-blue">{reajusteEditando?.horas || '00:00'}</span>
-                </div>
-              </div>
+        {/* Seção de Requerimentos NÃO CONCLUÍDOS */}
+        {requerimentosNaoConcluidos && requerimentosNaoConcluidos.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-orange-600" />
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Requerimentos do Período NÃO CONCLUÍDOS
+              </h4>
+              <Badge className="bg-orange-100 text-orange-800 text-xs">
+                {requerimentosNaoConcluidos.length}
+              </Badge>
             </div>
 
-            {/* Tipo de Reajuste */}
-            <div className="space-y-2">
-              <Label htmlFor="tipo-reajuste" className="text-sm font-medium text-gray-700">
-                Tipo de Reajuste <span className="text-red-500">*</span>
-              </Label>
-              <Select value={tipoReajuste} onValueChange={(value: 'entrada' | 'saida') => setTipoReajuste(value)}>
-                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="entrada">Entrada (Adicionar horas)</SelectItem>
-                  <SelectItem value="saida">Saída (Remover horas)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Observação */}
-            <div className="space-y-2">
-              <Label htmlFor="observacao" className="text-sm font-medium text-gray-700">
-                Observação <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                id="observacao"
-                placeholder="Digite a justificativa para este reajuste..."
-                value={observacaoReajuste}
-                onChange={(e) => setObservacaoReajuste(e.target.value)}
-                rows={4}
-                className={`focus:ring-sonda-blue focus:border-sonda-blue ${
-                  !observacaoReajuste.trim() ? 'border-red-300' : ''
-                }`}
-              />
-              {!observacaoReajuste.trim() && (
-                <p className="text-xs text-red-500">A observação é obrigatória</p>
-              )}
+            <div className="w-full overflow-x-auto">
+              <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requerimentosNaoConcluidos.map((req) => {
+                    // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
+                    const horasFuncional = typeof req.horas_funcional === 'string' 
+                      ? converterParaHorasDecimal(req.horas_funcional)
+                      : (req.horas_funcional || 0);
+                    const horasTecnico = typeof req.horas_tecnico === 'string'
+                      ? converterParaHorasDecimal(req.horas_tecnico)
+                      : (req.horas_tecnico || 0);
+                    const totalHoras = horasFuncional + horasTecnico;
+                    
+                    return (
+                      <TableRow key={req.id} className="bg-orange-50/50">
+                        <TableCell className="font-medium py-2 text-center">
+                          <div className="flex flex-col items-center gap-1 sm:gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">
+                                {getCobrancaIcon(req.tipo_cobranca || 'Banco de Horas')}
+                              </span>
+                              <span className="truncate text-xs sm:text-sm lg:text-base font-medium">
+                                {req.chamado}
+                              </span>
+                            </div>
+                            <Badge className="bg-orange-500 text-white text-xs px-2 py-0.5">
+                              {req.tipo_cobranca || 'Banco de Horas'}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell className="py-2 text-center">
+                          <span className="text-xs sm:text-sm font-medium">
+                            {req.cliente_nome || '-'}
+                          </span>
+                        </TableCell>
+                        
+                        <TableCell className="py-2 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
+                              <span className="truncate">{req.modulo || 'Comex'}</span>
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-medium">
+                            {Math.floor(horasFuncional)}:{String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
+                          </span>
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-medium">
+                            {Math.floor(horasTecnico)}:{String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
+                          </span>
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
+                            {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                          </span>
+                        </TableCell>
+                        
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR') : '-'}
+                        </TableCell>
+                        
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                          <Badge className="bg-orange-100 text-orange-800 text-xs">
+                            Pendente
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3">
+                          {req.valor_total_geral ? (
+                            <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(req.valor_total_geral)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                          {req.mes_cobranca || '-'}
+                        </TableCell>
+                        
+                        <TableCell className="py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setRequerimentoSelecionado(req);
+                                setModalVisualizacaoAberto(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancelarReajuste}
-              disabled={isCreating}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSalvarReajuste}
-              disabled={!observacaoReajuste.trim() || isCreating}
-              className="bg-sonda-blue hover:bg-sonda-dark-blue"
-            >
-              {isCreating ? 'Salvando...' : 'Salvar Reajuste'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </CardContent>
 
       {/* Modal de Visualização de Requerimento */}
       <RequerimentoViewModal

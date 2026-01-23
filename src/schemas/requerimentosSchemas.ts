@@ -13,11 +13,17 @@ const moduloSchema = z
     errorMap: () => ({ message: 'Selecione um módulo válido' })
   });
 
-// Schema para validação de linguagem
+// Schema para validação de linguagem (opcional - apenas quando há horas técnicas)
 const linguagemSchema = z
-  .enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico'] as const, {
-    errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' })
-  });
+  .union([
+    z.enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico'] as const, {
+      errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' })
+    }),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ])
+  .optional();
 
 // Schema para validação de tipo de cobrança
 const tipoCobrancaSchema = z
@@ -138,7 +144,7 @@ export const requerimentoFormSchema = z.object({
     .min(1, 'Cliente é obrigatório')
     .uuid('ID do cliente deve ser um UUID válido'),
   modulo: moduloSchema,
-  linguagem: linguagemSchema.optional(), // Campo linguagem técnica condicional
+  linguagem: linguagemSchema, // ✅ CORRIGIDO: Schema já é opcional internamente
   descricao: descricaoSchema,
   data_envio: dataSchema,
   data_aprovacao: dataOpcionalSchema,
