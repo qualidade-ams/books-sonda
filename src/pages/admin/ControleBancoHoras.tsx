@@ -154,7 +154,7 @@ export default function ControleBancoHoras() {
     isFetching: isFetching1,
     recalcular: recalcular1,
     isRecalculating: isRecalculating1
-  } = useBancoHorasCalculos(empresaSelecionada, mesesDoPeriodo[0].mes, mesesDoPeriodo[0].ano);
+  } = useBancoHorasCalculos(empresaSelecionada, mesesDoPeriodo[0]?.mes, mesesDoPeriodo[0]?.ano);
   
   // Buscar cálculo do segundo mês (condicional ao período)
   const {
@@ -182,6 +182,45 @@ export default function ControleBancoHoras() {
     mesesDoPeriodo[2]?.ano
   );
   
+  // Buscar cálculo do quarto mês (condicional ao período)
+  const {
+    calculo: calculo4,
+    isLoading: isLoading4,
+    isFetching: isFetching4,
+    recalcular: recalcular4,
+    isRecalculating: isRecalculating4
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 4 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[3]?.mes,
+    mesesDoPeriodo[3]?.ano
+  );
+  
+  // Buscar cálculo do quinto mês (condicional ao período)
+  const {
+    calculo: calculo5,
+    isLoading: isLoading5,
+    isFetching: isFetching5,
+    recalcular: recalcular5,
+    isRecalculating: isRecalculating5
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 5 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[4]?.mes,
+    mesesDoPeriodo[4]?.ano
+  );
+  
+  // Buscar cálculo do sexto mês (condicional ao período)
+  const {
+    calculo: calculo6,
+    isLoading: isLoading6,
+    isFetching: isFetching6,
+    recalcular: recalcular6,
+    isRecalculating: isRecalculating6
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 6 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[5]?.mes,
+    mesesDoPeriodo[5]?.ano
+  );
+  
   // Montar array de cálculos baseado no período
   const calculos = useMemo(() => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
@@ -190,13 +229,16 @@ export default function ControleBancoHoras() {
     if (calculo1) resultado.push(calculo1);
     if (periodoApuracao >= 2 && calculo2) resultado.push(calculo2);
     if (periodoApuracao >= 3 && calculo3) resultado.push(calculo3);
+    if (periodoApuracao >= 4 && calculo4) resultado.push(calculo4);
+    if (periodoApuracao >= 5 && calculo5) resultado.push(calculo5);
+    if (periodoApuracao >= 6 && calculo6) resultado.push(calculo6);
     
     return resultado;
-  }, [calculo1, calculo2, calculo3, empresaAtual]);
+  }, [calculo1, calculo2, calculo3, calculo4, calculo5, calculo6, empresaAtual]);
   
-  const isLoadingCalculos = isLoading1 || isLoading2 || isLoading3;
-  const isFetchingCalculos = isFetching1 || isFetching2 || isFetching3;
-  const isRecalculatingAny = isRecalculating1 || isRecalculating2 || isRecalculating3;
+  const isLoadingCalculos = isLoading1 || isLoading2 || isLoading3 || isLoading4 || isLoading5 || isLoading6;
+  const isFetchingCalculos = isFetching1 || isFetching2 || isFetching3 || isFetching4 || isFetching5 || isFetching6;
+  const isRecalculatingAny = isRecalculating1 || isRecalculating2 || isRecalculating3 || isRecalculating4 || isRecalculating5 || isRecalculating6;
   
   // Buscar alocações
   const {
@@ -281,7 +323,7 @@ export default function ControleBancoHoras() {
     
     const calcularTrimestreSequencial = async () => {
       try {
-        console.log('🔄 Calculando trimestre sequencialmente...');
+        console.log('🔄 Calculando período sequencialmente...');
         
         // Calcular cada mês em sequência (não em paralelo!)
         for (let i = 0; i < mesesDoPeriodo.length; i++) {
@@ -295,13 +337,19 @@ export default function ControleBancoHoras() {
             await recalcular2();
           } else if (i === 2) {
             await recalcular3();
+          } else if (i === 3) {
+            await recalcular4();
+          } else if (i === 4) {
+            await recalcular5();
+          } else if (i === 5) {
+            await recalcular6();
           }
           
           // Aguardar um pouco para garantir que o banco salvou
           await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        console.log('✅ Trimestre calculado com sucesso!');
+        console.log('✅ Período calculado com sucesso!');
         
         // Exibir toast apenas uma vez no final
         toast({
@@ -309,7 +357,7 @@ export default function ControleBancoHoras() {
           description: `${mesesDoPeriodo.length} mês(es) calculado(s) com sucesso`,
         });
       } catch (error) {
-        console.error('❌ Erro ao calcular trimestre:', error);
+        console.error('❌ Erro ao calcular período:', error);
         toast({
           title: 'Erro ao calcular',
           description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -379,13 +427,15 @@ export default function ControleBancoHoras() {
       const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
       
       // Recalcular baseado no período
-      if (periodoApuracao === 1) {
-        await recalcular1();
-      } else if (periodoApuracao === 2) {
-        await Promise.all([recalcular1(), recalcular2()]);
-      } else if (periodoApuracao >= 3) {
-        await Promise.all([recalcular1(), recalcular2(), recalcular3()]);
-      }
+      const recalculos = [];
+      if (periodoApuracao >= 1) recalculos.push(recalcular1());
+      if (periodoApuracao >= 2) recalculos.push(recalcular2());
+      if (periodoApuracao >= 3) recalculos.push(recalcular3());
+      if (periodoApuracao >= 4) recalculos.push(recalcular4());
+      if (periodoApuracao >= 5) recalculos.push(recalcular5());
+      if (periodoApuracao >= 6) recalculos.push(recalcular6());
+      
+      await Promise.all(recalculos);
       
       toast({
         title: 'Recálculo concluído',
