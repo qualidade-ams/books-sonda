@@ -195,7 +195,15 @@ export async function calcularExcedente(
  * Regras:
  * - Busca taxas vigentes no mês especificado
  * - Se múltiplas taxas existem, usa a mais antiga (menor data_inicio)
- * - Retorna null se nenhuma taxa encontrada
+ * - Para horas: calcula "Hora Adicional (Excedente do Banco)" da função Funcional conforme tipo_calculo_adicional:
+ *   - 'normal': valor_base da função Funcional + 15%
+ *   - 'media': média dos valores_base das três primeiras funções (Funcional, Técnico/ABAP, DBA/Basis)
+ * - Para tickets: busca valor de ticket excedente conforme cliente:
+ *   - VOTORANTIM, CSN: valor_ticket_excedente
+ *   - CHIESI: ticket_excedente_2 (Ticket Excedente)
+ *   - NIDEC: ticket_excedente
+ *   - EXXONMOBIL: NÃO IMPLEMENTADO (regra personalizada futura)
+ * - Retorna null se nenhuma taxa encontrada ou se valores não estiverem preenchidos
  * 
  * @param empresaId - ID da empresa cliente
  * @param mes - Mês (1-12)
@@ -204,21 +212,34 @@ export async function calcularExcedente(
  * @returns Taxa em R$ por hora/ticket ou null se não encontrada
  * 
  * @example
- * // Taxa encontrada
- * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 100.00
+ * // Taxa de Hora Adicional (Excedente do Banco) calculada - tipo 'normal'
+ * // valor_base Funcional = 208.55
+ * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 239.83 (208.55 * 1.15)
+ * 
+ * @example
+ * // Taxa de Hora Adicional (Excedente do Banco) calculada - tipo 'media'
+ * // Funcional = 208.55, Técnico/ABAP = 250.00, DBA/Basis = 300.00
+ * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 252.85 ((208.55 + 250 + 300) / 3)
+ * 
+ * @example
+ * // Taxa de Ticket Excedente - CHIESI
+ * // ticket_excedente_2 = 999.00
+ * await buscarTaxaMes('uuid-chiesi', 1, 2024, 'tickets') // 999.00
  * 
  * @example
  * // Múltiplas taxas (retorna mais antiga)
- * // Taxa 1: data_inicio = 2024-01-10, valor = 120
- * // Taxa 2: data_inicio = 2024-01-05, valor = 100
- * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 100 (mais antiga)
+ * // Taxa 1: data_inicio = 2024-01-10, valor_base = 250
+ * // Taxa 2: data_inicio = 2024-01-05, valor_base = 208.55
+ * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 239.83 (208.55 * 1.15 - mais antiga)
  * 
  * @example
- * // Taxa não encontrada
- * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // null
+ * // Taxa não encontrada ou valores não preenchidos
+ * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // null (exibe R$ 0,00)
  * 
  * **Validates: Requirements 10.3, 14.5, 14.6**
  * **Property 24: Taxa Mais Antiga do Mês**
+ * **Property 27: Cálculo de Hora Adicional (Excedente do Banco)**
+ * **Property 28: Busca de Taxa de Ticket Excedente por Cliente**
  */
 export async function buscarTaxaMes(
   empresaId: string,
@@ -243,13 +264,20 @@ export async function buscarTaxaMes(
     // Uma taxa é vigente se:
     // - vigencia_inicio <= data_referencia
     // - vigencia_fim >= data_referencia OU vigencia_fim IS NULL
-    const { data: taxas, error } = await supabase
+    const { data: taxasData, error } = await (supabase as any)
       .from('taxas_clientes')
       .select('id, vigencia_inicio, vigencia_fim, tipo_produto')
       .eq('cliente_id', empresaId)
       .lte('vigencia_inicio', dataReferencia)
       .or(`vigencia_fim.is.null,vigencia_fim.gte.${dataReferencia}`)
       .order('vigencia_inicio', { ascending: true }); // Ordenar por mais antiga primeiro
+    
+    const taxas = taxasData as Array<{
+      id: string;
+      vigencia_inicio: string;
+      vigencia_fim: string | null;
+      tipo_produto: string;
+    }> | null;
 
     if (error) {
       console.error('❌ Erro ao buscar taxas:', error);
@@ -280,48 +308,150 @@ export async function buscarTaxaMes(
     });
 
     // Buscar valores da taxa
-    // Para horas: buscar valor_base da função 'Funcional' tipo 'remota'
+    // Para horas: calcular Hora Adicional (Excedente do Banco) da função Funcional
     // Para tickets: buscar valor_ticket da tabela taxas_clientes
     if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
-      // Buscar valor de hora (função Funcional, tipo remota)
-      const { data: valores, error: valoresError } = await supabase
+      // Buscar tipo de cálculo adicional e valor base da função Funcional
+      const { data: taxaDataRaw, error: taxaError } = await (supabase as any)
+        .from('taxas_clientes')
+        .select('tipo_calculo_adicional')
+        .eq('id', taxaMaisAntiga.id)
+        .single();
+      
+      const taxaData = taxaDataRaw as { tipo_calculo_adicional: string } | null;
+
+      if (taxaError) {
+        console.error('❌ Erro ao buscar tipo de cálculo adicional:', taxaError);
+        throw new Error(`Erro ao buscar tipo de cálculo adicional: ${taxaError.message}`);
+      }
+
+      const tipoCalculoAdicional = taxaData?.tipo_calculo_adicional || 'media';
+
+      console.log('📊 Tipo de cálculo adicional:', tipoCalculoAdicional);
+
+      // Buscar valor base da função Funcional (tipo remota)
+      const { data: valoresData, error: valoresError } = await (supabase as any)
         .from('valores_taxas_funcoes')
-        .select('valor_base')
+        .select('valor_base, funcao')
         .eq('taxa_id', taxaMaisAntiga.id)
-        .eq('funcao', 'Funcional')
-        .eq('tipo_hora', 'remota')
-        .limit(1);
+        .eq('tipo_hora', 'remota');
+      
+      const valores = valoresData as Array<{
+        valor_base: number;
+        funcao: string;
+      }> | null;
 
       if (valoresError) {
         console.error('❌ Erro ao buscar valores da taxa:', valoresError);
         throw new Error(`Erro ao buscar valores da taxa: ${valoresError.message}`);
       }
 
-      if (valores && valores.length > 0) {
-        const taxaHora = valores[0].valor_base;
-        console.log('✅ Taxa de hora encontrada:', `R$ ${taxaHora}`);
-        return taxaHora;
+      if (!valores || valores.length === 0) {
+        console.log('⚠️ Nenhum valor de taxa encontrado');
+        return null;
       }
+
+      // Calcular Hora Adicional (Excedente do Banco) conforme tipo de cálculo
+      let taxaHoraAdicional: number;
+
+      if (tipoCalculoAdicional === 'normal') {
+        // Normal: valor_base da função Funcional + 15%
+        const valorFuncional = valores.find(v => v.funcao === 'Funcional')?.valor_base;
+        
+        if (!valorFuncional) {
+          console.log('⚠️ Valor base da função Funcional não encontrado');
+          return null;
+        }
+
+        taxaHoraAdicional = valorFuncional * 1.15; // +15%
+        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) calculada (normal):', {
+          valorBase: valorFuncional,
+          percentual: '15%',
+          taxaCalculada: `R$ ${taxaHoraAdicional.toFixed(2)}`
+        });
+      } else {
+        // Media: média das três primeiras funções (Funcional, Técnico/ABAP, DBA/Basis)
+        const funcoesPrincipais = ['Funcional', 'Técnico / ABAP', 'DBA / Basis'];
+        const valoresPrincipais = valores
+          .filter(v => funcoesPrincipais.includes(v.funcao))
+          .map(v => v.valor_base);
+
+        if (valoresPrincipais.length === 0) {
+          console.log('⚠️ Nenhum valor das funções principais encontrado');
+          return null;
+        }
+
+        const soma = valoresPrincipais.reduce((acc, val) => acc + val, 0);
+        taxaHoraAdicional = soma / valoresPrincipais.length;
+
+        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) calculada (média):', {
+          funcoes: valoresPrincipais.length,
+          valores: valoresPrincipais,
+          media: `R$ ${taxaHoraAdicional.toFixed(2)}`
+        });
+      }
+
+      return taxaHoraAdicional;
     }
 
     if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
-      // Buscar valor de ticket da tabela taxas_clientes
-      const { data: taxaData, error: taxaError } = await supabase
+      console.log('🔍 Buscando taxa de ticket excedente (dentro de buscarTaxaMes):', {
+        tipoContrato,
+        taxaMaisAntigaId: taxaMaisAntiga.id
+      });
+      
+      // Buscar valor de ticket excedente da tabela taxas_clientes
+      // Diferentes clientes usam campos diferentes:
+      // - VOTORANTIM, CSN: valor_ticket_excedente
+      // - CHIESI: ticket_excedente_2 (Ticket Excedente)
+      // - NIDEC: ticket_excedente
+      // - EXXONMOBIL: NÃO AJUSTAR (regra personalizada futura)
+      
+      const { data: taxaDataRaw, error: taxaError } = await (supabase as any)
         .from('taxas_clientes')
-        .select('valor_ticket')
+        .select(`
+          valor_ticket_excedente,
+          ticket_excedente_2,
+          ticket_excedente
+        `)
         .eq('id', taxaMaisAntiga.id)
         .single();
+      
+      const taxaData = taxaDataRaw as {
+        valor_ticket_excedente: number | null;
+        ticket_excedente_2: number | null;
+        ticket_excedente: number | null;
+      } | null;
+
+      console.log('📊 Dados de taxa de ticket retornados:', taxaData);
 
       if (taxaError) {
-        console.error('❌ Erro ao buscar valor de ticket:', taxaError);
-        throw new Error(`Erro ao buscar valor de ticket: ${taxaError.message}`);
+        console.error('❌ Erro ao buscar valor de ticket excedente:', taxaError);
+        throw new Error(`Erro ao buscar valor de ticket excedente: ${taxaError.message}`);
       }
 
-      if (taxaData && taxaData.valor_ticket) {
-        const taxaTicket = taxaData.valor_ticket;
-        console.log('✅ Taxa de ticket encontrada:', `R$ ${taxaTicket}`);
-        return taxaTicket;
+      // Prioridade de busca:
+      // 1. valor_ticket_excedente (VOTORANTIM, CSN)
+      // 2. ticket_excedente_2 (CHIESI)
+      // 3. ticket_excedente (NIDEC)
+      if (taxaData) {
+        const taxaTicketExcedente = 
+          taxaData.valor_ticket_excedente || 
+          taxaData.ticket_excedente_2 || 
+          taxaData.ticket_excedente;
+
+        if (taxaTicketExcedente) {
+          console.log('✅ Taxa de ticket excedente encontrada:', {
+            valor: `R$ ${taxaTicketExcedente.toFixed(2)}`,
+            campo_usado: taxaData.valor_ticket_excedente ? 'valor_ticket_excedente (VOTORANTIM/CSN)' :
+                         taxaData.ticket_excedente_2 ? 'ticket_excedente_2 (CHIESI)' :
+                         'ticket_excedente (NIDEC)'
+          });
+          return taxaTicketExcedente;
+        }
       }
+
+      console.log('⚠️ Taxa de ticket excedente não encontrada');
     }
 
     console.log('⚠️ Taxa encontrada mas sem valores configurados');

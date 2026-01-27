@@ -75,6 +75,9 @@ export interface VisaoConsolidadaProps {
   
   /** Requerimentos não concluídos do período para exibição */
   requerimentosNaoConcluidos?: Requerimento[];
+  
+  /** Tipo de cobrança do cliente ('Banco de Horas' ou 'Ticket') */
+  tipoCobranca?: string;
 }
 
 /**
@@ -93,6 +96,48 @@ const formatarHoras = (horas?: string): string => {
     return `${parts[0]}:${parts[1]}`;
   }
   return horasSemSinal;
+};
+
+/**
+ * Converte HH:MM para número inteiro de tickets
+ * Cada hora = 1 ticket
+ */
+const converterHorasParaTickets = (horas?: string): number => {
+  if (!horas || horas === '0:00' || horas === '00:00') return 0;
+  
+  // Verificar se é negativo
+  const isNegativo = horas.startsWith('-');
+  const horasSemSinal = isNegativo ? horas.substring(1) : horas;
+  
+  // Converter para decimal (ex: "15:30" -> 15.5)
+  const horasDecimal = converterParaHorasDecimal(horasSemSinal);
+  
+  // Arredondar para inteiro
+  const tickets = Math.round(horasDecimal);
+  
+  return isNegativo ? -tickets : tickets;
+};
+
+/**
+ * Formata valor baseado no tipo de cobrança
+ * - 'ticket': Exibe tickets como número inteiro (ex: "15" ou "0")
+ * - Outros: Exibe como horas (ex: "15:30" ou "00:00")
+ */
+const formatarValor = (
+  horas?: string, 
+  tickets?: number, 
+  tipoCobranca?: string
+): string => {
+  // Se for tipo ticket, usar o campo de tickets diretamente
+  if (tipoCobranca?.toLowerCase() === 'ticket') {
+    // Se não tem valor ou é undefined/null, retornar "0"
+    if (tickets === undefined || tickets === null) return '0';
+    return tickets.toString();
+  }
+  
+  // Caso contrário, usar horas
+  if (!horas || horas === '0:00' || horas === '00:00' || horas === '00:00:00') return '00:00';
+  return formatarHoras(horas);
 };
 
 /**
@@ -140,6 +185,27 @@ const getColorClass = (horas?: string): string => {
 };
 
 /**
+ * Determines color class based on value (works for both hours and tickets)
+ * Usa horas OU tickets dependendo do tipo de cobrança
+ */
+const getColorClassDinamico = (
+  horas?: string, 
+  tickets?: number, 
+  tipoCobranca?: string
+): string => {
+  // Se for tipo ticket, usar valor de tickets
+  if (tipoCobranca?.toLowerCase() === 'ticket') {
+    if (tickets === undefined || tickets === null) return 'text-gray-900';
+    if (tickets > 0) return 'text-green-600';
+    if (tickets < 0) return 'text-red-600';
+    return 'text-gray-900';
+  }
+  
+  // Caso contrário, usar horas
+  return getColorClass(horas);
+};
+
+/**
  * VisaoConsolidada Component
  * 
  * Displays the consolidated view of monthly hours bank calculations in a table format.
@@ -152,12 +218,14 @@ export function VisaoConsolidada({
   percentualRepasseMensal = 100,
   mesesDoPeriodo,
   requerimentos = [],
-  requerimentosNaoConcluidos = []
+  requerimentosNaoConcluidos = [],
+  tipoCobranca
 }: VisaoConsolidadaProps) {
   // Log para debug
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
     requerimentosConcluidos: requerimentos.length,
-    requerimentosNaoConcluidos: requerimentosNaoConcluidos.length
+    requerimentosNaoConcluidos: requerimentosNaoConcluidos.length,
+    tipoCobranca
   });
   
   // Hook de autenticação
@@ -211,6 +279,37 @@ export function VisaoConsolidada({
   
   // Usar primeiro cálculo para informações gerais
   const calculoPrincipal = calculos[0];
+  
+  // Usar último cálculo do período para valor_a_faturar (é onde o valor é calculado)
+  const calculoFimPeriodo = calculos.find(c => c.is_fim_periodo) || calculos[calculos.length - 1];
+  
+  // Debug: verificar taxa_hora_utilizada
+  console.log('🔍 [VisaoConsolidada] Taxa hora utilizada:', {
+    calculoPrincipal_taxa: calculoPrincipal?.taxa_hora_utilizada,
+    calculoFimPeriodo_taxa: calculoFimPeriodo?.taxa_hora_utilizada,
+    calculoPrincipal_taxa_ticket: calculoPrincipal?.taxa_ticket_utilizada,
+    calculoFimPeriodo_taxa_ticket: calculoFimPeriodo?.taxa_ticket_utilizada,
+    tipoCobranca,
+    todos_calculos: calculos.map(c => ({
+      mes: c.mes,
+      ano: c.ano,
+      taxa_hora_utilizada: c.taxa_hora_utilizada,
+      taxa_ticket_utilizada: c.taxa_ticket_utilizada
+    }))
+  });
+  
+  // Buscar taxa conforme tipo de cobrança
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
+  
+  // Buscar taxa de qualquer cálculo que tenha o valor (fallback robusto)
+  const taxaHoraExibir = isTicket
+    ? (calculoFimPeriodo?.taxa_ticket_utilizada || 
+       calculoPrincipal?.taxa_ticket_utilizada || 
+       calculos.find(c => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada)
+    : (calculoFimPeriodo?.taxa_hora_utilizada || 
+       calculoPrincipal?.taxa_hora_utilizada || 
+       calculos.find(c => c.taxa_hora_utilizada)?.taxa_hora_utilizada);
+  
   const temExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0;
   
   // Nomes dos meses
@@ -225,6 +324,7 @@ export function VisaoConsolidada({
     ano: number;
     empresaId: string;
     horas: string;
+    tickets: number;
     tipo: 'entrada' | 'saida';
     observacao: string;
   }) => {
@@ -238,6 +338,7 @@ export function VisaoConsolidada({
         mes: dados.mes,
         ano: dados.ano,
         valor_horas: dados.horas,
+        valor_tickets: dados.tickets,
         tipo: dados.tipo,
         observacao: dados.observacao,
         created_by: user?.id
@@ -389,10 +490,12 @@ export function VisaoConsolidada({
             <TableBody>
               {/* Banco Contratado (Baseline) */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-semibold text-white text-center">Banco Contratado</TableCell>
+                <TableCell className="font-semibold text-white text-center">
+                  {tipoCobranca?.toLowerCase() === 'ticket' ? 'Tickets Contratados' : 'Banco Contratado'}
+                </TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-white">
-                    {formatarHoras(calculo.baseline_horas)}
+                    {formatarValor(calculo.baseline_horas, calculo.baseline_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -401,8 +504,8 @@ export function VisaoConsolidada({
               <TableRow className="bg-gray-200 hover:bg-gray-200">
                 <TableCell className="font-medium text-gray-900 text-center">Repasse mês anterior</TableCell>
                 {calculos.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClass(calculo.repasses_mes_anterior_horas)}`}>
-                    {formatarHoras(calculo.repasses_mes_anterior_horas)}
+                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}>
+                    {formatarValor(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -412,7 +515,7 @@ export function VisaoConsolidada({
                 <TableCell className="font-medium text-center">Saldo a utilizar</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarHoras(calculo.saldo_a_utilizar_horas)}
+                    {formatarValor(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -422,7 +525,7 @@ export function VisaoConsolidada({
                 <TableCell className="font-medium text-center">Consumo Chamados</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarHoras(calculo.consumo_horas)}
+                    {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -432,7 +535,7 @@ export function VisaoConsolidada({
                 <TableCell className="font-medium text-center">Requerimentos</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarHoras(calculo.requerimentos_horas)}
+                    {formatarValor(calculo.requerimentos_horas, calculo.requerimentos_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -444,10 +547,12 @@ export function VisaoConsolidada({
                   <TableCell key={index} className="text-center">
                     <BotaoReajusteHoras
                       horasAtuais={calculo.reajustes_horas}
+                      ticketsAtuais={calculo.reajustes_tickets}
                       mes={calculo.mes}
                       ano={calculo.ano}
                       empresaId={calculo.empresa_id}
                       nomeMes={MESES[calculo.mes - 1]}
+                      tipoCobranca={tipoCobranca}
                       onSalvar={handleSalvarReajuste}
                       disabled={disabled}
                       isSaving={isCreating}
@@ -461,7 +566,7 @@ export function VisaoConsolidada({
                 <TableCell className="font-medium text-center">Consumo Total</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
-                    {formatarHoras(calculo.consumo_total_horas)}
+                    {formatarValor(calculo.consumo_total_horas, calculo.consumo_total_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -470,8 +575,8 @@ export function VisaoConsolidada({
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">Saldo</TableCell>
                 {calculos.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClass(calculo.saldo_horas)}`}>
-                    {formatarHoras(calculo.saldo_horas)}
+                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}>
+                    {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -480,8 +585,8 @@ export function VisaoConsolidada({
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">Repasse - {percentualRepasseMensal}%</TableCell>
                 {calculos.map((calculo, index) => (
-                  <TableCell key={index} className={`text-center font-semibold ${getColorClass(calculo.repasse_horas)}`}>
-                    {formatarHoras(calculo.repasse_horas)}
+                  <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}>
+                    {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -500,13 +605,13 @@ export function VisaoConsolidada({
               <TableRow className="bg-gray-700 hover:bg-gray-700">
                 <TableCell className="font-medium text-white text-center">Taxa/hora Excedente</TableCell>
                 <TableCell className="text-center font-semibold text-white">
-                  {calculoPrincipal?.taxa_hora_utilizada ? formatarMoeda(calculoPrincipal.taxa_hora_utilizada) : 'R$ 0,00'}
+                  {taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00'}
                 </TableCell>
                 <TableCell className="font-medium text-center text-white" colSpan={calculos.length > 1 ? calculos.length - 2 : 1}>
                   Valor Total
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
-                  {formatarMoeda(calculoPrincipal?.valor_a_faturar)}
+                  {formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}
                 </TableCell>
               </TableRow>
 

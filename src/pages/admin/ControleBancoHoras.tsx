@@ -90,12 +90,22 @@ export default function ControleBancoHoras() {
   // Estado de modais
   const [modalHistoricoAberto, setModalHistoricoAberto] = useState(false);
   
+  // Estado de loading para cálculo inicial
+  const [isCalculandoPeriodo, setIsCalculandoPeriodo] = useState(false);
+  
   // Buscar empresas
   const { empresas, isLoading: isLoadingEmpresas } = useEmpresas();
   
   // Buscar empresa selecionada para obter período de apuração
   const empresaAtual = useMemo(() => {
-    return empresas?.find(e => e.id === empresaSelecionada);
+    const empresa = empresas?.find(e => e.id === empresaSelecionada);
+    console.log('🏢 [DEBUG] Empresa atual:', {
+      id: empresa?.id,
+      nome: empresa?.nome_abreviado,
+      tipo_cobranca: empresa?.tipo_cobranca,
+      periodo_apuracao: empresa?.periodo_apuracao
+    });
+    return empresa;
   }, [empresas, empresaSelecionada]);
   
   // Calcular os meses do período baseado na vigência
@@ -323,6 +333,7 @@ export default function ControleBancoHoras() {
     
     const calcularTrimestreSequencial = async () => {
       try {
+        setIsCalculandoPeriodo(true);
         console.log('🔄 Calculando período sequencialmente...');
         
         // Calcular cada mês em sequência (não em paralelo!)
@@ -363,6 +374,8 @@ export default function ControleBancoHoras() {
           description: error instanceof Error ? error.message : 'Erro desconhecido',
           variant: 'destructive',
         });
+      } finally {
+        setIsCalculandoPeriodo(false);
       }
     };
     
@@ -474,44 +487,89 @@ export default function ControleBancoHoras() {
       };
     }
     
+    // Verificar se é tipo ticket
+    const isTicket = empresaAtual?.tipo_cobranca?.toLowerCase() === 'ticket';
+    
     // Saldo do mês vigente (último mês do período)
     const mesVigente = calculos[calculos.length - 1];
     
-    // Totalizar requerimentos do trimestre
-    let totalRequerimentosMinutos = 0;
-    calculos.forEach(calculo => {
-      if (calculo.requerimentos_horas) {
-        totalRequerimentosMinutos += converterHorasParaMinutos(calculo.requerimentos_horas);
-      }
-    });
-    
-    const requerimentosHoras = Math.floor(totalRequerimentosMinutos / 60);
-    const requerimentosMinutos = totalRequerimentosMinutos % 60;
-    const requerimentosFormatado = `${String(requerimentosHoras).padStart(2, '0')}:${String(requerimentosMinutos).padStart(2, '0')}`;
-    
-    // Calcular valor total dos excedentes (último mês do período)
-    const valorExcedentes = mesVigente.valor_a_faturar 
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
-      : 'R$ 0,00';
-    
-    return {
-      baseline: calculos[0].baseline_horas || '00:00',
-      saldoMesVigente: mesVigente.saldo_horas || '00:00',
-      requerimentosTrimestre: requerimentosFormatado,
-      excedentes: valorExcedentes
-    };
-  }, [calculos]);
+    if (isTicket) {
+      // Para TICKETS: exibir valores numéricos
+      const baselineTickets = calculos[0].baseline_tickets || 0;
+      const saldoTickets = mesVigente.saldo_tickets || 0;
+      
+      // Totalizar requerimentos do trimestre em tickets
+      let totalRequerimentosTickets = 0;
+      calculos.forEach(calculo => {
+        if (calculo.requerimentos_tickets) {
+          totalRequerimentosTickets += calculo.requerimentos_tickets;
+        }
+      });
+      
+      // Calcular valor total dos excedentes (último mês do período)
+      const valorExcedentes = mesVigente.valor_a_faturar 
+        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
+        : 'R$ 0,00';
+      
+      return {
+        baseline: String(Math.round(baselineTickets)),
+        saldoMesVigente: String(Math.round(saldoTickets)),
+        requerimentosTrimestre: String(Math.round(totalRequerimentosTickets)),
+        excedentes: valorExcedentes
+      };
+    } else {
+      // Para HORAS: exibir formato HH:MM
+      // Totalizar requerimentos do trimestre
+      let totalRequerimentosMinutos = 0;
+      calculos.forEach(calculo => {
+        if (calculo.requerimentos_horas) {
+          totalRequerimentosMinutos += converterHorasParaMinutos(calculo.requerimentos_horas);
+        }
+      });
+      
+      const requerimentosHoras = Math.floor(totalRequerimentosMinutos / 60);
+      const requerimentosMinutos = totalRequerimentosMinutos % 60;
+      const requerimentosFormatado = `${String(requerimentosHoras).padStart(2, '0')}:${String(requerimentosMinutos).padStart(2, '0')}`;
+      
+      // Calcular valor total dos excedentes (último mês do período)
+      const valorExcedentes = mesVigente.valor_a_faturar 
+        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mesVigente.valor_a_faturar)
+        : 'R$ 0,00';
+      
+      return {
+        baseline: calculos[0].baseline_horas || '00:00',
+        saldoMesVigente: mesVigente.saldo_horas || '00:00',
+        requerimentosTrimestre: requerimentosFormatado,
+        excedentes: valorExcedentes
+      };
+    }
+  }, [calculos, empresaAtual]);
   
   // Determinar cor do saldo do mês vigente
   const saldoColor = useMemo(() => {
     if (calculos.length === 0) return 'text-gray-900';
     const mesVigente = calculos[calculos.length - 1];
-    if (!mesVigente || !mesVigente.saldo_horas) return 'text-gray-900';
-    const minutos = converterHorasParaMinutos(mesVigente.saldo_horas);
-    if (minutos > 0) return 'text-green-600';
-    if (minutos < 0) return 'text-red-600';
-    return 'text-gray-900';
-  }, [calculos]);
+    if (!mesVigente) return 'text-gray-900';
+    
+    // Verificar se é tipo ticket
+    const isTicket = empresaAtual?.tipo_cobranca?.toLowerCase() === 'ticket';
+    
+    if (isTicket) {
+      // Para tickets, usar saldo_tickets
+      const saldoTickets = mesVigente.saldo_tickets;
+      if (saldoTickets === undefined || saldoTickets === null) return 'text-gray-900';
+      if (saldoTickets > 0) return 'text-green-600';
+      if (saldoTickets < 0) return 'text-red-600';
+      return 'text-gray-900';
+    } else {
+      // Para horas, usar saldo_horas
+      if (!mesVigente.saldo_horas) return 'text-gray-900';
+      const minutos = converterHorasParaMinutos(mesVigente.saldo_horas);
+      if (minutos > 0) return 'text-green-600';
+      if (minutos < 0) return 'text-red-600';
+      return 'text-gray-900';
+    }
+  }, [calculos, empresaAtual]);
   
   // Loading state
   const isLoading = isLoadingEmpresas || isLoadingCalculos || isLoadingAlocacoes || isLoadingRequerimentos;
@@ -663,7 +721,7 @@ export default function ControleBancoHoras() {
                   variant="outline"
                   size="sm"
                   onClick={handleMesAnterior}
-                  disabled={isLoading}
+                  disabled={isLoading || isCalculandoPeriodo}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -680,7 +738,7 @@ export default function ControleBancoHoras() {
                   variant="outline"
                   size="sm"
                   onClick={handleProximoMes}
-                  disabled={isLoading}
+                  disabled={isLoading || isCalculandoPeriodo}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
                 >
                   <span className="hidden sm:inline">Próximo</span>
@@ -691,7 +749,21 @@ export default function ControleBancoHoras() {
           </Card>
 
           {/* Conteúdo Principal */}
-          {!empresaSelecionada ? (
+          {isCalculandoPeriodo ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <RefreshCw className="h-16 w-16 text-sonda-blue mx-auto mb-4 animate-spin" />
+                  <p className="text-gray-900 mb-2 font-medium">
+                    Calculando período...
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Processando {mesesDoPeriodo.length} mês(es) de dados
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : !empresaSelecionada ? (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center">
@@ -774,6 +846,7 @@ export default function ControleBancoHoras() {
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
                   onHistoricoClick={handleHistorico}
                   disabled={isFetchingCalculos || isRecalculatingAny}
+                  tipoCobranca={empresaAtual?.tipo_cobranca}
                 />
               </TabsContent>
 
@@ -827,6 +900,7 @@ export default function ControleBancoHoras() {
           ano={calculos[0].ano}
           versoes={versoes || []}
           isLoading={isLoadingVersoes}
+          tipoCobranca={empresaAtual?.tipo_cobranca}
         />
       )}
     </AdminLayout>

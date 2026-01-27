@@ -195,6 +195,26 @@ function CadastroTaxasClientes() {
     return inicioValido && fimValido;
   };
 
+  // Função para obter o status detalhado da taxa
+  const obterStatusTaxa = (vigenciaInicio: string, vigenciaFim?: string): 'vigente' | 'nao_vigente' | 'vencida' => {
+    const hoje = new Date().toISOString().split('T')[0];
+    const inicioValido = vigenciaInicio <= hoje;
+    const fimValido = !vigenciaFim || vigenciaFim >= hoje;
+    
+    // Taxa vigente: já começou e ainda não terminou
+    if (inicioValido && fimValido) {
+      return 'vigente';
+    }
+    
+    // Taxa vencida: data de fim já passou
+    if (vigenciaFim && vigenciaFim < hoje) {
+      return 'vencida';
+    }
+    
+    // Taxa não vigente: data de início ainda não chegou
+    return 'nao_vigente';
+  };
+
   // Função para alternar ordenação
   const handleOrdenar = (coluna: OrdenacaoColuna) => {
     if (colunaOrdenacao === coluna) {
@@ -274,16 +294,28 @@ function CadastroTaxasClientes() {
     // Filtro por status
     if (filtroStatus !== 'todos') {
       resultado = resultado.filter(taxa => {
-        const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
-        return filtroStatus === 'vigente' ? vigente : !vigente;
+        const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+        
+        if (filtroStatus === 'vigente') return statusTaxa === 'vigente';
+        if (filtroStatus === 'nao_vigente') return statusTaxa === 'nao_vigente';
+        if (filtroStatus === 'vencida') return statusTaxa === 'vencida';
+        
+        return true;
       });
     }
 
-    // Filtro por tipo de taxa (Personalizada/Automática)
+    // Filtro por tipo de taxa (Personalizada/Padrão/Automática)
     if (filtroTipoTaxa !== 'todos') {
       resultado = resultado.filter(taxa => {
         const isPersonalizada = taxa.personalizado === true;
-        return filtroTipoTaxa === 'personalizada' ? isPersonalizada : !isPersonalizada;
+        const isPadrao = !taxa.personalizado && taxa.cliente?.tem_ams === false;
+        const isAutomatica = !taxa.personalizado && taxa.cliente?.tem_ams !== false;
+        
+        if (filtroTipoTaxa === 'personalizada') return isPersonalizada;
+        if (filtroTipoTaxa === 'padrao') return isPadrao;
+        if (filtroTipoTaxa === 'automatica') return isAutomatica;
+        
+        return true;
       });
     }
 
@@ -411,14 +443,20 @@ function CadastroTaxasClientes() {
       const XLSX = await import('xlsx');
       
       // Aba 1: Resumo das Taxas
-      const dadosResumo = taxasOrdenadas.map(taxa => ({
-        'Cliente': taxa.cliente?.nome_abreviado || '-',
-        'Tipo de Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
-        'Vigência Início': format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
-        'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Indefinida',
-        'Status': verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente',
-        'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'
-      }));
+      const dadosResumo = taxasOrdenadas.map(taxa => {
+        const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+        const statusTexto = statusTaxa === 'vigente' ? 'Vigente' : statusTaxa === 'vencida' ? 'Taxa Vencida' : 'Não Vigente';
+        
+        return {
+          'Cliente': taxa.cliente?.nome_abreviado || '-',
+          'Tipo de Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+          'Vigência Início': format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
+          'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Indefinida',
+          'Status': statusTexto,
+          'Tipo de Taxa': taxa.personalizado ? 'Personalizada' : (taxa.cliente?.tem_ams === false ? 'Padrão' : 'Automática'),
+          'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'
+        };
+      });
 
       // Aba 2: Detalhes das Taxas (Valores por Função)
       const dadosDetalhes: any[] = [];
@@ -559,7 +597,7 @@ function CadastroTaxasClientes() {
       // Tabela Resumo
       let yPos = 48;
       const lineHeight = 7;
-      const colWidths = [45, 35, 28, 28, 22, 22]; // Ajustado para incluir Tipo de Cálculo
+      const colWidths = [40, 30, 25, 25, 20, 20, 20]; // Ajustado para incluir Tipo de Taxa e Tipo de Cálculo
 
       // Cabeçalho da tabela
       doc.setFillColor(0, 102, 255);
@@ -573,7 +611,8 @@ function CadastroTaxasClientes() {
       doc.text('Vigência Início', margin + colWidths[0] + colWidths[1] + 2, yPos + 5);
       doc.text('Vigência Fim', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 5);
       doc.text('Status', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
-      doc.text('Tipo Cálculo', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 5);
+      doc.text('Tipo Taxa', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 5);
+      doc.text('Tipo Cálculo', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + 2, yPos + 5);
 
       yPos += lineHeight;
 
@@ -592,12 +631,16 @@ function CadastroTaxasClientes() {
         doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
         doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
 
+        const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+        const statusTexto = statusTaxa === 'vigente' ? 'Vigente' : statusTaxa === 'vencida' ? 'Taxa Vencida' : 'Não Vigente';
+
         doc.text(taxa.cliente?.nome_abreviado || '-', margin + 2, yPos + 4.5);
         doc.text(taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL', margin + colWidths[0] + 2, yPos + 4.5);
         doc.text(format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy'), margin + colWidths[0] + colWidths[1] + 2, yPos + 4.5);
         doc.text(taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy') : 'Indefinida', margin + colWidths[0] + colWidths[1] + colWidths[2] + 2, yPos + 4.5);
-        doc.text(verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim) ? 'Vigente' : 'Não Vigente', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 4.5);
-        doc.text(taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 4.5);
+        doc.text(statusTexto, margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 4.5);
+        doc.text(taxa.personalizado ? 'Personalizada' : (taxa.cliente?.tem_ams === false ? 'Padrão' : 'Automática'), margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 4.5);
+        doc.text(taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + 2, yPos + 4.5);
 
         yPos += lineHeight;
       });
@@ -997,6 +1040,7 @@ function CadastroTaxasClientes() {
                         <SelectItem value="todos">Todos os status</SelectItem>
                         <SelectItem value="vigente">Vigente</SelectItem>
                         <SelectItem value="nao_vigente">Não Vigente</SelectItem>
+                        <SelectItem value="vencida">Taxa Vencida</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1017,6 +1061,7 @@ function CadastroTaxasClientes() {
                       <SelectContent>
                         <SelectItem value="todos">Todos os tipos</SelectItem>
                         <SelectItem value="personalizada">Personalizada</SelectItem>
+                        <SelectItem value="padrao">Padrão</SelectItem>
                         <SelectItem value="automatica">Automática</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1117,7 +1162,7 @@ function CadastroTaxasClientes() {
                     </TableRow>
                   ) : (
                     paginatedData.items.map((taxa) => {
-                      const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
+                      const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
                       
                       // Obter nomes dos produtos do cliente
                       const cliente = taxa.cliente as TaxaClienteCompleta['cliente'];
@@ -1156,9 +1201,13 @@ function CadastroTaxasClientes() {
                               : 'Indefinida'}
                           </TableCell>
                           <TableCell>
-                            {vigente ? (
-                              <Badge className="bg-green-600 hover:bg-green-700">
+                            {statusTaxa === 'vigente' ? (
+                              <Badge className="bg-green-600 text-white hover:bg-green-700">
                                 Vigente
+                              </Badge>
+                            ) : statusTaxa === 'vencida' ? (
+                              <Badge variant="outline" className="border-orange-600 text-orange-600 bg-orange-50">
+                                Taxa Vencida
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="border-red-600 text-red-600">
@@ -1169,12 +1218,18 @@ function CadastroTaxasClientes() {
                           <TableCell className="text-center">
                             <Badge 
                               variant={taxa.personalizado ? 'default' : 'secondary'}
-                              className={taxa.personalizado 
-                                ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                                : 'bg-gray-200 text-gray-700'
+                              className={
+                                taxa.personalizado 
+                                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                                  : taxa.cliente?.tem_ams === false
+                                    ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                    : 'bg-gray-200 text-gray-700'
                               }
                             >
-                              {taxa.personalizado ? 'Personalizada' : 'Automática'}
+                              {taxa.personalizado 
+                                ? 'Personalizada' 
+                                : (taxa.cliente?.tem_ams === false ? 'Padrão' : 'Automática')
+                              }
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -1624,12 +1679,18 @@ function CadastroTaxasClientes() {
                         <p className="text-sm font-medium text-gray-500 mb-2">Tipo de Taxa</p>
                         <Badge 
                           variant={taxaVisualizando.personalizado ? 'default' : 'secondary'}
-                          className={taxaVisualizando.personalizado 
-                            ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                            : 'bg-gray-200 text-gray-700'
+                          className={
+                            taxaVisualizando.personalizado 
+                              ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                              : taxaVisualizando.cliente?.tem_ams === false
+                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                : 'bg-gray-200 text-gray-700'
                           }
                         >
-                          {taxaVisualizando.personalizado ? 'Personalizada' : 'Automática'}
+                          {taxaVisualizando.personalizado 
+                            ? 'Personalizada' 
+                            : (taxaVisualizando.cliente?.tem_ams === false ? 'Padrão' : 'Automática')
+                          }
                         </Badge>
                       </div>
                     </div>

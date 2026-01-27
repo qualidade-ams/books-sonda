@@ -51,6 +51,7 @@ export interface TaxaClienteCompleta extends TaxaCliente {
     id: string;
     nome_completo: string;
     nome_abreviado: string;
+    tem_ams?: boolean;
     produtos?: { produto: string }[];
   };
   valores_remota?: ValorTaxaCalculado[];

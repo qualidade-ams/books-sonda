@@ -297,7 +297,69 @@ export class BancoHorasService {
       let taxaTicketUtilizada: number | null = null;
       let observacaoPublica = '';
 
-      if (resultadoRepasseHoras.gerarExcedente || resultadoRepasseTickets.gerarExcedente) {
+      // SEMPRE buscar a taxa para exibição, independente de ser fim de período
+      if (parametros.tipo_contrato !== 'tickets') {
+        const taxaHora = await excedentesService.buscarTaxaMes(
+          empresaId,
+          mes,
+          ano,
+          parametros.tipo_contrato
+        );
+        taxaHoraUtilizada = taxaHora;
+        console.log('📊 Taxa de hora buscada para exibição:', taxaHoraUtilizada);
+      }
+
+      if (parametros.tipo_contrato !== 'horas') {
+        console.log('🔍 Buscando taxa de ticket excedente:', {
+          empresaId,
+          mes,
+          ano,
+          tipo_contrato: parametros.tipo_contrato
+        });
+        
+        const taxaTicket = await excedentesService.buscarTaxaMes(
+          empresaId,
+          mes,
+          ano,
+          parametros.tipo_contrato
+        );
+        taxaTicketUtilizada = taxaTicket;
+        console.log('📊 Taxa de ticket buscada para exibição:', taxaTicketUtilizada);
+      }
+
+      // Calcular excedentes se for fim de período E saldo negativo
+      // OU se gerarExcedente for true (para garantir compatibilidade)
+      const saldoHorasNegativo = saldoHoras.startsWith('-');
+      const saldoTicketsNegativo = saldoTickets < 0;
+      
+      console.log('🔍 Verificando condições para cálculo de excedentes:', {
+        isFimPeriodo,
+        saldoHoras,
+        saldoHorasNegativo,
+        saldoTickets,
+        saldoTicketsNegativo,
+        'resultadoRepasseHoras.gerarExcedente': resultadoRepasseHoras.gerarExcedente,
+        'resultadoRepasseTickets.gerarExcedente': resultadoRepasseTickets.gerarExcedente,
+        'vai calcular excedente?': (isFimPeriodo && (saldoHorasNegativo || saldoTicketsNegativo)) || 
+          resultadoRepasseHoras.gerarExcedente || 
+          resultadoRepasseTickets.gerarExcedente
+      });
+      
+      if ((isFimPeriodo && (saldoHorasNegativo || saldoTicketsNegativo)) || 
+          resultadoRepasseHoras.gerarExcedente || 
+          resultadoRepasseTickets.gerarExcedente) {
+        console.log('🔔 Gerando excedentes:', {
+          motivo: isFimPeriodo && (saldoHorasNegativo || saldoTicketsNegativo) 
+            ? 'Fim de período com saldo negativo' 
+            : 'gerarExcedente = true',
+          isFimPeriodo,
+          saldoHorasNegativo,
+          saldoTicketsNegativo,
+          gerarExcedenteHoras: resultadoRepasseHoras.gerarExcedente,
+          gerarExcedenteTickets: resultadoRepasseTickets.gerarExcedente,
+          saldoHoras,
+          saldoTickets
+        });
         // Calcular excedente de horas
         if (resultadoRepasseHoras.gerarExcedente && parametros.tipo_contrato !== 'tickets') {
           const resultadoExcedenteHoras = await excedentesService.calcularExcedente(
@@ -385,11 +447,24 @@ export class BancoHorasService {
         horas: excedenteHoras,
         tickets: excedenteTickets,
         valorHoras: valorExcedenteHoras,
-        valorTickets: valorExcedenteTickets
+        valorTickets: valorExcedenteTickets,
+        taxaHoraUtilizada,
+        taxaTicketUtilizada,
+        gerarExcedenteHoras: resultadoRepasseHoras.gerarExcedente,
+        gerarExcedenteTickets: resultadoRepasseTickets.gerarExcedente
       });
 
       // 12. Calcular valor total a faturar
       const valorAFaturar = valorExcedenteHoras + valorExcedenteTickets;
+
+      console.log('💰 Valor a faturar calculado:', {
+        valorExcedenteHoras,
+        valorExcedenteTickets,
+        valorAFaturar,
+        motivo: valorAFaturar === 0 
+          ? 'Saldo não é negativo no fim do período' 
+          : 'Excedente calculado com sucesso'
+      });
 
       // 13. Persistir cálculo
       const calculo = await this.persistirCalculo({
@@ -430,6 +505,8 @@ export class BancoHorasService {
         mes: `${mes}/${ano}`,
         saldoHoras: saldoHoras,
         repasseHoras: resultadoRepasseHoras.repasse,
+        taxa_hora_utilizada: taxaHoraUtilizada,
+        valor_a_faturar: valorAFaturar,
         observacao: '⚠️ IMPORTANTE: O valor de repasse_horas salvo aqui será usado como repasse_mes_anterior no próximo mês'
       });
 

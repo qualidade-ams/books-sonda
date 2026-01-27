@@ -85,6 +85,9 @@ export interface ModalHistoricoProps {
   
   /** Estado de carregamento */
   isLoading?: boolean;
+  
+  /** Tipo de cobrança do cliente ('ticket' ou 'banco_horas') */
+  tipoCobranca?: string;
 }
 
 /**
@@ -115,6 +118,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   ano,
   versoes,
   isLoading = false,
+  tipoCobranca,
 }) => {
   // Estado para dados de reajustes
   const [reajustes, setReajustes] = useState<Record<string, BancoHorasReajuste>>({});
@@ -130,6 +134,9 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Verificar se é tipo ticket
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
 
   /**
    * Busca dados de reajustes para versões
@@ -460,6 +467,23 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
     ];
     return `${meses[mes - 1]}/${ano}`;
   };
+  
+  /**
+   * Formata valor baseado no tipo de cobrança
+   */
+  const formatarValorReajuste = (reajuste: BancoHorasReajuste | null) => {
+    if (!reajuste) return null;
+    
+    if (isTicket) {
+      // Para tickets, exibir valor_reajuste_tickets
+      const tickets = reajuste.valor_reajuste_tickets;
+      if (tickets === undefined || tickets === null) return '0';
+      return tickets.toString();
+    } else {
+      // Para horas, exibir valor_reajuste_horas
+      return reajuste.valor_reajuste_horas || '0:00';
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -556,11 +580,11 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                               )}
                             </TableCell>
                             <TableCell className="text-center">
-                              {/* Mostrar valor_reajuste_horas do reajuste */}
-                              {reajuste && reajuste.valor_reajuste_horas ? (
+                              {/* Mostrar valor do reajuste baseado no tipo de cobrança */}
+                              {reajuste ? (
                                 <div className="flex flex-col items-center gap-1">
                                   <span className="font-semibold text-sonda-blue text-base">
-                                    {reajuste.valor_reajuste_horas}
+                                    {formatarValorReajuste(reajuste)}
                                   </span>
                                   {getBadgeTipoMudanca(versao.tipo_mudanca)}
                                 </div>
@@ -569,7 +593,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                   {getBadgeTipoMudanca(versao.tipo_mudanca)}
                                   {versao.tipo_mudanca === 'reajuste' && (
                                     <span className="text-xs text-gray-400 italic">
-                                      Sem dados de horas
+                                      Sem dados
                                     </span>
                                   )}
                                 </div>

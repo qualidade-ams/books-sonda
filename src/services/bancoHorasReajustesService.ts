@@ -23,6 +23,7 @@ export interface ReajusteData {
   mes: number;
   ano: number;
   valor_horas: string; // Formato HH:MM
+  valor_tickets: number; // Quantidade de tickets
   tipo: 'entrada' | 'saida';
   observacao: string;
   created_by?: string;
@@ -137,6 +138,7 @@ export class BancoHorasReajustesService {
         mes: dados.mes,
         ano: dados.ano,
         valor_reajuste_horas: dados.valor_horas,
+        valor_reajuste_tickets: dados.valor_tickets, // ← ADICIONAR valor_tickets
         tipo_reajuste: dados.tipo,
         observacao: dados.observacao,
         ativo: true,
