@@ -181,7 +181,12 @@ export class BancoHorasIntegracaoService {
   /**
    * Busca consumo de horas/tickets de apontamentos Aranda
    * 
-   * Soma tempo_gasto_horas onde ativi_interna = "Não" para a empresa e período especificados.
+   * Soma tempo_gasto_horas onde:
+   * - ativi_interna = "Não"
+   * - item_configuracao != "000000 - PROJETOS APL"
+   * - tipo_chamado != "PM"
+   * - data_atividade e data_sistema no mesmo mês
+   * - cod_resolucao IN (códigos válidos)
    * 
    * @param empresaId - ID da empresa cliente
    * @param mes - Mês (1-12)
@@ -282,15 +287,20 @@ export class BancoHorasIntegracaoService {
 
       // Buscar apontamentos onde:
       // - ativi_interna = "Não"
+      // - item_configuracao != "000000 - PROJETOS APL" (NOVA REGRA 1)
+      // - tipo_chamado != "PM" (NOVA REGRA 2)
       // - org_us_final = nome da empresa (abreviado ou completo)
       // - cod_resolucao IN (códigos válidos)
       // - data_atividade dentro do período
+      // - data_atividade e data_sistema no mesmo mês (NOVA REGRA 3)
       
       // Construir query base (usando any para evitar problemas de tipo com tabela externa)
       let query = supabase
         .from('apontamentos_aranda' as any)
-        .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final')
+        .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema')
         .eq('ativi_interna', 'Não')
+        .neq('item_configuracao', '000000 - PROJETOS APL')  // NOVA REGRA 1: Excluir projetos APL
+        .neq('tipo_chamado', 'PM')  // NOVA REGRA 2: Excluir tipo PM
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString());
 
@@ -330,28 +340,53 @@ export class BancoHorasIntegracaoService {
       // Somar horas
       let totalMinutos = 0;
       let totalTickets = 0;
+      let apontamentosExcluidos = 0;
 
       if (apontamentos && apontamentos.length > 0) {
         for (const apontamento of apontamentos) {
-          // Priorizar tempo_gasto_horas (formato HH:MM)
-          if (apontamento.tempo_gasto_horas) {
-            try {
-              const horasDecimal = converterParaHorasDecimal(apontamento.tempo_gasto_horas);
-              totalMinutos += horasDecimal * 60;
-            } catch (error) {
-              console.warn('⚠️ Erro ao converter tempo_gasto_horas:', {
-                valor: apontamento.tempo_gasto_horas,
-                erro: error
+          // NOVA REGRA 3: Validar que data_atividade e data_sistema estão no mesmo mês
+          let mesmoMes = true;
+          if (apontamento.data_atividade && apontamento.data_sistema) {
+            const dataAtividade = new Date(apontamento.data_atividade);
+            const dataSistema = new Date(apontamento.data_sistema);
+            
+            // Comparar mês e ano
+            if (
+              dataAtividade.getMonth() !== dataSistema.getMonth() ||
+              dataAtividade.getFullYear() !== dataSistema.getFullYear()
+            ) {
+              mesmoMes = false;
+              apontamentosExcluidos++;
+              console.log('⚠️ Apontamento excluído (mês diferente):', {
+                data_atividade: apontamento.data_atividade,
+                data_sistema: apontamento.data_sistema,
+                nro_chamado: apontamento.nro_chamado || 'N/A'
               });
             }
-          } 
-          // Fallback para tempo_gasto_minutos
-          else if (apontamento.tempo_gasto_minutos) {
-            totalMinutos += apontamento.tempo_gasto_minutos;
           }
 
-          // Contar tickets (cada apontamento = 1 ticket)
-          totalTickets++;
+          // Só contabilizar se passou na validação de mês
+          if (mesmoMes) {
+            // Priorizar tempo_gasto_horas (formato HH:MM)
+            if (apontamento.tempo_gasto_horas) {
+              try {
+                const horasDecimal = converterParaHorasDecimal(apontamento.tempo_gasto_horas);
+                totalMinutos += horasDecimal * 60;
+              } catch (error) {
+                console.warn('⚠️ Erro ao converter tempo_gasto_horas:', {
+                  valor: apontamento.tempo_gasto_horas,
+                  erro: error
+                });
+              }
+            } 
+            // Fallback para tempo_gasto_minutos
+            else if (apontamento.tempo_gasto_minutos) {
+              totalMinutos += apontamento.tempo_gasto_minutos;
+            }
+
+            // Contar tickets (cada apontamento = 1 ticket)
+            totalTickets++;
+          }
         }
       }
 
@@ -363,7 +398,8 @@ export class BancoHorasIntegracaoService {
       console.log('✅ Consumo calculado:', {
         totalMinutos,
         horas: horasFormatadas,
-        tickets: totalTickets
+        tickets: totalTickets,
+        apontamentosExcluidos
       });
 
       return {
