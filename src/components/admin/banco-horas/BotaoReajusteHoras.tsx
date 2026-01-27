@@ -32,6 +32,9 @@ interface BotaoReajusteHorasProps {
   /** Valor atual das horas de reajuste (formato HH:MM) */
   horasAtuais?: string;
   
+  /** Valor atual dos tickets de reajuste */
+  ticketsAtuais?: number;
+  
   /** Mês do reajuste */
   mes: number;
   
@@ -44,12 +47,16 @@ interface BotaoReajusteHorasProps {
   /** Nome do mês (ex: "Janeiro") */
   nomeMes: string;
   
+  /** Tipo de cobrança ('ticket' ou 'banco_horas') */
+  tipoCobranca?: string;
+  
   /** Callback quando reajuste é salvo */
   onSalvar: (dados: {
     mes: number;
     ano: number;
     empresaId: string;
     horas: string;
+    tickets: number;
     tipo: 'entrada' | 'saida';
     observacao: string;
   }) => Promise<void>;
@@ -100,29 +107,43 @@ const getColorClass = (horas?: string): string => {
 
 export function BotaoReajusteHoras({
   horasAtuais,
+  ticketsAtuais,
   mes,
   ano,
   empresaId,
   nomeMes,
+  tipoCobranca,
   onSalvar,
   disabled = false,
   isSaving = false
 }: BotaoReajusteHorasProps) {
   const [modalAberto, setModalAberto] = useState(false);
   const [horas, setHoras] = useState('');
+  const [tickets, setTickets] = useState('');
   const [tipo, setTipo] = useState<'entrada' | 'saida'>('entrada');
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
   
-  // Formatar horas atuais para exibição
-  const horasFormatadas = formatarHoras(horasAtuais);
-  const colorClass = getColorClass(horasAtuais);
-  const temHoras = horasAtuais && horasAtuais !== '0:00' && horasAtuais !== '00:00';
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
+  
+  // Formatar valor atual para exibição
+  const valorAtualFormatado = isTicket 
+    ? (ticketsAtuais !== undefined && ticketsAtuais !== null ? ticketsAtuais.toString() : '0')
+    : formatarHoras(horasAtuais);
+  
+  const colorClass = isTicket
+    ? (ticketsAtuais && ticketsAtuais > 0 ? 'text-green-600' : ticketsAtuais && ticketsAtuais < 0 ? 'text-red-600' : 'text-gray-500')
+    : getColorClass(horasAtuais);
+  
+  const temValor = isTicket
+    ? (ticketsAtuais !== undefined && ticketsAtuais !== null && ticketsAtuais !== 0)
+    : (horasAtuais && horasAtuais !== '0:00' && horasAtuais !== '00:00');
   
   // Abrir modal
   const handleAbrirModal = () => {
     setModalAberto(true);
     setHoras('');
+    setTickets('');
     setTipo('entrada');
     setObservacao('');
     setErro('');
@@ -132,6 +153,7 @@ export function BotaoReajusteHoras({
   const handleFecharModal = () => {
     setModalAberto(false);
     setHoras('');
+    setTickets('');
     setTipo('entrada');
     setObservacao('');
     setErro('');
@@ -155,7 +177,44 @@ export function BotaoReajusteHoras({
   
   // Salvar reajuste
   const handleSalvar = async () => {
-    // Validações
+    // Validações para tickets
+    if (isTicket) {
+      if (!tickets.trim()) {
+        setErro('Digite a quantidade de tickets');
+        return;
+      }
+      
+      const ticketsNum = parseInt(tickets);
+      if (isNaN(ticketsNum) || ticketsNum <= 0) {
+        setErro('Digite um número válido de tickets');
+        return;
+      }
+      
+      if (!observacao.trim()) {
+        setErro('A observação é obrigatória');
+        return;
+      }
+      
+      try {
+        await onSalvar({
+          mes,
+          ano,
+          empresaId,
+          horas: '0:00', // Para tickets, horas é sempre 0
+          tickets: ticketsNum,
+          tipo,
+          observacao
+        });
+        
+        handleFecharModal();
+      } catch (error) {
+        console.error('Erro ao salvar reajuste:', error);
+        setErro(error instanceof Error ? error.message : 'Erro ao salvar reajuste');
+      }
+      return;
+    }
+    
+    // Validações para horas
     if (!horas.trim()) {
       setErro('Digite as horas no formato HH:MM');
       return;
@@ -177,6 +236,7 @@ export function BotaoReajusteHoras({
         ano,
         empresaId,
         horas,
+        tickets: 0, // Para horas, tickets é sempre 0
         tipo,
         observacao
       });
@@ -197,12 +257,12 @@ export function BotaoReajusteHoras({
         onClick={handleAbrirModal}
         disabled={disabled || isSaving}
         className={`w-full max-w-[120px] mx-auto flex items-center justify-center gap-2 ${
-          temHoras ? 'border-sonda-blue hover:bg-sonda-blue/5' : 'border-gray-300'
+          temValor ? 'border-sonda-blue hover:bg-sonda-blue/5' : 'border-gray-300'
         }`}
       >
         <Clock className={`h-4 w-4 ${colorClass}`} />
         <span className={`font-mono font-semibold ${colorClass}`}>
-          {horasFormatadas}
+          {valorAtualFormatado}
         </span>
         <Plus className="h-3 w-3 text-gray-400" />
       </Button>
@@ -212,10 +272,10 @@ export function BotaoReajusteHoras({
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              Lançar Reajuste de Horas
+              {isTicket ? 'Lançar Reajuste de Tickets' : 'Lançar Reajuste de Horas'}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Adicione ou remova horas do banco de horas
+              {isTicket ? 'Adicione ou remova tickets do banco' : 'Adicione ou remova horas do banco de horas'}
             </DialogDescription>
           </DialogHeader>
           
@@ -234,7 +294,7 @@ export function BotaoReajusteHoras({
                 <div className="col-span-2">
                   <span className="text-gray-600">Saldo Atual:</span>
                   <span className={`ml-2 font-semibold font-mono ${colorClass}`}>
-                    {horasFormatadas}
+                    {valorAtualFormatado}
                   </span>
                 </div>
               </div>
@@ -253,39 +313,61 @@ export function BotaoReajusteHoras({
                   <SelectItem value="entrada">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-green-500" />
-                      <span>Entrada (Adicionar horas)</span>
+                      <span>Entrada (Adicionar {isTicket ? 'tickets' : 'horas'})</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="saida">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-red-500" />
-                      <span>Saída (Remover horas)</span>
+                      <span>Saída (Remover {isTicket ? 'tickets' : 'horas'})</span>
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            {/* Horas */}
-            <div className="space-y-2">
-              <Label htmlFor="horas" className="text-sm font-medium text-gray-700">
-                Horas (HH:MM) <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="horas"
-                type="text"
-                placeholder="00:00"
-                value={horas}
-                onChange={(e) => {
-                  setHoras(e.target.value);
-                  setErro('');
-                }}
-                onKeyDown={handleKeyDown}
-                className={`font-mono focus:ring-sonda-blue focus:border-sonda-blue ${
-                  erro && !horas.trim() ? 'border-red-500' : ''
-                }`}
-              />
-            </div>
+            {/* Campo de Horas ou Tickets */}
+            {isTicket ? (
+              <div className="space-y-2">
+                <Label htmlFor="tickets" className="text-sm font-medium text-gray-700">
+                  Quantidade de Tickets <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="tickets"
+                  type="number"
+                  min="1"
+                  placeholder="0"
+                  value={tickets}
+                  onChange={(e) => {
+                    setTickets(e.target.value);
+                    setErro('');
+                  }}
+                  className={`font-mono focus:ring-sonda-blue focus:border-sonda-blue ${
+                    erro && !tickets.trim() ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="horas" className="text-sm font-medium text-gray-700">
+                  Horas (HH:MM) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="horas"
+                  type="text"
+                  placeholder="00:00"
+                  value={horas}
+                  onChange={(e) => {
+                    setHoras(e.target.value);
+                    setErro('');
+                  }}
+                  onKeyDown={handleKeyDown}
+                  className={`font-mono focus:ring-sonda-blue focus:border-sonda-blue ${
+                    erro && !horas.trim() ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+            )}
             
             {/* Observação */}
             <div className="space-y-2">

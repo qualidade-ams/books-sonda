@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +24,8 @@ import {
   Mail,
   Settings,
   ClipboardPenLine,
-  Eye
+  Eye,
+  DollarSign
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -40,6 +42,9 @@ interface EmpresasTableProps {
   onView?: (empresa: EmpresaClienteCompleta) => void;
   onEdit: (empresa: EmpresaClienteCompleta) => void;
   onDelete: (empresa: EmpresaClienteCompleta) => void;
+  // Props para filtros da aba Parâmetros Book
+  onTabChange?: (tab: 'principais' | 'parametros') => void;
+  activeTab?: 'principais' | 'parametros';
 }
 
 const EmpresasTable: React.FC<EmpresasTableProps> = ({
@@ -48,8 +53,70 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   onView,
   onEdit,
   onDelete,
+  onTabChange,
+  activeTab: externalActiveTab,
 }) => {
   const { getTemplateById, isDefaultTemplate } = useBookTemplates();
+  const [internalActiveTab, setInternalActiveTab] = useState<'principais' | 'parametros'>('principais');
+  
+  // Usar activeTab externo se fornecido, senão usar interno
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+  
+  // Handler para mudança de aba
+  const handleTabChange = (value: string) => {
+    const newTab = value as 'principais' | 'parametros';
+    setInternalActiveTab(newTab);
+    if (onTabChange) {
+      onTabChange(newTab);
+    }
+  };
+
+  // Filtrar empresas com AMS para a aba de parâmetros
+  const empresasComAms = empresas.filter(empresa => empresa.tem_ams === true);
+
+  // Função para formatar baseline (horas ou tickets)
+  const formatBaseline = (empresa: EmpresaClienteCompleta): string => {
+    const tipoCobranca = empresa.tipo_cobranca;
+    
+    // Se for ticket, usar baseline_tickets_mensal
+    if (tipoCobranca === 'ticket') {
+      const tickets = empresa.baseline_tickets_mensal;
+      if (tickets == null) return '-';
+      return tickets.toString();
+    }
+    
+    // Se for banco de horas, usar baseline_horas_mensal
+    const baseline = empresa.baseline_horas_mensal;
+    if (!baseline) return '-';
+    
+    // Formatar como HH:MM (sem segundos)
+    const baselineStr = baseline.toString();
+    if (baselineStr.includes(':')) {
+      const parts = baselineStr.split(':');
+      if (parts.length >= 2) {
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`; // Retorna apenas HH:MM
+      }
+      return baselineStr;
+    }
+    
+    // Converter minutos para HH:MM
+    const minutos = parseInt(baselineStr);
+    if (isNaN(minutos)) return '-';
+    
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    return `${horas.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  // Função para formatar data de vigência como MM/YYYY
+  const formatVigenciaMesAno = (dateString: string | null | undefined): string => {
+    if (!dateString) return '-';
+    try {
+      return format(new Date(dateString), 'MM/yyyy', { locale: ptBR });
+    } catch {
+      return '-';
+    }
+  };
 
 
 
@@ -217,177 +284,338 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
   }
 
   return (
-    <div className="rounded-md mt-4 overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[35%] min-w-[200px]">Nome</TableHead>
-            <TableHead className="w-[8%] min-w-[70px]">Status</TableHead>
-            <TableHead className="w-[12%] min-w-[90px]">Template</TableHead>
-            <TableHead className="w-[8%] min-w-[70px] hidden xl:table-cell">Tem AMS</TableHead>
-            <TableHead className="w-[15%] min-w-[120px] hidden xl:table-cell">Produtos</TableHead>
-            <TableHead className="w-[15%] min-w-[140px] hidden 2xl:table-cell">E-mail Gestor</TableHead>
-            <TableHead className="w-[7%] min-w-[90px] hidden 2xl:table-cell">Data Status</TableHead>
-            <TableHead className="w-[10%] min-w-[90px]">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {empresas.map((empresa) => (
-            <TableRow key={empresa.id}>
-              <TableCell className="font-medium">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate" title={empresa.nome_abreviado}>
-                      {empresa.nome_abreviado}
-                    </span>
-                    {empresa.em_projeto && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center cursor-help">
-                              <Settings className="h-4 w-4 text-sonda-blue" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent 
-                            side="top" 
-                            className="bg-white border border-gray-200 shadow-lg rounded-md"
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      <TabsList className="bg-gray-100 p-1 rounded-lg">
+        <TabsTrigger 
+          value="principais"
+          className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+        >
+          Informações Principais
+        </TabsTrigger>
+        <TabsTrigger 
+          value="parametros"
+          className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+        >
+          Parâmetros Book ({empresasComAms.length})
+        </TabsTrigger>
+      </TabsList>
+
+      {/* Aba: Informações Principais */}
+      <TabsContent value="principais" className="mt-4">
+        <div className="rounded-md overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[35%] min-w-[200px]">Nome</TableHead>
+                <TableHead className="w-[8%] min-w-[70px] text-center">Status</TableHead>
+                <TableHead className="w-[12%] min-w-[90px] text-center">Template</TableHead>
+                <TableHead className="w-[8%] min-w-[70px] text-center hidden xl:table-cell">Tem AMS</TableHead>
+                <TableHead className="w-[15%] min-w-[120px] text-center hidden xl:table-cell">Produtos</TableHead>
+                <TableHead className="w-[15%] min-w-[140px] text-center hidden 2xl:table-cell">E-mail Gestor</TableHead>
+                <TableHead className="w-[10%] min-w-[90px] text-center">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {empresas.map((empresa) => (
+                <TableRow key={empresa.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate" title={empresa.nome_abreviado}>
+                          {empresa.nome_abreviado}
+                        </span>
+                        {empresa.em_projeto && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center cursor-help">
+                                  <Settings className="h-4 w-4 text-sonda-blue" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="top" 
+                                className="bg-white border border-gray-200 shadow-lg rounded-md"
+                              >
+                                <div className="text-sm text-gray-700">
+                                  Empresa em projeto
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {empresa.observacao && empresa.observacao.trim() && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center cursor-help">
+                                  <ClipboardPenLine className="h-4 w-4 text-sonda-blue hover:text-sonda-dark-blue transition-colors" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="right" 
+                                className="max-w-xs p-3 bg-white border border-gray-200 shadow-lg rounded-md"
+                              >
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                  {empresa.observacao}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                      {empresa.link_sharepoint && (
+                        <a
+                          href={empresa.link_sharepoint}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 mt-1"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span className="hidden lg:inline">SharePoint</span>
+                          <span className="lg:hidden">SP</span>
+                        </a>
+                      )}
+                      <div className="xl:hidden mt-1">
+                        {getProdutosBadges(empresa.produtos || [])}
+                      </div>
+                      {empresa.email_gestor && (
+                        <div className="2xl:hidden mt-1">
+                          <a
+                            href={`mailto:${empresa.email_gestor}`}
+                            className="text-blue-600 hover:text-blue-800 text-xs truncate block"
+                            title={empresa.email_gestor}
                           >
-                            <div className="text-sm text-gray-700">
-                              Empresa em projeto
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    {empresa.observacao && empresa.observacao.trim() && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center cursor-help">
-                              <ClipboardPenLine className="h-4 w-4 text-sonda-blue hover:text-sonda-dark-blue transition-colors" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent 
-                            side="right" 
-                            className="max-w-xs p-3 bg-white border border-gray-200 shadow-lg rounded-md"
-                          >
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                              {empresa.observacao}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                  {empresa.link_sharepoint && (
-                    <a
-                      href={empresa.link_sharepoint}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 mt-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      <span className="hidden lg:inline">SharePoint</span>
-                      <span className="lg:hidden">SP</span>
-                    </a>
-                  )}
-                  {/* Mostrar produtos em telas pequenas */}
-                  <div className="xl:hidden mt-1">
+                            {empresa.email_gestor}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex">
+                      {getStatusBadge(empresa.status)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {getTemplateBadge(empresa.template_padrao, empresa.tem_ams || false)}
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    {getAmsBadge(empresa.tem_ams || false)}
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell">
                     {getProdutosBadges(empresa.produtos || [])}
-                  </div>
-                  {/* Mostrar email em telas pequenas */}
-                  {empresa.email_gestor && (
-                    <div className="2xl:hidden mt-1">
+                  </TableCell>
+                  <TableCell className="hidden 2xl:table-cell">
+                    {empresa.email_gestor ? (
                       <a
                         href={`mailto:${empresa.email_gestor}`}
-                        className="text-blue-600 hover:text-blue-800 text-xs truncate block"
+                        className="text-blue-600 hover:text-blue-800 text-sm truncate block"
                         title={empresa.email_gestor}
                       >
                         {empresa.email_gestor}
                       </a>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {onView && (
+                        <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onView(empresa)}
+                            className="h-8 w-8 p-0"
+                            title="Visualizar"
+                          >
+                            <Eye className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        </ProtectedAction>
+                      )}
+                      <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(empresa)}
+                          className="h-8 w-8 p-0"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
+                      <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDelete(empresa)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
                     </div>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex">
-                  {getStatusBadge(empresa.status)}
-                  {/* Mostrar data do status em telas pequenas */}
-                  <span className="xl:hidden text-xs text-gray-400">
-                    {formatDate(empresa.data_status)}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                {getTemplateBadge(empresa.template_padrao, empresa.tem_ams || false)}
-              </TableCell>
-              <TableCell className="hidden xl:table-cell">
-                {getAmsBadge(empresa.tem_ams || false)}
-              </TableCell>
-              <TableCell className="hidden xl:table-cell">
-                {getProdutosBadges(empresa.produtos || [])}
-              </TableCell>
-              <TableCell className="hidden 2xl:table-cell">
-                {empresa.email_gestor ? (
-                  <a
-                    href={`mailto:${empresa.email_gestor}`}
-                    className="text-blue-600 hover:text-blue-800 text-sm truncate block"
-                    title={empresa.email_gestor}
-                  >
-                    {empresa.email_gestor}
-                  </a>
-                ) : (
-                  '-'
-                )}
-              </TableCell>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </TabsContent>
 
-              <TableCell className="hidden 2xl:table-cell text-sm text-gray-500">
-                {formatDate(empresa.data_status)}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  {onView && (
-                    <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onView(empresa)}
-                        className="h-8 w-8 p-0"
-                        title="Visualizar"
-                      >
-                        <Eye className="h-4 w-4 text-blue-600" />
-                      </Button>
-                    </ProtectedAction>
-                  )}
-                  <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEdit(empresa)}
-                      className="h-8 w-8 p-0"
-                      title="Editar"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </ProtectedAction>
-                  <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onDelete(empresa)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </ProtectedAction>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+      {/* Aba: Parâmetros Book */}
+      <TabsContent value="parametros" className="mt-4">
+        {empresasComAms.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-gray-500">Nenhuma empresa com AMS encontrada</div>
+          </div>
+        ) : (
+          <div className="rounded-md overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[25%] min-w-[180px]">Nome</TableHead>
+                  <TableHead className="w-[12%] min-w-[120px] text-center">Tipo de Contrato</TableHead>
+                  <TableHead className="w-[10%] min-w-[100px] text-center">Período Apuração</TableHead>
+                  <TableHead className="w-[10%] min-w-[100px] text-center">Início Vigência</TableHead>
+                  <TableHead className="w-[12%] min-w-[110px] text-center">% Repasse Mensal</TableHead>
+                  <TableHead className="w-[13%] min-w-[130px] text-center">Baseline Mensal</TableHead>
+                  <TableHead className="w-[10%] min-w-[90px] text-center">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {empresasComAms.map((empresa) => (
+                  <TableRow key={empresa.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate" title={empresa.nome_abreviado}>
+                            {empresa.nome_abreviado}
+                          </span>
+                          {empresa.em_projeto && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center cursor-help">
+                                    <Settings className="h-4 w-4 text-sonda-blue" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  side="top" 
+                                  className="bg-white border border-gray-200 shadow-lg rounded-md"
+                                >
+                                  <div className="text-sm text-gray-700">
+                                    Empresa em projeto
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {empresa.possui_repasse_especial && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center cursor-help">
+                                    <DollarSign className="h-4 w-4 text-orange-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  side="top" 
+                                  className="bg-white border border-gray-200 shadow-lg rounded-md"
+                                >
+                                  <div className="text-sm text-gray-700">
+                                    Possui Repasse Especial
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                        {empresa.link_sharepoint && (
+                          <a
+                            href={empresa.link_sharepoint}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 mt-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span className="hidden lg:inline">SharePoint</span>
+                            <span className="lg:hidden">SP</span>
+                          </a>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getTipoCobrancaBadge(empresa.tipo_cobranca)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm">
+                        {empresa.periodo_apuracao ? `${empresa.periodo_apuracao} ${empresa.periodo_apuracao === 1 ? 'mês' : 'meses'}` : '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm">
+                        {formatVigenciaMesAno(empresa.inicio_vigencia_banco_horas)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm font-medium">
+                        {empresa.percentual_repasse_mensal != null ? `${empresa.percentual_repasse_mensal}%` : '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm font-mono">
+                        {formatBaseline(empresa)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {onView && (
+                          <ProtectedAction screenKey="empresas_clientes" requiredLevel="view">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onView(empresa)}
+                              className="h-8 w-8 p-0"
+                              title="Visualizar"
+                            >
+                              <Eye className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          </ProtectedAction>
+                        )}
+                        <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEdit(empresa)}
+                            className="h-8 w-8 p-0"
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                        <ProtectedAction screenKey="empresas_clientes" requiredLevel="edit">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onDelete(empresa)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ProtectedAction>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 };
 

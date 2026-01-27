@@ -37,6 +37,148 @@ export interface ValidationResult {
  */
 export class BancoHorasIntegracaoService {
   /**
+   * Busca consumo de tickets de apontamentos Aranda (tabela AMSticketsabertos)
+   * 
+   * Conta tickets abertos onde status não é "Fechado" ou "Cancelado" para a empresa e período especificados.
+   * 
+   * @param empresaId - ID da empresa cliente
+   * @param mes - Mês (1-12)
+   * @param ano - Ano (ex: 2024)
+   * @returns Número de tickets consumidos
+   * 
+   * @requirements 6.5, 14.1, 14.2
+   * @property Property 22: Consumo de Tickets Aranda
+   * 
+   * @throws IntegrationError quando tickets indisponíveis
+   */
+  async buscarConsumoTickets(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<number> {
+    try {
+      console.log('🎫 BancoHorasIntegracaoService.buscarConsumoTickets:', {
+        empresaId,
+        mes,
+        ano
+      });
+
+      // Validar parâmetros
+      if (!empresaId?.trim()) {
+        throw new IntegrationError(
+          'apontamentos_tickets_aranda',
+          'ID da empresa é obrigatório',
+          'INVALID_EMPRESA_ID',
+          false
+        );
+      }
+
+      if (mes < 1 || mes > 12) {
+        throw new IntegrationError(
+          'apontamentos_tickets_aranda',
+          'Mês deve estar entre 1 e 12',
+          'INVALID_MONTH',
+          false
+        );
+      }
+
+      if (ano < 2020) {
+        throw new IntegrationError(
+          'apontamentos_tickets_aranda',
+          'Ano deve ser maior ou igual a 2020',
+          'INVALID_YEAR',
+          false
+        );
+      }
+
+      // Buscar nome da empresa para filtrar tickets
+      const { data: empresa, error: empresaError } = await supabase
+        .from('empresas_clientes')
+        .select('nome_abreviado, nome_completo')
+        .eq('id', empresaId)
+        .single();
+
+      if (empresaError || !empresa) {
+        throw new IntegrationError(
+          'empresas_clientes',
+          `Empresa não encontrada: ${empresaError?.message || 'ID inválido'}`,
+          'EMPRESA_NOT_FOUND',
+          false
+        );
+      }
+
+      // Calcular data de início e fim do mês
+      const dataInicio = new Date(ano, mes - 1, 1);
+      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+
+      console.log('📅 Período de busca de tickets:', {
+        dataInicio: dataInicio.toISOString(),
+        dataFim: dataFim.toISOString(),
+        empresaNome: empresa.nome_abreviado || empresa.nome_completo
+      });
+
+      // Buscar tickets onde:
+      // - empresa = nome da empresa (abreviado ou completo)
+      // - data_abertura dentro do período
+      // - status NOT IN ('Fechado', 'Cancelado')
+      
+      // Construir query base (usando any para evitar problemas de tipo com tabela externa)
+      let query = supabase
+        .from('apontamentos_tickets_aranda' as any)
+        .select('nro_solicitacao, status, empresa')
+        .gte('data_abertura', dataInicio.toISOString())
+        .lte('data_abertura', dataFim.toISOString())
+        .not('status', 'in', '("Fechado","Cancelado")');
+
+      // Adicionar filtro de empresa (nome abreviado OU nome completo)
+      const nomeAbreviado = empresa.nome_abreviado;
+      const nomeCompleto = empresa.nome_completo;
+      
+      if (nomeAbreviado && nomeCompleto) {
+        query = query.or(`empresa.ilike.%${nomeAbreviado}%,empresa.ilike.%${nomeCompleto}%`);
+      } else if (nomeAbreviado) {
+        query = query.ilike('empresa', `%${nomeAbreviado}%`);
+      } else if (nomeCompleto) {
+        query = query.ilike('empresa', `%${nomeCompleto}%`);
+      }
+
+      // Executar query
+      const { data: tickets, error: ticketsError } = await query as any;
+
+      if (ticketsError) {
+        console.error('❌ Erro ao buscar tickets:', ticketsError);
+        throw new IntegrationError(
+          'apontamentos_tickets_aranda',
+          `Falha ao buscar tickets: ${ticketsError.message}`,
+          'TICKETS_QUERY_ERROR',
+          true
+        );
+      }
+
+      const totalTickets = tickets?.length || 0;
+
+      console.log('✅ Tickets encontrados:', {
+        quantidade: totalTickets,
+        tickets: tickets?.slice(0, 5) // Mostrar apenas primeiros 5 para debug
+      });
+
+      return totalTickets;
+    } catch (error) {
+      if (error instanceof IntegrationError) {
+        throw error;
+      }
+
+      console.error('❌ Erro inesperado ao buscar tickets:', error);
+      throw new IntegrationError(
+        'apontamentos_tickets_aranda',
+        `Erro inesperado ao buscar tickets: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        'UNEXPECTED_ERROR',
+        true
+      );
+    }
+  }
+
+  /**
    * Busca consumo de horas/tickets de apontamentos Aranda
    * 
    * Soma tempo_gasto_horas onde ativi_interna = "Não" para a empresa e período especificados.
@@ -459,7 +601,7 @@ export class BancoHorasIntegracaoService {
         erros.push(`Erro ao verificar empresa: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       }
 
-      // 3. Verificar acessibilidade de apontamentos Aranda
+      // 3. Verificar acessibilidade de apontamentos Aranda (horas)
       try {
         await this.buscarConsumo(empresaId, mes, ano);
       } catch (error) {
@@ -471,6 +613,22 @@ export class BancoHorasIntegracaoService {
           }
         } else {
           erros.push(`Erro inesperado ao validar apontamentos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        }
+      }
+
+      // 3.1. Verificar acessibilidade de tickets Aranda
+      try {
+        await this.buscarConsumoTickets(empresaId, mes, ano);
+      } catch (error) {
+        if (error instanceof IntegrationError) {
+          if (error.retryable) {
+            avisos.push(`Tickets Aranda temporariamente indisponíveis: ${error.message}`);
+          } else {
+            // Não é erro crítico se tickets não estiverem disponíveis (pode ser empresa de horas)
+            avisos.push(`Tickets Aranda não disponíveis: ${error.message}`);
+          }
+        } else {
+          avisos.push(`Erro inesperado ao validar tickets: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
         }
       }
 

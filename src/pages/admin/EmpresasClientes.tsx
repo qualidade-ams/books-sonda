@@ -73,6 +73,15 @@ const EmpresasClientes = () => {
   // Estados para empresa selecionada
   const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaClienteCompleta | null>(null);
 
+  // Estado para controlar aba ativa
+  const [activeTab, setActiveTab] = useState<'principais' | 'parametros'>('principais');
+
+  // Estados para filtros específicos da aba Parâmetros Book
+  const [filtroTipoContrato, setFiltroTipoContrato] = useState<string>('__todos__');
+  const [filtroPeriodoApuracao, setFiltroPeriodoApuracao] = useState<string>('__todos__');
+  const [filtroPercentualRepasse, setFiltroPercentualRepasse] = useState<string>('__todos__');
+  const [filtroBaselineMensal, setFiltroBaselineMensal] = useState<string>('__todos__');
+
   // Debounce para a busca
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -106,8 +115,90 @@ const EmpresasClientes = () => {
   // Garantir que empresas é sempre um array
   const empresasArray = Array.isArray(empresas) ? empresas : [];
   
+  // Obter valores únicos para os filtros da aba Parâmetros Book
+  const empresasComAms = empresasArray.filter(e => e.tem_ams === true);
+  
+  const valoresUnicosTipoContrato = Array.from(
+    new Set(empresasComAms.map(e => e.tipo_contrato).filter(Boolean))
+  ).sort();
+  
+  const valoresUnicosPeriodoApuracao = Array.from(
+    new Set(empresasComAms.map(e => e.periodo_apuracao).filter(v => v != null))
+  ).sort((a, b) => a - b);
+  
+  const valoresUnicosPercentualRepasse = Array.from(
+    new Set(empresasComAms.map(e => e.percentual_repasse_mensal).filter(v => v != null))
+  ).sort((a, b) => a - b);
+  
+  const valoresUnicosBaselineMensal = Array.from(
+    new Set(
+      empresasComAms
+        .map(e => {
+          // Se for ticket, usar baseline_tickets_mensal
+          if (e.tipo_cobranca === 'ticket') {
+            const tickets = e.baseline_tickets_mensal;
+            return tickets != null ? tickets.toString() : '';
+          }
+          
+          // Se for banco de horas, usar baseline_horas_mensal
+          const baseline = e.baseline_horas_mensal?.toString() || '';
+          // Formatar como HH:MM (remover segundos se existir)
+          if (baseline.includes(':')) {
+            const parts = baseline.split(':');
+            return parts.length >= 2 ? `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}` : baseline;
+          }
+          return baseline;
+        })
+        .filter(Boolean)
+    )
+  ).sort();
+  
+  // Aplicar filtros específicos da aba Parâmetros Book
+  const empresasFiltradas = activeTab === 'parametros' 
+    ? empresasArray.filter(empresa => {
+        // Filtrar apenas empresas com AMS
+        if (!empresa.tem_ams) return false;
+        
+        // Filtro Tipo de Contrato
+        if (filtroTipoContrato !== '__todos__' && empresa.tipo_contrato !== filtroTipoContrato) {
+          return false;
+        }
+        
+        // Filtro Período Apuração
+        if (filtroPeriodoApuracao !== '__todos__') {
+          const periodo = empresa.periodo_apuracao?.toString() || '';
+          if (periodo !== filtroPeriodoApuracao) return false;
+        }
+        
+        // Filtro % Repasse Mensal
+        if (filtroPercentualRepasse !== '__todos__') {
+          const percentual = empresa.percentual_repasse_mensal?.toString() || '';
+          if (percentual !== filtroPercentualRepasse) return false;
+        }
+        
+        // Filtro Baseline Mensal
+        if (filtroBaselineMensal !== '__todos__') {
+          // Se for ticket, comparar com baseline_tickets_mensal
+          if (empresa.tipo_cobranca === 'ticket') {
+            const tickets = empresa.baseline_tickets_mensal?.toString() || '';
+            if (tickets !== filtroBaselineMensal) return false;
+          } else {
+            // Se for banco de horas, comparar com baseline_horas_mensal
+            const baseline = empresa.baseline_horas_mensal?.toString() || '';
+            // Comparar apenas HH:MM (remover segundos se existir)
+            const baselineFormatado = baseline.includes(':') 
+              ? baseline.split(':').slice(0, 2).join(':') 
+              : baseline;
+            if (baselineFormatado !== filtroBaselineMensal) return false;
+          }
+        }
+        
+        return true;
+      })
+    : empresasArray;
+  
   // Paginação
-  const paginatedData = useVirtualPagination(empresasArray, itemsPerPage, currentPage);
+  const paginatedData = useVirtualPagination(empresasFiltradas, itemsPerPage, currentPage);
 
   const { grupos } = useGrupos();
 
@@ -172,6 +263,22 @@ const EmpresasClientes = () => {
   const limparFiltros = () => {
     setFiltros({});
     setBuscaLocal('');
+    setCurrentPage(1);
+    
+    // Limpar filtros específicos da aba Parâmetros
+    if (activeTab === 'parametros') {
+      setFiltroTipoContrato('__todos__');
+      setFiltroPeriodoApuracao('__todos__');
+      setFiltroPercentualRepasse('__todos__');
+      setFiltroBaselineMensal('__todos__');
+    }
+  };
+
+  // Handler para mudança de aba
+  const handleTabChange = (tab: 'principais' | 'parametros') => {
+    setActiveTab(tab);
+    // Limpar filtros ao trocar de aba
+    limparFiltros();
     setCurrentPage(1);
   };
 
@@ -361,7 +468,7 @@ const EmpresasClientes = () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Empresas Cadastradas ({empresas.length})
+                Empresas Cadastradas ({empresasFiltradas.length})
               </CardTitle>
 
               <div className="flex gap-2">
@@ -376,7 +483,11 @@ const EmpresasClientes = () => {
                 </Button>
                 
                 {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
-                {(buscaLocal !== '' || filtros.status || filtros.produtos || filtros.temAms !== undefined || filtros.emProjeto !== undefined) && (
+                {(
+                  buscaLocal !== '' || 
+                  (activeTab === 'principais' && (filtros.status || filtros.produtos || filtros.temAms !== undefined || filtros.emProjeto !== undefined)) ||
+                  (activeTab === 'parametros' && (filtroTipoContrato !== '__todos__' || filtroPeriodoApuracao !== '__todos__' || filtroPercentualRepasse !== '__todos__' || filtroBaselineMensal !== '__todos__'))
+                ) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -393,111 +504,229 @@ const EmpresasClientes = () => {
             {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
             {mostrarFiltros && (
               <div className="space-y-4 pt-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {/* Campo de busca com ícone */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Buscar</div>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Nome, e-mail gestor..."
-                        value={buscaLocal}
-                        onChange={(e) => handleBuscaChange(e.target.value)}
-                        className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
-                      />
+                {/* Filtros da Aba "Informações Principais" */}
+                {activeTab === 'principais' && (
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {/* Campo de busca com ícone */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Nome, e-mail gestor..."
+                          value={buscaLocal}
+                          onChange={(e) => handleBuscaChange(e.target.value)}
+                          className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filtro Status */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Status</div>
+                      <Select
+                        value={filtros.status?.[0] || '__todos_status__'}
+                        onValueChange={handleStatusSelectChange}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos_status__">Todos os status</SelectItem>
+                          {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Produtos */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Produtos</div>
+                      <Select
+                        value={filtros.produtos?.[0] || '__todos_produtos__'}
+                        onValueChange={handleProdutoSelectChange}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os produtos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
+                          {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Tem AMS */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Tem AMS</div>
+                      <Select
+                        value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
+                        onValueChange={(value) => {
+                          if (value === '__todos_ams__') {
+                            handleFiltroChange('temAms', undefined);
+                          } else {
+                            handleFiltroChange('temAms', value === 'sim');
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos_ams__">Todos</SelectItem>
+                          <SelectItem value="sim">Sim</SelectItem>
+                          <SelectItem value="nao">Não</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Em Projeto */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Em Projeto</div>
+                      <Select
+                        value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
+                        onValueChange={(value) => {
+                          if (value === '__todos_projeto__') {
+                            handleFiltroChange('emProjeto', undefined);
+                          } else {
+                            handleFiltroChange('emProjeto', value === 'sim');
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos_projeto__">Todos</SelectItem>
+                          <SelectItem value="sim">Sim</SelectItem>
+                          <SelectItem value="nao">Não</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+                )}
 
-                  {/* Filtro Status */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Status</div>
-                    <Select
-                      value={filtros.status?.[0] || '__todos_status__'}
-                      onValueChange={handleStatusSelectChange}
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__todos_status__">Todos os status</SelectItem>
-                        {STATUS_EMPRESA_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* Filtros da Aba "Parâmetros Book" */}
+                {activeTab === 'parametros' && (
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {/* Campo de busca com ícone */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Nome da empresa..."
+                          value={buscaLocal}
+                          onChange={(e) => handleBuscaChange(e.target.value)}
+                          className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
 
-                  {/* Filtro Produtos */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Produtos</div>
-                    <Select
-                      value={filtros.produtos?.[0] || '__todos_produtos__'}
-                      onValueChange={handleProdutoSelectChange}
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os produtos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__todos_produtos__">Todos os produtos</SelectItem>
-                        {PRODUTOS_OPTIONS.filter(option => option.value !== 'Selecione').map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Filtro Tipo de Contrato */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Tipo de Contrato</div>
+                      <Select
+                        value={filtroTipoContrato}
+                        onValueChange={(value) => {
+                          setFiltroTipoContrato(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os tipos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os tipos</SelectItem>
+                          {valoresUnicosTipoContrato.map(tipo => (
+                            <SelectItem key={tipo} value={tipo}>
+                              {tipo === 'horas' ? 'Horas' : tipo === 'tickets' ? 'Tickets' : tipo === 'ambos' ? 'Ambos' : tipo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Filtro Tem AMS */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Tem AMS</div>
-                    <Select
-                      value={filtros.temAms === undefined ? '__todos_ams__' : filtros.temAms ? 'sim' : 'nao'}
-                      onValueChange={(value) => {
-                        if (value === '__todos_ams__') {
-                          handleFiltroChange('temAms', undefined);
-                        } else {
-                          handleFiltroChange('temAms', value === 'sim');
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__todos_ams__">Todos</SelectItem>
-                        <SelectItem value="sim">Sim</SelectItem>
-                        <SelectItem value="nao">Não</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Filtro Período Apuração */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Período Apuração</div>
+                      <Select
+                        value={filtroPeriodoApuracao}
+                        onValueChange={(value) => {
+                          setFiltroPeriodoApuracao(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os períodos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os períodos</SelectItem>
+                          {valoresUnicosPeriodoApuracao.map(periodo => (
+                            <SelectItem key={periodo} value={periodo.toString()}>
+                              {periodo} {periodo === 1 ? 'mês' : 'meses'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Filtro Em Projeto */}
-                  <div>
-                    <div className="text-sm font-medium mb-2">Em Projeto</div>
-                    <Select
-                      value={filtros.emProjeto === undefined ? '__todos_projeto__' : filtros.emProjeto ? 'sim' : 'nao'}
-                      onValueChange={(value) => {
-                        if (value === '__todos_projeto__') {
-                          handleFiltroChange('emProjeto', undefined);
-                        } else {
-                          handleFiltroChange('emProjeto', value === 'sim');
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__todos_projeto__">Todos</SelectItem>
-                        <SelectItem value="sim">Sim</SelectItem>
-                        <SelectItem value="nao">Não</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Filtro % Repasse Mensal */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">% Repasse Mensal</div>
+                      <Select
+                        value={filtroPercentualRepasse}
+                        onValueChange={(value) => {
+                          setFiltroPercentualRepasse(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os percentuais" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os percentuais</SelectItem>
+                          {valoresUnicosPercentualRepasse.map(percentual => (
+                            <SelectItem key={percentual} value={percentual.toString()}>
+                              {percentual}%
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Baseline Mensal */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Baseline Mensal</div>
+                      <Select
+                        value={filtroBaselineMensal}
+                        onValueChange={(value) => {
+                          setFiltroBaselineMensal(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todas as baselines" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todas as baselines</SelectItem>
+                          {valoresUnicosBaselineMensal.map(baseline => (
+                            <SelectItem key={baseline} value={baseline}>
+                              {baseline}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </CardHeader>
@@ -509,6 +738,8 @@ const EmpresasClientes = () => {
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onTabChange={handleTabChange}
+              activeTab={activeTab}
             />
 
             {/* Controles de Paginação */}

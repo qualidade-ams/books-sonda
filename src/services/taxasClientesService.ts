@@ -28,6 +28,7 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
         id,
         nome_completo,
         nome_abreviado,
+        tem_ams,
         produtos:empresa_produtos(produto)
       )
     `)
