@@ -40,6 +40,7 @@ import EnviarElogios from "./pages/admin/EnviarElogios";
 import PlanoAcao from "./pages/admin/PlanoAcao";
 import CadastroTaxasClientes from "./pages/admin/CadastroTaxasClientes";
 import DesignSystem from "./pages/admin/DesignSystem";
+import InconsistenciaChamados from "./pages/admin/auditoria/InconsistenciaChamados";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import SystemError from "./pages/SystemError";
@@ -93,6 +94,7 @@ const App = () => (
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />
                   <Route path="/admin/design-system" element={<ProtectedRoute screenKey="design_system"><DesignSystem /></ProtectedRoute>} />
+                  <Route path="/admin/auditoria/inconsistencia-chamados" element={<ProtectedRoute screenKey="inconsistencia_chamados"><InconsistenciaChamados /></ProtectedRoute>} />
 
                   {/* Redirecionamento para dashboard se já autenticado */}
                   <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

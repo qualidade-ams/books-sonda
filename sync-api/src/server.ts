@@ -100,6 +100,63 @@ interface DadosApontamentoSqlServer {
   LOG: Date | null;
 }
 
+// Interface dos dados de tickets (estrutura da tabela AMSticketsabertos)
+interface DadosTicketSqlServer {
+  Nro_Solicitacao: string;
+  Cod_Tipo: string;
+  Ticket_Externo: string;
+  Numero_Pai: string;
+  Caso_Pai: string;
+  Organizacao: string;
+  Empresa: string;
+  Cliente: string;
+  Usuario_Final: string;
+  Resumo: string;
+  Descricao: string;
+  Autor: string;
+  Solicitante: string;
+  Nome_Grupo: string;
+  Nome_Responsavel: string;
+  Categoria: string;
+  Item_Configuracao: string;
+  Data_Abertura: Date | null;
+  Data_Solucao: Date | null;
+  Data_Fechamento: Date | null;
+  Data_Ultima_Modificacao: Date | null;
+  Ultima_Modificacao: string;
+  Data_Prevista_Entrega: Date | null;
+  Data_Aprovacao: Date | null;
+  Data_Real_Entrega: Date | null;
+  Data_Ultima_Nota: Date | null;
+  Data_Ultimo_Comentario: Date | null;
+  Status: string;
+  Prioridade: string;
+  Urgencia: string;
+  Impacto: string;
+  Chamado_Reaberto: string;
+  Criado_Via: string;
+  Relatado: string;
+  Solucao: string;
+  Causa_Raiz: string;
+  Desc_Ultima_Nota: string;
+  Desc_Ultimo_Comentario: string;
+  LOG: string;
+  Tempo_Gasto_Dias: number | null;
+  Tempo_Gasto_Horas: number | null;
+  Tempo_Gasto_Minutos: number | null;
+  Cod_Resolucao: string;
+  Violacao_SLA: string;
+  TDA_Cumprido: string;
+  TDS_Cumprido: string;
+  Data_Prevista_TDA: Date | null;
+  Data_Prevista_TDS: Date | null;
+  Tempo_Restante_TDA: string;
+  Tempo_Restante_TDS: string;
+  Tempo_Restante_TDS_em_Minutos: number | null;
+  Tempo_Real_TDA: string;
+  Total_Orcamento: number | null;
+}
+
 /**
  * Aplica transformação automática para clientes com "-AMS"
  */
@@ -219,6 +276,25 @@ function gerarIdUnicoApontamento(registro: DadosApontamentoSqlServer): string {
     registro.Nro_Chamado.trim(),
     registro.Nro_Tarefa.trim(),
     registro.Data_Atividade?.toISOString() || 'sem_data'
+  ].filter(Boolean);
+  
+  return partes.join('|');
+}
+
+/**
+ * Gerar ID único para registro de ticket
+ */
+function gerarIdUnicoTicket(registro: DadosTicketSqlServer): string {
+  // Validar se os campos obrigatórios existem
+  if (!registro.Nro_Solicitacao || registro.Nro_Solicitacao.trim() === '') {
+    console.error('Erro: Nro_Solicitacao é obrigatório para gerar ID único', registro);
+    throw new Error(`Nro_Solicitacao é obrigatório para gerar ID único. Registro: ${JSON.stringify(registro)}`);
+  }
+  
+  const partes = [
+    'AMSticketsabertos', // Prefixo para diferenciar de outras tabelas
+    registro.Nro_Solicitacao.trim(),
+    registro.Data_Abertura?.toISOString() || 'sem_data'
   ].filter(Boolean);
   
   return partes.join('|');
@@ -1434,6 +1510,92 @@ app.post('/api/sync-apontamentos-full', async (req, res) => {
   await sincronizarApontamentos(req, res, true);
 });
 
+// ============================================
+// ENDPOINTS PARA TICKETS
+// ============================================
+
+/**
+ * Testar conexão com tabela AMSticketsabertos
+ */
+app.get('/api/test-connection-tickets', async (req, res) => {
+  try {
+    console.log('Testando conexão com tabela AMSticketsabertos...');
+    const pool = await sql.connect(sqlConfig);
+    
+    const result = await pool.request().query(`
+      SELECT TOP 1 * 
+      FROM AMSticketsabertos 
+      WHERE Data_Abertura >= '2026-01-01 00:00:00'
+    `);
+    
+    await pool.close();
+    
+    res.json({
+      success: true,
+      message: 'Conexão com AMSticketsabertos estabelecida com sucesso',
+      sample_record: result.recordset[0] || null
+    });
+    
+  } catch (error) {
+    console.error('Erro ao testar conexão AMSticketsabertos:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Consultar estrutura da tabela AMSticketsabertos
+ */
+app.get('/api/table-structure-tickets', async (req, res) => {
+  try {
+    console.log('Consultando estrutura da tabela AMSticketsabertos...');
+    const pool = await sql.connect(sqlConfig);
+    
+    const query = `
+      SELECT 
+        COLUMN_NAME,
+        DATA_TYPE,
+        CHARACTER_MAXIMUM_LENGTH,
+        IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME = 'AMSticketsabertos'
+      ORDER BY ORDINAL_POSITION
+    `;
+    
+    const result = await pool.request().query(query);
+    await pool.close();
+    
+    res.json({
+      success: true,
+      table: 'AMSticketsabertos',
+      columns: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('Erro ao consultar estrutura AMSticketsabertos:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Sincronizar tickets do SQL Server (incremental)
+ */
+app.post('/api/sync-tickets', async (req, res) => {
+  await sincronizarTickets(req, res, false);
+});
+
+/**
+ * Sincronização completa de tickets (todos os registros desde 01/01/2026)
+ */
+app.post('/api/sync-tickets-full', async (req, res) => {
+  await sincronizarTickets(req, res, true);
+});
+
 /**
  * Função principal de sincronização de apontamentos
  */
@@ -1740,6 +1902,377 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
   } catch (error) {
     console.error('💥 [APONTAMENTOS] Erro crítico na sincronização de apontamentos:', error);
     console.error('🔍 [APONTAMENTOS] Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    
+    resultado.sucesso = false;
+    resultado.mensagens.push(`Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    
+    // Adicionar detalhes do erro para debug
+    resultado.detalhes_erros.push({
+      registro: { acao: 'sincronizacao_geral' },
+      erro: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+    
+    res.status(500).json(resultado);
+  }
+}
+
+/**
+ * Função principal de sincronização de tickets
+ */
+async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boolean = false) {
+  const resultado = {
+    sucesso: false,
+    total_processados: 0,
+    novos: 0,
+    atualizados: 0,
+    erros: 0,
+    mensagens: [] as string[],
+    detalhes_erros: [] as any[]
+  };
+
+  try {
+    console.log('🎫 [TICKETS] Iniciando sincronização de tickets...');
+    resultado.mensagens.push('Iniciando sincronização com SQL Server (AMSticketsabertos)...');
+
+    // Conectar ao SQL Server
+    console.log('🔌 [TICKETS] Tentando conectar ao SQL Server...');
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [TICKETS] Conectado ao SQL Server');
+    resultado.mensagens.push('Conectado ao SQL Server');
+
+    let query: string;
+    let ultimaDataSincronizacao: Date | null = null;
+
+    if (sincronizacaoCompleta) {
+      // Sincronização completa - buscar todos os registros desde 01/01/2026 (limitado a 500 por vez)
+      console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 01/01/2026)');
+      resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
+      
+      query = `
+        SELECT TOP 500
+          Nro_Solicitacao,
+          Cod_Tipo,
+          Ticket_Externo,
+          Numero_Pai,
+          Caso_Pai,
+          Organizacao,
+          Empresa,
+          cliente as Cliente,
+          [Usuario Final] as Usuario_Final,
+          Resumo,
+          Descricao,
+          autor as Autor,
+          Solicitante,
+          Nome_grupo as Nome_Grupo,
+          Nome_responsavel as Nome_Responsavel,
+          Categoria,
+          Item_Configuracao,
+          Data_Abertura,
+          Data_Solucao,
+          Data_Fechamento,
+          Data_Ultima_Modificacao,
+          Ultima_Modificacao,
+          [Data Prevista Entrega] as Data_Prevista_Entrega,
+          [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
+          [Data Real da Entrega] as Data_Real_Entrega,
+          [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+          [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
+          Status,
+          Prioridade,
+          Urgencia,
+          Impacto,
+          Chamado_reaberto as Chamado_Reaberto,
+          Criado_Via,
+          Relatado,
+          Solucao,
+          Causa_Raiz,
+          desc_ultima_nota as Desc_Ultima_Nota,
+          desc_ultimo_comentario as Desc_Ultimo_Comentario,
+          LOG,
+          Tempo_Gasto_Dias,
+          Tempo_Gasto_Horas,
+          Tempo_Gasto_Minutos,
+          Cod_Resolucao,
+          Violacao_Sla as Violacao_SLA,
+          Tda_Cumprido as TDA_Cumprido,
+          Tds_Cumprido as TDS_Cumprido,
+          [data_prevista_tda (Date-Hour-Minute-Second)] as Data_Prevista_TDA,
+          [data_prevista_tds (Date-Hour-Minute-Second)] as Data_Prevista_TDS,
+          Tempo_Restante_Tda as Tempo_Restante_TDA,
+          Tempo_Restante_Tds as Tempo_Restante_TDS,
+          [tempo_restante_tds_em_minutos (Sum)] as Tempo_Restante_TDS_em_Minutos,
+          tempo_real_tda as Tempo_Real_TDA,
+          [Total Orçamento (em decimais)] as Total_Orcamento
+        FROM AMSticketsabertos
+        WHERE Data_Abertura >= '2026-01-01 00:00:00'
+        ORDER BY Data_Abertura ASC
+      `;
+    } else {
+      // Sincronização incremental - buscar apenas registros novos
+      console.log('📋 [TICKETS] Modo: Sincronização INCREMENTAL');
+      resultado.mensagens.push('Modo: Sincronização INCREMENTAL');
+
+      // Buscar última data de sincronização no Supabase
+      const { data: ultimoRegistro } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('data_abertura')
+        .order('data_abertura', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
+        ? new Date(ultimoRegistro.data_abertura)
+        : new Date('2026-01-01T00:00:00.000Z'); // Data inicial: 01/01/2026
+
+      console.log('📅 [TICKETS] Última sincronização:', ultimaDataSincronizacao.toISOString());
+      resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
+
+      query = `
+        SELECT
+          Nro_Solicitacao,
+          Cod_Tipo,
+          Ticket_Externo,
+          Numero_Pai,
+          Caso_Pai,
+          Organizacao,
+          Empresa,
+          cliente as Cliente,
+          [Usuario Final] as Usuario_Final,
+          Resumo,
+          Descricao,
+          autor as Autor,
+          Solicitante,
+          Nome_grupo as Nome_Grupo,
+          Nome_responsavel as Nome_Responsavel,
+          Categoria,
+          Item_Configuracao,
+          Data_Abertura,
+          Data_Solucao,
+          Data_Fechamento,
+          Data_Ultima_Modificacao,
+          Ultima_Modificacao,
+          [Data Prevista Entrega] as Data_Prevista_Entrega,
+          [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
+          [Data Real da Entrega] as Data_Real_Entrega,
+          [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+          [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
+          Status,
+          Prioridade,
+          Urgencia,
+          Impacto,
+          Chamado_reaberto as Chamado_Reaberto,
+          Criado_Via,
+          Relatado,
+          Solucao,
+          Causa_Raiz,
+          desc_ultima_nota as Desc_Ultima_Nota,
+          desc_ultimo_comentario as Desc_Ultimo_Comentario,
+          LOG,
+          Tempo_Gasto_Dias,
+          Tempo_Gasto_Horas,
+          Tempo_Gasto_Minutos,
+          Cod_Resolucao,
+          Violacao_Sla as Violacao_SLA,
+          Tda_Cumprido as TDA_Cumprido,
+          Tds_Cumprido as TDS_Cumprido,
+          [data_prevista_tda (Date-Hour-Minute-Second)] as Data_Prevista_TDA,
+          [data_prevista_tds (Date-Hour-Minute-Second)] as Data_Prevista_TDS,
+          Tempo_Restante_Tda as Tempo_Restante_TDA,
+          Tempo_Restante_Tds as Tempo_Restante_TDS,
+          [tempo_restante_tds_em_minutos (Sum)] as Tempo_Restante_TDS_em_Minutos,
+          tempo_real_tda as Tempo_Real_TDA,
+          [Total Orçamento (em decimais)] as Total_Orcamento
+        FROM AMSticketsabertos
+        WHERE Data_Abertura >= '2026-01-01 00:00:00'
+          AND Data_Abertura > @ultimaData
+        ORDER BY Data_Abertura ASC
+      `;
+    }
+
+    const request = pool.request();
+    
+    // Adicionar parâmetro apenas para sincronização incremental
+    if (!sincronizacaoCompleta && ultimaDataSincronizacao) {
+      request.input('ultimaData', sql.DateTime, ultimaDataSincronizacao);
+    }
+    
+    const result = await request.query(query);
+    const registros = result.recordset as DadosTicketSqlServer[];
+    
+    resultado.total_processados = registros.length;
+    resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
+    console.log(`📊 [TICKETS] ${registros.length} registros encontrados`);
+
+    await pool.close();
+    console.log('🔌 [TICKETS] Conexão SQL Server fechada');
+
+    if (registros.length === 0) {
+      console.log('⚠️ [TICKETS] Nenhum registro novo encontrado no SQL Server');
+      
+      // Buscar total de registros no Supabase para exibir no modal
+      try {
+        const { count: totalSupabase } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('*', { count: 'exact', head: true });
+        
+        console.log(`📊 [TICKETS] Total de registros no Supabase: ${totalSupabase || 0}`);
+        resultado.total_processados = totalSupabase || 0;
+      } catch (error) {
+        console.warn('⚠️ [TICKETS] Erro ao buscar total do Supabase:', error);
+      }
+      
+      resultado.sucesso = true;
+      resultado.mensagens.push('Nenhum registro novo para sincronizar');
+      return res.json(resultado);
+    }
+
+    // Processar cada registro
+    console.log('🔄 [TICKETS] Iniciando processamento de registros...');
+    resultado.mensagens.push('Iniciando processamento de registros...');
+    
+    for (let i = 0; i < registros.length; i++) {
+      const registro = registros[i];
+      
+      if (i % 50 === 0) {
+        console.log(`📝 [TICKETS] Processando registro ${i + 1}/${registros.length}...`);
+      }
+      
+      try {
+        // Validar dados do registro antes de processar
+        if (!registro.Nro_Solicitacao || registro.Nro_Solicitacao.trim() === '') {
+          console.error(`❌ [TICKETS] Registro ${i + 1} tem Nro_Solicitacao inválido:`, registro);
+          resultado.erros++;
+          resultado.detalhes_erros.push({
+            registro: {
+              Nro_Solicitacao: registro.Nro_Solicitacao
+            },
+            erro: 'Nro_Solicitacao é obrigatório mas está vazio/nulo'
+          });
+          continue; // Pular este registro
+        }
+        
+        const idUnico = gerarIdUnicoTicket(registro);
+
+        // Verificar se já existe
+        const { data: existente, error: erroConsulta } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('id')
+          .eq('nro_solicitacao', registro.Nro_Solicitacao)
+          .eq('data_abertura', registro.Data_Abertura?.toISOString() || null)
+          .maybeSingle();
+        
+        if (erroConsulta) {
+          console.error('❌ [TICKETS] Erro ao consultar registro existente:', erroConsulta);
+          throw erroConsulta;
+        }
+
+        const dadosTicket = {
+          nro_solicitacao: registro.Nro_Solicitacao || null,
+          cod_tipo: registro.Cod_Tipo || null,
+          ticket_externo: registro.Ticket_Externo || null,
+          numero_pai: registro.Numero_Pai || null,
+          caso_pai: registro.Caso_Pai || null,
+          organizacao: registro.Organizacao || null,
+          empresa: registro.Empresa || null,
+          cliente: registro.Cliente || null,
+          usuario_final: registro.Usuario_Final || null,
+          resumo: registro.Resumo || null,
+          descricao: registro.Descricao || null,
+          autor: registro.Autor || null,
+          solicitante: registro.Solicitante || null,
+          nome_grupo: registro.Nome_Grupo || null,
+          nome_responsavel: registro.Nome_Responsavel || null,
+          categoria: registro.Categoria || null,
+          item_configuracao: registro.Item_Configuracao || null,
+          data_abertura: registro.Data_Abertura?.toISOString() || null,
+          data_solucao: registro.Data_Solucao?.toISOString() || null,
+          data_fechamento: registro.Data_Fechamento?.toISOString() || null,
+          data_ultima_modificacao: registro.Data_Ultima_Modificacao?.toISOString() || null,
+          ultima_modificacao: registro.Ultima_Modificacao || null,
+          data_prevista_entrega: registro.Data_Prevista_Entrega?.toISOString() || null,
+          data_aprovacao: registro.Data_Aprovacao?.toISOString() || null,
+          data_real_entrega: registro.Data_Real_Entrega?.toISOString() || null,
+          data_ultima_nota: registro.Data_Ultima_Nota?.toISOString() || null,
+          data_ultimo_comentario: registro.Data_Ultimo_Comentario?.toISOString() || null,
+          status: registro.Status || null,
+          prioridade: registro.Prioridade || null,
+          urgencia: registro.Urgencia || null,
+          impacto: registro.Impacto || null,
+          chamado_reaberto: registro.Chamado_Reaberto || null,
+          criado_via: registro.Criado_Via || null,
+          relatado: registro.Relatado || null,
+          solucao: registro.Solucao || null,
+          causa_raiz: registro.Causa_Raiz || null,
+          desc_ultima_nota: registro.Desc_Ultima_Nota || null,
+          desc_ultimo_comentario: registro.Desc_Ultimo_Comentario || null,
+          log: registro.LOG || null,
+          tempo_gasto_dias: registro.Tempo_Gasto_Dias || null,
+          tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
+          tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
+          cod_resolucao: registro.Cod_Resolucao || null,
+          violacao_sla: registro.Violacao_SLA || null,
+          tda_cumprido: registro.TDA_Cumprido || null,
+          tds_cumprido: registro.TDS_Cumprido || null,
+          data_prevista_tda: registro.Data_Prevista_TDA?.toISOString() || null,
+          data_prevista_tds: registro.Data_Prevista_TDS?.toISOString() || null,
+          tempo_restante_tda: registro.Tempo_Restante_TDA || null,
+          tempo_restante_tds: registro.Tempo_Restante_TDS || null,
+          tempo_restante_tds_em_minutos: registro.Tempo_Restante_TDS_em_Minutos || null,
+          tempo_real_tda: registro.Tempo_Real_TDA || null,
+          total_orcamento: registro.Total_Orcamento || null
+        };
+
+        if (existente) {
+          // ✅ Registro já existe - PULAR (não atualizar para preservar edições manuais)
+          console.log(`⏭️ [TICKETS] Registro ${i + 1} já existe - pulando (Nro: ${registro.Nro_Solicitacao})`);
+          // Não incrementar nenhum contador - registro ignorado
+          continue;
+        } else {
+          // ✅ Inserir novo registro
+          const { error } = await supabase
+            .from('apontamentos_tickets_aranda')
+            .insert(dadosTicket);
+
+          if (error) {
+            console.error('❌ [TICKETS] Erro ao inserir:', error);
+            throw error;
+          }
+          resultado.novos++;
+        }
+      } catch (erro) {
+        console.error(`💥 [TICKETS] Erro no registro ${i + 1}:`, erro);
+        resultado.erros++;
+        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
+        resultado.detalhes_erros.push({
+          registro: {
+            Nro_Solicitacao: registro.Nro_Solicitacao
+          },
+          erro: erroMsg
+        });
+        
+        // Se houver muitos erros, parar
+        if (resultado.erros >= 10) {
+          console.log('🛑 [TICKETS] Muitos erros detectados, parando sincronização...');
+          resultado.mensagens.push('Sincronização interrompida devido a múltiplos erros');
+          break;
+        }
+      }
+    }
+    
+    console.log('✅ [TICKETS] Processamento concluído');
+
+    resultado.sucesso = resultado.erros === 0;
+    resultado.mensagens.push(
+      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`
+    );
+
+    console.log('📊 [TICKETS] Sincronização de tickets concluída:', resultado);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('💥 [TICKETS] Erro crítico na sincronização de tickets:', error);
+    console.error('🔍 [TICKETS] Stack trace:', error instanceof Error ? error.stack : 'N/A');
     
     resultado.sucesso = false;
     resultado.mensagens.push(`Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);

@@ -32,7 +32,8 @@ const Breadcrumb = () => {
     'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes',
     'design-system': 'Design System',
     'controle-banco-horas': 'Banco de Horas',
-    'geracao-books': 'Geração de Books'
+    'geracao-books': 'Geração de Books',
+    'inconsistencia-chamados' : 'Inconsistência de Chamados'
   };
 
   return (

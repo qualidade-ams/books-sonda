@@ -40,6 +40,14 @@ interface SyncProgressModalProps {
       erros: number;
       mensagens: string[];
     };
+    tickets?: {
+      sucesso: boolean;
+      total_processados: number;
+      novos: number;
+      atualizados: number;
+      erros: number;
+      mensagens: string[];
+    };
   };
 }
 
@@ -63,31 +71,34 @@ export function SyncProgressModal({
       setTotal(0);
       setCurrentMessage('Conectando ao SQL Server...');
       
-      // Simular progresso suave para as 3 sincronizações
+      // Simular progresso suave para as 4 sincronizações
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += 0.3;
-        if (currentProgress <= 15) {
+        currentProgress += 0.25;
+        if (currentProgress <= 12) {
           setProgress(currentProgress);
           setCurrentMessage('Conectando ao SQL Server...');
-        } else if (currentProgress <= 30) {
+        } else if (currentProgress <= 25) {
           setProgress(currentProgress);
           setCurrentMessage('Sincronizando pesquisas (AMSpesquisa)...');
-        } else if (currentProgress <= 45) {
+        } else if (currentProgress <= 37) {
           setProgress(currentProgress);
           setCurrentMessage('Processando dados de pesquisas...');
-        } else if (currentProgress <= 60) {
+        } else if (currentProgress <= 50) {
           setProgress(currentProgress);
           setCurrentMessage('Sincronizando especialistas (AMSespecialistas)...');
-        } else if (currentProgress <= 75) {
+        } else if (currentProgress <= 62) {
           setProgress(currentProgress);
           setCurrentMessage('Processando dados de especialistas...');
-        } else if (currentProgress <= 90) {
+        } else if (currentProgress <= 75) {
           setProgress(currentProgress);
           setCurrentMessage('Sincronizando apontamentos (AMSapontamento)...');
+        } else if (currentProgress <= 87) {
+          setProgress(currentProgress);
+          setCurrentMessage('Processando dados de apontamentos...');
         } else if (currentProgress <= 95) {
           setProgress(currentProgress);
-          setCurrentMessage('Finalizando sincronização...');
+          setCurrentMessage('Sincronizando tickets (AMSticketsabertos)...');
         } else {
           setProgress(95);
           setCurrentMessage('Aguarde, quase concluído...');
@@ -113,7 +124,7 @@ export function SyncProgressModal({
             Sincronização SQL Server
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Sincronizando pesquisas, especialistas e apontamentos
+            Sincronizando pesquisas, especialistas, apontamentos e tickets
           </p>
         </DialogHeader>
 
@@ -252,6 +263,41 @@ export function SyncProgressModal({
                     <div>
                       <p className="text-lg font-bold text-red-600">
                         {resultado.apontamentos.erros || 0}
+                      </p>
+                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Resumo dos Tickets */}
+              {resultado.tickets && (
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900 rounded-lg border-l-4 border-indigo-600">
+                  <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100 mb-1">
+                    🎫 Tickets (AMSticketsabertos)
+                  </p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-indigo-600">
+                        {resultado.tickets.total_processados || 0}
+                      </p>
+                      <p className="text-xs text-indigo-700 dark:text-indigo-300">Total</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-green-600">
+                        {resultado.tickets.novos || 0}
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-orange-600">
+                        {resultado.tickets.atualizados || 0}
+                      </p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-red-600">
+                        {resultado.tickets.erros || 0}
                       </p>
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>

@@ -36,7 +36,7 @@ export function useUltimaSincronizacao() {
 
 /**
  * Hook para sincronizar dados do SQL Server
- * AGORA INCLUI: Pesquisas + Especialistas + Apontamentos
+ * AGORA INCLUI: Pesquisas + Especialistas + Apontamentos + Tickets
  */
 export function useSincronizarSqlServer() {
   const queryClient = useQueryClient();
@@ -44,13 +44,15 @@ export function useSincronizarSqlServer() {
   return useMutation({
     mutationFn: () => sqlServerSyncService.sincronizarDados(),
     onSuccess: (resultado) => {
-      // Invalidar todas as queries relacionadas a pesquisas, especialistas E apontamentos
+      // Invalidar todas as queries relacionadas a pesquisas, especialistas, apontamentos E tickets
       queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
       queryClient.invalidateQueries({ queryKey: ['pesquisas-estatisticas'] });
       queryClient.invalidateQueries({ queryKey: ['especialistas'] });
       queryClient.invalidateQueries({ queryKey: ['especialistas-estatisticas'] });
       queryClient.invalidateQueries({ queryKey: ['apontamentos-aranda'] });
       queryClient.invalidateQueries({ queryKey: ['estatisticas-apontamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets-aranda'] });
+      queryClient.invalidateQueries({ queryKey: ['estatisticas-tickets'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ultimaSincronizacao });
       queryClient.invalidateQueries({ queryKey: ['ultima-sincronizacao-especialistas'] });
 
@@ -92,6 +94,21 @@ export function useSincronizarSqlServer() {
         } else {
           toast.warning(
             `Apontamentos com erros: ${resultado.apontamentos.erros} falhas`,
+            { duration: 4000 }
+          );
+        }
+      }
+
+      // Mostrar resultado dos tickets
+      if (resultado.tickets) {
+        if (resultado.tickets.sucesso) {
+          toast.success(
+            `Tickets sincronizados! ${resultado.tickets.novos} novos, ${resultado.tickets.atualizados} atualizados`,
+            { duration: 4000 }
+          );
+        } else {
+          toast.warning(
+            `Tickets com erros: ${resultado.tickets.erros} falhas`,
             { duration: 4000 }
           );
         }

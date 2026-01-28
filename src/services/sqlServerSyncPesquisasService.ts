@@ -166,7 +166,7 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
     }
 
     // 3. Sincronizar apontamentos (nova funcionalidade)
-    console.log('3/3 - Sincronizando apontamentos...');
+    console.log('3/4 - Sincronizando apontamentos...');
     const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos`, {
       method: 'POST',
       headers: {
@@ -199,17 +199,54 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
       };
     }
 
-    // 4. Combinar resultados
+    // 4. Sincronizar tickets (nova funcionalidade)
+    console.log('4/4 - Sincronizando tickets...');
+    const responseTickets = await safeFetch(`${API_URL}/api/sync-tickets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let resultadoTickets = null;
+    if (responseTickets.status === 404) {
+      resultadoTickets = {
+        sucesso: false,
+        mensagens: [
+          'Endpoint de sincronização de tickets não implementado na API.',
+          'A API está online mas o endpoint /api/sync-tickets não existe.'
+        ]
+      };
+    } else if (responseTickets.ok) {
+      resultadoTickets = await responseTickets.json();
+      console.log('✅ [TICKETS] Resultado da sincronização de tickets:', resultadoTickets);
+      console.log('📊 [DEBUG] Tickets - Total:', resultadoTickets.total_processados);
+      console.log('📊 [DEBUG] Tickets - Novos:', resultadoTickets.novos);
+      console.log('📊 [DEBUG] Tickets - Atualizados:', resultadoTickets.atualizados);
+      console.log('📊 [DEBUG] Tickets - Erros:', resultadoTickets.erros);
+      console.log('📊 [DEBUG] Tickets - Objeto completo:', JSON.stringify(resultadoTickets, null, 2));
+    } else {
+      console.warn('Erro na sincronização de tickets, continuando...');
+      resultadoTickets = {
+        sucesso: false,
+        mensagens: [`Erro HTTP: ${responseTickets.status}`]
+      };
+    }
+
+    // 5. Combinar resultados
     const resultadoCombinado = {
       ...resultadoPesquisas,
       especialistas: resultadoEspecialistas,
       apontamentos: resultadoApontamentos,
+      tickets: resultadoTickets,
       mensagens: [
         ...resultadoPesquisas.mensagens,
         '--- Especialistas ---',
         ...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas']),
         '--- Apontamentos ---',
-        ...(resultadoApontamentos?.mensagens || ['Erro na sincronização de apontamentos'])
+        ...(resultadoApontamentos?.mensagens || ['Erro na sincronização de apontamentos']),
+        '--- Tickets ---',
+        ...(resultadoTickets?.mensagens || ['Erro na sincronização de tickets'])
       ]
     };
 
