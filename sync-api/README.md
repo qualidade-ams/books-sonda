@@ -7,6 +7,7 @@ API Node.js para sincronizar dados do SQL Server (Aranda) para o Supabase.
 1. **AMSpesquisa** → `pesquisas_satisfacao` (Pesquisas de satisfação)
 2. **AMSespecialistas** → `especialistas` (Especialistas/Analistas)
 3. **AMSapontamento** → `apontamentos_aranda` (Apontamentos de chamados - desde 01/01/2026)
+4. **AMSticketsabertos** → `apontamentos_tickets_aranda` (Tickets abertos - desde 01/01/2026)
 
 ## ⚠️ IMPORTANTE: VPN Necessária
 
@@ -290,6 +291,101 @@ Sincroniza todos os registros desde 01/01/2026 (limitado a 500 por vez).
 ```
 
 **📖 Documentação completa:** Ver `docs/sincronizacao-apontamentos-aranda.md`
+
+### Tickets (Novo!)
+
+#### 1. Testar Conexão Tickets
+
+```bash
+GET /api/test-connection-tickets
+```
+
+**Resposta:**
+```json
+{
+  "success": true,
+  "message": "Conexão com AMSticketsabertos estabelecida com sucesso",
+  "sample_record": { ... }
+}
+```
+
+#### 2. Consultar Estrutura da Tabela
+
+```bash
+GET /api/table-structure-tickets
+```
+
+**Resposta:**
+```json
+{
+  "success": true,
+  "table": "AMSticketsabertos",
+  "columns": [
+    {
+      "COLUMN_NAME": "Nro_Solicitacao",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 50,
+      "IS_NULLABLE": "NO"
+    },
+    ...
+  ]
+}
+```
+
+#### 3. Sincronizar Tickets (Incremental)
+
+```bash
+POST /api/sync-tickets
+```
+
+Sincroniza apenas registros novos desde a última sincronização.
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "total_processados": 200,
+  "novos": 180,
+  "atualizados": 20,
+  "erros": 0,
+  "mensagens": [
+    "Iniciando sincronização com SQL Server (AMSticketsabertos)...",
+    "Conectado ao SQL Server",
+    "Modo: Sincronização INCREMENTAL",
+    "Última sincronização: 2026-01-15T10:30:00.000Z",
+    "200 registros encontrados no SQL Server",
+    "Sincronização concluída: 180 novos, 20 atualizados, 0 erros"
+  ]
+}
+```
+
+#### 4. Sincronizar Tickets (Completa)
+
+```bash
+POST /api/sync-tickets-full
+```
+
+Sincroniza todos os registros desde 01/01/2026 (limitado a 500 por vez).
+
+**Resposta:**
+```json
+{
+  "sucesso": true,
+  "total_processados": 500,
+  "novos": 480,
+  "atualizados": 20,
+  "erros": 0,
+  "mensagens": [
+    "Modo: Sincronização COMPLETA (até 500 registros por vez)",
+    "500 registros encontrados no SQL Server",
+    "Sincronização concluída: 480 novos, 20 atualizados, 0 erros"
+  ]
+}
+```
+
+**📝 Scripts de Teste:**
+- PowerShell: `./test-tickets.ps1`
+- Bash: `./test-tickets.sh`
 
 ## 🔧 Estrutura da Tabela SQL Server
 

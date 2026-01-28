@@ -32,7 +32,8 @@ import {
   ClipboardCheck,
   Eye,
   Palette,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -206,6 +207,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas')) {
       return 'comunicacao';
     }
+    if (path.includes('/auditoria')) {
+      return 'auditoria';
+    }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
       return 'clientes';
     }
@@ -327,6 +331,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       ]
     },
     {
+      icon: AlertTriangle,
+      label: 'Auditoria',
+      children: [
+        {
+          icon: AlertTriangle,
+          label: 'Inconsistência de Chamados',
+          path: '/admin/auditoria/inconsistencia-chamados',
+          screenKey: 'inconsistencia_chamados'
+        }
+      ]
+    },
+    {
       icon: Building2,
       label: 'Clientes',
       children: [
@@ -352,7 +368,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Settings,
-      label: 'Configurações',
+      label: 'Configurações Gerais',
       children: [
         {
           icon: UsersRound,
