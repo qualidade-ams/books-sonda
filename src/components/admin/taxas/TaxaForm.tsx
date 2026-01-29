@@ -31,9 +31,13 @@ interface TaxaFormProps {
   onSubmit: (dados: TaxaFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  dadosIniciais?: {
+    clienteId?: string;
+    tipoProduto?: 'GALLERY' | 'OUTROS';
+  } | null;
 }
 
-export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps) {
+export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }: TaxaFormProps) {
   // ✅ CORREÇÃO: Filtrar apenas empresas com status ativo
   const { empresas } = useEmpresas({ status: ['ativo'] });
   const [tipoProdutoSelecionado, setTipoProdutoSelecionado] = useState<TipoProduto | ''>(taxa?.tipo_produto || '');
@@ -94,6 +98,101 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading }: TaxaFormProps)
       ticket_excedente: undefined,
     },
   });
+
+  // Aplicar dados iniciais quando fornecidos (ao criar taxa a partir da aba "Clientes Sem Taxa")
+  useEffect(() => {
+    if (dadosIniciais && !taxa && empresas.length > 0) {
+      // Resetar o formulário primeiro para limpar valores anteriores
+      form.reset({
+        cliente_id: '',
+        vigencia_inicio: undefined,
+        vigencia_fim: undefined,
+        tipo_produto: '',
+        tipo_calculo_adicional: 'media',
+        personalizado: false,
+        taxa_reajuste: undefined,
+        valores_remota: {
+          funcional: 0,
+          tecnico: 0,
+          abap: 0,
+          dba: 0,
+          gestor: 0,
+        },
+        valores_local: {
+          funcional: 0,
+          tecnico: 0,
+          abap: 0,
+          dba: 0,
+          gestor: 0,
+        },
+        valor_ticket: undefined,
+        valor_ticket_excedente: undefined,
+        ticket_excedente_simples: undefined,
+        ticket_excedente_complexo: undefined,
+        ticket_excedente_1: undefined,
+        ticket_excedente_2: undefined,
+        ticket_excedente: undefined,
+      });
+      
+      if (dadosIniciais.clienteId) {
+        const empresa = empresas.find(e => e.id === dadosIniciais.clienteId);
+        
+        if (empresa) {
+          form.setValue('cliente_id', empresa.nome_abreviado);
+          setClienteSelecionado(empresa.nome_abreviado);
+          
+          // Carregar produtos do cliente
+          if (empresa.produtos) {
+            const produtos = empresa.produtos.map((p: any) => p.produto);
+            setProdutosCliente(produtos);
+          }
+        }
+      }
+      
+      if (dadosIniciais.tipoProduto) {
+        // Usar setTimeout para garantir que o campo está renderizado
+        setTimeout(() => {
+          form.setValue('tipo_produto', dadosIniciais.tipoProduto);
+          setTipoProdutoSelecionado(dadosIniciais.tipoProduto);
+        }, 100);
+      }
+    } else if (!dadosIniciais && !taxa) {
+      // Se não há dados iniciais nem taxa para editar, resetar o formulário
+      form.reset({
+        cliente_id: '',
+        vigencia_inicio: undefined,
+        vigencia_fim: undefined,
+        tipo_produto: '',
+        tipo_calculo_adicional: 'media',
+        personalizado: false,
+        taxa_reajuste: undefined,
+        valores_remota: {
+          funcional: 0,
+          tecnico: 0,
+          abap: 0,
+          dba: 0,
+          gestor: 0,
+        },
+        valores_local: {
+          funcional: 0,
+          tecnico: 0,
+          abap: 0,
+          dba: 0,
+          gestor: 0,
+        },
+        valor_ticket: undefined,
+        valor_ticket_excedente: undefined,
+        ticket_excedente_simples: undefined,
+        ticket_excedente_complexo: undefined,
+        ticket_excedente_1: undefined,
+        ticket_excedente_2: undefined,
+        ticket_excedente: undefined,
+      });
+      setClienteSelecionado('');
+      setProdutosCliente([]);
+      setTipoProdutoSelecionado('');
+    }
+  }, [dadosIniciais, empresas, taxa, form]);
 
   // Buscar produtos do cliente selecionado
   useEffect(() => {
