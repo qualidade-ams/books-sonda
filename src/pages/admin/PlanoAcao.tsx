@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import {
   Dialog,
@@ -58,6 +59,7 @@ export default function PlanoAcao() {
   const [modalAberto, setModalAberto] = useState(false);
   const [modalDetalhes, setModalDetalhes] = useState(false);
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoAcaoCompleto | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState<'ativos' | 'finalizados'>('ativos');
 
   // Nomes dos meses
   const nomesMeses = [
@@ -109,6 +111,15 @@ export default function PlanoAcao() {
     isLoading
   });
 
+  // Separar planos por status
+  const planosAtivos = planos.filter(p => 
+    p.status_plano !== 'concluido' && p.status_plano !== 'cancelado'
+  );
+  
+  const planosFinalizados = planos.filter(p => 
+    p.status_plano === 'concluido' || p.status_plano === 'cancelado'
+  );
+
   // Mutations
   const criarPlano = useCriarPlanoAcao();
   const atualizarPlano = useAtualizarPlanoAcao();
@@ -117,6 +128,15 @@ export default function PlanoAcao() {
   const handleSubmit = async (dados: PlanoAcaoFormData) => {
     if (planoSelecionado) {
       await atualizarPlano.mutateAsync({ id: planoSelecionado.id, dados });
+      
+      // Se o status mudou para concluído/cancelado, mudar para aba finalizados
+      if (dados.status_plano === 'concluido' || dados.status_plano === 'cancelado') {
+        setAbaAtiva('finalizados');
+      }
+      // Se o status mudou de concluído/cancelado para outro, mudar para aba ativos
+      else if (planoSelecionado.status_plano === 'concluido' || planoSelecionado.status_plano === 'cancelado') {
+        setAbaAtiva('ativos');
+      }
     } else {
       await criarPlano.mutateAsync(dados);
     }
@@ -300,143 +320,303 @@ export default function PlanoAcao() {
         </CardContent>
       </Card>
 
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              Planos de Ação ({planos.length})
-            </CardTitle>
+      {/* Sistema de Abas e Filtros */}
+      <Tabs value={abaAtiva} onValueChange={(value) => setAbaAtiva(value as 'ativos' | 'finalizados')} className="w-full">
+        <TabsList className="bg-gray-100 p-1 rounded-lg mb-6">
+          <TabsTrigger 
+            value="ativos"
+            className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+          >
+            Planos de Ação ({planosAtivos.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="finalizados"
+            className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+          >
+            Histórico de Planos ({planosFinalizados.length})
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                className="flex items-center justify-center space-x-2"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filtros</span>
-              </Button>
-              
-              {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
-              {hasActiveFilters() && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={limparFiltros}
-                  className="whitespace-nowrap hover:border-red-300"
-                >
-                  <X className="h-4 w-4 mr-2 text-red-600" />
-                  Limpar Filtro
-                </Button>
-              )}
-            </div>
-          </div>
+        {/* Conteúdo da Aba Ativos */}
+        <TabsContent value="ativos" className="mt-0">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Planos Ativos ({planosAtivos.length})
+                </CardTitle>
 
-          {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
-          {mostrarFiltros && (
-            <div className="space-y-4 pt-4 border-t">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Campo de busca com ícone */}
-                <div>
-                  <div className="text-sm font-medium mb-2">Buscar</div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar..."
-                      value={filtros.busca || ''}
-                      onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
-                      className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
-                    />
-                  </div>
-                </div>
-
-                {/* Filtro Prioridade */}
-                <div>
-                  <div className="text-sm font-medium mb-2">Prioridade</div>
-                  <Select
-                    value={filtros.prioridade?.[0] || '__todos__'}
-                    onValueChange={(value) =>
-                      setFiltros({
-                        ...filtros,
-                        prioridade: value === '__todos__' ? [] : [value as any],
-                      })
-                    }
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                    className="flex items-center justify-center space-x-2"
                   >
-                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Todas as prioridades" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos__">Todas as prioridades</SelectItem>
-                      {PRIORIDADE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filtro Status */}
-                <div>
-                  <div className="text-sm font-medium mb-2">Status</div>
-                  <Select
-                    value={filtros.status?.[0] || '__todos__'}
-                    onValueChange={(value) =>
-                      setFiltros({
-                        ...filtros,
-                        status: value === '__todos__' ? [] : [value as any],
-                      })
-                    }
-                  >
-                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__todos__">Todos os status</SelectItem>
-                      {STATUS_PLANO_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filtro Data da Resposta */}
-                <div>
-                  <div className="text-sm font-medium mb-2">Data da Resposta</div>
-                  <MonthYearPicker
-                    value={`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`}
-                    onChange={(value) => {
-                      if (value) {
-                        const [mes, ano] = value.split('/');
-                        const novoMes = parseInt(mes);
-                        const novoAno = parseInt(ano);
-                        setMesSelecionado(novoMes);
-                        setAnoSelecionado(novoAno);
-                        setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
-                      }
-                    }}
-                    placeholder="Selecione o período"
-                    className="focus:ring-sonda-blue focus:border-sonda-blue"
-                  />
+                    <Filter className="h-4 w-4" />
+                    <span>Filtros</span>
+                  </Button>
+                  
+                  {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={limparFiltros}
+                      className="whitespace-nowrap hover:border-red-300"
+                    >
+                      <X className="h-4 w-4 mr-2 text-red-600" />
+                      Limpar Filtro
+                    </Button>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          <PlanosAcaoTable
-            planos={planos}
-            onEditar={handleEditar}
-            onExcluir={handleDeletar}
-            onVisualizar={handleVisualizar}
-            isLoading={isLoading}
-          />
-        </CardContent>
-      </Card>
+
+              {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+              {mostrarFiltros && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Campo de busca com ícone */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Buscar..."
+                          value={filtros.busca || ''}
+                          onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
+                          className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filtro Prioridade */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Prioridade</div>
+                      <Select
+                        value={filtros.prioridade?.[0] || '__todos__'}
+                        onValueChange={(value) =>
+                          setFiltros({
+                            ...filtros,
+                            prioridade: value === '__todos__' ? [] : [value as any],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todas as prioridades" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todas as prioridades</SelectItem>
+                          {PRIORIDADE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Status */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Status</div>
+                      <Select
+                        value={filtros.status?.[0] || '__todos__'}
+                        onValueChange={(value) =>
+                          setFiltros({
+                            ...filtros,
+                            status: value === '__todos__' ? [] : [value as any],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os status</SelectItem>
+                          {STATUS_PLANO_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Data da Resposta */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                      <MonthYearPicker
+                        value={`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`}
+                        onChange={(value) => {
+                          if (value) {
+                            const [mes, ano] = value.split('/');
+                            const novoMes = parseInt(mes);
+                            const novoAno = parseInt(ano);
+                            setMesSelecionado(novoMes);
+                            setAnoSelecionado(novoAno);
+                            setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                          }
+                        }}
+                        placeholder="Selecione o período"
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <PlanosAcaoTable
+                planos={planosAtivos}
+                onEditar={handleEditar}
+                onExcluir={handleDeletar}
+                onVisualizar={handleVisualizar}
+                isLoading={isLoading}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Conteúdo da Aba Finalizados */}
+        <TabsContent value="finalizados" className="mt-0">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Histórico de Planos ({planosFinalizados.length})
+                </CardTitle>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                    className="flex items-center justify-center space-x-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filtros</span>
+                  </Button>
+                  
+                  {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={limparFiltros}
+                      className="whitespace-nowrap hover:border-red-300"
+                    >
+                      <X className="h-4 w-4 mr-2 text-red-600" />
+                      Limpar Filtro
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Área de filtros expansível - PADRÃO DESIGN SYSTEM */}
+              {mostrarFiltros && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Campo de busca com ícone */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Buscar..."
+                          value={filtros.busca || ''}
+                          onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
+                          className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filtro Prioridade */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Prioridade</div>
+                      <Select
+                        value={filtros.prioridade?.[0] || '__todos__'}
+                        onValueChange={(value) =>
+                          setFiltros({
+                            ...filtros,
+                            prioridade: value === '__todos__' ? [] : [value as any],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todas as prioridades" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todas as prioridades</SelectItem>
+                          {PRIORIDADE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Status */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Status</div>
+                      <Select
+                        value={filtros.status?.[0] || '__todos__'}
+                        onValueChange={(value) =>
+                          setFiltros({
+                            ...filtros,
+                            status: value === '__todos__' ? [] : [value as any],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__todos__">Todos os status</SelectItem>
+                          {STATUS_PLANO_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Data da Resposta */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Data da Resposta</div>
+                      <MonthYearPicker
+                        value={`${mesSelecionado.toString().padStart(2, '0')}/${anoSelecionado}`}
+                        onChange={(value) => {
+                          if (value) {
+                            const [mes, ano] = value.split('/');
+                            const novoMes = parseInt(mes);
+                            const novoAno = parseInt(ano);
+                            setMesSelecionado(novoMes);
+                            setAnoSelecionado(novoAno);
+                            setFiltros(prev => ({ ...prev, mes: novoMes, ano: novoAno }));
+                          }
+                        }}
+                        placeholder="Selecione o período"
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <PlanosAcaoTable
+                planos={planosFinalizados}
+                onEditar={handleEditar}
+                onExcluir={handleDeletar}
+                onVisualizar={handleVisualizar}
+                isLoading={isLoading}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Modal de Formulário */}
       <Dialog open={modalAberto} onOpenChange={setModalAberto}>

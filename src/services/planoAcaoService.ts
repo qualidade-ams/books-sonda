@@ -89,7 +89,7 @@ export async function buscarPlanosAcao(
     );
   }
 
-  // Filtro por mês/ano da data de resposta
+  // Filtro por mês/ano da data de início (não data_resposta)
   if (filtros?.mes && filtros?.ano) {
     const mesStr = filtros.mes.toString().padStart(2, '0');
     const anoStr = filtros.ano.toString();
@@ -103,19 +103,19 @@ export async function buscarPlanosAcao(
     console.log('📊 Total de planos antes do filtro:', resultado.length);
     
     resultado = resultado.filter((plano: any) => {
-      // Usar data_resposta diretamente da tabela planos_acao
-      if (!plano.data_resposta) {
-        console.log('⚠️ Plano sem data_resposta:', plano.id);
+      // Usar data_inicio em vez de data_resposta
+      if (!plano.data_inicio) {
+        console.log('⚠️ Plano sem data_inicio:', plano.id);
         return false;
       }
       
       // Verificar se a data começa com YYYY-MM
-      const dataResposta = plano.data_resposta;
-      const match = dataResposta.startsWith(anoMesPrefix);
+      const dataInicio = plano.data_inicio;
+      const match = dataInicio.startsWith(anoMesPrefix);
       
       console.log('📅 Comparando:', {
         planoId: plano.id,
-        dataResposta,
+        dataInicio,
         anoMesPrefix,
         match
       });
