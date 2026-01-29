@@ -64,6 +64,12 @@ function CadastroTaxasClientes() {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>('cliente');
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc');
   
+  // Estado para dados iniciais ao criar taxa a partir da aba "Clientes Sem Taxa"
+  const [dadosIniciaisTaxa, setDadosIniciaisTaxa] = useState<{
+    clienteId?: string;
+    tipoProduto?: 'GALLERY' | 'OUTROS';
+  } | null>(null);
+  
   // Estado da aba ativa
   const [abaAtiva, setAbaAtiva] = useState<'taxas_cadastradas' | 'clientes_sem_taxa'>('taxas_cadastradas');
   
@@ -96,6 +102,7 @@ function CadastroTaxasClientes() {
 
   const handleNovaTaxa = () => {
     setTaxaEditando(null);
+    setDadosIniciaisTaxa(null);
     setModalAberto(true);
   };
 
@@ -181,6 +188,7 @@ function CadastroTaxasClientes() {
       }
       setModalAberto(false);
       setTaxaEditando(null);
+      setDadosIniciaisTaxa(null); // Limpar dados iniciais após salvar
       await refetch();
     } catch (error) {
       console.error('❌ [CADASTRO TAXAS] Erro ao salvar taxa:', error);
@@ -369,29 +377,101 @@ function CadastroTaxasClientes() {
   // Paginação
   const paginatedData = useVirtualPagination(taxasOrdenadas, itemsPerPage, currentPage);
 
-  // Identificar clientes sem taxa ou com taxa vencida
+  // Identificar clientes sem taxa ou com taxa vencida - AGORA POR TIPO DE PRODUTO
+  // COMEX e FISCAL são agrupados como um único tipo
   const clientesSemTaxa = useMemo(() => {
     if (!empresas || empresas.length === 0) return [];
 
-    const hoje = new Date().toISOString().split('T')[0];
+    const resultado: Array<{
+      empresa: typeof empresas[0];
+      tipoProduto: 'GALLERY' | 'COMEX';
+      produtosOriginais: string[]; // Para exibir os badges originais
+      temTaxa: boolean;
+      taxaVencida: boolean;
+    }> = [];
     
-    return empresas.filter(empresa => {
-      // Buscar todas as taxas deste cliente
-      const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
+    empresas.forEach(empresa => {
+      // Agrupar produtos: GALLERY separado, COMEX+FISCAL juntos
+      const produtos = empresa.produtos || [];
+      const temGallery = produtos.some(p => p.produto === 'GALLERY');
+      const temComexOuFiscal = produtos.some(p => p.produto === 'COMEX' || p.produto === 'FISCAL');
       
-      // Se não tem nenhuma taxa cadastrada
-      if (taxasCliente.length === 0) {
-        return true;
+      // Verificar GALLERY (apenas se o cliente TEM este produto)
+      if (temGallery) {
+        const taxasGallery = taxas.filter(taxa => 
+          taxa.cliente_id === empresa.id && 
+          taxa.tipo_produto === 'GALLERY'
+        );
+        
+        // Verificar se tem pelo menos uma taxa vigente OU futura (não vigente mas com início futuro)
+        const temTaxaVigenteOuFutura = taxasGallery.some(taxa => {
+          const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+          return statusTaxa === 'vigente' || statusTaxa === 'nao_vigente';
+        });
+        
+        // Se não tem taxa vigente nem futura, incluir na lista
+        if (!temTaxaVigenteOuFutura) {
+          // Verificar se tem taxa mas está vencida
+          const temTaxaVencida = taxasGallery.length > 0 && taxasGallery.some(taxa => {
+            const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+            return statusTaxa === 'vencida';
+          });
+          
+          resultado.push({
+            empresa,
+            tipoProduto: 'GALLERY',
+            produtosOriginais: ['GALLERY'],
+            temTaxa: taxasGallery.length > 0,
+            taxaVencida: temTaxaVencida
+          });
+        }
       }
       
-      // Verificar se todas as taxas estão vencidas (não vigentes)
-      const todasVencidas = taxasCliente.every(taxa => {
-        const vigente = verificarVigente(taxa.vigencia_inicio, taxa.vigencia_fim);
-        return !vigente;
-      });
-      
-      return todasVencidas;
+      // Verificar COMEX/FISCAL (agrupados) - apenas se o cliente TEM estes produtos
+      if (temComexOuFiscal) {
+        // Buscar taxas que servem para COMEX/FISCAL
+        // Aceitar: 'COMEX, FISCAL' (formato novo) ou 'OUTROS' (formato legado)
+        const taxasComex = taxas.filter(taxa => {
+          if (taxa.cliente_id !== empresa.id) return false;
+          
+          // Aceitar taxas com tipo_produto 'COMEX, FISCAL' ou 'OUTROS'
+          if (taxa.tipo_produto === 'COMEX, FISCAL' || taxa.tipo_produto === 'OUTROS') {
+            return true;
+          }
+          
+          return false;
+        });
+        
+        const produtosComexFiscal = produtos
+          .filter(p => p.produto === 'COMEX' || p.produto === 'FISCAL')
+          .map(p => p.produto);
+        
+        // Verificar se tem pelo menos uma taxa vigente OU futura (não vigente mas com início futuro)
+        const temTaxaVigenteOuFutura = taxasComex.some(taxa => {
+          const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+          return statusTaxa === 'vigente' || statusTaxa === 'nao_vigente';
+        });
+        
+        // Se não tem taxa vigente nem futura, incluir na lista
+        if (!temTaxaVigenteOuFutura) {
+          // Verificar se tem taxa mas está vencida
+          const temTaxaVencida = taxasComex.length > 0 && taxasComex.some(taxa => {
+            const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
+            return statusTaxa === 'vencida';
+          });
+          
+          resultado.push({
+            empresa,
+            tipoProduto: 'COMEX',
+            produtosOriginais: produtosComexFiscal,
+            temTaxa: taxasComex.length > 0,
+            taxaVencida: temTaxaVencida
+          });
+        }
+      }
     });
+    
+    return resultado;
   }, [empresas, taxas]);
 
   // Filtrar clientes sem taxa (Aba 2)
@@ -400,37 +480,38 @@ function CadastroTaxasClientes() {
 
     // Filtro por cliente
     if (filtroClienteAba2) {
-      resultado = resultado.filter(empresa =>
-        empresa.nome_abreviado?.toLowerCase().includes(filtroClienteAba2.toLowerCase()) ||
-        empresa.nome_completo?.toLowerCase().includes(filtroClienteAba2.toLowerCase())
+      resultado = resultado.filter(item =>
+        item.empresa.nome_abreviado?.toLowerCase().includes(filtroClienteAba2.toLowerCase()) ||
+        item.empresa.nome_completo?.toLowerCase().includes(filtroClienteAba2.toLowerCase())
       );
     }
 
     // Filtro por tipo de produto
     if (filtroTipoProdutoAba2 !== 'todos') {
-      resultado = resultado.filter(empresa => {
-        const produtos = empresa.produtos?.map(p => p.produto) || [];
-        // Filtrar por produto específico (GALLERY, COMEX ou FISCAL)
-        return produtos.includes(filtroTipoProdutoAba2);
+      resultado = resultado.filter(item => {
+        // Se filtro é GALLERY, mostrar apenas linhas GALLERY
+        if (filtroTipoProdutoAba2 === 'GALLERY') {
+          return item.tipoProduto === 'GALLERY';
+        }
+        // Se filtro é COMEX ou FISCAL, mostrar linhas COMEX (que agrupa ambos)
+        if (filtroTipoProdutoAba2 === 'COMEX' || filtroTipoProdutoAba2 === 'FISCAL') {
+          return item.tipoProduto === 'COMEX';
+        }
+        return false;
       });
     }
 
     // Filtro por status
     if (filtroStatusAba2 !== 'todos') {
-      resultado = resultado.filter(empresa => {
-        const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
-        const temTaxaVencida = taxasCliente.length > 0;
-        
-        if (filtroStatusAba2 === 'taxa_vencida') {
-          return temTaxaVencida;
-        } else {
-          return !temTaxaVencida;
-        }
-      });
+      if (filtroStatusAba2 === 'taxa_vencida') {
+        resultado = resultado.filter(item => item.taxaVencida);
+      } else {
+        resultado = resultado.filter(item => !item.temTaxa);
+      }
     }
 
     return resultado;
-  }, [clientesSemTaxa, filtroClienteAba2, filtroTipoProdutoAba2, filtroStatusAba2, taxas]);
+  }, [clientesSemTaxa, filtroClienteAba2, filtroTipoProdutoAba2, filtroStatusAba2]);
 
   // Paginação para clientes sem taxa
   const paginatedClientesSemTaxa = useVirtualPagination(clientesSemTaxaFiltrados, itemsPerPage, currentPage);
@@ -1478,33 +1559,35 @@ function CadastroTaxasClientes() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        paginatedClientesSemTaxa.items.map((empresa) => {
-                          const taxasCliente = taxas.filter(taxa => taxa.cliente_id === empresa.id);
-                          const temTaxaVencida = taxasCliente.length > 0;
+                        paginatedClientesSemTaxa.items.map((item, index) => {
+                          const uniqueKey = `${item.empresa.id}-${item.tipoProduto}`;
                           
                           return (
-                            <TableRow key={empresa.id} className="hover:bg-gray-50">
+                            <TableRow key={uniqueKey} className="hover:bg-gray-50">
                               <TableCell className="font-medium">
-                                {empresa.nome_abreviado}
+                                {item.empresa.nome_abreviado}
                               </TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                  {empresa.produtos?.map((p, idx) => (
+                                  {item.tipoProduto === 'GALLERY' ? (
                                     <Badge 
-                                      key={idx}
-                                      variant={p.produto === 'GALLERY' ? 'default' : 'outline'}
-                                      className={p.produto === 'GALLERY' 
-                                        ? 'bg-sonda-blue text-white hover:bg-sonda-dark-blue text-xs' 
-                                        : 'border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50 text-xs'
-                                      }
+                                      variant="default"
+                                      className="bg-sonda-blue text-white hover:bg-sonda-dark-blue text-xs"
                                     >
-                                      {p.produto}
+                                      GALLERY
                                     </Badge>
-                                  ))}
+                                  ) : (
+                                    <Badge 
+                                      variant="outline"
+                                      className="border-sonda-blue text-sonda-blue bg-white hover:bg-blue-50 text-xs"
+                                    >
+                                      {item.produtosOriginais.join(', ')}
+                                    </Badge>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="text-center">
-                                {temTaxaVencida ? (
+                                {item.taxaVencida ? (
                                   <Badge variant="outline" className="border-orange-600 text-orange-600">
                                     Taxa Vencida
                                   </Badge>
@@ -1521,7 +1604,14 @@ function CadastroTaxasClientes() {
                                     size="sm"
                                     className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
                                     onClick={() => {
+                                      const dadosIniciais = {
+                                        clienteId: item.empresa.id,
+                                        // CORREÇÃO: Usar 'OUTROS' em vez de 'COMEX, FISCAL' para corresponder ao valor do Select
+                                        tipoProduto: item.tipoProduto === 'GALLERY' ? 'GALLERY' : 'OUTROS'
+                                      };
+                                      
                                       setTaxaEditando(null);
+                                      setDadosIniciaisTaxa(dadosIniciais);
                                       setModalAberto(true);
                                     }}
                                     title="Cadastrar Taxa"
@@ -1614,8 +1704,10 @@ function CadastroTaxasClientes() {
               onCancel={() => {
                 setModalAberto(false);
                 setTaxaEditando(null);
+                setDadosIniciaisTaxa(null);
               }}
               isLoading={criarTaxa.isPending || atualizarTaxa.isPending}
+              dadosIniciais={dadosIniciaisTaxa}
             />
           </DialogContent>
         </Dialog>
