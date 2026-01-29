@@ -27,7 +27,8 @@ const sqlConfig: sql.config = {
     trustServerCertificate: true,
     enableArithAbort: true,
     connectTimeout: 30000, // 30 segundos
-    requestTimeout: 30000
+    requestTimeout: 30000,
+    useUTC: false // IMPORTANTE: Não converter datas para UTC
   },
   pool: {
     max: 10,
@@ -41,6 +42,41 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
+
+/**
+ * Formata data para ISO string preservando o horário local
+ * Extrai componentes da data sem conversão de timezone
+ * @param date Data a ser formatada (pode ser Date ou string)
+ * @returns String no formato ISO (YYYY-MM-DDTHH:mm:ss) ou null
+ */
+function formatarDataSemTimezone(date: Date | string | null | undefined): string | null {
+  if (!date) return null;
+  
+  try {
+    // Converter para Date se for string
+    const dataObj = date instanceof Date ? date : new Date(date);
+    
+    // Verificar se é uma data válida
+    if (isNaN(dataObj.getTime())) {
+      console.error('❌ Data inválida:', date);
+      return null;
+    }
+    
+    // Extrai componentes da data no horário local (sem conversão UTC)
+    const year = dataObj.getFullYear();
+    const month = String(dataObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dataObj.getDate()).padStart(2, '0');
+    const hours = String(dataObj.getHours()).padStart(2, '0');
+    const minutes = String(dataObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dataObj.getSeconds()).padStart(2, '0');
+    
+    // Retorna formato ISO preservando horário local
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  } catch (erro) {
+    console.error('❌ Erro ao formatar data:', erro);
+    return null;
+  }
+}
 
 // Interface dos dados de pesquisas
 interface DadosSqlServer {
@@ -911,7 +947,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           tipo_caso: registro.Tipo_Caso || null,
           ano_abertura: registro.Ano_Abertura ? parseInt(registro.Ano_Abertura) : null,
           mes_abertura: registro.Mes_abertura ? parseInt(registro.Mes_abertura) : null,
-          data_resposta: registro.Data_Resposta?.toISOString() || null,
+          data_resposta: formatarDataSemTimezone(registro.Data_Resposta),
           resposta: registro.Resposta || null,
           comentario_pesquisa: registro.Comentario_Pesquisa || null,
           status: statusPesquisa
@@ -1823,11 +1859,11 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           causa_raiz: registro.Causa_Raiz || null,
           solicitante: registro.Solicitante || null,
           us_final_afetado: registro.Us_Final_Afetado || null,
-          data_abertura: registro.Data_Abertura?.toISOString() || null,
-          data_sistema: registro.Data_Sistema?.toISOString() || null,
-          data_atividade: registro.Data_Atividade?.toISOString() || null,
-          data_fechamento: registro.Data_Fechamento?.toISOString() || null,
-          data_ult_modificacao: registro.Data_Ult_Modificacao?.toISOString() || null,
+          data_abertura: formatarDataSemTimezone(registro.Data_Abertura),
+          data_sistema: formatarDataSemTimezone(registro.Data_Sistema),
+          data_atividade: formatarDataSemTimezone(registro.Data_Atividade),
+          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
+          data_ult_modificacao: formatarDataSemTimezone(registro.Data_Ult_Modificacao),
           ativi_interna: registro.Ativi_Interna || null,
           caso_estado: registro.Caso_Estado || null,
           caso_grupo: registro.Caso_Grupo || null,
@@ -1844,7 +1880,7 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           grupo_tarefa: registro.Grupo_Tarefa || null,
           problema: registro.Problema || null,
           cod_resolucao: registro.Cod_Resolucao || null,
-          log: registro.LOG?.toISOString() || null
+          log: formatarDataSemTimezone(registro.LOG)
         };
 
         if (existente) {
@@ -2159,7 +2195,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           .from('apontamentos_tickets_aranda')
           .select('id')
           .eq('nro_solicitacao', registro.Nro_Solicitacao)
-          .eq('data_abertura', registro.Data_Abertura?.toISOString() || null)
+          .eq('data_abertura', formatarDataSemTimezone(registro.Data_Abertura))
           .maybeSingle();
         
         if (erroConsulta) {
@@ -2185,16 +2221,16 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           nome_responsavel: registro.Nome_Responsavel || null,
           categoria: registro.Categoria || null,
           item_configuracao: registro.Item_Configuracao || null,
-          data_abertura: registro.Data_Abertura?.toISOString() || null,
-          data_solucao: registro.Data_Solucao?.toISOString() || null,
-          data_fechamento: registro.Data_Fechamento?.toISOString() || null,
-          data_ultima_modificacao: registro.Data_Ultima_Modificacao?.toISOString() || null,
+          data_abertura: formatarDataSemTimezone(registro.Data_Abertura),
+          data_solucao: formatarDataSemTimezone(registro.Data_Solucao),
+          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
+          data_ultima_modificacao: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
           ultima_modificacao: registro.Ultima_Modificacao || null,
-          data_prevista_entrega: registro.Data_Prevista_Entrega?.toISOString() || null,
-          data_aprovacao: registro.Data_Aprovacao?.toISOString() || null,
-          data_real_entrega: registro.Data_Real_Entrega?.toISOString() || null,
-          data_ultima_nota: registro.Data_Ultima_Nota?.toISOString() || null,
-          data_ultimo_comentario: registro.Data_Ultimo_Comentario?.toISOString() || null,
+          data_prevista_entrega: formatarDataSemTimezone(registro.Data_Prevista_Entrega),
+          data_aprovacao: formatarDataSemTimezone(registro.Data_Aprovacao),
+          data_real_entrega: formatarDataSemTimezone(registro.Data_Real_Entrega),
+          data_ultima_nota: formatarDataSemTimezone(registro.Data_Ultima_Nota),
+          data_ultimo_comentario: formatarDataSemTimezone(registro.Data_Ultimo_Comentario),
           status: registro.Status || null,
           prioridade: registro.Prioridade || null,
           urgencia: registro.Urgencia || null,
@@ -2206,7 +2242,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           causa_raiz: registro.Causa_Raiz || null,
           desc_ultima_nota: registro.Desc_Ultima_Nota || null,
           desc_ultimo_comentario: registro.Desc_Ultimo_Comentario || null,
-          log: registro.LOG || null,
+          log: formatarDataSemTimezone(registro.LOG),
           tempo_gasto_dias: registro.Tempo_Gasto_Dias || null,
           tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
           tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
@@ -2214,8 +2250,8 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           violacao_sla: registro.Violacao_SLA || null,
           tda_cumprido: registro.TDA_Cumprido || null,
           tds_cumprido: registro.TDS_Cumprido || null,
-          data_prevista_tda: registro.Data_Prevista_TDA?.toISOString() || null,
-          data_prevista_tds: registro.Data_Prevista_TDS?.toISOString() || null,
+          data_prevista_tda: formatarDataSemTimezone(registro.Data_Prevista_TDA),
+          data_prevista_tds: formatarDataSemTimezone(registro.Data_Prevista_TDS),
           tempo_restante_tda: registro.Tempo_Restante_TDA || null,
           tempo_restante_tds: registro.Tempo_Restante_TDS || null,
           tempo_restante_tds_em_minutos: registro.Tempo_Restante_TDS_em_Minutos || null,
