@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -34,6 +34,14 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,7 +67,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   const { empresas } = useEmpresas();
   
   // Buscar categorias e grupos da tabela DE-PARA
-  const { data: categorias = [] } = useCategorias();
+  const { data: categorias = [], isLoading: categoriasLoading } = useCategorias();
+  
+  console.log('🔍 [PesquisaForm] Categorias carregadas:', categorias);
+  console.log('🔍 [PesquisaForm] Categorias loading:', categoriasLoading);
+  console.log('🔍 [PesquisaForm] Quantidade de categorias:', categorias.length);
 
   // Estado para armazenar consultores manuais
   const [consultoresManuais, setConsultoresManuais] = React.useState<Array<{ label: string; value: string; email?: string }>>([]);
@@ -94,21 +106,27 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
 
   // Buscar especialistas relacionados à pesquisa (para edição)
-  const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisa?.id);
+  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisa?.id);
   
   console.log('🔍 [PesquisaForm] === DADOS DE ESPECIALISTAS ===');
   console.log('🔍 [PesquisaForm] Pesquisa ID:', pesquisa?.id);
   console.log('🔍 [PesquisaForm] Prestador:', pesquisa?.prestador);
   console.log('🔍 [PesquisaForm] IDs Relacionados (do banco):', especialistasIdsRelacionados);
   console.log('🔍 [PesquisaForm] Quantidade de IDs Relacionados:', especialistasIdsRelacionados.length);
+  console.log('🔍 [PesquisaForm] Loading Relacionados:', loadingRelacionados);
   
   // Correlação automática baseada no campo prestador
-  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+  const { data: especialistasIdsCorrelacionados = [], isLoading: loadingCorrelacao } = useCorrelacaoMultiplosEspecialistas(
     pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisa.prestador : undefined
   );
   
   console.log('🔍 [PesquisaForm] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
   console.log('🔍 [PesquisaForm] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
+  console.log('🔍 [PesquisaForm] Loading Correlação:', loadingCorrelacao);
+  
+  // Combinar loading states
+  const especialistasLoading = loadingRelacionados || loadingCorrelacao;
+  console.log('🔍 [PesquisaForm] Especialistas Loading (combinado):', especialistasLoading);
   
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
   const especialistasIdsUnicos = [...new Set(
@@ -140,53 +158,89 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   ];
 
   // Preencher formulário ao editar (sem especialistas)
+  // Usar key baseada no ID da pesquisa para forçar re-render completo
   useEffect(() => {
     console.log('🔄 [PesquisaForm useEffect reset] === EXECUÇÃO ===');
     console.log('🔄 [PesquisaForm useEffect reset] pesquisa:', pesquisa?.id);
     console.log('🔄 [PesquisaForm useEffect reset] empresas.length:', empresas.length);
-    console.log('🔄 [PesquisaForm useEffect reset] form.formState.isDirty:', form.formState.isDirty);
+    console.log('🔄 [PesquisaForm useEffect reset] categorias.length:', categorias.length);
     console.log('🔄 [PesquisaForm useEffect reset] pesquisa.categoria:', pesquisa?.categoria);
     console.log('🔄 [PesquisaForm useEffect reset] pesquisa.grupo:', pesquisa?.grupo);
     
-    if (pesquisa && empresas.length > 0 && !form.formState.isDirty) {
-      // Tentar encontrar a empresa pelo nome completo ou abreviado
-      const empresaEncontrada = empresas.find(
-        e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
-      );
+    // Aguardar empresas E categorias estarem carregadas
+    if (pesquisa && empresas.length > 0 && categorias.length > 0) {
+      // Usar setTimeout para garantir que o DOM esteja pronto
+      const timer = setTimeout(() => {
+        // Tentar encontrar a empresa pelo nome completo ou abreviado
+        const empresaEncontrada = empresas.find(
+          e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
+        );
+        
+        // Usar o nome_completo se encontrou, senão usar o valor original
+        const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
+        
+        const dadosReset = {
+          empresa: empresaValue || '',
+          cliente: pesquisa.cliente,
+          categoria: pesquisa.categoria || '',  // Sempre usar string, nunca undefined
+          grupo: pesquisa.grupo || undefined,
+          email_cliente: pesquisa.email_cliente || '',
+          prestador: pesquisa.prestador || '',
+          solicitante: pesquisa.solicitante || '',
+          nro_caso: pesquisa.nro_caso || '',
+          tipo_caso: pesquisa.tipo_caso || undefined,
+          data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
+          resposta: pesquisa.resposta || undefined,
+          comentario_pesquisa: pesquisa.comentario_pesquisa || '',
+          observacao: pesquisa.observacao || '',
+          empresa_id: pesquisa.empresa_id || undefined,
+          cliente_id: pesquisa.cliente_id || undefined,
+          especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
+        };
+        
+        console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
+        console.log('✅ [PesquisaForm useEffect reset] Categoria no reset:', dadosReset.categoria);
+        
+        // Verificar se a categoria existe na lista de categorias disponíveis
+        const categoriaExiste = categorias.some(cat => cat.value === pesquisa.categoria);
+        console.log('🔍 [PesquisaForm useEffect reset] Categoria existe na lista?', categoriaExiste);
+        
+        // Usar reset sem verificar isDirty - sempre resetar quando pesquisa mudar
+        form.reset(dadosReset, {
+          keepDefaultValues: false, // Não manter valores padrão
+          keepDirty: false,          // Não manter estado dirty
+          keepTouched: false,        // Não manter estado touched
+          keepErrors: false,         // Não manter erros
+          keepIsSubmitted: false,    // Não manter estado submitted
+          keepSubmitCount: false     // Não manter contador de submits
+        });
+        
+        console.log('✅ [PesquisaForm useEffect reset] Reset executado');
+        console.log('✅ [PesquisaForm useEffect reset] Valor da categoria após reset:', form.getValues('categoria'));
+        
+        // Forçar atualização do campo categoria especificamente
+        if (pesquisa.categoria && categoriaExiste) {
+          console.log('🔧 [PesquisaForm useEffect reset] Forçando setValue para categoria:', pesquisa.categoria);
+          form.setValue('categoria', pesquisa.categoria, {
+            shouldValidate: true,
+            shouldDirty: false,
+            shouldTouch: false
+          });
+          console.log('✅ [PesquisaForm useEffect reset] setValue executado, valor atual:', form.getValues('categoria'));
+        } else if (pesquisa.categoria && !categoriaExiste) {
+          console.warn('⚠️ [PesquisaForm useEffect reset] Categoria não encontrada na lista:', pesquisa.categoria);
+          console.warn('⚠️ [PesquisaForm useEffect reset] Categorias disponíveis:', categorias.map(c => c.value));
+        }
+      }, 100); // Aumentar delay para 100ms para garantir que as categorias estejam renderizadas
       
-      // Usar o nome_completo se encontrou, senão usar o valor original
-      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
-      
-      const dadosReset = {
-        empresa: empresaValue || '',
-        cliente: pesquisa.cliente,
-        categoria: pesquisa.categoria || '',  // Mudado de undefined para string vazia
-        grupo: pesquisa.grupo || undefined,
-        email_cliente: pesquisa.email_cliente || '',
-        prestador: pesquisa.prestador || '',
-        solicitante: pesquisa.solicitante || '',
-        nro_caso: pesquisa.nro_caso || '',
-        tipo_caso: pesquisa.tipo_caso || undefined,
-        data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
-        resposta: pesquisa.resposta || undefined,
-        comentario_pesquisa: pesquisa.comentario_pesquisa || '',
-        observacao: pesquisa.observacao || '',
-        empresa_id: pesquisa.empresa_id || undefined,
-        cliente_id: pesquisa.cliente_id || undefined,
-        especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
-      };
-      
-      console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
-      console.log('✅ [PesquisaForm useEffect reset] Categoria no reset:', dadosReset.categoria);
-      
-      form.reset(dadosReset);
-      
-      console.log('✅ [PesquisaForm useEffect reset] Reset executado');
-      console.log('✅ [PesquisaForm useEffect reset] Valor da categoria após reset:', form.getValues('categoria'));
+      return () => clearTimeout(timer);
     } else {
       console.log('⚠️ [PesquisaForm useEffect reset] Condições não atendidas, pulando reset');
+      if (!pesquisa) console.log('  - Sem pesquisa');
+      if (empresas.length === 0) console.log('  - Empresas não carregadas');
+      if (categorias.length === 0) console.log('  - Categorias não carregadas');
     }
-  }, [pesquisa, form, empresas]);
+  }, [pesquisa?.id, empresas.length, categorias.length, form]); // Adicionar categorias.length
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
   // NÃO atualizar se o formulário já foi modificado pelo usuário
@@ -195,27 +249,39 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   const processamentoEmAndamento = React.useRef(false);
   
   useEffect(() => {
-    console.log('🔄 [PesquisaForm useEffect] === EXECUÇÃO DO USEEFFECT ===');
-    console.log('🔄 [PesquisaForm useEffect] especialistasIds:', especialistasIds);
-    console.log('🔄 [PesquisaForm useEffect] especialistasIds.length:', especialistasIds.length);
-    console.log('🔄 [PesquisaForm useEffect] pesquisa:', pesquisa?.id);
-    console.log('🔄 [PesquisaForm useEffect] form.formState.isDirty:', form.formState.isDirty);
-    console.log('🔄 [PesquisaForm useEffect] form.formState.isSubmitting:', form.formState.isSubmitting);
-    console.log('🔄 [PesquisaForm useEffect] especialistasInicializados.current:', especialistasInicializados.current);
-    console.log('🔄 [PesquisaForm useEffect] processamentoEmAndamento.current:', processamentoEmAndamento.current);
+    console.log('🔄 [PesquisaForm useEffect especialistas] === EXECUÇÃO DO USEEFFECT ===');
+    console.log('🔄 [PesquisaForm useEffect especialistas] especialistasIds:', especialistasIds);
+    console.log('🔄 [PesquisaForm useEffect especialistas] especialistasIds.length:', especialistasIds.length);
+    console.log('🔄 [PesquisaForm useEffect especialistas] especialistasLoading:', especialistasLoading);
+    console.log('🔄 [PesquisaForm useEffect especialistas] pesquisa:', pesquisa?.id);
+    console.log('🔄 [PesquisaForm useEffect especialistas] form.formState.isDirty:', form.formState.isDirty);
+    console.log('🔄 [PesquisaForm useEffect especialistas] form.formState.isSubmitting:', form.formState.isSubmitting);
+    console.log('🔄 [PesquisaForm useEffect especialistas] especialistasInicializados.current:', especialistasInicializados.current);
+    console.log('🔄 [PesquisaForm useEffect especialistas] processamentoEmAndamento.current:', processamentoEmAndamento.current);
     
     // NÃO atualizar se:
     // 1. Formulário está sendo enviado (isSubmitting)
     // 2. Especialistas já foram inicializados
     // 3. Processamento já está em andamento
-    if (form.formState.isSubmitting || especialistasInicializados.current || processamentoEmAndamento.current) {
-      console.log('📋 [PesquisaForm useEffect] ⚠️ Pulando atualização - formulário em uso ou já inicializado');
+    // 4. NOVO: Dados ainda estão carregando
+    if (
+      form.formState.isSubmitting || 
+      especialistasInicializados.current || 
+      processamentoEmAndamento.current ||
+      especialistasLoading  // ← NOVA CONDIÇÃO: Aguardar dados estarem prontos
+    ) {
+      console.log('📋 [PesquisaForm useEffect especialistas] ⚠️ Pulando atualização - formulário em uso, já inicializado ou dados carregando');
+      if (especialistasLoading) console.log('  - Dados ainda carregando...');
       return;
     }
     
-    // Preencher especialistas apenas na primeira vez
-    if (pesquisa && pesquisa.prestador) {
-      console.log('📋 [PesquisaForm useEffect] ✅ Condições atendidas, processando...');
+    // Preencher especialistas apenas quando:
+    // 1. Há uma pesquisa
+    // 2. Há campo prestador
+    // 3. Dados não estão mais carregando
+    // 4. Há especialistas carregados OU loading terminou (pode não ter especialistas)
+    if (pesquisa && pesquisa.prestador && !especialistasLoading) {
+      console.log('📋 [PesquisaForm useEffect especialistas] ✅ Condições atendidas, processando...');
       
       // Marcar processamento como em andamento
       processamentoEmAndamento.current = true;
@@ -225,6 +291,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
         console.log('🔍 [processarEspecialistas] === INÍCIO ===');
         console.log('🔍 [processarEspecialistas] pesquisa.prestador:', pesquisa.prestador);
         console.log('🔍 [processarEspecialistas] especialistasIds:', especialistasIds);
+        
+        // Aguardar um pouco para garantir que os dados estejam estáveis
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         try {
           // Combinar especialistas do banco com consultores manuais extraídos do prestador
@@ -335,12 +404,13 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       // Executar processamento assíncrono
       processarEspecialistas();
     } else {
-      console.log('📋 [PesquisaForm useEffect] ❌ Condições NÃO atendidas, pulando...');
+      console.log('📋 [PesquisaForm useEffect especialistas] ❌ Condições NÃO atendidas, pulando...');
       if (!pesquisa) console.log('  - Sem pesquisa');
       if (pesquisa && !pesquisa.prestador) console.log('  - Sem campo prestador');
+      if (especialistasLoading) console.log('  - Dados ainda carregando');
     }
-    console.log('🔄 [PesquisaForm useEffect] === FIM EXECUÇÃO DO USEEFFECT ===');
-  }, [especialistasIds, pesquisa?.id, pesquisa?.prestador, form]); // Adicionar prestador nas dependências
+    console.log('🔄 [PesquisaForm useEffect especialistas] === FIM EXECUÇÃO DO USEEFFECT ===');
+  }, [especialistasIds, pesquisa?.id, pesquisa?.prestador, especialistasLoading, form]); // ← Adicionar especialistasLoading nas dependências
   
   // Resetar flags quando pesquisa mudar (abrir outro modal)
   useEffect(() => {
@@ -474,7 +544,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   const anosDisponiveis = Array.from({ length: 10 }, (_, i) => anoAtual - i);
 
   return (
-    <Form {...form}>
+    <Form {...form} key={`pesquisa-form-${pesquisa?.id || 'novo'}`}>
       <form 
         onSubmit={(e) => {
           console.log('📝 [PesquisaForm] === EVENTO SUBMIT CAPTURADO ===');
@@ -495,33 +565,43 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             <FormField
               control={form.control}
               name="empresa"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Empresa *</FormLabel>
-                  <Select
-                    value={field.value || ''}
-                    onValueChange={field.onChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger className={cn(
-                        fieldState.error && "border-red-500 focus:border-red-500"
-                      )}>
-                        <SelectValue placeholder="Selecione a empresa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {empresas
-                        .filter((empresa) => empresa.status === 'ativo')
-                        .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
-                        .map(empresa => (
+              render={({ field, fieldState }) => {
+                // Adicionar "SONDA INTERNO" às empresas
+                const empresasComSondaInterno = [
+                  { 
+                    id: 'sonda-interno', 
+                    nome_completo: 'SONDA INTERNO', 
+                    nome_abreviado: 'SONDA INTERNO',
+                    status: 'ativo'
+                  },
+                  ...empresas.filter((empresa) => empresa.status === 'ativo')
+                ].sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'));
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Empresa *</FormLabel>
+                    <Select
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={cn(
+                          fieldState.error && "border-red-500 focus:border-red-500"
+                        )}>
+                          <SelectValue placeholder="Selecione a empresa" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {empresasComSondaInterno.map(empresa => (
                           <SelectItem key={empresa.id} value={empresa.nome_completo}>
                             {empresa.nome_abreviado}
                           </SelectItem>
                         ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -566,46 +646,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="especialistas_ids"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Consultores</FormLabel>
-                  <FormControl>
-                    <MultiSelectEspecialistas
-                      value={field.value || []}
-                      onValueChange={(newValue) => {
-                        console.log('📝 [PesquisaForm] Mudança no campo especialistas_ids:', newValue);
-                        // Usar setValue com forceUpdate para garantir que a mudança seja persistida
-                        form.setValue('especialistas_ids', newValue, { 
-                          shouldValidate: true,
-                          shouldDirty: true,
-                          shouldTouch: true
-                        });
-                        // Forçar re-render do campo
-                        form.trigger('especialistas_ids');
-                      }}
-                      onConsultoresManuaisChange={(consultores) => {
-                        console.log('📝 [PesquisaForm] Consultores manuais atualizados via callback:', consultores);
-                        setConsultoresManuais(consultores);
-                      }}
-                      initialConsultoresManuais={consultoresManuais}
-                      placeholder="Selecione os consultores..."
-                      className={cn(
-                        fieldState.error && "border-red-500"
-                      )}
-                      // Usar key para forçar re-render quando consultores manuais mudarem
-                      key={`especialistas-${pesquisa?.id || 'novo'}-${consultoresManuais.length}`}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {showSolicitante && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {showSolicitante && (
               <FormField
                 control={form.control}
                 name="solicitante"
@@ -625,8 +666,45 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                   </FormItem>
                 )}
               />
-            </div>
-          )}
+            )}
+          </div>
+
+          <FormField
+            control={form.control}
+            name="especialistas_ids"
+            render={({ field, fieldState }) => (
+              <FormItem>
+                <FormLabel>Consultores</FormLabel>
+                <FormControl>
+                  <MultiSelectEspecialistas
+                    value={field.value || []}
+                    onValueChange={(newValue) => {
+                      console.log('📝 [PesquisaForm] Mudança no campo especialistas_ids:', newValue);
+                      // Usar setValue com forceUpdate para garantir que a mudança seja persistida
+                      form.setValue('especialistas_ids', newValue, { 
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true
+                      });
+                      // Forçar re-render do campo
+                      form.trigger('especialistas_ids');
+                    }}
+                    onConsultoresManuaisChange={(consultores) => {
+                      console.log('📝 [PesquisaForm] Consultores manuais atualizados via callback:', consultores);
+                      setConsultoresManuais(consultores);
+                    }}
+                    initialConsultoresManuais={consultoresManuais}
+                    placeholder="Selecione os consultores..."
+                    className={cn(
+                      fieldState.error && "border-red-500"
+                    )}
+                    // Usar key para forçar re-render quando consultores manuais mudarem
+                    key={`especialistas-${pesquisa?.id || 'novo'}-${consultoresManuais.length}`}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Seção: Categorização */}
@@ -641,31 +719,91 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                 console.log('🎨 [PesquisaForm render categoria] field.value:', field.value);
                 console.log('🎨 [PesquisaForm render categoria] fieldState.error:', fieldState.error);
                 
+                // Estado local para controlar a busca
+                const [searchCategoria, setSearchCategoria] = React.useState('');
+                
+                // Filtrar categorias baseado na busca
+                const categoriasFiltradas = React.useMemo(() => {
+                  if (!searchCategoria.trim()) {
+                    return categorias;
+                  }
+                  
+                  const termoBusca = searchCategoria.toLowerCase().trim();
+                  
+                  return categorias.filter((categoria) => {
+                    const labelLower = categoria.label.toLowerCase();
+                    
+                    // Buscar por palavras completas ou início de palavras
+                    // Divide o label em palavras (separadas por ponto, espaço, etc)
+                    const palavras = labelLower.split(/[.\s]+/);
+                    
+                    // Verifica se alguma palavra começa com o termo buscado
+                    return palavras.some(palavra => palavra.startsWith(termoBusca)) ||
+                           // OU se o termo está no início do label completo
+                           labelLower.startsWith(termoBusca) ||
+                           // OU se o termo aparece após um ponto (início de seção)
+                           labelLower.includes('.' + termoBusca);
+                  });
+                }, [searchCategoria, categorias]);
+                
                 return (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Categoria <span className="text-foreground">*</span></FormLabel>
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={(value) => {
-                        console.log('📝 [PesquisaForm categoria onChange] Novo valor:', value);
-                        field.onChange(value);
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger className={cn(
-                          fieldState.error && "border-red-500 focus:border-red-500"
-                        )}>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categorias.map(categoria => (
-                          <SelectItem key={categoria.value} value={categoria.value}>
-                            {categoria.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground",
+                              fieldState.error && "border-red-500 focus:border-red-500"
+                            )}
+                          >
+                            {field.value
+                              ? categorias.find((categoria) => categoria.value === field.value)?.label
+                              : "Selecione a categoria"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Buscar categoria..." 
+                            value={searchCategoria}
+                            onValueChange={setSearchCategoria}
+                          />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {categoriasFiltradas.map((categoria) => (
+                                <CommandItem
+                                  key={categoria.value}
+                                  value={categoria.value}
+                                  onSelect={() => {
+                                    console.log('📝 [PesquisaForm categoria onChange] Novo valor:', categoria.value);
+                                    field.onChange(categoria.value);
+                                    setSearchCategoria(''); // Limpar busca após seleção
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      categoria.value === field.value
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {categoria.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 );
@@ -676,7 +814,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               control={form.control}
               name="grupo"
               render={({ field, fieldState }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Grupo</FormLabel>
                   {grupos.length === 1 ? (
                     // Quando há apenas um grupo, mostra como campo readonly

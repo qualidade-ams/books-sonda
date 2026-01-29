@@ -2,8 +2,8 @@
  * Página para visualização de todas as pesquisas de satisfação
  */
 
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2, Search, FileText, Clock, CheckCircle, Server, FileEdit } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Eye, X, Filter, Edit, Trash2, Search, FileText, Clock, CheckCircle, Server, FileEdit, Check, ChevronsUpDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,19 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import { PesquisasExportButtons } from '@/components/admin/pesquisas-satisfacao';
@@ -42,6 +55,7 @@ import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especiali
 import { useEspecialistasIdsPesquisa, useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 import type { FiltrosPesquisas } from '@/types/pesquisasSatisfacao';
 import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS, MESES_OPTIONS } from '@/types/pesquisasSatisfacao';
@@ -106,28 +120,56 @@ function VisualizarPesquisas() {
     observacao: '',
     especialistas_ids: [] as string[]
   });
+  
+  // Estado para busca de categoria
+  const [searchCategoria, setSearchCategoria] = useState('');
 
   // Hooks para dados de seleção
   const { empresas } = useEmpresas();
   const { data: categorias = [] } = useCategorias();
   
+  // Filtrar categorias baseado na busca
+  const categoriasFiltradas = useMemo(() => {
+    if (!searchCategoria.trim()) {
+      return categorias;
+    }
+    
+    const termoBusca = searchCategoria.toLowerCase().trim();
+    
+    return categorias.filter((categoria) => {
+      const labelLower = categoria.label.toLowerCase();
+      
+      // Buscar por palavras completas ou início de palavras
+      // Divide o label em palavras (separadas por ponto, espaço, etc)
+      const palavras = labelLower.split(/[.\s]+/);
+      
+      // Verifica se alguma palavra começa com o termo buscado
+      return palavras.some(palavra => palavra.startsWith(termoBusca)) ||
+             // OU se o termo está no início do label completo
+             labelLower.startsWith(termoBusca) ||
+             // OU se o termo aparece após um ponto (início de seção)
+             labelLower.includes('.' + termoBusca);
+    });
+  }, [searchCategoria, categorias]);
+  
   // Observar mudanças na categoria selecionada para buscar grupos
   const { data: grupos = [] } = useGruposPorCategoria(dadosEdicao.categoria);
 
-  // Buscar especialistas relacionados à pesquisa (para edição)
-  const especialistasIdsRelacionados = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
+  // Buscar especialistas relacionados à pesquisa (para edição) - RETORNA { ids, isLoading }
+  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
   
   console.log('🔍 [VisualizarPesquisas] === DADOS DE ESPECIALISTAS ===');
   console.log('🔍 [VisualizarPesquisas] Pesquisa Editando:', pesquisaEditando?.id);
   console.log('🔍 [VisualizarPesquisas] Prestador:', pesquisaEditando?.prestador);
   console.log('🔍 [VisualizarPesquisas] IDs Relacionados (do banco):', especialistasIdsRelacionados);
   console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Relacionados:', especialistasIdsRelacionados.length);
+  console.log('🔍 [VisualizarPesquisas] Loading Relacionados:', loadingRelacionados);
   
   // Buscar especialistas para visualização
   const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
   
   // Correlação automática baseada no campo prestador - CORRIGIDO
-  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+  const { data: especialistasIdsCorrelacionados = [], isLoading: loadingCorrelacao } = useCorrelacaoMultiplosEspecialistas(
     pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0 
       ? pesquisaEditando.prestador 
       : undefined
@@ -135,6 +177,7 @@ function VisualizarPesquisas() {
   
   console.log('🔍 [VisualizarPesquisas] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
   console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
+  console.log('🔍 [VisualizarPesquisas] Loading Correlação:', loadingCorrelacao);
   console.log('🔍 [VisualizarPesquisas] Condição para correlação:', {
     temPrestador: !!pesquisaEditando?.prestador,
     prestador: pesquisaEditando?.prestador,
@@ -154,6 +197,7 @@ function VisualizarPesquisas() {
   console.log('🔍 [VisualizarPesquisas] === FIM DADOS DE ESPECIALISTAS ===');
   
   const especialistasIds = especialistasIdsUnicos;
+  const especialistasLoading = loadingRelacionados || loadingCorrelacao;
 
   // Queries - usando hook que traz TODAS as pesquisas sem filtros automáticos
   const { data: pesquisas = [], isLoading, refetch } = useTodasPesquisasSatisfacao(filtros);
@@ -192,20 +236,23 @@ function VisualizarPesquisas() {
     }
   }, [dadosEdicao.categoria, grupos]);
 
-  // Preencher especialistas quando pesquisa for carregada
+  // Preencher especialistas quando pesquisa for carregada - AGUARDAR LOADING
   useEffect(() => {
     console.log('🔄 [VisualizarPesquisas useEffect] === EXECUÇÃO ===');
     console.log('🔄 [VisualizarPesquisas useEffect] pesquisaEditando:', pesquisaEditando?.id);
     console.log('🔄 [VisualizarPesquisas useEffect] especialistasIds:', especialistasIds);
+    console.log('🔄 [VisualizarPesquisas useEffect] especialistasLoading:', especialistasLoading);
     console.log('🔄 [VisualizarPesquisas useEffect] dadosEdicao.especialistas_ids atual:', dadosEdicao.especialistas_ids);
     
-    if (pesquisaEditando) {
-      // SEMPRE atualizar, mesmo se especialistasIds estiver vazio
-      // Isso garante que o campo seja limpo se não houver especialistas
-      console.log('✅ [VisualizarPesquisas useEffect] Atualizando especialistas_ids para:', especialistasIds);
-      setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
+    if (pesquisaEditando && !especialistasLoading) {
+      console.log('✅ [VisualizarPesquisas useEffect] Dados carregados! Atualizando especialistas_ids para:', especialistasIds);
+      
+      // Aguardar um pouco para garantir que o DOM está estável
+      setTimeout(() => {
+        setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
+      }, 100);
     }
-  }, [pesquisaEditando?.id, especialistasIds.length]); // Usar apenas ID e length para evitar loops
+  }, [pesquisaEditando?.id, especialistasIds.length, especialistasLoading]); // Incluir especialistasLoading nas dependências
 
   const handleVisualizarDetalhes = (pesquisa: any) => {
     setPesquisaSelecionada(pesquisa);
@@ -392,6 +439,8 @@ function VisualizarPesquisas() {
                 enviados: 0,
                 sql_server: 0,
                 manuais: 0,
+                sem_resposta: 0,
+                pendentes_lancamento: 0,
                 por_empresa: {},
                 por_categoria: {},
                 por_mes: {}
@@ -403,7 +452,7 @@ function VisualizarPesquisas() {
 
         {/* Cards de Estatísticas */}
         {estatisticas && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -417,10 +466,20 @@ function VisualizarPesquisas() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  <p className="text-xs font-medium text-orange-500">Pendentes</p>
+                  <X className="h-4 w-4 text-red-500" />
+                  <p className="text-xs font-medium text-red-500">Sem Resposta</p>
                 </div>
-                <p className="text-2xl font-bold text-orange-600">{estatisticas.pendentes}</p>
+                <p className="text-2xl font-bold text-red-600">{estatisticas.sem_resposta}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  <p className="text-xs font-medium text-orange-500">Pendentes (Lançamento)</p>
+                </div>
+                <p className="text-2xl font-bold text-orange-600">{estatisticas.pendentes_lancamento}</p>
               </CardContent>
             </Card>
 
@@ -685,6 +744,9 @@ function VisualizarPesquisas() {
                         className="bg-gray-50 text-gray-900"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
                       <Input
@@ -694,20 +756,6 @@ function VisualizarPesquisas() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
-                      <Input
-                        value={especialistasVisualizacao.length > 0 
-                          ? especialistasVisualizacao.map(e => e.nome).join(', ')
-                          : pesquisaSelecionada.prestador || 'Nenhum consultor relacionado'
-                        }
-                        disabled
-                        className="bg-gray-50 text-gray-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
                       <Input
                         value={pesquisaSelecionada.solicitante || ''}
@@ -715,6 +763,18 @@ function VisualizarPesquisas() {
                         className="bg-gray-50 text-gray-900"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
+                    <Input
+                      value={especialistasVisualizacao.length > 0 
+                        ? especialistasVisualizacao.map(e => e.nome).join(', ')
+                        : pesquisaSelecionada.prestador || 'Nenhum consultor relacionado'
+                      }
+                      disabled
+                      className="bg-gray-50 text-gray-900"
+                    />
                   </div>
                 </div>
 
@@ -938,6 +998,9 @@ function VisualizarPesquisas() {
                         placeholder="Nome do cliente"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
                       <Input 
@@ -949,18 +1012,6 @@ function VisualizarPesquisas() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
-                      <MultiSelectEspecialistas
-                        value={dadosEdicao.especialistas_ids}
-                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, especialistas_ids: value }))}
-                        placeholder="Selecione os consultores..."
-                        className="focus:ring-sonda-blue focus:border-sonda-blue"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
                       <Input 
                         value={dadosEdicao.solicitante}
@@ -969,6 +1020,16 @@ function VisualizarPesquisas() {
                         placeholder="Nome do solicitante"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Consultores</label>
+                    <MultiSelectEspecialistas
+                      value={dadosEdicao.especialistas_ids}
+                      onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, especialistas_ids: value }))}
+                      placeholder="Selecione os consultores..."
+                      className="focus:ring-sonda-blue focus:border-sonda-blue"
+                    />
                   </div>
                 </div>
 
@@ -980,21 +1041,54 @@ function VisualizarPesquisas() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Categoria <span className="text-black">*</span>
                       </label>
-                      <Select 
-                        value={dadosEdicao.categoria} 
-                        onValueChange={(value) => setDadosEdicao(prev => ({ ...prev, categoria: value, grupo: '' }))}
-                      >
-                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categorias.map(categoria => (
-                            <SelectItem key={categoria.value} value={categoria.value}>
-                              {categoria.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between text-left font-normal"
+                          >
+                            {dadosEdicao.categoria
+                              ? categorias.find((cat) => cat.value === dadosEdicao.categoria)?.label
+                              : "Selecione a categoria"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput 
+                              placeholder="Buscar categoria..." 
+                              value={searchCategoria}
+                              onValueChange={setSearchCategoria}
+                            />
+                            <CommandList>
+                              <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                              <CommandGroup>
+                                {categoriasFiltradas.map((categoria) => (
+                                  <CommandItem
+                                    key={categoria.value}
+                                    value={categoria.value}
+                                    onSelect={() => {
+                                      setDadosEdicao(prev => ({ ...prev, categoria: categoria.value, grupo: '' }));
+                                      setSearchCategoria('');
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        categoria.value === dadosEdicao.categoria
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {categoria.label}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
