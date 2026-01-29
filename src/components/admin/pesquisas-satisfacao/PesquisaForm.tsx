@@ -72,7 +72,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
     defaultValues: {
       empresa: '',
       cliente: '',
-      categoria: '', // Mudado de undefined para string vazia
+      categoria: '', // String vazia para garantir que o campo seja controlado
       grupo: undefined,
       email_cliente: '',
       prestador: '',
@@ -141,6 +141,13 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
   // Preencher formulário ao editar (sem especialistas)
   useEffect(() => {
+    console.log('🔄 [PesquisaForm useEffect reset] === EXECUÇÃO ===');
+    console.log('🔄 [PesquisaForm useEffect reset] pesquisa:', pesquisa?.id);
+    console.log('🔄 [PesquisaForm useEffect reset] empresas.length:', empresas.length);
+    console.log('🔄 [PesquisaForm useEffect reset] form.formState.isDirty:', form.formState.isDirty);
+    console.log('🔄 [PesquisaForm useEffect reset] pesquisa.categoria:', pesquisa?.categoria);
+    console.log('🔄 [PesquisaForm useEffect reset] pesquisa.grupo:', pesquisa?.grupo);
+    
     if (pesquisa && empresas.length > 0 && !form.formState.isDirty) {
       // Tentar encontrar a empresa pelo nome completo ou abreviado
       const empresaEncontrada = empresas.find(
@@ -150,10 +157,10 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
       // Usar o nome_completo se encontrou, senão usar o valor original
       const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
       
-      form.reset({
+      const dadosReset = {
         empresa: empresaValue || '',
         cliente: pesquisa.cliente,
-        categoria: pesquisa.categoria || undefined,
+        categoria: pesquisa.categoria || '',  // Mudado de undefined para string vazia
         grupo: pesquisa.grupo || undefined,
         email_cliente: pesquisa.email_cliente || '',
         prestador: pesquisa.prestador || '',
@@ -167,7 +174,17 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
         empresa_id: pesquisa.empresa_id || undefined,
         cliente_id: pesquisa.cliente_id || undefined,
         especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
-      });
+      };
+      
+      console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
+      console.log('✅ [PesquisaForm useEffect reset] Categoria no reset:', dadosReset.categoria);
+      
+      form.reset(dadosReset);
+      
+      console.log('✅ [PesquisaForm useEffect reset] Reset executado');
+      console.log('✅ [PesquisaForm useEffect reset] Valor da categoria após reset:', form.getValues('categoria'));
+    } else {
+      console.log('⚠️ [PesquisaForm useEffect reset] Condições não atendidas, pulando reset');
     }
   }, [pesquisa, form, empresas]);
 
@@ -620,31 +637,39 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             <FormField
               control={form.control}
               name="categoria"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Categoria <span className="text-foreground">*</span></FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger className={cn(
-                        fieldState.error && "border-red-500 focus:border-red-500"
-                      )}>
-                        <SelectValue placeholder="Selecione a categoria" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categorias.map(categoria => (
-                        <SelectItem key={categoria.value} value={categoria.value}>
-                          {categoria.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field, fieldState }) => {
+                console.log('🎨 [PesquisaForm render categoria] field.value:', field.value);
+                console.log('🎨 [PesquisaForm render categoria] fieldState.error:', fieldState.error);
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Categoria <span className="text-foreground">*</span></FormLabel>
+                    <Select
+                      value={field.value || ''}
+                      onValueChange={(value) => {
+                        console.log('📝 [PesquisaForm categoria onChange] Novo valor:', value);
+                        field.onChange(value);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={cn(
+                          fieldState.error && "border-red-500 focus:border-red-500"
+                        )}>
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categorias.map(categoria => (
+                          <SelectItem key={categoria.value} value={categoria.value}>
+                            {categoria.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
