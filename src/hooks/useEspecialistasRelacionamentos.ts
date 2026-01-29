@@ -219,14 +219,17 @@ export function useSalvarEspecialistasElogio() {
 /**
  * Hook para buscar IDs dos especialistas de uma pesquisa (para formulários)
  * Inclui correlação automática com o campo prestador se não houver relacionamentos salvos
+ * 
+ * RETORNA: { ids: string[], isLoading: boolean }
  */
 export function useEspecialistasIdsPesquisa(pesquisaId: string | undefined, prestador?: string) {
-  const { data: especialistas = [] } = useEspecialistasPesquisa(pesquisaId);
+  const { data: especialistas = [], isLoading } = useEspecialistasPesquisa(pesquisaId);
   
   console.log('🔍 [useEspecialistasIdsPesquisa] === INÍCIO ===');
   console.log('🔍 [useEspecialistasIdsPesquisa] Pesquisa ID:', pesquisaId);
   console.log('🔍 [useEspecialistasIdsPesquisa] Especialistas recebidos do hook:', especialistas);
   console.log('🔍 [useEspecialistasIdsPesquisa] Quantidade de especialistas:', especialistas.length);
+  console.log('🔍 [useEspecialistasIdsPesquisa] isLoading:', isLoading);
   console.log('🔍 [useEspecialistasIdsPesquisa] Prestador:', prestador);
   
   // Se já tem especialistas relacionados, usar eles
@@ -239,7 +242,7 @@ export function useEspecialistasIdsPesquisa(pesquisaId: string | undefined, pres
       temDuplicacao: ids.length !== new Set(ids).size
     });
     console.log('🔍 [useEspecialistasIdsPesquisa] === FIM (COM ESPECIALISTAS) ===');
-    return ids;
+    return { ids, isLoading };
   }
   
   // Se não tem relacionamentos mas tem prestador, tentar correlação automática
@@ -253,7 +256,7 @@ export function useEspecialistasIdsPesquisa(pesquisaId: string | undefined, pres
   
   console.log('❌ [useEspecialistasIdsPesquisa] Nenhum especialista encontrado, retornando array vazio');
   console.log('🔍 [useEspecialistasIdsPesquisa] === FIM (SEM ESPECIALISTAS) ===');
-  return [];
+  return { ids: [], isLoading };
 }
 
 /**

@@ -57,7 +57,14 @@ export async function buscarTodasPesquisas(filtros?: FiltrosPesquisas): Promise<
 
       if (filtros.resposta && filtros.resposta !== 'todas') {
         console.log('💬 Aplicando filtro de resposta:', filtros.resposta);
-        query = query.eq('resposta', filtros.resposta);
+        
+        // Tratar filtro "sem_resposta" para buscar registros com resposta null, vazia ou "-"
+        if (filtros.resposta === 'sem_resposta') {
+          console.log('🔍 Filtrando pesquisas SEM resposta (null, vazio ou "-")');
+          query = query.or('resposta.is.null,resposta.eq.,resposta.eq.-');
+        } else {
+          query = query.eq('resposta', filtros.resposta);
+        }
       }
 
       if (filtros.empresa) {
@@ -214,6 +221,9 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
       'comentario_pesquisa.not.is.null,' + // Tem comentário OU
       'and(comentario_pesquisa.is.null,resposta.not.in.(Muito Satisfeito,Satisfeito,Neutro))' // Sem comentário mas resposta negativa
     );
+    
+    // Filtro adicional: Excluir pesquisas já enviadas para Plano de Ação ou Elogios
+    query = query.not('status', 'in', '(enviado_plano_acao,enviado_elogios)');
 
     // Aplicar filtros
     if (filtros) {
@@ -586,6 +596,9 @@ export async function excluirPesquisasEmLote(ids: string[]): Promise<void> {
  */
 export async function obterTodasEstatisticas(filtros?: FiltrosPesquisas): Promise<EstatisticasPesquisas> {
   const pesquisas = await buscarTodasPesquisas(filtros);
+  
+  // Buscar pesquisas pendentes da tela Lançar Pesquisas (COM filtro automático)
+  const pesquisasPendentesLancamento = await buscarPesquisas();
 
   const estatisticas: EstatisticasPesquisas = {
     total: pesquisas.length,
@@ -593,6 +606,8 @@ export async function obterTodasEstatisticas(filtros?: FiltrosPesquisas): Promis
     enviados: pesquisas.filter(e => e.status === 'enviado_plano_acao' || e.status === 'enviado_elogios').length,
     sql_server: pesquisas.filter(e => e.origem === 'sql_server').length,
     manuais: pesquisas.filter(e => e.origem === 'manual').length,
+    sem_resposta: pesquisas.filter(e => !e.data_resposta).length, // Pesquisas sem data de resposta
+    pendentes_lancamento: pesquisasPendentesLancamento.length, // Pesquisas pendentes da tela Lançar Pesquisas
     por_empresa: {},
     por_categoria: {},
     por_mes: {}
@@ -626,6 +641,9 @@ export async function obterTodasEstatisticas(filtros?: FiltrosPesquisas): Promis
  */
 export async function obterEstatisticas(filtros?: FiltrosPesquisas): Promise<EstatisticasPesquisas> {
   const pesquisas = await buscarPesquisas(filtros);
+  
+  // Buscar todas as pesquisas para calcular "sem_resposta" e "pendentes_lancamento"
+  const todasPesquisas = await buscarTodasPesquisas();
 
   const estatisticas: EstatisticasPesquisas = {
     total: pesquisas.length,
@@ -633,6 +651,8 @@ export async function obterEstatisticas(filtros?: FiltrosPesquisas): Promise<Est
     enviados: pesquisas.filter(e => e.status === 'enviado').length,
     sql_server: pesquisas.filter(e => e.origem === 'sql_server').length,
     manuais: pesquisas.filter(e => e.origem === 'manual').length,
+    sem_resposta: todasPesquisas.filter(e => !e.data_resposta).length, // Pesquisas sem data de resposta
+    pendentes_lancamento: pesquisas.length, // Pesquisas pendentes da tela Lançar Pesquisas (já filtradas)
     por_empresa: {},
     por_categoria: {},
     por_mes: {}

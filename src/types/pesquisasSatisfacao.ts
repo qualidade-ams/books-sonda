@@ -124,6 +124,8 @@ export interface EstatisticasPesquisas {
   enviados: number;
   sql_server: number;
   manuais: number;
+  sem_resposta: number; // Pesquisas sem data de resposta
+  pendentes_lancamento: number; // Pesquisas pendentes da tela Lançar Pesquisas (com filtro automático)
   por_empresa: Record<string, number>;
   por_categoria: Record<string, number>;
   por_mes: Record<string, number>;
@@ -183,6 +185,7 @@ export const STATUS_PESQUISA_OPTIONS = [
 
 export const RESPOSTA_PESQUISA_OPTIONS = [
   { value: 'todas', label: 'Todas as Respostas' },
+  { value: 'sem_resposta', label: 'Sem Resposta' },
   { value: 'Muito Insatisfeito', label: 'Muito Insatisfeito' },
   { value: 'Insatisfeito', label: 'Insatisfeito' },
   { value: 'Neutro', label: 'Neutro' },
