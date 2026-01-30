@@ -921,6 +921,8 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           console.log(`  Tipo_Caso: ${registro.Tipo_Caso?.length || 0} chars`);
           console.log(`  Resposta: ${registro.Resposta?.length || 0} chars`);
           console.log(`  Comentario_Pesquisa: ${registro.Comentario_Pesquisa?.length || 0} chars`);
+          console.log(`  Ano_Abertura (raw): "${registro.Ano_Abertura}" (tipo: ${typeof registro.Ano_Abertura})`);
+          console.log(`  Mes_abertura (raw): "${registro.Mes_abertura}" (tipo: ${typeof registro.Mes_abertura})`);
         }
 
         // Usar apenas 'pendente' por enquanto até descobrir os valores aceitos no enum
@@ -953,6 +955,21 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           status: statusPesquisa
         };
 
+        // Validar valores numéricos antes de inserir
+        if (dadosPesquisa.ano_abertura !== null) {
+          if (isNaN(dadosPesquisa.ano_abertura) || dadosPesquisa.ano_abertura < 2000 || dadosPesquisa.ano_abertura > 2100) {
+            console.error(`❌ [VALIDAÇÃO] Registro ${i + 1} - ano_abertura inválido: ${registro.Ano_Abertura} (convertido: ${dadosPesquisa.ano_abertura})`);
+            throw new Error(`ano_abertura inválido: ${registro.Ano_Abertura}`);
+          }
+        }
+        
+        if (dadosPesquisa.mes_abertura !== null) {
+          if (isNaN(dadosPesquisa.mes_abertura) || dadosPesquisa.mes_abertura < 1 || dadosPesquisa.mes_abertura > 12) {
+            console.error(`❌ [VALIDAÇÃO] Registro ${i + 1} - mes_abertura inválido: ${registro.Mes_abertura} (convertido: ${dadosPesquisa.mes_abertura})`);
+            throw new Error(`mes_abertura inválido: ${registro.Mes_abertura}`);
+          }
+        }
+
         // Log da transformação se aplicada
         if (transformacao.foiTransformado) {
           console.log(`🔄 [SYNC] Registro ${i + 1} - ${transformacao.motivoTransformacao}`);
@@ -982,14 +999,33 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
       } catch (erro) {
         console.error(`Erro no registro ${i + 1}:`, erro);
         resultado.erros++;
-        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
+        
+        // Capturar detalhes completos do erro
+        let erroMsg = 'Erro desconhecido';
+        let erroDetalhes = {};
+        
+        if (erro instanceof Error) {
+          erroMsg = erro.message;
+          erroDetalhes = {
+            message: erro.message,
+            stack: erro.stack,
+            name: erro.name
+          };
+        } else if (typeof erro === 'object' && erro !== null) {
+          erroMsg = JSON.stringify(erro);
+          erroDetalhes = erro;
+        }
+        
+        console.error(`🔍 Detalhes completos do erro:`, erroDetalhes);
+        
         resultado.detalhes_erros.push({
           registro: {
             Empresa: registro.Empresa,
             Cliente: registro.Cliente,
             Nro_Caso: registro.Nro_Caso
           },
-          erro: erroMsg
+          erro: erroMsg,
+          detalhes: erroDetalhes
         });
         
         // Se houver muitos erros, parar
@@ -1475,7 +1511,7 @@ app.get('/api/test-connection-apontamentos', async (req, res) => {
     const result = await pool.request().query(`
       SELECT TOP 1 * 
       FROM AMSapontamento 
-      WHERE Data_Abertura >= '2026-01-01 00:00:00'
+      WHERE Data_Abertura >= '2025-08-01 00:00:00'
     `);
     
     await pool.close();
@@ -1540,7 +1576,7 @@ app.post('/api/sync-apontamentos', async (req, res) => {
 });
 
 /**
- * Sincronização completa de apontamentos (todos os registros desde 01/01/2026)
+ * Sincronização completa de apontamentos (todos os registros desde 01/08/2025)
  */
 app.post('/api/sync-apontamentos-full', async (req, res) => {
   await sincronizarApontamentos(req, res, true);
@@ -1561,7 +1597,7 @@ app.get('/api/test-connection-tickets', async (req, res) => {
     const result = await pool.request().query(`
       SELECT TOP 1 * 
       FROM AMSticketsabertos 
-      WHERE Data_Abertura >= '2026-01-01 00:00:00'
+      WHERE Data_Abertura >= '2025-08-01 00:00:00'
     `);
     
     await pool.close();
@@ -1626,7 +1662,7 @@ app.post('/api/sync-tickets', async (req, res) => {
 });
 
 /**
- * Sincronização completa de tickets (todos os registros desde 01/01/2026)
+ * Sincronização completa de tickets (todos os registros desde 01/08/2025)
  */
 app.post('/api/sync-tickets-full', async (req, res) => {
   await sincronizarTickets(req, res, true);
@@ -1660,8 +1696,8 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
     let ultimaDataSincronizacao: Date | null = null;
 
     if (sincronizacaoCompleta) {
-      // Sincronização completa - buscar todos os registros desde 01/01/2026 (limitado a 500 por vez)
-      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (desde 01/01/2026)');
+      // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 500 por vez)
+      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (desde 01/08/2025)');
       resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
       
       query = `
@@ -1696,7 +1732,7 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           Cod_Resolucao,
           LOG
         FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2025-08-01 00:00:00'
         ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
       `;
     } else {
@@ -1715,7 +1751,7 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
 
       ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
         ? new Date(ultimoRegistro.data_abertura)
-        : new Date('2026-01-01T00:00:00.000Z'); // Data inicial: 01/01/2026
+        : new Date('2025-08-01T00:00:00.000Z'); // Data inicial: 01/08/2025
 
       console.log('📅 [APONTAMENTOS] Última sincronização:', ultimaDataSincronizacao.toISOString());
       resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
@@ -1752,7 +1788,7 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           Cod_Resolucao,
           LOG
         FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2025-08-01 00:00:00'
           AND [Data_Abertura (Date-Hour-Minute-Second)] > @ultimaData
         ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
       `;
@@ -1981,8 +2017,8 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
     let ultimaDataSincronizacao: Date | null = null;
 
     if (sincronizacaoCompleta) {
-      // Sincronização completa - buscar todos os registros desde 01/01/2026 (limitado a 500 por vez)
-      console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 01/01/2026)');
+      // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 500 por vez)
+      console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 01/08/2025)');
       resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
       
       query = `
@@ -2041,7 +2077,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           tempo_real_tda as Tempo_Real_TDA,
           [Total Orçamento (em decimais)] as Total_Orcamento
         FROM AMSticketsabertos
-        WHERE Data_Abertura >= '2026-01-01 00:00:00'
+        WHERE Data_Abertura >= '2025-08-01 00:00:00'
         ORDER BY Data_Abertura ASC
       `;
     } else {
@@ -2059,7 +2095,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
 
       ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
         ? new Date(ultimoRegistro.data_abertura)
-        : new Date('2026-01-01T00:00:00.000Z'); // Data inicial: 01/01/2026
+        : new Date('2025-08-01T00:00:00.000Z'); // Data inicial: 01/08/2025
 
       console.log('📅 [TICKETS] Última sincronização:', ultimaDataSincronizacao.toISOString());
       resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
@@ -2120,7 +2156,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           tempo_real_tda as Tempo_Real_TDA,
           [Total Orçamento (em decimais)] as Total_Orcamento
         FROM AMSticketsabertos
-        WHERE Data_Abertura >= '2026-01-01 00:00:00'
+        WHERE Data_Abertura >= '2025-08-01 00:00:00'
           AND Data_Abertura > @ultimaData
         ORDER BY Data_Abertura ASC
       `;
@@ -2279,12 +2315,31 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
       } catch (erro) {
         console.error(`💥 [TICKETS] Erro no registro ${i + 1}:`, erro);
         resultado.erros++;
-        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
+        
+        // Capturar detalhes completos do erro
+        let erroMsg = 'Erro desconhecido';
+        let erroDetalhes = {};
+        
+        if (erro instanceof Error) {
+          erroMsg = erro.message;
+          erroDetalhes = {
+            message: erro.message,
+            stack: erro.stack,
+            name: erro.name
+          };
+        } else if (typeof erro === 'object' && erro !== null) {
+          erroMsg = JSON.stringify(erro);
+          erroDetalhes = erro;
+        }
+        
+        console.error(`🔍 [TICKETS] Detalhes completos do erro:`, erroDetalhes);
+        
         resultado.detalhes_erros.push({
           registro: {
             Nro_Solicitacao: registro.Nro_Solicitacao
           },
-          erro: erroMsg
+          erro: erroMsg,
+          detalhes: erroDetalhes
         });
         
         // Se houver muitos erros, parar
