@@ -24,6 +24,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -63,6 +73,10 @@ function CadastroTaxasClientes() {
   const [tipoProdutoTaxaPadrao, setTipoProdutoTaxaPadrao] = useState<'GALLERY' | 'OUTROS'>('GALLERY');
   const [colunaOrdenacao, setColunaOrdenacao] = useState<OrdenacaoColuna>('cliente');
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc');
+  
+  // Estados para modal de exclusão
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taxaParaExcluir, setTaxaParaExcluir] = useState<TaxaClienteCompleta | null>(null);
   
   // Estado para dados iniciais ao criar taxa a partir da aba "Clientes Sem Taxa"
   const [dadosIniciaisTaxa, setDadosIniciaisTaxa] = useState<{
@@ -125,47 +139,44 @@ function CadastroTaxasClientes() {
     setModalVisualizarAberto(true);
   };
 
-  const handleDeletarTaxa = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta taxa?')) {
-      try {
-        console.log('🗑️ [HANDLE DELETE] Iniciando deleção da taxa ID:', id);
-        
-        // Mostrar loading state
-        const loadingToast = toast.loading('Deletando taxa...');
-        
-        await deletarTaxa.mutateAsync(id);
-        
-        console.log('✅ [HANDLE DELETE] Taxa deletada com sucesso via mutation');
-        
-        // Remover toast de loading
-        toast.dismiss(loadingToast);
-        
-        // Invalidar cache e forçar refetch
-        console.log('🔄 [HANDLE DELETE] Invalidando cache e forçando refetch...');
-        
-        // Aguardar um pouco para garantir que a deleção foi processada no servidor
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Forçar refetch imediato
-        await refetch();
-        
-        console.log('✅ [HANDLE DELETE] Cache invalidado e dados recarregados');
-        
-      } catch (error) {
-        console.error('❌ [HANDLE DELETE] Erro ao deletar taxa:', error);
-        
-        // Mostrar erro detalhado
-        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-        console.error('❌ [HANDLE DELETE] Mensagem de erro:', errorMessage);
-        
-        toast.error(`Erro ao deletar taxa: ${errorMessage}`);
-        
-        // Se o erro mencionar RLS, dar dica específica
-        if (errorMessage.includes('RLS') || errorMessage.includes('permiss')) {
-          toast.error('Possível problema de permissões. Verifique se você tem acesso para deletar esta taxa.', {
-            duration: 5000
-          });
-        }
+  const handleDeletarTaxa = (taxa: TaxaClienteCompleta) => {
+    setTaxaParaExcluir(taxa);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!taxaParaExcluir) return;
+    
+    try {
+      console.log('🗑️ [HANDLE DELETE] Iniciando deleção da taxa ID:', taxaParaExcluir.id);
+      
+      await deletarTaxa.mutateAsync(taxaParaExcluir.id);
+      
+      console.log('✅ [HANDLE DELETE] Taxa deletada com sucesso via mutation');
+      
+      setShowDeleteModal(false);
+      setTaxaParaExcluir(null);
+      
+      // Aguardar um pouco para garantir que a deleção foi processada no servidor
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Forçar refetch imediato
+      await refetch();
+      
+      console.log('✅ [HANDLE DELETE] Cache invalidado e dados recarregados');
+      
+    } catch (error) {
+      console.error('❌ [HANDLE DELETE] Erro ao deletar taxa:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('❌ [HANDLE DELETE] Mensagem de erro:', errorMessage);
+      
+      toast.error(`Erro ao deletar taxa: ${errorMessage}`);
+      
+      if (errorMessage.includes('RLS') || errorMessage.includes('permiss')) {
+        toast.error('Possível problema de permissões. Verifique se você tem acesso para deletar esta taxa.', {
+          duration: 5000
+        });
       }
     }
   };
@@ -1345,7 +1356,7 @@ function CadastroTaxasClientes() {
                                 variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                onClick={() => handleDeletarTaxa(taxa.id)}
+                                onClick={() => handleDeletarTaxa(taxa)}
                                 title="Excluir"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1736,7 +1747,8 @@ function CadastroTaxasClientes() {
                 {/* Informações Gerais */}
                 <Card className="bg-gray-50">
                   <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      {/* Todos os campos em uma única linha */}
                       <div>
                         <p className="text-sm font-medium text-gray-500">Cliente</p>
                         <p className="text-lg font-semibold text-gray-900">{taxaVisualizando.cliente?.nome_completo}</p>
@@ -1752,20 +1764,6 @@ function CadastroTaxasClientes() {
                         >
                           {tipoProdutoTexto}
                         </Badge>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Vigência Início</p>
-                        <p className="text-lg text-gray-900">
-                          {format(new Date(taxaVisualizando.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Vigência Fim</p>
-                        <p className="text-lg text-gray-900">
-                          {taxaVisualizando.vigencia_fim 
-                            ? format(new Date(taxaVisualizando.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
-                            : 'Indefinida'}
-                        </p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-2">Tipo de Taxa</p>
@@ -1784,6 +1782,20 @@ function CadastroTaxasClientes() {
                             : (taxaVisualizando.cliente?.tem_ams === false ? 'Padrão' : 'Automática')
                           }
                         </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Vigência Início</p>
+                        <p className="text-lg text-gray-900">
+                          {format(new Date(taxaVisualizando.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Vigência Fim</p>
+                        <p className="text-lg text-gray-900">
+                          {taxaVisualizando.vigencia_fim 
+                            ? format(new Date(taxaVisualizando.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Indefinida'}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -2026,6 +2038,29 @@ function CadastroTaxasClientes() {
             </Tabs>
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Confirmação de Exclusão */}
+        <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a taxa do cliente "{taxaParaExcluir?.cliente?.nome_abreviado}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                disabled={deletarTaxa.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deletarTaxa.isPending ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </LayoutAdmin>
   );
