@@ -441,12 +441,12 @@ function CadastroTaxasClientes() {
       // Verificar COMEX/FISCAL (agrupados) - apenas se o cliente TEM estes produtos
       if (temComexOuFiscal) {
         // Buscar taxas que servem para COMEX/FISCAL
-        // Aceitar: 'COMEX, FISCAL' (formato novo) ou 'OUTROS' (formato legado)
+        // COMEX e FISCAL são armazenados como 'OUTROS' no banco de dados
         const taxasComex = taxas.filter(taxa => {
           if (taxa.cliente_id !== empresa.id) return false;
           
-          // Aceitar taxas com tipo_produto 'COMEX, FISCAL' ou 'OUTROS'
-          if (taxa.tipo_produto === 'COMEX, FISCAL' || taxa.tipo_produto === 'OUTROS') {
+          // Aceitar taxas com tipo_produto 'OUTROS' (que serve para COMEX/FISCAL)
+          if (taxa.tipo_produto === 'OUTROS') {
             return true;
           }
           
@@ -616,18 +616,18 @@ function CadastroTaxasClientes() {
       });
 
       // ✅ NOVO: Aba 3 - Clientes Sem Taxa
-      const dadosClientesSemTaxa = clientesSemTaxaFiltrados.map(cliente => ({
-        'Cliente': cliente.nome_abreviado,
-        'Nome Completo': cliente.nome_completo,
+      const dadosClientesSemTaxa = clientesSemTaxaFiltrados.map(item => ({
+        'Cliente': item.empresa.nome_abreviado,
+        'Nome Completo': item.empresa.nome_completo,
         // ✅ CORREÇÃO: Extrair o nome do produto do objeto
-        'Produtos': Array.isArray(cliente.produtos) 
-          ? cliente.produtos.map((p: any) => p.produto || p).join(', ')
+        'Produtos': Array.isArray(item.empresa.produtos) 
+          ? item.empresa.produtos.map((p: any) => p.produto || p).join(', ')
           : '-',
-        'Status': cliente.status === 'ativo' ? 'Ativo' : cliente.status === 'inativo' ? 'Inativo' : 'Suspenso',
-        'Tem AMS': cliente.tem_ams ? 'Sim' : 'Não',
-        'Email Gestor': cliente.email_gestor || '-',
-        'Vigência Inicial': cliente.vigencia_inicial ? format(new Date(cliente.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
-        'Vigência Final': cliente.vigencia_final ? format(new Date(cliente.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-'
+        'Status': item.empresa.status === 'ativo' ? 'Ativo' : item.empresa.status === 'inativo' ? 'Inativo' : 'Suspenso',
+        'Tem AMS': item.empresa.tem_ams ? 'Sim' : 'Não',
+        'Email Gestor': item.empresa.email_gestor || '-',
+        'Vigência Inicial': item.empresa.vigencia_inicial ? format(new Date(item.empresa.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+        'Vigência Final': item.empresa.vigencia_final ? format(new Date(item.empresa.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-'
       }));
 
       // Criar workbook com três abas
@@ -908,7 +908,7 @@ function CadastroTaxasClientes() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         
-        clientesSemTaxaFiltrados.forEach((cliente, index) => {
+        clientesSemTaxaFiltrados.forEach((item, index) => {
           if (yPos > pageHeight - 15) {
             doc.addPage();
             yPos = 15;
@@ -920,22 +920,22 @@ function CadastroTaxasClientes() {
           doc.rect(margin, yPos, pageWidth - 2 * margin, lineHeightClientes, 'F');
 
           // Truncar nome do cliente se for muito longo
-          const nomeCliente = cliente.nome_abreviado.length > 25 
-            ? cliente.nome_abreviado.substring(0, 22) + '...' 
-            : cliente.nome_abreviado;
+          const nomeCliente = item.empresa.nome_abreviado.length > 25 
+            ? item.empresa.nome_abreviado.substring(0, 22) + '...' 
+            : item.empresa.nome_abreviado;
           
           doc.text(nomeCliente, margin + 2, yPos + 4.5);
           // ✅ CORREÇÃO: Extrair o nome do produto do objeto
-          const produtosTexto = Array.isArray(cliente.produtos) 
-            ? cliente.produtos.map((p: any) => p.produto || p).join(', ')
+          const produtosTexto = Array.isArray(item.empresa.produtos) 
+            ? item.empresa.produtos.map((p: any) => p.produto || p).join(', ')
             : '-';
           doc.text(produtosTexto, margin + colWidthsClientes[0] + 2, yPos + 4.5);
           
           // Status com cor
-          const statusTexto = cliente.status === 'ativo' ? 'Ativo' : cliente.status === 'inativo' ? 'Inativo' : 'Suspenso';
-          if (cliente.status === 'ativo') {
+          const statusTexto = item.empresa.status === 'ativo' ? 'Ativo' : item.empresa.status === 'inativo' ? 'Inativo' : 'Suspenso';
+          if (item.empresa.status === 'ativo') {
             doc.setTextColor(0, 128, 0); // Verde
-          } else if (cliente.status === 'inativo') {
+          } else if (item.empresa.status === 'inativo') {
             doc.setTextColor(255, 0, 0); // Vermelho
           } else {
             doc.setTextColor(255, 165, 0); // Laranja
@@ -943,14 +943,14 @@ function CadastroTaxasClientes() {
           doc.text(statusTexto, margin + colWidthsClientes[0] + colWidthsClientes[1] + 2, yPos + 4.5);
           doc.setTextColor(0, 0, 0); // Voltar para preto
           
-          doc.text(cliente.tem_ams ? 'Sim' : 'Não', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + 2, yPos + 4.5);
+          doc.text(item.empresa.tem_ams ? 'Sim' : 'Não', margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + 2, yPos + 4.5);
           doc.text(
-            cliente.vigencia_inicial ? format(new Date(cliente.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+            item.empresa.vigencia_inicial ? format(new Date(item.empresa.vigencia_inicial + 'T00:00:00'), 'dd/MM/yyyy') : '-',
             margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + 2,
             yPos + 4.5
           );
           doc.text(
-            cliente.vigencia_final ? format(new Date(cliente.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+            item.empresa.vigencia_final ? format(new Date(item.empresa.vigencia_final + 'T00:00:00'), 'dd/MM/yyyy') : '-',
             margin + colWidthsClientes[0] + colWidthsClientes[1] + colWidthsClientes[2] + colWidthsClientes[3] + colWidthsClientes[4] + 2,
             yPos + 4.5
           );
@@ -1618,7 +1618,7 @@ function CadastroTaxasClientes() {
                                       const dadosIniciais = {
                                         clienteId: item.empresa.id,
                                         // CORREÇÃO: Usar 'OUTROS' em vez de 'COMEX, FISCAL' para corresponder ao valor do Select
-                                        tipoProduto: item.tipoProduto === 'GALLERY' ? 'GALLERY' : 'OUTROS'
+                                        tipoProduto: (item.tipoProduto === 'GALLERY' ? 'GALLERY' : 'OUTROS') as 'GALLERY' | 'OUTROS'
                                       };
                                       
                                       setTaxaEditando(null);

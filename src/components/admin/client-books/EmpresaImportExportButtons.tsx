@@ -40,6 +40,7 @@ export function EmpresaImportExportButtons({
   isImporting = false
 }: EmpresaImportExportButtonsProps) {
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [updateExisting, setUpdateExisting] = useState(false); // NOVO: Estado para controlar modo de atualização
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -138,7 +139,7 @@ export function EmpresaImportExportButtons({
 
   const handleImport = async () => {
     try {
-      await importData();
+      await importData(updateExisting); // ATUALIZADO: Passar parâmetro updateExisting
       onImportComplete?.();
       //toast.success('Empresas importadas com sucesso!');
     } catch (error) {
@@ -161,6 +162,8 @@ export function EmpresaImportExportButtons({
 
   const renderImportContent = () => {
     if (importResult) {
+      const hasUpdates = importResult.updatedCount && importResult.updatedCount > 0;
+      
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -173,10 +176,23 @@ export function EmpresaImportExportButtons({
               <span>Total processado:</span>
               <span className="font-medium">{importResult.totalRows}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Sucessos:</span>
-              <span className="font-medium text-green-600">{importResult.successCount}</span>
-            </div>
+            {hasUpdates ? (
+              <>
+                <div className="flex justify-between">
+                  <span>Empresas criadas:</span>
+                  <span className="font-medium text-green-600">{importResult.createdCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Empresas atualizadas:</span>
+                  <span className="font-medium text-blue-600">{importResult.updatedCount}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between">
+                <span>Sucessos:</span>
+                <span className="font-medium text-green-600">{importResult.successCount}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Erros:</span>
               <span className="font-medium text-red-600">{importResult.errorCount}</span>
@@ -215,6 +231,8 @@ export function EmpresaImportExportButtons({
     }
 
     if (preview) {
+      const hasDuplicates = preview.duplicates && preview.duplicates.length > 0;
+      
       return (
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -224,6 +242,56 @@ export function EmpresaImportExportButtons({
               {preview.validationErrors.length > 0 && ` (${preview.validationErrors.length} erros)`}
             </p>
           </div>
+
+          {/* NOVO: Aviso sobre duplicatas */}
+          {hasDuplicates && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-orange-900 mb-1">
+                    {preview.duplicates.length} {preview.duplicates.length === 1 ? 'empresa já existe' : 'empresas já existem'} no sistema
+                  </h4>
+                  <p className="text-sm text-orange-800 mb-3">
+                    Você pode optar por atualizar os dados dessas empresas ou apenas criar as novas.
+                  </p>
+                  
+                  {/* Lista de duplicatas (máximo 5) */}
+                  <div className="bg-white rounded p-2 mb-3 max-h-24 overflow-y-auto">
+                    {preview.duplicates.slice(0, 5).map((dup, index) => (
+                      <div key={index} className="text-xs text-gray-700 py-1">
+                        • Linha {dup.row}: <span className="font-medium">{dup.nomeCompleto}</span>
+                      </div>
+                    ))}
+                    {preview.duplicates.length > 5 && (
+                      <div className="text-xs text-gray-500 py-1">
+                        ... e mais {preview.duplicates.length - 5} {preview.duplicates.length - 5 === 1 ? 'empresa' : 'empresas'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* NOVO: Checkbox para atualizar empresas existentes */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={updateExisting}
+                      onChange={(e) => setUpdateExisting(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      Atualizar empresas existentes com os dados do Excel
+                    </span>
+                  </label>
+                  
+                  {updateExisting && (
+                    <p className="text-xs text-orange-700 mt-2 ml-6">
+                      ⚠️ Os dados atuais dessas empresas serão sobrescritos pelos dados do Excel.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {preview.validationErrors && preview.validationErrors.length > 0 && (
             <div className="space-y-2">
@@ -249,7 +317,11 @@ export function EmpresaImportExportButtons({
               onClick={handleImport}
               disabled={isLoading || !preview.isValid || preview.data.length === 0}
             >
-              {isLoading ? 'Importando...' : `Importar ${preview.data.length} empresas`}
+              {isLoading ? 'Importando...' : (
+                hasDuplicates && updateExisting
+                  ? `Importar e Atualizar ${preview.data.length} empresas`
+                  : `Importar ${preview.data.length - (preview.duplicates?.length || 0)} empresas`
+              )}
             </Button>
           </div>
         </div>

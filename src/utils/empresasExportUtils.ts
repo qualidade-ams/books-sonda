@@ -13,7 +13,12 @@ declare module 'jspdf' {
 /**
  * Mapeia o template_padrao para sua descrição legível
  */
-const mapearTemplatePadrao = async (templateId: string): Promise<string> => {
+const mapearTemplatePadrao = async (templateId: string | null | undefined): Promise<string> => {
+  // Se não há template ID, retornar vazio
+  if (!templateId || templateId.trim() === '') {
+    return '';
+  }
+
   // Templates padrão do sistema
   const templatesDefault: { [key: string]: string } = {
     'portugues': 'Português',
@@ -54,27 +59,54 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
   }
 
   // Preparar dados para exportação com mapeamento de templates
+  // ORDEM DAS COLUNAS: Mesma ordem do template de importação
   const dadosExportacao = await Promise.all(
     empresas.map(async (empresa) => ({
       'Nome Completo': empresa.nome_completo,
       'Nome Abreviado': empresa.nome_abreviado,
       'Status': empresa.status,
       'Descrição Status': empresa.descricao_status || '',
-      'E-mail Gestor': empresa.email_gestor || '',
-      'Template Padrão': await mapearTemplatePadrao(empresa.template_padrao),
+      'Em Projeto': empresa.em_projeto ? 'Sim' : 'Não',
+      'Email Gestor': empresa.email_gestor || '',
+      'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',
+      'Grupos': empresa.grupos?.map(g => g.grupos_responsaveis?.nome).filter(Boolean).join(', ') || '',
       'Tem AMS': empresa.tem_ams ? 'Sim' : 'Não',
-      'Tipo de Book': empresa.tipo_book,
-      'Tipo de Cobrança': empresa.tipo_cobranca === 'banco_horas' ? 'Banco de Horas' : 'Ticket',
-      'Book Personalizado': empresa.book_personalizado ? 'Sim' : 'Não',
-      'Permite Anexo': empresa.anexo ? 'Sim' : 'Não',
+      'Tipo Book': empresa.tipo_book,
+      'Template Padrão': await mapearTemplatePadrao(empresa.template_padrao),
+      'Link SharePoint': empresa.link_sharepoint || '',
+      'Tipo Cobrança': empresa.tipo_cobranca === 'banco_horas' ? 'Banco de Horas' : empresa.tipo_cobranca === 'ticket' ? 'Ticket' : 'Outros',
       'Vigência Inicial': empresa.vigencia_inicial || '',
       'Vigência Final': empresa.vigencia_final || '',
-      'Link SharePoint': empresa.link_sharepoint || '',
-      'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',
-      'Grupos Responsáveis': empresa.grupos?.map(g => g.grupos_responsaveis?.nome).filter(Boolean).join(', ') || '',
+      'Book Personalizado': empresa.book_personalizado ? 'Sim' : 'Não',
+      'Anexo': empresa.anexo ? 'Sim' : 'Não',
       'Observação': empresa.observacao || '',
-      'Data de Criação': new Date(empresa.created_at).toLocaleDateString('pt-BR'),
-      'Última Atualização': new Date(empresa.updated_at).toLocaleDateString('pt-BR')
+      // Parâmetros de Banco de Horas
+      'Tipo de Contrato': empresa.tipo_contrato ? (empresa.tipo_contrato === 'horas' ? 'Horas' : empresa.tipo_contrato === 'tickets' ? 'Tickets' : 'Ambos') : '',
+      'Período de Apuração (meses)': empresa.periodo_apuracao || '',
+      'Início Vigência Banco Horas': empresa.inicio_vigencia ? (() => {
+        const data = new Date(empresa.inicio_vigencia);
+        // Usar UTC para evitar problemas de timezone
+        const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+        const ano = data.getUTCFullYear();
+        return `${mes}/${ano}`;
+      })() : '',
+      'Baseline Horas Mensal': empresa.baseline_horas_mensal ? (() => {
+        // Converter INTERVAL do PostgreSQL para número decimal
+        // Formato esperado: '1:50:00' ou '01:50:00'
+        const intervalStr = empresa.baseline_horas_mensal.toString();
+        const match = intervalStr.match(/(\d+):(\d+):(\d+)/);
+        if (match) {
+          const horas = parseInt(match[1]);
+          const minutos = parseInt(match[2]);
+          return (horas + minutos / 60).toFixed(2);
+        }
+        return intervalStr;
+      })() : '',
+      'Baseline Tickets Mensal': empresa.baseline_tickets_mensal || '',
+      'Possui Repasse Especial': empresa.possui_repasse_especial ? 'Sim' : 'Não',
+      'Ciclos para Zerar': empresa.ciclos_para_zerar || '',
+      '% Repasse Mensal': empresa.percentual_repasse_mensal || '',
+      '% Repasse Especial': empresa.percentual_repasse_especial || ''
     }))
   );
 
@@ -84,26 +116,36 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
   // Criar worksheet com os dados
   const ws = XLSX.utils.json_to_sheet(dadosExportacao);
 
-  // Ajustar largura das colunas
+  // Ajustar largura das colunas (mesma ordem do template de importação)
   const colWidths = [
     { wch: 30 }, // Nome Completo
     { wch: 20 }, // Nome Abreviado
     { wch: 12 }, // Status
     { wch: 25 }, // Descrição Status
-    { wch: 25 }, // E-mail Gestor
-    { wch: 20 }, // Template Padrão
+    { wch: 12 }, // Em Projeto
+    { wch: 25 }, // Email Gestor
+    { wch: 20 }, // Produtos
+    { wch: 25 }, // Grupos
     { wch: 10 }, // Tem AMS
-    { wch: 15 }, // Tipo de Book
-    { wch: 18 }, // Tipo de Cobrança
-    { wch: 15 }, // Book Personalizado
-    { wch: 15 }, // Permite Anexo
+    { wch: 15 }, // Tipo Book
+    { wch: 20 }, // Template Padrão
+    { wch: 40 }, // Link SharePoint
+    { wch: 18 }, // Tipo Cobrança
     { wch: 15 }, // Vigência Inicial
     { wch: 15 }, // Vigência Final
-    { wch: 40 }, // Link SharePoint
-    { wch: 20 }, // Produtos
-    { wch: 25 }, // Grupos Responsáveis
-    { wch: 15 }, // Data de Criação
-    { wch: 15 }  // Última Atualização
+    { wch: 15 }, // Book Personalizado
+    { wch: 10 }, // Anexo
+    { wch: 40 }, // Observação
+    // Parâmetros de Banco de Horas
+    { wch: 18 }, // Tipo de Contrato
+    { wch: 25 }, // Período de Apuração (meses)
+    { wch: 25 }, // Início Vigência Banco Horas
+    { wch: 20 }, // Baseline Horas Mensal
+    { wch: 22 }, // Baseline Tickets Mensal
+    { wch: 20 }, // Possui Repasse Especial
+    { wch: 18 }, // Ciclos para Zerar
+    { wch: 18 }, // % Repasse Mensal
+    { wch: 20 }  // % Repasse Especial
   ];
 
   ws['!cols'] = colWidths;
@@ -206,7 +248,7 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
 
   // Função para desenhar card de empresa
   const drawEmpresaCard = async (empresa: EmpresaClienteCompleta, y: number) => {
-    const cardHeight = 45;
+    const cardHeight = 70; // Aumentado para acomodar mais informações
     const cardMargin = 15;
     const cardWidth = pageWidth - (cardMargin * 2);
 
@@ -270,6 +312,11 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
     const templateText = await mapearTemplatePadrao(empresa.template_padrao);
     doc.text(templateText, contentX + 25, contentY + 5);
 
+    doc.setFont('helvetica', 'bold');
+    doc.text('Em Projeto:', contentX, contentY + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(empresa.em_projeto ? 'Sim' : 'Não', contentX + 25, contentY + 10);
+
     // Coluna direita
     const rightColumnX = contentX + 90;
     doc.setFont('helvetica', 'bold');
@@ -278,21 +325,139 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
     const criadoEm = new Date(empresa.created_at).toLocaleDateString('pt-BR');
     doc.text(criadoEm, rightColumnX + 25, contentY);
 
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tem AMS:', rightColumnX, contentY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(empresa.tem_ams ? 'Sim' : 'Não', rightColumnX + 25, contentY + 5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tipo Cobrança:', rightColumnX, contentY + 10);
+    doc.setFont('helvetica', 'normal');
+    const tipoCobranca = empresa.tipo_cobranca === 'banco_horas' ? 'Banco de Horas' : empresa.tipo_cobranca === 'ticket' ? 'Ticket' : 'Outros';
+    doc.text(tipoCobranca, rightColumnX + 30, contentY + 10);
+
+    contentY += 15;
+
     // E-mail do gestor
     if (empresa.email_gestor) {
       doc.setFont('helvetica', 'bold');
-      doc.text('E-mail Gestor:', contentX, contentY + 10);
+      doc.text('E-mail Gestor:', contentX, contentY);
       doc.setFont('helvetica', 'normal');
-      doc.text(empresa.email_gestor, contentX + 30, contentY + 10);
+      doc.text(empresa.email_gestor, contentX + 30, contentY);
     }
 
     // Produtos (se houver)
     if (empresa.produtos && empresa.produtos.length > 0) {
       const produtos = empresa.produtos.map(p => p.produto).join(', ');
       doc.setFont('helvetica', 'bold');
-      doc.text('Produtos (2):', rightColumnX, contentY + 5);
+      doc.text('Produtos:', rightColumnX, contentY);
       doc.setFont('helvetica', 'normal');
-      doc.text(produtos, rightColumnX + 25, contentY + 5);
+      doc.text(produtos, rightColumnX + 25, contentY);
+    }
+
+    contentY += 5;
+
+    // Seção de Parâmetros de Banco de Horas (se tem AMS)
+    if (empresa.tem_ams) {
+      contentY += 3;
+      
+      // Linha separadora
+      doc.setDrawColor(...colors.light);
+      doc.setLineWidth(0.2);
+      doc.line(contentX, contentY, cardMargin + cardWidth - 10, contentY);
+      
+      contentY += 5;
+      
+      // Título da seção
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.primary);
+      doc.text('PARÂMETROS DE BANCO DE HORAS', contentX, contentY);
+      
+      contentY += 5;
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.dark);
+
+      // Linha 1: Tipo de Contrato e Período de Apuração
+      if (empresa.tipo_contrato) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tipo Contrato:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        const tipoContrato = empresa.tipo_contrato === 'horas' ? 'Horas' : empresa.tipo_contrato === 'tickets' ? 'Tickets' : 'Ambos';
+        doc.text(tipoContrato, contentX + 30, contentY);
+      }
+
+      if (empresa.periodo_apuracao) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Período Apuração:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${empresa.periodo_apuracao} ${empresa.periodo_apuracao === 1 ? 'mês' : 'meses'}`, rightColumnX + 35, contentY);
+      }
+
+      contentY += 5;
+
+      // Linha 2: Baseline Horas e Baseline Tickets
+      if (empresa.baseline_horas_mensal) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Baseline Horas:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        // Converter INTERVAL para formato legível
+        const intervalStr = empresa.baseline_horas_mensal.toString();
+        const match = intervalStr.match(/(\d+):(\d+):(\d+)/);
+        let horasTexto = intervalStr;
+        if (match) {
+          const horas = parseInt(match[1]);
+          const minutos = parseInt(match[2]);
+          horasTexto = `${horas}h${minutos > 0 ? ` ${minutos}min` : ''}`;
+        }
+        doc.text(horasTexto, contentX + 30, contentY);
+      }
+
+      if (empresa.baseline_tickets_mensal) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Baseline Tickets:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(empresa.baseline_tickets_mensal.toString(), rightColumnX + 35, contentY);
+      }
+
+      contentY += 5;
+
+      // Linha 3: % Repasse Mensal e % Repasse Especial
+      if (empresa.percentual_repasse_mensal != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('% Repasse Mensal:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${empresa.percentual_repasse_mensal}%`, contentX + 35, contentY);
+      }
+
+      if (empresa.possui_repasse_especial && empresa.percentual_repasse_especial != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('% Repasse Especial:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${empresa.percentual_repasse_especial}%`, rightColumnX + 40, contentY);
+      }
+
+      contentY += 5;
+
+      // Linha 4: Início Vigência e Ciclos para Zerar
+      if (empresa.inicio_vigencia) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Início Vigência:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        // Usar UTC para evitar problemas de timezone
+        const data = new Date(empresa.inicio_vigencia);
+        const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+        const ano = data.getUTCFullYear();
+        const inicioVigencia = `${mes}/${ano}`;
+        doc.text(inicioVigencia, contentX + 32, contentY);
+      }
+
+      if (empresa.ciclos_para_zerar) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ciclos p/ Zerar:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(empresa.ciclos_para_zerar.toString(), rightColumnX + 32, contentY);
+      }
     }
 
     return y + cardHeight + 5;

@@ -11,7 +11,7 @@ export interface UseExcelImportReturn {
 
   // Ações
   parseFile: (file: File) => Promise<void>;
-  importData: () => Promise<void>;
+  importData: (updateExisting?: boolean) => Promise<void>;  // ATUALIZADO: Parâmetro opcional
   downloadTemplate: () => void;
   downloadReport: () => void;
   clearPreview: () => void;
@@ -60,24 +60,32 @@ export function useExcelImport(): UseExcelImportReturn {
 
   // Mutação para importar os dados
   const importDataMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (updateExisting: boolean = false) => {
       if (!preview || !preview.isValid) {
         throw new Error('Nenhum dado válido para importar');
       }
-      return await excelImportService.importData(preview.data);
+      return await excelImportService.importData(preview.data, updateExisting);
     },
     onSuccess: (result) => {
       setImportResult(result);
 
       if (result.success) {
+        const message = result.updatedCount > 0
+          ? `${result.createdCount} empresas criadas e ${result.updatedCount} atualizadas.`
+          : `${result.successCount} empresas importadas.`;
+        
         toast({
           title: "Importação concluída com sucesso",
-          description: `${result.successCount} empresas importadas.`,
+          description: message,
         });
       } else {
+        const message = result.updatedCount > 0
+          ? `${result.createdCount} criadas, ${result.updatedCount} atualizadas, ${result.errorCount} erros.`
+          : `${result.successCount} sucessos, ${result.errorCount} erros.`;
+        
         toast({
           title: "Importação concluída com erros",
-          description: `${result.successCount} sucessos, ${result.errorCount} erros.`,
+          description: message,
           variant: "destructive",
         });
       }
@@ -97,8 +105,8 @@ export function useExcelImport(): UseExcelImportReturn {
   }, [parseFileMutation]);
 
   // Função para importar os dados
-  const importData = useCallback(async () => {
-    await importDataMutation.mutateAsync();
+  const importData = useCallback(async (updateExisting: boolean = false) => {
+    await importDataMutation.mutateAsync(updateExisting);
   }, [importDataMutation]);
 
   // Função para baixar template
