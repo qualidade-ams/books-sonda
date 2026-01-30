@@ -30,7 +30,14 @@ import {
 } from '@/components/ui/tooltip';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
-import { PesquisaForm, PesquisasTable, PesquisasExportButtons, SyncProgressModal } from '@/components/admin/pesquisas-satisfacao';
+import { 
+  PesquisaForm, 
+  PesquisasTable, 
+  PesquisasExportButtons, 
+  SyncProgressModal,
+  SyncSelectionModal,
+  type TabelasSincronizacao
+} from '@/components/admin/pesquisas-satisfacao';
 import { 
   usePesquisasSatisfacao, 
   useExcluirPesquisa,
@@ -68,6 +75,7 @@ function LancarPesquisas() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [modalSelectionAberto, setModalSelectionAberto] = useState(false);
   const [modalSyncAberto, setModalSyncAberto] = useState(false);
 
   // Queries
@@ -193,8 +201,21 @@ function LancarPesquisas() {
   };
 
   const handleSincronizar = async () => {
+    // Abrir modal de seleção primeiro
+    setModalSelectionAberto(true);
+  };
+
+  const handleConfirmarSincronizacao = async (tabelas: TabelasSincronizacao) => {
+    // Fechar modal de seleção
+    setModalSelectionAberto(false);
+    
+    // Abrir modal de progresso
     setModalSyncAberto(true);
+    
+    // TODO: Passar as tabelas selecionadas para o serviço de sincronização
+    // Por enquanto, sincroniza tudo
     await sincronizarSqlServer.mutateAsync();
+    
     // Limpar cache e atualizar dados após sincronização
     await refetch();
   };
@@ -542,6 +563,14 @@ function LancarPesquisas() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Seleção de Tabelas */}
+      <SyncSelectionModal
+        open={modalSelectionAberto}
+        onOpenChange={setModalSelectionAberto}
+        onConfirm={handleConfirmarSincronizacao}
+        isLoading={sincronizarSqlServer.isPending}
+      />
 
       {/* Modal de Progresso de Sincronização */}
       <SyncProgressModal

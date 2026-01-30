@@ -287,9 +287,17 @@ export async function verificarUltimaSincronizacao(): Promise<{
       .eq('origem', 'sql_server')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single<{ created_at: string }>();
+      .maybeSingle();
 
-    if (error || !ultimoRegistro) {
+    if (error) {
+      console.error('Erro ao buscar última sincronização:', error);
+      return {
+        data: null,
+        total_registros: 0
+      };
+    }
+
+    if (!ultimoRegistro) {
       return {
         data: null,
         total_registros: 0
