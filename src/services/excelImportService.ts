@@ -23,6 +23,17 @@ const empresaExcelSchema = z.object({
   'Book Personalizado': z.string().optional(), // 'sim' ou 'não'
   'Anexo': z.string().optional(), // 'sim' ou 'não'
   'Observação': z.string().optional(), // Máximo 500 caracteres
+  // Novos campos de banco de horas
+  'Em Projeto': z.string().optional(), // 'sim' ou 'não'
+  'Tipo de Contrato': z.string().optional(), // 'horas', 'tickets', 'ambos'
+  'Período de Apuração (meses)': z.union([z.string(), z.number()]).optional(), // Número de meses
+  'Início Vigência Banco Horas': z.string().optional(), // Formato MM/YYYY
+  'Baseline Horas Mensal': z.union([z.string(), z.number()]).optional(), // Número decimal
+  'Baseline Tickets Mensal': z.union([z.string(), z.number()]).optional(), // Número inteiro
+  'Possui Repasse Especial': z.string().optional(), // 'sim' ou 'não'
+  'Ciclos para Zerar': z.union([z.string(), z.number()]).optional(), // Número inteiro
+  '% Repasse Mensal': z.union([z.string(), z.number()]).optional(), // Percentual
+  '% Repasse Especial': z.union([z.string(), z.number()]).optional(), // Percentual
 }).refine((data) => {
   // Validação condicional para Tipo Book
   const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
@@ -123,6 +134,8 @@ export interface ImportResult {
   errorCount: number;
   errors: ImportError[];
   successfulImports: EmpresaCliente[];
+  createdCount: number;  // NOVO: Contador de empresas criadas
+  updatedCount: number;  // NOVO: Contador de empresas atualizadas
 }
 
 export interface ImportError {
@@ -137,6 +150,14 @@ export interface ImportPreview {
   data: any[];
   validationErrors: ImportError[];
   isValid: boolean;
+  duplicates: DuplicateInfo[];  // NOVO: Informações sobre duplicatas
+}
+
+export interface DuplicateInfo {
+  row: number;
+  nomeCompleto: string;
+  nomeAbreviado: string;
+  empresaExistenteId: string;
 }
 
 class ExcelImportService {
@@ -184,15 +205,56 @@ class ExcelImportService {
       // Valida os dados
       const validationErrors = this.validateImportData(data);
 
+      // Detectar duplicatas (empresas que já existem no banco)
+      const duplicates = await this.detectDuplicates(data);
+
       return {
         headers,
         data,
         validationErrors,
-        isValid: validationErrors.length === 0
+        isValid: validationErrors.length === 0,
+        duplicates
       };
     } catch (error) {
       throw new Error(`Erro ao processar arquivo Excel: ${error.message}`);
     }
+  }
+
+  /**
+   * Detecta empresas que já existem no banco de dados
+   */
+  private async detectDuplicates(data: any[]): Promise<DuplicateInfo[]> {
+    const duplicates: DuplicateInfo[] = [];
+
+    for (const row of data) {
+      try {
+        const nomeCompleto = row['Nome Completo'];
+        const nomeAbreviado = row['Nome Abreviado'];
+
+        if (!nomeCompleto || !nomeAbreviado) {
+          continue; // Pular linhas sem nome
+        }
+
+        // Buscar empresa existente
+        const empresaExistente = await empresasClientesService.buscarEmpresaPorNome(
+          nomeCompleto,
+          nomeAbreviado
+        );
+
+        if (empresaExistente) {
+          duplicates.push({
+            row: row._rowIndex,
+            nomeCompleto,
+            nomeAbreviado,
+            empresaExistenteId: empresaExistente.id
+          });
+        }
+      } catch (error) {
+        console.warn(`Erro ao verificar duplicata na linha ${row._rowIndex}:`, error);
+      }
+    }
+
+    return duplicates;
   }
 
   /**
@@ -299,15 +361,19 @@ class ExcelImportService {
 
   /**
    * Importa os dados validados para o banco de dados
+   * @param data - Dados a serem importados
+   * @param updateExisting - Se true, atualiza empresas existentes; se false, apenas cria novas
    */
-  async importData(data: any[]): Promise<ImportResult> {
+  async importData(data: any[], updateExisting: boolean = false): Promise<ImportResult> {
     const result: ImportResult = {
       success: false,
       totalRows: data.length,
       successCount: 0,
       errorCount: 0,
       errors: [],
-      successfulImports: []
+      successfulImports: [],
+      createdCount: 0,   // NOVO
+      updatedCount: 0    // NOVO
     };
 
     // Primeiro valida todos os dados
@@ -322,7 +388,45 @@ class ExcelImportService {
     for (const row of data) {
       try {
         const empresaData = await this.transformRowToEmpresa(row);
-        const empresa = await empresasClientesService.criarEmpresa(empresaData);
+        
+        // Verificar se empresa já existe
+        const empresaExistente = await empresasClientesService.buscarEmpresaPorNome(
+          empresaData.nomeCompleto,
+          empresaData.nomeAbreviado
+        );
+
+        let empresa: EmpresaCliente;
+
+        if (empresaExistente && updateExisting) {
+          // ✅ ATUALIZAR empresa existente
+          console.log(`📝 Atualizando empresa existente: ${empresaData.nomeCompleto}`);
+          console.log(`📋 Dados para atualização:`, empresaData);
+          
+          await empresasClientesService.atualizarEmpresa(
+            empresaExistente.id,
+            empresaData
+          );
+          
+          console.log(`✅ Empresa atualizada com sucesso, buscando dados atualizados...`);
+          
+          // Buscar empresa atualizada
+          const empresaAtualizada = await empresasClientesService.obterEmpresaPorId(empresaExistente.id);
+          if (!empresaAtualizada) {
+            throw new Error(`Erro ao buscar empresa atualizada: ${empresaData.nomeCompleto}`);
+          }
+          empresa = empresaAtualizada;
+          result.updatedCount++;
+          
+          console.log(`✅ Empresa atualizada e recuperada com sucesso`);
+        } else if (!empresaExistente) {
+          // ✅ CRIAR nova empresa
+          console.log(`✨ Criando nova empresa: ${empresaData.nomeCompleto}`);
+          empresa = await empresasClientesService.criarEmpresa(empresaData);
+          result.createdCount++;
+        } else {
+          // ⚠️ Empresa existe mas usuário não quer atualizar
+          throw new Error(`Empresa "${empresaData.nomeCompleto}" já existe. Ative a opção "Atualizar empresas existentes" para sobrescrever.`);
+        }
 
         result.successfulImports.push(empresa);
         result.successCount++;
@@ -392,6 +496,68 @@ class ExcelImportService {
       ? (row['Template Padrão'] || 'portugues') 
       : '';
 
+    // Processar campos de banco de horas
+    const emProjeto = stringToBoolean(row['Em Projeto']);
+    const tipo_contrato = row['Tipo de Contrato']?.trim() || null;
+    const periodo_apuracao = row['Período de Apuração (meses)'] ? parseInt(row['Período de Apuração (meses)']) : null;
+    
+    // Processar início de vigência do banco de horas (formato MM/YYYY)
+    let inicio_vigencia_banco_horas = null;
+    if (row['Início Vigência Banco Horas']) {
+      const vigenciaStr = row['Início Vigência Banco Horas'].toString().trim();
+      // Aceitar formatos: MM/YYYY ou YYYY-MM
+      if (vigenciaStr.includes('/')) {
+        const [mes, ano] = vigenciaStr.split('/');
+        inicio_vigencia_banco_horas = `${ano}-${mes.padStart(2, '0')}-01`;
+      } else if (vigenciaStr.includes('-')) {
+        const [ano, mes] = vigenciaStr.split('-');
+        inicio_vigencia_banco_horas = `${ano}-${mes.padStart(2, '0')}-01`;
+      }
+    }
+
+    // Converter baseline de horas para formato INTERVAL do PostgreSQL
+    // Aceita múltiplos formatos:
+    // - Número decimal: 44 ou 44.5 (horas)
+    // - Formato de tempo do Excel: 1.8333 (dias, onde 1 dia = 24 horas)
+    // - Formato de tempo: "44:00:00" ou "44:30:00"
+    let baseline_horas_mensal = null;
+    if (row['Baseline Horas Mensal']) {
+      const valorOriginal = row['Baseline Horas Mensal'];
+      console.log(`🔍 Baseline Horas Mensal - Valor original:`, valorOriginal, `Tipo:`, typeof valorOriginal);
+      
+      // Se já está no formato HH:MM:SS, usar diretamente
+      if (typeof valorOriginal === 'string' && valorOriginal.includes(':')) {
+        baseline_horas_mensal = valorOriginal;
+        console.log(`✅ Formato de tempo detectado:`, baseline_horas_mensal);
+      } else {
+        // Se é número, pode ser:
+        // 1. Número de horas direto (ex: 44)
+        // 2. Fração de dias do Excel (ex: 1.8333 = 44 horas)
+        let horasDecimal = parseFloat(valorOriginal);
+        
+        if (!isNaN(horasDecimal)) {
+          // Se o número é menor que 10, provavelmente é fração de dias do Excel
+          // (porque é improvável ter baseline menor que 10 horas)
+          // Converter de dias para horas: dias * 24
+          if (horasDecimal < 10) {
+            horasDecimal = horasDecimal * 24;
+            console.log(`🔄 Convertido de dias para horas: ${valorOriginal} dias → ${horasDecimal} horas`);
+          }
+          
+          const horas = Math.floor(horasDecimal);
+          const minutos = Math.round((horasDecimal - horas) * 60);
+          baseline_horas_mensal = `${horas}:${minutos.toString().padStart(2, '0')}:00`;
+          console.log(`✅ Número convertido: ${horasDecimal} horas → ${baseline_horas_mensal}`);
+        }
+      }
+    }
+
+    const baseline_tickets_mensal = row['Baseline Tickets Mensal'] ? parseInt(row['Baseline Tickets Mensal']) : null;
+    const possui_repasse_especial = stringToBoolean(row['Possui Repasse Especial']);
+    const ciclos_para_zerar = row['Ciclos para Zerar'] ? parseInt(row['Ciclos para Zerar']) : null;
+    const percentual_repasse_mensal = row['% Repasse Mensal'] ? parseFloat(row['% Repasse Mensal']) : null;
+    const percentual_repasse_especial = row['% Repasse Especial'] ? parseFloat(row['% Repasse Especial']) : null;
+
     return {
       nomeCompleto: row['Nome Completo'],
       nomeAbreviado: row['Nome Abreviado'],
@@ -409,7 +575,18 @@ class ExcelImportService {
       vigenciaFinal: row['Vigência Final'] || '',
       bookPersonalizado: stringToBoolean(row['Book Personalizado']),
       anexo: stringToBoolean(row['Anexo']),
-      observacao: row['Observação'] || ''
+      observacao: row['Observação'] || '',
+      // Novos campos de banco de horas (usando snake_case para compatibilidade com o serviço)
+      emProjeto,
+      tipo_contrato,
+      periodo_apuracao,
+      inicio_vigencia_banco_horas,
+      baseline_horas_mensal,
+      baseline_tickets_mensal,
+      possui_repasse_especial,
+      ciclos_para_zerar,
+      percentual_repasse_mensal,
+      percentual_repasse_especial
     };
   }
 
@@ -423,6 +600,7 @@ class ExcelImportService {
         'Nome Abreviado',
         'Status',
         'Descrição Status',
+        'Em Projeto',
         'Email Gestor',
         'Produtos',
         'Grupos',
@@ -435,13 +613,24 @@ class ExcelImportService {
         'Vigência Final',
         'Book Personalizado',
         'Anexo',
-        'Observação'
+        'Observação',
+        // Parâmetros de Banco de Horas
+        'Tipo de Contrato',
+        'Período de Apuração (meses)',
+        'Início Vigência Banco Horas',
+        'Baseline Horas Mensal',
+        'Baseline Tickets Mensal',
+        'Possui Repasse Especial',
+        'Ciclos para Zerar',
+        '% Repasse Mensal',
+        '% Repasse Especial'
       ],
       [
         'EXEMPLO EMPRESA LTDA',
         'EXEMPLO',
         'ativo',
         '',
+        'não',
         'gestor@sonda.com',
         'COMEX,FISCAL',
         'Comex,Outros',
@@ -454,7 +643,17 @@ class ExcelImportService {
         '2024-12-31',
         'não',
         'sim',
-        'Observações sobre a empresa'
+        'Observações sobre a empresa',
+        // Exemplo de parâmetros de banco de horas
+        'horas',
+        '1',
+        '01/2024',
+        '160:00',
+        '',
+        'não',
+        '',
+        '10',
+        ''
       ],
       [],
       ['INSTRUÇÕES (ordem das colunas):'],
@@ -462,6 +661,7 @@ class ExcelImportService {
       ['• Nome Abreviado: Nome resumido da empresa - Para manter o padrão preencha com letras maiúsculas (obrigatório)'],
       ['• Status: "ativo", "inativo" ou "suspenso" (padrão: ativo)'],
       ['• Descrição Status: Justificativa obrigatória para status "inativo" ou "suspenso"'],
+      ['• Em Projeto: "sim" ou "não" - Indica se a empresa está em fase de projeto (padrão: não)'],
       ['• Email Gestor: E-mail do Customer Success responsável (obrigatório)'],
       ['• Produtos: Lista separada por vírgulas: COMEX, FISCAL, GALLERY (obrigatório)'],
       ['• Grupos: Lista de grupos responsáveis separados por vírgulas (opcional)'],
@@ -476,11 +676,23 @@ class ExcelImportService {
       ['• Anexo: "sim" ou "não" (padrão: não)'],
       ['• Observação: Texto livre até 500 caracteres (opcional)'],
       [],
+      ['PARÂMETROS DE BANCO DE HORAS (opcional - apenas para empresas com AMS):'],
+      ['• Tipo de Contrato: "horas", "tickets" ou "ambos" (opcional)'],
+      ['• Período de Apuração (meses): Número de meses para apuração (ex: 1, 2, 3) (opcional)'],
+      ['• Início Vigência Banco Horas: Data no formato MM/YYYY (ex: 01/2024) (opcional)'],
+      ['• Baseline Horas Mensal: Horas no formato HH:MM (ex: 160:00) (opcional)'],
+      ['• Baseline Tickets Mensal: Número de tickets (ex: 50) (opcional)'],
+      ['• Possui Repasse Especial: "sim" ou "não" (padrão: não)'],
+      ['• Ciclos para Zerar: Número de ciclos (opcional)'],
+      ['• % Repasse Mensal: Percentual de 0 a 100 (ex: 10) (opcional)'],
+      ['• % Repasse Especial: Percentual de 0 a 100 (ex: 15) (opcional - apenas se Possui Repasse Especial = "sim")'],
+      [],
       ['REGRAS CONDICIONAIS:'],
       ['• Tipo Book: Obrigatório apenas quando "Tem AMS" = "sim"'],
       ['• Tipo Cobrança: Obrigatório apenas quando "Tem AMS" = "sim"'],
       ['• Template Padrão: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"'],
-      ['• Link SharePoint: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"']
+      ['• Link SharePoint: Obrigatório apenas quando "Tem AMS" = "sim" E "Tipo Book" ≠ "nao_tem_book"'],
+      ['• Parâmetros de Banco de Horas: Todos opcionais, mas recomendados para empresas com AMS']
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
@@ -491,6 +703,7 @@ class ExcelImportService {
       { wch: 15 }, // Nome Abreviado
       { wch: 10 }, // Status
       { wch: 20 }, // Descrição Status
+      { wch: 12 }, // Em Projeto
       { wch: 25 }, // Email Gestor
       { wch: 20 }, // Produtos
       { wch: 20 }, // Grupos
@@ -503,7 +716,17 @@ class ExcelImportService {
       { wch: 15 }, // Vigência Final
       { wch: 18 }, // Book Personalizado
       { wch: 10 }, // Anexo
-      { wch: 30 }  // Observação
+      { wch: 30 }, // Observação
+      // Parâmetros de Banco de Horas
+      { wch: 18 }, // Tipo de Contrato
+      { wch: 25 }, // Período de Apuração (meses)
+      { wch: 25 }, // Início Vigência Banco Horas
+      { wch: 20 }, // Baseline Horas Mensal
+      { wch: 22 }, // Baseline Tickets Mensal
+      { wch: 20 }, // Possui Repasse Especial
+      { wch: 18 }, // Ciclos para Zerar
+      { wch: 18 }, // % Repasse Mensal
+      { wch: 20 }  // % Repasse Especial
     ];
 
     worksheet['!cols'] = colWidths;

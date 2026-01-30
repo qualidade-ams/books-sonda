@@ -75,7 +75,12 @@ export class EmpresasClientesService {
       // NOVO: Campos de Banco de Horas
       tipo_contrato: data.tipo_contrato || null,
       periodo_apuracao: data.periodo_apuracao || null,
-      inicio_vigencia: data.inicio_vigencia_banco_horas ? this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas) : null,
+      // inicio_vigencia pode vir em dois formatos: MM/YYYY ou YYYY-MM-DD
+      inicio_vigencia: data.inicio_vigencia_banco_horas 
+        ? (data.inicio_vigencia_banco_horas.includes('/') 
+            ? this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas)
+            : data.inicio_vigencia_banco_horas)
+        : null,
       baseline_horas_mensal: data.baseline_horas_mensal || null,
       baseline_tickets_mensal: data.baseline_tickets_mensal || null,
       possui_repasse_especial: data.possui_repasse_especial || false,
@@ -340,6 +345,88 @@ export class EmpresasClientesService {
   }
 
   /**
+   * Buscar empresa por nome completo ou nome abreviado
+   * Usado para detectar duplicatas na importação
+   */
+  async buscarEmpresaPorNome(nomeCompleto: string, nomeAbreviado?: string): Promise<EmpresaClienteCompleta | null> {
+    if (!nomeCompleto || !nomeCompleto.trim()) {
+      return null;
+    }
+
+    // Buscar por nome completo primeiro
+    let query = supabase
+      .from('empresas_clientes')
+      .select(`
+        *,
+        produtos:empresa_produtos(
+          id,
+          empresa_id,
+          produto,
+          created_at
+        ),
+        grupos:empresa_grupos(
+          grupo_id,
+          grupos_responsaveis(
+            id,
+            nome,
+            descricao,
+            created_at,
+            updated_at
+          )
+        )
+      `)
+      .eq('nome_completo', nomeCompleto)
+      .maybeSingle();
+
+    const { data: empresaPorNome, error: errorNome } = await query;
+
+    if (errorNome) {
+      throw ClientBooksErrorFactory.databaseError('buscar empresa por nome', errorNome);
+    }
+
+    if (empresaPorNome) {
+      return empresaPorNome as EmpresaClienteCompleta;
+    }
+
+    // Se não encontrou por nome completo e tem nome abreviado, buscar por ele
+    if (nomeAbreviado && nomeAbreviado.trim()) {
+      const { data: empresaPorAbrev, error: errorAbrev } = await supabase
+        .from('empresas_clientes')
+        .select(`
+          *,
+          produtos:empresa_produtos(
+            id,
+            empresa_id,
+            produto,
+            created_at
+          ),
+          grupos:empresa_grupos(
+            grupo_id,
+            grupos_responsaveis(
+              id,
+              nome,
+              descricao,
+              created_at,
+              updated_at
+            )
+          )
+        `)
+        .eq('nome_abreviado', nomeAbreviado)
+        .maybeSingle();
+
+      if (errorAbrev) {
+        throw ClientBooksErrorFactory.databaseError('buscar empresa por nome abreviado', errorAbrev);
+      }
+
+      if (empresaPorAbrev) {
+        return empresaPorAbrev as EmpresaClienteCompleta;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Atualizar empresa
    * @returns Número de clientes inativados (se aplicável)
    */
@@ -401,7 +488,24 @@ export class EmpresasClientesService {
       // NOVO: Incluir campos de Banco de Horas
       if (data.tipo_contrato !== undefined) updateData.tipo_contrato = data.tipo_contrato || null;
       if (data.periodo_apuracao !== undefined) updateData.periodo_apuracao = data.periodo_apuracao || null;
-      if (data.inicio_vigencia_banco_horas !== undefined) updateData.inicio_vigencia = data.inicio_vigencia_banco_horas ? this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas) : null;
+      
+      // inicio_vigencia_banco_horas pode vir em dois formatos:
+      // 1. MM/YYYY (do formulário) - precisa converter
+      // 2. YYYY-MM-DD (da importação) - já está no formato correto
+      if (data.inicio_vigencia_banco_horas !== undefined) {
+        if (data.inicio_vigencia_banco_horas) {
+          // Se contém '/', é formato MM/YYYY e precisa converter
+          if (data.inicio_vigencia_banco_horas.includes('/')) {
+            updateData.inicio_vigencia = this.converterMesAnoParaDate(data.inicio_vigencia_banco_horas);
+          } else {
+            // Se contém '-', já está no formato YYYY-MM-DD
+            updateData.inicio_vigencia = data.inicio_vigencia_banco_horas;
+          }
+        } else {
+          updateData.inicio_vigencia = null;
+        }
+      }
+      
       if (data.baseline_horas_mensal !== undefined) updateData.baseline_horas_mensal = data.baseline_horas_mensal || null;
       if (data.baseline_tickets_mensal !== undefined) updateData.baseline_tickets_mensal = data.baseline_tickets_mensal || null;
       if (data.possui_repasse_especial !== undefined) updateData.possui_repasse_especial = data.possui_repasse_especial;
