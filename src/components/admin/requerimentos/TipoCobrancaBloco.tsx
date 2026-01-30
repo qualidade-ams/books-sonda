@@ -146,16 +146,24 @@ export function TipoCobrancaBloco({
         tipoHoraExtra: bloco.tipo_hora_extra,
         valorAtualFuncional: bloco.valor_hora_funcional,
         valorAtualTecnico: bloco.valor_hora_tecnico,
+        horasTecnicoDecimal,
         refFuncional: valoresAnterioresRef.current.funcional,
         refTecnico: valoresAnterioresRef.current.tecnico,
         editadoManualmenteFuncional: valoresEditadosManualmenteRef.current.funcional,
         editadoManualmenteTecnico: valoresEditadosManualmenteRef.current.tecnico
       });
       
-      if (!taxaVigente || !bloco.linguagem || !bloco.tipo_cobranca) {
-        console.log('❌ Faltam dados para preencher valores automaticamente');
+      // CORREÇÃO: Permitir preenchimento mesmo sem linguagem quando não há horas técnicas
+      if (!taxaVigente || !bloco.tipo_cobranca) {
+        console.log('❌ Faltam dados para preencher valores automaticamente (taxa ou tipo de cobrança)');
         // Resetar ref quando não há dados
         valoresAnterioresRef.current = { funcional: undefined, tecnico: undefined };
+        return;
+      }
+      
+      // Se há horas técnicas, linguagem é obrigatória
+      if (horasTecnicoDecimal > 0 && !bloco.linguagem) {
+        console.log('❌ Há horas técnicas mas linguagem não foi selecionada');
         return;
       }
       
@@ -177,11 +185,19 @@ export function TipoCobrancaBloco({
     
     // REGRA CORRETA:
     // Valor/Hora Funcional: SEMPRE usar linha "Funcional"
-    // Valor/Hora Técnico: Usar linha correspondente à LINGUAGEM selecionada
+    // Valor/Hora Técnico: 
+    //   - Se NÃO há horas técnicas: usar linha "Funcional" também
+    //   - Se HÁ horas técnicas: usar linha correspondente à LINGUAGEM selecionada
     
     const funcaoFuncional: TipoFuncao = 'Funcional';
     
-    const mapearLinguagemParaFuncao = (ling: string): TipoFuncao | null => {
+    const mapearLinguagemParaFuncao = (ling: string | undefined): TipoFuncao => {
+      // Se não há linguagem (não há horas técnicas), usar Funcional
+      if (!ling) {
+        console.log('⚠️ Sem linguagem técnica - usando Funcional para ambos os valores');
+        return 'Funcional';
+      }
+      
       // Mapear linguagem para a linha correspondente na tabela de taxas
       if (ling === 'Técnico') {
         // Se linguagem é Técnico, usar linha Técnico (Instalação / Atualização) ou Técnico / ABAP
@@ -195,21 +211,20 @@ export function TipoCobrancaBloco({
         // Se linguagem é DBA, usar linha DBA ou DBA / Basis
         return tipoProduto === 'GALLERY' ? 'DBA / Basis' : 'DBA';
       }
-      return null;
+      // Fallback para Funcional se linguagem não reconhecida
+      return 'Funcional';
     };
 
     const funcaoTecnico = mapearLinguagemParaFuncao(bloco.linguagem);
     console.log('🎯 Funções mapeadas:', { 
       funcaoFuncional, 
       funcaoTecnico, 
-      linguagem: bloco.linguagem,
-      explicacao: `Valor/Hora Funcional usa linha "${funcaoFuncional}", Valor/Hora Técnico usa linha "${funcaoTecnico}"`
+      linguagem: bloco.linguagem || 'N/A (sem horas técnicas)',
+      horasTecnicoDecimal,
+      explicacao: horasTecnicoDecimal > 0 
+        ? `Valor/Hora Funcional usa linha "${funcaoFuncional}", Valor/Hora Técnico usa linha "${funcaoTecnico}"`
+        : `Sem horas técnicas - ambos os valores usam linha "${funcaoFuncional}"`
     });
-    
-    if (!funcaoTecnico) {
-      console.log('❌ Não foi possível mapear linguagem para função');
-      return;
-    }
 
     // Determinar se deve usar valores locais ou remotos
     const usarValoresLocais = bloco.atendimento_presencial || false;
