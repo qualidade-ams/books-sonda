@@ -211,31 +211,182 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
           setTipoProdutoSelecionado(tipoProduto);
         }
 
-        // Se cliente não tem AMS, preencher com taxa padrão
+        // CORREÇÃO APRIMORADA: Se cliente não tem AMS, buscar taxa padrão vigente
+        // Busca taxa padrão baseada no tipo de produto (GALLERY ou OUTROS)
+        // Se não houver taxa vigente, deixa campos zerados
         if (empresa.tem_ams === false) {
+          console.log('🔍 Cliente sem AMS detectado:', empresa.nome_abreviado);
+          console.log('📦 Produtos do cliente:', produtos);
+          
           import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
             // Determinar tipo de produto baseado nos produtos do cliente
-            let tipoProduto: 'GALLERY' | 'OUTROS' = 'GALLERY';
+            // GALLERY → busca taxa padrão GALLERY
+            // COMEX, FISCAL → busca taxa padrão OUTROS
+            let tipoProduto: 'GALLERY' | 'OUTROS' = 'OUTROS';
+            
             if (produtos.includes('GALLERY')) {
               tipoProduto = 'GALLERY';
+              console.log('✅ Cliente tem GALLERY - buscando taxa padrão GALLERY');
+            } else if (produtos.some((p: string) => ['COMEX', 'FISCAL'].includes(p))) {
+              tipoProduto = 'OUTROS';
+              console.log('✅ Cliente tem COMEX/FISCAL - buscando taxa padrão OUTROS');
             } else if (produtos.length > 0) {
               tipoProduto = 'OUTROS';
+              console.log('✅ Cliente tem outros produtos - buscando taxa padrão OUTROS');
             }
 
-            const taxaPadrao = await buscarTaxaPadrao(tipoProduto);
-            if (taxaPadrao) {
-              form.setValue('tipo_produto', taxaPadrao.tipo_produto);
-              form.setValue('valores_remota', taxaPadrao.valores_remota);
-              form.setValue('valores_local', taxaPadrao.valores_local);
-              setTipoProdutoSelecionado(taxaPadrao.tipo_produto);
+            try {
+              const taxaPadrao = await buscarTaxaPadrao(tipoProduto);
+              
+              if (taxaPadrao) {
+                console.log('✅ Taxa padrão vigente encontrada:', {
+                  tipo: taxaPadrao.tipo_produto,
+                  vigencia_inicio: taxaPadrao.vigencia_inicio,
+                  vigencia_fim: taxaPadrao.vigencia_fim
+                });
+                
+                // Preencher formulário com taxa padrão vigente
+                form.setValue('tipo_produto', taxaPadrao.tipo_produto);
+                form.setValue('valores_remota', taxaPadrao.valores_remota);
+                form.setValue('valores_local', taxaPadrao.valores_local);
+                setTipoProdutoSelecionado(taxaPadrao.tipo_produto);
+              } else {
+                console.log('⚠️ Nenhuma taxa padrão vigente encontrada - campos ficarão zerados');
+                // Não fazer nada - campos ficam zerados
+              }
+            } catch (error) {
+              console.error('❌ Erro ao buscar taxa padrão:', error);
+              // Em caso de erro, deixar campos zerados
             }
           });
+        } else {
+          console.log('ℹ️ Cliente com AMS - campos ficarão zerados para preenchimento manual');
         }
       } else {
         setProdutosCliente([]);
       }
     }
   }, [clienteSelecionado, empresas, form, taxa]);
+
+  // NOVO: Buscar taxa padrão quando tipo de produto for alterado manualmente
+  useEffect(() => {
+    // Só executar se:
+    // 1. Não está editando uma taxa existente
+    // 2. Cliente está selecionado
+    // 3. Tipo de produto foi selecionado
+    // 4. Cliente não tem AMS
+    if (!taxa && clienteSelecionado && tipoProdutoSelecionado) {
+      const empresa = empresas.find(e => e.nome_abreviado === clienteSelecionado);
+      
+      if (empresa && empresa.tem_ams === false) {
+        console.log('🔄 Tipo de produto alterado manualmente:', tipoProdutoSelecionado);
+        console.log('🔍 Buscando taxa padrão correspondente...');
+        
+        import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
+          try {
+            const taxaPadrao = await buscarTaxaPadrao(tipoProdutoSelecionado);
+            
+            if (taxaPadrao) {
+              console.log('✅ Taxa padrão vigente encontrada para', tipoProdutoSelecionado, ':', {
+                vigencia_inicio: taxaPadrao.vigencia_inicio,
+                vigencia_fim: taxaPadrao.vigencia_fim
+              });
+              
+              // Preencher formulário com taxa padrão vigente
+              form.setValue('valores_remota', taxaPadrao.valores_remota);
+              form.setValue('valores_local', taxaPadrao.valores_local);
+            } else {
+              console.log('⚠️ Nenhuma taxa padrão vigente encontrada para', tipoProdutoSelecionado);
+              // Limpar campos se não houver taxa vigente
+              form.setValue('valores_remota', {
+                funcional: 0,
+                tecnico: 0,
+                abap: 0,
+                dba: 0,
+                gestor: 0,
+              });
+              form.setValue('valores_local', {
+                funcional: 0,
+                tecnico: 0,
+                abap: 0,
+                dba: 0,
+                gestor: 0,
+              });
+            }
+          } catch (error) {
+            console.error('❌ Erro ao buscar taxa padrão:', error);
+          }
+        });
+      }
+    }
+  }, [tipoProdutoSelecionado, clienteSelecionado, empresas, form, taxa]);
+
+  // NOVO: Validar vigência selecionada contra taxas padrão cadastradas
+  const vigenciaInicio = form.watch('vigencia_inicio');
+  
+  useEffect(() => {
+    // Só executar se:
+    // 1. Não está editando uma taxa existente
+    // 2. Cliente está selecionado
+    // 3. Tipo de produto foi selecionado
+    // 4. Cliente não tem AMS
+    // 5. Vigência início foi selecionada
+    if (!taxa && clienteSelecionado && tipoProdutoSelecionado && vigenciaInicio) {
+      const empresa = empresas.find(e => e.nome_abreviado === clienteSelecionado);
+      
+      if (empresa && empresa.tem_ams === false) {
+        console.log('📅 Vigência início selecionada:', vigenciaInicio);
+        console.log('🔍 Validando vigência contra taxas padrão cadastradas...');
+        
+        import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
+          try {
+            // Converter vigência para string no formato YYYY-MM-DD
+            const dataReferencia = vigenciaInicio instanceof Date 
+              ? vigenciaInicio.toISOString().split('T')[0]
+              : vigenciaInicio;
+            
+            console.log('📅 Data de referência para busca:', dataReferencia);
+            
+            // Buscar taxa padrão vigente na data selecionada
+            const taxaPadrao = await buscarTaxaPadrao(tipoProdutoSelecionado, dataReferencia);
+            
+            if (taxaPadrao) {
+              console.log('✅ Taxa padrão vigente encontrada para data', dataReferencia, ':', {
+                tipo: taxaPadrao.tipo_produto,
+                vigencia_inicio: taxaPadrao.vigencia_inicio,
+                vigencia_fim: taxaPadrao.vigencia_fim
+              });
+              
+              // Preencher formulário com taxa padrão vigente
+              form.setValue('valores_remota', taxaPadrao.valores_remota);
+              form.setValue('valores_local', taxaPadrao.valores_local);
+            } else {
+              console.log('⚠️ Nenhuma taxa padrão vigente encontrada para data', dataReferencia);
+              console.log('⚠️ Limpando campos - vigência selecionada não está cadastrada no sistema');
+              
+              // Limpar campos se não houver taxa vigente na data selecionada
+              form.setValue('valores_remota', {
+                funcional: 0,
+                tecnico: 0,
+                abap: 0,
+                dba: 0,
+                gestor: 0,
+              });
+              form.setValue('valores_local', {
+                funcional: 0,
+                tecnico: 0,
+                abap: 0,
+                dba: 0,
+                gestor: 0,
+              });
+            }
+          } catch (error) {
+            console.error('❌ Erro ao validar vigência:', error);
+          }
+        });
+      }
+    }
+  }, [vigenciaInicio, tipoProdutoSelecionado, clienteSelecionado, empresas, form, taxa]);
 
   // Preencher formulário ao editar
   useEffect(() => {
