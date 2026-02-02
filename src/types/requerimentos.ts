@@ -169,6 +169,7 @@ export interface ClienteRequerimento {
   id: string;
   nome_abreviado: string;
   tipo_cobranca: 'banco_horas' | 'ticket' | 'outros';
+  tem_ams: boolean;
 }
 
 // Interface para estatísticas
