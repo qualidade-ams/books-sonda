@@ -84,152 +84,203 @@ function gerarIdUnico(registro: DadosSqlServer): string {
 /**
  * Sincronizar dados do SQL Server para Supabase
  * Agora usa a API Node.js que faz todo o processamento
- * INCLUI sincronização de pesquisas, especialistas E apontamentos
+ * INCLUI sincronização de pesquisas, especialistas, apontamentos E tickets
+ * @param tabelas - Objeto indicando quais tabelas sincronizar (opcional - se não fornecido, sincroniza todas)
  */
-export async function sincronizarDados(): Promise<ResultadoSincronizacao & { especialistas?: any; apontamentos?: any }> {
+export async function sincronizarDados(tabelas?: {
+  pesquisas?: boolean;
+  especialistas?: boolean;
+  apontamentos?: boolean;
+  tickets?: boolean;
+}): Promise<ResultadoSincronizacao & { especialistas?: any; apontamentos?: any; tickets?: any }> {
   const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
+  // Se não foram especificadas tabelas, sincronizar todas por padrão (comportamento anterior)
+  const tabelasParaSincronizar = tabelas || {
+    pesquisas: true,
+    especialistas: true,
+    apontamentos: true,
+    tickets: true
+  };
+  
   try {
-    console.log('Iniciando sincronização completa (pesquisas + especialistas + apontamentos)...');
+    console.log('Iniciando sincronização seletiva:', tabelasParaSincronizar);
     
-    // 1. Sincronizar pesquisas (funcionalidade existente)
-    console.log('1/3 - Sincronizando pesquisas...');
-    const responsePesquisas = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    let resultadoPesquisas: ResultadoSincronizacao | null = null;
+    let resultadoEspecialistas = null;
+    let resultadoApontamentos = null;
+    let resultadoTickets = null;
+
+    // 1. Sincronizar pesquisas (se selecionado)
+    if (tabelasParaSincronizar.pesquisas) {
+      console.log('1/4 - Sincronizando pesquisas...');
+      const responsePesquisas = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (responsePesquisas.status === 404) {
+        resultadoPesquisas = {
+          sucesso: false,
+          total_processados: 0,
+          novos: 0,
+          atualizados: 0,
+          erros: 1,
+          mensagens: [
+            'Endpoint de sincronização de pesquisas não implementado na API.',
+            'A API está online mas o endpoint /api/sync-pesquisas não existe.',
+            'Verifique se a API foi atualizada com os endpoints de sincronização.'
+          ],
+          detalhes_erros: []
+        };
+      } else if (!responsePesquisas.ok) {
+        throw new Error(`Erro HTTP na sincronização de pesquisas: ${responsePesquisas.status}`);
+      } else {
+        resultadoPesquisas = await responsePesquisas.json();
       }
-    });
 
-    let resultadoPesquisas: ResultadoSincronizacao;
-
-    if (responsePesquisas.status === 404) {
+      console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
+    } else {
+      console.log('1/4 - Pesquisas: PULADO (não selecionado)');
       resultadoPesquisas = {
-        sucesso: false,
+        sucesso: true,
         total_processados: 0,
         novos: 0,
         atualizados: 0,
-        erros: 1,
-        mensagens: [
-          'Endpoint de sincronização de pesquisas não implementado na API.',
-          'A API está online mas o endpoint /api/sync-pesquisas não existe.',
-          'Verifique se a API foi atualizada com os endpoints de sincronização.'
-        ],
+        erros: 0,
+        mensagens: ['Pesquisas não foram selecionadas para sincronização'],
         detalhes_erros: []
       };
-    } else if (!responsePesquisas.ok) {
-      throw new Error(`Erro HTTP na sincronização de pesquisas: ${responsePesquisas.status}`);
-    } else {
-      resultadoPesquisas = await responsePesquisas.json();
     }
 
-    console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
-
-    // 2. Sincronizar especialistas
-    console.log('2/3 - Sincronizando especialistas...');
-    const responseEspecialistas = await safeFetch(`${API_URL}/api/sync-especialistas`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    let resultadoEspecialistas = null;
-    if (responseEspecialistas.status === 404) {
-      resultadoEspecialistas = {
-        sucesso: false,
-        mensagens: [
-          'Endpoint de sincronização de especialistas não implementado na API.',
-          'A API está online mas o endpoint /api/sync-especialistas não existe.'
-        ]
-      };
-    } else if (responseEspecialistas.ok) {
-      resultadoEspecialistas = await responseEspecialistas.json();
-      console.log('Resultado da sincronização de especialistas:', resultadoEspecialistas);
-      
-      // Limpar cache de especialistas após sincronização bem-sucedida
-      if (resultadoEspecialistas.sucesso) {
-        try {
-          const { limparCacheEspecialistas } = await import('@/integrations/supabase/admin-client');
-          limparCacheEspecialistas();
-          console.log('✅ Cache de especialistas limpo após sincronização');
-        } catch (error) {
-          console.warn('⚠️ Erro ao limpar cache de especialistas:', error);
+    // 2. Sincronizar especialistas (se selecionado)
+    if (tabelasParaSincronizar.especialistas) {
+      console.log('2/4 - Sincronizando especialistas...');
+      const responseEspecialistas = await safeFetch(`${API_URL}/api/sync-especialistas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
+      });
+
+      if (responseEspecialistas.status === 404) {
+        resultadoEspecialistas = {
+          sucesso: false,
+          mensagens: [
+            'Endpoint de sincronização de especialistas não implementado na API.',
+            'A API está online mas o endpoint /api/sync-especialistas não existe.'
+          ]
+        };
+      } else if (responseEspecialistas.ok) {
+        resultadoEspecialistas = await responseEspecialistas.json();
+        console.log('Resultado da sincronização de especialistas:', resultadoEspecialistas);
+        
+        // Limpar cache de especialistas após sincronização bem-sucedida
+        if (resultadoEspecialistas.sucesso) {
+          try {
+            const { limparCacheEspecialistas } = await import('@/integrations/supabase/admin-client');
+            limparCacheEspecialistas();
+            console.log('✅ Cache de especialistas limpo após sincronização');
+          } catch (error) {
+            console.warn('⚠️ Erro ao limpar cache de especialistas:', error);
+          }
+        }
+      } else {
+        console.warn('Erro na sincronização de especialistas, continuando...');
+        resultadoEspecialistas = {
+          sucesso: false,
+          mensagens: [`Erro HTTP: ${responseEspecialistas.status}`]
+        };
       }
     } else {
-      console.warn('Erro na sincronização de especialistas, continuando...');
+      console.log('2/4 - Especialistas: PULADO (não selecionado)');
       resultadoEspecialistas = {
-        sucesso: false,
-        mensagens: [`Erro HTTP: ${responseEspecialistas.status}`]
+        sucesso: true,
+        mensagens: ['Especialistas não foram selecionados para sincronização']
       };
     }
 
-    // 3. Sincronizar apontamentos (nova funcionalidade)
-    console.log('3/4 - Sincronizando apontamentos...');
-    const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // 3. Sincronizar apontamentos (se selecionado)
+    if (tabelasParaSincronizar.apontamentos) {
+      console.log('3/4 - Sincronizando apontamentos...');
+      const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-    let resultadoApontamentos = null;
-    if (responseApontamentos.status === 404) {
-      resultadoApontamentos = {
-        sucesso: false,
-        mensagens: [
-          'Endpoint de sincronização de apontamentos não implementado na API.',
-          'A API está online mas o endpoint /api/sync-apontamentos não existe.'
-        ]
-      };
-    } else if (responseApontamentos.ok) {
-      resultadoApontamentos = await responseApontamentos.json();
-      console.log('✅ [APONTAMENTOS] Resultado da sincronização de apontamentos:', resultadoApontamentos);
-      console.log('📊 [DEBUG] Apontamentos - Total:', resultadoApontamentos.total_processados);
-      console.log('📊 [DEBUG] Apontamentos - Novos:', resultadoApontamentos.novos);
-      console.log('📊 [DEBUG] Apontamentos - Atualizados:', resultadoApontamentos.atualizados);
-      console.log('📊 [DEBUG] Apontamentos - Erros:', resultadoApontamentos.erros);
-      console.log('📊 [DEBUG] Apontamentos - Objeto completo:', JSON.stringify(resultadoApontamentos, null, 2));
+      if (responseApontamentos.status === 404) {
+        resultadoApontamentos = {
+          sucesso: false,
+          mensagens: [
+            'Endpoint de sincronização de apontamentos não implementado na API.',
+            'A API está online mas o endpoint /api/sync-apontamentos não existe.'
+          ]
+        };
+      } else if (responseApontamentos.ok) {
+        resultadoApontamentos = await responseApontamentos.json();
+        console.log('✅ [APONTAMENTOS] Resultado da sincronização de apontamentos:', resultadoApontamentos);
+        console.log('📊 [DEBUG] Apontamentos - Total:', resultadoApontamentos.total_processados);
+        console.log('📊 [DEBUG] Apontamentos - Novos:', resultadoApontamentos.novos);
+        console.log('📊 [DEBUG] Apontamentos - Atualizados:', resultadoApontamentos.atualizados);
+        console.log('📊 [DEBUG] Apontamentos - Erros:', resultadoApontamentos.erros);
+        console.log('📊 [DEBUG] Apontamentos - Objeto completo:', JSON.stringify(resultadoApontamentos, null, 2));
+      } else {
+        console.warn('Erro na sincronização de apontamentos, continuando...');
+        resultadoApontamentos = {
+          sucesso: false,
+          mensagens: [`Erro HTTP: ${responseApontamentos.status}`]
+        };
+      }
     } else {
-      console.warn('Erro na sincronização de apontamentos, continuando...');
+      console.log('3/4 - Apontamentos: PULADO (não selecionado)');
       resultadoApontamentos = {
-        sucesso: false,
-        mensagens: [`Erro HTTP: ${responseApontamentos.status}`]
+        sucesso: true,
+        mensagens: ['Apontamentos não foram selecionados para sincronização']
       };
     }
 
-    // 4. Sincronizar tickets (nova funcionalidade)
-    console.log('4/4 - Sincronizando tickets...');
-    const responseTickets = await safeFetch(`${API_URL}/api/sync-tickets`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // 4. Sincronizar tickets (se selecionado)
+    if (tabelasParaSincronizar.tickets) {
+      console.log('4/4 - Sincronizando tickets...');
+      const responseTickets = await safeFetch(`${API_URL}/api/sync-tickets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-    let resultadoTickets = null;
-    if (responseTickets.status === 404) {
-      resultadoTickets = {
-        sucesso: false,
-        mensagens: [
-          'Endpoint de sincronização de tickets não implementado na API.',
-          'A API está online mas o endpoint /api/sync-tickets não existe.'
-        ]
-      };
-    } else if (responseTickets.ok) {
-      resultadoTickets = await responseTickets.json();
-      console.log('✅ [TICKETS] Resultado da sincronização de tickets:', resultadoTickets);
-      console.log('📊 [DEBUG] Tickets - Total:', resultadoTickets.total_processados);
-      console.log('📊 [DEBUG] Tickets - Novos:', resultadoTickets.novos);
-      console.log('📊 [DEBUG] Tickets - Atualizados:', resultadoTickets.atualizados);
-      console.log('📊 [DEBUG] Tickets - Erros:', resultadoTickets.erros);
-      console.log('📊 [DEBUG] Tickets - Objeto completo:', JSON.stringify(resultadoTickets, null, 2));
+      if (responseTickets.status === 404) {
+        resultadoTickets = {
+          sucesso: false,
+          mensagens: [
+            'Endpoint de sincronização de tickets não implementado na API.',
+            'A API está online mas o endpoint /api/sync-tickets não existe.'
+          ]
+        };
+      } else if (responseTickets.ok) {
+        resultadoTickets = await responseTickets.json();
+        console.log('✅ [TICKETS] Resultado da sincronização de tickets:', resultadoTickets);
+        console.log('📊 [DEBUG] Tickets - Total:', resultadoTickets.total_processados);
+        console.log('📊 [DEBUG] Tickets - Novos:', resultadoTickets.novos);
+        console.log('📊 [DEBUG] Tickets - Atualizados:', resultadoTickets.atualizados);
+        console.log('📊 [DEBUG] Tickets - Erros:', resultadoTickets.erros);
+        console.log('📊 [DEBUG] Tickets - Objeto completo:', JSON.stringify(resultadoTickets, null, 2));
+      } else {
+        console.warn('Erro na sincronização de tickets, continuando...');
+        resultadoTickets = {
+          sucesso: false,
+          mensagens: [`Erro HTTP: ${responseTickets.status}`]
+        };
+      }
     } else {
-      console.warn('Erro na sincronização de tickets, continuando...');
+      console.log('4/4 - Tickets: PULADO (não selecionado)');
       resultadoTickets = {
-        sucesso: false,
-        mensagens: [`Erro HTTP: ${responseTickets.status}`]
+        sucesso: true,
+        mensagens: ['Tickets não foram selecionados para sincronização']
       };
     }
 
@@ -250,7 +301,8 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
       ]
     };
 
-    console.log('✅ [FINAL] Sincronização completa finalizada');
+    console.log('✅ [FINAL] Sincronização seletiva finalizada');
+    console.log('📊 [DEBUG] Tabelas sincronizadas:', tabelasParaSincronizar);
     console.log('📊 [DEBUG] Resultado final - apontamentos:', resultadoCombinado.apontamentos);
     console.log('📊 [DEBUG] Resultado final - apontamentos.total_processados:', resultadoCombinado.apontamentos?.total_processados);
     console.log('📊 [DEBUG] Resultado final completo:', JSON.stringify(resultadoCombinado, null, 2));
@@ -268,7 +320,8 @@ export async function sincronizarDados(): Promise<ResultadoSincronizacao & { esp
       mensagens: [`Erro ao conectar com API: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`],
       detalhes_erros: [],
       especialistas: null,
-      apontamentos: null
+      apontamentos: null,
+      tickets: null
     };
   }
 }

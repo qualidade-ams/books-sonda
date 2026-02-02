@@ -66,6 +66,15 @@ export function SyncSelectionModal({
     if (!algumaSelecionada) {
       return;
     }
+    
+    console.log('✅ [MODAL] Tabelas selecionadas para sincronização:', tabelas);
+    console.log('📊 [MODAL] Detalhes da seleção:', {
+      pesquisas: tabelas.pesquisas ? 'SIM' : 'NÃO',
+      especialistas: tabelas.especialistas ? 'SIM' : 'NÃO', 
+      apontamentos: tabelas.apontamentos ? 'SIM' : 'NÃO',
+      tickets: tabelas.tickets ? 'SIM' : 'NÃO'
+    });
+    
     onConfirm(tabelas);
   };
 

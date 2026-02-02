@@ -37,12 +37,18 @@ export function useUltimaSincronizacao() {
 /**
  * Hook para sincronizar dados do SQL Server
  * AGORA INCLUI: Pesquisas + Especialistas + Apontamentos + Tickets
+ * @param tabelas - Objeto opcional indicando quais tabelas sincronizar
  */
 export function useSincronizarSqlServer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => sqlServerSyncService.sincronizarDados(),
+    mutationFn: (tabelas?: {
+      pesquisas?: boolean;
+      especialistas?: boolean;
+      apontamentos?: boolean;
+      tickets?: boolean;
+    }) => sqlServerSyncService.sincronizarDados(tabelas),
     onSuccess: (resultado) => {
       // Invalidar todas as queries relacionadas a pesquisas, especialistas, apontamentos E tickets
       queryClient.invalidateQueries({ queryKey: ['pesquisas'] });
