@@ -217,6 +217,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
         if (empresa.tem_ams === false) {
           console.log('🔍 Cliente sem AMS detectado:', empresa.nome_abreviado);
           console.log('📦 Produtos do cliente:', produtos);
+          console.log('⚠️ APLICANDO TAXA PADRÃO - Cliente não possui AMS');
           
           import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
             // Determinar tipo de produto baseado nos produtos do cliente
@@ -260,7 +261,10 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
             }
           });
         } else {
-          console.log('ℹ️ Cliente com AMS - campos ficarão zerados para preenchimento manual');
+          console.log('✅ Cliente COM AMS detectado:', empresa.nome_abreviado);
+          console.log('⚠️ NÃO APLICANDO TAXA PADRÃO - Cliente possui AMS');
+          console.log('📊 Status AMS do cliente:', empresa.tem_ams);
+          console.log('ℹ️ Campos ficarão zerados para preenchimento manual');
         }
       } else {
         setProdutosCliente([]);
@@ -281,6 +285,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
       if (empresa && empresa.tem_ams === false) {
         console.log('🔄 Tipo de produto alterado manualmente:', tipoProdutoSelecionado);
         console.log('🔍 Buscando taxa padrão correspondente...');
+        console.log('⚠️ APLICANDO TAXA PADRÃO - Cliente não possui AMS');
         
         import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
           try {
@@ -337,6 +342,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
       if (empresa && empresa.tem_ams === false) {
         console.log('📅 Vigência início selecionada:', vigenciaInicio);
         console.log('🔍 Validando vigência contra taxas padrão cadastradas...');
+        console.log('⚠️ APLICANDO TAXA PADRÃO - Cliente não possui AMS');
         
         import('@/services/taxaPadraoService').then(async ({ buscarTaxaPadrao }) => {
           try {
