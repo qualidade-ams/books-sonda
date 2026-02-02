@@ -77,6 +77,7 @@ function LancarPesquisas() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalSelectionAberto, setModalSelectionAberto] = useState(false);
   const [modalSyncAberto, setModalSyncAberto] = useState(false);
+  const [tabelasSelecionadas, setTabelasSelecionadas] = useState<TabelasSincronizacao | null>(null);
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
@@ -206,15 +207,18 @@ function LancarPesquisas() {
   };
 
   const handleConfirmarSincronizacao = async (tabelas: TabelasSincronizacao) => {
+    // Armazenar tabelas selecionadas para o modal de progresso
+    setTabelasSelecionadas(tabelas);
+    
     // Fechar modal de seleção
     setModalSelectionAberto(false);
     
     // Abrir modal de progresso
     setModalSyncAberto(true);
     
-    // TODO: Passar as tabelas selecionadas para o serviço de sincronização
-    // Por enquanto, sincroniza tudo
-    await sincronizarSqlServer.mutateAsync();
+    // Passar as tabelas selecionadas para o serviço de sincronização
+    console.log('🔄 Iniciando sincronização com tabelas selecionadas:', tabelas);
+    await sincronizarSqlServer.mutateAsync(tabelas);
     
     // Limpar cache e atualizar dados após sincronização
     await refetch();
@@ -577,6 +581,7 @@ function LancarPesquisas() {
         open={modalSyncAberto}
         onOpenChange={setModalSyncAberto}
         isLoading={sincronizarSqlServer.isPending}
+        tabelasSelecionadas={tabelasSelecionadas || undefined}
         resultado={sincronizarSqlServer.data}
       />
 

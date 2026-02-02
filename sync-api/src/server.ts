@@ -337,6 +337,81 @@ function gerarIdUnicoTicket(registro: DadosTicketSqlServer): string {
 }
 
 /**
+ * Debug: Remover registros antigos com cliente de teste
+ */
+app.post('/api/limpar-cliente-teste', async (req, res) => {
+  try {
+    console.log('🧹 [LIMPEZA] Removendo registros antigos com cliente de teste...');
+    
+    // Remover registros com cliente "User - Ams - Teste" do Supabase
+    const { data, error } = await supabase
+      .from('pesquisas_satisfacao')
+      .delete()
+      .eq('cliente', 'User - Ams - Teste');
+
+    if (error) {
+      console.error('❌ [LIMPEZA] Erro ao remover registros:', error);
+      throw error;
+    }
+
+    console.log('✅ [LIMPEZA] Registros removidos com sucesso');
+    
+    res.json({
+      success: true,
+      message: 'Registros com cliente de teste removidos com sucesso'
+    });
+    
+  } catch (error) {
+    console.error('❌ [LIMPEZA] Erro na limpeza:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
+ * Debug: Verificar registros com cliente específico
+ */
+app.get('/api/debug-cliente-teste', async (req, res) => {
+  try {
+    console.log('🔍 [DEBUG] Verificando registros com cliente de teste...');
+    const pool = await sql.connect(sqlConfig);
+    
+    const query = `
+      SELECT TOP 10
+        Cliente,
+        Nro_Caso,
+        LEN(Cliente) as tamanho_cliente,
+        ASCII(SUBSTRING(Cliente, 1, 1)) as primeiro_char_ascii,
+        ASCII(SUBSTRING(Cliente, LEN(Cliente), 1)) as ultimo_char_ascii
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE Cliente LIKE '%User%Ams%Teste%'
+      ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] DESC
+    `;
+    
+    const result = await pool.request().query(query);
+    await pool.close();
+    
+    console.log('🔍 [DEBUG] Registros encontrados:', result.recordset);
+    
+    res.json({
+      success: true,
+      message: 'Debug de cliente de teste',
+      registros: result.recordset,
+      total_encontrados: result.recordset.length
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG] Erro no debug:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
  * Endpoint de health check
  */
 app.get('/health', (req, res) => {
@@ -750,6 +825,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
     novos: 0,
     atualizados: 0,
     erros: 0,
+    filtrados: 0, // Novo campo para contar registros filtrados
     mensagens: [] as string[],
     detalhes_erros: [] as any[]
   };
@@ -790,6 +866,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
         WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
           AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+          AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     } else {
@@ -840,6 +917,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         )
         AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
         AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+        AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
         ORDER BY [Data_Resposta (Date-Hour-Minute-Second)] ASC
       `;
     }
@@ -893,6 +971,22 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
       }
       
       try {
+        // 🔍 DEBUG: Log do cliente para debug
+        if (i < 5) { // Log apenas os primeiros 5 para não poluir
+          console.log(`🔍 [DEBUG] Registro ${i + 1}: Cliente = "${registro.Cliente}" | Caso = "${registro.Nro_Caso}"`);
+        }
+        
+        // 🚫 FILTRO: Pular registros com cliente "User - Ams - Teste"
+        const clienteNormalizado = (registro.Cliente || '').trim().toLowerCase();
+        const clienteTesteBloqueado = 'user - ams - teste';
+        
+        if (clienteNormalizado === clienteTesteBloqueado) {
+          console.log(`⚠️ [FILTRO] Registro pulado - Cliente de teste: "${registro.Cliente}" (Caso: ${registro.Nro_Caso})`);
+          console.log(`⚠️ [FILTRO] Cliente original: "${registro.Cliente}" | Normalizado: "${clienteNormalizado}"`);
+          resultado.filtrados++; // Incrementar contador de filtrados
+          continue; // Pular este registro
+        }
+
         const idUnico = gerarIdUnico(registro);
 
         // Verificar se já existe
@@ -1040,9 +1134,17 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
     console.log('Processamento concluído');
 
     resultado.sucesso = resultado.erros === 0;
-    resultado.mensagens.push(
-      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`
-    );
+    
+    // Mensagem principal de resultado
+    let mensagemResultado = `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`;
+    
+    // Adicionar informação sobre registros filtrados se houver
+    if (resultado.filtrados > 0) {
+      mensagemResultado += `, ${resultado.filtrados} filtrados (cliente de teste)`;
+      console.log(`🚫 [FILTRO] Total de registros filtrados: ${resultado.filtrados} (cliente "User - Ams - Teste")`);
+    }
+    
+    resultado.mensagens.push(mensagemResultado);
 
     console.log('Sincronização concluída:', resultado);
     res.json(resultado);
