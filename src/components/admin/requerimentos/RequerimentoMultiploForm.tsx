@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,7 +51,7 @@ export function RequerimentoMultiploForm({
   const [blocos, setBlocos] = useState<TipoCobrancaBlocoData[]>([
     {
       id: crypto.randomUUID(),
-      tipo_cobranca: 'Banco de Horas',
+      tipo_cobranca: 'Banco de Horas', // Será atualizado pelo useEffect
       horas_funcional: 0,
       horas_tecnico: 0,
       linguagem: ''
@@ -64,24 +64,59 @@ export function RequerimentoMultiploForm({
     return clientes.find(cliente => cliente.id === clienteId);
   }, [clienteId, clientes]);
 
+  // Função para determinar o tipo de cobrança padrão baseado no cliente
+  const getTipoCobrancaPadrao = () => {
+    if (!clienteSelecionado) {
+      return 'Banco de Horas'; // Padrão quando não há cliente
+    }
+    
+    // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
+    if (clienteSelecionado.tem_ams === false || clienteSelecionado.tipo_cobranca === 'outros') {
+      return 'Faturado';
+    }
+    
+    return 'Banco de Horas'; // Padrão para clientes com AMS
+  };
+
   // Filtrar opções de tipo de cobrança baseado no tipo de cobrança da empresa
   const tipoCobrancaOptionsFiltradas = useMemo(() => {
     if (!clienteSelecionado) {
       return TIPO_COBRANCA_OPTIONS;
     }
 
+    // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
     if (clienteSelecionado.tipo_cobranca === 'outros') {
+      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+    }
+
+    // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
+    if (clienteSelecionado.tem_ams === false) {
       return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
     }
 
     return TIPO_COBRANCA_OPTIONS;
   }, [clienteSelecionado]);
 
+  // Atualizar tipo de cobrança padrão do primeiro bloco quando cliente mudar
+  useEffect(() => {
+    if (blocos.length > 0 && clienteSelecionado) {
+      const primeiroBloco = blocos[0];
+      const tipoPadrao = getTipoCobrancaPadrao();
+      
+      // Se o tipo atual não está mais disponível, atualizar para o padrão
+      const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
+      if (!opcoesDisponiveis.includes(primeiroBloco.tipo_cobranca)) {
+        console.log('Atualizando tipo de cobrança do primeiro bloco para:', tipoPadrao);
+        handleAtualizarBloco(primeiroBloco.id, 'tipo_cobranca', tipoPadrao);
+      }
+    }
+  }, [clienteSelecionado, tipoCobrancaOptionsFiltradas]);
+
   // Adicionar novo bloco
   const handleAdicionarBloco = () => {
     const novoBloco: TipoCobrancaBlocoData = {
       id: crypto.randomUUID(),
-      tipo_cobranca: 'Banco de Horas',
+      tipo_cobranca: getTipoCobrancaPadrao(),
       horas_funcional: 0,
       horas_tecnico: 0,
       linguagem: ''

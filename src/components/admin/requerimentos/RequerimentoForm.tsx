@@ -166,7 +166,12 @@ export function RequerimentoForm({
       return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
     }
 
-    // Para outros tipos de cobrança da empresa, mostrar todas as opções
+    // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
+    if (clienteSelecionado.tem_ams === false) {
+      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+    }
+
+    // Para outros casos, mostrar todas as opções
     return TIPO_COBRANCA_OPTIONS;
   }, [clienteSelecionado]);
 
@@ -814,11 +819,48 @@ export function RequerimentoForm({
     
     if (tipoCobrancaAtual && !opcoesDisponiveis.includes(tipoCobrancaAtual)) {
       console.log('Limpando tipo de cobrança não disponível:', tipoCobrancaAtual);
-      // Define para o primeiro valor disponível ou 'Banco de Horas' como padrão
-      const valorPadrao = opcoesDisponiveis[0] || 'Banco de Horas';
+      
+      // Definir valor padrão baseado no cliente
+      let valorPadrao = 'Banco de Horas'; // Padrão geral
+      
+      // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
+      if (clienteSelecionado?.tem_ams === false || clienteSelecionado?.tipo_cobranca === 'outros') {
+        valorPadrao = 'Faturado';
+      }
+      
+      // Se o valor padrão não estiver disponível, usar o primeiro disponível
+      if (!opcoesDisponiveis.includes(valorPadrao)) {
+        valorPadrao = opcoesDisponiveis[0] || 'Faturado';
+      }
+      
+      console.log('Definindo tipo de cobrança padrão:', valorPadrao);
       form.setValue('tipo_cobranca', valorPadrao as any);
     }
-  }, [tipoCobrancaOptionsFiltradas, form]);
+  }, [tipoCobrancaOptionsFiltradas, form, clienteSelecionado]);
+
+  // Definir tipo de cobrança padrão quando cliente é selecionado
+  useEffect(() => {
+    const tipoCobrancaAtual = form.getValues('tipo_cobranca');
+    
+    // Se não há tipo de cobrança definido e há cliente selecionado
+    if (!tipoCobrancaAtual && clienteSelecionado) {
+      let valorPadrao = 'Banco de Horas'; // Padrão geral
+      
+      // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
+      if (clienteSelecionado.tem_ams === false || clienteSelecionado.tipo_cobranca === 'outros') {
+        valorPadrao = 'Faturado';
+      }
+      
+      // Verificar se o valor padrão está disponível nas opções filtradas
+      const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
+      if (!opcoesDisponiveis.includes(valorPadrao)) {
+        valorPadrao = opcoesDisponiveis[0] || 'Faturado';
+      }
+      
+      console.log('Definindo tipo de cobrança padrão para novo cliente:', valorPadrao);
+      form.setValue('tipo_cobranca', valorPadrao as any);
+    }
+  }, [clienteSelecionado, tipoCobrancaOptionsFiltradas, form]);
 
   // Resetar formulário quando requerimento mudar (modo edição)
   // REMOVIDO: Este useEffect estava causando reset indesejado do formulário
@@ -1234,9 +1276,11 @@ export function RequerimentoForm({
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                      {clienteSelecionado?.tipo_cobranca === 'outros' && (
+                      {(clienteSelecionado?.tipo_cobranca === 'outros' || clienteSelecionado?.tem_ams === false) && (
                         <FormDescription className="text-amber-600 dark:text-amber-400">
-                          ⚠️ A opção "Banco de Horas" não está disponível para empresas com tipo de cobrança "Outros"
+                          ⚠️ A opção "Banco de Horas" não está disponível para esta empresa
+                          {clienteSelecionado?.tipo_cobranca === 'outros' && ' (tipo de cobrança "Outros")'}
+                          {clienteSelecionado?.tem_ams === false && ' (não possui AMS)'}
                         </FormDescription>
                       )}
                     </FormItem>

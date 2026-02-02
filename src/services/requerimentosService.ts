@@ -832,7 +832,7 @@ export class RequerimentosService {
   async buscarClientes(): Promise<ClienteRequerimento[]> {
     const { data, error } = await supabase
       .from('empresas_clientes')
-      .select('id, nome_abreviado, tipo_cobranca')
+      .select('id, nome_abreviado, tipo_cobranca, tem_ams')
       .eq('status', 'ativo')
       .order('nome_abreviado');
 
