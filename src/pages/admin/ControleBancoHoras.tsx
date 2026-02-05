@@ -112,7 +112,7 @@ export default function ControleBancoHoras() {
     console.log('🏢 [DEBUG] Empresa atual:', {
       id: empresa?.id,
       nome: empresa?.nome_abreviado,
-      tipo_cobranca: empresa?.tipo_cobranca,
+      tipo_contrato: empresa?.tipo_contrato,
       periodo_apuracao: empresa?.periodo_apuracao
     });
     return empresa;
@@ -574,8 +574,9 @@ export default function ControleBancoHoras() {
       };
     }
     
-    // Verificar se é tipo ticket
-    const isTicket = empresaAtual?.tipo_cobranca?.toLowerCase() === 'ticket';
+    // Verificar se é tipo ticket (singular ou plural)
+    const isTicket = empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' || 
+                     empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
     
     // Saldo do mês vigente (último mês do período)
     const mesVigente = calculos[calculos.length - 1];
@@ -638,8 +639,9 @@ export default function ControleBancoHoras() {
     const mesVigente = calculos[calculos.length - 1];
     if (!mesVigente) return 'text-gray-900';
     
-    // Verificar se é tipo ticket
-    const isTicket = empresaAtual?.tipo_cobranca?.toLowerCase() === 'ticket';
+    // Verificar se é tipo ticket (singular ou plural)
+    const isTicket = empresaAtual?.tipo_contrato?.toLowerCase() === 'ticket' || 
+                     empresaAtual?.tipo_contrato?.toLowerCase() === 'tickets';
     
     if (isTicket) {
       // Para tickets, usar saldo_tickets
@@ -901,29 +903,25 @@ export default function ControleBancoHoras() {
                 </div>
               </CardContent>
             </Card>
-          ) : (
+          ) : empresaAtual?.tipo_contrato?.toLowerCase() === 'ambos' ? (
+            // Cliente com tipo "ambos" - mostrar abas Tickets e Horas
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')} className="w-full">
               <TabsList className="bg-gray-100 p-1 rounded-lg">
                 <TabsTrigger 
                   value="consolidada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
-                  Visão Consolidada
+                  Visão Consolidada (Tickets)
                 </TabsTrigger>
                 <TabsTrigger 
                   value="segmentada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
-                  disabled={!temAlocacoes}
                 >
-                  Visão Segmentada
-                  {temAlocacoes && (
-                    <Badge className="ml-2 bg-sonda-blue/10 text-sonda-blue text-xs">
-                      {alocacoes.length}
-                    </Badge>
-                  )}
+                  Visão Consolidada (Horas)
                 </TabsTrigger>
               </TabsList>
 
+              {/* Aba Tickets */}
               <TabsContent value="consolidada" className="mt-6">
                 <VisaoConsolidada
                   calculos={calculos}
@@ -934,48 +932,44 @@ export default function ControleBancoHoras() {
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
                   onHistoricoClick={handleHistorico}
                   disabled={isFetchingCalculos || isRecalculatingAny}
-                  tipoCobranca={empresaAtual?.tipo_cobranca}
+                  tipoCobranca="ticket"
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   templatePadrao={empresaAtual?.template_padrao}
                 />
               </TabsContent>
 
+              {/* Aba Horas */}
               <TabsContent value="segmentada" className="mt-6">
-                {temAlocacoes ? (
-                  isLoadingSegmentados ? (
-                    <Card>
-                      <CardContent className="py-12">
-                        <div className="text-center">
-                          <RefreshCw className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
-                          <p className="text-gray-500">
-                            Carregando cálculos segmentados...
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <VisaoSegmentada
-                      calculos={calculosSegmentados}
-                      alocacoes={alocacoes}
-                    />
-                  )
-                ) : (
-                  <Card>
-                    <CardContent className="py-12">
-                      <div className="text-center">
-                        <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500 mb-2 font-medium">
-                          Nenhuma alocação cadastrada
-                        </p>
-                        <p className="text-sm text-gray-400">
-                          Configure alocações na empresa para visualizar a visão segmentada
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <VisaoConsolidada
+                  calculos={calculos}
+                  periodoApuracao={empresaAtual?.periodo_apuracao || 1}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  mesesDoPeriodo={mesesDoPeriodo}
+                  requerimentos={requerimentosConcluidos || []}
+                  requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+                  onHistoricoClick={handleHistorico}
+                  disabled={isFetchingCalculos || isRecalculatingAny}
+                  tipoCobranca="horas"
+                  inicioVigencia={empresaAtual?.inicio_vigencia}
+                  templatePadrao={empresaAtual?.template_padrao}
+                />
               </TabsContent>
             </Tabs>
+          ) : (
+            // Cliente com tipo "ticket" ou "horas" - mostrar apenas visão consolidada
+            <VisaoConsolidada
+              calculos={calculos}
+              periodoApuracao={empresaAtual?.periodo_apuracao || 1}
+              percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+              mesesDoPeriodo={mesesDoPeriodo}
+              requerimentos={requerimentosConcluidos || []}
+              requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+              onHistoricoClick={handleHistorico}
+              disabled={isFetchingCalculos || isRecalculatingAny}
+              tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}
+              inicioVigencia={empresaAtual?.inicio_vigencia}
+              templatePadrao={empresaAtual?.template_padrao}
+            />
           )}
         </div>
       </div>
@@ -990,7 +984,7 @@ export default function ControleBancoHoras() {
           ano={calculos[0].ano}
           versoes={versoes || []}
           isLoading={isLoadingVersoes}
-          tipoCobranca={empresaAtual?.tipo_cobranca}
+          tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}
         />
       )}
     </AdminLayout>

@@ -8,6 +8,74 @@ inclusion: always
 
 Sempre que uma migration for criada ou modificada, execute estas verificações:
 
+### 0. Verificação de Políticas Duplicadas (CRÍTICO)
+```sql
+-- SEMPRE EXECUTAR ANTES DE CRIAR NOVAS POLÍTICAS
+-- Verificar se há políticas duplicadas para a mesma tabela e ação
+SELECT 
+  tablename,
+  cmd as acao,
+  array_agg(policyname) as politicas_duplicadas,
+  COUNT(*) as total
+FROM pg_policies 
+WHERE schemaname = 'public'
+  AND tablename = 'sua_tabela_aqui' -- SUBSTITUIR pelo nome da tabela
+GROUP BY tablename, cmd
+HAVING COUNT(*) > 1;
+
+-- Se retornar resultados, há políticas duplicadas!
+-- REMOVER TODAS as políticas antigas ANTES de criar novas:
+DROP POLICY IF EXISTS "nome_politica_antiga_1" ON sua_tabela;
+DROP POLICY IF EXISTS "nome_politica_antiga_2" ON sua_tabela;
+-- ... remover TODAS as políticas listadas
+```
+
+**⚠️ REGRA CRÍTICA: SEMPRE REMOVER POLÍTICAS ANTIGAS ANTES DE CRIAR NOVAS**
+
+Quando criar migrations que modificam políticas RLS:
+
+1. **LISTAR todas as políticas existentes**:
+```sql
+SELECT policyname 
+FROM pg_policies 
+WHERE tablename = 'sua_tabela';
+```
+
+2. **ADICIONAR DROP para TODAS as políticas listadas**:
+```sql
+-- Template de DROP completo
+DROP POLICY IF EXISTS "politica_1" ON tabela;
+DROP POLICY IF EXISTS "politica_2" ON tabela;
+DROP POLICY IF EXISTS "politica_3" ON tabela;
+-- ... adicionar TODAS as políticas encontradas
+```
+
+3. **CRIAR as novas políticas** (somente após remover todas as antigas)
+
+4. **VERIFICAR se não há duplicatas**:
+```sql
+-- Deve retornar 0 linhas (sem duplicatas)
+SELECT tablename, cmd, COUNT(*) 
+FROM pg_policies 
+WHERE tablename = 'sua_tabela'
+GROUP BY tablename, cmd
+HAVING COUNT(*) > 1;
+```
+
+**Exemplo de Migration Correta**:
+```sql
+-- ✅ BOM: Remove TODAS as políticas antigas primeiro
+DROP POLICY IF EXISTS "old_policy_1" ON tabela;
+DROP POLICY IF EXISTS "old_policy_2" ON tabela;
+DROP POLICY IF EXISTS "old_policy_3" ON tabela;
+
+-- Depois cria as novas
+CREATE POLICY "new_policy" ON tabela ...;
+
+-- ❌ RUIM: Não remove políticas antigas
+CREATE POLICY "new_policy" ON tabela ...; -- Vai duplicar!
+```
+
 ### 1. Verificação de Funções Inseguras
 ```sql
 -- Executar após cada migration para detectar funções inseguras
@@ -172,3 +240,117 @@ current_setting('app.user_id') = user_id
 (SELECT auth.uid()) = user_id
 (SELECT current_setting('app.user_id')) = user_id
 ```
+
+
+## Checklist de Migration de Políticas RLS
+
+⚠️ **CRÍTICO**: Sempre que mexer em políticas RLS, elas podem duplicar. Siga este checklist rigorosamente:
+
+### Passo a Passo Obrigatório
+
+- [ ] **1. Listar políticas existentes**
+  ```sql
+  SELECT policyname FROM pg_policies WHERE tablename = 'sua_tabela';
+  ```
+
+- [ ] **2. Adicionar DROP para TODAS as políticas listadas**
+  ```sql
+  DROP POLICY IF EXISTS "politica_1" ON tabela;
+  DROP POLICY IF EXISTS "politica_2" ON tabela;
+  -- ... TODAS as políticas encontradas no passo 1
+  ```
+
+- [ ] **3. Criar as novas políticas**
+  ```sql
+  CREATE POLICY "nova_politica" ON tabela ...;
+  ```
+
+- [ ] **4. Verificar se não há duplicatas**
+  ```sql
+  SELECT tablename, cmd, array_agg(policyname) as duplicadas, COUNT(*) 
+  FROM pg_policies 
+  WHERE tablename = 'sua_tabela'
+  GROUP BY tablename, cmd
+  HAVING COUNT(*) > 1;
+  -- Deve retornar 0 linhas
+  ```
+
+- [ ] **5. Testar acesso com usuário autenticado**
+
+- [ ] **6. Verificar alertas do Supabase Dashboard**
+  - Sem alertas de políticas permissivas
+  - Sem alertas de políticas duplicadas
+
+### Exemplo Completo de Migration Segura
+
+```sql
+-- Migration: Fix RLS policies for tabela_exemplo
+-- SEMPRE seguir este padrão para evitar duplicação
+
+-- PASSO 1: Remover TODAS as políticas antigas
+DROP POLICY IF EXISTS "old_policy_select" ON tabela_exemplo;
+DROP POLICY IF EXISTS "old_policy_insert" ON tabela_exemplo;
+DROP POLICY IF EXISTS "Users can view" ON tabela_exemplo;
+DROP POLICY IF EXISTS "Users can insert" ON tabela_exemplo;
+DROP POLICY IF EXISTS "authenticated_select" ON tabela_exemplo;
+-- ... adicionar TODAS as variações possíveis
+
+-- PASSO 2: Garantir RLS habilitado
+ALTER TABLE tabela_exemplo ENABLE ROW LEVEL SECURITY;
+
+-- PASSO 3: Criar função de verificação (se necessário)
+CREATE OR REPLACE FUNCTION public.user_has_permission()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM profiles p
+    JOIN user_groups ug ON p.group_id = ug.id
+    JOIN screen_permissions sp ON sp.group_id = ug.id
+    WHERE p.id = (SELECT auth.uid())
+      AND sp.screen_key = 'tela_exemplo'
+      AND sp.permission_level IN ('view', 'edit')
+  );
+END;
+$$;
+
+-- PASSO 4: Criar novas políticas
+CREATE POLICY "authenticated_select_tabela"
+  ON tabela_exemplo FOR SELECT
+  TO authenticated
+  USING (user_has_permission());
+
+-- PASSO 5: Verificar duplicatas
+DO $$
+DECLARE
+  duplicate_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO duplicate_count
+  FROM (
+    SELECT tablename, cmd, COUNT(*) as total
+    FROM pg_policies 
+    WHERE tablename = 'tabela_exemplo'
+    GROUP BY tablename, cmd
+    HAVING COUNT(*) > 1
+  ) duplicates;
+  
+  IF duplicate_count > 0 THEN
+    RAISE EXCEPTION '❌ ERRO: Políticas duplicadas!';
+  END IF;
+  
+  RAISE NOTICE '✅ Sem duplicatas';
+END $$;
+```
+
+### Regras de Ouro para Políticas RLS
+
+1. **SEMPRE remover políticas antigas ANTES de criar novas**
+2. **NUNCA usar `USING (true)` ou `WITH CHECK (true)` para authenticated** (exceto service_role)
+3. **SEMPRE usar funções de verificação de permissões**
+4. **SEMPRE verificar duplicatas após criar políticas**
+5. **SEMPRE usar `SECURITY DEFINER` e `SET search_path = public` em funções**
+6. **SEMPRE usar `(SELECT auth.uid())` em vez de `auth.uid()` para performance**

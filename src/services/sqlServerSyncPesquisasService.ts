@@ -100,18 +100,18 @@ async function buscarTotaisReaisBanco(): Promise<{
 
     // Buscar total de especialistas (TODAS as origens)
     const { count: totalEspecialistas } = await supabase
-      .from('especialistas')
+      .from('especialistas' as any)
       .select('*', { count: 'exact', head: true });
       // ↑ Removido filtro .eq('origem', 'sql_server')
 
     // Buscar total de apontamentos (já estava sem filtro)
     const { count: totalApontamentos } = await supabase
-      .from('apontamentos_aranda')
+      .from('apontamentos_aranda' as any)
       .select('*', { count: 'exact', head: true });
 
     // Buscar total de tickets (já estava sem filtro)
     const { count: totalTickets } = await supabase
-      .from('apontamentos_tickets_aranda')
+      .from('apontamentos_tickets_aranda' as any)
       .select('*', { count: 'exact', head: true });
 
     console.log('📊 Totais reais (TODAS as origens):', {
