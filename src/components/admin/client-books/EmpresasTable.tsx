@@ -290,7 +290,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
           value="principais"
           className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
         >
-          Informações Principais
+          Informações Principais ({empresas.length})
         </TabsTrigger>
         <TabsTrigger 
           value="parametros"
