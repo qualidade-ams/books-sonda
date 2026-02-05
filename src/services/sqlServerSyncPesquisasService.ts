@@ -82,6 +82,63 @@ function gerarIdUnico(registro: DadosSqlServer): string {
 }
 
 /**
+ * Buscar totais reais do banco Supabase
+ * INCLUI TODOS os registros (origem sql_server + manual)
+ */
+async function buscarTotaisReaisBanco(): Promise<{
+  pesquisas: number;
+  especialistas: number;
+  apontamentos: number;
+  tickets: number;
+}> {
+  try {
+    // Buscar total de pesquisas (TODAS as origens)
+    const { count: totalPesquisas } = await supabase
+      .from('pesquisas_satisfacao')
+      .select('*', { count: 'exact', head: true });
+      // ↑ Removido filtro .eq('origem', 'sql_server')
+
+    // Buscar total de especialistas (TODAS as origens)
+    const { count: totalEspecialistas } = await supabase
+      .from('especialistas')
+      .select('*', { count: 'exact', head: true });
+      // ↑ Removido filtro .eq('origem', 'sql_server')
+
+    // Buscar total de apontamentos (já estava sem filtro)
+    const { count: totalApontamentos } = await supabase
+      .from('apontamentos_aranda')
+      .select('*', { count: 'exact', head: true });
+
+    // Buscar total de tickets (já estava sem filtro)
+    const { count: totalTickets } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*', { count: 'exact', head: true });
+
+    console.log('📊 Totais reais (TODAS as origens):', {
+      pesquisas: totalPesquisas,
+      especialistas: totalEspecialistas,
+      apontamentos: totalApontamentos,
+      tickets: totalTickets
+    });
+
+    return {
+      pesquisas: totalPesquisas || 0,
+      especialistas: totalEspecialistas || 0,
+      apontamentos: totalApontamentos || 0,
+      tickets: totalTickets || 0
+    };
+  } catch (error) {
+    console.error('Erro ao buscar totais reais do banco:', error);
+    return {
+      pesquisas: 0,
+      especialistas: 0,
+      apontamentos: 0,
+      tickets: 0
+    };
+  }
+}
+
+/**
  * Sincronizar dados do SQL Server para Supabase
  * Agora usa a API Node.js que faz todo o processamento
  * INCLUI sincronização de pesquisas, especialistas, apontamentos E tickets
@@ -92,7 +149,17 @@ export async function sincronizarDados(tabelas?: {
   especialistas?: boolean;
   apontamentos?: boolean;
   tickets?: boolean;
-}): Promise<ResultadoSincronizacao & { especialistas?: any; apontamentos?: any; tickets?: any }> {
+}): Promise<ResultadoSincronizacao & { 
+  especialistas?: any; 
+  apontamentos?: any; 
+  tickets?: any;
+  totais_reais_banco?: {
+    pesquisas: number;
+    especialistas: number;
+    apontamentos: number;
+    tickets: number;
+  };
+}> {
   const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
   
   // Se não foram especificadas tabelas, sincronizar todas por padrão (comportamento anterior)
@@ -105,6 +172,11 @@ export async function sincronizarDados(tabelas?: {
   
   try {
     console.log('Iniciando sincronização seletiva:', tabelasParaSincronizar);
+    
+    // Buscar totais reais do banco ANTES da sincronização
+    console.log('📊 Buscando totais reais do banco...');
+    const totaisReaisBanco = await buscarTotaisReaisBanco();
+    console.log('📊 Totais reais do banco:', totaisReaisBanco);
     
     let resultadoPesquisas: ResultadoSincronizacao | null = null;
     let resultadoEspecialistas = null;
@@ -290,6 +362,7 @@ export async function sincronizarDados(tabelas?: {
       especialistas: resultadoEspecialistas,
       apontamentos: resultadoApontamentos,
       tickets: resultadoTickets,
+      totais_reais_banco: totaisReaisBanco, // ← NOVO: Totais reais do banco
       mensagens: [
         ...resultadoPesquisas.mensagens,
         '--- Especialistas ---',
@@ -321,7 +394,13 @@ export async function sincronizarDados(tabelas?: {
       detalhes_erros: [],
       especialistas: null,
       apontamentos: null,
-      tickets: null
+      tickets: null,
+      totais_reais_banco: {
+        pesquisas: 0,
+        especialistas: 0,
+        apontamentos: 0,
+        tickets: 0
+      }
     };
   }
 }
