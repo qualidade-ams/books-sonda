@@ -5,6 +5,8 @@
  * para exibição na tela de banco de horas.
  */
 
+import { getPeriodName, isEnglishTemplateByName } from './bancoHorasI18n';
+
 /**
  * Calcula o nome do período atual baseado na vigência e período de apuração
  * 
@@ -12,17 +14,41 @@
  * @param periodoApuracao - Período de apuração em meses (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
  * @param mesAtual - Mês atual (1-12)
  * @param anoAtual - Ano atual (YYYY)
+ * @param templateName - NOME do template da empresa (para detectar idioma)
  * @returns Nome do período (ex: "1º Trimestre", "Mensal", "Anual")
  */
 export function calcularNomePeriodo(
   inicioVigencia: string | null | undefined,
   periodoApuracao: number | null | undefined,
   mesAtual: number,
-  anoAtual: number
+  anoAtual: number,
+  templateName?: string
+): string {
+  // Detectar se é template em inglês baseado no NOME
+  const isEnglish = isEnglishTemplateByName(templateName);
+  
+  return calcularNomePeriodoComIdioma(
+    inicioVigencia,
+    periodoApuracao,
+    mesAtual,
+    anoAtual,
+    isEnglish
+  );
+}
+
+/**
+ * Versão da função que recebe diretamente o idioma (para uso com hooks)
+ */
+export function calcularNomePeriodoComIdioma(
+  inicioVigencia: string | null | undefined,
+  periodoApuracao: number | null | undefined,
+  mesAtual: number,
+  anoAtual: number,
+  isEnglish: boolean
 ): string {
   // Validações básicas
   if (!inicioVigencia || !periodoApuracao) {
-    return 'Período não definido';
+    return isEnglish ? 'Period not defined' : 'Período não definido';
   }
 
   // Converter início da vigência para mês e ano
@@ -48,7 +74,7 @@ export function calcularNomePeriodo(
     }
   } catch (error) {
     console.error('Erro ao processar início da vigência:', error);
-    return 'Período inválido';
+    return isEnglish ? 'Invalid period' : 'Período inválido';
   }
 
   // Calcular quantos meses se passaram desde o início da vigência
@@ -56,7 +82,7 @@ export function calcularNomePeriodo(
   
   // Se ainda não chegou no início da vigência
   if (mesesPassados < 0) {
-    return 'Vigência não iniciada';
+    return isEnglish ? 'Validity not started' : 'Vigência não iniciada';
   }
 
   // Calcular qual período estamos (baseado no período de apuração)
@@ -68,62 +94,8 @@ export function calcularNomePeriodo(
   // Calcular o período dentro do ano atual (1 a periodosNoAno)
   const periodoNoAno = ((numeroPeriodo - 1) % periodosNoAno) + 1;
 
-  // Retornar nome baseado no período de apuração
-  return getNomePeriodo(periodoApuracao, periodoNoAno);
-}
-
-/**
- * Retorna o nome do período baseado no período de apuração e número do período
- * 
- * @param periodoApuracao - Período de apuração em meses
- * @param numeroPeriodo - Número do período dentro do ano (1, 2, 3, etc.)
- * @returns Nome do período formatado
- */
-function getNomePeriodo(periodoApuracao: number, numeroPeriodo: number): string {
-  switch (periodoApuracao) {
-    case 1:
-      return 'Mensal';
-    
-    case 2:
-      const bimestres = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre', '5º Bimestre', '6º Bimestre'];
-      return bimestres[numeroPeriodo - 1] || `${numeroPeriodo}º Bimestre`;
-    
-    case 3:
-      const trimestres = ['1º Trimestre', '2º Trimestre', '3º Trimestre', '4º Trimestre'];
-      return trimestres[numeroPeriodo - 1] || `${numeroPeriodo}º Trimestre`;
-    
-    case 4:
-      const quadrimestres = ['1º Quadrimestre', '2º Quadrimestre', '3º Quadrimestre'];
-      return quadrimestres[numeroPeriodo - 1] || `${numeroPeriodo}º Quadrimestre`;
-    
-    case 5:
-      return '5 meses';
-    
-    case 6:
-      const semestres = ['1º Semestre', '2º Semestre'];
-      return semestres[numeroPeriodo - 1] || `${numeroPeriodo}º Semestre`;
-    
-    case 7:
-      return '7 meses';
-    
-    case 8:
-      return '8 meses';
-    
-    case 9:
-      return '9 meses';
-    
-    case 10:
-      return '10 meses';
-    
-    case 11:
-      return '11 meses';
-    
-    case 12:
-      return 'Anual';
-    
-    default:
-      return `${periodoApuracao} meses`;
-  }
+  // Retornar nome baseado no período de apuração e idioma
+  return getPeriodName(periodoApuracao, periodoNoAno, isEnglish);
 }
 
 /**

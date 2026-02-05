@@ -936,6 +936,7 @@ export default function ControleBancoHoras() {
                   disabled={isFetchingCalculos || isRecalculatingAny}
                   tipoCobranca={empresaAtual?.tipo_cobranca}
                   inicioVigencia={empresaAtual?.inicio_vigencia}
+                  templatePadrao={empresaAtual?.template_padrao}
                 />
               </TabsContent>
 

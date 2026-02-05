@@ -47,7 +47,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONADO
-import { calcularNomePeriodo } from '@/utils/periodoVigenciaUtils';
+import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
+import { getLabels, getMonthName } from '@/utils/bancoHorasI18n';
+import { useTemplateLanguage } from '@/hooks/useTemplateLanguage';
+import { useTaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
 
 /**
  * Props for VisaoConsolidada component
@@ -82,6 +85,9 @@ export interface VisaoConsolidadaProps {
   
   /** Início da vigência da empresa (para cálculo do período) */
   inicioVigencia?: string;
+  
+  /** Template padrão da empresa (para detectar idioma) */
+  templatePadrao?: string;
 }
 
 /**
@@ -224,13 +230,28 @@ export function VisaoConsolidada({
   requerimentos = [],
   requerimentosNaoConcluidos = [],
   tipoCobranca,
-  inicioVigencia
+  inicioVigencia,
+  templatePadrao
 }: VisaoConsolidadaProps) {
+  // Usar primeiro cálculo para informações gerais (DEVE SER PRIMEIRO)
+  const calculoPrincipal = calculos[0];
+  
+  // Detectar idioma do template baseado no nome na tabela email_templates
+  const { isEnglish, isLoading: isLoadingTemplate } = useTemplateLanguage(templatePadrao);
+  const labels = getLabels(isEnglish);
+  
+  // Buscar taxas específicas do cliente (para casos especiais como EXXONMOBIL)
+  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(calculoPrincipal?.empresa_id);
+  
   // Log para debug
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
     requerimentosConcluidos: requerimentos.length,
     requerimentosNaoConcluidos: requerimentosNaoConcluidos.length,
-    tipoCobranca
+    tipoCobranca,
+    templatePadrao,
+    isEnglish,
+    isLoadingTemplate,
+    taxasEspecificas
   });
   
   // Hook de autenticação
@@ -282,9 +303,6 @@ export function VisaoConsolidada({
     buscarUltimaSincronizacao();
   }, []); // Executar apenas uma vez ao montar o componente
   
-  // Usar primeiro cálculo para informações gerais
-  const calculoPrincipal = calculos[0];
-  
   // Usar último cálculo do período para valor_a_faturar (é onde o valor é calculado)
   const calculoFimPeriodo = calculos.find(c => c.is_fim_periodo) || calculos[calculos.length - 1];
   
@@ -307,7 +325,7 @@ export function VisaoConsolidada({
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
   
   // Buscar taxa de qualquer cálculo que tenha o valor (fallback robusto)
-  const taxaHoraExibir = isTicket
+  const taxaHoraCalculada = isTicket
     ? (calculoFimPeriodo?.taxa_ticket_utilizada || 
        calculoPrincipal?.taxa_ticket_utilizada || 
        calculos.find(c => c.taxa_ticket_utilizada)?.taxa_ticket_utilizada)
@@ -315,30 +333,79 @@ export function VisaoConsolidada({
        calculoPrincipal?.taxa_hora_utilizada || 
        calculos.find(c => c.taxa_hora_utilizada)?.taxa_hora_utilizada);
   
+  // Função para determinar qual taxa usar baseada na empresa
+  const getTaxaExcedente = useMemo(() => {
+    console.log('🔍 [VisaoConsolidada] Debug taxas completo:', {
+      empresa_id: calculoPrincipal?.empresa_id,
+      empresa_nome: calculoPrincipal?.empresa_nome,
+      taxasEspecificas: taxasEspecificas,
+      ticket_excedente_simples: taxasEspecificas?.ticket_excedente_simples,
+      taxaHoraCalculada: taxaHoraCalculada,
+      isLoadingTaxas: isLoadingTaxas,
+      tipoCobranca: tipoCobranca,
+      isTicket: isTicket
+    });
+    
+    // Verificar se é EXXONMOBIL e tem taxa específica
+    if (taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0) {
+      console.log('💰 [VisaoConsolidada] Usando taxa específica EXXONMOBIL:', {
+        cliente_id: taxasEspecificas.cliente_id,
+        ticket_excedente_simples: taxasEspecificas.ticket_excedente_simples,
+        valor_formatado: new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(taxasEspecificas.ticket_excedente_simples)
+      });
+      return taxasEspecificas.ticket_excedente_simples;
+    }
+    
+    // Caso contrário, usar taxa calculada padrão
+    console.log('💰 [VisaoConsolidada] Usando taxa padrão calculada:', {
+      taxaHoraCalculada: taxaHoraCalculada,
+      valor_formatado: taxaHoraCalculada ? new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(taxaHoraCalculada) : 'N/A'
+    });
+    return taxaHoraCalculada;
+  }, [taxasEspecificas, taxaHoraCalculada, isLoadingTaxas, calculoPrincipal, tipoCobranca, isTicket]);
+  
+  const taxaHoraExibir = getTaxaExcedente;
+  
   const temExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0;
   
-  // Nomes dos meses
-  const MESES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
+  // Nomes dos meses traduzidos
+  const MESES = useMemo(() => {
+    if (isEnglish) {
+      return [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+    } else {
+      return [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+    }
+  }, [isEnglish]);
 
   // Calcular nome do período atual
   const nomePeriodoAtual = useMemo(() => {
     if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) {
-      return 'Período não definido';
+      return labels.periodos.vigenciaNaoIniciada;
     }
     
     // Usar o primeiro mês do período como referência
     const mesReferencia = mesesDoPeriodo[0];
     
-    return calcularNomePeriodo(
+    return calcularNomePeriodoComIdioma(
       inicioVigencia,
       periodoApuracao,
       mesReferencia.mes,
-      mesReferencia.ano
+      mesReferencia.ano,
+      isEnglish
     );
-  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo]);
+  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo, isEnglish, labels]);
 
   // Função para salvar reajuste (chamada pelo BotaoReajusteHoras)
   const handleSalvarReajuste = async (dados: {
@@ -458,9 +525,9 @@ export function VisaoConsolidada({
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <CardTitle className="text-base sm:text-lg">Visão Consolidada</CardTitle>
+            <CardTitle className="text-base sm:text-lg">{labels.visaoConsolidada}</CardTitle>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Banco de horas
+              {labels.bancoDeHoras}
             </p>
           </div>
           
@@ -473,8 +540,8 @@ export function VisaoConsolidada({
               className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
             >
               <History className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Ver Histórico</span>
-              <span className="sm:hidden">Histórico</span>
+              <span className="hidden sm:inline">{labels.verHistorico}</span>
+              <span className="sm:hidden">{labels.historico}</span>
             </Button>
           </div>
         </div>
@@ -488,7 +555,7 @@ export function VisaoConsolidada({
             <TableHeader>
               {/* Nova linha: Período */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableHead className="font-semibold text-white text-center">Período</TableHead>
+                <TableHead className="font-semibold text-white text-center">{labels.periodo}</TableHead>
                 <TableHead className="font-semibold text-white text-center" colSpan={calculos.length}>
                   {nomePeriodoAtual}
                 </TableHead>
@@ -496,7 +563,7 @@ export function VisaoConsolidada({
               
               {/* Linha original: Mês */}
               <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
-                <TableHead className="text-white font-semibold text-center">Mês</TableHead>
+                <TableHead className="text-white font-semibold text-center">{labels.mes}</TableHead>
                 {calculos.map((calculo, index) => {
                   // Usar meses do período se disponível, senão usar mês do cálculo
                   const mesExibir = mesesDoPeriodo && mesesDoPeriodo[index] 
@@ -522,7 +589,7 @@ export function VisaoConsolidada({
               {/* Banco Contratado (Baseline) */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
                 <TableCell className="font-semibold text-white text-center">
-                  {tipoCobranca?.toLowerCase() === 'ticket' ? 'Tickets Contratados' : 'Banco Contratado'}
+                  {tipoCobranca?.toLowerCase() === 'ticket' ? labels.ticketsContratados : labels.bancoContratado}
                 </TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-white">
@@ -533,7 +600,7 @@ export function VisaoConsolidada({
 
               {/* Repasse mês anterior */}
               <TableRow className="bg-gray-200 hover:bg-gray-200">
-                <TableCell className="font-medium text-gray-900 text-center">Repasse mês anterior</TableCell>
+                <TableCell className="font-medium text-gray-900 text-center">{labels.repasseMesAnterior}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}
@@ -543,7 +610,7 @@ export function VisaoConsolidada({
 
               {/* Saldo a utilizar */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">Saldo a utilizar</TableCell>
+                <TableCell className="font-medium text-center">{labels.saldoAUtilizar}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}
@@ -553,7 +620,7 @@ export function VisaoConsolidada({
 
               {/* Consumo Chamados */}
               <TableRow>
-                <TableCell className="font-medium text-center">Consumo Chamados</TableCell>
+                <TableCell className="font-medium text-center">{labels.consumoChamados}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
@@ -563,7 +630,7 @@ export function VisaoConsolidada({
 
               {/* Requerimentos */}
               <TableRow>
-                <TableCell className="font-medium text-center">Requerimentos</TableCell>
+                <TableCell className="font-medium text-center">{labels.requerimentos}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.requerimentos_horas, calculo.requerimentos_tickets, tipoCobranca)}
@@ -573,7 +640,7 @@ export function VisaoConsolidada({
 
               {/* Reajuste (botão com modal) */}
               <TableRow>
-                <TableCell className="font-medium text-center">Reajuste</TableCell>
+                <TableCell className="font-medium text-center">{labels.reajuste}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center">
                     <BotaoReajusteHoras
@@ -594,7 +661,7 @@ export function VisaoConsolidada({
 
               {/* Consumo Total */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">Consumo Total</TableCell>
+                <TableCell className="font-medium text-center">{labels.consumoTotal}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_total_horas, calculo.consumo_total_tickets, tipoCobranca)}
@@ -604,7 +671,7 @@ export function VisaoConsolidada({
 
               {/* Saldo */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">Saldo</TableCell>
+                <TableCell className="font-medium text-center">{labels.saldo}</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
@@ -614,7 +681,7 @@ export function VisaoConsolidada({
 
               {/* Repasse - Percentual Dinâmico */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">Repasse - {percentualRepasseMensal}%</TableCell>
+                <TableCell className="font-medium text-center">{labels.repasse} - {percentualRepasseMensal}%</TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
@@ -625,7 +692,7 @@ export function VisaoConsolidada({
               {/* Excedente Trimestre */}
               {temExcedentes && (
                 <TableRow className="bg-gray-50">
-                  <TableCell className="font-medium text-center">Excedente Trimestre</TableCell>
+                  <TableCell className="font-medium text-center">{labels.excedenteTrimestreLabel}</TableCell>
                   <TableCell className="text-center font-semibold text-green-600" colSpan={calculos.length}>
                     {formatarHoras(calculoPrincipal.excedentes_horas)}
                   </TableCell>
@@ -634,12 +701,12 @@ export function VisaoConsolidada({
 
               {/* Taxa/hora Excedente e Valor Total na mesma linha */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-medium text-white text-center">Taxa/hora Excedente</TableCell>
+                <TableCell className="font-medium text-white text-center">{labels.taxaHoraExcedente}</TableCell>
                 <TableCell className="text-center font-semibold text-white">
                   {taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00'}
                 </TableCell>
                 <TableCell className="font-medium text-center text-white" colSpan={calculos.length > 1 ? calculos.length - 2 : 1}>
-                  Valor Total
+                  {labels.valorTotal}
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
                   {formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}
@@ -650,7 +717,7 @@ export function VisaoConsolidada({
               {calculoPrincipal?.is_fim_periodo && (
                 <TableRow className="bg-blue-50">
                   <TableCell colSpan={calculos.length + 1} className="text-center font-semibold text-blue-800">
-                    Final do Trimestre o saldo é zerado.
+                    {labels.finalTrimestreMsg}
                   </TableCell>
                 </TableRow>
               )}
@@ -699,7 +766,7 @@ export function VisaoConsolidada({
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5" />
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Requerimentos do Período
+                {isEnglish ? 'Period Requirements' : 'Requerimentos do Período'}
               </h4>
             </div>
 
@@ -831,7 +898,7 @@ export function VisaoConsolidada({
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-orange-600" />
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Requerimentos do Período NÃO CONCLUÍDOS
+                {isEnglish ? 'Period Requirements NOT COMPLETED' : 'Requerimentos do Período NÃO CONCLUÍDOS'}
               </h4>
               <Badge className="bg-orange-100 text-orange-800 text-xs">
                 {requerimentosNaoConcluidos.length}
