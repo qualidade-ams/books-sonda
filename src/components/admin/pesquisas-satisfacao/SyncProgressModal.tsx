@@ -29,6 +29,12 @@ interface SyncProgressModalProps {
     atualizados: number;
     erros: number;
     mensagens: string[];
+    totais_reais_banco?: {
+      pesquisas: number;
+      especialistas: number;
+      apontamentos: number;
+      tickets: number;
+    };
     especialistas?: {
       sucesso: boolean;
       total_processados: number;
@@ -257,8 +263,12 @@ export function SyncProgressModal({
                   </p>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-bold text-blue-600">{resultado.total_processados}</p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">Total</p>
+                      <p className="text-lg font-bold text-blue-600">
+                        {resultado.totais_reais_banco?.pesquisas || resultado.total_processados}
+                      </p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-lg font-bold text-green-600">{resultado.novos}</p>
@@ -273,6 +283,11 @@ export function SyncProgressModal({
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>
                   </div>
+                  {resultado.totais_reais_banco && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 text-center">
+                      Processados nesta sincronização: {resultado.total_processados}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -284,8 +299,12 @@ export function SyncProgressModal({
                   </p>
                   <div className="grid grid-cols-5 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-bold text-purple-600">{resultado.especialistas.total_processados}</p>
-                      <p className="text-xs text-purple-700 dark:text-purple-300">Total</p>
+                      <p className="text-lg font-bold text-purple-600">
+                        {resultado.totais_reais_banco?.especialistas || resultado.especialistas.total_processados}
+                      </p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">
+                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-lg font-bold text-green-600">{resultado.especialistas.novos}</p>
@@ -304,6 +323,11 @@ export function SyncProgressModal({
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>
                   </div>
+                  {resultado.totais_reais_banco && (
+                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 text-center">
+                      Processados nesta sincronização: {resultado.especialistas.total_processados}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -316,9 +340,11 @@ export function SyncProgressModal({
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
                       <p className="text-lg font-bold text-teal-600">
-                        {resultado.apontamentos.total_processados || 0}
+                        {resultado.totais_reais_banco?.apontamentos || resultado.apontamentos.total_processados || 0}
                       </p>
-                      <p className="text-xs text-teal-700 dark:text-teal-300">Total</p>
+                      <p className="text-xs text-teal-700 dark:text-teal-300">
+                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-lg font-bold text-green-600">
@@ -339,6 +365,11 @@ export function SyncProgressModal({
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>
                   </div>
+                  {resultado.totais_reais_banco && (
+                    <p className="text-xs text-teal-600 dark:text-teal-400 mt-2 text-center">
+                      Processados nesta sincronização: {resultado.apontamentos.total_processados || 0}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -351,9 +382,11 @@ export function SyncProgressModal({
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
                       <p className="text-lg font-bold text-indigo-600">
-                        {resultado.tickets.total_processados || 0}
+                        {resultado.totais_reais_banco?.tickets || resultado.tickets.total_processados || 0}
                       </p>
-                      <p className="text-xs text-indigo-700 dark:text-indigo-300">Total</p>
+                      <p className="text-xs text-indigo-700 dark:text-indigo-300">
+                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-lg font-bold text-green-600">
@@ -374,6 +407,11 @@ export function SyncProgressModal({
                       <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
                     </div>
                   </div>
+                  {resultado.totais_reais_banco && (
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2 text-center">
+                      Processados nesta sincronização: {resultado.tickets.total_processados || 0}
+                    </p>
+                  )}
                 </div>
               )}
 

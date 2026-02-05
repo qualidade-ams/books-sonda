@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,14 +87,13 @@ export default function InconsistenciaChamados() {
   const [mesAtual, setMesAtual] = useState(new Date().getMonth() + 1);
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
   
-  // Estado de filtros
+  // Estado de filtros (sem filtros de data iniciais)
   const [filtros, setFiltros] = useState<InconsistenciasChamadosFiltros>({
     busca: '',
     tipo_inconsistencia: 'all',
     origem: 'all',
-    analista: '',
-    data_inicio: '',
-    data_fim: ''
+    analista: ''
+    // data_inicio e data_fim serão definidos pelo useEffect
   });
 
   // Atualizar filtros quando mês/ano mudar
@@ -102,6 +101,13 @@ export default function InconsistenciaChamados() {
     // Calcular primeiro e último dia do mês
     const primeiroDia = new Date(ano, mes - 1, 1);
     const ultimoDia = new Date(ano, mes, 0, 23, 59, 59);
+    
+    console.log('📅 Definindo filtros de período:', {
+      mes,
+      ano,
+      data_inicio: primeiroDia.toISOString(),
+      data_fim: ultimoDia.toISOString()
+    });
     
     setFiltros(prev => ({
       ...prev,
@@ -111,9 +117,10 @@ export default function InconsistenciaChamados() {
   };
 
   // Atualizar filtros quando componente montar ou mês/ano mudar
-  useState(() => {
+  useEffect(() => {
+    console.log('🔍 Atualizando filtros por período:', { mesAtual, anoAtual });
     atualizarFiltrosPorPeriodo(mesAtual, anoAtual);
-  });
+  }, [mesAtual, anoAtual]);
 
   // Estado de seleção múltipla
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -167,28 +174,27 @@ export default function InconsistenciaChamados() {
     setCurrentPage(1);
   };
 
-  // Verificar se há filtros ativos
+  // Verificar se há filtros ativos (excluindo filtros de período padrão)
   const hasActiveFilters = () => {
     return (
       filtros.busca !== '' ||
       filtros.tipo_inconsistencia !== 'all' ||
       filtros.origem !== 'all' ||
-      filtros.analista !== '' ||
-      filtros.data_inicio !== '' ||
-      filtros.data_fim !== ''
+      filtros.analista !== ''
+      // Não incluir data_inicio e data_fim pois são filtros padrão do período
     );
   };
 
-  // Limpar filtros
+  // Limpar filtros (mantendo filtros de período)
   const limparFiltros = () => {
-    setFiltros({
+    setFiltros(prev => ({
+      ...prev,
       busca: '',
       tipo_inconsistencia: 'all',
       origem: 'all',
-      analista: '',
-      data_inicio: '',
-      data_fim: ''
-    });
+      analista: ''
+      // Manter data_inicio e data_fim do período atual
+    }));
   };
 
   // Seleção múltipla
