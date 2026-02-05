@@ -7,7 +7,7 @@
  * @module components/admin/banco-horas/VisaoConsolidada
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   History,
@@ -47,6 +47,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONADO
+import { calcularNomePeriodo } from '@/utils/periodoVigenciaUtils';
 
 /**
  * Props for VisaoConsolidada component
@@ -78,6 +79,9 @@ export interface VisaoConsolidadaProps {
   
   /** Tipo de cobrança do cliente ('Banco de Horas' ou 'Ticket') */
   tipoCobranca?: string;
+  
+  /** Início da vigência da empresa (para cálculo do período) */
+  inicioVigencia?: string;
 }
 
 /**
@@ -219,7 +223,8 @@ export function VisaoConsolidada({
   mesesDoPeriodo,
   requerimentos = [],
   requerimentosNaoConcluidos = [],
-  tipoCobranca
+  tipoCobranca,
+  inicioVigencia
 }: VisaoConsolidadaProps) {
   // Log para debug
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
@@ -317,6 +322,23 @@ export function VisaoConsolidada({
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
+
+  // Calcular nome do período atual
+  const nomePeriodoAtual = useMemo(() => {
+    if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) {
+      return 'Período não definido';
+    }
+    
+    // Usar o primeiro mês do período como referência
+    const mesReferencia = mesesDoPeriodo[0];
+    
+    return calcularNomePeriodo(
+      inicioVigencia,
+      periodoApuracao,
+      mesReferencia.mes,
+      mesReferencia.ano
+    );
+  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo]);
 
   // Função para salvar reajuste (chamada pelo BotaoReajusteHoras)
   const handleSalvarReajuste = async (dados: {
@@ -464,6 +486,15 @@ export function VisaoConsolidada({
           <div className="overflow-x-auto px-6 sm:px-0">
             <Table className="min-w-full">
             <TableHeader>
+              {/* Nova linha: Período */}
+              <TableRow className="bg-gray-700 hover:bg-gray-700">
+                <TableHead className="font-semibold text-white text-center">Período</TableHead>
+                <TableHead className="font-semibold text-white text-center" colSpan={calculos.length}>
+                  {nomePeriodoAtual}
+                </TableHead>
+              </TableRow>
+              
+              {/* Linha original: Mês */}
               <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
                 <TableHead className="text-white font-semibold text-center">Mês</TableHead>
                 {calculos.map((calculo, index) => {

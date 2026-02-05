@@ -93,8 +93,18 @@ export default function ControleBancoHoras() {
   // Estado de loading para cálculo inicial
   const [isCalculandoPeriodo, setIsCalculandoPeriodo] = useState(false);
   
-  // Buscar empresas
-  const { empresas, isLoading: isLoadingEmpresas } = useEmpresas();
+  // Buscar empresas - FILTRAR apenas ativas com AMS
+  const { empresas: todasEmpresas, isLoading: isLoadingEmpresas } = useEmpresas();
+  
+  // Filtrar apenas empresas ativas com AMS
+  const empresas = useMemo(() => {
+    if (!todasEmpresas) return [];
+    
+    return todasEmpresas.filter(empresa => 
+      empresa.status === 'ativo' && 
+      empresa.tem_ams === true
+    );
+  }, [todasEmpresas]);
   
   // Buscar empresa selecionada para obter período de apuração
   const empresaAtual = useMemo(() => {
@@ -327,6 +337,26 @@ export default function ControleBancoHoras() {
   // ✅ REMOVIDO: Não selecionar empresa automaticamente
   // Usuário deve escolher manualmente no dropdown
   
+  // ✅ NOVO: Resetar para mês corrente quando empresa muda
+  useEffect(() => {
+    if (empresaSelecionada) {
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth() + 1;
+      const anoAtual = hoje.getFullYear();
+      
+      console.log('🔄 [ControleBancoHoras] Empresa alterada, resetando para mês corrente:', {
+        empresa: empresaAtual?.nome_abreviado,
+        mesAtual,
+        anoAtual
+      });
+      
+      setMesAno({
+        mes: mesAtual,
+        ano: anoAtual
+      });
+    }
+  }, [empresaSelecionada]); // Executar sempre que empresa muda
+  
   // Calcular trimestre sequencialmente quando empresa muda
   useEffect(() => {
     if (!empresaSelecionada || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return;
@@ -379,14 +409,44 @@ export default function ControleBancoHoras() {
       }
     };
     
-    // Executar apenas uma vez quando a empresa muda
+    // Executar apenas quando empresa E meses do período mudam
     calcularTrimestreSequencial();
-  }, [empresaSelecionada]); // Apenas quando empresa muda
+  }, [empresaSelecionada, mesesDoPeriodo]); // Empresa E meses do período
   
   // Verificar se há alocações
   const temAlocacoes = alocacoes && alocacoes.length > 0;
   const handleMesAnterior = () => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
+    
+    // Verificar se há vigência definida
+    if (empresaAtual?.inicio_vigencia) {
+      const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
+      const mesInicioVigencia = inicioVigencia.getUTCMonth() + 1;
+      const anoInicioVigencia = inicioVigencia.getUTCFullYear();
+      
+      // Calcular o novo período
+      const novoMes = mesAno.mes - periodoApuracao;
+      let novoMesCalculado = novoMes;
+      let novoAnoCalculado = mesAno.ano;
+      
+      if (novoMes < 1) {
+        novoMesCalculado = 12 + novoMes;
+        novoAnoCalculado = mesAno.ano - 1;
+      }
+      
+      // Verificar se o novo período seria anterior à vigência
+      const dataNovoPeríodo = new Date(novoAnoCalculado, novoMesCalculado - 1, 1);
+      const dataVigencia = new Date(anoInicioVigencia, mesInicioVigencia - 1, 1);
+      
+      if (dataNovoPeríodo < dataVigencia) {
+        toast({
+          title: 'Período não disponível',
+          description: `Não é possível navegar para períodos anteriores ao início da vigência (${String(mesInicioVigencia).padStart(2, '0')}/${anoInicioVigencia}).`,
+          variant: 'destructive',
+        });
+        return; // Bloquear navegação
+      }
+    }
     
     setMesAno(prev => {
       const novoMes = prev.mes - periodoApuracao;
@@ -397,6 +457,33 @@ export default function ControleBancoHoras() {
     });
   };
   
+  // Verificar se pode navegar para período anterior
+  const podeNavegarAnterior = useMemo(() => {
+    if (!empresaAtual?.inicio_vigencia) return true; // Se não tem vigência, permite navegar
+    
+    const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
+    const mesInicioVigencia = inicioVigencia.getUTCMonth() + 1;
+    const anoInicioVigencia = inicioVigencia.getUTCFullYear();
+    
+    const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
+    
+    // Calcular o período anterior
+    const mesAnterior = mesAno.mes - periodoApuracao;
+    let mesAnteriorCalculado = mesAnterior;
+    let anoAnteriorCalculado = mesAno.ano;
+    
+    if (mesAnterior < 1) {
+      mesAnteriorCalculado = 12 + mesAnterior;
+      anoAnteriorCalculado = mesAno.ano - 1;
+    }
+    
+    // Verificar se o período anterior seria anterior à vigência
+    const dataPeríodoAnterior = new Date(anoAnteriorCalculado, mesAnteriorCalculado - 1, 1);
+    const dataVigencia = new Date(anoInicioVigencia, mesInicioVigencia - 1, 1);
+    
+    return dataPeríodoAnterior >= dataVigencia;
+  }, [empresaAtual, mesAno]);
+
   const handleProximoMes = () => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
     
@@ -721,8 +808,9 @@ export default function ControleBancoHoras() {
                   variant="outline"
                   size="sm"
                   onClick={handleMesAnterior}
-                  disabled={isLoading || isCalculandoPeriodo}
+                  disabled={isLoading || isCalculandoPeriodo || !podeNavegarAnterior}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
+                  title={!podeNavegarAnterior ? 'Período anterior à vigência inicial' : 'Período anterior'}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">Anterior</span>
@@ -847,6 +935,7 @@ export default function ControleBancoHoras() {
                   onHistoricoClick={handleHistorico}
                   disabled={isFetchingCalculos || isRecalculatingAny}
                   tipoCobranca={empresaAtual?.tipo_cobranca}
+                  inicioVigencia={empresaAtual?.inicio_vigencia}
                 />
               </TabsContent>
 
