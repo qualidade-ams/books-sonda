@@ -66,7 +66,7 @@ export class InconsistenciasChamadosService {
     try {
       // Buscar todas as inconsistências no histórico
       const { data: historico, error } = await supabase
-        .from('historico_inconsistencias_chamados')
+        .from('historico_inconsistencias_chamados' as any)
         .select('nro_chamado, tipo_inconsistencia, origem, data_atividade');
 
       if (error) {
@@ -81,7 +81,7 @@ export class InconsistenciasChamadosService {
 
       // Criar um Set com chaves únicas das inconsistências já enviadas
       const enviadas = new Set(
-        historico.map(h => 
+        (historico as any[]).map((h: any) => 
           `${h.origem}-${h.nro_chamado}-${h.tipo_inconsistencia}-${h.data_atividade}`
         )
       );
@@ -146,7 +146,7 @@ export class InconsistenciasChamadosService {
       // Filtrar e mapear inconsistências
       const inconsistencias: InconsistenciaChamado[] = [];
 
-      for (const apontamento of data) {
+      for (const apontamento of data as any[]) {
         const tipos = this.detectarInconsistencias(
           apontamento.data_atividade,
           apontamento.data_sistema,
@@ -232,7 +232,7 @@ export class InconsistenciasChamadosService {
       // Filtrar e mapear inconsistências
       const inconsistencias: InconsistenciaChamado[] = [];
 
-      for (const ticket of data) {
+      for (const ticket of data as any[]) {
         const tipos = this.detectarInconsistencias(
           ticket.data_abertura,
           ticket.data_sistema,
@@ -394,7 +394,7 @@ export class InconsistenciasChamadosService {
       console.log('📜 Buscando histórico de inconsistências:', { mes, ano });
 
       const { data, error } = await supabase
-        .from('historico_inconsistencias_chamados')
+        .from('historico_inconsistencias_chamados' as any)
         .select('*')
         .eq('mes_referencia', mes)
         .eq('ano_referencia', ano)
@@ -407,7 +407,7 @@ export class InconsistenciasChamadosService {
 
       console.log('✅ Histórico encontrado:', data?.length || 0);
 
-      return data || [];
+      return (data as any[]) || [];
     } catch (error) {
       console.error('❌ Erro ao buscar histórico:', error);
       throw error;
@@ -663,7 +663,7 @@ export class InconsistenciasChamadosService {
         
         for (const inc of inconsistencias) {
           const { error: insertError } = await supabase
-            .from('historico_inconsistencias_chamados')
+            .from('historico_inconsistencias_chamados' as any)
             .insert({
               origem: inc.origem,
               nro_chamado: inc.nro_chamado,

@@ -124,7 +124,8 @@ export function BotaoReajusteHoras({
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
   
-  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
+  // Verificar se é tipo ticket (singular ou plural)
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   
   // Formatar valor atual para exibição
   const valorAtualFormatado = isTicket 

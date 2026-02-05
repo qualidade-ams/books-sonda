@@ -138,8 +138,8 @@ const formatarValor = (
   tickets?: number, 
   tipoCobranca?: string
 ): string => {
-  // Se for tipo ticket, usar o campo de tickets diretamente
-  if (tipoCobranca?.toLowerCase() === 'ticket') {
+  // Se for tipo ticket (singular ou plural), usar o campo de tickets diretamente
+  if (tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') {
     // Se não tem valor ou é undefined/null, retornar "0"
     if (tickets === undefined || tickets === null) return '0';
     return tickets.toString();
@@ -203,8 +203,8 @@ const getColorClassDinamico = (
   tickets?: number, 
   tipoCobranca?: string
 ): string => {
-  // Se for tipo ticket, usar valor de tickets
-  if (tipoCobranca?.toLowerCase() === 'ticket') {
+  // Se for tipo ticket (singular ou plural), usar valor de tickets
+  if (tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') {
     if (tickets === undefined || tickets === null) return 'text-gray-900';
     if (tickets > 0) return 'text-green-600';
     if (tickets < 0) return 'text-red-600';
@@ -321,8 +321,8 @@ export function VisaoConsolidada({
     }))
   });
   
-  // Buscar taxa conforme tipo de cobrança
-  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
+  // Buscar taxa conforme tipo de cobrança (singular ou plural)
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   
   // Buscar taxa de qualquer cálculo que tenha o valor (fallback robusto)
   const taxaHoraCalculada = isTicket
@@ -589,7 +589,7 @@ export function VisaoConsolidada({
               {/* Banco Contratado (Baseline) */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
                 <TableCell className="font-semibold text-white text-center">
-                  {tipoCobranca?.toLowerCase() === 'ticket' ? labels.ticketsContratados : labels.bancoContratado}
+                  {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') ? labels.ticketsContratados : labels.bancoContratado}
                 </TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-white">

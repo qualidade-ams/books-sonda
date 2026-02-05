@@ -962,65 +962,40 @@ export class BancoHorasService {
    * Persiste cálculo no banco de dados
    * 
    * IMPORTANTE: Não cria versões aqui! Versões são criadas apenas quando há reajuste manual.
-   * Se já existe um cálculo para o mês/ano, faz UPDATE. Senão, faz INSERT.
+   * Usa UPSERT para evitar condições de corrida em cálculos simultâneos.
    */
   private async persistirCalculo(dados: Partial<BancoHorasCalculo>): Promise<BancoHorasCalculo> {
-    // Buscar cálculo existente (sem versão)
-    const { data: calculoExistente } = await supabase
+    console.log('💾 Persistindo cálculo (UPSERT):', {
+      empresa_id: dados.empresa_id,
+      mes: dados.mes,
+      ano: dados.ano
+    });
+
+    // UPSERT: Insere se não existe, atualiza se já existe
+    // onConflict especifica a constraint única (empresa_id, mes, ano)
+    const { data: calculo, error } = await supabase
       .from('banco_horas_calculos' as any)
-      .select('id')
-      .eq('empresa_id', dados.empresa_id!)
-      .eq('mes', dados.mes!)
-      .eq('ano', dados.ano!)
+      .upsert({
+        ...dados,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'empresa_id,mes,ano', // Constraint única
+        ignoreDuplicates: false // Sempre atualizar se já existe
+      })
+      .select()
       .single();
 
-    if (calculoExistente) {
-      // UPDATE: Atualizar cálculo existente
-      console.log('🔄 Atualizando cálculo existente:', (calculoExistente as any).id);
-      
-      const { data: calculo, error } = await supabase
-        .from('banco_horas_calculos' as any)
-        .update({
-          ...dados,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', (calculoExistente as any).id)
-        .select()
-        .single();
-
-      if (error) {
-        throw new CalculationError(
-          'atualizar_calculo',
-          `Erro ao atualizar cálculo: ${error.message}`,
-          dados
-        );
-      }
-
-      return calculo as any as BancoHorasCalculo;
-    } else {
-      // INSERT: Criar novo cálculo
-      console.log('➕ Criando novo cálculo');
-      
-      const { data: calculo, error } = await supabase
-        .from('banco_horas_calculos' as any)
-        .insert({
-          ...dados,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new CalculationError(
-          'criar_calculo',
-          `Erro ao criar cálculo: ${error.message}`,
-          dados
-        );
-      }
-
-      return calculo as any as BancoHorasCalculo;
+    if (error) {
+      console.error('❌ Erro ao persistir cálculo:', error);
+      throw new CalculationError(
+        'persistir_calculo',
+        `Erro ao persistir cálculo: ${error.message}`,
+        dados
+      );
     }
+
+    console.log('✅ Cálculo persistido:', (calculo as any).id);
+    return calculo as any as BancoHorasCalculo;
   }
 
   /**

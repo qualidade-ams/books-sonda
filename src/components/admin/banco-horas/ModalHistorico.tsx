@@ -135,8 +135,8 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Verificar se é tipo ticket
-  const isTicket = tipoCobranca?.toLowerCase() === 'ticket';
+  // Verificar se é tipo ticket (singular ou plural)
+  const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
 
   /**
    * Busca dados de reajustes para versões
