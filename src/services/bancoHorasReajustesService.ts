@@ -139,7 +139,7 @@ export class BancoHorasReajustesService {
         ano: dados.ano,
         valor_reajuste_horas: dados.valor_horas,
         valor_reajuste_tickets: dados.valor_tickets, // ← ADICIONAR valor_tickets
-        tipo_reajuste: dados.tipo,
+        tipo_reajuste: dados.tipo, // ← MANTER como 'entrada' ou 'saida'
         observacao: dados.observacao,
         ativo: true,
         created_by: dados.created_by

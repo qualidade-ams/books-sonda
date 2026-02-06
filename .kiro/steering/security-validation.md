@@ -217,6 +217,7 @@ CREATE POLICY "nome_da_politica" ON nome_da_tabela
 
 ### 🚨 NUNCA FAÇA:
 - Funções sem `SECURITY DEFINER` e `SET search_path`
+- **Triggers sem `SECURITY DEFINER` e `SET search_path`**
 - Tabelas sem RLS habilitado
 - Políticas RLS incompletas
 - **PERFORMANCE**: `auth.uid()` direto em políticas RLS
@@ -225,10 +226,44 @@ CREATE POLICY "nome_da_politica" ON nome_da_tabela
 
 ### ✅ SEMPRE FAÇA:
 - Use o template de migration segura
+- **FUNÇÕES E TRIGGERS**: Sempre adicionar `SECURITY DEFINER` e `SET search_path = public`
 - **PERFORMANCE**: Use `(SELECT auth.uid())` em políticas RLS
 - Execute validações após cada migration
 - Documente decisões de segurança
 - Teste políticas RLS com diferentes usuários
+
+### 📝 TEMPLATE PARA FUNÇÕES E TRIGGERS SEGUROS:
+
+```sql
+-- ✅ CORRETO: Função com SECURITY DEFINER e SET search_path
+CREATE OR REPLACE FUNCTION public.nome_da_funcao()
+RETURNS TRIGGER 
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Lógica da função
+  RETURN NEW;
+END;
+$$;
+
+-- ❌ ERRADO: Função sem SECURITY DEFINER e SET search_path
+CREATE OR REPLACE FUNCTION public.nome_da_funcao()
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Lógica da função
+  RETURN NEW;
+END;
+$$;
+```
+
+**Por que é importante:**
+- `SECURITY DEFINER`: Define que a função executa com privilégios do criador
+- `SET search_path = public`: Previne ataques de injeção via search_path mutável
+- Sem essas configurações, o Supabase emite alerta: "Function has a role mutable search_path"
 
 ### 🚀 OTIMIZAÇÕES DE PERFORMANCE:
 ```sql

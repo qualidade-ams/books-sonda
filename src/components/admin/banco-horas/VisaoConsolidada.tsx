@@ -48,6 +48,7 @@ import type { Requerimento } from '@/types/requerimentos';
 import { getCobrancaIcon, getBadgeClasses } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
 import { BotaoReajusteHoras } from './BotaoReajusteHoras';
+import { SecaoObservacoes } from './SecaoObservacoes';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,7 +58,7 @@ import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONAD
 import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
 import { getLabels, getMonthName } from '@/utils/bancoHorasI18n';
 import { useTemplateLanguage } from '@/hooks/useTemplateLanguage';
-import { useTaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
+import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
 
 /**
  * Props for VisaoConsolidada component
@@ -252,7 +253,10 @@ export function VisaoConsolidada({
   const labels = getLabels(isEnglish);
   
   // Buscar taxas específicas do cliente (para casos especiais como EXXONMOBIL)
-  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(calculoPrincipal?.empresa_id);
+  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(calculoPrincipal?.empresa_id) as {
+    taxasEspecificas: TaxasEspecificasCliente | null | undefined;
+    isLoading: boolean;
+  };
   
   // Log para debug
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
@@ -388,7 +392,6 @@ export function VisaoConsolidada({
   const getTaxaExcedente = useMemo(() => {
     console.log('🔍 [VisaoConsolidada] Debug taxas completo:', {
       empresa_id: calculoPrincipal?.empresa_id,
-      empresa_nome: calculoPrincipal?.empresa_nome,
       taxasEspecificas: taxasEspecificas,
       ticket_excedente_simples: taxasEspecificas?.ticket_excedente_simples,
       taxaHoraCalculada: taxaHoraCalculada,
@@ -752,7 +755,32 @@ export function VisaoConsolidada({
 
               {/* Taxa/hora Excedente e Valor Total na mesma linha */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
-                <TableCell className="font-medium text-white text-center">{labels.taxaHoraExcedente}</TableCell>
+                <TableCell className="font-medium text-white text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <span>{labels.taxaHoraExcedente}</span>
+                    {/* Tooltip específico para Exxonmobil */}
+                    {taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="inline-flex items-center justify-center">
+                              <AlertCircle className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
+                            <div className="space-y-2 text-sm">
+                              <p className="font-semibold">Nota – Regra de Paridade:</p>
+                              <p>Para fins de apuração de esforço, 1 ticket complexo equivale a 2 tickets simples.</p>
+                              <p>A proposta considera 5 tickets simples e 2 complexos, totalizando 9 tickets equivalentes no quadro de horas.</p>
+                              <p className="font-semibold mt-2">Saldo de tickets:</p>
+                              <p>Poderá ser transportado para o mês seguinte até 50% do saldo, desde que haja no mínimo 2 tickets válidos dentro do trimestre. Após o término do terceiro mês, o saldo remanescente será zerado.</p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-center font-semibold text-white">
                   {taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00'}
                 </TableCell>
@@ -1265,6 +1293,17 @@ export function VisaoConsolidada({
           </div>
         )}
       </CardContent>
+
+      {/* Seção de Observações */}
+      <div className="px-6 pb-6">
+        <SecaoObservacoes
+          empresaId={calculoPrincipal?.empresa_id}
+          mesAtual={calculoPrincipal?.mes || 1}
+          anoAtual={calculoPrincipal?.ano || new Date().getFullYear()}
+          disabled={disabled}
+          onHistoricoClick={onHistoricoClick}
+        />
+      </div>
 
       {/* Modal de Visualização de Requerimento */}
       <RequerimentoViewModal
