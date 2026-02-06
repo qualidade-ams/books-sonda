@@ -2344,6 +2344,17 @@ export default function DesignSystem() {
                       >
                         <Badge variant="outline">Outline</Badge>
                       </CodeExample>
+                      
+                      <CodeExample
+                        id="badge-ticket"
+                        code={`<Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+  🎫 1 ticket
+</Badge>`}
+                      >
+                        <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                          🎫 1 ticket
+                        </Badge>
+                      </CodeExample>
                     </div>
                   </CardContent>
                 </Card>
