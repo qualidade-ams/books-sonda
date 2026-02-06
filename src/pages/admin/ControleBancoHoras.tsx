@@ -287,8 +287,8 @@ export default function ControleBancoHoras() {
     } : undefined
   );
   
-  // Filtrar requerimentos CONCLUÍDOS do período atual (com data de aprovação)
-  // ✅ CORRIGIDO: Filtrar apenas tipo_cobranca = 'Banco de Horas'
+  // Filtrar requerimentos CONCLUÍDOS do período atual (enviados para faturamento)
+  // ✅ LÓGICA CORRETA: enviado_faturamento = true E status IN ('enviado_faturamento', 'faturado')
   const requerimentosConcluidos = useMemo(() => {
     if (!requerimentosTodos || !mesesDoPeriodo) return [];
     
@@ -296,44 +296,64 @@ export default function ControleBancoHoras() {
       `${String(m.mes).padStart(2, '0')}/${m.ano}`
     );
     
-    return requerimentosTodos.filter(req => 
+    const concluidos = requerimentosTodos.filter(req => 
       req.mes_cobranca && 
       mesesPeriodoStr.includes(req.mes_cobranca) &&
-      req.data_aprovacao && // Apenas requerimentos com data de aprovação
-      req.tipo_cobranca === 'Banco de Horas' // ✅ ADICIONADO: Apenas Banco de Horas
-    );
-  }, [requerimentosTodos, mesesDoPeriodo]);
-  
-  // Filtrar requerimentos NÃO CONCLUÍDOS do período atual (sem data de aprovação)
-  // ✅ CORRIGIDO: Filtrar apenas tipo_cobranca = 'Banco de Horas'
-  const requerimentosNaoConcluidos = useMemo(() => {
-    if (!requerimentosTodos || !mesesDoPeriodo) return [];
-    
-    const mesesPeriodoStr = mesesDoPeriodo.map(m => 
-      `${String(m.mes).padStart(2, '0')}/${m.ano}`
+      req.enviado_faturamento === true && // ✅ CRÍTICO: Enviado para faturamento
+      (req.status === 'enviado_faturamento' || req.status === 'faturado') && // ✅ CRÍTICO: Status correto
+      req.tipo_cobranca === 'Banco de Horas' // ✅ Apenas Banco de Horas
     );
     
-    const naoConcluidos = requerimentosTodos.filter(req => 
-      req.mes_cobranca && 
-      mesesPeriodoStr.includes(req.mes_cobranca) &&
-      !req.data_aprovacao && // Apenas requerimentos SEM data de aprovação
-      req.tipo_cobranca === 'Banco de Horas' // ✅ ADICIONADO: Apenas Banco de Horas
-    );
-    
-    console.log('🔍 [DEBUG] Requerimentos Não Concluídos:', {
+    console.log('🔍 [DEBUG] Requerimentos Concluídos (Tabela "Requerimentos do Período"):', {
       total: requerimentosTodos.length,
       mesesPeriodo: mesesPeriodoStr,
-      naoConcluidos: naoConcluidos.length,
-      detalhes: naoConcluidos.map(r => ({
+      concluidos: concluidos.length,
+      detalhes: concluidos.map(r => ({
         chamado: r.chamado,
         mes_cobranca: r.mes_cobranca,
-        data_aprovacao: r.data_aprovacao,
-        tipo_cobranca: r.tipo_cobranca // ✅ ADICIONADO para debug
+        enviado_faturamento: r.enviado_faturamento,
+        status: r.status,
+        tipo_cobranca: r.tipo_cobranca
       }))
     });
     
-    return naoConcluidos;
+    return concluidos;
   }, [requerimentosTodos, mesesDoPeriodo]);
+  
+  // ✅ REMOVIDO: Tabela "Requerimentos Não Concluídos" foi removida
+  // Agora temos apenas:
+  // 1. "Requerimentos do Período" (enviado_faturamento = true, status IN ('enviado_faturamento', 'faturado'))
+  // 2. "Requerimentos em Desenvolvimento" (enviado_faturamento = false, status = 'lancado')
+  const requerimentosNaoConcluidos = useMemo(() => {
+    return []; // ✅ Sempre vazio - tabela removida
+  }, []);
+  
+  // ✅ NOVO: Filtrar requerimentos EM DESENVOLVIMENTO (não enviados para faturamento)
+  // Estes requerimentos ainda estão sendo trabalhados
+  // REGRA: status = 'lancado' (independente de ter mes_cobranca ou não)
+  const requerimentosEmDesenvolvimento = useMemo(() => {
+    if (!requerimentosTodos) return [];
+    
+    const emDesenvolvimento = requerimentosTodos.filter(req => 
+      req.status === 'lancado' && // ✅ CRÍTICO: Status lancado
+      req.tipo_cobranca === 'Banco de Horas' // Apenas Banco de Horas
+    );
+    
+    console.log('🔍 [DEBUG] Requerimentos Em Desenvolvimento:', {
+      total: requerimentosTodos.length,
+      emDesenvolvimento: emDesenvolvimento.length,
+      detalhes: emDesenvolvimento.map(r => ({
+        chamado: r.chamado,
+        mes_cobranca: r.mes_cobranca,
+        enviado_faturamento: r.enviado_faturamento,
+        status: r.status,
+        tipo_cobranca: r.tipo_cobranca,
+        data_aprovacao: r.data_aprovacao
+      }))
+    });
+    
+    return emDesenvolvimento;
+  }, [requerimentosTodos]);
   // ✅ REMOVIDO: Não selecionar empresa automaticamente
   // Usuário deve escolher manualmente no dropdown
   
@@ -930,6 +950,7 @@ export default function ControleBancoHoras() {
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+                  requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento || []}
                   onHistoricoClick={handleHistorico}
                   disabled={isFetchingCalculos || isRecalculatingAny}
                   tipoCobranca="ticket"
@@ -947,6 +968,7 @@ export default function ControleBancoHoras() {
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+                  requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento || []}
                   onHistoricoClick={handleHistorico}
                   disabled={isFetchingCalculos || isRecalculatingAny}
                   tipoCobranca="horas"
@@ -964,6 +986,7 @@ export default function ControleBancoHoras() {
               mesesDoPeriodo={mesesDoPeriodo}
               requerimentos={requerimentosConcluidos || []}
               requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+              requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento || []}
               onHistoricoClick={handleHistorico}
               disabled={isFetchingCalculos || isRecalculatingAny}
               tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}

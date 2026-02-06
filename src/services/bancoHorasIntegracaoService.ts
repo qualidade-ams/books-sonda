@@ -435,10 +435,10 @@ export class BancoHorasIntegracaoService {
   }
 
   /**
-   * Busca requerimentos faturados ou lançados
+   * Busca requerimentos faturados ou enviados para faturamento
    * 
-   * Soma horas_total onde tipo_cobranca = "Banco de Horas" e status IN ("faturado", "lancado")
-   * para a empresa e período especificados.
+   * Soma horas_total onde tipo_cobranca = "Banco de Horas", enviado_faturamento = true
+   * e status IN ("enviado_faturamento", "faturado") para a empresa e período especificados.
    * 
    * @param empresaId - ID da empresa cliente
    * @param mes - Mês (1-12)
@@ -495,21 +495,24 @@ export class BancoHorasIntegracaoService {
 
       console.log('📅 Buscando requerimentos para:', {
         empresaId,
-        mesCobranca
+        mesCobranca,
+        observacao: 'Apenas requerimentos enviados para faturamento (enviado_faturamento = true e status IN (enviado_faturamento, faturado))'
       });
 
       // Buscar requerimentos onde:
       // - tipo_cobranca = "Banco de Horas"
-      // - status IN ("faturado", "lancado")
       // - mes_cobranca = mesCobranca
       // - cliente_id = empresaId
+      // - enviado_faturamento = true
+      // - status IN ('enviado_faturamento', 'faturado')
       const { data: requerimentos, error: requerimentosError } = await supabase
         .from('requerimentos')
-        .select('horas_funcional, horas_tecnico, quantidade_tickets')
+        .select('horas_funcional, horas_tecnico, quantidade_tickets, chamado, enviado_faturamento, status')
         .eq('tipo_cobranca', 'Banco de Horas')
-        .in('status', ['faturado', 'lancado'])
         .eq('mes_cobranca', mesCobranca)
-        .eq('cliente_id', empresaId);
+        .eq('cliente_id', empresaId)
+        .eq('enviado_faturamento', true) // ✅ Enviado para faturamento
+        .in('status', ['enviado_faturamento', 'faturado']); // ✅ Status correto
 
       if (requerimentosError) {
         console.error('❌ Erro ao buscar requerimentos:', requerimentosError);
@@ -523,7 +526,14 @@ export class BancoHorasIntegracaoService {
 
       console.log('📊 Requerimentos encontrados:', {
         quantidade: requerimentos?.length || 0,
-        requerimentos: requerimentos?.slice(0, 5) // Mostrar apenas primeiros 5 para debug
+        requerimentos: requerimentos?.map(r => ({
+          chamado: r.chamado,
+          enviado_faturamento: r.enviado_faturamento,
+          status: r.status,
+          horas_funcional: r.horas_funcional,
+          horas_tecnico: r.horas_tecnico,
+          quantidade_tickets: r.quantidade_tickets
+        })) // Mostrar TODOS para debug
       });
 
       // Somar horas (horas_funcional + horas_tecnico) e tickets
@@ -555,7 +565,8 @@ export class BancoHorasIntegracaoService {
       console.log('✅ Requerimentos calculados:', {
         totalHorasDecimal,
         horas: horasFormatadas,
-        tickets: totalTickets
+        tickets: totalTickets,
+        observacao: 'Apenas requerimentos com data_envio preenchida'
       });
 
       return {
@@ -571,6 +582,137 @@ export class BancoHorasIntegracaoService {
       throw new IntegrationError(
         'requerimentos',
         `Erro inesperado ao buscar requerimentos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        'UNEXPECTED_ERROR',
+        true
+      );
+    }
+  }
+
+  /**
+   * Busca requerimentos em desenvolvimento (não enviados para faturamento)
+   * 
+   * Retorna requerimentos com status = 'lancado', independente de terem mes_cobranca preenchido.
+   * Estes requerimentos NÃO são contabilizados no banco de horas, mas são exibidos
+   * como "em desenvolvimento" para informar que as horas ainda serão descontadas quando forem enviados.
+   * 
+   * @param empresaId - ID da empresa cliente
+   * @param mes - Mês (1-12) - NÃO USADO, mantido por compatibilidade
+   * @param ano - Ano (ex: 2024) - NÃO USADO, mantido por compatibilidade
+   * @returns Requerimentos em desenvolvimento em formato HH:MM (horas) ou número (tickets)
+   * 
+   * @requirements 6.6, 14.3, 14.4
+   * 
+   * @throws IntegrationError quando requerimentos indisponíveis
+   */
+  async buscarRequerimentosEmDesenvolvimento(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<{ horas: string; tickets: number }> {
+    try {
+      console.log('🔍 BancoHorasIntegracaoService.buscarRequerimentosEmDesenvolvimento:', {
+        empresaId,
+        mes,
+        ano,
+        observacao: 'Buscando TODOS os requerimentos com status = lancado (independente de mes_cobranca)'
+      });
+
+      // Validar parâmetros
+      if (!empresaId?.trim()) {
+        throw new IntegrationError(
+          'requerimentos',
+          'ID da empresa é obrigatório',
+          'INVALID_EMPRESA_ID',
+          false
+        );
+      }
+
+      console.log('📅 Buscando requerimentos em desenvolvimento para:', {
+        empresaId,
+        observacao: 'TODOS os requerimentos com status = lancado (sem filtro de mes_cobranca)'
+      });
+
+      // Buscar requerimentos onde:
+      // - tipo_cobranca = "Banco de Horas"
+      // - cliente_id = empresaId
+      // - status = 'lancado'
+      // NÃO filtrar por mes_cobranca (pode estar vazio)
+      const { data: requerimentos, error: requerimentosError } = await supabase
+        .from('requerimentos')
+        .select('horas_funcional, horas_tecnico, quantidade_tickets, chamado, enviado_faturamento, status, mes_cobranca')
+        .eq('tipo_cobranca', 'Banco de Horas')
+        .eq('cliente_id', empresaId)
+        .eq('status', 'lancado'); // ✅ Status lancado (sem filtro de mes_cobranca)
+
+      if (requerimentosError) {
+        console.error('❌ Erro ao buscar requerimentos em desenvolvimento:', requerimentosError);
+        throw new IntegrationError(
+          'requerimentos',
+          `Falha ao buscar requerimentos em desenvolvimento: ${requerimentosError.message}`,
+          'REQUERIMENTOS_QUERY_ERROR',
+          true
+        );
+      }
+
+      console.log('📊 Requerimentos em desenvolvimento encontrados:', {
+        quantidade: requerimentos?.length || 0,
+        requerimentos: requerimentos?.map(r => ({
+          chamado: r.chamado,
+          enviado_faturamento: r.enviado_faturamento,
+          status: r.status,
+          mes_cobranca: r.mes_cobranca,
+          horas_funcional: r.horas_funcional,
+          horas_tecnico: r.horas_tecnico,
+          quantidade_tickets: r.quantidade_tickets
+        })) // Mostrar TODOS para debug
+      });
+
+      // Somar horas (horas_funcional + horas_tecnico) e tickets
+      let totalHorasDecimal = 0;
+      let totalTickets = 0;
+
+      if (requerimentos && requerimentos.length > 0) {
+        for (const requerimento of requerimentos) {
+          // Somar horas funcional
+          if (requerimento.horas_funcional) {
+            totalHorasDecimal += requerimento.horas_funcional;
+          }
+
+          // Somar horas técnico
+          if (requerimento.horas_tecnico) {
+            totalHorasDecimal += requerimento.horas_tecnico;
+          }
+
+          // Somar quantidade de tickets (se informado)
+          if (requerimento.quantidade_tickets) {
+            totalTickets += requerimento.quantidade_tickets;
+          }
+        }
+      }
+
+      // Converter horas decimais para formato HH:MM
+      const horasFormatadas = converterDeHorasDecimal(totalHorasDecimal);
+
+      console.log('✅ Requerimentos em desenvolvimento calculados:', {
+        totalHorasDecimal,
+        horas: horasFormatadas,
+        tickets: totalTickets,
+        observacao: 'Estes requerimentos NÃO são contabilizados no banco de horas'
+      });
+
+      return {
+        horas: horasFormatadas,
+        tickets: totalTickets
+      };
+    } catch (error) {
+      if (error instanceof IntegrationError) {
+        throw error;
+      }
+
+      console.error('❌ Erro inesperado ao buscar requerimentos em desenvolvimento:', error);
+      throw new IntegrationError(
+        'requerimentos',
+        `Erro inesperado ao buscar requerimentos em desenvolvimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         'UNEXPECTED_ERROR',
         true
       );

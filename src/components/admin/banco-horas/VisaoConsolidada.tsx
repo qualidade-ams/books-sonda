@@ -14,7 +14,8 @@ import {
   Eye,
   FileText,
   Clock,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +35,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
-import { getCobrancaIcon } from '@/utils/requerimentosColors';
+import { getCobrancaIcon, getBadgeClasses } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
 import { BotaoReajusteHoras } from './BotaoReajusteHoras';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
@@ -79,6 +86,9 @@ export interface VisaoConsolidadaProps {
   
   /** Requerimentos não concluídos do período para exibição */
   requerimentosNaoConcluidos?: Requerimento[];
+  
+  /** Requerimentos em desenvolvimento (não enviados) do período para exibição */
+  requerimentosEmDesenvolvimento?: Requerimento[];
   
   /** Tipo de cobrança do cliente ('Banco de Horas' ou 'Ticket') */
   tipoCobranca?: string;
@@ -229,6 +239,7 @@ export function VisaoConsolidada({
   mesesDoPeriodo,
   requerimentos = [],
   requerimentosNaoConcluidos = [],
+  requerimentosEmDesenvolvimento = [],
   tipoCobranca,
   inicioVigencia,
   templatePadrao
@@ -247,12 +258,52 @@ export function VisaoConsolidada({
   console.log('📊 [VisaoConsolidada] Props recebidas:', {
     requerimentosConcluidos: requerimentos.length,
     requerimentosNaoConcluidos: requerimentosNaoConcluidos.length,
+    requerimentosEmDesenvolvimento: requerimentosEmDesenvolvimento.length,
     tipoCobranca,
     templatePadrao,
     isEnglish,
     isLoadingTemplate,
     taxasEspecificas
   });
+  
+  // Calcular total de horas/tickets dos requerimentos em desenvolvimento
+  const totalRequerimentosEmDesenvolvimento = useMemo(() => {
+    let totalHorasDecimal = 0;
+    let totalTickets = 0;
+    
+    requerimentosEmDesenvolvimento.forEach(req => {
+      // Somar horas funcional
+      if (req.horas_funcional) {
+        const horas = typeof req.horas_funcional === 'string' 
+          ? converterParaHorasDecimal(req.horas_funcional)
+          : req.horas_funcional;
+        totalHorasDecimal += horas;
+      }
+      
+      // Somar horas técnico
+      if (req.horas_tecnico) {
+        const horas = typeof req.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(req.horas_tecnico)
+          : req.horas_tecnico;
+        totalHorasDecimal += horas;
+      }
+      
+      // Somar tickets
+      if (req.quantidade_tickets) {
+        totalTickets += req.quantidade_tickets;
+      }
+    });
+    
+    // Converter total de horas decimais para HH:MM
+    const horas = Math.floor(totalHorasDecimal);
+    const minutos = Math.round((totalHorasDecimal % 1) * 60);
+    const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+    
+    return {
+      horas: horasFormatadas,
+      tickets: totalTickets
+    };
+  }, [requerimentosEmDesenvolvimento]);
   
   // Hook de autenticação
   const { user } = useAuth();
@@ -843,9 +894,17 @@ export function VisaoConsolidada({
                         </TableCell>
                         
                         <TableCell className="text-center py-3">
-                          <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
-                            {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
+                              {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                            </span>
+                            {/* Badge de tickets quando tipo de cobrança for tickets */}
+                            {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
+                              <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
@@ -886,6 +945,172 @@ export function VisaoConsolidada({
                       </TableRow>
                     );
                   })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* ⚠️ NOVA SEÇÃO: Requerimentos em Desenvolvimento */}
+        {requerimentosEmDesenvolvimento && requerimentosEmDesenvolvimento.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-orange-600" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white cursor-help flex items-center gap-2">
+                      {isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento'}
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                    </h4>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm bg-orange-50 border-orange-200">
+                    <p className="text-sm text-orange-800">
+                      <strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para faturamento. 
+                      As horas/tickets abaixo ainda serão descontadas do banco quando os requerimentos forem enviados e aprovados.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Badge className="bg-orange-200 text-orange-900 text-xs font-semibold">
+                {tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets'
+                  ? `${totalRequerimentosEmDesenvolvimento.tickets} tickets`
+                  : totalRequerimentosEmDesenvolvimento.horas
+                }
+              </Badge>
+            </div>
+
+            <div className="w-full overflow-x-auto">
+              <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
+                <TableHeader>
+                  <TableRow className="bg-orange-50">
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requerimentosEmDesenvolvimento.map((req) => {
+                      // ✅ CORRIGIDO: Usar converterParaHorasDecimal para conversão correta
+                      const horasFuncional = typeof req.horas_funcional === 'string' 
+                        ? converterParaHorasDecimal(req.horas_funcional)
+                        : (req.horas_funcional || 0);
+                      const horasTecnico = typeof req.horas_tecnico === 'string'
+                        ? converterParaHorasDecimal(req.horas_tecnico)
+                        : (req.horas_tecnico || 0);
+                      const totalHoras = horasFuncional + horasTecnico;
+                      
+                      return (
+                        <TableRow key={req.id} className="bg-orange-50/30">
+                          <TableCell className="font-medium py-2 text-center">
+                            <div className="flex flex-col items-center gap-1 sm:gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">
+                                  {getCobrancaIcon(req.tipo_cobranca || 'Banco de Horas')}
+                                </span>
+                                <span className="truncate text-xs sm:text-sm lg:text-base font-medium">
+                                  {req.chamado}
+                                </span>
+                              </div>
+                              <Badge className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
+                                {req.tipo_cobranca || 'Banco de Horas'}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="py-2 text-center">
+                            <span className="text-xs sm:text-sm font-medium">
+                              {req.cliente_nome || '-'}
+                            </span>
+                          </TableCell>
+                          
+                          <TableCell className="py-2 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <Badge variant="outline" className="text-[8px] sm:text-[10px] lg:text-xs text-orange-600 border-orange-600 px-1 sm:px-2 py-0.5 leading-tight w-fit">
+                                <span className="truncate">{req.modulo || 'Comex'}</span>
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="text-center py-3">
+                            <span className="text-xs sm:text-sm lg:text-base font-medium">
+                              {Math.floor(horasFuncional)}:{String(Math.round((horasFuncional % 1) * 60)).padStart(2, '0')}
+                            </span>
+                          </TableCell>
+                          
+                          <TableCell className="text-center py-3">
+                            <span className="text-xs sm:text-sm lg:text-base font-medium">
+                              {Math.floor(horasTecnico)}:{String(Math.round((horasTecnico % 1) * 60)).padStart(2, '0')}
+                            </span>
+                          </TableCell>
+                          
+                          <TableCell className="text-center py-3">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs sm:text-sm lg:text-base font-bold text-orange-600">
+                                {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                              </span>
+                              {/* Badge de tickets quando tipo de cobrança for tickets */}
+                              {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
+                                <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                  🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                            <Badge className="bg-gray-100 text-gray-600 text-xs">
+                              Não enviado
+                            </Badge>
+                          </TableCell>
+                          
+                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
+                            <Badge className="bg-orange-100 text-orange-800 text-xs">
+                              Em desenvolvimento
+                            </Badge>
+                          </TableCell>
+                          
+                          <TableCell className="text-center py-3">
+                            {req.valor_total_geral ? (
+                              <span className="text-[10px] sm:text-xs lg:text-sm font-medium text-green-600">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(req.valor_total_geral)}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] sm:text-xs lg:text-sm">-</span>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
+                            {req.mes_cobranca || '-'}
+                          </TableCell>
+                          
+                          <TableCell className="py-2">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => {
+                                  setRequerimentoSelecionado(req);
+                                  setModalVisualizacaoAberto(true);
+                                }}
+                                title="Visualizar detalhes"
+                              >
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>
@@ -945,7 +1170,7 @@ export function VisaoConsolidada({
                                 {req.chamado}
                               </span>
                             </div>
-                            <Badge className="bg-orange-500 text-white text-xs px-2 py-0.5">
+                            <Badge className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
                               {req.tipo_cobranca || 'Banco de Horas'}
                             </Badge>
                           </div>
@@ -978,9 +1203,17 @@ export function VisaoConsolidada({
                         </TableCell>
                         
                         <TableCell className="text-center py-3">
-                          <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
-                            {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs sm:text-sm lg:text-base font-bold text-gray-900 dark:text-white">
+                              {Math.floor(totalHoras)}:{String(Math.round((totalHoras % 1) * 60)).padStart(2, '0')}
+                            </span>
+                            {/* Badge de tickets quando tipo de cobrança for tickets */}
+                            {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') && req.quantidade_tickets && req.quantidade_tickets > 0 && (
+                              <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                🎫 {req.quantidade_tickets} {req.quantidade_tickets === 1 ? 'ticket' : 'tickets'}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
@@ -1010,13 +1243,14 @@ export function VisaoConsolidada({
                         <TableCell className="py-2">
                           <div className="flex items-center justify-center gap-1">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               className="h-8 w-8 p-0"
                               onClick={() => {
                                 setRequerimentoSelecionado(req);
                                 setModalVisualizacaoAberto(true);
                               }}
+                              title="Visualizar detalhes"
                             >
                               <Eye className="h-4 w-4 text-blue-600" />
                             </Button>
