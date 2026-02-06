@@ -39,12 +39,13 @@ export class BancoHorasIntegracaoService {
   /**
    * Busca consumo de tickets de apontamentos Aranda (tabela AMSticketsabertos)
    * 
-   * Conta tickets abertos onde status não é "Fechado" ou "Cancelado" para a empresa e período especificados.
+   * Conta tickets FECHADOS onde data_fechamento está dentro do período especificado.
+   * Apenas tickets com status "Closed" são contabilizados como consumo.
    * 
    * @param empresaId - ID da empresa cliente
    * @param mes - Mês (1-12)
    * @param ano - Ano (ex: 2024)
-   * @returns Número de tickets consumidos
+   * @returns Número de tickets consumidos (fechados no período)
    * 
    * @requirements 6.5, 14.1, 14.2
    * @property Property 22: Consumo de Tickets Aranda
@@ -114,32 +115,33 @@ export class BancoHorasIntegracaoService {
       console.log('📅 Período de busca de tickets:', {
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
-        empresaNome: empresa.nome_abreviado || empresa.nome_completo
+        empresaNome: empresa.nome_abreviado || empresa.nome_completo,
+        observacao: 'Usando data_fechamento para contabilizar tickets consumidos. Campo: organizacao. Status: Closed'
       });
 
       // Buscar tickets onde:
-      // - empresa = nome da empresa (abreviado ou completo)
-      // - data_abertura dentro do período
-      // - status NOT IN ('Fechado', 'Cancelado')
+      // - organizacao = nome da empresa (abreviado ou completo)
+      // - data_fechamento dentro do período (tickets fechados no mês)
+      // - status = 'Closed' (apenas tickets efetivamente fechados)
       
       // Construir query base (usando any para evitar problemas de tipo com tabela externa)
       let query = supabase
         .from('apontamentos_tickets_aranda' as any)
-        .select('nro_solicitacao, status, empresa')
-        .gte('data_abertura', dataInicio.toISOString())
-        .lte('data_abertura', dataFim.toISOString())
-        .not('status', 'in', '("Fechado","Cancelado")');
+        .select('nro_solicitacao, status, organizacao, data_fechamento')
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lte('data_fechamento', dataFim.toISOString())
+        .eq('status', 'Closed'); // Status em inglês: Closed
 
-      // Adicionar filtro de empresa (nome abreviado OU nome completo)
+      // Adicionar filtro de organizacao (nome abreviado OU nome completo)
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
       if (nomeAbreviado && nomeCompleto) {
-        query = query.or(`empresa.ilike.%${nomeAbreviado}%,empresa.ilike.%${nomeCompleto}%`);
+        query = query.or(`organizacao.ilike.%${nomeAbreviado}%,organizacao.ilike.%${nomeCompleto}%`);
       } else if (nomeAbreviado) {
-        query = query.ilike('empresa', `%${nomeAbreviado}%`);
+        query = query.ilike('organizacao', `%${nomeAbreviado}%`);
       } else if (nomeCompleto) {
-        query = query.ilike('empresa', `%${nomeCompleto}%`);
+        query = query.ilike('organizacao', `%${nomeCompleto}%`);
       }
 
       // Executar query
@@ -159,7 +161,18 @@ export class BancoHorasIntegracaoService {
 
       console.log('✅ Tickets encontrados:', {
         quantidade: totalTickets,
-        tickets: tickets?.slice(0, 5) // Mostrar apenas primeiros 5 para debug
+        filtros: {
+          organizacao: nomeAbreviado || nomeCompleto,
+          data_fechamento_inicio: dataInicio.toISOString(),
+          data_fechamento_fim: dataFim.toISOString(),
+          status: 'Closed'
+        },
+        tickets: tickets?.slice(0, 5).map((t: any) => ({
+          nro_solicitacao: t.nro_solicitacao,
+          organizacao: t.organizacao,
+          status: t.status,
+          data_fechamento: t.data_fechamento
+        })) // Mostrar apenas primeiros 5 para debug
       });
 
       return totalTickets;
@@ -339,7 +352,6 @@ export class BancoHorasIntegracaoService {
 
       // Somar horas
       let totalMinutos = 0;
-      let totalTickets = 0;
       let apontamentosExcluidos = 0;
 
       if (apontamentos && apontamentos.length > 0) {
@@ -383,9 +395,6 @@ export class BancoHorasIntegracaoService {
             else if (apontamento.tempo_gasto_minutos) {
               totalMinutos += apontamento.tempo_gasto_minutos;
             }
-
-            // Contar tickets (cada apontamento = 1 ticket)
-            totalTickets++;
           }
         }
       }
@@ -395,16 +404,20 @@ export class BancoHorasIntegracaoService {
       const minutos = Math.round(totalMinutos % 60);
       const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
 
+      // Buscar tickets reais da tabela apontamentos_tickets_aranda
+      const ticketsReais = await this.buscarConsumoTickets(empresaId, mes, ano);
+
       console.log('✅ Consumo calculado:', {
         totalMinutos,
         horas: horasFormatadas,
-        tickets: totalTickets,
-        apontamentosExcluidos
+        tickets: ticketsReais,
+        apontamentosExcluidos,
+        observacao: 'Tickets buscados da tabela apontamentos_tickets_aranda (data_fechamento)'
       });
 
       return {
         horas: horasFormatadas,
-        tickets: totalTickets
+        tickets: ticketsReais
       };
     } catch (error) {
       if (error instanceof IntegrationError) {
@@ -492,7 +505,7 @@ export class BancoHorasIntegracaoService {
       // - cliente_id = empresaId
       const { data: requerimentos, error: requerimentosError } = await supabase
         .from('requerimentos')
-        .select('horas_funcional, horas_tecnico')
+        .select('horas_funcional, horas_tecnico, quantidade_tickets')
         .eq('tipo_cobranca', 'Banco de Horas')
         .in('status', ['faturado', 'lancado'])
         .eq('mes_cobranca', mesCobranca)
@@ -513,7 +526,7 @@ export class BancoHorasIntegracaoService {
         requerimentos: requerimentos?.slice(0, 5) // Mostrar apenas primeiros 5 para debug
       });
 
-      // Somar horas (horas_funcional + horas_tecnico)
+      // Somar horas (horas_funcional + horas_tecnico) e tickets
       let totalHorasDecimal = 0;
       let totalTickets = 0;
 
@@ -529,8 +542,10 @@ export class BancoHorasIntegracaoService {
             totalHorasDecimal += requerimento.horas_tecnico;
           }
 
-          // Contar cada requerimento como 1 ticket
-          totalTickets++;
+          // Somar quantidade de tickets (se informado)
+          if (requerimento.quantidade_tickets) {
+            totalTickets += requerimento.quantidade_tickets;
+          }
         }
       }
 

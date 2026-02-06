@@ -118,6 +118,9 @@ export class BancoHorasService {
    * 3. Busca repasses do mês anterior
    * 4. Calcula saldo a utilizar
    * 5. Busca consumo e requerimentos
+   *    IMPORTANTE: Para tipo_contrato = "ambos", o consumo de HORAS é IGNORADO (aba Horas).
+   *    O consumo de TICKETS continua sendo considerado normalmente (aba Tickets).
+   *    O consumo de horas será controlado apenas por ajustes manuais (reajustes).
    * 6. Calcula consumo total
    * 7. Calcula saldo
    * 8. Calcula repasse
@@ -202,15 +205,27 @@ export class BancoHorasService {
       });
 
       // 6. Buscar consumo e requerimentos
-      const { horas: consumoHoras, tickets: consumoTickets } = 
-        await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
+      // IMPORTANTE: Para tipo_contrato = "ambos", ignorar consumo de HORAS na aba de horas
+      // O consumo de horas será controlado apenas por ajustes manuais
+      // O consumo de TICKETS continua sendo considerado normalmente
+      const consumo = await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
+      
+      let consumoHoras = consumo.horas;
+      let consumoTickets = consumo.tickets;
+      
+      // Se tipo_contrato = "ambos", zerar apenas o consumo de HORAS
+      if (parametros.tipo_contrato === 'ambos') {
+        consumoHoras = '0:00';
+        console.log('⚠️ tipo_contrato = "ambos": Consumo de HORAS ignorado (será controlado por ajustes). Consumo de TICKETS mantido.');
+      }
       
       const { horas: requerimentosHoras, tickets: requerimentosTickets } = 
         await bancoHorasIntegracaoService.buscarRequerimentos(empresaId, mes, ano);
 
       console.log('📊 Consumo e requerimentos:', {
         consumo: { horas: consumoHoras, tickets: consumoTickets },
-        requerimentos: { horas: requerimentosHoras, tickets: requerimentosTickets }
+        requerimentos: { horas: requerimentosHoras, tickets: requerimentosTickets },
+        observacao: parametros.tipo_contrato === 'ambos' ? 'Consumo de HORAS ignorado (tipo_contrato = ambos). Tickets mantidos.' : 'Consumo considerado'
       });
 
       // 7. Calcular total de reajustes (entradas - saídas) para exibição
