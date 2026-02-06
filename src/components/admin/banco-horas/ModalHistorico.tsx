@@ -373,10 +373,14 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         queryClient.invalidateQueries({ queryKey: ['banco-horas-calculos-segmentados'], refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['banco-horas-versoes'], refetchType: 'all' }),
         queryClient.invalidateQueries({ queryKey: ['banco-horas-reajustes'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes', empresaId], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId], refetchType: 'all' }),
         
         // Refetch queries principais
         queryClient.refetchQueries({ queryKey: ['banco-horas-calculo', empresaId], type: 'all' }),
-        queryClient.refetchQueries({ queryKey: ['banco-horas-calculos-segmentados', empresaId], type: 'all' })
+        queryClient.refetchQueries({ queryKey: ['banco-horas-calculos-segmentados', empresaId], type: 'all' }),
+        queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes', empresaId], type: 'all' }),
+        queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId], type: 'all' })
       ]);
 
       console.log('✅ Queries atualizadas - exclusão concluída!');

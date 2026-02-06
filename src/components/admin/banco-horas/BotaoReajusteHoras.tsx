@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -117,6 +118,7 @@ export function BotaoReajusteHoras({
   disabled = false,
   isSaving = false
 }: BotaoReajusteHorasProps) {
+  const queryClient = useQueryClient();
   const [modalAberto, setModalAberto] = useState(false);
   const [horas, setHoras] = useState('');
   const [tickets, setTickets] = useState('');
@@ -207,6 +209,14 @@ export function BotaoReajusteHoras({
           observacao
         });
         
+        // Invalidar e refetch cache das observações para atualizar automaticamente
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes', empresaId] }),
+          queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId] }),
+          queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes', empresaId] }),
+          queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId] })
+        ]);
+        
         handleFecharModal();
       } catch (error) {
         console.error('Erro ao salvar reajuste:', error);
@@ -241,6 +251,14 @@ export function BotaoReajusteHoras({
         tipo,
         observacao
       });
+      
+      // Invalidar e refetch cache das observações para atualizar automaticamente
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes', empresaId] }),
+        queryClient.invalidateQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId] }),
+        queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes', empresaId] }),
+        queryClient.refetchQueries({ queryKey: ['banco-horas-observacoes-reajustes', empresaId] })
+      ]);
       
       handleFecharModal();
     } catch (error) {
