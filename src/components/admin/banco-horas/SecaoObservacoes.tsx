@@ -20,6 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -46,6 +53,8 @@ interface SecaoObservacoesProps {
   anoAtual: number;
   disabled?: boolean;
   onHistoricoClick?: () => void;
+  /** Meses do período de apuração (para seletor de mês) */
+  mesesDoPeriodo?: Array<{ mes: number; ano: number }>;
 }
 
 export function SecaoObservacoes({
@@ -53,7 +62,8 @@ export function SecaoObservacoes({
   mesAtual,
   anoAtual,
   disabled = false,
-  onHistoricoClick
+  onHistoricoClick,
+  mesesDoPeriodo = []
 }: SecaoObservacoesProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -70,6 +80,7 @@ export function SecaoObservacoes({
 
   const [novaObservacao, setNovaObservacao] = useState('');
   const [modoAdicionar, setModoAdicionar] = useState(false);
+  const [mesSelecionado, setMesSelecionado] = useState<{ mes: number; ano: number }>({ mes: mesAtual, ano: anoAtual });
   const [observacaoEditando, setObservacaoEditando] = useState<string | null>(null);
   const [textoEditando, setTextoEditando] = useState('');
   const [observacaoExcluir, setObservacaoExcluir] = useState<ObservacaoUnificada | null>(null);
@@ -85,13 +96,14 @@ export function SecaoObservacoes({
     try {
       await criarObservacao({
         empresa_id: empresaId,
-        mes: mesAtual,
-        ano: anoAtual,
+        mes: mesSelecionado.mes,
+        ano: mesSelecionado.ano,
         observacao: novaObservacao.trim(),
         created_by: user?.id
       });
       setNovaObservacao('');
       setModoAdicionar(false);
+      setMesSelecionado({ mes: mesAtual, ano: anoAtual }); // Reset para mês atual
     } catch (error) {
       console.error('Erro ao adicionar observação:', error);
     }
@@ -199,10 +211,38 @@ export function SecaoObservacoes({
                 <MessageSquare className="h-4 w-4 text-blue-600" />
                 <span className="font-medium text-sm">Nova Observação</span>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {MESES[mesAtual - 1]}/{anoAtual}
-              </Badge>
             </div>
+            
+            {/* Seletor de Mês */}
+            {mesesDoPeriodo.length > 0 && (
+              <div className="mb-3">
+                <label className="text-xs font-medium text-gray-700 mb-1 block">
+                  Selecione o mês da observação:
+                </label>
+                <Select
+                  value={`${mesSelecionado.mes}-${mesSelecionado.ano}`}
+                  onValueChange={(value) => {
+                    const [mes, ano] = value.split('-').map(Number);
+                    setMesSelecionado({ mes, ano });
+                  }}
+                  disabled={isCreating}
+                >
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mesesDoPeriodo.map((periodo) => (
+                      <SelectItem
+                        key={`${periodo.mes}-${periodo.ano}`}
+                        value={`${periodo.mes}-${periodo.ano}`}
+                      >
+                        {MESES[periodo.mes - 1]}/{periodo.ano}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             <Textarea
               placeholder="Digite sua observação aqui... (máximo 700 caracteres)"
@@ -224,6 +264,7 @@ export function SecaoObservacoes({
                   onClick={() => {
                     setModoAdicionar(false);
                     setNovaObservacao('');
+                    setMesSelecionado({ mes: mesAtual, ano: anoAtual }); // Reset
                   }}
                   disabled={isCreating}
                 >
