@@ -15,7 +15,8 @@ import {
   FileText,
   Clock,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 import type { Requerimento } from '@/types/requerimentos';
 import { getCobrancaIcon, getBadgeClasses } from '@/utils/requerimentosColors';
@@ -311,6 +313,9 @@ export function VisaoConsolidada({
   
   // Hook de autenticação
   const { user } = useAuth();
+  
+  // Hook de toast para notificações
+  const { toast } = useToast();
   
   // Hook de reajustes
   const { criarReajuste, isCreating } = useBancoHorasReajustes();
@@ -788,7 +793,53 @@ export function VisaoConsolidada({
                   {labels.valorTotal}
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
-                  {formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}
+                  <div className="flex items-center justify-center gap-2">
+                    <span>{formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}</span>
+                    {(temExcedentes || (calculoFimPeriodo?.valor_a_faturar && calculoFimPeriodo.valor_a_faturar > 0)) && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-white hover:bg-gray-600"
+                              onClick={() => {
+                                // Usar excedentes_horas se disponível, senão usar saldo negativo
+                                const horasExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0
+                                  ? formatarHoras(calculoPrincipal.excedentes_horas)
+                                  : calculoFimPeriodo?.saldo_horas && horasParaMinutos(calculoFimPeriodo.saldo_horas) < 0
+                                  ? formatarHoras(calculoFimPeriodo.saldo_horas)
+                                  : '00:00';
+                                
+                                const valorHoraExcedente = taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00';
+                                const valorTotalExcedentes = formatarMoeda(calculoFimPeriodo?.valor_a_faturar);
+                                
+                                const mensagem = `Horas Excedentes: ${horasExcedentes}\nValor Hora Excedentes: ${valorHoraExcedente}\nValor total dos Excedentes: ${valorTotalExcedentes}\n\nFicamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.`;
+                                
+                                navigator.clipboard.writeText(mensagem).then(() => {
+                                  toast({
+                                    title: "Copiado!",
+                                    description: "Mensagem de excedentes copiada para a área de transferência.",
+                                  });
+                                }).catch(() => {
+                                  toast({
+                                    title: "Erro",
+                                    description: "Não foi possível copiar a mensagem.",
+                                    variant: "destructive",
+                                  });
+                                });
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Copiar mensagem de excedentes para email</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
 
