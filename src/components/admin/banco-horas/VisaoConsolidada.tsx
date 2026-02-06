@@ -1302,6 +1302,7 @@ export function VisaoConsolidada({
           anoAtual={calculoPrincipal?.ano || new Date().getFullYear()}
           disabled={disabled}
           onHistoricoClick={onHistoricoClick}
+          mesesDoPeriodo={mesesDoPeriodo}
         />
       </div>
 
