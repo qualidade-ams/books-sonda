@@ -103,10 +103,12 @@ export function RequerimentoMultiploForm({
       const primeiroBloco = blocos[0];
       const tipoPadrao = getTipoCobrancaPadrao();
       
-      // Se o tipo atual não está mais disponível, atualizar para o padrão
-      const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
-      if (!opcoesDisponiveis.includes(primeiroBloco.tipo_cobranca)) {
-        console.log('Atualizando tipo de cobrança do primeiro bloco para:', tipoPadrao);
+      // Sempre atualizar para o tipo padrão do cliente selecionado
+      // Isso garante que ao trocar de cliente SEM AMS para COM AMS (ou vice-versa),
+      // o tipo de cobrança seja atualizado corretamente
+      if (primeiroBloco.tipo_cobranca !== tipoPadrao) {
+        console.log('🔄 Cliente alterado. Atualizando tipo de cobrança do primeiro bloco de', 
+                    primeiroBloco.tipo_cobranca, 'para:', tipoPadrao);
         handleAtualizarBloco(primeiroBloco.id, 'tipo_cobranca', tipoPadrao);
       }
     }
@@ -267,11 +269,35 @@ export function RequerimentoMultiploForm({
     });
 
     // Verificar tipos de cobrança duplicados
-    const tiposUsados = blocos.map(b => b.tipo_cobranca);
-    const tiposDuplicados = tiposUsados.filter((tipo, index) => tiposUsados.indexOf(tipo) !== index);
-    if (tiposDuplicados.length > 0) {
-      erros.push(`Tipos de cobrança duplicados: ${[...new Set(tiposDuplicados)].join(', ')}`);
-    }
+    // Para "Hora Extra", considerar também tipo_hora_extra e linguagem_tecnica
+    const combinacoesUsadas = new Map<string, number>();
+    
+    blocos.forEach((bloco, index) => {
+      let chave: string;
+      
+      if (bloco.tipo_cobranca === 'Hora Extra') {
+        // Para Hora Extra, a chave única é: tipo_cobranca + tipo_hora_extra + linguagem
+        chave = `${bloco.tipo_cobranca}|${bloco.tipo_hora_extra || ''}|${bloco.linguagem || ''}`;
+      } else {
+        // Para outros tipos, apenas tipo_cobranca
+        chave = bloco.tipo_cobranca;
+      }
+      
+      if (combinacoesUsadas.has(chave)) {
+        const primeiroIndex = combinacoesUsadas.get(chave)!;
+        
+        if (bloco.tipo_cobranca === 'Hora Extra') {
+          erros.push(
+            `Blocos ${primeiroIndex + 1} e ${index + 1}: Combinação duplicada de Hora Extra ` +
+            `(${bloco.tipo_hora_extra || 'não definido'} + ${bloco.linguagem || 'sem linguagem'})`
+          );
+        } else {
+          erros.push(`Blocos ${primeiroIndex + 1} e ${index + 1}: Tipo de cobrança "${bloco.tipo_cobranca}" duplicado`);
+        }
+      } else {
+        combinacoesUsadas.set(chave, index);
+      }
+    });
 
     return { valido: erros.length === 0, erros };
   };
