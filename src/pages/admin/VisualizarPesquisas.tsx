@@ -441,6 +441,12 @@ function VisualizarPesquisas() {
                 manuais: 0,
                 sem_resposta: 0,
                 pendentes_lancamento: 0,
+                respondidos: 0,
+                muito_satisfeito: 0,
+                satisfeito: 0,
+                neutro: 0,
+                insatisfeito: 0,
+                muito_insatisfeito: 0,
                 por_empresa: {},
                 por_categoria: {},
                 por_mes: {}
@@ -452,7 +458,7 @@ function VisualizarPesquisas() {
 
         {/* Cards de Estatísticas */}
         {estatisticas && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 lg:gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -460,6 +466,16 @@ function VisualizarPesquisas() {
                   <p className="text-xs font-medium text-gray-500">Total</p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="h-4 w-4 text-teal-500" />
+                  <p className="text-xs font-medium text-teal-500">Respondidos</p>
+                </div>
+                <p className="text-2xl font-bold text-teal-600">{estatisticas.respondidos}</p>
               </CardContent>
             </Card>
 

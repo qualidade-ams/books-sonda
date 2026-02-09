@@ -608,6 +608,13 @@ export async function obterTodasEstatisticas(filtros?: FiltrosPesquisas): Promis
     manuais: pesquisas.filter(e => e.origem === 'manual').length,
     sem_resposta: pesquisas.filter(e => !e.data_resposta).length, // Pesquisas sem data de resposta
     pendentes_lancamento: pesquisasPendentesLancamento.length, // Pesquisas pendentes da tela Lançar Pesquisas
+    // Estatísticas de respostas
+    respondidos: pesquisas.filter(e => e.resposta && e.resposta !== 'sem_resposta').length,
+    muito_satisfeito: pesquisas.filter(e => e.resposta === 'muito_satisfeito').length,
+    satisfeito: pesquisas.filter(e => e.resposta === 'satisfeito').length,
+    neutro: pesquisas.filter(e => e.resposta === 'neutro').length,
+    insatisfeito: pesquisas.filter(e => e.resposta === 'insatisfeito').length,
+    muito_insatisfeito: pesquisas.filter(e => e.resposta === 'muito_insatisfeito').length,
     por_empresa: {},
     por_categoria: {},
     por_mes: {}
@@ -653,6 +660,13 @@ export async function obterEstatisticas(filtros?: FiltrosPesquisas): Promise<Est
     manuais: pesquisas.filter(e => e.origem === 'manual').length,
     sem_resposta: todasPesquisas.filter(e => !e.data_resposta).length, // Pesquisas sem data de resposta
     pendentes_lancamento: pesquisas.length, // Pesquisas pendentes da tela Lançar Pesquisas (já filtradas)
+    // Estatísticas de respostas
+    respondidos: pesquisas.filter(e => e.resposta && e.resposta !== 'sem_resposta').length,
+    muito_satisfeito: pesquisas.filter(e => e.resposta === 'muito_satisfeito').length,
+    satisfeito: pesquisas.filter(e => e.resposta === 'satisfeito').length,
+    neutro: pesquisas.filter(e => e.resposta === 'neutro').length,
+    insatisfeito: pesquisas.filter(e => e.resposta === 'insatisfeito').length,
+    muito_insatisfeito: pesquisas.filter(e => e.resposta === 'muito_insatisfeito').length,
     por_empresa: {},
     por_categoria: {},
     por_mes: {}
