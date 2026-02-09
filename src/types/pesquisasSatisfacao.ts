@@ -126,6 +126,13 @@ export interface EstatisticasPesquisas {
   manuais: number;
   sem_resposta: number; // Pesquisas sem data de resposta
   pendentes_lancamento: number; // Pesquisas pendentes da tela Lançar Pesquisas (com filtro automático)
+  // Estatísticas de respostas
+  respondidos: number; // Total de pesquisas com resposta
+  muito_satisfeito: number;
+  satisfeito: number;
+  neutro: number;
+  insatisfeito: number;
+  muito_insatisfeito: number;
   por_empresa: Record<string, number>;
   por_categoria: Record<string, number>;
   por_mes: Record<string, number>;
