@@ -977,6 +977,59 @@ export default function ControleBancoHoras() {
                 />
               </TabsContent>
             </Tabs>
+          ) : empresaAtual?.baseline_segmentado ? (
+            // Cliente com baseline segmentado - mostrar abas Consolidada e Segmentada
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'consolidada' | 'segmentada')} className="w-full">
+              <TabsList className="bg-gray-100 p-1 rounded-lg">
+                <TabsTrigger 
+                  value="consolidada"
+                  className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                >
+                  Visão Consolidada
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="segmentada"
+                  className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                >
+                  Visão Segmentada
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Aba Consolidada */}
+              <TabsContent value="consolidada" className="mt-6">
+                <VisaoConsolidada
+                  calculos={calculos}
+                  periodoApuracao={empresaAtual?.periodo_apuracao || 1}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  mesesDoPeriodo={mesesDoPeriodo}
+                  requerimentos={requerimentosConcluidos || []}
+                  requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
+                  requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento || []}
+                  onHistoricoClick={handleHistorico}
+                  disabled={isFetchingCalculos || isRecalculatingAny}
+                  tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}
+                  inicioVigencia={empresaAtual?.inicio_vigencia}
+                  templatePadrao={empresaAtual?.template_padrao}
+                />
+              </TabsContent>
+
+              {/* Aba Segmentada */}
+              <TabsContent value="segmentada" className="mt-6">
+                <VisaoSegmentada
+                  empresaId={empresaSelecionada!}
+                  segmentacaoConfig={empresaAtual?.segmentacao_config}
+                  mesAno={mesAno}
+                  periodoApuracao={empresaAtual?.periodo_apuracao || 1}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  mesesDoPeriodo={mesesDoPeriodo}
+                  requerimentos={requerimentosConcluidos || []}
+                  disabled={isFetchingCalculos || isRecalculatingAny}
+                  tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}
+                  inicioVigencia={empresaAtual?.inicio_vigencia}
+                  calculos={calculos}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             // Cliente com tipo "ticket" ou "horas" - mostrar apenas visão consolidada
             <VisaoConsolidada

@@ -382,6 +382,9 @@ const EmpresasClientes = () => {
       ciclos_para_zerar: empresa.ciclos_para_zerar || undefined,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal || 0,
       percentual_repasse_especial: empresa.percentual_repasse_especial || 0,
+      // NOVO: Campos de Segmentação de Baseline
+      baselineSegmentado: empresa.baseline_segmentado || false,
+      segmentacaoConfig: empresa.segmentacao_config as any || undefined,
     };
   };
 

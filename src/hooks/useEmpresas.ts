@@ -119,7 +119,31 @@ export const useEmpresas = (
 
   // Mutation para criar empresa com invalidação de cache otimizada
   const createMutation = useMutation({
-    mutationFn: (data: EmpresaFormData) => empresasClientesService.criarEmpresa(data),
+    mutationFn: async (data: EmpresaFormData) => {
+      console.log('🚀 [useEmpresas] Mutation iniciada');
+      console.log('🚀 [useEmpresas] Dados recebidos pela mutation:', {
+        nomeAbreviado: data.nomeAbreviado,
+        baselineSegmentado: data.baselineSegmentado,
+        segmentacaoConfig: data.segmentacaoConfig,
+        empresasSegmentadas: data.segmentacaoConfig?.empresas?.length || 0,
+        dadosCompletos: data
+      });
+      
+      try {
+        console.log('🚀 [useEmpresas] Chamando empresasClientesService.criarEmpresa...');
+        const result = await empresasClientesService.criarEmpresa(data);
+        console.log('✅ [useEmpresas] Empresa criada com sucesso:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ [useEmpresas] Erro ao criar empresa:', error);
+        console.error('❌ [useEmpresas] Detalhes do erro:', {
+          message: error instanceof Error ? error.message : 'Erro desconhecido',
+          stack: error instanceof Error ? error.stack : undefined,
+          error
+        });
+        throw error;
+      }
+    },
     onSuccess: async (_, data) => {
       // ✅ NOVO: Limpeza agressiva de cache para garantir atualização imediata
       await clientBooksCacheService.clearAllCache();
@@ -169,14 +193,46 @@ export const useEmpresas = (
       }
     },
     onError: (error: any) => {
+      console.error('❌ [useEmpresas] onError da createMutation chamado');
+      console.error('❌ [useEmpresas] Erro capturado:', {
+        message: error?.message || 'Erro desconhecido',
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        error
+      });
       toast.error(error.message || 'Erro ao criar empresa');
     },
   });
 
   // Mutation para atualizar empresa com invalidação otimizada
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<EmpresaFormData> }) =>
-      empresasClientesService.atualizarEmpresa(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<EmpresaFormData> }) => {
+      console.log('🔄 [useEmpresas] Mutation de atualização iniciada');
+      console.log('🔄 [useEmpresas] Dados recebidos pela mutation:', {
+        id,
+        nomeAbreviado: data.nomeAbreviado,
+        baselineSegmentado: data.baselineSegmentado,
+        segmentacaoConfig: data.segmentacaoConfig,
+        empresasSegmentadas: data.segmentacaoConfig?.empresas?.length || 0,
+        dadosCompletos: data
+      });
+      
+      try {
+        console.log('🔄 [useEmpresas] Chamando empresasClientesService.atualizarEmpresa...');
+        const result = await empresasClientesService.atualizarEmpresa(id, data);
+        console.log('✅ [useEmpresas] Empresa atualizada com sucesso:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ [useEmpresas] Erro ao atualizar empresa:', error);
+        console.error('❌ [useEmpresas] Detalhes do erro:', {
+          message: error instanceof Error ? error.message : 'Erro desconhecido',
+          stack: error instanceof Error ? error.stack : undefined,
+          error
+        });
+        throw error;
+      }
+    },
     onSuccess: async (result, { id, data }) => {
       // Invalidar cache específico da empresa
       clientBooksCacheService.invalidateEmpresaCache(id);
@@ -244,6 +300,14 @@ export const useEmpresas = (
       await queryClient.refetchQueries({ queryKey: cacheKey });
     },
     onError: (error: any) => {
+      console.error('❌ [useEmpresas] onError da updateMutation chamado');
+      console.error('❌ [useEmpresas] Erro capturado:', {
+        message: error?.message || 'Erro desconhecido',
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        error
+      });
       toast.error(error.message || 'Erro ao atualizar empresa');
     },
   });

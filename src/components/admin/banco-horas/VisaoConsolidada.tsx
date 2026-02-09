@@ -787,7 +787,7 @@ export function VisaoConsolidada({
                   </div>
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
-                  {taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00'}
+                  {taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : ''}
                 </TableCell>
                 <TableCell className="font-medium text-center text-white" colSpan={calculos.length > 1 ? calculos.length - 2 : 1}>
                   {labels.valorTotal}
@@ -795,7 +795,7 @@ export function VisaoConsolidada({
                 <TableCell className="text-center font-semibold text-white">
                   <div className="flex items-center justify-center gap-2">
                     <span>{formatarMoeda(calculoFimPeriodo?.valor_a_faturar)}</span>
-                    {(temExcedentes || (calculoFimPeriodo?.valor_a_faturar && calculoFimPeriodo.valor_a_faturar > 0)) && (
+                    {!!(calculoFimPeriodo?.valor_a_faturar && calculoFimPeriodo.valor_a_faturar > 0) && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -811,7 +811,7 @@ export function VisaoConsolidada({
                                   ? formatarHoras(calculoFimPeriodo.saldo_horas)
                                   : '00:00';
                                 
-                                const valorHoraExcedente = taxaHoraExibir ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00';
+                                const valorHoraExcedente = taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00';
                                 const valorTotalExcedentes = formatarMoeda(calculoFimPeriodo?.valor_a_faturar);
                                 
                                 const mensagem = `Horas Excedentes: ${horasExcedentes}\nValor Hora Excedentes: ${valorHoraExcedente}\nValor total dos Excedentes: ${valorTotalExcedentes}\n\nFicamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.`;

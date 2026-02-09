@@ -23,12 +23,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-import { Save, X, FileText } from 'lucide-react';
+import { Save, X, FileText, Info } from 'lucide-react';
 import { useBookTemplates } from '@/hooks/useBookTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { inativarTaxasCliente } from '@/services/taxasClientesService';
+import { SegmentacaoBaselineForm } from './SegmentacaoBaselineForm';
 
 import type {
   EmpresaFormData,
@@ -93,6 +100,18 @@ const empresaSchema = z.object({
   ciclos_para_zerar: z.number().int().min(1).max(12).optional(),
   percentual_repasse_mensal: z.number().int().min(0).max(100).optional(),
   percentual_repasse_especial: z.number().int().min(0).max(100).optional(),
+  
+  // NOVO: Segmentação de Baseline
+  baselineSegmentado: z.boolean().optional(),
+  segmentacaoConfig: z.object({
+    empresas: z.array(z.object({
+      nome: z.string().min(1, 'Nome da empresa é obrigatório'),
+      percentual: z.number().min(0).max(100),
+      filtro_tipo: z.enum(['contem', 'nao_contem', 'igual', 'diferente', 'comeca_com', 'termina_com']),
+      filtro_valor: z.string().min(1, 'Valor do filtro é obrigatório'),
+      ordem: z.number().int().min(1),
+    }))
+  }).optional(),
 }).refine((data) => {
   // Validação condicional para descrição do status
   if ((data.status === 'inativo' || data.status === 'suspenso') && !data.descricaoStatus?.trim()) {
@@ -212,6 +231,25 @@ const empresaSchema = z.object({
 }, {
   message: 'Formato deve ser MM/YYYY (ex: 01/2024)',
   path: ['inicio_vigencia_banco_horas']
+}).refine((data) => {
+  // Validação: Se baseline_segmentado está ativo, segmentacao_config é obrigatório
+  if (data.baselineSegmentado && (!data.segmentacaoConfig || !data.segmentacaoConfig.empresas || data.segmentacaoConfig.empresas.length < 2)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Configure pelo menos 2 empresas para segmentação quando baseline segmentado estiver ativo',
+  path: ['segmentacaoConfig']
+}).refine((data) => {
+  // Validação: Se baseline_segmentado está ativo, soma dos percentuais deve ser 100%
+  if (data.baselineSegmentado && data.segmentacaoConfig?.empresas) {
+    const totalPercentual = data.segmentacaoConfig.empresas.reduce((total, empresa) => total + (empresa.percentual || 0), 0);
+    return totalPercentual === 100;
+  }
+  return true;
+}, {
+  message: 'A soma dos percentuais das empresas segmentadas deve ser exatamente 100%',
+  path: ['segmentacaoConfig']
 });
 
 interface EmpresaFormProps {
@@ -272,6 +310,8 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       ciclos_para_zerar: 1,
       percentual_repasse_mensal: 0,
       percentual_repasse_especial: 0,
+      baselineSegmentado: false,
+      segmentacaoConfig: undefined,
       ...initialData,
     } as EmpresaFormData,
   });
@@ -313,6 +353,8 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         ciclos_para_zerar: 1,
         percentual_repasse_mensal: 0,
         percentual_repasse_especial: 0,
+        baselineSegmentado: false,
+        segmentacaoConfig: undefined,
         ...initialData,
       } as EmpresaFormData);
     }
@@ -345,6 +387,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
       // Normalizar dados antes do envio (excluir id do payload)
       const { id, ...dataWithoutId } = data;
+      
+      console.log('🔍 Debug dados de segmentação:', {
+        baselineSegmentado: data.baselineSegmentado,
+        segmentacaoConfig: data.segmentacaoConfig,
+        empresasSegmentadas: data.segmentacaoConfig?.empresas?.length || 0
+      });
+      
       const normalizedData: EmpresaFormData = {
         ...dataWithoutId,
         nomeCompleto: data.nomeCompleto.trim(),
@@ -363,8 +412,16 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         vigenciaFinal: data.vigenciaFinal || '',
         bookPersonalizado: data.temAms ? (data.bookPersonalizado || false) : false,
         anexo: data.temAms ? (data.anexo || false) : false,
-        observacao: data.observacao?.trim() || ''
+        observacao: data.observacao?.trim() || '',
+        // NOVO: Campos de Segmentação de Baseline
+        baselineSegmentado: data.baselineSegmentado || false,
+        segmentacaoConfig: data.segmentacaoConfig || undefined
       };
+      
+      console.log('📤 Dados normalizados para envio:', {
+        baselineSegmentado: normalizedData.baselineSegmentado,
+        segmentacaoConfig: normalizedData.segmentacaoConfig
+      });
 
       // Salvar a empresa primeiro
       await onSubmit(normalizedData);
@@ -1458,6 +1515,33 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Segmentação de Baseline */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FormLabel className="text-base font-semibold">Segmentação de Baseline</FormLabel>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p className="text-sm">
+                          <strong>Como funciona:</strong> Configure pelo menos 2 empresas que dividirão o baseline.
+                          Para cada empresa, defina o percentual e o filtro que será aplicado ao campo item_configuracao
+                          dos registros de banco de horas. A soma dos percentuais deve totalizar 100%.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <SegmentacaoBaselineForm 
+                  form={form} 
+                  isFieldDisabled={isFieldDisabled} 
+                />
               </CardContent>
             </Card>
           </TabsContent>
