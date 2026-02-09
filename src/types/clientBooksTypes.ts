@@ -93,14 +93,49 @@ export interface HistoricoDisparoCompleto extends HistoricoDisparo {
   cliente?: Cliente;
 }
 
+// Interfaces para Segmentação de Baseline
+export interface EmpresaSegmentada {
+  nome: string;
+  percentual: number;
+  filtro_tipo: FiltroTipo;
+  filtro_valor: string;
+  ordem: number;
+}
+
+export interface SegmentacaoConfig {
+  empresas: EmpresaSegmentada[];
+}
+
+export const FILTRO_TIPOS = {
+  CONTEM: 'contem',
+  NAO_CONTEM: 'nao_contem',
+  IGUAL: 'igual',
+  DIFERENTE: 'diferente',
+  COMECA_COM: 'comeca_com',
+  TERMINA_COM: 'termina_com'
+} as const;
+
+export type FiltroTipo = typeof FILTRO_TIPOS[keyof typeof FILTRO_TIPOS];
+
+export const FILTRO_TIPOS_OPTIONS: SelectOption[] = [
+  { value: FILTRO_TIPOS.CONTEM, label: 'Contém' },
+  { value: FILTRO_TIPOS.NAO_CONTEM, label: 'Não Contém' },
+  { value: FILTRO_TIPOS.IGUAL, label: 'Igual a' },
+  { value: FILTRO_TIPOS.DIFERENTE, label: 'Diferente de' },
+  { value: FILTRO_TIPOS.COMECA_COM, label: 'Começa com' },
+  { value: FILTRO_TIPOS.TERMINA_COM, label: 'Termina com' }
+];
+
 // Interfaces para formulários
 export interface EmpresaFormData {
+  id?: string; // ID da empresa (para edição)
   nomeCompleto: string;
   nomeAbreviado: string;
   linkSharepoint?: string;
   templatePadrao: TemplatePadrao;
   status: EmpresaStatus;
   descricaoStatus?: string;
+  emProjeto?: boolean; // Campo Em Projeto
   emailGestor?: string;
   produtos: Produto[];
   grupos: string[];
@@ -108,8 +143,23 @@ export interface EmpresaFormData {
   anexo?: boolean;
   vigenciaInicial?: string;
   vigenciaFinal?: string;
+  observacao?: string;
   temAms?: boolean;
   tipoBook?: TipoBook;
+  tipoCobranca?: 'banco_horas' | 'ticket' | 'outros';
+  // Campos de Banco de Horas
+  tipo_contrato?: 'horas' | 'tickets' | 'ambos';
+  periodo_apuracao?: number;
+  inicio_vigencia_banco_horas?: string;
+  baseline_horas_mensal?: string;
+  baseline_tickets_mensal?: number;
+  possui_repasse_especial?: boolean;
+  ciclos_para_zerar?: number;
+  percentual_repasse_mensal?: number;
+  percentual_repasse_especial?: number;
+  // Campos de Segmentação de Baseline
+  baselineSegmentado?: boolean;
+  segmentacaoConfig?: SegmentacaoConfig;
 }
 
 export interface ClienteFormData {

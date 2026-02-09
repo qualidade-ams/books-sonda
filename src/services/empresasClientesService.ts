@@ -4,11 +4,11 @@ import {
   EmpresaClienteInsert,
   EmpresaClienteUpdate,
   EmpresaClienteCompleta,
-  EmpresaFormData,
   EmpresaFiltros,
   StatusEmpresa,
   Produto
 } from '@/types/clientBooks';
+import { EmpresaFormData } from '@/types/clientBooksTypes';
 import { empresaFormSchema } from '@/schemas/clientBooksSchemas';
 import {
   ClientBooksError,
@@ -47,6 +47,13 @@ export class EmpresasClientesService {
    * Criar uma nova empresa cliente
    */
   async criarEmpresa(data: EmpresaFormData): Promise<EmpresaCliente> {
+    console.log('🏢 [EmpresasClientesService] Criando empresa com dados:', {
+      nomeAbreviado: data.nomeAbreviado,
+      baselineSegmentado: data.baselineSegmentado,
+      segmentacaoConfig: data.segmentacaoConfig,
+      empresasSegmentadas: data.segmentacaoConfig?.empresas?.length || 0
+    });
+    
     // Validação básica
     this.validarDadosEmpresa(data);
 
@@ -86,8 +93,18 @@ export class EmpresasClientesService {
       possui_repasse_especial: data.possui_repasse_especial || false,
       ciclos_para_zerar: data.ciclos_para_zerar || null,
       percentual_repasse_mensal: data.percentual_repasse_mensal || null,
-      percentual_repasse_especial: data.percentual_repasse_especial || null
+      percentual_repasse_especial: data.percentual_repasse_especial || null,
+      // NOVO: Campos de Segmentação de Baseline
+      baseline_segmentado: data.baselineSegmentado || false,
+      segmentacao_config: (data.segmentacaoConfig as any) || null
     };
+
+    console.log('📤 [EmpresasClientesService] Dados preparados para insert:', {
+      baseline_segmentado: empresaData.baseline_segmentado,
+      segmentacao_config: empresaData.segmentacao_config,
+      segmentacao_config_type: typeof empresaData.segmentacao_config,
+      segmentacao_config_empresas: (empresaData.segmentacao_config as any)?.empresas?.length || 0
+    });
 
     // Inserir empresa
     const { data: empresa, error } = await supabase
@@ -512,6 +529,12 @@ export class EmpresasClientesService {
       if (data.ciclos_para_zerar !== undefined) updateData.ciclos_para_zerar = data.ciclos_para_zerar || null;
       if (data.percentual_repasse_mensal !== undefined) updateData.percentual_repasse_mensal = data.percentual_repasse_mensal || null;
       if (data.percentual_repasse_especial !== undefined) updateData.percentual_repasse_especial = data.percentual_repasse_especial || null;
+
+      // NOVO: Incluir campos de Segmentação de Baseline
+      if (data.baselineSegmentado !== undefined) updateData.baseline_segmentado = data.baselineSegmentado;
+      if (data.segmentacaoConfig !== undefined) {
+        updateData.segmentacao_config = (data.segmentacaoConfig as any) || null;
+      }
 
       // Se status mudou, atualizar data e descrição
       if (data.status) {
