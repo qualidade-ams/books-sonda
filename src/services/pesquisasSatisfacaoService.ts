@@ -375,6 +375,22 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     console.log('🔄 [CRIAR] Aplicada transformação:', transformacao.motivoTransformacao);
   }
 
+  // Extrair ano e mês da data_resposta se fornecida
+  let ano_abertura = dados.ano_abertura || null;
+  let mes_abertura = dados.mes_abertura || null;
+  
+  if (dados.data_resposta) {
+    const dataResposta = new Date(dados.data_resposta);
+    ano_abertura = dataResposta.getFullYear();
+    mes_abertura = dataResposta.getMonth() + 1; // getMonth() retorna 0-11, precisamos 1-12
+    
+    console.log('📅 [CRIAR] Extraído ano/mês da data_resposta:', {
+      data_resposta: dados.data_resposta,
+      ano_abertura,
+      mes_abertura
+    });
+  }
+
   const pesquisaData: PesquisaInsert = {
     origem: 'manual',
     id_externo: null,
@@ -387,8 +403,8 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     solicitante: transformacao.dadosTransformados.solicitante || null,
     nro_caso: dados.nro_caso || null,
     tipo_caso: dados.tipo_caso || null,
-    ano_abertura: dados.ano_abertura || null,
-    mes_abertura: dados.mes_abertura || null,
+    ano_abertura: ano_abertura,
+    mes_abertura: mes_abertura,
     data_resposta: dados.data_resposta?.toISOString() || null,
     resposta: dados.resposta || null,
     comentario_pesquisa: dados.comentario_pesquisa || null,
@@ -463,6 +479,25 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
 
   const updateData: PesquisaUpdate = {};
 
+  // Extrair ano e mês da data_resposta se fornecida
+  if (dados.data_resposta !== undefined && dados.data_resposta) {
+    const dataResposta = new Date(dados.data_resposta);
+    updateData.ano_abertura = dataResposta.getFullYear();
+    updateData.mes_abertura = dataResposta.getMonth() + 1; // getMonth() retorna 0-11, precisamos 1-12
+    updateData.data_resposta = dados.data_resposta.toISOString();
+    
+    console.log('📅 [ATUALIZAR] Extraído ano/mês da data_resposta:', {
+      data_resposta: dados.data_resposta,
+      ano_abertura: updateData.ano_abertura,
+      mes_abertura: updateData.mes_abertura
+    });
+  } else if (dados.data_resposta === null) {
+    // Se data_resposta foi explicitamente definida como null, limpar também ano e mês
+    updateData.data_resposta = null;
+    updateData.ano_abertura = null;
+    updateData.mes_abertura = null;
+  }
+
   // Mapear apenas campos que foram fornecidos, aplicando transformações quando necessário
   if (dados.empresa !== undefined) updateData.empresa = transformacao.dadosTransformados.empresa;
   if (dados.categoria !== undefined) updateData.categoria = dados.categoria || null;
@@ -473,9 +508,7 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
   if (dados.solicitante !== undefined) updateData.solicitante = transformacao.dadosTransformados.solicitante || null;
   if (dados.nro_caso !== undefined) updateData.nro_caso = dados.nro_caso || null;
   if (dados.tipo_caso !== undefined) updateData.tipo_caso = dados.tipo_caso || null;
-  if (dados.ano_abertura !== undefined) updateData.ano_abertura = dados.ano_abertura || null;
-  if (dados.mes_abertura !== undefined) updateData.mes_abertura = dados.mes_abertura || null;
-  if (dados.data_resposta !== undefined) updateData.data_resposta = dados.data_resposta?.toISOString() || null;
+  // ano_abertura e mes_abertura já foram tratados acima baseado em data_resposta
   if (dados.resposta !== undefined) updateData.resposta = dados.resposta || null;
   if (dados.comentario_pesquisa !== undefined) updateData.comentario_pesquisa = dados.comentario_pesquisa || null;
   if (dados.observacao !== undefined) updateData.observacao = dados.observacao || null;

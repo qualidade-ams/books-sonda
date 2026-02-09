@@ -21,7 +21,7 @@ import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { EmpresasTab } from '@/components/admin/dashboard/EmpresasTab';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
-import { useEstatisticasPesquisas, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisas';
+import { useEstatisticasPesquisasLocal, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisasLocal';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { useEmpresas } from '@/hooks/useEmpresas';
@@ -2886,8 +2886,8 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
-  // Hook para buscar estatísticas de pesquisas do SQL Server (sempre todos os grupos)
-  const { data: estatisticasPesquisas, isLoading: loadingEstatisticas, error } = useEstatisticasPesquisas(
+  // Hook para buscar estatísticas de pesquisas da tabela local (sempre todos os grupos)
+  const { data: estatisticasPesquisas, isLoading: loadingEstatisticas, error } = useEstatisticasPesquisasLocal(
     anoSelecionado, 
     'todos'
   );
@@ -2916,16 +2916,9 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Enviadas</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">
-                  {loadingEstatisticas ? '...' : stats.total_enviadas}
-                </p>
-                {error && (
-                  <span className="text-xs text-red-500" title="Erro ao carregar dados do SQL Server">
-                    ⚠️
-                  </span>
-                )}
-              </div>
+              <p className="text-2xl font-bold">
+                {loadingEstatisticas ? '...' : stats.total_enviadas}
+              </p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <FileText className="h-4 w-4 text-blue-600" />
@@ -3004,8 +2997,8 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
             ) : error ? (
               <div className="h-64 flex items-center justify-center">
                 <div className="text-red-500 text-center">
-                  <p>Erro ao carregar dados do SQL Server</p>
-                  <p className="text-xs mt-1">Verifique se a API de sincronização está ativa</p>
+                  <p>Erro ao carregar dados das pesquisas</p>
+                  <p className="text-xs mt-1">Verifique se há pesquisas cadastradas no sistema</p>
                 </div>
               </div>
             ) : estatisticasPesquisas ? (
