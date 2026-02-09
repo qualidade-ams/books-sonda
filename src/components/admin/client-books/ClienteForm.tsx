@@ -181,8 +181,29 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
     }
   };
 
-  // Filtrar apenas empresas ativas para seleção
-  const empresasAtivas = empresas.filter(empresa => empresa.status === 'ativo');
+  // Filtrar empresas para seleção
+  // No modo de edição/visualização, incluir a empresa atual mesmo que inativa
+  // No modo de criação, mostrar apenas empresas ativas
+  const empresasDisponiveis = React.useMemo(() => {
+    if (mode === 'create') {
+      // Modo criação: apenas empresas ativas
+      return empresas.filter(empresa => empresa.status === 'ativo');
+    } else {
+      // Modo edição/visualização: empresas ativas + empresa atual (se inativa)
+      const empresaAtualId = initialData?.empresaId;
+      const empresasAtivas = empresas.filter(empresa => empresa.status === 'ativo');
+      
+      // Se há uma empresa atual e ela não está na lista de ativas, adicionar
+      if (empresaAtualId) {
+        const empresaAtual = empresas.find(e => e.id === empresaAtualId);
+        if (empresaAtual && empresaAtual.status === 'inativo') {
+          return [...empresasAtivas, empresaAtual];
+        }
+      }
+      
+      return empresasAtivas;
+    }
+  }, [empresas, mode, initialData?.empresaId]);
 
   return (
     <Form {...form}>
@@ -298,15 +319,22 @@ const ClienteForm: React.FC<ClienteFormProps> = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {empresasAtivas.map((empresa) => (
+                    {empresasDisponiveis.map((empresa) => (
                       <SelectItem key={empresa.id} value={empresa.id}>
-                        {empresa.nome_abreviado}
+                        <div className="flex items-center gap-2">
+                          <span>{empresa.nome_abreviado}</span>
+                          {empresa.status === 'inativo' && (
+                            <span className="text-xs text-red-600 font-medium">(Inativa)</span>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Apenas empresas ativas são exibidas
+                  {mode === 'create' 
+                    ? 'Apenas empresas ativas são exibidas' 
+                    : 'Empresas ativas e a empresa atual (se inativa) são exibidas'}
                 </FormDescription>
                 <FormMessage />
               </FormItem>

@@ -136,8 +136,9 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
-  // Filtrar empresas ativas para o select
-  const empresasAtivas = empresas.filter(empresa => empresa.status === 'ativo');
+  // Incluir empresas ativas E inativas no filtro
+  // Isso permite filtrar por empresas inativas que ainda têm clientes associados
+  const empresasParaFiltro = empresas;
 
   if (loading) {
     return (
@@ -225,7 +226,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
               </div>
 
               {/* Filtro Empresa */}
-              {showEmpresaColumn && empresasAtivas.length > 0 && (
+              {showEmpresaColumn && empresasParaFiltro.length > 0 && (
                 <div>
                   <div className="text-sm font-medium mb-2">Empresa</div>
                   <Select
@@ -237,11 +238,16 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas as empresas</SelectItem>
-                      {empresasAtivas
+                      {empresasParaFiltro
                         .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
                         .map((empresa) => (
                           <SelectItem key={empresa.id} value={empresa.id}>
-                            {empresa.nome_abreviado}
+                            <div className="flex items-center gap-2">
+                              <span>{empresa.nome_abreviado}</span>
+                              {empresa.status === 'inativo' && (
+                                <span className="text-xs text-red-600 font-medium">(Inativa)</span>
+                              )}
+                            </div>
                           </SelectItem>
                         ))}
                     </SelectContent>
