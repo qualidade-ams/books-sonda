@@ -13,3 +13,9 @@ export { EmpresaImportExportButtons } from './EmpresaImportExportButtons';
 
 // Filtros
 export { default as EmpresasFiltros } from './EmpresasFiltros';
+
+// Gerenciamento de Baseline
+export { default as GerenciadorBaselineHistorico } from './GerenciadorBaselineHistorico';
+export { default as ModalNovoBaseline } from './ModalNovoBaseline';
+export { default as ModalEditarBaseline } from './ModalEditarBaseline';
+export { default as SecaoBaselineComHistorico } from './SecaoBaselineComHistorico';
