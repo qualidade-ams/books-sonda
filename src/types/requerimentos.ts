@@ -5,6 +5,7 @@ export interface Requerimento {
   chamado: string;
   cliente_id: string;
   cliente_nome?: string; // Join com empresas_clientes
+  empresa_segmentacao_nome?: string; // Nome lógico da empresa de segmentação (ex: "NIQUEL", "IOB")
   modulo: ModuloType;
   descricao: string;
   data_envio: string;
@@ -102,6 +103,7 @@ export const requerValorHora = (tipoCobranca: TipoCobrancaType): boolean => {
 export interface RequerimentoFormData {
   chamado: string;
   cliente_id: string;
+  empresa_segmentacao_nome?: string; // Nome lógico da empresa (ex: "NIQUEL", "IOB")
   modulo: ModuloType;
   descricao: string;
   data_envio: string;

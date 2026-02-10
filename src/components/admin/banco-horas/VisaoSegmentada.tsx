@@ -380,8 +380,140 @@ export function VisaoSegmentada({
         // Saldo a utilizar = baseline + repasse mês anterior (pode ser negativo)
         const saldoAUtilizar = baseline + repasseMesAnterior;
         
-        // Requerimentos (TODO: Implementar lógica real)
-        const requerimentosMinutos = 0;
+        console.log(`🔍 [${empresa.nome}] ${chave} - INÍCIO DA FILTRAGEM:`, {
+          mes: mesAno.mes,
+          ano: mesAno.ano,
+          totalRequerimentos: requerimentos.length,
+          requerimentosEmpresa: requerimentos.filter(r => r.empresa_segmentacao_nome === empresa.nome).length,
+          todosRequerimentos: requerimentos.map(r => ({
+            id: r.id,
+            chamado: r.chamado,
+            empresa_segmentacao_nome: r.empresa_segmentacao_nome,
+            mes_cobranca: r.mes_cobranca,
+            horas_funcional: r.horas_funcional,
+            horas_tecnico: r.horas_tecnico
+          }))
+        });
+        
+        // Filtrar requerimentos desta empresa segmentada neste mês
+        const requerimentosDoMes = requerimentos.filter(req => {
+          // Verificar se o requerimento pertence a esta empresa de segmentação
+          if (req.empresa_segmentacao_nome !== empresa.nome) {
+            console.log(`❌ [${empresa.nome}] Requerimento ${req.chamado} não pertence a esta empresa (tem: ${req.empresa_segmentacao_nome})`);
+            return false;
+          }
+          
+          // Verificar se o requerimento tem mês de cobrança
+          if (!req.mes_cobranca || typeof req.mes_cobranca !== 'string') {
+            console.warn(`⚠️ [${empresa.nome}] Requerimento sem mes_cobranca válido:`, req.id, req.chamado);
+            return false;
+          }
+          
+          // Formato esperado: "MM/YYYY" (ex: "01/2026" ou "02/2026") ou "YYYY-MM" (ex: "2026-01")
+          let mesReq: number;
+          let anoReq: number;
+          
+          if (req.mes_cobranca.includes('/')) {
+            // Formato: "MM/YYYY"
+            const partes = req.mes_cobranca.split('/');
+            mesReq = parseInt(partes[0], 10);
+            anoReq = parseInt(partes[1], 10);
+            console.log(`🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato MM/YYYY):`, { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } });
+          } else if (req.mes_cobranca.includes('-')) {
+            // Formato: "YYYY-MM"
+            const partes = req.mes_cobranca.split('-');
+            anoReq = parseInt(partes[0], 10);
+            mesReq = parseInt(partes[1], 10);
+            console.log(`🔍 [${empresa.nome}] Parsing mes_cobranca "${req.mes_cobranca}" (formato YYYY-MM):`, { mesReq, anoReq, esperado: { mes: mesAno.mes, ano: mesAno.ano } });
+          } else {
+            console.warn(`⚠️ [${empresa.nome}] Formato de mes_cobranca inválido:`, req.mes_cobranca);
+            return false;
+          }
+          
+          // Validar se são números válidos
+          if (isNaN(mesReq) || isNaN(anoReq)) {
+            console.warn(`⚠️ [${empresa.nome}] Mês ou ano inválido:`, { mesReq, anoReq, mes_cobranca: req.mes_cobranca });
+            return false;
+          }
+          
+          const match = mesReq === mesAno.mes && anoReq === mesAno.ano;
+          console.log(`${match ? '✅' : '❌'} [${empresa.nome}] Requerimento ${req.chamado}: ${mesReq}/${anoReq} ${match ? '===' : '!=='} ${mesAno.mes}/${mesAno.ano}`);
+          
+          return match;
+        });
+        
+        // Somar horas dos requerimentos (funcional + técnico)
+        const requerimentosMinutos = requerimentosDoMes.reduce((total, req) => {
+          let horasFuncional = 0;
+          let horasTecnico = 0;
+          
+          // Converter horas_funcional (pode ser string "HH:MM" ou number decimal)
+          if (typeof req.horas_funcional === 'string' && req.horas_funcional.includes(':')) {
+            // Formato "HH:MM" - converter para minutos
+            const [horas, minutos] = req.horas_funcional.split(':').map(Number);
+            horasFuncional = (horas * 60) + minutos;
+          } else if (typeof req.horas_funcional === 'number') {
+            // Formato decimal - converter para minutos
+            horasFuncional = Math.round(req.horas_funcional * 60);
+          } else if (req.horas_funcional) {
+            // Tentar converter string numérica
+            const valor = parseFloat(req.horas_funcional);
+            if (!isNaN(valor)) {
+              horasFuncional = Math.round(valor * 60);
+            }
+          }
+          
+          // Converter horas_tecnico (pode ser string "HH:MM" ou number decimal)
+          if (typeof req.horas_tecnico === 'string' && req.horas_tecnico.includes(':')) {
+            // Formato "HH:MM" - converter para minutos
+            const [horas, minutos] = req.horas_tecnico.split(':').map(Number);
+            horasTecnico = (horas * 60) + minutos;
+          } else if (typeof req.horas_tecnico === 'number') {
+            // Formato decimal - converter para minutos
+            horasTecnico = Math.round(req.horas_tecnico * 60);
+          } else if (req.horas_tecnico) {
+            // Tentar converter string numérica
+            const valor = parseFloat(req.horas_tecnico);
+            if (!isNaN(valor)) {
+              horasTecnico = Math.round(valor * 60);
+            }
+          }
+          
+          console.log(`💰 [${empresa.nome}] ${chave} - Processando requerimento ${req.chamado}:`, {
+            horas_funcional_original: req.horas_funcional,
+            horas_tecnico_original: req.horas_tecnico,
+            horasFuncional_minutos: horasFuncional,
+            horasTecnico_minutos: horasTecnico,
+            tipo_horas_funcional: typeof req.horas_funcional,
+            tipo_horas_tecnico: typeof req.horas_tecnico,
+            total_minutos: horasFuncional + horasTecnico,
+            total_horas: converterMinutosParaHoras(horasFuncional + horasTecnico)
+          });
+          
+          // Validar se são números válidos
+          if (isNaN(horasFuncional) || isNaN(horasTecnico)) {
+            console.warn(`⚠️ [${empresa.nome}] Horas inválidas no requerimento:`, req.id, { horasFuncional, horasTecnico });
+            return total;
+          }
+          
+          const minutosRequerimento = horasFuncional + horasTecnico;
+          console.log(`✅ [${empresa.nome}] ${chave} - Adicionando ${minutosRequerimento} minutos (${converterMinutosParaHoras(minutosRequerimento)}) ao total`);
+          
+          return total + minutosRequerimento;
+        }, 0);
+        
+        console.log(`📊 [${empresa.nome}] ${chave} - Requerimentos:`, {
+          total: requerimentosDoMes.length,
+          minutos: requerimentosMinutos,
+          horas: converterMinutosParaHoras(requerimentosMinutos),
+          requerimentos: requerimentosDoMes.map(r => ({
+            id: r.id,
+            chamado: r.chamado,
+            mes_cobranca: r.mes_cobranca,
+            horas_funcional: r.horas_funcional,
+            horas_tecnico: r.horas_tecnico
+          }))
+        });
         
         // Consumo total = consumo chamados + requerimentos
         const consumoTotal = consumoChamados + requerimentosMinutos;
@@ -441,7 +573,7 @@ export function VisaoSegmentada({
         filtroValor: empresa.filtro_valor,
       };
     });
-  }, [segmentacaoConfig, mesesDoPeriodo, percentualRepasseMensal, consumoPorEmpresaMes, taxaHoraCalculada]);
+  }, [segmentacaoConfig, mesesDoPeriodo, percentualRepasseMensal, consumoPorEmpresaMes, taxaHoraCalculada, requerimentos]);
   
   // Mostrar loading enquanto busca dados
   if (carregandoConsumo) {

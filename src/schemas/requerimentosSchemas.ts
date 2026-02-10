@@ -143,6 +143,20 @@ export const requerimentoFormSchema = z.object({
     .string()
     .min(1, 'Cliente é obrigatório')
     .uuid('ID do cliente deve ser um UUID válido'),
+  empresa_segmentacao_nome: z
+    .union([
+      z.string().min(1), // String não vazia
+      z.literal(''),     // String vazia explícita
+      z.null(),          // Null explícito
+      z.undefined()      // Undefined explícito
+    ])
+    .optional()
+    .transform(val => {
+      // Converter null ou string vazia para undefined
+      if (val === null || val === '') return undefined;
+      // Manter strings não vazias
+      return val;
+    }),
   modulo: moduloSchema,
   linguagem: linguagemSchema, // ✅ CORRIGIDO: Schema já é opcional internamente
   descricao: descricaoSchema,

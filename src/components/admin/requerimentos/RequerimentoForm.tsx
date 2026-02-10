@@ -24,9 +24,11 @@ import {
   requerValorHora,
   TipoHoraExtraType,
   ModuloType,
-  LinguagemType
+  LinguagemType,
+  TipoCobrancaType
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
+import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
 import { cn } from '@/lib/utils';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAccessibility } from '@/hooks/useAccessibility';
@@ -96,6 +98,7 @@ export function RequerimentoForm({
     defaultValues: {
       chamado: requerimento?.chamado || '',
       cliente_id: requerimento?.cliente_id || '',
+      empresa_segmentacao_nome: requerimento?.empresa_segmentacao_nome || '',
       modulo: (requerimento?.modulo || '') as ModuloType,
       descricao: requerimento?.descricao || '',
       data_envio: requerimento?.data_envio || '',
@@ -118,6 +121,30 @@ export function RequerimentoForm({
       // Campo de atendimento presencial (usa valores locais)
       atendimento_presencial: requerimento?.atendimento_presencial || false
     }
+  });
+
+  // Watch clienteId APÓS inicialização do form
+  const clienteIdWatch = form.watch('cliente_id');
+  
+  // Buscar empresas de segmentação (baseline) do cliente selecionado
+  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } = useEmpresasSegmentacao(clienteIdWatch);
+  
+  // Verificar se deve mostrar campo de empresa_segmentacao_id
+  const mostrarCampoEmpresaSegmentacao = useMemo(() => {
+    const mostrar = empresasSegmentacao.length > 0;
+    console.log('🔍 [mostrarCampoEmpresaSegmentacao]:', {
+      mostrar,
+      empresasSegmentacao: empresasSegmentacao.length,
+      clienteId: clienteIdWatch,
+      valorAtual: form.getValues('empresa_segmentacao_nome')
+    });
+    return mostrar;
+  }, [empresasSegmentacao, clienteIdWatch, form]);
+  
+  console.log('📊 Empresas de segmentação:', {
+    clienteId: clienteIdWatch,
+    empresas: empresasSegmentacao,
+    mostrarCampo: mostrarCampoEmpresaSegmentacao
   });
 
   // Watch para calcular horas total e valores automaticamente
@@ -821,7 +848,7 @@ export function RequerimentoForm({
       console.log('Limpando tipo de cobrança não disponível:', tipoCobrancaAtual);
       
       // Definir valor padrão baseado no cliente
-      let valorPadrao = 'Banco de Horas'; // Padrão geral
+      let valorPadrao: TipoCobrancaType = 'Banco de Horas'; // Padrão geral
       
       // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
       if (clienteSelecionado?.tem_ams === false || clienteSelecionado?.tipo_cobranca === 'outros') {
@@ -830,11 +857,11 @@ export function RequerimentoForm({
       
       // Se o valor padrão não estiver disponível, usar o primeiro disponível
       if (!opcoesDisponiveis.includes(valorPadrao)) {
-        valorPadrao = opcoesDisponiveis[0] || 'Faturado';
+        valorPadrao = (opcoesDisponiveis[0] as TipoCobrancaType) || 'Faturado';
       }
       
       console.log('Definindo tipo de cobrança padrão:', valorPadrao);
-      form.setValue('tipo_cobranca', valorPadrao as any);
+      form.setValue('tipo_cobranca', valorPadrao);
     }
   }, [tipoCobrancaOptionsFiltradas, form, clienteSelecionado]);
 
@@ -844,7 +871,7 @@ export function RequerimentoForm({
     
     // Se não há tipo de cobrança definido e há cliente selecionado
     if (!tipoCobrancaAtual && clienteSelecionado) {
-      let valorPadrao = 'Banco de Horas'; // Padrão geral
+      let valorPadrao: TipoCobrancaType = 'Banco de Horas'; // Padrão geral
       
       // Se cliente não tem AMS ou tem tipo "outros", usar "Faturado" como padrão
       if (clienteSelecionado.tem_ams === false || clienteSelecionado.tipo_cobranca === 'outros') {
@@ -854,11 +881,11 @@ export function RequerimentoForm({
       // Verificar se o valor padrão está disponível nas opções filtradas
       const opcoesDisponiveis = tipoCobrancaOptionsFiltradas.map(option => option.value);
       if (!opcoesDisponiveis.includes(valorPadrao)) {
-        valorPadrao = opcoesDisponiveis[0] || 'Faturado';
+        valorPadrao = (opcoesDisponiveis[0] as TipoCobrancaType) || 'Faturado';
       }
       
       console.log('Definindo tipo de cobrança padrão para novo cliente:', valorPadrao);
-      form.setValue('tipo_cobranca', valorPadrao as any);
+      form.setValue('tipo_cobranca', valorPadrao);
     }
   }, [clienteSelecionado, tipoCobrancaOptionsFiltradas, form]);
 
@@ -898,6 +925,7 @@ export function RequerimentoForm({
 
   const handleSubmit = useCallback(async (data: RequerimentoFormData) => {
     console.log('✅ FORMULÁRIO SUBMETIDO - Dados completos recebidos:', data);
+    console.log('🏢 [FORMULÁRIO] empresa_segmentacao_nome:', data.empresa_segmentacao_nome);
     console.log('📋 Tipo de cobrança:', data.tipo_cobranca);
     console.log('💰 Valor/Hora Funcional:', data.valor_hora_funcional);
     console.log('💰 Valor/Hora Técnico:', data.valor_hora_tecnico);
@@ -987,7 +1015,7 @@ export function RequerimentoForm({
                 </OptimizedTooltip>
               </h4>
 
-              <div className={cn("grid gap-4", responsiveForm.fieldLayout)}>
+              <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", responsiveForm.fieldLayout)}>
                 {/* Chamado */}
                 <FormField
                   control={form.control}
@@ -1060,7 +1088,59 @@ export function RequerimentoForm({
                 />
               </div>
 
+              {/* Grid 2 colunas: Empresa (Segmentação) e Módulo */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Empresa de Segmentação (Segmentação) - Condicional */}
+                {mostrarCampoEmpresaSegmentacao && (
+                  <FormField
+                    control={form.control}
+                    name="empresa_segmentacao_nome"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Empresa (Segmentação) <span className="text-gray-700 dark:text-gray-300">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            console.log('🔄 [empresa_segmentacao_nome] onChange:', {
+                              valorAntigo: field.value,
+                              valorNovo: value
+                            });
+                            field.onChange(value);
+                            console.log('✅ [empresa_segmentacao_nome] Valor atualizado no form:', form.getValues('empresa_segmentacao_nome'));
+                          }}
+                          value={field.value}
+                          disabled={isLoading || isLoadingEmpresasSegmentacao}
+                        >
+                          <FormControl>
+                            <SelectTrigger className={cn(getErrorClasses(field.value))}>
+                              <SelectValue placeholder="Selecione uma empresa" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {isLoadingEmpresasSegmentacao ? (
+                              <SelectItem value="__loading__" disabled>
+                                <LoadingSpinner size="sm" text="Carregando..." />
+                              </SelectItem>
+                            ) : empresasSegmentacao.length === 0 ? (
+                              <SelectItem value="__no_empresas__" disabled>
+                                Nenhuma empresa encontrada
+                              </SelectItem>
+                            ) : (
+                              empresasSegmentacao.map((empresa) => (
+                                <SelectItem key={empresa.nome} value={empresa.nome}>
+                                  {empresa.nome} ({empresa.percentual}%)
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                )}
+
                 {/* Módulo */}
                 <FormField
                   control={form.control}
@@ -1088,7 +1168,6 @@ export function RequerimentoForm({
                     </FormItem>
                   )}
                 />
-
               </div>
 
               {/* Descrição */}
