@@ -4679,9 +4679,10 @@ const Dashboard = () => {
                           <AreaChart 
                             data={(() => {
                               // Processar dados para comparativo COMEX vs FISCAL
-                              const dadosComparativos = statsRequerimentos.porMes.map(mesData => {
+                              // USAR statsRequerimentosFiltradas em vez de statsRequerimentos para respeitar filtros
+                              const dadosComparativos = (statsRequerimentosFiltradas?.porMes || statsRequerimentos.porMes).map(mesData => {
                                 // Filtrar requerimentos do mês atual
-                                const requerimentosDoMes = statsRequerimentos.dados?.filter(req => {
+                                const requerimentosDoMes = (statsRequerimentosFiltradas?.dados || statsRequerimentos.dados)?.filter(req => {
                                   const mesReq = req.mes_cobranca;
                                   return mesReq === mesData.mes;
                                 }) || [];
@@ -4845,50 +4846,62 @@ const Dashboard = () => {
                             {comparativoMode === 'faturamento' ? (
                               <>
                                 {/* Áreas para Faturamento */}
-                                <Area
-                                  yAxisId="faturamento"
-                                  type="monotone"
-                                  dataKey="comexFaturamento"
-                                  stroke="#ec4899"
-                                  strokeWidth={2}
-                                  fillOpacity={1}
-                                  fill="url(#colorComexFaturamento)"
-                                  name="COMEX - Faturamento"
-                                />
-                                <Area
-                                  yAxisId="faturamento"
-                                  type="monotone"
-                                  dataKey="fiscalFaturamento"
-                                  stroke="#8b5cf6"
-                                  strokeWidth={2}
-                                  fillOpacity={1}
-                                  fill="url(#colorFiscalFaturamento)"
-                                  name="FISCAL - Faturamento"
-                                />
+                                {/* Mostrar COMEX apenas se filtro for null ou 'comex' */}
+                                {(!comparativoFiltroAtivo || comparativoFiltroAtivo === 'comex') && (
+                                  <Area
+                                    yAxisId="faturamento"
+                                    type="monotone"
+                                    dataKey="comexFaturamento"
+                                    stroke="#ec4899"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorComexFaturamento)"
+                                    name="COMEX - Faturamento"
+                                  />
+                                )}
+                                {/* Mostrar FISCAL apenas se filtro for null ou 'fiscal' */}
+                                {(!comparativoFiltroAtivo || comparativoFiltroAtivo === 'fiscal') && (
+                                  <Area
+                                    yAxisId="faturamento"
+                                    type="monotone"
+                                    dataKey="fiscalFaturamento"
+                                    stroke="#8b5cf6"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorFiscalFaturamento)"
+                                    name="FISCAL - Faturamento"
+                                  />
+                                )}
                               </>
                             ) : (
                               <>
                                 {/* Áreas para Banco de Horas */}
-                                <Area
-                                  yAxisId="horas"
-                                  type="monotone"
-                                  dataKey="comexBancoHoras"
-                                  stroke="#f472b6"
-                                  strokeWidth={2}
-                                  fillOpacity={1}
-                                  fill="url(#colorComexBancoHoras)"
-                                  name="COMEX - Banco de Horas"
-                                />
-                                <Area
-                                  yAxisId="horas"
-                                  type="monotone"
-                                  dataKey="fiscalBancoHoras"
-                                  stroke="#a855f7"
-                                  strokeWidth={2}
-                                  fillOpacity={1}
-                                  fill="url(#colorFiscalBancoHoras)"
-                                  name="FISCAL - Banco de Horas"
-                                />
+                                {/* Mostrar COMEX apenas se filtro for null ou 'comex' */}
+                                {(!comparativoFiltroAtivo || comparativoFiltroAtivo === 'comex') && (
+                                  <Area
+                                    yAxisId="horas"
+                                    type="monotone"
+                                    dataKey="comexBancoHoras"
+                                    stroke="#f472b6"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorComexBancoHoras)"
+                                    name="COMEX - Banco de Horas"
+                                  />
+                                )}
+                                {/* Mostrar FISCAL apenas se filtro for null ou 'fiscal' */}
+                                {(!comparativoFiltroAtivo || comparativoFiltroAtivo === 'fiscal') && (
+                                  <Area
+                                    yAxisId="horas"
+                                    type="monotone"
+                                    dataKey="fiscalBancoHoras"
+                                    stroke="#a855f7"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#colorFiscalBancoHoras)"
+                                    name="FISCAL - Banco de Horas"
+                                  />
+                                )}
                               </>
                             )}
                           </AreaChart>
