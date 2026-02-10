@@ -13,8 +13,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Building2, AlertCircle, Loader2 } from 'lucide-react';
+import { Building2, AlertCircle, Loader2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { SegmentacaoConfig } from '@/types/clientBooksTypes';
 import type { Requerimento } from '@/types/requerimentos';
 import { converterHorasParaMinutos, converterMinutosParaHoras } from '@/utils/horasUtils';
@@ -748,7 +749,25 @@ export function VisaoSegmentada({
                   {/* Taxa/hora Excedente e Valor Total na mesma linha */}
                   <TableRow className="bg-gray-700 hover:bg-gray-700">
                     <TableCell className="font-medium text-white text-center">
-                      Taxa/hora Excedente
+                      <div className="flex items-center justify-center gap-2">
+                        <span>Taxa/hora Excedente</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="inline-flex items-center justify-center">
+                                <Info className="h-4 w-4 text-blue-300 hover:text-blue-100 transition-colors" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
+                              <div className="space-y-2 text-sm">
+                                <p className="font-semibold">Nota – Excedente na Visão Segmentada:</p>
+                                <p>Os excedentes identificados na visão segmentada não geram cobrança individual por segmento.</p>
+                                <p>A cobrança de excedentes é sempre calculada e faturada com base na visão consolidada do contrato.</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center font-semibold text-white">
                       {taxaHoraCalculada && taxaHoraCalculada > 0 ? formatarMoeda(taxaHoraCalculada) : ''}
