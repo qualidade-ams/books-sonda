@@ -1264,84 +1264,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
             {/* Baseline - Campos condicionais baseados no tipo de contrato */}
             {/* CARD ANTIGO REMOVIDO - Agora usa apenas SecaoBaselineComHistorico */}
-            
-            {/* Campo de Tickets - mantido separado pois não faz parte do histórico */}
-            {watchTipoContrato === 'tickets' && (
-              <Card>
-                <CardContent className="pt-6">
-                  <FormLabel className="text-base font-semibold mb-4 block">Baseline de Tickets</FormLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="baseline_tickets_mensal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">
-                            Baseline de Tickets Mensal <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="0"
-                              value={field.value !== undefined && field.value !== null ? String(field.value) : ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                
-                                // Se vazio, setar como undefined
-                                if (value === '' || value === null) {
-                                  field.onChange(undefined);
-                                  return;
-                                }
-                                
-                                // Permitir apenas números, ponto e vírgula
-                                const sanitized = value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                                
-                                // Se ficou vazio após sanitização, setar como undefined
-                                if (sanitized === '') {
-                                  field.onChange(undefined);
-                                  return;
-                                }
-                                
-                                // Converter para número
-                                const numValue = parseFloat(sanitized);
-                                
-                                // Validar range
-                                if (!isNaN(numValue) && numValue >= 0 && numValue <= 99999.99) {
-                                  field.onChange(numValue);
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                // Bloquear letras e caracteres especiais (exceto números, ponto, vírgula, backspace, delete, tab, arrows)
-                                const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '.', ','];
-                                const isNumber = /^[0-9]$/.test(e.key);
-                                
-                                if (!isNumber && !allowedKeys.includes(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onFocus={(e) => {
-                                // Selecionar todo o texto ao focar (facilita substituir o valor)
-                                e.target.select();
-                              }}
-                              disabled={isFieldDisabled}
-                              className={form.formState.errors.baseline_tickets_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
-                            />
-                          </FormControl>
-                          <FormDescription className="text-xs text-gray-500">
-                            Quantidade mensal de tickets contratados (apenas números)
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Histórico de Baseline - Só aparece se tipo_contrato for 'horas' ou 'ambos' E empresa já foi salva */}
-            {(watchTipoContrato === 'horas' || watchTipoContrato === 'ambos') && initialData?.id && (
+            {/* Histórico de Baseline - Aparece para TODOS os tipos de contrato se empresa já foi salva */}
+            {watchTipoContrato && initialData?.id && (
               <SecaoBaselineComHistorico
                 empresaId={initialData.id}
                 empresaNome={form.watch('nome_completo')}

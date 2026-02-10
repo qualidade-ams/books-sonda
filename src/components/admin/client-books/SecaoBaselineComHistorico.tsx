@@ -45,6 +45,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -83,6 +93,7 @@ export default function SecaoBaselineComHistorico({
   const { user } = useAuth();
   const [modalNovoOpen, setModalNovoOpen] = useState(false);
   const [modalEditarOpen, setModalEditarOpen] = useState(false);
+  const [modalExcluirOpen, setModalExcluirOpen] = useState(false);
   const [baselineSelecionado, setBaselineSelecionado] = useState<BaselineHistorico | null>(null);
   const [showHistorico, setShowHistorico] = useState(false);
 
@@ -108,16 +119,31 @@ export default function SecaoBaselineComHistorico({
     if (!empresaId) return;
 
     try {
-      await createBaseline.mutateAsync({
+      // Preparar dados baseado no tipo de contrato
+      const baselineData: any = {
         empresa_id: empresaId,
-        baseline_horas: parseFloat(novoBaseline.baseline_horas),
-        baseline_tickets: novoBaseline.baseline_tickets ? parseInt(novoBaseline.baseline_tickets) : null,
         data_inicio: novoBaseline.data_inicio,
         data_fim: novoBaseline.data_fim || null,
         motivo: novoBaseline.motivo,
         observacao: novoBaseline.observacao || null,
         created_by: user?.id
-      });
+      };
+
+      // Adicionar baseline_horas apenas se tipo não for "tickets"
+      if (tipoContrato !== 'tickets') {
+        baselineData.baseline_horas = parseFloat(novoBaseline.baseline_horas || '0');
+      } else {
+        baselineData.baseline_horas = null; // Explicitamente null para tipo "tickets"
+      }
+
+      // Adicionar baseline_tickets apenas se tipo não for "horas"
+      if (tipoContrato !== 'horas') {
+        baselineData.baseline_tickets = novoBaseline.baseline_tickets ? parseInt(novoBaseline.baseline_tickets) : null;
+      } else {
+        baselineData.baseline_tickets = null; // Explicitamente null para tipo "horas"
+      }
+
+      await createBaseline.mutateAsync(baselineData);
 
       setNovoBaseline({
         baseline_horas: '',
@@ -138,9 +164,20 @@ export default function SecaoBaselineComHistorico({
     setModalEditarOpen(true);
   };
 
-  const handleDeletar = async (id: string) => {
-    if (confirm('Tem certeza que deseja remover esta vigência de baseline?')) {
-      await deleteBaseline.mutateAsync(id);
+  const handleDeletar = async (baseline: BaselineHistorico) => {
+    setBaselineSelecionado(baseline);
+    setModalExcluirOpen(true);
+  };
+
+  const confirmarExclusao = async () => {
+    if (!baselineSelecionado) return;
+    
+    try {
+      await deleteBaseline.mutateAsync(baselineSelecionado.id);
+      setModalExcluirOpen(false);
+      setBaselineSelecionado(null);
+    } catch (error) {
+      console.error('Erro ao excluir baseline:', error);
     }
   };
 
@@ -236,16 +273,20 @@ export default function SecaoBaselineComHistorico({
             {baselineAtual ? (
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-6">
-                  <div>
-                    <div className="text-xs text-gray-600 mb-1">Horas Mensais</div>
-                    <div className="text-2xl font-bold text-sonda-blue">
-                      {baselineAtual.baseline_horas.toFixed(2)}h
+                  {/* Horas - só exibir se tipo não for apenas "tickets" */}
+                  {tipoContrato !== 'tickets' && (
+                    <div>
+                      <div className="text-xs text-gray-600 mb-1">Horas Mensais</div>
+                      <div className="text-2xl font-bold text-sonda-blue">
+                        {baselineAtual.baseline_horas.toFixed(2)}h
+                      </div>
                     </div>
-                  </div>
-                  {baselineAtual.baseline_tickets && (
+                  )}
+                  {/* Tickets - só exibir se tipo não for apenas "horas" */}
+                  {tipoContrato !== 'horas' && baselineAtual.baseline_tickets !== null && (
                     <div>
                       <div className="text-xs text-gray-600 mb-1">Tickets Mensais</div>
-                      <div className="text-xl font-semibold text-gray-700">
+                      <div className="text-2xl font-bold text-sonda-blue">
                         {baselineAtual.baseline_tickets}
                       </div>
                     </div>
@@ -306,27 +347,31 @@ export default function SecaoBaselineComHistorico({
 
                           {/* Valores */}
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold text-sonda-blue">
-                                {baseline.baseline_horas.toFixed(2)}h
-                              </span>
-                              {anterior && variacao !== 0 && (
-                                <div className="flex items-center gap-1">
-                                  {renderIconeVariacao(variacao)}
-                                  <span
-                                    className={`text-xs font-medium ${
-                                      variacao > 0 ? 'text-green-600' : 'text-red-600'
-                                    }`}
-                                  >
-                                    {variacao > 0 ? '+' : ''}
-                                    {variacao.toFixed(1)}%
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            {baseline.baseline_tickets !== null && (
-                              <span className="text-sm text-gray-600">
-                                | {baseline.baseline_tickets} tickets
+                            {/* Horas - só exibir se tipo não for apenas "tickets" */}
+                            {tipoContrato !== 'tickets' && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-sonda-blue">
+                                  {baseline.baseline_horas.toFixed(2)}h
+                                </span>
+                                {anterior && variacao !== 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {renderIconeVariacao(variacao)}
+                                    <span
+                                      className={`text-xs font-medium ${
+                                        variacao > 0 ? 'text-green-600' : 'text-red-600'
+                                      }`}
+                                    >
+                                      {variacao > 0 ? '+' : ''}
+                                      {variacao.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Tickets - só exibir se tipo não for apenas "horas" */}
+                            {tipoContrato !== 'horas' && baseline.baseline_tickets !== null && (
+                              <span className={`${tipoContrato === 'tickets' ? 'text-lg font-bold text-sonda-blue' : 'text-sm text-gray-600'}`}>
+                                {tipoContrato === 'tickets' ? '' : '| '}{baseline.baseline_tickets} tickets
                               </span>
                             )}
                           </div>
@@ -363,7 +408,7 @@ export default function SecaoBaselineComHistorico({
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleDeletar(baseline.id);
+                                handleDeletar(baseline);
                               }}
                               disabled={disabled}
                               type="button"
@@ -417,7 +462,7 @@ export default function SecaoBaselineComHistorico({
             {(tipoContrato === 'tickets' || tipoContrato === 'ambos') && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Baseline de Tickets Mensal {tipoContrato === 'tickets' && '*'}
+                  Baseline de Tickets Mensal *
                 </Label>
                 <Input
                   type="number"
@@ -544,7 +589,7 @@ export default function SecaoBaselineComHistorico({
               {(tipoContrato === 'tickets' || tipoContrato === 'ambos') && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    Baseline de Tickets Mensal {tipoContrato === 'tickets' && '*'}
+                    Baseline de Tickets Mensal *
                   </Label>
                   <Input
                     type="number"
@@ -664,6 +709,80 @@ export default function SecaoBaselineComHistorico({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de Confirmação de Exclusão */}
+      <AlertDialog open={modalExcluirOpen} onOpenChange={setModalExcluirOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-semibold text-red-600 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2">
+              <p className="text-base text-gray-700">
+                Tem certeza que deseja remover esta vigência de baseline?
+              </p>
+              
+              {baselineSelecionado && (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium">Data de Início:</span>
+                    <span>{formatarDataLocal(baselineSelecionado.data_inicio)}</span>
+                  </div>
+                  
+                  {tipoContrato !== 'tickets' && baselineSelecionado.baseline_horas && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">Baseline Horas:</span>
+                      <span className="text-sonda-blue font-semibold">
+                        {baselineSelecionado.baseline_horas.toFixed(2)}h
+                      </span>
+                    </div>
+                  )}
+                  
+                  {tipoContrato !== 'horas' && baselineSelecionado.baseline_tickets && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">Baseline Tickets:</span>
+                      <span className="text-sonda-blue font-semibold">
+                        {baselineSelecionado.baseline_tickets}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {baselineSelecionado.motivo && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertCircle className="h-4 w-4 text-gray-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium">Motivo:</span>
+                        <span className="ml-1">{baselineSelecionado.motivo}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-sm text-red-800">
+                  <strong>Atenção:</strong> Esta ação não pode ser desfeita. O histórico será permanentemente removido.
+                </AlertDescription>
+              </Alert>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Vigência
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

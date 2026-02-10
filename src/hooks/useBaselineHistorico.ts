@@ -103,9 +103,17 @@ export function useCreateBaselineHistorico() {
       if (!data.empresa_id) {
         throw new Error('Empresa é obrigatória');
       }
-      if (!data.baseline_horas || data.baseline_horas < 0) {
+      
+      // Validar baseline_horas apenas se fornecido (não é obrigatório para tipo "tickets")
+      if (data.baseline_horas !== null && data.baseline_horas !== undefined && data.baseline_horas < 0) {
         throw new Error('Baseline de horas deve ser maior ou igual a zero');
       }
+      
+      // Validar baseline_tickets apenas se fornecido (não é obrigatório para tipo "horas")
+      if (data.baseline_tickets !== null && data.baseline_tickets !== undefined && data.baseline_tickets < 0) {
+        throw new Error('Baseline de tickets deve ser maior ou igual a zero');
+      }
+      
       if (!data.data_inicio) {
         throw new Error('Data de início é obrigatória');
       }

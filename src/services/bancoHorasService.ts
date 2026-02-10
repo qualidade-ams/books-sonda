@@ -152,8 +152,8 @@ export class BancoHorasService {
         ano
       });
 
-      // 1. Buscar parâmetros da empresa
-      const parametros = await this.buscarParametrosEmpresa(empresaId);
+      // 1. Buscar parâmetros da empresa (com baseline vigente para o mês/ano)
+      const parametros = await this.buscarParametrosEmpresa(empresaId, mes, ano);
       
       console.log('📊 Parâmetros da empresa:', parametros);
 
@@ -661,8 +661,15 @@ export class BancoHorasService {
 
   /**
    * Busca parâmetros da empresa
+   * 
+   * IMPORTANTE: Agora busca baseline do histórico (baseline_historico) em vez da tabela empresas_clientes.
+   * Isso garante que cálculos históricos usem o baseline correto da época.
    */
-  private async buscarParametrosEmpresa(empresaId: string): Promise<ParametrosEmpresa> {
+  private async buscarParametrosEmpresa(
+    empresaId: string,
+    mes?: number,
+    ano?: number
+  ): Promise<ParametrosEmpresa> {
     const { data: empresa, error } = await supabase
       .from('empresas_clientes')
       .select(`
@@ -713,13 +720,78 @@ export class BancoHorasService {
       );
     }
 
+    // ✅ NOVO: Buscar baseline do histórico se mês/ano fornecidos
+    let baselineHorasMensal = empresa.baseline_horas_mensal;
+    let baselineTicketsMensal = empresa.baseline_tickets_mensal;
+
+    if (mes && ano) {
+      try {
+        // Calcular data de referência (primeiro dia do mês)
+        const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+        
+        console.log('🔍 [buscarParametrosEmpresa] Buscando baseline vigente:', {
+          empresaId,
+          mes,
+          ano,
+          dataReferencia
+        });
+
+        // Buscar baseline vigente usando função SQL
+        const { data: baselineVigente, error: baselineError } = await supabase
+          .rpc('get_baseline_vigente', {
+            p_empresa_id: empresaId,
+            p_data: dataReferencia
+          });
+
+        if (!baselineError && baselineVigente && baselineVigente.length > 0) {
+          const baseline = baselineVigente[0];
+          
+          console.log('✅ [buscarParametrosEmpresa] Baseline vigente encontrado:', {
+            baseline_horas: baseline.baseline_horas,
+            baseline_tickets: baseline.baseline_tickets,
+            data_inicio: baseline.data_inicio,
+            data_fim: baseline.data_fim,
+            is_vigente: baseline.is_vigente,
+            fonte: baseline.is_vigente ? 'baseline_historico' : 'empresas_clientes (fallback)'
+          });
+
+          // Converter baseline_horas de DECIMAL para formato HH:MM
+          if (baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
+            const horas = Math.floor(baseline.baseline_horas);
+            const minutos = Math.round((baseline.baseline_horas - horas) * 60);
+            baselineHorasMensal = `${horas}:${String(minutos).padStart(2, '0')}`;
+          }
+
+          // Usar baseline_tickets do histórico
+          if (baseline.baseline_tickets !== null && baseline.baseline_tickets !== undefined) {
+            baselineTicketsMensal = baseline.baseline_tickets;
+          }
+
+          console.log('📊 [buscarParametrosEmpresa] Baseline convertido:', {
+            baselineHorasMensal,
+            baselineTicketsMensal
+          });
+        } else {
+          console.warn('⚠️ [buscarParametrosEmpresa] Baseline vigente não encontrado, usando valores da tabela empresas_clientes:', {
+            error: baselineError?.message,
+            baselineHorasMensal: empresa.baseline_horas_mensal,
+            baselineTicketsMensal: empresa.baseline_tickets_mensal
+          });
+        }
+      } catch (error) {
+        console.error('❌ [buscarParametrosEmpresa] Erro ao buscar baseline vigente:', error);
+        console.warn('⚠️ [buscarParametrosEmpresa] Usando fallback da tabela empresas_clientes');
+        // Continuar com valores da tabela empresas_clientes (fallback)
+      }
+    }
+
     return {
       id: empresa.id,
       tipo_contrato: empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos',
       periodo_apuracao: empresa.periodo_apuracao,
       inicio_vigencia: new Date(empresa.inicio_vigencia),
-      baseline_horas_mensal: empresa.baseline_horas_mensal,
-      baseline_tickets_mensal: empresa.baseline_tickets_mensal,
+      baseline_horas_mensal: baselineHorasMensal,
+      baseline_tickets_mensal: baselineTicketsMensal,
       possui_repasse_especial: empresa.possui_repasse_especial || false,
       ciclos_para_zerar: empresa.ciclos_para_zerar || 1,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal ?? 100, // Padrão 100% se não configurado
