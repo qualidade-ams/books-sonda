@@ -31,18 +31,20 @@ const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
             <AlertTriangle className="h-5 w-5" />
             <span>Sessão Expirando</span>
           </DialogTitle>
-          <DialogDescription className="text-center py-4">
-            <div className="flex flex-col items-center space-y-3">
-              <Clock className="h-12 w-12 text-amber-500" />
-              <p>
-                Sua sessão expirará por inatividade em:
-              </p>
-              <div className="text-2xl font-mono font-bold text-red-600 bg-red-50 px-4 py-2 rounded-lg">
-                {remainingTime}
+          <DialogDescription asChild>
+            <div className="text-center py-4">
+              <div className="flex flex-col items-center space-y-3">
+                <Clock className="h-12 w-12 text-amber-500" />
+                <p className="text-sm text-gray-600">
+                  Sua sessão expirará por inatividade em:
+                </p>
+                <div className="text-2xl font-mono font-bold text-red-600 bg-red-50 px-4 py-2 rounded-lg">
+                  {remainingTime}
+                </div>
+                <p className="text-sm text-gray-600">
+                  Clique em "Continuar Sessão" para permanecer conectado ou "Sair" para fazer logout agora.
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
-                Clique em "Continuar Sessão" para permanecer conectado ou "Sair" para fazer logout agora.
-              </p>
             </div>
           </DialogDescription>
         </DialogHeader>

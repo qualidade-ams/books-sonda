@@ -93,6 +93,9 @@ export interface EmpresaFormData {
   ciclos_para_zerar?: number;
   percentual_repasse_mensal?: number;
   percentual_repasse_especial?: number;
+  // NOVO: Campos de Meta SLA
+  meta_sla_percentual?: number;
+  quantidade_minima_chamados_sla?: number;
 }
 
 export interface ClienteFormData {
