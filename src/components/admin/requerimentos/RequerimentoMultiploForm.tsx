@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { TipoCobrancaBloco, TipoCobrancaBlocoData } from './TipoCobrancaBloco';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
+import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
 import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { LoadingSpinner } from './LoadingStates';
@@ -41,11 +42,26 @@ export function RequerimentoMultiploForm({
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
   const [clienteId, setClienteId] = useState('');
+  const [empresaSegmentacaoNome, setEmpresaSegmentacaoNome] = useState('');
   const [modulo, setModulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [dataEnvio, setDataEnvio] = useState('');
   const [dataAprovacao, setDataAprovacao] = useState('');
   const [observacao, setObservacao] = useState('');
+  
+  // Buscar empresas de segmentação (baseline) do cliente selecionado
+  const { data: empresasSegmentacao = [], isLoading: isLoadingEmpresasSegmentacao } = useEmpresasSegmentacao(clienteId);
+  
+  // Verificar se deve mostrar campo de empresa_segmentacao_id
+  const mostrarCampoEmpresaSegmentacao = useMemo(() => {
+    return empresasSegmentacao.length > 0;
+  }, [empresasSegmentacao]);
+  
+  console.log('📊 Empresas de segmentação (Múltiplo):', {
+    clienteId,
+    empresas: empresasSegmentacao,
+    mostrarCampo: mostrarCampoEmpresaSegmentacao
+  });
 
   // Estado para blocos de tipos de cobrança
   const [blocos, setBlocos] = useState<TipoCobrancaBlocoData[]>([
@@ -216,6 +232,9 @@ export function RequerimentoMultiploForm({
     // Validar campos compartilhados
     if (!chamado.trim()) erros.push('Chamado é obrigatório');
     if (!clienteId) erros.push('Cliente é obrigatório');
+    if (mostrarCampoEmpresaSegmentacao && !empresaSegmentacaoNome) {
+      erros.push('Empresa (Baseline) é obrigatória para este cliente');
+    }
     if (!modulo) erros.push('Módulo é obrigatório');
     if (!descricao.trim()) erros.push('Descrição é obrigatória');
     if (!dataEnvio) erros.push('Data de envio é obrigatória');
@@ -320,6 +339,7 @@ export function RequerimentoMultiploForm({
     const dadosCompartilhados = {
       chamado: chamado.trim().toUpperCase(),
       cliente_id: clienteId,
+      empresa_segmentacao_nome: empresaSegmentacaoNome || undefined,
       modulo,
       descricao: descricao.trim(),
       data_envio: dataEnvio,
@@ -411,6 +431,42 @@ export function RequerimentoMultiploForm({
 
           {/* Módulo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Empresa de Segmentação (Segmentação) - Condicional */}
+          {mostrarCampoEmpresaSegmentacao && (
+            <div className="space-y-2">
+              <Label>
+                Empresa (Segmentação) <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={empresaSegmentacaoNome}
+                onValueChange={setEmpresaSegmentacaoNome}
+                disabled={isLoading || isLoadingEmpresasSegmentacao}
+              >
+                <SelectTrigger className={cn(getErrorClasses(empresaSegmentacaoNome))}>
+                  <SelectValue placeholder="Selecione uma empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingEmpresasSegmentacao ? (
+                    <SelectItem value="__loading__" disabled>
+                      <LoadingSpinner size="sm" text="Carregando..." />
+                    </SelectItem>
+                  ) : empresasSegmentacao.length === 0 ? (
+                    <SelectItem value="__no_empresas__" disabled>
+                      Nenhuma empresa encontrada
+                    </SelectItem>
+                  ) : (
+                    empresasSegmentacao.map((empresa) => (
+                      <SelectItem key={empresa.nome} value={empresa.nome}>
+                        {empresa.nome} ({empresa.percentual}%)
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
             <div className="space-y-2">
               <Label>
                 Módulo <span className="text-red-500">*</span>

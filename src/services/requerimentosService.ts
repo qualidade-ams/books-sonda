@@ -62,6 +62,7 @@ export class RequerimentosService {
     const requerimentoData = {
       chamado: data.chamado.trim().toUpperCase(), // Sempre salvar em maiúsculas
       cliente_id: data.cliente_id,
+      empresa_segmentacao_nome: data.empresa_segmentacao_nome?.trim() || null, // Nome da empresa de segmentação (NIQUEL, IOB, etc)
       modulo: data.modulo,
       descricao: data.descricao.trim(),
       data_envio: data.data_envio,
@@ -93,7 +94,7 @@ export class RequerimentosService {
       .insert(requerimentoData)
       .select(`
         *,
-        cliente:empresas_clientes(
+        cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
@@ -116,6 +117,7 @@ export class RequerimentosService {
       const requerimentoAnaliseEFData = {
         chamado: data.chamado.trim().toUpperCase(),
         cliente_id: data.cliente_id,
+        empresa_segmentacao_nome: data.empresa_segmentacao_nome?.trim() || null, // Manter mesma empresa de segmentação
         modulo: data.modulo,
         descricao: data.descricao.trim(),
         data_envio: data.data_envio,
@@ -258,7 +260,7 @@ export class RequerimentosService {
       .from('requerimentos')
       .select(`
         *,
-        cliente:empresas_clientes(
+        cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
@@ -384,7 +386,7 @@ export class RequerimentosService {
       .from('requerimentos')
       .select(`
         *,
-        cliente:empresas_clientes(
+        cliente:empresas_clientes!cliente_id(
           id,
           nome_abreviado
         )
@@ -415,6 +417,12 @@ export class RequerimentosService {
    * Atualizar requerimento
    */
   async atualizarRequerimento(id: string, data: Partial<RequerimentoFormData>): Promise<void> {
+    console.log('🔧 [atualizarRequerimento] Iniciando atualização:', {
+      id,
+      data,
+      empresa_segmentacao_nome: data.empresa_segmentacao_nome
+    });
+    
     if (!id?.trim()) {
       throw new Error('ID é obrigatório');
     }
@@ -436,6 +444,15 @@ export class RequerimentosService {
 
     if (data.chamado) updateData.chamado = data.chamado.trim().toUpperCase(); // Sempre salvar em maiúsculas
     if (data.cliente_id) updateData.cliente_id = data.cliente_id;
+    if (data.empresa_segmentacao_nome !== undefined) {
+      updateData.empresa_segmentacao_nome = data.empresa_segmentacao_nome?.trim() || null;
+      console.log('✅ [atualizarRequerimento] Campo empresa_segmentacao_nome será atualizado:', {
+        valor_original: data.empresa_segmentacao_nome,
+        valor_processado: updateData.empresa_segmentacao_nome
+      });
+    } else {
+      console.log('⚠️ [atualizarRequerimento] Campo empresa_segmentacao_nome NÃO foi fornecido nos dados');
+    }
     if (data.modulo) updateData.modulo = data.modulo;
     if (data.descricao) updateData.descricao = data.descricao.trim();
     if (data.data_envio) updateData.data_envio = data.data_envio;
@@ -467,6 +484,12 @@ export class RequerimentosService {
       .from('requerimentos')
       .update(updateData)
       .eq('id', id);
+
+    console.log('📊 [atualizarRequerimento] Resultado do UPDATE:', {
+      updateData,
+      error: error?.message || 'Sem erro',
+      sucesso: !error
+    });
 
     if (error) {
       throw new Error(`Erro ao atualizar requerimento: ${error.message}`);
@@ -1082,6 +1105,8 @@ export class RequerimentosService {
       cliente_id: data.cliente_id,
       // Suporta tanto data.cliente_nome (busca direta) quanto data.cliente?.nome_abreviado (JOIN)
       cliente_nome: data.cliente_nome || data.cliente?.nome_abreviado,
+      // Empresa de segmentação (agora é TEXT, não FK)
+      empresa_segmentacao_nome: data.empresa_segmentacao_nome,
       modulo: data.modulo,
       descricao: data.descricao,
       data_envio: data.data_envio,
