@@ -94,6 +94,9 @@ export class EmpresasClientesService {
       ciclos_para_zerar: data.ciclos_para_zerar || null,
       percentual_repasse_mensal: data.percentual_repasse_mensal || null,
       percentual_repasse_especial: data.percentual_repasse_especial || null,
+      // NOVO: Campos de Meta SLA
+      meta_sla_percentual: data.meta_sla_percentual || null,
+      quantidade_minima_chamados_sla: data.quantidade_minima_chamados_sla || null,
       // NOVO: Campos de Segmentação de Baseline
       baseline_segmentado: data.baselineSegmentado || false,
       segmentacao_config: (data.segmentacaoConfig as any) || null
@@ -529,6 +532,10 @@ export class EmpresasClientesService {
       if (data.ciclos_para_zerar !== undefined) updateData.ciclos_para_zerar = data.ciclos_para_zerar || null;
       if (data.percentual_repasse_mensal !== undefined) updateData.percentual_repasse_mensal = data.percentual_repasse_mensal || null;
       if (data.percentual_repasse_especial !== undefined) updateData.percentual_repasse_especial = data.percentual_repasse_especial || null;
+
+      // NOVO: Incluir campos de Meta SLA
+      if (data.meta_sla_percentual !== undefined) updateData.meta_sla_percentual = data.meta_sla_percentual || null;
+      if (data.quantidade_minima_chamados_sla !== undefined) updateData.quantidade_minima_chamados_sla = data.quantidade_minima_chamados_sla || null;
 
       // NOVO: Incluir campos de Segmentação de Baseline
       if (data.baselineSegmentado !== undefined) updateData.baseline_segmentado = data.baselineSegmentado;

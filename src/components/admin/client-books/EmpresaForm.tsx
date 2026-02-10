@@ -102,6 +102,10 @@ const empresaSchema = z.object({
   percentual_repasse_mensal: z.number().int().min(0).max(100).optional(),
   percentual_repasse_especial: z.number().int().min(0).max(100).optional(),
   
+  // NOVO: Campos de Meta SLA
+  meta_sla_percentual: z.number().min(0).max(100).optional(),
+  quantidade_minima_chamados_sla: z.number().int().min(0).optional(),
+  
   // NOVO: Segmentação de Baseline
   baselineSegmentado: z.boolean().optional(),
   segmentacaoConfig: z.object({
@@ -311,6 +315,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       ciclos_para_zerar: 1,
       percentual_repasse_mensal: 0,
       percentual_repasse_especial: 0,
+      // NOVO: Campos de Meta SLA - valores padrão
+      meta_sla_percentual: undefined,
+      quantidade_minima_chamados_sla: undefined,
       baselineSegmentado: false,
       segmentacaoConfig: undefined,
       ...initialData,
@@ -354,6 +361,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         ciclos_para_zerar: 1,
         percentual_repasse_mensal: 0,
         percentual_repasse_especial: 0,
+        // NOVO: Campos de Meta SLA - valores padrão
+        meta_sla_percentual: undefined,
+        quantidade_minima_chamados_sla: undefined,
         baselineSegmentado: false,
         segmentacaoConfig: undefined,
         ...initialData,
@@ -414,6 +424,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         bookPersonalizado: data.temAms ? (data.bookPersonalizado || false) : false,
         anexo: data.temAms ? (data.anexo || false) : false,
         observacao: data.observacao?.trim() || '',
+        // NOVO: Campos de Meta SLA
+        meta_sla_percentual: data.meta_sla_percentual,
+        quantidade_minima_chamados_sla: data.quantidade_minima_chamados_sla,
         // NOVO: Campos de Segmentação de Baseline
         baselineSegmentado: data.baselineSegmentado || false,
         segmentacaoConfig: data.segmentacaoConfig || undefined
@@ -1254,6 +1267,108 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                         min={0}
                         max={100}
                         className={form.formState.errors.percentual_repasse_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Campos de Meta SLA - Logo após Percentual de Repasse Mensal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="meta_sla_percentual"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Meta SLA (%)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0 a 100%"
+                        step="0.01"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            field.onChange(undefined);
+                            return;
+                          }
+                          const numValue = parseFloat(value);
+                          // Validar entre 0 e 100
+                          if (numValue >= 0 && numValue <= 100) {
+                            field.onChange(numValue);
+                          } else if (numValue > 100) {
+                            field.onChange(100);
+                            e.target.value = '100';
+                          } else if (numValue < 0) {
+                            field.onChange(0);
+                            e.target.value = '0';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Garantir valor válido ao sair do campo
+                          const value = e.target.value;
+                          if (value !== '' && (parseFloat(value) < 0 || parseFloat(value) > 100)) {
+                            field.onChange(undefined);
+                            e.target.value = '';
+                          }
+                        }}
+                        value={field.value ?? ''}
+                        disabled={isFieldDisabled}
+                        min={0}
+                        max={100}
+                        className={form.formState.errors.meta_sla_percentual ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="quantidade_minima_chamados_sla"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Quantidade Mínima de Chamados SLA
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Número inteiro >= 0"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            field.onChange(undefined);
+                            return;
+                          }
+                          const numValue = parseInt(value);
+                          // Validar >= 0
+                          if (numValue >= 0) {
+                            field.onChange(numValue);
+                          } else {
+                            field.onChange(0);
+                            e.target.value = '0';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Garantir valor válido ao sair do campo
+                          const value = e.target.value;
+                          if (value !== '' && parseInt(value) < 0) {
+                            field.onChange(undefined);
+                            e.target.value = '';
+                          }
+                        }}
+                        value={field.value ?? ''}
+                        disabled={isFieldDisabled}
+                        min={0}
+                        className={form.formState.errors.quantidade_minima_chamados_sla ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                       />
                     </FormControl>
                     <FormMessage />

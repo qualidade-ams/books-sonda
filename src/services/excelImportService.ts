@@ -34,6 +34,9 @@ const empresaExcelSchema = z.object({
   'Ciclos para Zerar': z.union([z.string(), z.number()]).optional(), // Número inteiro
   '% Repasse Mensal': z.union([z.string(), z.number()]).optional(), // Percentual
   '% Repasse Especial': z.union([z.string(), z.number()]).optional(), // Percentual
+  // Campos de Meta SLA
+  'Meta SLA (%)': z.union([z.string(), z.number()]).optional(), // Percentual 0-100
+  'Qtd Mínima Chamados SLA': z.union([z.string(), z.number()]).optional(), // Número inteiro >= 0
 }).refine((data) => {
   // Validação condicional para Tipo Book
   const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
@@ -558,6 +561,10 @@ class ExcelImportService {
     const percentual_repasse_mensal = row['% Repasse Mensal'] ? parseFloat(row['% Repasse Mensal']) : null;
     const percentual_repasse_especial = row['% Repasse Especial'] ? parseFloat(row['% Repasse Especial']) : null;
 
+    // Processar campos de Meta SLA
+    const meta_sla_percentual = row['Meta SLA (%)'] ? parseFloat(row['Meta SLA (%)']) : null;
+    const quantidade_minima_chamados_sla = row['Qtd Mínima Chamados SLA'] ? parseInt(row['Qtd Mínima Chamados SLA']) : null;
+
     return {
       nomeCompleto: row['Nome Completo'],
       nomeAbreviado: row['Nome Abreviado'],
@@ -586,7 +593,10 @@ class ExcelImportService {
       possui_repasse_especial,
       ciclos_para_zerar,
       percentual_repasse_mensal,
-      percentual_repasse_especial
+      percentual_repasse_especial,
+      // Campos de Meta SLA (usando snake_case para compatibilidade com o serviço)
+      meta_sla_percentual,
+      quantidade_minima_chamados_sla
     };
   }
 
@@ -623,7 +633,10 @@ class ExcelImportService {
         'Possui Repasse Especial',
         'Ciclos para Zerar',
         '% Repasse Mensal',
-        '% Repasse Especial'
+        '% Repasse Especial',
+        // Campos de Meta SLA
+        'Meta SLA (%)',
+        'Qtd Mínima Chamados SLA'
       ],
       [
         'EXEMPLO EMPRESA LTDA',
@@ -653,7 +666,10 @@ class ExcelImportService {
         'não',
         '',
         '10',
-        ''
+        '',
+        // Exemplo de campos de Meta SLA
+        '95.00',
+        '10'
       ],
       [],
       ['INSTRUÇÕES (ordem das colunas):'],
@@ -686,6 +702,10 @@ class ExcelImportService {
       ['• Ciclos para Zerar: Número de ciclos (opcional)'],
       ['• % Repasse Mensal: Percentual de 0 a 100 (ex: 10) (opcional)'],
       ['• % Repasse Especial: Percentual de 0 a 100 (ex: 15) (opcional - apenas se Possui Repasse Especial = "sim")'],
+      [],
+      ['CAMPOS DE META SLA (opcional):'],
+      ['• Meta SLA (%): Porcentagem mínima de SLA para não contar como estouro (0-100, ex: 95.00) (opcional)'],
+      ['• Qtd Mínima Chamados SLA: Quantidade mínima de chamados abertos para considerar estouro (número inteiro >= 0, ex: 10) (opcional)'],
       [],
       ['REGRAS CONDICIONAIS:'],
       ['• Tipo Book: Obrigatório apenas quando "Tem AMS" = "sim"'],
@@ -726,7 +746,10 @@ class ExcelImportService {
       { wch: 20 }, // Possui Repasse Especial
       { wch: 18 }, // Ciclos para Zerar
       { wch: 18 }, // % Repasse Mensal
-      { wch: 20 }  // % Repasse Especial
+      { wch: 20 },  // % Repasse Especial
+      // Campos de Meta SLA
+      { wch: 15 }, // Meta SLA (%)
+      { wch: 25 }  // Qtd Mínima Chamados SLA
     ];
 
     worksheet['!cols'] = colWidths;

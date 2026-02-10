@@ -1394,6 +1394,7 @@ export type Database = {
           id: string
           inicio_vigencia: string | null
           link_sharepoint: string | null
+          meta_sla_percentual: number | null
           nome_abreviado: string
           nome_completo: string
           observacao: string | null
@@ -1401,6 +1402,7 @@ export type Database = {
           percentual_repasse_mensal: number | null
           periodo_apuracao: number | null
           possui_repasse_especial: boolean | null
+          quantidade_minima_chamados_sla: number | null
           segmentacao_config: Json | null
           status: string | null
           tem_ams: boolean | null
@@ -1430,6 +1432,7 @@ export type Database = {
           id?: string
           inicio_vigencia?: string | null
           link_sharepoint?: string | null
+          meta_sla_percentual?: number | null
           nome_abreviado: string
           nome_completo: string
           observacao?: string | null
@@ -1437,6 +1440,7 @@ export type Database = {
           percentual_repasse_mensal?: number | null
           periodo_apuracao?: number | null
           possui_repasse_especial?: boolean | null
+          quantidade_minima_chamados_sla?: number | null
           segmentacao_config?: Json | null
           status?: string | null
           tem_ams?: boolean | null
@@ -1466,6 +1470,7 @@ export type Database = {
           id?: string
           inicio_vigencia?: string | null
           link_sharepoint?: string | null
+          meta_sla_percentual?: number | null
           nome_abreviado?: string
           nome_completo?: string
           observacao?: string | null
@@ -1473,6 +1478,7 @@ export type Database = {
           percentual_repasse_mensal?: number | null
           periodo_apuracao?: number | null
           possui_repasse_especial?: boolean | null
+          quantidade_minima_chamados_sla?: number | null
           segmentacao_config?: Json | null
           status?: string | null
           tem_ams?: boolean | null

@@ -106,7 +106,10 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
       'Possui Repasse Especial': empresa.possui_repasse_especial ? 'Sim' : 'Não',
       'Ciclos para Zerar': empresa.ciclos_para_zerar || '',
       '% Repasse Mensal': empresa.percentual_repasse_mensal || '',
-      '% Repasse Especial': empresa.percentual_repasse_especial || ''
+      '% Repasse Especial': empresa.percentual_repasse_especial || '',
+      // Campos de Meta SLA
+      'Meta SLA (%)': empresa.meta_sla_percentual || '',
+      'Qtd Mínima Chamados SLA': empresa.quantidade_minima_chamados_sla || ''
     }))
   );
 
@@ -145,7 +148,10 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 20 }, // Possui Repasse Especial
     { wch: 18 }, // Ciclos para Zerar
     { wch: 18 }, // % Repasse Mensal
-    { wch: 20 }  // % Repasse Especial
+    { wch: 20 },  // % Repasse Especial
+    // Campos de Meta SLA
+    { wch: 15 }, // Meta SLA (%)
+    { wch: 25 }  // Qtd Mínima Chamados SLA
   ];
 
   ws['!cols'] = colWidths;
@@ -457,6 +463,43 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
         doc.text('Ciclos p/ Zerar:', rightColumnX, contentY);
         doc.setFont('helvetica', 'normal');
         doc.text(empresa.ciclos_para_zerar.toString(), rightColumnX + 32, contentY);
+      }
+    }
+
+    // Seção de Metas de SLA (se configurado)
+    if (empresa.meta_sla_percentual != null || empresa.quantidade_minima_chamados_sla != null) {
+      contentY += 3;
+      
+      // Linha separadora
+      doc.setDrawColor(...colors.light);
+      doc.setLineWidth(0.2);
+      doc.line(contentX, contentY, cardMargin + cardWidth - 10, contentY);
+      
+      contentY += 5;
+      
+      // Título da seção
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.primary);
+      doc.text('METAS DE SLA', contentX, contentY);
+      
+      contentY += 5;
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.dark);
+
+      // Linha 1: Meta SLA e Quantidade Mínima de Chamados
+      if (empresa.meta_sla_percentual != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Meta SLA:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${empresa.meta_sla_percentual}%`, contentX + 20, contentY);
+      }
+
+      if (empresa.quantidade_minima_chamados_sla != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Qtd Mín Chamados:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(empresa.quantidade_minima_chamados_sla.toString(), rightColumnX + 35, contentY);
       }
     }
 
