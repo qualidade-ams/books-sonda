@@ -55,8 +55,17 @@ export interface ObservacaoUnificada {
 
 /**
  * Hook para buscar observações de uma empresa
+ * @param empresaId - ID da empresa
+ * @param mes - Mês para filtrar (opcional - se não informado, busca todas)
+ * @param ano - Ano para filtrar (opcional - se não informado, busca todas)
+ * @param filtrarPorPeriodo - Se true, filtra por mês/ano. Se false, busca todas (padrão: false)
  */
-export function useBancoHorasObservacoes(empresaId?: string) {
+export function useBancoHorasObservacoes(
+  empresaId?: string, 
+  mes?: number, 
+  ano?: number,
+  filtrarPorPeriodo: boolean = false // ✅ NOVO: Controle explícito de filtro
+) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -66,16 +75,22 @@ export function useBancoHorasObservacoes(empresaId?: string) {
     isLoading: isLoadingManuais,
     error: errorManuais
   } = useQuery({
-    queryKey: ['banco-horas-observacoes', empresaId],
+    queryKey: ['banco-horas-observacoes', empresaId, filtrarPorPeriodo ? mes : 'all', filtrarPorPeriodo ? ano : 'all'],
     queryFn: async () => {
       if (!empresaId) return [];
 
       // Buscar observações sem o join (fazer join manual depois)
-      const { data: observacoes, error } = await supabase
+      let query = supabase
         .from('banco_horas_observacoes' as any)
         .select('*')
-        .eq('empresa_id', empresaId)
-        .order('created_at', { ascending: false });
+        .eq('empresa_id', empresaId);
+
+      // ✅ FILTRAR POR PERÍODO APENAS SE SOLICITADO
+      if (filtrarPorPeriodo && mes !== undefined && ano !== undefined) {
+        query = query.eq('mes', mes).eq('ano', ano);
+      }
+
+      const { data: observacoes, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar observações manuais:', error);
@@ -126,20 +141,26 @@ export function useBancoHorasObservacoes(empresaId?: string) {
     isLoading: isLoadingReajustes,
     error: errorReajustes
   } = useQuery({
-    queryKey: ['banco-horas-observacoes-reajustes', empresaId],
+    queryKey: ['banco-horas-observacoes-reajustes', empresaId, filtrarPorPeriodo ? mes : 'all', filtrarPorPeriodo ? ano : 'all'],
     queryFn: async () => {
       if (!empresaId) return [];
 
       // Buscar reajustes sem o join (fazer join manual depois)
       // ✅ IMPORTANTE: Filtrar apenas reajustes ativos (ativo = true)
-      const { data: reajustes, error } = await supabase
+      let query = supabase
         .from('banco_horas_reajustes' as any)
         .select('id, mes, ano, observacao, tipo_reajuste, valor_reajuste_horas, valor_reajuste_tickets, created_by, created_at')
         .eq('empresa_id', empresaId)
         .eq('ativo', true) // ✅ FILTRAR APENAS ATIVOS
         .not('observacao', 'is', null)
-        .neq('observacao', '')
-        .order('created_at', { ascending: false });
+        .neq('observacao', '');
+
+      // ✅ FILTRAR POR PERÍODO APENAS SE SOLICITADO
+      if (filtrarPorPeriodo && mes !== undefined && ano !== undefined) {
+        query = query.eq('mes', mes).eq('ano', ano);
+      }
+
+      const { data: reajustes, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar observações de reajustes:', error);

@@ -190,12 +190,15 @@ export async function calcularExcedente(
 }
 
 /**
- * Busca taxa mais antiga do mês para cálculo de excedentes
+ * Busca taxa mais recente disponível para cálculo de excedentes
  * 
  * Regras:
- * - Busca taxas vigentes no mês especificado
- * - Se múltiplas taxas existem, usa a mais antiga (menor data_inicio)
- * - Para horas: calcula "Hora Adicional (Excedente do Banco)" da função Funcional conforme tipo_calculo_adicional:
+ * - Busca TODAS as taxas que iniciaram antes ou no mês de referência
+ * - Retorna a taxa mais RECENTE (ordenada por vigencia_inicio DESC)
+ * - Exibe a taxa mesmo que esteja vencida (vigencia_fim < data_referencia)
+ * - Isso permite visualizar a taxa aplicável ao período, independente da vigência
+ * 
+ * Para horas: calcula "Hora Adicional (Excedente do Banco)" da função Funcional conforme tipo_calculo_adicional:
  *   - 'normal': valor_base da função Funcional + 15%
  *   - 'media': média dos valores_base das três primeiras funções (Funcional, Técnico/ABAP, DBA/Basis)
  * - Para tickets: busca valor de ticket excedente conforme cliente:
@@ -227,17 +230,17 @@ export async function calcularExcedente(
  * await buscarTaxaMes('uuid-chiesi', 1, 2024, 'tickets') // 999.00
  * 
  * @example
- * // Múltiplas taxas (retorna mais antiga)
- * // Taxa 1: data_inicio = 2024-01-10, valor_base = 250
- * // Taxa 2: data_inicio = 2024-01-05, valor_base = 208.55
- * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // 239.83 (208.55 * 1.15 - mais antiga)
+ * // Taxa vencida mas ainda exibida
+ * // Taxa 1: vigencia_inicio = 2024-01-01, vigencia_fim = 2024-12-31, valor_base = 208.55
+ * // Consultando período 01/2025 (após vigência)
+ * await buscarTaxaMes('uuid-empresa', 1, 2025, 'horas') // 239.83 (208.55 * 1.15 - taxa vencida mas exibida)
  * 
  * @example
  * // Taxa não encontrada ou valores não preenchidos
  * await buscarTaxaMes('uuid-empresa', 1, 2024, 'horas') // null (exibe R$ 0,00)
  * 
  * **Validates: Requirements 10.3, 14.5, 14.6**
- * **Property 24: Taxa Mais Antiga do Mês**
+ * **Property 24: Taxa Mais Recente Disponível**
  * **Property 27: Cálculo de Hora Adicional (Excedente do Banco)**
  * **Property 28: Busca de Taxa de Ticket Excedente por Cliente**
  */
@@ -260,17 +263,15 @@ export async function buscarTaxaMes(
 
     console.log('📅 Data de referência:', dataReferencia);
 
-    // Buscar taxas vigentes no mês
-    // Uma taxa é vigente se:
-    // - vigencia_inicio <= data_referencia
-    // - vigencia_fim >= data_referencia OU vigencia_fim IS NULL
+    // Buscar taxas disponíveis (vigentes ou vencidas)
+    // Busca TODAS as taxas que iniciaram antes ou no mês de referência
+    // Isso permite exibir a taxa mesmo que esteja vencida
     const { data: taxasData, error } = await (supabase as any)
       .from('taxas_clientes')
       .select('id, vigencia_inicio, vigencia_fim, tipo_produto')
       .eq('cliente_id', empresaId)
       .lte('vigencia_inicio', dataReferencia)
-      .or(`vigencia_fim.is.null,vigencia_fim.gte.${dataReferencia}`)
-      .order('vigencia_inicio', { ascending: true }); // Ordenar por mais antiga primeiro
+      .order('vigencia_inicio', { ascending: false }); // Ordenar por mais recente primeiro
     
     const taxas = taxasData as Array<{
       id: string;
@@ -299,12 +300,13 @@ export async function buscarTaxaMes(
       }))
     });
 
-    // Pegar a taxa mais antiga (primeira da lista ordenada)
-    const taxaMaisAntiga = taxas[0];
+    // Pegar a taxa mais recente (primeira da lista ordenada por vigencia_inicio DESC)
+    const taxaMaisRecente = taxas[0];
 
-    console.log('✅ Taxa mais antiga selecionada:', {
-      id: taxaMaisAntiga.id,
-      vigencia_inicio: taxaMaisAntiga.vigencia_inicio
+    console.log('✅ Taxa mais recente selecionada:', {
+      id: taxaMaisRecente.id,
+      vigencia_inicio: taxaMaisRecente.vigencia_inicio,
+      vigencia_fim: taxaMaisRecente.vigencia_fim
     });
 
     // Buscar valores da taxa
@@ -315,7 +317,7 @@ export async function buscarTaxaMes(
       const { data: taxaDataRaw, error: taxaError } = await (supabase as any)
         .from('taxas_clientes')
         .select('tipo_calculo_adicional')
-        .eq('id', taxaMaisAntiga.id)
+        .eq('id', taxaMaisRecente.id)
         .single();
       
       const taxaData = taxaDataRaw as { tipo_calculo_adicional: string } | null;
@@ -333,7 +335,7 @@ export async function buscarTaxaMes(
       const { data: valoresData, error: valoresError } = await (supabase as any)
         .from('valores_taxas_funcoes')
         .select('valor_base, funcao')
-        .eq('taxa_id', taxaMaisAntiga.id)
+        .eq('taxa_id', taxaMaisRecente.id)
         .eq('tipo_hora', 'remota');
       
       const valores = valoresData as Array<{
@@ -397,7 +399,7 @@ export async function buscarTaxaMes(
     if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
       console.log('🔍 Buscando taxa de ticket excedente (dentro de buscarTaxaMes):', {
         tipoContrato,
-        taxaMaisAntigaId: taxaMaisAntiga.id
+        taxaMaisRecenteId: taxaMaisRecente.id
       });
       
       // Buscar valor de ticket excedente da tabela taxas_clientes
@@ -414,7 +416,7 @@ export async function buscarTaxaMes(
           ticket_excedente_2,
           ticket_excedente
         `)
-        .eq('id', taxaMaisAntiga.id)
+        .eq('id', taxaMaisRecente.id)
         .single();
       
       const taxaData = taxaDataRaw as {

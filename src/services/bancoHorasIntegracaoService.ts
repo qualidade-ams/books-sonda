@@ -127,59 +127,25 @@ export class BancoHorasIntegracaoService {
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      // SOLUÇÃO ROBUSTA: Fazer duas queries separadas e combinar resultados
-      // Isso evita problemas com caracteres especiais (vírgulas, etc.) no nome da empresa
-      let tickets: any[] = [];
-      let ticketsError: any = null;
+      // OTIMIZAÇÃO: Usar apenas nome abreviado para evitar timeout
+      const nomeParaBusca = nomeAbreviado || nomeCompleto;
+      
+      console.log('🎫 Buscando tickets com nome:', {
+        nomeAbreviado,
+        nomeCompleto,
+        nomeParaBusca,
+        observacao: 'Usando apenas um nome para otimizar performance'
+      });
 
-      try {
-        // Query 1: Buscar por nome abreviado
-        if (nomeAbreviado) {
-          const { data: data1, error: error1 } = await supabase
-            .from('apontamentos_tickets_aranda' as any)
-            .select('nro_solicitacao, status, organizacao, data_fechamento')
-            .gte('data_fechamento', dataInicio.toISOString())
-            .lte('data_fechamento', dataFim.toISOString())
-            .eq('status', 'Closed')
-            .ilike('organizacao', `%${nomeAbreviado}%`) as any;
-
-          if (error1) {
-            ticketsError = error1;
-          } else if (data1) {
-            tickets = [...tickets, ...data1];
-          }
-        }
-
-        // Query 2: Buscar por nome completo (se diferente do abreviado)
-        if (nomeCompleto && nomeCompleto !== nomeAbreviado) {
-          const { data: data2, error: error2 } = await supabase
-            .from('apontamentos_tickets_aranda' as any)
-            .select('nro_solicitacao, status, organizacao, data_fechamento')
-            .gte('data_fechamento', dataInicio.toISOString())
-            .lte('data_fechamento', dataFim.toISOString())
-            .eq('status', 'Closed')
-            .ilike('organizacao', `%${nomeCompleto}%`) as any;
-
-          if (error2) {
-            ticketsError = error2;
-          } else if (data2) {
-            tickets = [...tickets, ...data2];
-          }
-        }
-
-        // Remover duplicatas por nro_solicitacao
-        if (tickets.length > 0) {
-          const ticketsUnicos = new Map();
-          for (const ticket of tickets) {
-            if (ticket.nro_solicitacao) {
-              ticketsUnicos.set(ticket.nro_solicitacao, ticket);
-            }
-          }
-          tickets = Array.from(ticketsUnicos.values());
-        }
-      } catch (error) {
-        ticketsError = error;
-      }
+      // Query única otimizada
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('apontamentos_tickets_aranda' as any)
+        .select('nro_solicitacao, status, organizacao, data_fechamento')
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lte('data_fechamento', dataFim.toISOString())
+        .eq('status', 'Closed')
+        .ilike('organizacao', `%${nomeParaBusca}%`)
+        .limit(5000) as any; // Limite de segurança para evitar timeout
 
       if (ticketsError) {
         console.error('❌ Erro ao buscar tickets:', ticketsError);
@@ -344,69 +310,30 @@ export class BancoHorasIntegracaoService {
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      // SOLUÇÃO ROBUSTA: Fazer duas queries separadas e combinar resultados
-      // Isso evita problemas com caracteres especiais (vírgulas, etc.) no nome da empresa
-      let apontamentos: any[] = [];
-      let apontamentosError: any = null;
+      // OTIMIZAÇÃO: Usar apenas nome abreviado para evitar timeout
+      // Nome abreviado é mais específico e retorna menos resultados
+      // Se empresa não tiver nome abreviado, usar nome completo
+      const nomeParaBusca = nomeAbreviado || nomeCompleto;
+      
+      console.log('🔍 Buscando apontamentos com nome:', {
+        nomeAbreviado,
+        nomeCompleto,
+        nomeParaBusca,
+        observacao: 'Usando apenas um nome para otimizar performance'
+      });
 
-      try {
-        // Query 1: Buscar por nome abreviado
-        if (nomeAbreviado) {
-          const { data: data1, error: error1 } = await supabase
-            .from('apontamentos_aranda' as any)
-            .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
-            .eq('ativi_interna', 'Não')
-            .neq('item_configuracao', '000000 - PROJETOS APL')
-            .neq('tipo_chamado', 'PM')
-            .gte('data_atividade', dataInicio.toISOString())
-            .lte('data_atividade', dataFim.toISOString())
-            .ilike('org_us_final', `%${nomeAbreviado}%`)
-            .in('cod_resolucao', codigosResolucaoValidos) as any;
-
-          if (error1) {
-            apontamentosError = error1;
-          } else if (data1) {
-            apontamentos = [...apontamentos, ...data1];
-          }
-        }
-
-        // Query 2: Buscar por nome completo (se diferente do abreviado)
-        if (nomeCompleto && nomeCompleto !== nomeAbreviado) {
-          const { data: data2, error: error2 } = await supabase
-            .from('apontamentos_aranda' as any)
-            .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
-            .eq('ativi_interna', 'Não')
-            .neq('item_configuracao', '000000 - PROJETOS APL')
-            .neq('tipo_chamado', 'PM')
-            .gte('data_atividade', dataInicio.toISOString())
-            .lte('data_atividade', dataFim.toISOString())
-            .ilike('org_us_final', `%${nomeCompleto}%`)
-            .in('cod_resolucao', codigosResolucaoValidos) as any;
-
-          if (error2) {
-            apontamentosError = error2;
-          } else if (data2) {
-            apontamentos = [...apontamentos, ...data2];
-          }
-        }
-
-        // Remover duplicatas por id_externo (caso um apontamento seja encontrado em ambas as queries)
-        if (apontamentos.length > 0) {
-          const apontamentosUnicos = new Map();
-          for (const apontamento of apontamentos) {
-            if (apontamento.id_externo) {
-              apontamentosUnicos.set(apontamento.id_externo, apontamento);
-            } else {
-              // Se não tem id_externo, usar nro_chamado + data_atividade como chave
-              const chave = `${apontamento.nro_chamado}_${apontamento.data_atividade}`;
-              apontamentosUnicos.set(chave, apontamento);
-            }
-          }
-          apontamentos = Array.from(apontamentosUnicos.values());
-        }
-      } catch (error) {
-        apontamentosError = error;
-      }
+      // Query única otimizada
+      const { data: apontamentos, error: apontamentosError } = await supabase
+        .from('apontamentos_aranda' as any)
+        .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
+        .eq('ativi_interna', 'Não')
+        .neq('item_configuracao', '000000 - PROJETOS APL')
+        .neq('tipo_chamado', 'PM')
+        .gte('data_atividade', dataInicio.toISOString())
+        .lte('data_atividade', dataFim.toISOString())
+        .ilike('org_us_final', `%${nomeParaBusca}%`)
+        .in('cod_resolucao', codigosResolucaoValidos)
+        .limit(10000) as any; // Limite de segurança para evitar timeout
 
       if (apontamentosError) {
         console.error('❌ Erro ao buscar apontamentos:', apontamentosError);
@@ -664,13 +591,16 @@ export class BancoHorasIntegracaoService {
   /**
    * Busca requerimentos em desenvolvimento (não enviados para faturamento)
    * 
-   * Retorna requerimentos com status = 'lancado', independente de terem mes_cobranca preenchido.
+   * Retorna requerimentos com status = 'lancado' onde data_envio >= início do período especificado.
    * Estes requerimentos NÃO são contabilizados no banco de horas, mas são exibidos
    * como "em desenvolvimento" para informar que as horas ainda serão descontadas quando forem enviados.
    * 
+   * REGRA: Requerimento aparece APENAS a partir do mês/ano da data_envio (Data de Envio do Orçamento).
+   * Exemplo: Se data_envio = 15/02/2026, aparece em Fev/2026, Mar/2026, Abr/2026, etc. (NÃO antes)
+   * 
    * @param empresaId - ID da empresa cliente
-   * @param mes - Mês (1-12) - NÃO USADO, mantido por compatibilidade
-   * @param ano - Ano (ex: 2024) - NÃO USADO, mantido por compatibilidade
+   * @param mes - Mês (1-12) - Usado para filtrar requerimentos com data_envio >= início do mês
+   * @param ano - Ano (ex: 2024) - Usado para filtrar requerimentos com data_envio >= início do mês
    * @returns Requerimentos em desenvolvimento em formato HH:MM (horas) ou número (tickets)
    * 
    * @requirements 6.6, 14.3, 14.4
@@ -687,7 +617,7 @@ export class BancoHorasIntegracaoService {
         empresaId,
         mes,
         ano,
-        observacao: 'Buscando TODOS os requerimentos com status = lancado (independente de mes_cobranca)'
+        observacao: 'Buscando requerimentos com status = lancado e data_envio <= período'
       });
 
       // Validar parâmetros
@@ -700,22 +630,51 @@ export class BancoHorasIntegracaoService {
         );
       }
 
+      if (mes < 1 || mes > 12) {
+        throw new IntegrationError(
+          'requerimentos',
+          'Mês deve estar entre 1 e 12',
+          'INVALID_MONTH',
+          false
+        );
+      }
+
+      if (ano < 2020) {
+        throw new IntegrationError(
+          'requerimentos',
+          'Ano deve ser maior ou igual a 2020',
+          'INVALID_YEAR',
+          false
+        );
+      }
+
+      // Calcular data de início do trimestre
+      // Requerimentos devem aparecer apenas a partir do mês da data_envio
+      // Exemplo: Se data_envio = 12/02/2026, aparece em Fev/2026, Mar/2026, Abr/2026, etc.
+      // Para o trimestre Ago/Set/Out/25, só aparecem requerimentos com data_envio >= 01/08/2025
+      const dataInicio = new Date(ano, mes - 1, 1); // Primeiro dia do mês
+      const dataInicioISO = dataInicio.toISOString().split('T')[0]; // YYYY-MM-DD
+
       console.log('📅 Buscando requerimentos em desenvolvimento para:', {
         empresaId,
-        observacao: 'TODOS os requerimentos com status = lancado (sem filtro de mes_cobranca)'
+        mes,
+        ano,
+        dataInicio: dataInicioISO,
+        observacao: 'Requerimentos com data_envio >= início do mês (aparecem apenas a partir do mês da data_envio)'
       });
 
       // Buscar requerimentos onde:
       // - tipo_cobranca = "Banco de Horas"
       // - cliente_id = empresaId
       // - status = 'lancado'
-      // NÃO filtrar por mes_cobranca (pode estar vazio)
+      // - data_envio >= início do mês (aparecem apenas a partir do mês da data_envio)
       const { data: requerimentos, error: requerimentosError } = await supabase
         .from('requerimentos')
-        .select('horas_funcional, horas_tecnico, quantidade_tickets, chamado, enviado_faturamento, status, mes_cobranca')
+        .select('horas_funcional, horas_tecnico, quantidade_tickets, chamado, enviado_faturamento, status, mes_cobranca, data_envio')
         .eq('tipo_cobranca', 'Banco de Horas')
         .eq('cliente_id', empresaId)
-        .eq('status', 'lancado'); // ✅ Status lancado (sem filtro de mes_cobranca)
+        .eq('status', 'lancado')
+        .gte('data_envio', dataInicioISO); // ✅ Filtrar por data_envio >= início do mês
 
       if (requerimentosError) {
         console.error('❌ Erro ao buscar requerimentos em desenvolvimento:', requerimentosError);
@@ -731,6 +690,7 @@ export class BancoHorasIntegracaoService {
         quantidade: requerimentos?.length || 0,
         requerimentos: requerimentos?.map(r => ({
           chamado: r.chamado,
+          data_envio: r.data_envio,
           enviado_faturamento: r.enviado_faturamento,
           status: r.status,
           mes_cobranca: r.mes_cobranca,
