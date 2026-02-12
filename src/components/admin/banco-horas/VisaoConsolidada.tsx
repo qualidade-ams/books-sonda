@@ -405,9 +405,9 @@ export function VisaoConsolidada({
       isTicket: isTicket
     });
     
-    // Verificar se é EXXONMOBIL e tem taxa específica
+    // Verificar se tem taxa específica cadastrada (para clientes especiais como EXXONMOBIL)
     if (taxasEspecificas?.ticket_excedente_simples && taxasEspecificas.ticket_excedente_simples > 0) {
-      console.log('💰 [VisaoConsolidada] Usando taxa específica EXXONMOBIL:', {
+      console.log('💰 [VisaoConsolidada] Usando taxa específica cadastrada:', {
         cliente_id: taxasEspecificas.cliente_id,
         ticket_excedente_simples: taxasEspecificas.ticket_excedente_simples,
         valor_formatado: new Intl.NumberFormat('pt-BR', { 
@@ -418,15 +418,21 @@ export function VisaoConsolidada({
       return taxasEspecificas.ticket_excedente_simples;
     }
     
-    // Caso contrário, usar taxa calculada padrão
-    console.log('💰 [VisaoConsolidada] Usando taxa padrão calculada:', {
-      taxaHoraCalculada: taxaHoraCalculada,
-      valor_formatado: taxaHoraCalculada ? new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-      }).format(taxaHoraCalculada) : 'N/A'
-    });
-    return taxaHoraCalculada;
+    // ✅ CORREÇÃO: Se não tem taxa específica, usar taxa calculada do banco de horas
+    if (taxaHoraCalculada && taxaHoraCalculada > 0) {
+      console.log('💰 [VisaoConsolidada] Usando taxa calculada do banco de horas:', {
+        taxaHoraCalculada: taxaHoraCalculada,
+        valor_formatado: new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(taxaHoraCalculada)
+      });
+      return taxaHoraCalculada;
+    }
+    
+    // Se não tem nenhuma taxa, retornar 0
+    console.log('⚠️ [VisaoConsolidada] Nenhuma taxa encontrada - usando R$ 0,00');
+    return 0;
   }, [taxasEspecificas, taxaHoraCalculada, isLoadingTaxas, calculoPrincipal, tipoCobranca, isTicket]);
   
   const taxaHoraExibir = getTaxaExcedente;

@@ -116,16 +116,17 @@ export class BancoHorasService {
    * 1. Busca parâmetros da empresa
    * 2. Define baseline
    * 3. Busca repasses do mês anterior
-   * 4. Calcula saldo a utilizar
-   * 5. Busca consumo e requerimentos
+   * 4. Busca reajustes (entradas e saídas)
+   * 5. Calcula saldo a utilizar = baseline + repasse (SEM reajustes)
+   * 6. Busca consumo e requerimentos
    *    IMPORTANTE: Para tipo_contrato = "ambos", o consumo de HORAS é IGNORADO (aba Horas).
    *    O consumo de TICKETS continua sendo considerado normalmente (aba Tickets).
    *    O consumo de horas será controlado apenas por ajustes manuais (reajustes).
-   * 6. Calcula consumo total
-   * 7. Calcula saldo
-   * 8. Calcula repasse
-   * 9. Calcula excedentes (se aplicável)
-   * 10. Persiste resultado
+   * 7. Calcula consumo total = consumo + requerimentos + reajustes_saida - reajustes_entrada
+   * 8. Calcula saldo = saldo_a_utilizar - consumo_total
+   * 9. Calcula repasse
+   * 10. Calcula excedentes (se aplicável)
+   * 11. Persiste resultado
    * 
    * @param empresaId - ID da empresa cliente
    * @param mes - Mês (1-12)
@@ -136,9 +137,9 @@ export class BancoHorasService {
    * const calculo = await bancoHorasService.calcularMes('uuid-empresa', 1, 2024);
    * 
    * **Validates: Requirements 4.1-4.12, 6.1-6.12**
-   * **Property 6: Fórmula de Saldo a Utilizar**
-   * **Property 7: Fórmula de Consumo Total**
-   * **Property 8: Fórmula de Saldo Mensal**
+   * **Property 6: Fórmula de Saldo a Utilizar = baseline + repasse**
+   * **Property 7: Fórmula de Consumo Total = consumo + requerimentos + reajustes_saida - reajustes_entrada**
+   * **Property 8: Fórmula de Saldo Mensal = saldo_a_utilizar - consumo_total**
    */
   async calcularMes(
     empresaId: string,
@@ -193,13 +194,12 @@ export class BancoHorasService {
         tickets: reajustesSaidaTickets
       });
 
-      // 5. Calcular saldo a utilizar = baseline + repasses_mes_anterior + reajustes_entrada - reajustes_saida
-      const saldoComRepasse = somarHoras(baselineHoras, repasseHoras);
-      const saldoComEntradas = somarHoras(saldoComRepasse, reajustesEntradaHoras);
-      const saldoAUtilizarHoras = subtrairHoras(saldoComEntradas, reajustesSaidaHoras);
-      const saldoAUtilizarTickets = baselineTickets + repasseTickets + reajustesEntradaTickets - reajustesSaidaTickets;
+      // 5. Calcular saldo a utilizar = baseline + repasses_mes_anterior (SEM reajustes)
+      // ✅ CORREÇÃO: Reajustes agora afetam o CONSUMO TOTAL, não o saldo a utilizar
+      const saldoAUtilizarHoras = somarHoras(baselineHoras, repasseHoras);
+      const saldoAUtilizarTickets = baselineTickets + repasseTickets;
 
-      console.log('💰 Saldo a utilizar:', {
+      console.log('💰 Saldo a utilizar (baseline + repasse):', {
         horas: saldoAUtilizarHoras,
         tickets: saldoAUtilizarTickets
       });
@@ -237,11 +237,16 @@ export class BancoHorasService {
         tickets: reajustesTotalTickets
       });
 
-      // 8. Calcular consumo total = consumo + requerimentos (SEM reajustes, pois já estão no saldo)
-      const consumoTotalHoras = somarHoras(consumoHoras, requerimentosHoras);
-      const consumoTotalTickets = consumoTickets + requerimentosTickets;
+      // 8. Calcular consumo total = consumo + requerimentos + reajustes_saida - reajustes_entrada
+      // ✅ CORREÇÃO: Reajustes agora afetam o CONSUMO TOTAL
+      // - Reajustes de SAÍDA aumentam o consumo (horas gastas)
+      // - Reajustes de ENTRADA diminuem o consumo (horas devolvidas)
+      const consumoComRequerimentos = somarHoras(consumoHoras, requerimentosHoras);
+      const consumoComSaidas = somarHoras(consumoComRequerimentos, reajustesSaidaHoras);
+      const consumoTotalHoras = subtrairHoras(consumoComSaidas, reajustesEntradaHoras);
+      const consumoTotalTickets = consumoTickets + requerimentosTickets + reajustesSaidaTickets - reajustesEntradaTickets;
 
-      console.log('📈 Consumo total:', {
+      console.log('📈 Consumo total (consumo + requerimentos + reajustes_saida - reajustes_entrada):', {
         horas: consumoTotalHoras,
         tickets: consumoTotalTickets
       });
@@ -883,8 +888,8 @@ export class BancoHorasService {
   /**
    * Busca reajustes de ENTRADA do mês
    * 
-   * Entradas adicionam horas ao saldo disponível, NÃO afetam o consumo.
-   * Retorna o total de entradas para somar no "Saldo a Utilizar".
+   * ✅ CORREÇÃO: Entradas DIMINUEM o consumo total (horas devolvidas/creditadas).
+   * Retorna o total de entradas para SUBTRAIR do "Consumo Total".
    */
   private async buscarReajustesEntrada(
     empresaId: string,
@@ -941,8 +946,8 @@ export class BancoHorasService {
   /**
    * Busca reajustes de SAÍDA do mês
    * 
-   * Saídas removem horas do saldo e AUMENTAM o consumo.
-   * Retorna o total de saídas para somar no "Consumo Total".
+   * ✅ CORREÇÃO: Saídas AUMENTAM o consumo total (horas gastas/debitadas).
+   * Retorna o total de saídas para SOMAR no "Consumo Total".
    */
   private async buscarReajustesSaida(
     empresaId: string,

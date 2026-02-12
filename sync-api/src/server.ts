@@ -2137,7 +2137,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
 
     if (sincronizacaoCompleta) {
       // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 5000 por vez)
-      console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 01/08/2025)');
+      console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 28/02/2024)');
       resultado.mensagens.push('Modo: Sincronização COMPLETA (até 50000 registros por vez)');
       
       query = `
@@ -2196,7 +2196,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           tempo_real_tda as Tempo_Real_TDA,
           [Total Orçamento (em decimais)] as Total_Orcamento
         FROM AMSticketsabertos
-        WHERE Data_Abertura >= '2025-08-01 00:00:00'
+        WHERE Data_Abertura >= '2024-02-28 00:00:00'
         ORDER BY Data_Abertura ASC
       `;
     } else {

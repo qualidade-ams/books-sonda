@@ -68,7 +68,7 @@ export function SecaoObservacoes({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const {
-    observacoesUnificadas,
+    observacoesUnificadas: todasObservacoes,
     isLoading,
     criarObservacao,
     atualizarObservacao,
@@ -76,7 +76,22 @@ export function SecaoObservacoes({
     isCreating,
     isUpdating,
     isDeleting
-  } = useBancoHorasObservacoes(empresaId);
+  } = useBancoHorasObservacoes(empresaId, mesAtual, anoAtual, false); // Buscar todas
+
+  // ✅ FILTRAR observações pelos meses do período (trimestre)
+  const observacoesUnificadas = React.useMemo(() => {
+    if (mesesDoPeriodo.length === 0) {
+      // Se não há meses definidos, mostrar todas
+      return todasObservacoes;
+    }
+
+    // Filtrar apenas observações dos meses do período
+    return todasObservacoes.filter(obs => {
+      return mesesDoPeriodo.some(periodo => 
+        periodo.mes === obs.mes && periodo.ano === obs.ano
+      );
+    });
+  }, [todasObservacoes, mesesDoPeriodo]);
 
   const [novaObservacao, setNovaObservacao] = useState('');
   const [modoAdicionar, setModoAdicionar] = useState(false);

@@ -53,20 +53,30 @@ export function useTaxasEspecificasCliente(empresaId?: string) {
       // Buscar taxas específicas usando cliente_id (corrigido)
       console.log('🔍 [useTaxasEspecificasCliente] Buscando na tabela taxas_clientes com cliente_id:', empresaId);
       
-      const { data, error } = await supabase
+      // CORREÇÃO: Usar .limit(1).single() em vez de .maybeSingle()
+      // porque pode haver múltiplas taxas (vigente e vencida)
+      // Buscar apenas a taxa vigente (mais recente)
+      const { data: taxasArray, error: taxasError } = await supabase
         .from('taxas_clientes')
         .select('*') // Buscar todos os campos para debug
-        .eq('cliente_id', empresaId) // CORRIGIDO: usar cliente_id
-        .maybeSingle();
+        .eq('cliente_id', empresaId)
+        .order('vigencia_inicio', { ascending: false }) // Mais recente primeiro
+        .limit(1);
       
-      if (error) {
+      if (taxasError) {
         console.error('❌ [useTaxasEspecificasCliente] Erro ao buscar taxas específicas:', {
-          error,
+          error: taxasError,
+          errorMessage: taxasError.message,
+          errorCode: taxasError.code,
+          errorDetails: taxasError.details,
           empresaId,
           query: 'taxas_clientes.cliente_id = ' + empresaId
         });
         return null;
       }
+      
+      // Pegar primeiro resultado (taxa mais recente)
+      const data = taxasArray && taxasArray.length > 0 ? taxasArray[0] : null;
       
       console.log('✅ [useTaxasEspecificasCliente] Resultado da busca completo:', {
         empresa: {

@@ -330,30 +330,62 @@ export default function ControleBancoHoras() {
   
   // ✅ NOVO: Filtrar requerimentos EM DESENVOLVIMENTO (não enviados para faturamento)
   // Estes requerimentos ainda estão sendo trabalhados
-  // REGRA: status = 'lancado' (independente de ter mes_cobranca ou não)
+  // REGRA: status = 'lancado' E data_envio >= primeiro dia do primeiro mês do trimestre
   const requerimentosEmDesenvolvimento = useMemo(() => {
-    if (!requerimentosTodos) return [];
+    if (!requerimentosTodos || mesesDoPeriodo.length === 0) return [];
     
-    const emDesenvolvimento = requerimentosTodos.filter(req => 
-      req.status === 'lancado' && // ✅ CRÍTICO: Status lancado
-      req.tipo_cobranca === 'Banco de Horas' // Apenas Banco de Horas
-    );
+    // Calcular primeiro dia do primeiro mês do trimestre
+    const primeiroMes = mesesDoPeriodo[0];
+    const dataInicioPeriodo = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
+    
+    const emDesenvolvimento = requerimentosTodos.filter(req => {
+      // Filtro básico: status lancado e tipo Banco de Horas
+      if (req.status !== 'lancado' || req.tipo_cobranca !== 'Banco de Horas') {
+        return false;
+      }
+      
+      // ✅ CRÍTICO: Filtrar por data_envio >= início do período
+      // Requerimento só aparece a partir do mês da data_envio
+      if (req.data_envio) {
+        const dataEnvio = new Date(req.data_envio);
+        // Requerimento deve ter data_envio <= último dia do último mês do trimestre
+        // E data_envio >= primeiro dia do primeiro mês do trimestre
+        const ultimoMes = mesesDoPeriodo[mesesDoPeriodo.length - 1];
+        const dataFimPeriodo = new Date(ultimoMes.ano, ultimoMes.mes, 0, 23, 59, 59, 999);
+        
+        // Se data_envio está DEPOIS do período, não mostrar
+        if (dataEnvio > dataFimPeriodo) {
+          return false;
+        }
+        
+        // Se data_envio está ANTES do período, não mostrar
+        if (dataEnvio < dataInicioPeriodo) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
     
     console.log('🔍 [DEBUG] Requerimentos Em Desenvolvimento:', {
       total: requerimentosTodos.length,
       emDesenvolvimento: emDesenvolvimento.length,
+      periodo: {
+        inicio: dataInicioPeriodo.toISOString().split('T')[0],
+        meses: mesesDoPeriodo.map(m => `${m.mes}/${m.ano}`)
+      },
       detalhes: emDesenvolvimento.map(r => ({
         chamado: r.chamado,
+        data_envio: r.data_envio,
         mes_cobranca: r.mes_cobranca,
         enviado_faturamento: r.enviado_faturamento,
         status: r.status,
-        tipo_cobranca: r.tipo_cobranca,
-        data_aprovacao: r.data_aprovacao
+        tipo_cobranca: r.tipo_cobranca
       }))
     });
     
     return emDesenvolvimento;
-  }, [requerimentosTodos]);
+  }, [requerimentosTodos, mesesDoPeriodo]);
   // ✅ REMOVIDO: Não selecionar empresa automaticamente
   // Usuário deve escolher manualmente no dropdown
   
