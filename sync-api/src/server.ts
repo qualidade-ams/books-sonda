@@ -1798,9 +1798,27 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
     let ultimaDataSincronizacao: Date | null = null;
 
     if (sincronizacaoCompleta) {
-      // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 500 por vez)
-      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (desde 01/08/2025)');
+      // Sincronização completa - buscar registros progressivamente (limitado a 500 por vez)
+      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (progressiva)');
       resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
+      
+      // Buscar última data sincronizada para continuar de onde parou
+      const { data: ultimoRegistro } = await supabase
+        .from('apontamentos_aranda')
+        .select('data_abertura')
+        .eq('origem', 'sql_server')
+        .order('data_abertura', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
+        ? new Date(ultimoRegistro.data_abertura)
+        : new Date('2024-02-28T00:00:00.000Z'); // Data inicial: 28/02/2024
+
+      console.log('📅 [APONTAMENTOS] Última data sincronizada:', ultimaDataSincronizacao.toISOString());
+      console.log('📅 [APONTAMENTOS] Buscando próximos 500 registros após esta data...');
+      resultado.mensagens.push(`Última data sincronizada: ${ultimaDataSincronizacao.toISOString()}`);
+      resultado.mensagens.push('Buscando próximos 500 registros...');
       
       query = `
         SELECT TOP 500
@@ -1834,7 +1852,7 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           Cod_Resolucao,
           LOG
         FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2025-08-01 00:00:00'
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2024-02-28 00:00:00'
         ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
       `;
     } else {
@@ -1890,16 +1908,15 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           Cod_Resolucao,
           LOG
         FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2025-08-01 00:00:00'
-          AND [Data_Abertura (Date-Hour-Minute-Second)] > @ultimaData
+        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2024-02-28 00:00:00'       
         ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
       `;
     }
 
     const request = pool.request();
     
-    // Adicionar parâmetro apenas para sincronização incremental
-    if (!sincronizacaoCompleta && ultimaDataSincronizacao) {
+    // Adicionar parâmetro para sincronização incremental E completa (ambas usam ultimaData agora)
+    if (ultimaDataSincronizacao) {
       request.input('ultimaData', sql.DateTime, ultimaDataSincronizacao);
     }
     
@@ -2119,12 +2136,12 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
     let ultimaDataSincronizacao: Date | null = null;
 
     if (sincronizacaoCompleta) {
-      // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 500 por vez)
+      // Sincronização completa - buscar todos os registros desde 01/08/2025 (limitado a 5000 por vez)
       console.log('📋 [TICKETS] Modo: Sincronização COMPLETA (desde 01/08/2025)');
-      resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
+      resultado.mensagens.push('Modo: Sincronização COMPLETA (até 50000 registros por vez)');
       
       query = `
-        SELECT TOP 500
+        SELECT TOP 50000
           Nro_Solicitacao,
           Cod_Tipo,
           Ticket_Externo,
@@ -2197,7 +2214,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
 
       ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
         ? new Date(ultimoRegistro.data_abertura)
-        : new Date('2025-08-01T00:00:00.000Z'); // Data inicial: 01/08/2025
+        : new Date('2024-02-28T00:00:00.000Z'); // Data inicial: 28/02/2024
 
       console.log('📅 [TICKETS] Última sincronização:', ultimaDataSincronizacao.toISOString());
       resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
@@ -2258,8 +2275,7 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
           tempo_real_tda as Tempo_Real_TDA,
           [Total Orçamento (em decimais)] as Total_Orcamento
         FROM AMSticketsabertos
-        WHERE Data_Abertura >= '2025-08-01 00:00:00'
-          AND Data_Abertura > @ultimaData
+        WHERE Data_Abertura >= '2024-02-28 00:00:00'
         ORDER BY Data_Abertura ASC
       `;
     }

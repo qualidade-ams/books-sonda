@@ -124,28 +124,62 @@ export class BancoHorasIntegracaoService {
       // - data_fechamento dentro do período (tickets fechados no mês)
       // - status = 'Closed' (apenas tickets efetivamente fechados)
       
-      // Construir query base (usando any para evitar problemas de tipo com tabela externa)
-      let query = supabase
-        .from('apontamentos_tickets_aranda' as any)
-        .select('nro_solicitacao, status, organizacao, data_fechamento')
-        .gte('data_fechamento', dataInicio.toISOString())
-        .lte('data_fechamento', dataFim.toISOString())
-        .eq('status', 'Closed'); // Status em inglês: Closed
-
-      // Adicionar filtro de organizacao (nome abreviado OU nome completo)
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      if (nomeAbreviado && nomeCompleto) {
-        query = query.or(`organizacao.ilike.%${nomeAbreviado}%,organizacao.ilike.%${nomeCompleto}%`);
-      } else if (nomeAbreviado) {
-        query = query.ilike('organizacao', `%${nomeAbreviado}%`);
-      } else if (nomeCompleto) {
-        query = query.ilike('organizacao', `%${nomeCompleto}%`);
-      }
+      // SOLUÇÃO ROBUSTA: Fazer duas queries separadas e combinar resultados
+      // Isso evita problemas com caracteres especiais (vírgulas, etc.) no nome da empresa
+      let tickets: any[] = [];
+      let ticketsError: any = null;
 
-      // Executar query
-      const { data: tickets, error: ticketsError } = await query as any;
+      try {
+        // Query 1: Buscar por nome abreviado
+        if (nomeAbreviado) {
+          const { data: data1, error: error1 } = await supabase
+            .from('apontamentos_tickets_aranda' as any)
+            .select('nro_solicitacao, status, organizacao, data_fechamento')
+            .gte('data_fechamento', dataInicio.toISOString())
+            .lte('data_fechamento', dataFim.toISOString())
+            .eq('status', 'Closed')
+            .ilike('organizacao', `%${nomeAbreviado}%`) as any;
+
+          if (error1) {
+            ticketsError = error1;
+          } else if (data1) {
+            tickets = [...tickets, ...data1];
+          }
+        }
+
+        // Query 2: Buscar por nome completo (se diferente do abreviado)
+        if (nomeCompleto && nomeCompleto !== nomeAbreviado) {
+          const { data: data2, error: error2 } = await supabase
+            .from('apontamentos_tickets_aranda' as any)
+            .select('nro_solicitacao, status, organizacao, data_fechamento')
+            .gte('data_fechamento', dataInicio.toISOString())
+            .lte('data_fechamento', dataFim.toISOString())
+            .eq('status', 'Closed')
+            .ilike('organizacao', `%${nomeCompleto}%`) as any;
+
+          if (error2) {
+            ticketsError = error2;
+          } else if (data2) {
+            tickets = [...tickets, ...data2];
+          }
+        }
+
+        // Remover duplicatas por nro_solicitacao
+        if (tickets.length > 0) {
+          const ticketsUnicos = new Map();
+          for (const ticket of tickets) {
+            if (ticket.nro_solicitacao) {
+              ticketsUnicos.set(ticket.nro_solicitacao, ticket);
+            }
+          }
+          tickets = Array.from(ticketsUnicos.values());
+        }
+      } catch (error) {
+        ticketsError = error;
+      }
 
       if (ticketsError) {
         console.error('❌ Erro ao buscar tickets:', ticketsError);
@@ -307,33 +341,72 @@ export class BancoHorasIntegracaoService {
       // - data_atividade dentro do período
       // - data_atividade e data_sistema no mesmo mês (NOVA REGRA 3)
       
-      // Construir query base (usando any para evitar problemas de tipo com tabela externa)
-      let query = supabase
-        .from('apontamentos_aranda' as any)
-        .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema')
-        .eq('ativi_interna', 'Não')
-        .neq('item_configuracao', '000000 - PROJETOS APL')  // NOVA REGRA 1: Excluir projetos APL
-        .neq('tipo_chamado', 'PM')  // NOVA REGRA 2: Excluir tipo PM
-        .gte('data_atividade', dataInicio.toISOString())
-        .lte('data_atividade', dataFim.toISOString());
-
-      // Adicionar filtro de empresa (nome abreviado OU nome completo)
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      if (nomeAbreviado && nomeCompleto) {
-        query = query.or(`org_us_final.ilike.%${nomeAbreviado}%,org_us_final.ilike.%${nomeCompleto}%`);
-      } else if (nomeAbreviado) {
-        query = query.ilike('org_us_final', `%${nomeAbreviado}%`);
-      } else if (nomeCompleto) {
-        query = query.ilike('org_us_final', `%${nomeCompleto}%`);
+      // SOLUÇÃO ROBUSTA: Fazer duas queries separadas e combinar resultados
+      // Isso evita problemas com caracteres especiais (vírgulas, etc.) no nome da empresa
+      let apontamentos: any[] = [];
+      let apontamentosError: any = null;
+
+      try {
+        // Query 1: Buscar por nome abreviado
+        if (nomeAbreviado) {
+          const { data: data1, error: error1 } = await supabase
+            .from('apontamentos_aranda' as any)
+            .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
+            .eq('ativi_interna', 'Não')
+            .neq('item_configuracao', '000000 - PROJETOS APL')
+            .neq('tipo_chamado', 'PM')
+            .gte('data_atividade', dataInicio.toISOString())
+            .lte('data_atividade', dataFim.toISOString())
+            .ilike('org_us_final', `%${nomeAbreviado}%`)
+            .in('cod_resolucao', codigosResolucaoValidos) as any;
+
+          if (error1) {
+            apontamentosError = error1;
+          } else if (data1) {
+            apontamentos = [...apontamentos, ...data1];
+          }
+        }
+
+        // Query 2: Buscar por nome completo (se diferente do abreviado)
+        if (nomeCompleto && nomeCompleto !== nomeAbreviado) {
+          const { data: data2, error: error2 } = await supabase
+            .from('apontamentos_aranda' as any)
+            .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
+            .eq('ativi_interna', 'Não')
+            .neq('item_configuracao', '000000 - PROJETOS APL')
+            .neq('tipo_chamado', 'PM')
+            .gte('data_atividade', dataInicio.toISOString())
+            .lte('data_atividade', dataFim.toISOString())
+            .ilike('org_us_final', `%${nomeCompleto}%`)
+            .in('cod_resolucao', codigosResolucaoValidos) as any;
+
+          if (error2) {
+            apontamentosError = error2;
+          } else if (data2) {
+            apontamentos = [...apontamentos, ...data2];
+          }
+        }
+
+        // Remover duplicatas por id_externo (caso um apontamento seja encontrado em ambas as queries)
+        if (apontamentos.length > 0) {
+          const apontamentosUnicos = new Map();
+          for (const apontamento of apontamentos) {
+            if (apontamento.id_externo) {
+              apontamentosUnicos.set(apontamento.id_externo, apontamento);
+            } else {
+              // Se não tem id_externo, usar nro_chamado + data_atividade como chave
+              const chave = `${apontamento.nro_chamado}_${apontamento.data_atividade}`;
+              apontamentosUnicos.set(chave, apontamento);
+            }
+          }
+          apontamentos = Array.from(apontamentosUnicos.values());
+        }
+      } catch (error) {
+        apontamentosError = error;
       }
-
-      // Adicionar filtro de códigos de resolução
-      query = query.in('cod_resolucao', codigosResolucaoValidos);
-
-      // Executar query
-      const { data: apontamentos, error: apontamentosError } = await query as any;
 
       if (apontamentosError) {
         console.error('❌ Erro ao buscar apontamentos:', apontamentosError);
