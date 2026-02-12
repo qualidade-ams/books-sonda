@@ -266,6 +266,12 @@ export async function buscarTaxaMes(
     // Buscar taxas disponíveis (vigentes ou vencidas)
     // Busca TODAS as taxas que iniciaram antes ou no mês de referência
     // Isso permite exibir a taxa mesmo que esteja vencida
+    console.log('🔍 Buscando taxas com filtros:', {
+      cliente_id: empresaId,
+      vigencia_inicio_lte: dataReferencia,
+      explicacao: 'Busca taxas que iniciaram antes ou no mês de referência'
+    });
+    
     const { data: taxasData, error } = await (supabase as any)
       .from('taxas_clientes')
       .select('id, vigencia_inicio, vigencia_fim, tipo_produto')
@@ -287,17 +293,35 @@ export async function buscarTaxaMes(
 
     if (!taxas || taxas.length === 0) {
       console.log('⚠️ Nenhuma taxa encontrada para o período');
+      console.log('🔍 Possíveis causas:');
+      console.log('  1. Cliente não tem taxas cadastradas');
+      console.log('  2. Todas as taxas têm vigencia_inicio APÓS', dataReferencia);
+      console.log('  3. Cliente ID incorreto:', empresaId);
       return null;
     }
 
     console.log('📊 Taxas encontradas:', {
       quantidade: taxas.length,
-      taxas: taxas.map(t => ({
-        id: t.id,
-        vigencia_inicio: t.vigencia_inicio,
-        vigencia_fim: t.vigencia_fim,
-        tipo_produto: t.tipo_produto
-      }))
+      taxas: taxas.map(t => {
+        const vigenciaInicioDate = new Date(t.vigencia_inicio);
+        const vigenciaFimDate = t.vigencia_fim ? new Date(t.vigencia_fim) : null;
+        const dataRefDate = new Date(dataReferencia);
+        
+        return {
+          id: t.id,
+          vigencia_inicio: t.vigencia_inicio,
+          vigencia_fim: t.vigencia_fim,
+          tipo_produto: t.tipo_produto,
+          status: t.vigencia_fim === null 
+            ? 'Sem data fim (vigente indefinidamente)' 
+            : vigenciaFimDate && vigenciaFimDate < dataRefDate
+              ? `⚠️ VENCIDA em ${t.vigencia_fim}`
+              : `✅ Vigente até ${t.vigencia_fim}`,
+          dentro_vigencia: t.vigencia_fim === null 
+            ? true 
+            : vigenciaFimDate && vigenciaFimDate >= dataRefDate
+        };
+      })
     });
 
     // Pegar a taxa mais recente (primeira da lista ordenada por vigencia_inicio DESC)
@@ -331,15 +355,16 @@ export async function buscarTaxaMes(
 
       console.log('📊 Tipo de cálculo adicional:', tipoCalculoAdicional);
 
-      // Buscar valor base da função Funcional (tipo remota)
+      // ✅ CORREÇÃO: Buscar valor_adicional REAL da tabela (não calcular)
       const { data: valoresData, error: valoresError } = await (supabase as any)
         .from('valores_taxas_funcoes')
-        .select('valor_base, funcao')
+        .select('valor_base, valor_adicional, funcao')
         .eq('taxa_id', taxaMaisRecente.id)
         .eq('tipo_hora', 'remota');
       
       const valores = valoresData as Array<{
         valor_base: number;
+        valor_adicional: number | null;
         funcao: string;
       }> | null;
 
@@ -353,23 +378,34 @@ export async function buscarTaxaMes(
         return null;
       }
 
-      // Calcular Hora Adicional (Excedente do Banco) conforme tipo de cálculo
+      // ✅ CORREÇÃO: Buscar valor_adicional REAL da função Funcional
+      const valorFuncional = valores.find(v => v.funcao === 'Funcional');
+      
+      if (!valorFuncional) {
+        console.log('⚠️ Função Funcional não encontrada');
+        return null;
+      }
+
+      // ✅ PRIORIDADE: Usar valor_adicional cadastrado (se existir), senão calcular
       let taxaHoraAdicional: number;
 
-      if (tipoCalculoAdicional === 'normal') {
-        // Normal: valor_base da função Funcional + 15%
-        const valorFuncional = valores.find(v => v.funcao === 'Funcional')?.valor_base;
-        
-        if (!valorFuncional) {
-          console.log('⚠️ Valor base da função Funcional não encontrado');
-          return null;
-        }
-
-        taxaHoraAdicional = valorFuncional * 1.15; // +15%
-        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) calculada (normal):', {
-          valorBase: valorFuncional,
+      if (valorFuncional.valor_adicional !== null && valorFuncional.valor_adicional !== undefined) {
+        // ✅ Usar valor REAL cadastrado na tabela
+        taxaHoraAdicional = valorFuncional.valor_adicional;
+        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) REAL da tabela:', {
+          funcao: 'Funcional',
+          valor_adicional_cadastrado: valorFuncional.valor_adicional,
+          taxaUtilizada: `R$ ${taxaHoraAdicional.toFixed(2)}`,
+          observacao: 'Valor REAL da coluna valor_adicional (não calculado)'
+        });
+      } else if (tipoCalculoAdicional === 'normal') {
+        // Fallback: calcular se não tiver valor cadastrado
+        taxaHoraAdicional = valorFuncional.valor_base * 1.15; // +15%
+        console.log('⚠️ Taxa de Hora Adicional calculada (fallback - normal):', {
+          valorBase: valorFuncional.valor_base,
           percentual: '15%',
-          taxaCalculada: `R$ ${taxaHoraAdicional.toFixed(2)}`
+          taxaCalculada: `R$ ${taxaHoraAdicional.toFixed(2)}`,
+          observacao: 'Calculado porque valor_adicional está NULL'
         });
       } else {
         // Media: média das três primeiras funções (Funcional, Técnico/ABAP, DBA/Basis)
