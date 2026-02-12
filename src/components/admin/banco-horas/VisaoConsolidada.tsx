@@ -16,7 +16,9 @@ import {
   Clock,
   RefreshCw,
   AlertCircle,
-  Copy
+  Copy,
+  Filter,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -75,6 +84,18 @@ export interface VisaoConsolidadaProps {
   /** Callback when "Ver Histórico" button is clicked */
   onHistoricoClick: () => void;
   
+  /** Callback when "Filtros" button is clicked */
+  onFiltrosClick: () => void;
+  
+  /** Whether filters area is visible */
+  showFilters: boolean;
+  
+  /** Current month/year selection */
+  mesAno: { mes: number; ano: number };
+  
+  /** Callback when period is changed via filter */
+  onPeriodoChange: (mes: number, ano: number) => void;
+  
   /** Whether actions are disabled (e.g., during loading) */
   disabled?: boolean;
   
@@ -101,6 +122,9 @@ export interface VisaoConsolidadaProps {
   
   /** Template padrão da empresa (para detectar idioma) */
   templatePadrao?: string;
+  
+  /** Empresa atual (para cálculo de períodos disponíveis) */
+  empresaAtual?: any;
 }
 
 /**
@@ -237,6 +261,10 @@ export function VisaoConsolidada({
   calculos,
   periodoApuracao,
   onHistoricoClick,
+  onFiltrosClick,
+  showFilters,
+  mesAno,
+  onPeriodoChange,
   disabled = false,
   percentualRepasseMensal = 100,
   mesesDoPeriodo,
@@ -245,7 +273,8 @@ export function VisaoConsolidada({
   requerimentosEmDesenvolvimento = [],
   tipoCobranca,
   inicioVigencia,
-  templatePadrao
+  templatePadrao,
+  empresaAtual
 }: VisaoConsolidadaProps) {
   // Usar primeiro cálculo para informações gerais (DEVE SER PRIMEIRO)
   const calculoPrincipal = calculos[0];
@@ -575,6 +604,24 @@ export function VisaoConsolidada({
     setModalVisualizacaoAberto(true);
   };
 
+  // Verificar se o período selecionado é diferente do mês atual
+  const isMesAtual = useMemo(() => {
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    
+    return mesAno.mes === mesAtual && mesAno.ano === anoAtual;
+  }, [mesAno]);
+
+  // Função para limpar filtro (voltar ao mês atual)
+  const handleLimparFiltro = () => {
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    
+    onPeriodoChange(mesAtual, anoAtual);
+  };
+
   return (
     <Card className="rounded-xl overflow-hidden">
       {/* Cabeçalho de Impressão (visível apenas ao imprimir) */}
@@ -608,8 +655,131 @@ export function VisaoConsolidada({
               <span className="hidden sm:inline">{labels.verHistorico}</span>
               <span className="sm:hidden">{labels.historico}</span>
             </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onFiltrosClick}
+              disabled={disabled}
+              className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
+            >
+              <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Filtros</span>
+            </Button>
+            
+            {/* Botão Limpar Filtro - só aparece se período selecionado for diferente do mês atual */}
+            {!isMesAtual && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLimparFiltro}
+                disabled={disabled}
+                className="flex items-center gap-2 text-xs sm:text-sm print:hidden whitespace-nowrap hover:border-red-300"
+              >
+                <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                <span className="hidden sm:inline">Limpar Filtro</span>
+              </Button>
+            )}
           </div>
         </div>
+        
+        {/* Área de Filtros Expansível */}
+        {showFilters && empresaAtual && (
+          <div className="pt-4 border-t">
+            <div className="grid grid-cols-1 gap-4">
+              {/* Filtro de Período */}
+              <div>
+                <div className="text-sm font-medium mb-2">Ir para período</div>
+                <Select
+                  value={`${mesAno.mes}-${mesAno.ano}`}
+                  onValueChange={(value) => {
+                    const [mes, ano] = value.split('-').map(Number);
+                    onPeriodoChange(mes, ano);
+                  }}
+                >
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      // Gerar lista de períodos disponíveis
+                      const periodos: Array<{ mes: number; ano: number; label: string }> = [];
+                      const hoje = new Date();
+                      const mesAtual = hoje.getMonth() + 1;
+                      const anoAtual = hoje.getFullYear();
+                      
+                      // Início da vigência ou 12 meses atrás
+                      let mesInicio = mesAtual - 12;
+                      let anoInicio = anoAtual;
+                      
+                      if (mesInicio < 1) {
+                        mesInicio += 12;
+                        anoInicio -= 1;
+                      }
+                      
+                      // Se tem vigência, usar como limite
+                      if (empresaAtual.inicio_vigencia) {
+                        const vigencia = new Date(empresaAtual.inicio_vigencia);
+                        const mesVigencia = vigencia.getUTCMonth() + 1;
+                        const anoVigencia = vigencia.getUTCFullYear();
+                        
+                        // Usar o mais recente entre vigência e 12 meses atrás
+                        const dataVigencia = new Date(anoVigencia, mesVigencia - 1);
+                        const data12MesesAtras = new Date(anoInicio, mesInicio - 1);
+                        
+                        if (dataVigencia > data12MesesAtras) {
+                          mesInicio = mesVigencia;
+                          anoInicio = anoVigencia;
+                        }
+                      }
+                      
+                      // Gerar períodos do início até 6 meses no futuro
+                      const mesFim = mesAtual + 6;
+                      let anoFim = anoAtual;
+                      
+                      if (mesFim > 12) {
+                        anoFim += Math.floor((mesFim - 1) / 12);
+                      }
+                      
+                      let mesCorrente = mesInicio;
+                      let anoCorrente = anoInicio;
+                      
+                      while (
+                        anoCorrente < anoFim || 
+                        (anoCorrente === anoFim && mesCorrente <= (mesFim > 12 ? mesFim % 12 : mesFim))
+                      ) {
+                        const anoAbreviado = String(anoCorrente).slice(-2);
+                        periodos.push({
+                          mes: mesCorrente,
+                          ano: anoCorrente,
+                          label: `${MESES[mesCorrente - 1]}/${anoAbreviado}`
+                        });
+                        
+                        mesCorrente++;
+                        if (mesCorrente > 12) {
+                          mesCorrente = 1;
+                          anoCorrente++;
+                        }
+                      }
+                      
+                      // Inverter para mostrar mais recentes primeiro
+                      periodos.reverse();
+                      
+                      return periodos.map(periodo => (
+                        <SelectItem 
+                          key={`${periodo.mes}-${periodo.ano}`} 
+                          value={`${periodo.mes}-${periodo.ano}`}
+                        >
+                          {periodo.label}
+                        </SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
       </CardHeader>
       
       <CardContent>
