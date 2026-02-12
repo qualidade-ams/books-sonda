@@ -669,6 +669,7 @@ export async function atualizarTaxa(
   const { data: { user } } = await supabase.auth.getUser();
   
   // Buscar taxa atual
+  console.log('🔍 [ATUALIZAR TAXA] Buscando taxa:', id);
   const { data: taxaAtual, error: taxaError } = await supabase
     .from('taxas_clientes' as any)
     .select('*')
@@ -676,15 +677,22 @@ export async function atualizarTaxa(
     .limit(1);
 
   if (taxaError) {
-    console.error('Erro ao buscar taxa:', taxaError);
+    console.error('❌ [ATUALIZAR TAXA] Erro ao buscar taxa:', taxaError);
     throw new Error('Erro ao buscar taxa atual');
   }
   
   if (!taxaAtual || taxaAtual.length === 0) {
+    console.error('❌ [ATUALIZAR TAXA] Taxa não encontrada no banco:', id);
     throw new Error('Taxa não encontrada');
   }
   
   const taxaAtualData = taxaAtual[0];
+  console.log('✅ [ATUALIZAR TAXA] Taxa encontrada:', {
+    id: taxaAtualData.id,
+    cliente_id: taxaAtualData.cliente_id,
+    vigencia_inicio: taxaAtualData.vigencia_inicio,
+    vigencia_fim: taxaAtualData.vigencia_fim
+  });
 
   // Se houver taxa de reajuste, criar nova taxa ao invés de atualizar
   if (dados.taxa_reajuste && dados.taxa_reajuste > 0) {
@@ -892,6 +900,11 @@ export async function atualizarTaxa(
   if (dados.ticket_excedente !== undefined) dadosAtualizacao.ticket_excedente = dados.ticket_excedente;
 
   // Atualizar taxa com timeout
+  console.log('🔄 [ATUALIZAR TAXA] Iniciando atualização:', {
+    id,
+    dadosAtualizacao
+  });
+  
   const updateTimeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('Timeout: Atualização demorou mais que 30 segundos')), 30000);
   });
@@ -905,18 +918,42 @@ export async function atualizarTaxa(
   let taxaAtualizada;
   try {
     const result = await Promise.race([updatePromise, updateTimeoutPromise]) as any;
+    
+    console.log('📊 [ATUALIZAR TAXA] Resultado do update:', {
+      error: result.error,
+      data: result.data,
+      dataLength: result.data?.length
+    });
+    
     if (result.error) {
-      console.error('Erro ao atualizar taxa:', result.error);
+      console.error('❌ [ATUALIZAR TAXA] Erro ao atualizar taxa:', result.error);
       throw new Error(`Erro ao atualizar taxa: ${result.error.message || 'Erro desconhecido'}`);
     }
     
     // Verificar se retornou dados
     if (!result.data || result.data.length === 0) {
-      throw new Error('Taxa não encontrada para atualização');
+      console.error('❌ [ATUALIZAR TAXA] Nenhum dado retornado após update. Possíveis causas:');
+      console.error('  1. Taxa foi deletada por outro processo');
+      console.error('  2. Problema com RLS (Row Level Security)');
+      console.error('  3. ID incorreto:', id);
+      
+      // Tentar buscar a taxa novamente para confirmar se existe
+      const { data: taxaVerificacao } = await supabase
+        .from('taxas_clientes' as any)
+        .select('id')
+        .eq('id', id)
+        .limit(1);
+      
+      if (!taxaVerificacao || taxaVerificacao.length === 0) {
+        throw new Error('Taxa não encontrada para atualização (foi deletada?)');
+      } else {
+        throw new Error('Taxa existe mas update não retornou dados (problema de permissão RLS?)');
+      }
     }
     
     // Se retornou múltiplos registros, pegar o primeiro (não deveria acontecer com ID único)
     taxaAtualizada = Array.isArray(result.data) ? result.data[0] : result.data;
+    console.log('✅ [ATUALIZAR TAXA] Taxa atualizada com sucesso:', taxaAtualizada.id);
   } catch (error: any) {
     console.error('Erro ao atualizar taxa:', error);
     if (error.message?.includes('Timeout')) {
