@@ -64,10 +64,10 @@ export const useBancoHorasCalculos = (
       return await bancoHorasService.obterOuCalcular(empresaId, mes, ano);
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: 2,
-    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000, // ✅ OTIMIZAÇÃO: 5 minutos (em vez de 0) - dados ficam "frescos" por 5min
+    gcTime: 30 * 60 * 1000, // ✅ OTIMIZAÇÃO: 30 minutos (em vez de 10) - mantém cache por mais tempo
+    retry: 1, // ✅ OTIMIZAÇÃO: Reduzir tentativas de 2 para 1
+    refetchOnMount: false, // ✅ OTIMIZAÇÃO: Não refetch ao montar (usa cache)
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
