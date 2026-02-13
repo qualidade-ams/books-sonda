@@ -2908,6 +2908,14 @@ export type Database = {
           total_anexos: number
         }[]
       }
+      force_recalculate_banco_horas: {
+        Args: {
+          p_empresa_id: string
+          p_mes: number
+          p_ano: number
+        }
+        Returns: string
+      }
       gerar_caminho_anexo:
         | {
             Args: { empresa_id: string; nome_arquivo: string }

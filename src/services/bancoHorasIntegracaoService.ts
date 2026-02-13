@@ -310,20 +310,19 @@ export class BancoHorasIntegracaoService {
       const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      // OTIMIZAÇÃO: Usar apenas nome abreviado para evitar timeout
-      // Nome abreviado é mais específico e retorna menos resultados
-      // Se empresa não tiver nome abreviado, usar nome completo
-      const nomeParaBusca = nomeAbreviado || nomeCompleto;
-      
-      console.log('🔍 Buscando apontamentos com nome:', {
+      console.log('🔍 Buscando apontamentos com AMBOS os nomes:', {
         nomeAbreviado,
         nomeCompleto,
-        nomeParaBusca,
-        observacao: 'Usando apenas um nome para otimizar performance'
+        observacao: 'Busca por nome abreviado OU nome completo para garantir match'
       });
 
-      // Query única otimizada
-      const { data: apontamentos, error: apontamentosError } = await supabase
+      // CORREÇÃO CRÍTICA: Buscar por AMBOS os nomes (abreviado E completo)
+      // Problema: org_us_final pode conter nome completo enquanto cadastro usa nome abreviado
+      // Exemplo: AMCOR (abreviado) vs "BEMIS DO BRASIL INDUSTRIA..." (completo em org_us_final)
+      // Solução: Usar .or() para buscar por qualquer um dos nomes
+      
+      // Construir filtro OR para buscar por ambos os nomes
+      let query = supabase
         .from('apontamentos_aranda' as any)
         .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
         .eq('ativi_interna', 'Não')
@@ -331,9 +330,20 @@ export class BancoHorasIntegracaoService {
         .in('tipo_chamado', ['IM', 'RF', 'PM']) // Incluir IM (Incidente), RF (Requisição) e PM (Problema)
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
-        .ilike('org_us_final', `%${nomeParaBusca}%`)
         .in('cod_resolucao', codigosResolucaoValidos)
-        .limit(10000) as any; // Limite de segurança para evitar timeout
+        .limit(10000); // Limite de segurança para evitar timeout
+      
+      // Adicionar filtro OR para buscar por nome abreviado OU nome completo
+      if (nomeAbreviado && nomeCompleto && nomeAbreviado !== nomeCompleto) {
+        // Se tem ambos os nomes e são diferentes, buscar por qualquer um
+        query = query.or(`org_us_final.ilike.%${nomeAbreviado}%,org_us_final.ilike.%${nomeCompleto}%`);
+      } else {
+        // Se tem apenas um nome, buscar por ele
+        const nomeParaBusca = nomeAbreviado || nomeCompleto;
+        query = query.ilike('org_us_final', `%${nomeParaBusca}%`);
+      }
+      
+      const { data: apontamentos, error: apontamentosError } = await query as any;
 
       if (apontamentosError) {
         console.error('❌ Erro ao buscar apontamentos:', apontamentosError);
