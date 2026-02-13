@@ -126,11 +126,19 @@ export default function ControleBancoHoras() {
   const mesesDoPeriodo = useMemo(() => {
     if (!empresaAtual?.inicio_vigencia || !empresaAtual?.periodo_apuracao) {
       // Fallback: usar meses sequenciais
-      return [
-        { mes: mesAno.mes, ano: mesAno.ano },
-        { mes: mesAno.mes + 1 > 12 ? mesAno.mes + 1 - 12 : mesAno.mes + 1, ano: mesAno.mes + 1 > 12 ? mesAno.ano + 1 : mesAno.ano },
-        { mes: mesAno.mes + 2 > 12 ? mesAno.mes + 2 - 12 : mesAno.mes + 2, ano: mesAno.mes + 2 > 12 ? mesAno.ano + 1 : mesAno.ano }
-      ];
+      const meses = [];
+      for (let i = 0; i < 3; i++) {
+        let mes = mesAno.mes + i;
+        let ano = mesAno.ano;
+        
+        while (mes > 12) {
+          mes -= 12;
+          ano += 1;
+        }
+        
+        meses.push({ mes, ano });
+      }
+      return meses;
     }
 
     const inicioVigencia = new Date(empresaAtual.inicio_vigencia);
