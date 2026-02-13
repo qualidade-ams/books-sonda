@@ -10,7 +10,8 @@ import type {
   BookSLAData,
   BookBacklogData,
   BookConsumoData,
-  BookPesquisaData
+  BookPesquisaData,
+  ChamadosSemestreData
 } from '@/types/books';
 import { MESES_LABELS, MESES_ABREVIADOS } from '@/types/books';
 import type { Requerimento } from '@/types/requerimentos';
@@ -31,17 +32,31 @@ class BooksDataCollectorService {
     consumo: BookConsumoData;
     pesquisa: BookPesquisaData;
   }> {
+    console.log('🚀 INICIANDO COLETA DE DADOS DO BOOK:', { empresaId, mes, ano });
+    
     try {
       // Buscar informações da empresa
-      const { data: empresa } = await supabase
+      const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual')
+        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato')
         .eq('id', empresaId)
         .single();
 
+      if (empresaError) {
+        console.error('❌ Erro ao buscar empresa:', empresaError);
+        throw empresaError;
+      }
+
       if (!empresa) {
+        console.error('❌ Empresa não encontrada:', empresaId);
         throw new Error('Empresa não encontrada');
       }
+
+      console.log('✅ Empresa encontrada:', {
+        nome: empresa.nome_completo,
+        abreviado: empresa.nome_abreviado,
+        tipo_contrato: empresa.tipo_contrato
+      });
 
       // Buscar requerimentos do período
       const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
@@ -61,11 +76,31 @@ class BooksDataCollectorService {
         6
       );
 
+      // Buscar apontamentos baseado no tipo de contrato
+      const tipoContratoValido = (empresa.tipo_contrato === 'horas' || 
+                                   empresa.tipo_contrato === 'tickets' || 
+                                   empresa.tipo_contrato === 'ambos') 
+        ? empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos'
+        : null;
+
+      const { 
+        apontamentosHoras, 
+        apontamentosTickets,
+        ticketsAbertos,
+        ticketsFechados
+      } = await this.buscarApontamentosPorTipoContrato(
+        empresa.nome_completo,
+        empresa.nome_abreviado,
+        mes,
+        ano,
+        tipoContratoValido
+      );
+
       // Gerar dados de cada seção
       const mesNome = MESES_LABELS[mes];
       const periodo = `${mesNome} ${ano}`;
 
-      return {
+      const dadosGerados = {
         capa: this.gerarDadosCapa(
           empresa.nome_completo,
           empresa.nome_abreviado,
@@ -74,8 +109,14 @@ class BooksDataCollectorService {
           periodo
         ),
         volumetria: await this.gerarDadosVolumetria(
-          requerimentosPeriodo,
-          requerimentosHistorico
+          apontamentosHoras,
+          apontamentosTickets,
+          ticketsAbertos,
+          ticketsFechados,
+          tipoContratoValido,
+          empresa.nome_completo,
+          mes,
+          ano
         ),
         sla: await this.gerarDadosSLA(
           empresaId,
@@ -91,6 +132,18 @@ class BooksDataCollectorService {
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano)
       };
+
+      console.log('✅ DADOS DO BOOK GERADOS COM SUCESSO:', {
+        empresa: empresa.nome_abreviado,
+        volumetria: {
+          abertos: dadosGerados.volumetria.abertos_mes,
+          fechados: dadosGerados.volumetria.fechados_mes,
+          sla: dadosGerados.volumetria.sla_medio,
+          backlog: dadosGerados.volumetria.total_backlog
+        }
+      });
+
+      return dadosGerados;
     } catch (error) {
       console.error('Erro ao coletar dados do book:', error);
       throw error;
@@ -102,12 +155,14 @@ class BooksDataCollectorService {
    */
   private gerarDadosCapa(
     empresaNome: string,
+    nomeAbreviado: string,
     mes: number,
     ano: number,
     periodo: string
   ): BookCapaData {
     return {
       empresa_nome: empresaNome,
+      empresa_nome_abreviado: nomeAbreviado,
       periodo,
       mes,
       ano,
@@ -116,49 +171,242 @@ class BooksDataCollectorService {
   }
 
   /**
-   * Gera dados de volumetria
+   * Busca apontamentos baseado no tipo de contrato da empresa
+   * IMPORTANTE: Para os cards de volumetria, SEMPRE buscar de apontamentos_tickets_aranda
+   */
+  private async buscarApontamentosPorTipoContrato(
+    empresaNomeCompleto: string,
+    empresaNomeAbreviado: string,
+    mes: number,
+    ano: number,
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null
+  ): Promise<{
+    apontamentosHoras: any[];
+    apontamentosTickets: any[];
+    ticketsAbertos: any[];
+    ticketsFechados: any[];
+  }> {
+    const dataInicio = new Date(ano, mes - 1, 1);
+    const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+    const proximoMesInicio = new Date(ano, mes, 1); // Para data_solucao
+
+    console.log('🔍 Buscando apontamentos:', {
+      empresaCompleto: empresaNomeCompleto,
+      empresaAbreviado: empresaNomeAbreviado,
+      mes,
+      ano,
+      tipoContrato,
+      dataInicio: dataInicio.toISOString(),
+      dataFim: dataFim.toISOString()
+    });
+
+    let apontamentosHoras: any[] = [];
+    let apontamentosTickets: any[] = [];
+
+    // SEMPRE buscar tickets para os cards de volumetria (independente do tipo_contrato)
+    // ABERTOS: Buscar por data_abertura no mês com filtros específicos
+    const { data: ticketsAbertos, error: ticketsAbertosError } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .gte('data_abertura', dataInicio.toISOString())
+      .lte('data_abertura', dataFim.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    // FECHADOS: Buscar por data_solucao no mês com filtros específicos
+    const { data: ticketsFechados, error: ticketsFechadosError } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .gte('data_solucao', dataInicio.toISOString())
+      .lt('data_solucao', proximoMesInicio.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    if (ticketsAbertosError) {
+      console.error('❌ Erro ao buscar apontamentos_tickets_aranda (abertos):', ticketsAbertosError);
+    }
+    if (ticketsFechadosError) {
+      console.error('❌ Erro ao buscar apontamentos_tickets_aranda (fechados):', ticketsFechadosError);
+    }
+
+    // Tickets já vêm filtrados do banco de dados
+    const ticketsAbertosFiltrados = ticketsAbertos || [];
+    const ticketsFechadosFiltrados = ticketsFechados || [];
+
+    console.log('🔍 DEBUG ABERTOS:', {
+      totalTickets: ticketsAbertosFiltrados.length,
+      empresaBuscada: empresaNomeCompleto,
+      amostra: ticketsAbertosFiltrados.slice(0, 5).map(t => ({
+        nro: t.nro_solicitacao,
+        organizacao: t.organizacao,
+        cod_tipo: t.cod_tipo,
+        data_abertura: t.data_abertura,
+        nome_grupo: t.nome_grupo
+      }))
+    });
+
+    console.log('🔍 DEBUG FECHADOS:', {
+      totalTickets: ticketsFechadosFiltrados.length,
+      empresaBuscada: empresaNomeCompleto,
+      amostra: ticketsFechadosFiltrados.slice(0, 5).map(t => ({
+        nro: t.nro_solicitacao,
+        organizacao: t.organizacao,
+        cod_tipo: t.cod_tipo,
+        data_solucao: t.data_solucao,
+        nome_grupo: t.nome_grupo
+      }))
+    });
+    
+    console.log('✅ Apontamentos tickets encontrados:', {
+      abertos: ticketsAbertosFiltrados.length,
+      fechados: ticketsFechadosFiltrados.length,
+      totalAbertosAntesFiltro: (ticketsAbertos || []).length,
+      totalFechadosAntesFiltro: (ticketsFechados || []).length,
+      esperado: {
+        abertos: 13,
+        fechados: 17
+      }
+    });
+
+    // Combinar todos os tickets únicos para outras métricas (gráficos, etc)
+    const ticketsMap = new Map();
+    [...ticketsAbertosFiltrados, ...ticketsFechadosFiltrados].forEach(a => {
+      const chave = a.nro_solicitacao;
+      if (!ticketsMap.has(chave)) {
+        ticketsMap.set(chave, a);
+      }
+    });
+
+    const ticketsData = Array.from(ticketsMap.values());
+    
+    apontamentosTickets = ticketsData;
+
+    return {
+      apontamentosHoras,
+      apontamentosTickets,
+      ticketsAbertos: ticketsAbertosFiltrados,
+      ticketsFechados: ticketsFechadosFiltrados
+    };
+  }
+
+  /**
+   * Gera dados de volumetria baseado EXCLUSIVAMENTE em tickets
+   * CRÍTICO: Cards de volumetria usam APENAS apontamentos_tickets_aranda
    */
   private async gerarDadosVolumetria(
-    requerimentos: any[],
-    historico: any[]
+    apontamentosHoras: any[],
+    apontamentosTickets: any[],
+    ticketsAbertos: any[],
+    ticketsFechados: any[],
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null,
+    empresaNomeCompleto: string,
+    mes: number,
+    ano: number
   ): Promise<BookVolumetriaData> {
-    // Contar abertos e fechados do mês
-    const abertosIncidente = requerimentos.filter(r => 
-      r.tipo_cobranca === 'Incidente' || r.descricao?.toLowerCase().includes('incidente')
+    console.log('📊 Processando volumetria (APENAS TICKETS):', {
+      tipoContrato,
+      ticketsAbertos: ticketsAbertos.length,
+      ticketsFechados: ticketsFechados.length,
+      totalTicketsUnicos: apontamentosTickets.length
+    });
+
+    // ABERTOS | MÊS: Usar tickets já filtrados por data_abertura
+    const abertosIncidente = ticketsAbertos.filter(a => 
+      a.cod_tipo === 'Incidente'
     ).length;
     
-    const abertosSolicitacao = requerimentos.length - abertosIncidente;
-
-    // Para fechados, consideramos os que têm data_aprovacao
-    const fechados = requerimentos.filter(r => r.data_aprovacao);
-    const fechadosIncidente = fechados.filter(r => 
-      r.tipo_cobranca === 'Incidente' || r.descricao?.toLowerCase().includes('incidente')
+    const abertosSolicitacao = ticketsAbertos.filter(a => 
+      a.cod_tipo && a.cod_tipo !== 'Incidente'
     ).length;
-    const fechadosSolicitacao = fechados.length - fechadosIncidente;
 
-    // Calcular SLA médio (simplificado - % de chamados com data_aprovacao)
-    const slaMedio = requerimentos.length > 0
-      ? (fechados.length / requerimentos.length) * 100
+    // Debug: Verificar tipos de chamados abertos
+    const tiposAbertos = ticketsAbertos.reduce((acc: any, t: any) => {
+      const tipo = t.cod_tipo || 'SEM_TIPO';
+      acc[tipo] = (acc[tipo] || 0) + 1;
+      return acc;
+    }, {});
+
+    console.log('🔍 DEBUG TIPOS ABERTOS:', {
+      total: ticketsAbertos.length,
+      tiposEncontrados: tiposAbertos,
+      incidenteContado: abertosIncidente,
+      solicitacaoContado: abertosSolicitacao,
+      amostra: ticketsAbertos.slice(0, 5).map(t => ({
+        nro: t.nro_solicitacao,
+        cod_tipo: t.cod_tipo,
+        data_abertura: t.data_abertura
+      }))
+    });
+
+    // FECHADOS | MÊS: Usar tickets já filtrados por data_solucao
+    const fechadosIncidente = ticketsFechados.filter(a => 
+      a.cod_tipo === 'Incidente'
+    ).length;
+    
+    const fechadosSolicitacao = ticketsFechados.filter(a => 
+      a.cod_tipo && a.cod_tipo !== 'Incidente'
+    ).length;
+
+    console.log('📈 Dados calculados (CARDS - sempre de tickets):', {
+      abertos: { 
+        solicitacao: abertosSolicitacao, 
+        incidente: abertosIncidente,
+        total: abertosSolicitacao + abertosIncidente
+      },
+      fechados: { 
+        solicitacao: fechadosSolicitacao, 
+        incidente: fechadosIncidente,
+        total: fechadosSolicitacao + fechadosIncidente
+      }
+    });
+
+    // Calcular SLA médio (simplificado - % de chamados fechados vs abertos)
+    const totalAbertos = abertosSolicitacao + abertosIncidente;
+    const totalFechados = fechadosSolicitacao + fechadosIncidente;
+    const slaMedio = totalAbertos > 0
+      ? (totalFechados / totalAbertos) * 100
       : 0;
 
-    // Backlog = chamados sem data_aprovacao
-    const totalBacklog = requerimentos.filter(r => !r.data_aprovacao).length;
+    console.log('✅ VOLUMETRIA FINAL (100% TICKETS):', {
+      fonte: 'apontamentos_tickets_aranda',
+      abertos: totalAbertos,
+      fechados: totalFechados,
+      backlog: apontamentosTickets.filter(a => !a.data_solucao).length,
+      slaMedio: Math.round(slaMedio * 10) / 10,
+      esperado: {
+        abertos: 13,
+        fechados: 17
+      },
+      diferenca: {
+        abertos: totalAbertos - 13,
+        fechados: totalFechados - 17
+      }
+    });
 
-    // Gerar dados do semestre (últimos 6 meses do histórico)
-    const chamadosSemestre = this.agruparPorMes(historico) || [];
+    // Backlog = chamados sem data_solucao (usar todos os tickets combinados)
+    const totalBacklog = apontamentosTickets.filter(a => !a.data_solucao).length;
 
-    // Agrupar por módulo
-    const chamadosPorGrupo = this.agruparPorModulo(requerimentos) || [];
+    // Gerar dados do semestre (últimos 6 meses) - buscar dados reais
+    const chamadosSemestre = await this.buscarChamadosSemestre(empresaNomeCompleto, mes, ano);
 
-    // Taxa de resolução
-    const taxaResolucao = requerimentos.length > 0
-      ? Math.round((fechados.length / requerimentos.length) * 100)
+    // Agrupar por grupo (caso_grupo) - usar apenas tickets
+    const chamadosPorGrupo = this.agruparPorGrupo(apontamentosTickets);
+
+    // Taxa de resolução - baseada apenas em tickets
+    const taxaResolucao = apontamentosTickets.length > 0
+      ? Math.round((totalFechados / apontamentosTickets.length) * 100)
       : 0;
 
-    // Backlog por causa (tipo de cobrança)
-    const backlogPorCausa = this.agruparBacklogPorCausa(
-      requerimentos.filter(r => !r.data_aprovacao)
-    ) || [];
+    // Backlog por causa - usar apenas tickets sem data_solucao
+    const backlogPorCausa = this.agruparBacklogPorOrigem(
+      apontamentosTickets.filter(a => !a.data_solucao)
+    );
 
     return {
       abertos_mes: {
@@ -179,6 +427,184 @@ class BooksDataCollectorService {
   }
 
   /**
+   * Busca dados de chamados dos últimos 6 meses
+   * Usa os mesmos filtros dos cards (APENAS apontamentos_tickets_aranda)
+   * OTIMIZADO: Faz apenas 2 queries (abertos e fechados) para todos os 6 meses
+   */
+  private async buscarChamadosSemestre(
+    empresaNomeCompleto: string,
+    mesAtual: number,
+    anoAtual: number
+  ): Promise<ChamadosSemestreData[]> {
+    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
+                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    
+    // Calcular data inicial (6 meses atrás) e data final (fim do mês atual)
+    let mesInicial = mesAtual - 5;
+    let anoInicial = anoAtual;
+    
+    while (mesInicial <= 0) {
+      mesInicial += 12;
+      anoInicial -= 1;
+    }
+    
+    const dataInicio = new Date(anoInicial, mesInicial - 1, 1);
+    const dataFim = new Date(anoAtual, mesAtual, 0, 23, 59, 59, 999);
+    
+    console.log('📅 Buscando dados do semestre:', {
+      empresa: empresaNomeCompleto,
+      periodo: `${MESES_NOMES[mesInicial - 1]}/${anoInicial} até ${MESES_NOMES[mesAtual - 1]}/${anoAtual}`,
+      dataInicio: dataInicio.toISOString(),
+      dataFim: dataFim.toISOString()
+    });
+    
+    // Buscar TODOS os tickets ABERTOS dos últimos 6 meses (1 query)
+    const { data: ticketsAbertos, error: errorAbertos } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('nro_solicitacao, cod_tipo, data_abertura')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .gte('data_abertura', dataInicio.toISOString())
+      .lte('data_abertura', dataFim.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+    
+    if (errorAbertos) {
+      console.error('❌ Erro ao buscar tickets abertos do semestre:', errorAbertos);
+    }
+    
+    // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query)
+    const { data: ticketsFechados, error: errorFechados } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('nro_solicitacao, cod_tipo, data_solucao')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .gte('data_solucao', dataInicio.toISOString())
+      .lte('data_solucao', dataFim.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+    
+    if (errorFechados) {
+      console.error('❌ Erro ao buscar tickets fechados do semestre:', errorFechados);
+    }
+    
+    // Agrupar tickets por mês
+    const resultado: ChamadosSemestreData[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      let mes = mesAtual - i;
+      let ano = anoAtual;
+      
+      while (mes <= 0) {
+        mes += 12;
+        ano -= 1;
+      }
+      
+      const mesInicio = new Date(ano, mes - 1, 1);
+      const mesFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      
+      // Contar abertos deste mês
+      const abertosDoMes = (ticketsAbertos || []).filter(t => {
+        const dataAbertura = new Date(t.data_abertura);
+        return dataAbertura >= mesInicio && dataAbertura <= mesFim;
+      }).length;
+      
+      // Contar fechados deste mês
+      const fechadosDoMes = (ticketsFechados || []).filter(t => {
+        const dataSolucao = new Date(t.data_solucao);
+        return dataSolucao >= mesInicio && dataSolucao <= mesFim;
+      }).length;
+      
+      resultado.push({
+        mes: MESES_NOMES[mes - 1],
+        abertos: abertosDoMes,
+        fechados: fechadosDoMes
+      });
+    }
+    
+    console.log('📈 Dados do semestre gerados:', {
+      empresa: empresaNomeCompleto,
+      totalAbertos: (ticketsAbertos || []).length,
+      totalFechados: (ticketsFechados || []).length,
+      dados: resultado
+    });
+    
+    return resultado;
+  }
+
+  /**
+   * Gera dados vazios para o semestre (placeholder)
+   */
+  private gerarChamadosSemestreVazio() {
+    const meses = ['ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO'];
+    return meses.map(mes => ({
+      mes,
+      abertos: 0,
+      fechados: 0
+    }));
+  }
+
+  /**
+   * Agrupa apontamentos por grupo
+   */
+  private agruparPorGrupo(apontamentos: any[]) {
+    const grupos = new Map<string, { total: number; abertos: number; fechados: number }>();
+
+    apontamentos.forEach(a => {
+      const grupo = a.caso_grupo || 'SEM GRUPO';
+      if (!grupos.has(grupo)) {
+        grupos.set(grupo, { total: 0, abertos: 0, fechados: 0 });
+      }
+      const stats = grupos.get(grupo)!;
+      stats.total++;
+      if (a.data_fechamento) {
+        stats.fechados++;
+      } else {
+        stats.abertos++;
+      }
+    });
+
+    return Array.from(grupos.entries()).map(([grupo, stats]) => ({
+      grupo,
+      total: stats.total,
+      abertos: stats.abertos,
+      fechados: stats.fechados,
+      percentual: apontamentos.length > 0 
+        ? Math.round((stats.total / apontamentos.length) * 100)
+        : 0
+    }));
+  }
+
+  /**
+   * Agrupa backlog por origem
+   */
+  private agruparBacklogPorOrigem(backlog: any[]) {
+    const origens = new Map<string, { incidente: number; solicitacao: number }>();
+
+    backlog.forEach(a => {
+      const origem = a.origem_caso || a.categoria || 'SEM ORIGEM';
+      if (!origens.has(origem)) {
+        origens.set(origem, { incidente: 0, solicitacao: 0 });
+      }
+      const stats = origens.get(origem)!;
+      if (a.tipo_chamado === 'IM') {
+        stats.incidente++;
+      } else if (a.tipo_chamado === 'RF') {
+        stats.solicitacao++;
+      }
+    });
+
+    return Array.from(origens.entries()).map(([origem, stats]) => ({
+      origem,
+      incidente: stats.incidente,
+      solicitacao: stats.solicitacao,
+      total: stats.incidente + stats.solicitacao
+    }));
+  }
+
+  /**
    * Gera dados de SLA
    */
   private async gerarDadosSLA(
@@ -196,13 +622,13 @@ class BooksDataCollectorService {
       ? Math.round((fechados.length / requerimentos.length) * 100)
       : 0;
 
-    const status = slaPercentual >= metaSLA ? 'no_prazo' : 'vencido';
+    const status: 'no_prazo' | 'vencido' = slaPercentual >= metaSLA ? 'no_prazo' : 'vencido';
 
     // Chamados violados (sem data_aprovacao ou com atraso)
     const violados = requerimentos.filter(r => !r.data_aprovacao);
 
     // Histórico de SLA (últimos 4 meses)
-    const slaHistorico = await this.calcularSLAHistorico(empresaId, metaSLA);
+    const historicoSLA = await this.calcularSLAHistorico(empresaId, metaSLA);
 
     // Detalhes dos chamados violados
     const chamadosViolados = violados.slice(0, 10).map(r => ({
@@ -218,12 +644,12 @@ class BooksDataCollectorService {
     return {
       sla_percentual: slaPercentual,
       meta_percentual: metaSLA,
-      status,
+      status: status,
       fechados: fechados.length,
       incidentes: incidentes.length,
       violados: violados.length,
-      sla_historico,
-      chamados_violados
+      sla_historico: historicoSLA,
+      chamados_violados: chamadosViolados
     };
   }
 

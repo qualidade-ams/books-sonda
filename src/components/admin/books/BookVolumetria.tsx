@@ -28,14 +28,17 @@ import type { BookVolumetriaData } from '@/types/books';
 
 interface BookVolumetriaProps {
   data: BookVolumetriaData;
+  empresaNome?: string; // Nome abreviado do cliente
 }
 
-export default function BookVolumetria({ data }: BookVolumetriaProps) {
+export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProps) {
   return (
     <div className="space-y-6">
       {/* Título da Seção */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Volumetria RAINBOW</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Volumetria {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+        </h2>
         <p className="text-sm text-gray-500">Visão Geral de Chamados e Desempenho Operacional</p>
       </div>
 

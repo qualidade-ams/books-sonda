@@ -61,13 +61,28 @@ export const useBancoHorasCalculos = (
       if (!empresaId) {
         throw new Error('ID da empresa é obrigatório');
       }
-      return await bancoHorasService.obterOuCalcular(empresaId, mes, ano);
+      console.log('🔍 [useBancoHorasCalculos] Buscando cálculo:', {
+        empresaId,
+        mes,
+        ano,
+        timestamp: new Date().toISOString()
+      });
+      const resultado = await bancoHorasService.obterOuCalcular(empresaId, mes, ano);
+      console.log('✅ [useBancoHorasCalculos] Cálculo obtido:', {
+        empresaId,
+        mes,
+        ano,
+        consumo_horas: resultado.consumo_horas,
+        requerimentos_horas: resultado.requerimentos_horas,
+        timestamp: new Date().toISOString()
+      });
+      return resultado;
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 5 * 60 * 1000, // ✅ OTIMIZAÇÃO: 5 minutos (em vez de 0) - dados ficam "frescos" por 5min
-    gcTime: 30 * 60 * 1000, // ✅ OTIMIZAÇÃO: 30 minutos (em vez de 10) - mantém cache por mais tempo
+    staleTime: 2 * 60 * 1000, // ✅ OTIMIZAÇÃO AJUSTADA: 2 minutos (reduzido de 5min) - dados ficam "frescos" por 2min
+    gcTime: 30 * 60 * 1000, // ✅ OTIMIZAÇÃO: 30 minutos - mantém cache por mais tempo
     retry: 1, // ✅ OTIMIZAÇÃO: Reduzir tentativas de 2 para 1
-    refetchOnMount: false, // ✅ OTIMIZAÇÃO: Não refetch ao montar (usa cache)
+    refetchOnMount: true, // ✅ CORREÇÃO: Sempre refetch ao montar para garantir dados atualizados
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 

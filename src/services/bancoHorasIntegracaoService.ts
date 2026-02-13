@@ -301,7 +301,7 @@ export class BancoHorasIntegracaoService {
       // Buscar apontamentos onde:
       // - ativi_interna = "Não"
       // - item_configuracao != "000000 - PROJETOS APL" (NOVA REGRA 1)
-      // - tipo_chamado != "PM" (NOVA REGRA 2)
+      // - tipo_chamado IN ('IM', 'RF', 'PM') - Incluir Incidentes, Requisições e Problemas
       // - org_us_final = nome da empresa (abreviado ou completo)
       // - cod_resolucao IN (códigos válidos)
       // - data_atividade dentro do período
@@ -328,7 +328,7 @@ export class BancoHorasIntegracaoService {
         .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
         .eq('ativi_interna', 'Não')
         .neq('item_configuracao', '000000 - PROJETOS APL')
-        .neq('tipo_chamado', 'PM')
+        .in('tipo_chamado', ['IM', 'RF', 'PM']) // Incluir IM (Incidente), RF (Requisição) e PM (Problema)
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .ilike('org_us_final', `%${nomeParaBusca}%`)

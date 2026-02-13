@@ -45,6 +45,7 @@ export interface BookData {
  */
 export interface BookCapaData {
   empresa_nome: string;
+  empresa_nome_abreviado?: string;
   empresa_logo_url?: string;
   periodo: string; // Ex: "Janeiro 2026"
   mes: number;

@@ -88,7 +88,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
               {bookData?.capa.empresa_nome_abreviado || book?.empresa_nome} - {bookData?.capa.periodo}
             </DialogTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mr-5">
               <Button
                 variant="outline"
                 size="sm"
@@ -161,7 +161,10 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
               </TabsContent>
 
               <TabsContent value="volumetria" className="mt-0">
-                <BookVolumetria data={bookData.volumetria} />
+                <BookVolumetria 
+                  data={bookData.volumetria} 
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                />
               </TabsContent>
 
               <TabsContent value="sla" className="mt-0">
