@@ -37,9 +37,13 @@ export function useBooks(filtros: BooksFiltros) {
   // Mutation para gerar books
   const gerarBooksMutation = useMutation({
     mutationFn: (config: BookGeracaoConfig) => booksService.gerarBooksLote(config),
-    onSuccess: (result: BooksGeracaoLoteResult) => {
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+    onSuccess: async (result: BooksGeracaoLoteResult) => {
+      // Invalidar cache
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      
+      // Forçar refetch imediato
+      await refetch();
       
       toast({
         title: 'Books gerados com sucesso!',
@@ -60,9 +64,13 @@ export function useBooks(filtros: BooksFiltros) {
   const atualizarBooksMutation = useMutation({
     mutationFn: (config: BookGeracaoConfig) => 
       booksService.gerarBooksLote({ ...config, forcar_atualizacao: true }),
-    onSuccess: (result: BooksGeracaoLoteResult) => {
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+    onSuccess: async (result: BooksGeracaoLoteResult) => {
+      // Invalidar cache
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      
+      // Forçar refetch imediato
+      await refetch();
       
       toast({
         title: 'Books atualizados com sucesso!',
@@ -82,9 +90,13 @@ export function useBooks(filtros: BooksFiltros) {
   // Mutation para deletar book
   const deletarBookMutation = useMutation({
     mutationFn: (bookId: string) => booksService.deletarBook(bookId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+    onSuccess: async () => {
+      // Invalidar cache
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      
+      // Forçar refetch imediato
+      await refetch();
       
       toast({
         title: 'Book deletado',

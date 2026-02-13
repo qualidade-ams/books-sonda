@@ -59,6 +59,7 @@ import type { Requerimento } from '@/types/requerimentos';
 import { getCobrancaIcon, getBadgeClasses } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
 import { BotaoReajusteHoras } from './BotaoReajusteHoras';
+import { BotaoForcarRecalculo } from './BotaoForcarRecalculo';
 import { SecaoObservacoes } from './SecaoObservacoes';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
 import { useAuth } from '@/hooks/useAuth';
@@ -366,13 +367,21 @@ export function VisaoConsolidada({
       try {
         setCarregandoSincronizacao(true);
         
+        // Criar timeout de 5 segundos para evitar travamento
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ao buscar sincronização')), 5000)
+        );
+        
         // Buscar o registro mais recente da tabela apontamentos_aranda
-        const { data, error } = await supabase
+        // OTIMIZADO: Usa índice idx_apontamentos_aranda_updated_at para performance
+        const queryPromise = supabase
           .from('apontamentos_aranda' as any)
-          .select('created_at, updated_at')
+          .select('updated_at')
           .order('updated_at', { ascending: false })
           .limit(1)
           .single();
+        
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
         
         if (error) {
           console.error('Erro ao buscar última sincronização:', error);
@@ -644,6 +653,24 @@ export function VisaoConsolidada({
           </div>
           
           <div className="flex flex-wrap gap-2">
+            {/* Botão Forçar Recálculo - aparece quando consumo está zerado */}
+            {calculoPrincipal && (calculoPrincipal.consumo_horas === '00:00' || calculoPrincipal.consumo_horas === '0:00') && (
+              <BotaoForcarRecalculo
+                empresaId={calculoPrincipal.empresa_id}
+                mes={calculoPrincipal.mes}
+                ano={calculoPrincipal.ano}
+                empresaNome={empresaAtual?.nome_abreviado || empresaAtual?.nome_completo}
+                disabled={disabled}
+                onRecalculoSucesso={() => {
+                  // Refetch será feito automaticamente pelo componente
+                  toast({
+                    title: 'Recálculo concluído',
+                    description: 'Os valores foram atualizados com sucesso.',
+                  });
+                }}
+              />
+            )}
+            
             <Button
               variant="outline"
               size="sm"
@@ -783,6 +810,17 @@ export function VisaoConsolidada({
       </CardHeader>
       
       <CardContent>
+        {/* Alert quando consumo está zerado */}
+        {calculoPrincipal && (calculoPrincipal.consumo_horas === '00:00' || calculoPrincipal.consumo_horas === '0:00') && (
+          <Alert className="mb-4 border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <strong>Consumo zerado detectado.</strong> Se você sabe que existem apontamentos para este período, 
+              clique no botão "Forçar Recálculo" acima para atualizar os valores.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* Wrapper com scroll horizontal melhorado para mobile */}
         <div className="relative -mx-6 sm:mx-0">
           <div className="overflow-x-auto px-6 sm:px-0">
