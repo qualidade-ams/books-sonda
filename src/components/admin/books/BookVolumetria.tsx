@@ -23,15 +23,46 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  LabelList,
 } from 'recharts';
 import type { BookVolumetriaData } from '@/types/books';
 
 interface BookVolumetriaProps {
   data: BookVolumetriaData;
   empresaNome?: string; // Nome abreviado do cliente
+  mes?: number; // Mês atual para exibir no subtítulo
+  ano?: number; // Ano atual para exibir no subtítulo
 }
 
-export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProps) {
+export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolumetriaProps) {
+  // Calcular período do semestre para exibição
+  const anoExibicao = ano || new Date().getFullYear();
+  const mesAtual = mes || new Date().getMonth() + 1;
+  
+  // Calcular mês inicial (6 meses atrás)
+  let mesInicial = mesAtual - 5;
+  let anoInicial = anoExibicao;
+  while (mesInicial <= 0) {
+    mesInicial += 12;
+    anoInicial -= 1;
+  }
+  
+  const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const periodoTexto = anoInicial === anoExibicao 
+    ? `${MESES_ABREV[mesInicial - 1]} - ${MESES_ABREV[mesAtual - 1]} ${anoExibicao}`
+    : `${MESES_ABREV[mesInicial - 1]}/${anoInicial} - ${MESES_ABREV[mesAtual - 1]}/${anoExibicao}`;
+  
+  // Debug: Log dos dados do gráfico
+  console.log('📊 BookVolumetria - Dados do gráfico:', {
+    empresa: empresaNome,
+    periodo: periodoTexto,
+    mes: mesAtual,
+    ano: anoExibicao,
+    dadosSemestre: data.chamados_semestre,
+    totalAbertos: data.chamados_semestre?.reduce((sum, d) => sum + d.abertos, 0) || 0,
+    totalFechados: data.chamados_semestre?.reduce((sum, d) => sum + d.fechados, 0) || 0
+  });
+  
   return (
     <div className="space-y-6">
       {/* Título da Seção */}
@@ -48,8 +79,8 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-blue-600" />
+              <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-gray-600" />
               </div>
               ABERTOS | MÊS
             </CardTitle>
@@ -57,11 +88,11 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-blue-600">{data.abertos_mes.solicitacao}</span>
+                <span className="text-2xl font-bold text-gray-600">{data.abertos_mes.solicitacao}</span>
                 <span className="text-xs text-gray-500">SOLICITAÇÃO</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-blue-600">{data.abertos_mes.incidente}</span>
+                <span className="text-2xl font-bold text-gray-600">{data.abertos_mes.incidente}</span>
                 <span className="text-xs text-gray-500">INCIDENTE</span>
               </div>
             </div>
@@ -72,8 +103,8 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-green-600" />
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-blue-600" />
               </div>
               FECHADOS | MÊS
             </CardTitle>
@@ -81,11 +112,11 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-green-600">{data.fechados_mes.solicitacao}</span>
+                <span className="text-2xl font-bold text-blue-600">{data.fechados_mes.solicitacao}</span>
                 <span className="text-xs text-gray-500">SOLICITAÇÃO</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-green-600">{data.fechados_mes.incidente}</span>
+                <span className="text-2xl font-bold text-blue-600">{data.fechados_mes.incidente}</span>
                 <span className="text-xs text-gray-500">INCIDENTE</span>
               </div>
             </div>
@@ -139,82 +170,107 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base font-semibold">Chamados | Semestre</CardTitle>
-            <p className="text-xs text-gray-500">Monitoramento do volume mensal 2025</p>
+            <p className="text-xs text-gray-500">
+              Monitoramento do volume mensal ({periodoTexto})
+            </p>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.chamados_semestre}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="mes" 
-                  tick={{ fontSize: 12 }}
-                  stroke="#666"
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  stroke="#666"
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Legend 
-                  wrapperStyle={{ fontSize: '12px' }}
-                  iconType="circle"
-                />
-                <Bar 
-                  dataKey="abertos" 
-                  fill="#60a5fa" 
-                  name="ABERTOS"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar 
-                  dataKey="fechados" 
-                  fill="#2563eb" 
-                  name="FECHADOS"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {data.chamados_semestre && data.chamados_semestre.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data.chamados_semestre}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="mes" 
+                    tick={{ fontSize: 12 }}
+                    stroke="#666"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    stroke="#666"
+                    allowDecimals={false}
+                    domain={[0, 'auto']}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: '12px' }}
+                    iconType="circle"
+                  />
+                  <Bar 
+                    dataKey="abertos" 
+                    fill="#9ca3af" 
+                    name="ABERTOS"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    <LabelList 
+                      dataKey="abertos" 
+                      position="inside" 
+                      style={{ 
+                        fill: '#fff', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}
+                      formatter={(value: number) => value > 0 ? value : ''}
+                    />
+                  </Bar>
+                  <Bar 
+                    dataKey="fechados" 
+                    fill="#2563eb" 
+                    name="FECHADOS"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    <LabelList 
+                      dataKey="fechados" 
+                      position="inside" 
+                      style={{ 
+                        fill: '#fff', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}
+                      formatter={(value: number) => value > 0 ? value : ''}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px]">
+                <div className="text-center">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Nenhum dado disponível para o período</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Card: Chamados por Grupo */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2">
             {data.chamados_por_grupo.map((grupo, index) => (
-              <div key={index} className="space-y-2">
-                <div className="font-semibold text-sm">{grupo.grupo}</div>
-                <div className="text-xs text-gray-600">Total: {grupo.total}</div>
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-blue-100 rounded px-2 py-1 text-center">
-                    <div className="text-xs text-blue-600 font-semibold">{grupo.abertos}</div>
-                    <div className="text-xs text-gray-500">ABERTOS</div>
+              <div key={index} className="pb-2 border-b last:border-b-0 last:pb-0">
+                {/* Nome e Total na mesma linha - mais compacto */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="font-semibold text-xs leading-tight">{grupo.grupo}</div>
+                  <div className="text-xs text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
+                </div>
+                
+                {/* Boxes de Abertos/Fechados - mais compactos */}
+                <div className="flex gap-1.5">
+                  <div className="flex-1 bg-gray-100 rounded px-2 py-1 text-center">
+                    <div className="text-base text-gray-600 font-bold leading-tight">{grupo.abertos}</div>
+                    <div className="text-xs text-gray-500 leading-tight">ABERTOS</div>
                   </div>
                   <div className="flex-1 bg-blue-600 rounded px-2 py-1 text-center">
-                    <div className="text-xs text-white font-semibold">{grupo.fechados}</div>
-                    <div className="text-xs text-blue-100">FECHADOS</div>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Os dados representam a distribuição de tickets pelo grupo de suporte "IMPORTAÇÃO" durante o período selecionado.
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="text-sm font-semibold">Taxa de Resolução</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${data.taxa_resolucao}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-blue-600">{data.taxa_resolucao}%</span>
+                    <div className="text-base text-white font-bold leading-tight">{grupo.fechados}</div>
+                    <div className="text-xs text-blue-100 leading-tight">FECHADOS</div>
                   </div>
                 </div>
               </div>
@@ -223,12 +279,11 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
         </Card>
       </div>
 
-      {/* Tabela: Backlog Atualizado X CAUSA */}
+      {/* Tabela: Chamados X CAUSA */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
-            <Button variant="link" className="text-blue-600 text-sm">Ver Detalhes</Button>
+            <CardTitle className="text-base font-semibold">Chamados X CAUSA</CardTitle>           
           </div>
         </CardHeader>
         <CardContent>
@@ -236,30 +291,25 @@ export default function BookVolumetria({ data, empresaNome }: BookVolumetriaProp
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="font-semibold">ORIGEM</TableHead>
-                <TableHead className="text-center font-semibold">INCIDENTE</TableHead>
-                <TableHead className="text-center font-semibold">SOLICITAÇÃO</TableHead>
-                <TableHead className="text-center font-semibold bg-blue-600 text-white">TOTAL</TableHead>
+                <TableHead className="text-center font-semibold bg-gray-100">ABERTOS</TableHead>
+                <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.backlog_por_causa.map((item, index) => (
                 <TableRow key={index} className="hover:bg-gray-50">
                   <TableCell className="font-medium">{item.origem}</TableCell>
-                  <TableCell className="text-center">{item.incidente || '-'}</TableCell>
-                  <TableCell className="text-center">{item.solicitacao || '-'}</TableCell>
-                  <TableCell className="text-center font-semibold">{item.total}</TableCell>
+                  <TableCell className="text-center bg-gray-50">{item.abertos || 0}</TableCell>
+                  <TableCell className="text-center bg-blue-50">{item.fechados || 0}</TableCell>
                 </TableRow>
               ))}
-              <TableRow className="bg-blue-600 text-white font-bold">
+              <TableRow className="bg-blue-600 text-white font-bold hover:bg-[#9ca3af]">
                 <TableCell>TOTAL</TableCell>
                 <TableCell className="text-center">
-                  {data.backlog_por_causa.reduce((sum, item) => sum + item.incidente, 0)}
+                  {data.backlog_por_causa.reduce((sum, item) => sum + (item.abertos || 0), 0)}
                 </TableCell>
                 <TableCell className="text-center">
-                  {data.backlog_por_causa.reduce((sum, item) => sum + item.solicitacao, 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {data.backlog_por_causa.reduce((sum, item) => sum + item.total, 0)}
+                  {data.backlog_por_causa.reduce((sum, item) => sum + (item.fechados || 0), 0)}
                 </TableCell>
               </TableRow>
             </TableBody>

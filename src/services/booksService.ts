@@ -180,6 +180,12 @@ class BooksService {
       const mesNome = MESES_LABELS[data.mes];
       const periodo = `${mesNome} ${data.ano}`;
 
+      console.log('📊 Dados do backlog do banco:', {
+        dados_backlog: data.dados_backlog,
+        tem_backlog_por_causa: !!data.dados_backlog?.backlog_por_causa,
+        backlog_por_causa_length: data.dados_backlog?.backlog_por_causa?.length || 0
+      });
+
       const bookData: BookData = {
         id: data.id,
         empresa_id: data.empresa_id,
@@ -206,7 +212,11 @@ class BooksService {
         },
         volumetria: data.dados_volumetria || this.getVolumetriaVazia(),
         sla: data.dados_sla || this.getSLAVazio(),
-        backlog: data.dados_backlog || this.getBacklogVazio(),
+        backlog: {
+          ...(data.dados_backlog || this.getBacklogVazio()),
+          // Garantir que backlog_por_causa sempre seja um array
+          backlog_por_causa: data.dados_backlog?.backlog_por_causa || this.getBacklogVazio().backlog_por_causa
+        },
         consumo: data.dados_consumo || this.getConsumoVazio(),
         pesquisa: data.dados_pesquisa || this.getPesquisaVazia()
       };
@@ -594,10 +604,10 @@ class BooksService {
       ],
       taxa_resolucao: 50,
       backlog_por_causa: [
-        { origem: 'Parametrização', incidente: 0, solicitacao: 8, total: 8 },
-        { origem: 'Desenvolvimento Standard (Produto)', incidente: 0, solicitacao: 3, total: 3 },
-        { origem: 'Desenvolvimento Específico', incidente: 0, solicitacao: 1, total: 1 },
-        { origem: 'Correção Standard', incidente: 2, solicitacao: 0, total: 2 }
+        { origem: 'Parametrização', incidente: 0, solicitacao: 8, total: 8, abertos: 5, fechados: 3 },
+        { origem: 'Desenvolvimento Standard (Produto)', incidente: 0, solicitacao: 3, total: 3, abertos: 2, fechados: 1 },
+        { origem: 'Desenvolvimento Específico', incidente: 0, solicitacao: 1, total: 1, abertos: 1, fechados: 0 },
+        { origem: 'Correção Standard', incidente: 2, solicitacao: 0, total: 2, abertos: 0, fechados: 2 }
       ]
     };
   }
@@ -641,6 +651,13 @@ class BooksService {
       ],
       distribuicao_por_grupo: [
         { grupo: 'IMPORTAÇÃO', total: 15, percentual: 100 }
+      ],
+      backlog_por_causa: [
+        { origem: 'Parametrização', incidente: 0, solicitacao: 8, total: 8 },
+        { origem: 'Desenvolvimento Standard (Produto)', incidente: 0, solicitacao: 3, total: 3 },
+        { origem: 'Correção Standard', incidente: 2, solicitacao: 0, total: 2 },
+        { origem: 'Desenvolvimento Específico', incidente: 0, solicitacao: 1, total: 1 },
+        { origem: 'Dúvida / Consultoria', incidente: 0, solicitacao: 1, total: 1 }
       ]
     };
   }

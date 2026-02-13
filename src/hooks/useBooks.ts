@@ -31,16 +31,22 @@ export function useBooks(filtros: BooksFiltros) {
   } = useQuery({
     queryKey: ['books', filtros],
     queryFn: () => booksService.listarBooks(filtros),
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 0, // Sempre buscar dados frescos
+    gcTime: 0, // Não manter cache (anteriormente cacheTime)
   });
 
   // Mutation para gerar books
   const gerarBooksMutation = useMutation({
     mutationFn: (config: BookGeracaoConfig) => booksService.gerarBooksLote(config),
     onSuccess: async (result: BooksGeracaoLoteResult) => {
-      // Invalidar cache
+      // Limpar TODO o cache relacionado a books
       await queryClient.invalidateQueries({ queryKey: ['books'] });
       await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['book-data'] });
+      
+      // Remover cache completamente
+      queryClient.removeQueries({ queryKey: ['books'] });
+      queryClient.removeQueries({ queryKey: ['book-data'] });
       
       // Forçar refetch imediato
       await refetch();
@@ -65,9 +71,14 @@ export function useBooks(filtros: BooksFiltros) {
     mutationFn: (config: BookGeracaoConfig) => 
       booksService.gerarBooksLote({ ...config, forcar_atualizacao: true }),
     onSuccess: async (result: BooksGeracaoLoteResult) => {
-      // Invalidar cache
+      // Limpar TODO o cache relacionado a books
       await queryClient.invalidateQueries({ queryKey: ['books'] });
       await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['book-data'] });
+      
+      // Remover cache completamente
+      queryClient.removeQueries({ queryKey: ['books'] });
+      queryClient.removeQueries({ queryKey: ['book-data'] });
       
       // Forçar refetch imediato
       await refetch();
@@ -91,9 +102,14 @@ export function useBooks(filtros: BooksFiltros) {
   const deletarBookMutation = useMutation({
     mutationFn: (bookId: string) => booksService.deletarBook(bookId),
     onSuccess: async () => {
-      // Invalidar cache
+      // Limpar TODO o cache relacionado a books
       await queryClient.invalidateQueries({ queryKey: ['books'] });
       await queryClient.invalidateQueries({ queryKey: ['books-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['book-data'] });
+      
+      // Remover cache completamente
+      queryClient.removeQueries({ queryKey: ['books'] });
+      queryClient.removeQueries({ queryKey: ['book-data'] });
       
       // Forçar refetch imediato
       await refetch();
@@ -142,7 +158,8 @@ export function useBookData(bookId: string | null) {
     queryKey: ['book-data', bookId],
     queryFn: () => bookId ? booksService.buscarBookPorId(bookId) : null,
     enabled: !!bookId,
-    staleTime: 1000 * 60 * 10, // 10 minutos (dados congelados)
+    staleTime: 0, // Sempre buscar dados frescos
+    gcTime: 0, // Não manter cache
   });
 
   useEffect(() => {
