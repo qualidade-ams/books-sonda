@@ -123,7 +123,7 @@ class BooksDataCollectorService {
           requerimentosPeriodo,
           empresa.meta_sla_percentual || 85
         ),
-        backlog: await this.gerarDadosBacklog(empresaId, requerimentosPeriodo),
+        backlog: await this.gerarDadosBacklog(empresa.nome_completo, mes, ano),
         consumo: await this.gerarDadosConsumo(
           requerimentosPeriodo,
           requerimentosHistorico,
@@ -395,18 +395,16 @@ class BooksDataCollectorService {
     // Gerar dados do semestre (últimos 6 meses) - buscar dados reais
     const chamadosSemestre = await this.buscarChamadosSemestre(empresaNomeCompleto, mes, ano);
 
-    // Agrupar por grupo (caso_grupo) - usar apenas tickets
-    const chamadosPorGrupo = this.agruparPorGrupo(apontamentosTickets);
+    // Agrupar por grupo - passar os tickets abertos e fechados separadamente
+    const chamadosPorGrupo = this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
 
     // Taxa de resolução - baseada apenas em tickets
     const taxaResolucao = apontamentosTickets.length > 0
       ? Math.round((totalFechados / apontamentosTickets.length) * 100)
       : 0;
 
-    // Backlog por causa - usar apenas tickets sem data_solucao
-    const backlogPorCausa = this.agruparBacklogPorOrigem(
-      apontamentosTickets.filter(a => !a.data_solucao)
-    );
+    // Chamados por causa - passar abertos e fechados separadamente
+    const chamadosPorCausa = this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
 
     return {
       abertos_mes: {
@@ -422,7 +420,7 @@ class BooksDataCollectorService {
       chamados_semestre: chamadosSemestre,
       chamados_por_grupo: chamadosPorGrupo,
       taxa_resolucao: taxaResolucao,
-      backlog_por_causa: backlogPorCausa
+      backlog_por_causa: chamadosPorCausa
     };
   }
 
@@ -455,7 +453,11 @@ class BooksDataCollectorService {
       empresa: empresaNomeCompleto,
       periodo: `${MESES_NOMES[mesInicial - 1]}/${anoInicial} até ${MESES_NOMES[mesAtual - 1]}/${anoAtual}`,
       dataInicio: dataInicio.toISOString(),
-      dataFim: dataFim.toISOString()
+      dataFim: dataFim.toISOString(),
+      mesInicial,
+      anoInicial,
+      mesAtual,
+      anoAtual
     });
     
     // Buscar TODOS os tickets ABERTOS dos últimos 6 meses (1 query)
@@ -473,6 +475,15 @@ class BooksDataCollectorService {
     if (errorAbertos) {
       console.error('❌ Erro ao buscar tickets abertos do semestre:', errorAbertos);
     }
+
+    console.log('🔍 DEBUG TICKETS ABERTOS:', {
+      total: ticketsAbertos?.length || 0,
+      amostra: ticketsAbertos?.slice(0, 3).map(t => ({
+        nro: t.nro_solicitacao,
+        tipo: t.cod_tipo,
+        data: t.data_abertura
+      }))
+    });
     
     // Buscar TODOS os tickets FECHADOS dos últimos 6 meses (1 query)
     const { data: ticketsFechados, error: errorFechados } = await supabase
@@ -489,6 +500,15 @@ class BooksDataCollectorService {
     if (errorFechados) {
       console.error('❌ Erro ao buscar tickets fechados do semestre:', errorFechados);
     }
+
+    console.log('🔍 DEBUG TICKETS FECHADOS:', {
+      total: ticketsFechados?.length || 0,
+      amostra: ticketsFechados?.slice(0, 3).map(t => ({
+        nro: t.nro_solicitacao,
+        tipo: t.cod_tipo,
+        data: t.data_solucao
+      }))
+    });
     
     // Agrupar tickets por mês
     const resultado: ChamadosSemestreData[] = [];
@@ -517,6 +537,12 @@ class BooksDataCollectorService {
         return dataSolucao >= mesInicio && dataSolucao <= mesFim;
       }).length;
       
+      console.log(`📊 ${MESES_NOMES[mes - 1]}/${ano}:`, {
+        abertos: abertosDoMes,
+        fechados: fechadosDoMes,
+        periodo: `${mesInicio.toLocaleDateString()} - ${mesFim.toLocaleDateString()}`
+      });
+      
       resultado.push({
         mes: MESES_NOMES[mes - 1],
         abertos: abertosDoMes,
@@ -528,7 +554,9 @@ class BooksDataCollectorService {
       empresa: empresaNomeCompleto,
       totalAbertos: (ticketsAbertos || []).length,
       totalFechados: (ticketsFechados || []).length,
-      dados: resultado
+      dados: resultado,
+      somaAbertos: resultado.reduce((sum, d) => sum + d.abertos, 0),
+      somaFechados: resultado.reduce((sum, d) => sum + d.fechados, 0)
     });
     
     return resultado;
@@ -549,59 +577,201 @@ class BooksDataCollectorService {
   /**
    * Agrupa apontamentos por grupo
    */
-  private agruparPorGrupo(apontamentos: any[]) {
+  private agruparPorGrupo(ticketsAbertos: any[], ticketsFechados: any[]) {
     const grupos = new Map<string, { total: number; abertos: number; fechados: number }>();
 
-    apontamentos.forEach(a => {
-      const grupo = a.caso_grupo || 'SEM GRUPO';
+    // Processar tickets abertos
+    ticketsAbertos.forEach(a => {
+      const grupo = a.nome_grupo || 'SEM GRUPO';
       if (!grupos.has(grupo)) {
         grupos.set(grupo, { total: 0, abertos: 0, fechados: 0 });
       }
       const stats = grupos.get(grupo)!;
-      stats.total++;
-      if (a.data_fechamento) {
-        stats.fechados++;
-      } else {
-        stats.abertos++;
-      }
+      stats.abertos++;
     });
 
-    return Array.from(grupos.entries()).map(([grupo, stats]) => ({
-      grupo,
-      total: stats.total,
-      abertos: stats.abertos,
-      fechados: stats.fechados,
-      percentual: apontamentos.length > 0 
-        ? Math.round((stats.total / apontamentos.length) * 100)
-        : 0
-    }));
+    // Processar tickets fechados
+    ticketsFechados.forEach(a => {
+      const grupo = a.nome_grupo || 'SEM GRUPO';
+      if (!grupos.has(grupo)) {
+        grupos.set(grupo, { total: 0, abertos: 0, fechados: 0 });
+      }
+      const stats = grupos.get(grupo)!;
+      stats.fechados++;
+    });
+
+    // Calcular total para cada grupo
+    grupos.forEach((stats) => {
+      stats.total = stats.abertos + stats.fechados;
+    });
+
+    // Ordenar por total (maior para menor)
+    const gruposArray = Array.from(grupos.entries())
+      .map(([grupo, stats]) => {
+        const totalGeral = ticketsAbertos.length + ticketsFechados.length;
+        return {
+          grupo,
+          total: stats.total,
+          abertos: stats.abertos,
+          fechados: stats.fechados,
+          percentual: totalGeral > 0 
+            ? Math.round((stats.total / totalGeral) * 100)
+            : 0
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+
+    console.log('📊 Chamados agrupados por grupo (nome_grupo):', {
+      totalGrupos: gruposArray.length,
+      totalAbertos: ticketsAbertos.length,
+      totalFechados: ticketsFechados.length,
+      grupos: gruposArray.map(g => ({
+        nome: g.grupo,
+        total: g.total,
+        abertos: g.abertos,
+        fechados: g.fechados
+      }))
+    });
+
+    return gruposArray;
   }
 
   /**
    * Agrupa backlog por origem
    */
-  private agruparBacklogPorOrigem(backlog: any[]) {
-    const origens = new Map<string, { incidente: number; solicitacao: number }>();
+  /**
+   * Agrupa TODOS os chamados por causa (cod_resolucao)
+   * Usado na aba Volumetria
+   * MODIFICADO: Agora recebe abertos e fechados separadamente para exibir na tabela
+   */
+  private agruparChamadosPorCausa(ticketsAbertos: any[], ticketsFechados: any[]) {
+    const causas = new Map<string, { 
+      incidente: number; 
+      solicitacao: number;
+      abertos: number;
+      fechados: number;
+    }>();
 
-    backlog.forEach(a => {
-      const origem = a.origem_caso || a.categoria || 'SEM ORIGEM';
-      if (!origens.has(origem)) {
-        origens.set(origem, { incidente: 0, solicitacao: 0 });
+    // Processar tickets ABERTOS
+    ticketsAbertos.forEach(a => {
+      const causa = a.cod_resolucao || 'SEM CAUSA';
+      if (!causas.has(causa)) {
+        causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
-      const stats = origens.get(origem)!;
-      if (a.tipo_chamado === 'IM') {
+      const stats = causas.get(causa)!;
+      stats.abertos++;
+      
+      // Contar por tipo
+      if (a.cod_tipo === 'Incidente') {
         stats.incidente++;
-      } else if (a.tipo_chamado === 'RF') {
+      } else {
         stats.solicitacao++;
       }
     });
 
-    return Array.from(origens.entries()).map(([origem, stats]) => ({
-      origem,
-      incidente: stats.incidente,
-      solicitacao: stats.solicitacao,
-      total: stats.incidente + stats.solicitacao
-    }));
+    // Processar tickets FECHADOS
+    ticketsFechados.forEach(a => {
+      const causa = a.cod_resolucao || 'SEM CAUSA';
+      if (!causas.has(causa)) {
+        causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
+      }
+      const stats = causas.get(causa)!;
+      stats.fechados++;
+      
+      // Contar por tipo (apenas se não foi contado nos abertos)
+      // Na verdade, precisamos recontar porque um ticket pode estar em ambos
+      if (a.cod_tipo === 'Incidente') {
+        stats.incidente++;
+      } else {
+        stats.solicitacao++;
+      }
+    });
+
+    const resultado = Array.from(causas.entries())
+      .map(([origem, stats]) => ({
+        origem,
+        incidente: stats.incidente,
+        solicitacao: stats.solicitacao,
+        total: stats.incidente + stats.solicitacao,
+        abertos: stats.abertos,
+        fechados: stats.fechados
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    console.log('📊 Chamados agrupados por causa (cod_resolucao) - COM ABERTOS/FECHADOS:', {
+      totalCausas: resultado.length,
+      causas: resultado.map(c => ({
+        causa: c.origem,
+        incidente: c.incidente,
+        solicitacao: c.solicitacao,
+        total: c.total,
+        abertos: c.abertos,
+        fechados: c.fechados
+      }))
+    });
+
+    return resultado;
+  }
+
+  /**
+   * Agrupa BACKLOG (não fechados) por causa (cod_resolucao)
+   * Usado na aba Backlog
+   */
+  private agruparBacklogPorCausa(backlog: any[]) {
+    const causas = new Map<string, { incidente: number; solicitacao: number }>();
+
+    backlog.forEach(a => {
+      // Usar cod_resolucao como causa
+      const causa = a.cod_resolucao || 'SEM CAUSA';
+      if (!causas.has(causa)) {
+        causas.set(causa, { incidente: 0, solicitacao: 0 });
+      }
+      const stats = causas.get(causa)!;
+      
+      // Usar cod_tipo para determinar se é Incidente ou Solicitação
+      if (a.cod_tipo === 'Incidente') {
+        stats.incidente++;
+      } else {
+        stats.solicitacao++;
+      }
+    });
+
+    const resultado = Array.from(causas.entries())
+      .map(([origem, stats]) => ({
+        origem,
+        incidente: stats.incidente,
+        solicitacao: stats.solicitacao,
+        total: stats.incidente + stats.solicitacao
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    console.log('📊 Backlog agrupado por causa (cod_resolucao):', {
+      totalCausas: resultado.length,
+      causas: resultado.map(c => ({
+        causa: c.origem,
+        incidente: c.incidente,
+        solicitacao: c.solicitacao,
+        total: c.total
+      }))
+    });
+
+    return resultado;
+  }
+
+  /**
+   * Agrupa backlog por grupo (nome_grupo)
+   */
+  private agruparPorGrupoBacklog(backlog: any[]) {
+    const grupos = new Map<string, number>();
+
+    backlog.forEach(a => {
+      const grupo = a.nome_grupo || 'SEM GRUPO';
+      grupos.set(grupo, (grupos.get(grupo) || 0) + 1);
+    });
+
+    return Array.from(grupos.entries())
+      .map(([grupo, total]) => ({ grupo, total }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**
@@ -657,22 +827,45 @@ class BooksDataCollectorService {
    * Gera dados de backlog
    */
   private async gerarDadosBacklog(
-    empresaId: string,
-    requerimentos: any[]
+    empresaNomeCompleto: string,
+    mes: number,
+    ano: number
   ): Promise<BookBacklogData> {
-    const backlog = requerimentos.filter(r => !r.data_aprovacao);
+    // Buscar tickets de backlog (status diferente de Closed ou Resolved)
+    const { data: ticketsBacklog, error } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .not('status', 'in', '("Closed","Resolved")')
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    if (error) {
+      console.error('❌ Erro ao buscar backlog:', error);
+    }
+
+    const backlog = ticketsBacklog || [];
     
-    const incidente = backlog.filter(r => 
-      r.tipo_cobranca === 'Incidente' || r.descricao?.toLowerCase().includes('incidente')
-    ).length;
-    
+    console.log('📊 Backlog encontrado:', {
+      total: backlog.length,
+      amostra: backlog.slice(0, 3).map(t => ({
+        nro: t.nro_solicitacao,
+        status: t.status,
+        cod_tipo: t.cod_tipo,
+        cod_resolucao: t.cod_resolucao
+      }))
+    });
+
+    const incidente = backlog.filter(r => r.cod_tipo === 'Incidente').length;
     const solicitacao = backlog.length - incidente;
 
     // Calcular aging (idade dos chamados)
     const agingChamados = this.calcularAging(backlog);
 
-    // Distribuição por grupo (módulo)
-    const distribuicaoPorGrupo = this.agruparPorModulo(backlog).map(grupo => ({
+    // Distribuição por grupo (nome_grupo)
+    const distribuicaoPorGrupo = this.agruparPorGrupoBacklog(backlog).map(grupo => ({
       grupo: grupo.grupo,
       total: grupo.total,
       percentual: backlog.length > 0 
@@ -680,12 +873,16 @@ class BooksDataCollectorService {
         : 0
     }));
 
+    // Backlog por causa (cod_resolucao)
+    const backlogPorCausa = this.agruparBacklogPorCausa(backlog);
+
     return {
       total: backlog.length,
       incidente,
       solicitacao,
       aging_chamados: agingChamados,
-      distribuicao_por_grupo: distribuicaoPorGrupo
+      distribuicao_por_grupo: distribuicaoPorGrupo,
+      backlog_por_causa: backlogPorCausa
     };
   }
 
@@ -854,37 +1051,6 @@ class BooksDataCollectorService {
       percentual: requerimentos.length > 0
         ? Math.round((dados.total / requerimentos.length) * 100)
         : 0
-    }));
-  }
-
-  /**
-   * Agrupa backlog por causa (tipo de cobrança)
-   */
-  private agruparBacklogPorCausa(backlog: any[]) {
-    const causasMap = new Map<string, { incidente: number; solicitacao: number }>();
-
-    backlog.forEach(r => {
-      const causa = r.tipo_cobranca || 'Outros';
-      const isIncidente = r.tipo_cobranca === 'Incidente' || 
-                         r.descricao?.toLowerCase().includes('incidente');
-
-      if (!causasMap.has(causa)) {
-        causasMap.set(causa, { incidente: 0, solicitacao: 0 });
-      }
-
-      const dados = causasMap.get(causa)!;
-      if (isIncidente) {
-        dados.incidente++;
-      } else {
-        dados.solicitacao++;
-      }
-    });
-
-    return Array.from(causasMap.entries()).map(([origem, dados]) => ({
-      origem,
-      incidente: dados.incidente,
-      solicitacao: dados.solicitacao,
-      total: dados.incidente + dados.solicitacao
     }));
   }
 

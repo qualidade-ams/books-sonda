@@ -5,6 +5,15 @@
 
 import { FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   BarChart,
   Bar,
@@ -22,6 +31,16 @@ interface BookBacklogProps {
 }
 
 export default function BookBacklog({ data }: BookBacklogProps) {
+  // Log para debug
+  console.log('📊 BookBacklog - dados recebidos:', {
+    total: data.total,
+    incidente: data.incidente,
+    solicitacao: data.solicitacao,
+    tem_backlog_por_causa: !!data.backlog_por_causa,
+    backlog_por_causa_length: data.backlog_por_causa?.length || 0,
+    backlog_por_causa: data.backlog_por_causa
+  });
+
   return (
     <div className="space-y-6">
       {/* Título da Seção */}
@@ -168,6 +187,60 @@ export default function BookBacklog({ data }: BookBacklogProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabela: Backlog Atualizado X CAUSA */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
+            <Button variant="link" className="text-blue-600 text-sm">Ver Detalhes</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="font-semibold">ORIGEM</TableHead>
+                <TableHead className="text-center font-semibold">INCIDENTE</TableHead>
+                <TableHead className="text-center font-semibold">SOLICITAÇÃO</TableHead>
+                <TableHead className="text-center font-semibold bg-blue-600 text-white">TOTAL</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(data.backlog_por_causa && data.backlog_por_causa.length > 0) ? (
+                <>
+                  {data.backlog_por_causa.map((item, index) => (
+                    <TableRow key={index} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{item.origem}</TableCell>
+                      <TableCell className="text-center">{item.incidente || '-'}</TableCell>
+                      <TableCell className="text-center">{item.solicitacao || '-'}</TableCell>
+                      <TableCell className="text-center font-semibold">{item.total}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="bg-blue-600 text-white font-bold">
+                    <TableCell>TOTAL</TableCell>
+                    <TableCell className="text-center">
+                      {data.backlog_por_causa.reduce((sum, item) => sum + item.incidente, 0)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {data.backlog_por_causa.reduce((sum, item) => sum + item.solicitacao, 0)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {data.backlog_por_causa.reduce((sum, item) => sum + item.total, 0)}
+                    </TableCell>
+                  </TableRow>
+                </>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                    Nenhum dado de backlog por causa disponível
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

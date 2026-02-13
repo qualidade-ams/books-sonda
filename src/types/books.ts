@@ -99,6 +99,9 @@ export interface BacklogPorCausaData {
   incidente: number;
   solicitacao: number;
   total: number;
+  // Separação entre abertos e fechados (usado na aba Volumetria)
+  abertos?: number;
+  fechados?: number;
 }
 
 /**
@@ -150,6 +153,9 @@ export interface BookBacklogData {
   
   // Card lateral: Distribuição por Grupo
   distribuicao_por_grupo: DistribuicaoPorGrupoData[];
+  
+  // Tabela: Backlog por Causa
+  backlog_por_causa: BacklogPorCausaData[];
 }
 
 export interface AgingChamadosData {

@@ -3,7 +3,7 @@
  * Exibe as abas (Capa, Volumetria, SLA, Backlog, Consumo, Pesquisa)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Download, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useBookData } from '@/hooks/useBooks';
+import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookTab } from '@/types/books';
 import { BOOK_TABS_LABELS } from '@/types/books';
 import { booksPDFService } from '@/services/booksPDFService';
@@ -37,8 +38,22 @@ interface BookViewerProps {
 export default function BookViewer({ book, open, onOpenChange }: BookViewerProps) {
   const [activeTab, setActiveTab] = useState<BookTab>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
-  const { bookData, isLoading } = useBookData(book?.id || null);
+  const { bookData, isLoading, refetch } = useBookData(book?.id || null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Limpar cache e recarregar dados quando o modal for aberto
+  useEffect(() => {
+    if (open && book?.id) {
+      console.log('🔄 BookViewer aberto - Limpando cache e recarregando dados para book:', book.id);
+      
+      // Limpar cache específico deste book
+      queryClient.removeQueries({ queryKey: ['book-data', book.id] });
+      
+      // Forçar refetch imediato
+      refetch();
+    }
+  }, [open, book?.id, queryClient, refetch]);
 
   const handleDownloadPDF = async () => {
     if (!bookData || !book) return;
@@ -164,6 +179,8 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
                 <BookVolumetria 
                   data={bookData.volumetria} 
                   empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  mes={bookData.mes}
+                  ano={bookData.ano}
                 />
               </TabsContent>
 
