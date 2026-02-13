@@ -18,9 +18,10 @@ import type { BookPesquisaData } from '@/types/books';
 
 interface BookPesquisaProps {
   data: BookPesquisaData;
+  empresaNome?: string; // Nome abreviado do cliente
 }
 
-export default function BookPesquisa({ data }: BookPesquisaProps) {
+export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
   // Calcular ângulo para o gráfico circular de aderência
   const aderenciaAngle = (data.percentual_aderencia / 100) * 360;
 
@@ -29,7 +30,9 @@ export default function BookPesquisa({ data }: BookPesquisaProps) {
       {/* Título da Seção */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Pesquisa RAINBOW</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Pesquisa {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          </h2>
         </div>
         <Button variant="outline" size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
           <Download className="h-4 w-4 mr-2" />
