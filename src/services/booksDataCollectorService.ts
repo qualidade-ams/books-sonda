@@ -38,7 +38,7 @@ class BooksDataCollectorService {
       // Buscar informações da empresa
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato')
+        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla')
         .eq('id', empresaId)
         .single();
 
@@ -120,8 +120,12 @@ class BooksDataCollectorService {
         ),
         sla: await this.gerarDadosSLA(
           empresaId,
+          empresa.nome_completo,
+          mes,
+          ano,
           requerimentosPeriodo,
-          empresa.meta_sla_percentual || 85
+          empresa.meta_sla_percentual || 85,
+          empresa.quantidade_minima_chamados_sla || 0
         ),
         backlog: await this.gerarDadosBacklog(empresa.nome_completo, mes, ano),
         consumo: await this.gerarDadosConsumo(
@@ -406,6 +410,13 @@ class BooksDataCollectorService {
     // Chamados por causa - passar abertos e fechados separadamente
     const chamadosPorCausa = this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
 
+    // Calcular SLA médio dos últimos 5 meses e variação vs mês anterior
+    const slaMedioData = await this.calcularSLAMedioUltimos5Meses(
+      empresaNomeCompleto,
+      mes,
+      ano
+    );
+
     return {
       abertos_mes: {
         solicitacao: abertosSolicitacao,
@@ -415,12 +426,103 @@ class BooksDataCollectorService {
         solicitacao: fechadosSolicitacao,
         incidente: fechadosIncidente
       },
-      sla_medio: Math.round(slaMedio * 10) / 10,
+      sla_medio: slaMedioData.sla_medio,
+      sla_medio_variacao: slaMedioData.variacao_mes_anterior,
       total_backlog: totalBacklog,
       chamados_semestre: chamadosSemestre,
       chamados_por_grupo: chamadosPorGrupo,
       taxa_resolucao: taxaResolucao,
       backlog_por_causa: chamadosPorCausa
+    };
+  }
+
+  /**
+   * Calcula SLA médio dos últimos 5 meses e variação vs mês anterior
+   * SLA = (Incidentes - Violados) / Incidentes * 100
+   */
+  private async calcularSLAMedioUltimos5Meses(
+    empresaNomeCompleto: string,
+    mesAtual: number,
+    anoAtual: number
+  ): Promise<{ sla_medio: number; variacao_mes_anterior: number }> {
+    console.log('📊 Calculando SLA médio dos últimos 5 meses...');
+
+    const slasPorMes: number[] = [];
+
+    // Calcular SLA para os últimos 5 meses
+    for (let i = 4; i >= 0; i--) {
+      let mes = mesAtual - i;
+      let ano = anoAtual;
+      
+      while (mes <= 0) {
+        mes += 12;
+        ano -= 1;
+      }
+
+      const dataInicio = new Date(ano, mes - 1, 1);
+      const proximoMesInicio = new Date(ano, mes, 1);
+
+      // Buscar incidentes fechados do mês
+      const { data: ticketsFechados } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('*')
+        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .gte('data_solucao', dataInicio.toISOString())
+        .lt('data_solucao', proximoMesInicio.toISOString())
+        .eq('cod_tipo', 'Incidente')
+        .neq('cod_tipo', 'Problema')
+        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+        .eq('caso_pai', 'SIM')
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+      const totalIncidentes = (ticketsFechados || []).length;
+
+      // Buscar violados do mês
+      const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+      const { data: ticketsViolados } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('nro_solicitacao')
+        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .eq('tds_cumprido', 'TDS Vencido')
+        .gte('data_abertura', dataInicio.toISOString())
+        .lte('data_abertura', dataFim.toISOString())
+        .neq('cod_tipo', 'Problema')
+        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+        .eq('caso_pai', 'SIM')
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+      const totalViolados = (ticketsViolados || []).length;
+
+      // Calcular SLA do mês
+      const slaMes = totalIncidentes > 0
+        ? Math.round(((totalIncidentes - totalViolados) / totalIncidentes) * 100)
+        : 100;
+
+      slasPorMes.push(slaMes);
+    }
+
+    // Calcular média dos 5 meses
+    const slaMedio = slasPorMes.length > 0
+      ? Math.round((slasPorMes.reduce((sum, sla) => sum + sla, 0) / slasPorMes.length) * 10) / 10
+      : 0;
+
+    // Calcular variação vs mês anterior (penúltimo mês vs último mês)
+    let variacaoMesAnterior = 0;
+    if (slasPorMes.length >= 2) {
+      const slaMesAnterior = slasPorMes[slasPorMes.length - 2]; // Penúltimo
+      const slaMesAtual = slasPorMes[slasPorMes.length - 1]; // Último
+      variacaoMesAnterior = Math.round((slaMesAtual - slaMesAnterior) * 10) / 10;
+    }
+
+    console.log('✅ SLA médio calculado:', {
+      slasPorMes,
+      slaMedio,
+      variacaoMesAnterior
+    });
+
+    return {
+      sla_medio: slaMedio,
+      variacao_mes_anterior: variacaoMesAnterior
     };
   }
 
@@ -776,50 +878,236 @@ class BooksDataCollectorService {
 
   /**
    * Gera dados de SLA
+   * MODIFICADO: Buscar dados reais de apontamentos_tickets_aranda
+   * REGRA: SLA = (Total Incidentes - Violados) / Total Incidentes * 100
+   * Só é elegível se Total Incidentes >= quantidade_minima_chamados_sla
    */
   private async gerarDadosSLA(
     empresaId: string,
+    empresaNomeCompleto: string,
+    mes: number,
+    ano: number,
     requerimentos: any[],
-    metaSLA: number
+    metaSLA: number,
+    quantidadeMinimaIncidentes: number
   ): Promise<BookSLAData> {
-    const fechados = requerimentos.filter(r => r.data_aprovacao);
-    const incidentes = requerimentos.filter(r => 
-      r.tipo_cobranca === 'Incidente' || r.descricao?.toLowerCase().includes('incidente')
+    console.log('📊 Gerando dados de SLA...', {
+      empresa: empresaNomeCompleto,
+      mes,
+      ano,
+      periodo: `${String(mes).padStart(2, '0')}/${ano}`,
+      metaSLA,
+      quantidadeMinimaIncidentes
+    });
+    
+    const dataInicio = new Date(ano, mes - 1, 1);
+    const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+    const proximoMesInicio = new Date(ano, mes, 1);
+
+    console.log('📅 Período SLA:', {
+      empresa: empresaNomeCompleto,
+      mes,
+      ano,
+      dataInicio: dataInicio.toISOString(),
+      dataFim: dataFim.toISOString()
+    });
+
+    // FECHADOS: Todos os chamados fechados no mês (com data_solucao)
+    const { data: ticketsFechados, error: errorFechados } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .gte('data_solucao', dataInicio.toISOString())
+      .lt('data_solucao', proximoMesInicio.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    if (errorFechados) {
+      console.error('❌ Erro ao buscar tickets fechados:', errorFechados);
+    }
+
+    const fechados = (ticketsFechados || []).length;
+
+    // INCIDENTES: Incidentes fechados no mês (base para cálculo do SLA)
+    const incidentes = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente').length;
+
+    // INCIDENTES ELEGÍVEIS: Incidentes com cod_resolucao específicos para elegibilidade
+    const codResolucaoElegiveis = [
+      'Consultoria',
+      'Consultoria – Solução Paliativa',
+      'Consultoria – Banco de Dados',
+      'Consultoria – Nota Publicada'
+    ];
+    
+    const incidentesElegiveis = (ticketsFechados || []).filter(t => 
+      t.cod_tipo === 'Incidente' && 
+      codResolucaoElegiveis.includes(t.cod_resolucao)
+    ).length;
+
+    console.log('📊 Incidentes para elegibilidade:', {
+      totalIncidentes: incidentes,
+      incidentesElegiveis,
+      codResolucaoElegiveis,
+      amostra: (ticketsFechados || [])
+        .filter(t => t.cod_tipo === 'Incidente')
+        .slice(0, 5)
+        .map(t => ({
+          nro: t.nro_solicitacao,
+          cod_resolucao: t.cod_resolucao,
+          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao)
+        }))
+    });
+
+    // VIOLADOS: Chamados onde tds_cumprido = 'TDS Vencido'
+    const { data: ticketsViolados, error: errorViolados } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('*')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .eq('tds_cumprido', 'TDS Vencido')
+      .gte('data_abertura', dataInicio.toISOString())
+      .lte('data_abertura', dataFim.toISOString())
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    if (errorViolados) {
+      console.error('❌ Erro ao buscar tickets violados:', errorViolados);
+    }
+
+    const violados = (ticketsViolados || []).length;
+    
+    // Verificar se os violados têm cod_resolucao elegível
+    const violadosElegiveis = (ticketsViolados || []).filter(t => 
+      codResolucaoElegiveis.includes(t.cod_resolucao)
+    ).length;
+    
+    const violadosNaoElegiveis = violados - violadosElegiveis;
+
+    console.log('📊 Violados por elegibilidade:', {
+      totalViolados: violados,
+      violadosElegiveis,
+      violadosNaoElegiveis,
+      amostra: (ticketsViolados || [])
+        .slice(0, 5)
+        .map(t => ({
+          nro: t.nro_solicitacao,
+          cod_resolucao: t.cod_resolucao,
+          elegivel: codResolucaoElegiveis.includes(t.cod_resolucao)
+        }))
+    });
+
+    console.log('✅ Dados SLA calculados:', {
+      fechados,
+      incidentes,
+      incidentesElegiveis,
+      violados,
+      violadosElegiveis,
+      violadosNaoElegiveis,
+      quantidadeMinimaIncidentes,
+      fonte: 'apontamentos_tickets_aranda'
+    });
+
+    // NOVA LÓGICA DE CÁLCULO DO SLA
+    // SLA = (Incidentes - Violados) / Incidentes * 100
+    // ELEGIBILIDADE = Incidentes com cod_resolucao específicos >= quantidade mínima
+    let slaPercentual = 0;
+    let status: 'no_prazo' | 'vencido' = 'no_prazo';
+    let slaElegivel = true;
+    let mensagemNaoElegivel = '';
+    let mensagemVioladosNaoElegiveis = '';
+
+    if (incidentes > 0) {
+      slaPercentual = Math.round(((incidentes - violados) / incidentes) * 100);
+      
+      // Verificar se é elegível para avaliação (baseado em incidentes com cod_resolucao específicos)
+      if (incidentesElegiveis < quantidadeMinimaIncidentes) {
+        slaElegivel = false;
+        mensagemNaoElegivel = 'Volume de chamados abaixo do mínimo contratual. O SLA não é elegível para avaliação neste período.';
+        status = 'no_prazo'; // Não avalia como vencido se não for elegível
+        console.log('⚠️ SLA NÃO ELEGÍVEL:', {
+          incidentes,
+          incidentesElegiveis,
+          minimoRequerido: quantidadeMinimaIncidentes,
+          mensagem: mensagemNaoElegivel
+        });
+      } else {
+        // Elegível: verificar se está no prazo ou vencido
+        status = slaPercentual >= metaSLA ? 'no_prazo' : 'vencido';
+        console.log('✅ SLA ELEGÍVEL:', {
+          incidentes,
+          incidentesElegiveis,
+          minimoRequerido: quantidadeMinimaIncidentes,
+          percentual: slaPercentual,
+          meta: metaSLA,
+          status
+        });
+      }
+      
+      // Verificar se há violados não elegíveis
+      if (violadosNaoElegiveis > 0) {
+        mensagemVioladosNaoElegiveis = `${violadosNaoElegiveis} chamado(s) violado(s) não possui(em) código de resolução elegível para avaliação de SLA.`;
+        console.log('⚠️ VIOLADOS NÃO ELEGÍVEIS:', {
+          violadosNaoElegiveis,
+          mensagem: mensagemVioladosNaoElegiveis
+        });
+      }
+    } else {
+      // Sem incidentes = 100% de SLA
+      slaPercentual = 100;
+      status = 'no_prazo';
+    }
+
+    // Histórico de SLA (últimos 5 meses: mês atual + 4 anteriores)
+    const historicoSLA = await this.calcularSLAHistorico(
+      empresaNomeCompleto,
+      mes,
+      ano,
+      metaSLA,
+      quantidadeMinimaIncidentes
     );
 
-    // Calcular SLA (simplificado)
-    const slaPercentual = requerimentos.length > 0
-      ? Math.round((fechados.length / requerimentos.length) * 100)
-      : 0;
-
-    const status: 'no_prazo' | 'vencido' = slaPercentual >= metaSLA ? 'no_prazo' : 'vencido';
-
-    // Chamados violados (sem data_aprovacao ou com atraso)
-    const violados = requerimentos.filter(r => !r.data_aprovacao);
-
-    // Histórico de SLA (últimos 4 meses)
-    const historicoSLA = await this.calcularSLAHistorico(empresaId, metaSLA);
-
-    // Detalhes dos chamados violados
-    const chamadosViolados = violados.slice(0, 10).map(r => ({
-      id_chamado: r.chamado,
-      tipo: (r.tipo_cobranca === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
-      data_abertura: new Date(r.data_envio).toLocaleDateString('pt-BR'),
-      data_solucao: r.data_aprovacao 
-        ? new Date(r.data_aprovacao).toLocaleDateString('pt-BR')
+    // Detalhes dos chamados violados (top 10)
+    const chamadosViolados = (ticketsViolados || []).slice(0, 10).map(t => ({
+      id_chamado: t.nro_solicitacao,
+      tipo: (t.cod_tipo === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
+      data_abertura: new Date(t.data_abertura).toLocaleDateString('pt-BR'),
+      data_solucao: t.data_solucao 
+        ? new Date(t.data_solucao).toLocaleDateString('pt-BR')
         : 'Pendente',
-      grupo_atendedor: r.modulo || 'N/A'
+      grupo_atendedor: t.nome_grupo || 'N/A'
     }));
 
     return {
       sla_percentual: slaPercentual,
       meta_percentual: metaSLA,
       status: status,
-      fechados: fechados.length,
-      incidentes: incidentes.length,
-      violados: violados.length,
+      fechados: fechados,
+      incidentes: incidentes,
+      violados: violados,
       sla_historico: historicoSLA,
-      chamados_violados: chamadosViolados
+      chamados_violados: chamadosViolados,
+      sla_elegivel: slaElegivel,
+      mensagem_nao_elegivel: mensagemNaoElegivel,
+      mensagem_violados_nao_elegiveis: mensagemVioladosNaoElegiveis
+    };
+  }
+
+  /**
+   * Gera dados vazios de SLA (fallback)
+   */
+  private gerarDadosSLAVazio(metaSLA: number): BookSLAData {
+    return {
+      sla_percentual: 0,
+      meta_percentual: metaSLA,
+      status: 'vencido',
+      fechados: 0,
+      incidentes: 0,
+      violados: 0,
+      sla_historico: [],
+      chamados_violados: []
     };
   }
 
@@ -1100,17 +1388,128 @@ class BooksDataCollectorService {
   }
 
   /**
-   * Calcula histórico de SLA
+   * Calcula histórico de SLA dos últimos 5 meses (mês atual + 4 anteriores)
+   * Busca dados reais de apontamentos_tickets_aranda
+   * REGRA: SLA = (Incidentes - Violados) / Incidentes * 100
    */
-  private async calcularSLAHistorico(empresaId: string, metaSLA: number) {
-    // TODO: Implementar cálculo real de SLA histórico
-    // Por enquanto, retorna dados mockados
-    return [
-      { mes: 'MAIO', percentual: 100, status: 'no_prazo' as const },
-      { mes: 'JUNHO', percentual: 100, status: 'no_prazo' as const },
-      { mes: 'JULHO', percentual: 100, status: 'no_prazo' as const },
-      { mes: 'SETEMBRO', percentual: 90, status: 'no_prazo' as const }
-    ];
+  private async calcularSLAHistorico(
+    empresaNomeCompleto: string,
+    mesAtual: number,
+    anoAtual: number,
+    metaSLA: number,
+    quantidadeMinimaIncidentes: number
+  ) {
+    console.log('📊 Calculando histórico de SLA (5 meses)...', {
+      empresa: empresaNomeCompleto,
+      mesAtual,
+      anoAtual,
+      quantidadeMinimaIncidentes
+    });
+
+    const MESES_NOMES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 
+                         'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+
+    const resultado = [];
+
+    // Calcular para os últimos 5 meses (mês atual + 4 anteriores)
+    for (let i = 4; i >= 0; i--) {
+      let mes = mesAtual - i;
+      let ano = anoAtual;
+      
+      while (mes <= 0) {
+        mes += 12;
+        ano -= 1;
+      }
+
+      const dataInicio = new Date(ano, mes - 1, 1);
+      const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+      const proximoMesInicio = new Date(ano, mes, 1);
+
+      // Buscar tickets fechados do mês
+      const { data: ticketsFechados } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('*')
+        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .gte('data_solucao', dataInicio.toISOString())
+        .lt('data_solucao', proximoMesInicio.toISOString())
+        .neq('cod_tipo', 'Problema')
+        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+        .eq('caso_pai', 'SIM')
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+      // Contar incidentes fechados
+      const totalIncidentes = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente').length;
+
+      // Contar incidentes elegíveis (com cod_resolucao específicos)
+      const codResolucaoElegiveis = [
+        'Consultoria',
+        'Consultoria – Solução Paliativa',
+        'Consultoria – Banco de Dados',
+        'Consultoria – Nota Publicada'
+      ];
+      
+      const incidentesElegiveis = (ticketsFechados || []).filter(t => 
+        t.cod_tipo === 'Incidente' && 
+        codResolucaoElegiveis.includes(t.cod_resolucao)
+      ).length;
+
+      // Buscar tickets violados do mês
+      const { data: ticketsViolados } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('nro_solicitacao')
+        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .eq('tds_cumprido', 'TDS Vencido')
+        .gte('data_abertura', dataInicio.toISOString())
+        .lte('data_abertura', dataFim.toISOString())
+        .neq('cod_tipo', 'Problema')
+        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+        .eq('caso_pai', 'SIM')
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+      const totalViolados = (ticketsViolados || []).length;
+
+      // Calcular percentual de SLA: (Incidentes - Violados) / Incidentes * 100
+      let percentual = 0;
+      let status: 'no_prazo' | 'vencido' = 'no_prazo';
+      let elegivel = true;
+
+      if (totalIncidentes > 0) {
+        percentual = Math.round(((totalIncidentes - totalViolados) / totalIncidentes) * 100);
+        
+        // Verificar elegibilidade (baseado em incidentes com cod_resolucao específicos)
+        elegivel = incidentesElegiveis >= quantidadeMinimaIncidentes;
+        
+        // Só avalia como vencido se for elegível (>= quantidade mínima)
+        if (elegivel) {
+          status = percentual >= metaSLA ? 'no_prazo' : 'vencido';
+        } else {
+          status = 'no_prazo'; // Não elegível = não avalia como vencido
+        }
+      } else {
+        percentual = 100; // Sem incidentes = 100%
+        status = 'no_prazo';
+        elegivel = false; // Sem incidentes = não elegível
+      }
+
+      console.log(`📈 ${MESES_NOMES[mes - 1]}/${ano}:`, {
+        incidentes: totalIncidentes,
+        incidentesElegiveis,
+        violados: totalViolados,
+        percentual,
+        status,
+        elegivel
+      });
+
+      resultado.push({
+        mes: MESES_NOMES[mes - 1],
+        percentual,
+        status,
+        elegivel
+      });
+    }
+
+    console.log('✅ Histórico SLA calculado:', resultado);
+    return resultado;
   }
 
   /**

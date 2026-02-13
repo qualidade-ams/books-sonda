@@ -66,7 +66,8 @@ export interface BookVolumetriaData {
     solicitacao: number;
     incidente: number;
   };
-  sla_medio: number; // Percentual
+  sla_medio: number; // Percentual médio dos últimos 5 meses
+  sla_medio_variacao?: number; // Variação vs mês anterior (pode ser positiva ou negativa)
   total_backlog: number;
   
   // Gráfico: Chamados por Semestre
@@ -123,12 +124,18 @@ export interface BookSLAData {
   
   // Tabela: Chamados Violados
   chamados_violados: ChamadoVioladoData[];
+  
+  // Elegibilidade do SLA
+  sla_elegivel?: boolean; // Se o volume de incidentes é >= quantidade mínima
+  mensagem_nao_elegivel?: string; // Mensagem quando não é elegível
+  mensagem_violados_nao_elegiveis?: string; // Mensagem quando há violados sem cod_resolucao elegível
 }
 
 export interface SLAHistoricoData {
   mes: string; // Ex: "MAIO", "JUNHO"
   percentual: number;
   status: 'no_prazo' | 'vencido';
+  elegivel?: boolean; // Se o volume de incidentes é >= quantidade mínima
 }
 
 export interface ChamadoVioladoData {

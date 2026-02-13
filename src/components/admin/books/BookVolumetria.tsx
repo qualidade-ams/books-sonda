@@ -137,9 +137,18 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
             <div className="text-3xl font-bold text-yellow-600">
               {data.sla_medio.toFixed(1)}%
             </div>
-            <div className="text-xs text-green-600 mt-1">
-              ↑ +2.4% vs mês ant.
-            </div>
+            {data.sla_medio_variacao !== undefined && data.sla_medio_variacao !== 0 && (
+              <div className={`text-xs mt-1 font-medium ${
+                data.sla_medio_variacao > 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {data.sla_medio_variacao > 0 ? '↑' : '↓'} {data.sla_medio_variacao > 0 ? '+' : ''}{data.sla_medio_variacao.toFixed(1)}% vs mês ant.
+              </div>
+            )}
+            {(data.sla_medio_variacao === undefined || data.sla_medio_variacao === 0) && (
+              <div className="text-xs text-gray-500 mt-1">
+                Sem variação
+              </div>
+            )}
           </CardContent>
         </Card>
 

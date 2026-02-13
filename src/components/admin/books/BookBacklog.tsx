@@ -28,9 +28,10 @@ import type { BookBacklogData } from '@/types/books';
 
 interface BookBacklogProps {
   data: BookBacklogData;
+  empresaNome?: string; // Nome abreviado do cliente
 }
 
-export default function BookBacklog({ data }: BookBacklogProps) {
+export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
   // Log para debug
   console.log('📊 BookBacklog - dados recebidos:', {
     total: data.total,
@@ -45,7 +46,9 @@ export default function BookBacklog({ data }: BookBacklogProps) {
     <div className="space-y-6">
       {/* Título da Seção */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Backlog Analysis</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Backlog {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : ''}
+        </h2>
         <p className="text-sm text-gray-500">Visão detalhada de pendências e envelhecimento de chamados</p>
       </div>
 

@@ -20,15 +20,18 @@ import type { BookConsumoData } from '@/types/books';
 
 interface BookConsumoProps {
   data: BookConsumoData;
+  empresaNome?: string; // Nome abreviado do cliente
 }
 
-export default function BookConsumo({ data }: BookConsumoProps) {
+export default function BookConsumo({ data, empresaNome }: BookConsumoProps) {
   return (
     <div className="space-y-6">
       {/* Título da Seção */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Consumo RAINBOW</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Consumo {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          </h2>
           <p className="text-sm text-gray-500">Visão detalhada de utilização de horas e baseline</p>
         </div>
         <div className="flex gap-2">

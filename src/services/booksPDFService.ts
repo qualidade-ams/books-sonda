@@ -367,7 +367,7 @@ class BooksPDFService {
     doc.setTextColor(this.COLORS.gray900);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Backlog Analysis', 20, yPos);
+    doc.text('Backlog', 20, yPos);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');

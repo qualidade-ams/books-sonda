@@ -185,19 +185,31 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
               </TabsContent>
 
               <TabsContent value="sla" className="mt-0">
-                <BookSLA data={bookData.sla} />
+                <BookSLA 
+                  data={bookData.sla}
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                />
               </TabsContent>
 
               <TabsContent value="backlog" className="mt-0">
-                <BookBacklog data={bookData.backlog} />
+                <BookBacklog 
+                  data={bookData.backlog}
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                />
               </TabsContent>
 
               <TabsContent value="consumo" className="mt-0">
-                <BookConsumo data={bookData.consumo} />
+                <BookConsumo 
+                  data={bookData.consumo}
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                />
               </TabsContent>
 
               <TabsContent value="pesquisa" className="mt-0">
-                <BookPesquisa data={bookData.pesquisa} />
+                <BookPesquisa 
+                  data={bookData.pesquisa}
+                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                />
               </TabsContent>
             </div>
           </Tabs>
