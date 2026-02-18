@@ -26,6 +26,7 @@ export interface ReajusteData {
   valor_tickets: number; // Quantidade de tickets
   tipo: 'entrada' | 'saida';
   observacao: string;
+  empresa_segmentada?: string; // Nome da empresa segmentada (quando baseline_segmentado = true)
   created_by?: string;
 }
 
@@ -141,6 +142,7 @@ export class BancoHorasReajustesService {
         valor_reajuste_tickets: dados.valor_tickets, // ← ADICIONAR valor_tickets
         tipo_reajuste: dados.tipo, // ← MANTER como 'entrada' ou 'saida'
         observacao: dados.observacao,
+        empresa_segmentada: dados.empresa_segmentada || null, // ← ADICIONAR empresa_segmentada
         ativo: true,
         created_by: dados.created_by
       };
@@ -150,7 +152,8 @@ export class BancoHorasReajustesService {
         observacao_length: dados.observacao?.length,
         observacao_preview: dados.observacao?.substring(0, 50),
         created_by: dados.created_by,
-        created_by_presente: !!dados.created_by
+        created_by_presente: !!dados.created_by,
+        empresa_segmentada: dados.empresa_segmentada
       });
 
       const { data: reajuste, error: reajusteError } = await supabase

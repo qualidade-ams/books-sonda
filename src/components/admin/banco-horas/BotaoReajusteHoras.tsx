@@ -51,6 +51,12 @@ interface BotaoReajusteHorasProps {
   /** Tipo de cobrança ('ticket' ou 'banco_horas') */
   tipoCobranca?: string;
   
+  /** Se a empresa tem baseline segmentado */
+  baselineSegmentado?: boolean;
+  
+  /** Lista de empresas segmentadas (quando baseline_segmentado = true) */
+  empresasSegmentadas?: Array<{ nome: string; percentual: number }>;
+  
   /** Callback quando reajuste é salvo */
   onSalvar: (dados: {
     mes: number;
@@ -60,6 +66,7 @@ interface BotaoReajusteHorasProps {
     tickets: number;
     tipo: 'entrada' | 'saida';
     observacao: string;
+    empresaSegmentada?: string;
   }) => Promise<void>;
   
   /** Se o botão está desabilitado */
@@ -114,6 +121,8 @@ export function BotaoReajusteHoras({
   empresaId,
   nomeMes,
   tipoCobranca,
+  baselineSegmentado = false,
+  empresasSegmentadas = [],
   onSalvar,
   disabled = false,
   isSaving = false
@@ -124,6 +133,7 @@ export function BotaoReajusteHoras({
   const [tickets, setTickets] = useState('');
   const [tipo, setTipo] = useState<'entrada' | 'saida'>('entrada');
   const [observacao, setObservacao] = useState('');
+  const [empresaSegmentada, setEmpresaSegmentada] = useState<string>('');
   const [erro, setErro] = useState('');
   
   // Verificar se é tipo ticket (singular ou plural)
@@ -149,6 +159,7 @@ export function BotaoReajusteHoras({
     setTickets('');
     setTipo('entrada');
     setObservacao('');
+    setEmpresaSegmentada('');
     setErro('');
   };
   
@@ -159,6 +170,7 @@ export function BotaoReajusteHoras({
     setTickets('');
     setTipo('entrada');
     setObservacao('');
+    setEmpresaSegmentada('');
     setErro('');
   };
   
@@ -180,6 +192,12 @@ export function BotaoReajusteHoras({
   
   // Salvar reajuste
   const handleSalvar = async () => {
+    // Validação de empresa segmentada (se aplicável)
+    if (baselineSegmentado && empresasSegmentadas.length > 0 && !empresaSegmentada) {
+      setErro('Selecione a empresa segmentada para este reajuste');
+      return;
+    }
+    
     // Validações para tickets
     if (isTicket) {
       if (!tickets.trim()) {
@@ -206,7 +224,8 @@ export function BotaoReajusteHoras({
           horas: '0:00', // Para tickets, horas é sempre 0
           tickets: ticketsNum,
           tipo,
-          observacao
+          observacao,
+          empresaSegmentada: baselineSegmentado ? empresaSegmentada : undefined
         });
         
         // Invalidar e refetch cache das observações para atualizar automaticamente
@@ -249,7 +268,8 @@ export function BotaoReajusteHoras({
         horas,
         tickets: 0, // Para horas, tickets é sempre 0
         tipo,
-        observacao
+        observacao,
+        empresaSegmentada: baselineSegmentado ? empresaSegmentada : undefined
       });
       
       // Invalidar e refetch cache das observações para atualizar automaticamente
@@ -318,6 +338,38 @@ export function BotaoReajusteHoras({
                 </div>
               </div>
             </div>
+            
+            {/* Seletor de Empresa Segmentada (se aplicável) */}
+            {baselineSegmentado && empresasSegmentadas.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="empresa-segmentada" className="text-sm font-medium text-gray-700">
+                  Empresa Segmentada <span className="text-red-500">*</span>
+                </Label>
+                <Select value={empresaSegmentada} onValueChange={(value) => {
+                  setEmpresaSegmentada(value);
+                  setErro('');
+                }}>
+                  <SelectTrigger className={`focus:ring-sonda-blue focus:border-sonda-blue ${
+                    erro && !empresaSegmentada ? 'border-red-500' : ''
+                  }`}>
+                    <SelectValue placeholder="Selecione a empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresasSegmentadas.map((empresa) => (
+                      <SelectItem key={empresa.nome} value={empresa.nome}>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>{empresa.nome}</span>
+                          <span className="text-xs text-gray-500">({empresa.percentual}%)</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Selecione para qual empresa segmentada este reajuste será aplicado
+                </p>
+              </div>
+            )}
             
             {/* Tipo de Reajuste */}
             <div className="space-y-2">

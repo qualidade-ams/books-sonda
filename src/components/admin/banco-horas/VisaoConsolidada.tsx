@@ -519,9 +519,12 @@ export function VisaoConsolidada({
     tickets: number;
     tipo: 'entrada' | 'saida';
     observacao: string;
+    empresaSegmentada?: string;
   }) => {
     try {
-      console.log('💾 Salvando reajuste...');
+      console.log('💾 Salvando reajuste...', {
+        empresaSegmentada: dados.empresaSegmentada
+      });
       
       // IMPORTANTE: criarReajuste JÁ recalcula todos os meses subsequentes no backend
       // Aguardar a conclusão completa do recálculo antes de invalidar cache
@@ -533,6 +536,7 @@ export function VisaoConsolidada({
         valor_tickets: dados.tickets,
         tipo: dados.tipo,
         observacao: dados.observacao,
+        empresa_segmentada: dados.empresaSegmentada,
         created_by: user?.id
       });
       
@@ -885,7 +889,10 @@ export function VisaoConsolidada({
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">{labels.saldoAUtilizar}</TableCell>
                 {calculos.map((calculo, index) => (
-                  <TableCell key={index} className="text-center font-semibold text-gray-900">
+                  <TableCell 
+                    key={index} 
+                    className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}`}
+                  >
                     {formatarValor(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}
                   </TableCell>
                 ))}
@@ -924,6 +931,8 @@ export function VisaoConsolidada({
                       empresaId={calculo.empresa_id}
                       nomeMes={MESES[calculo.mes - 1]}
                       tipoCobranca={tipoCobranca}
+                      baselineSegmentado={empresaAtual?.baseline_segmentado || false}
+                      empresasSegmentadas={empresaAtual?.segmentacao_config?.empresas || []}
                       onSalvar={handleSalvarReajuste}
                       disabled={disabled}
                       isSaving={isCreating}
