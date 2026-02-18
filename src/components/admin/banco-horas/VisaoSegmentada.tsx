@@ -266,12 +266,16 @@ export function VisaoSegmentada({
   calculos = [],
 }: VisaoSegmentadaProps) {
   
-  // Nomes dos meses abreviados
-  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  // Nomes dos meses completos (igual à Visão Consolidada)
+  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   
   // Estado para armazenar dados de consumo de chamados
   const [consumoPorEmpresaMes, setConsumoPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
   const [carregandoConsumo, setCarregandoConsumo] = useState(true);
+  
+  // Estado para armazenar reajustes por empresa segmentada e mês
+  const [reajustesPorEmpresaMes, setReajustesPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
+  const [carregandoReajustes, setCarregandoReajustes] = useState(true);
   
   // Buscar taxa hora/ticket (mesma lógica da Visão Consolidada)
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
@@ -345,6 +349,69 @@ export function VisaoSegmentada({
     buscarConsumoSegmentado();
   }, [empresaId, segmentacaoConfig, mesesDoPeriodo]);
   
+  // Buscar reajustes por empresa segmentada
+  useEffect(() => {
+    const buscarReajustesSegmentados = async () => {
+      setCarregandoReajustes(true);
+      
+      console.log('🔄 [VisaoSegmentada] Iniciando busca de reajustes segmentados...');
+      
+      const reajustesTemp: Record<string, Record<string, number>> = {};
+      
+      // Para cada empresa segmentada
+      for (const empresa of segmentacaoConfig.empresas) {
+        reajustesTemp[empresa.nome] = {};
+        
+        // Para cada mês do período
+        for (const mesAno of mesesDoPeriodo) {
+          const chave = `${mesAno.mes}-${mesAno.ano}`;
+          
+          // Buscar reajustes desta empresa segmentada neste mês
+          const { data: reajustes, error } = await supabase
+            .from('banco_horas_reajustes')
+            .select('valor_reajuste_horas, tipo_reajuste')
+            .eq('empresa_id', empresaId)
+            .eq('mes', mesAno.mes)
+            .eq('ano', mesAno.ano)
+            .eq('empresa_segmentada', empresa.nome)
+            .eq('ativo', true);
+          
+          if (error) {
+            console.error(`❌ Erro ao buscar reajustes de ${empresa.nome} em ${chave}:`, error);
+            reajustesTemp[empresa.nome][chave] = 0;
+            continue;
+          }
+          
+          // Somar todos os reajustes (entrada = positivo, saida = negativo)
+          let totalReajusteMinutos = 0;
+          
+          if (reajustes && reajustes.length > 0) {
+            for (const reajuste of reajustes) {
+              const valorMinutos = converterHorasParaMinutos(reajuste.valor_reajuste_horas || '00:00');
+              
+              if (reajuste.tipo_reajuste === 'entrada') {
+                totalReajusteMinutos += valorMinutos;
+              } else if (reajuste.tipo_reajuste === 'saida') {
+                totalReajusteMinutos -= valorMinutos;
+              }
+            }
+          }
+          
+          reajustesTemp[empresa.nome][chave] = totalReajusteMinutos;
+          
+          console.log(`📊 [${empresa.nome}] Reajuste ${chave}: ${converterMinutosParaHoras(Math.abs(totalReajusteMinutos))} (${totalReajusteMinutos >= 0 ? '+' : '-'})`);
+        }
+      }
+      
+      setReajustesPorEmpresaMes(reajustesTemp);
+      setCarregandoReajustes(false);
+      
+      console.log('✅ [VisaoSegmentada] Busca de reajustes concluída!');
+    };
+    
+    buscarReajustesSegmentados();
+  }, [empresaId, segmentacaoConfig, mesesDoPeriodo]);
+  
   // Calcular dados para cada empresa segmentada por mês
   const dadosSegmentados = useMemo(() => {
     // TODO: Buscar baseline total real da empresa do banco de dados
@@ -362,6 +429,7 @@ export function VisaoSegmentada({
         saldoAUtilizar: number;
         consumoChamados: number;
         requerimentos: number;
+        reajuste: number;
         consumoTotal: number;
         saldo: number;
         repasse: number;
@@ -516,8 +584,13 @@ export function VisaoSegmentada({
           }))
         });
         
-        // Consumo total = consumo chamados + requerimentos
-        const consumoTotal = consumoChamados + requerimentosMinutos;
+        // Buscar reajuste do estado
+        const reajuste = reajustesPorEmpresaMes[empresa.nome]?.[chave] || 0;
+        
+        // Consumo total = consumo chamados + requerimentos + reajuste
+        // IMPORTANTE: Reajuste de "entrada" aumenta o consumo (positivo)
+        //             Reajuste de "saída" diminui o consumo (negativo)
+        const consumoTotal = consumoChamados + requerimentosMinutos + reajuste;
         
         // Saldo = saldo a utilizar - consumo total (pode ser negativo)
         const saldo = saldoAUtilizar - consumoTotal;
@@ -534,6 +607,7 @@ export function VisaoSegmentada({
           saldoAUtilizar,
           consumoChamados,
           requerimentos: requerimentosMinutos,
+          reajuste,
           consumoTotal,
           saldo,
           repasse,
@@ -574,16 +648,18 @@ export function VisaoSegmentada({
         filtroValor: empresa.filtro_valor,
       };
     });
-  }, [segmentacaoConfig, mesesDoPeriodo, percentualRepasseMensal, consumoPorEmpresaMes, taxaHoraCalculada, requerimentos]);
+  }, [segmentacaoConfig, mesesDoPeriodo, percentualRepasseMensal, consumoPorEmpresaMes, reajustesPorEmpresaMes, taxaHoraCalculada, requerimentos]);
   
   // Mostrar loading enquanto busca dados
-  if (carregandoConsumo) {
+  if (carregandoConsumo || carregandoReajustes) {
     return (
       <Card className="rounded-xl overflow-hidden">
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
-            <p className="text-sm text-gray-500">Carregando dados de consumo segmentado...</p>
+            <p className="text-sm text-gray-500">
+              {carregandoConsumo ? 'Carregando dados de consumo segmentado...' : 'Carregando reajustes...'}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -631,10 +707,9 @@ export function VisaoSegmentada({
                   <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
                     <TableHead className="text-white font-semibold text-center">Mês</TableHead>
                     {mesesDoPeriodo.map((mesAno, idx) => {
-                      const anoAbreviado = String(mesAno.ano).slice(-2);
                       return (
                         <TableHead key={idx} className="text-white font-semibold text-center">
-                          {MESES[mesAno.mes - 1]}/{anoAbreviado}
+                          {MESES[mesAno.mes - 1]}/{mesAno.ano}
                         </TableHead>
                       );
                     })}
@@ -674,7 +749,10 @@ export function VisaoSegmentada({
                       Saldo a utilizar
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
-                      <TableCell key={idx} className="text-center font-semibold text-gray-900">
+                      <TableCell 
+                        key={idx} 
+                        className={`text-center font-semibold ${getColorClass(mesDados.saldoAUtilizar)}`}
+                      >
                         {converterMinutosParaHoras(mesDados.saldoAUtilizar)}
                       </TableCell>
                     ))}
@@ -700,6 +778,21 @@ export function VisaoSegmentada({
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell key={idx} className="text-center font-semibold text-gray-900">
                         {converterMinutosParaHoras(mesDados.requerimentos)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Reajuste */}
+                  <TableRow>
+                    <TableCell className="font-medium text-center">
+                      Reajuste
+                    </TableCell>
+                    {dados.dadosPorMes.map((mesDados, idx) => (
+                      <TableCell 
+                        key={idx} 
+                        className={`text-center font-semibold ${getColorClass(mesDados.reajuste)}`}
+                      >
+                        {converterMinutosParaHoras(Math.abs(mesDados.reajuste))}
                       </TableCell>
                     ))}
                   </TableRow>
