@@ -95,13 +95,27 @@ export default function BookConsumo({ data, empresaNome }: BookConsumoProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-gray-400" />
-              <div className="text-3xl font-bold text-gray-400">{data.incidente}</div>
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              Sem registros no período
-            </div>
+            {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div className="text-3xl font-bold text-green-600">00:00:00</div>
+                </div>
+                <div className="text-xs text-gray-600 mt-2">
+                  0% do total consumido
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                  <div className="text-3xl font-bold text-orange-600">{data.incidente}</div>
+                </div>
+                <div className="text-xs text-gray-600 mt-2">
+                  Registrado no período
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

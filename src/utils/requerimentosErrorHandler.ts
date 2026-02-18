@@ -197,7 +197,7 @@ export class RequerimentosErrorManager {
   /**
    * Exibe progresso de operação longa
    */
-  static showProgress(message: string, description?: string): string {
+  static showProgress(message: string, description?: string): string | number {
     return toast.loading(message, {
       description,
       duration: Infinity
@@ -207,7 +207,7 @@ export class RequerimentosErrorManager {
   /**
    * Atualiza toast de progresso para sucesso
    */
-  static updateProgressToSuccess(toastId: string, message: string, description?: string): void {
+  static updateProgressToSuccess(toastId: string | number, message: string, description?: string): void {
     toast.success(message, {
       id: toastId,
       description,
@@ -218,7 +218,7 @@ export class RequerimentosErrorManager {
   /**
    * Atualiza toast de progresso para erro
    */
-  static updateProgressToError(toastId: string, error: any, context?: string): void {
+  static updateProgressToError(toastId: string | number, error: any, context?: string): void {
     toast.dismiss(toastId);
     this.handleError(error, context);
   }
@@ -321,10 +321,10 @@ export function manageRequerimentoProgress() {
     start: (message: string, description?: string) => 
       RequerimentosErrorManager.showProgress(message, description),
     
-    success: (toastId: string, message: string, description?: string) => 
+    success: (toastId: string | number, message: string, description?: string) => 
       RequerimentosErrorManager.updateProgressToSuccess(toastId, message, description),
     
-    error: (toastId: string, error: any, context?: string) => 
+    error: (toastId: string | number, error: any, context?: string) => 
       RequerimentosErrorManager.updateProgressToError(toastId, error, context)
   };
 }
