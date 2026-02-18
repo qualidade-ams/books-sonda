@@ -440,15 +440,14 @@ export class BancoHorasReajustesService {
     createdBy?: string // ← ADICIONAR parâmetro
   ): Promise<string> {
     // Buscar última versão para incrementar
-    const { data: ultimaVersao } = await supabase
+    const { data: versoes } = await supabase
       .from('banco_horas_versoes')
       .select('versao_nova')
       .eq('calculo_id', calculoId)
       .order('versao_nova', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    const versaoAnterior = ultimaVersao?.versao_nova || 0;
+    const versaoAnterior = versoes?.[0]?.versao_nova || 0;
     const versaoNova = versaoAnterior + 1;
 
     // Criar versão
