@@ -756,7 +756,7 @@ class BooksDataCollectorService {
 
     // Processar tickets ABERTOS
     ticketsAbertos.forEach(a => {
-      const causa = a.cod_resolucao || 'SEM CAUSA';
+      const causa = a.cod_resolucao || 'Sem Código de Resolução';
       if (!causas.has(causa)) {
         causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
@@ -773,7 +773,7 @@ class BooksDataCollectorService {
 
     // Processar tickets FECHADOS
     ticketsFechados.forEach(a => {
-      const causa = a.cod_resolucao || 'SEM CAUSA';
+      const causa = a.cod_resolucao || 'Sem Código de Resolução';
       if (!causas.has(causa)) {
         causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
@@ -824,7 +824,7 @@ class BooksDataCollectorService {
 
     backlog.forEach(a => {
       // Usar cod_resolucao como causa
-      const causa = a.cod_resolucao || 'SEM CAUSA';
+      const causa = a.cod_resolucao || 'Sem Código de Resolução';
       if (!causas.has(causa)) {
         causas.set(causa, { incidente: 0, solicitacao: 0 });
       }
@@ -1113,18 +1113,33 @@ class BooksDataCollectorService {
 
   /**
    * Gera dados de backlog
+   * FILTRO APLICADO: Chamados em aberto (status NOT IN ('Closed', 'Resolved', 'Canceled'))
+   * IMPORTANTE: item_configuracao IS NULL OU item_configuracao != '000000 - PROJETOS APL'
+   * Conforme SQL de referência fornecido
    */
   private async gerarDadosBacklog(
     empresaNomeCompleto: string,
     mes: number,
     ano: number
   ): Promise<BookBacklogData> {
-    // Buscar tickets de backlog (status diferente de Closed ou Resolved)
+    console.log('📊 Buscando backlog (chamados em aberto):', {
+      empresa: empresaNomeCompleto,
+      filtros: {
+        status: 'NOT IN (Closed, Resolved, Canceled)',
+        cod_tipo: '!= Problema',
+        item_configuracao: 'IS NULL OR != 000000 - PROJETOS APL',
+        caso_pai: 'SIM',
+        nome_grupo: 'NOT IN (AMS APL - TÉCNICO, CA SDM)'
+      }
+    });
+
+    // Buscar tickets de backlog (chamados em aberto)
+    // FILTRO CORRETO: item_configuracao IS NULL OU != '000000 - PROJETOS APL'
     const { data: ticketsBacklog, error } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
       .ilike('organizacao', `%${empresaNomeCompleto}%`)
-      .not('status', 'in', '("Closed","Resolved")')
+      .not('status', 'in', '("Closed","Resolved","Canceled")')
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
       .eq('caso_pai', 'SIM')
@@ -1138,18 +1153,24 @@ class BooksDataCollectorService {
     
     console.log('📊 Backlog encontrado:', {
       total: backlog.length,
-      amostra: backlog.slice(0, 3).map(t => ({
+      incidentes: backlog.filter(t => t.cod_tipo === 'Incidente').length,
+      solicitacoes: backlog.filter(t => t.cod_tipo !== 'Incidente').length,
+      esperado: 11,
+      diferenca: backlog.length - 11,
+      amostra: backlog.slice(0, 5).map(t => ({
         nro: t.nro_solicitacao,
         status: t.status,
         cod_tipo: t.cod_tipo,
-        cod_resolucao: t.cod_resolucao
+        data_abertura: t.data_abertura,
+        item_configuracao: t.item_configuracao,
+        nome_grupo: t.nome_grupo
       }))
     });
 
     const incidente = backlog.filter(r => r.cod_tipo === 'Incidente').length;
     const solicitacao = backlog.length - incidente;
 
-    // Calcular aging (idade dos chamados)
+    // Calcular aging (idade dos chamados baseado em data_abertura)
     const agingChamados = this.calcularAging(backlog);
 
     // Distribuição por grupo (nome_grupo)
@@ -1163,6 +1184,15 @@ class BooksDataCollectorService {
 
     // Backlog por causa (cod_resolucao)
     const backlogPorCausa = this.agruparBacklogPorCausa(backlog);
+
+    console.log('✅ Dados de backlog processados:', {
+      total: backlog.length,
+      incidente,
+      solicitacao,
+      grupos: distribuicaoPorGrupo.length,
+      causas: backlogPorCausa.length,
+      faixasAging: agingChamados.length
+    });
 
     return {
       total: backlog.length,
@@ -1344,6 +1374,9 @@ class BooksDataCollectorService {
 
   /**
    * Calcula aging dos chamados
+   * CORRIGIDO: Usa campos corretos de apontamentos_tickets_aranda
+   * - data_abertura (em vez de data_envio)
+   * - cod_tipo (em vez de tipo_cobranca)
    */
   private calcularAging(backlog: any[]) {
     const faixas = [
@@ -1363,12 +1396,20 @@ class BooksDataCollectorService {
 
     const hoje = new Date();
 
+    console.log('📊 Calculando aging de', backlog.length, 'chamados...');
+
     backlog.forEach(r => {
-      const dataEnvio = new Date(r.data_envio);
-      const diasAberto = Math.floor((hoje.getTime() - dataEnvio.getTime()) / (1000 * 60 * 60 * 24));
+      // Usar data_abertura (campo correto de apontamentos_tickets_aranda)
+      if (!r.data_abertura) {
+        console.warn('⚠️ Chamado sem data_abertura:', r.nro_solicitacao);
+        return;
+      }
+
+      const dataAbertura = new Date(r.data_abertura);
+      const diasAberto = Math.floor((hoje.getTime() - dataAbertura.getTime()) / (1000 * 60 * 60 * 24));
       
-      const isIncidente = r.tipo_cobranca === 'Incidente' || 
-                         r.descricao?.toLowerCase().includes('incidente');
+      // Usar cod_tipo (campo correto de apontamentos_tickets_aranda)
+      const isIncidente = r.cod_tipo === 'Incidente';
 
       for (const faixa of resultado) {
         const faixaOriginal = faixas.find(f => f.faixa === faixa.faixa)!;
@@ -1384,7 +1425,10 @@ class BooksDataCollectorService {
       }
     });
 
-    return resultado.filter(f => f.total > 0);
+    console.log('✅ Aging calculado:', resultado);
+
+    // Retornar TODAS as faixas (mesmo com total 0) para manter estrutura do gráfico
+    return resultado;
   }
 
   /**

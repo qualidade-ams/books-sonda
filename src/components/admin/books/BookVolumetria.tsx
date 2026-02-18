@@ -95,6 +95,10 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 <span className="text-2xl font-bold text-gray-600">{data.abertos_mes.incidente}</span>
                 <span className="text-xs text-gray-500">INCIDENTE</span>
               </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <span className="text-3xl font-bold text-gray-900">{data.abertos_mes.solicitacao + data.abertos_mes.incidente}</span>
+                <span className="text-xs font-semibold text-gray-700">TOTAL</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -118,6 +122,10 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
               <div className="flex justify-between items-center">
                 <span className="text-2xl font-bold text-blue-600">{data.fechados_mes.incidente}</span>
                 <span className="text-xs text-gray-500">INCIDENTE</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <span className="text-3xl font-bold text-blue-600">{data.fechados_mes.solicitacao + data.fechados_mes.incidente}</span>
+                <span className="text-xs font-semibold text-gray-700">TOTAL</span>
               </div>
             </div>
           </CardContent>

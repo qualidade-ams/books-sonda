@@ -23,6 +23,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  LabelList,
 } from 'recharts';
 import type { BookBacklogData } from '@/types/books';
 
@@ -146,47 +147,76 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                   fill="#2563eb" 
                   name="Solicitação"
                   radius={[4, 4, 0, 0]}
-                />
+                >
+                  <LabelList 
+                    dataKey="solicitacao" 
+                    position="inside" 
+                    style={{ 
+                      fill: '#fff', 
+                      fontSize: '12px', 
+                      fontWeight: 'bold' 
+                    }}
+                    formatter={(value: number) => value > 0 ? value : ''}
+                  />
+                </Bar>
                 <Bar 
                   dataKey="incidente" 
                   fill="#9ca3af" 
                   name="Incidente"
                   radius={[4, 4, 0, 0]}
-                />
+                >
+                  <LabelList 
+                    dataKey="incidente" 
+                    position="inside" 
+                    style={{ 
+                      fill: '#fff', 
+                      fontSize: '12px', 
+                      fontWeight: 'bold' 
+                    }}
+                    formatter={(value: number) => value > 0 ? value : ''}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Card: Distribuição por Grupo */}
+        {/* Card: Distribuição por Grupo - TODOS OS GRUPOS */}
         <Card className="bg-blue-600 text-white">
-          <CardHeader>
-            <CardTitle className="text-white text-base font-semibold">
-              {data.distribuicao_por_grupo[0]?.grupo || 'GRUPO'}
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-xs font-semibold">CHAMADOS | GRUPO</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center">
-              <div className="text-6xl font-bold mb-2">
-                {data.distribuicao_por_grupo[0]?.total || 0}
-              </div>
-              <div className="text-sm opacity-90">CHAMADOS</div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-sm opacity-90">Percentual</div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white/20 rounded-full h-3">
-                  <div 
-                    className="bg-white h-3 rounded-full transition-all" 
-                    style={{ width: `${data.distribuicao_por_grupo[0]?.percentual || 0}%` }}
-                  />
+          <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
+            {data.distribuicao_por_grupo && data.distribuicao_por_grupo.length > 0 ? (
+              data.distribuicao_por_grupo.map((grupo, index) => (
+                <div key={index} className="pb-2 border-b border-white/20 last:border-b-0 last:pb-0">
+                  {/* Nome do grupo e total */}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="font-semibold text-xs leading-tight text-white">{grupo.grupo}</div>
+                    <div className="text-xs text-white/80 whitespace-nowrap">Total: {grupo.total}</div>
+                  </div>
+                  
+                  {/* Barra de progresso com percentual */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-white/20 rounded-full h-2">
+                        <div 
+                          className="bg-white h-2 rounded-full transition-all" 
+                          style={{ width: `${grupo.percentual}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-white whitespace-nowrap">
+                        {grupo.percentual}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-lg font-bold">
-                  {data.distribuicao_por_grupo[0]?.percentual || 0}%
-                </span>
+              ))
+            ) : (
+              <div className="text-center py-8 text-white/70">
+                <p className="text-sm">Nenhum grupo encontrado</p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -196,7 +226,6 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
-            <Button variant="link" className="text-blue-600 text-sm">Ver Detalhes</Button>
           </div>
         </CardHeader>
         <CardContent>
