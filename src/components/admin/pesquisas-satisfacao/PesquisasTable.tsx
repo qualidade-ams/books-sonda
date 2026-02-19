@@ -96,13 +96,6 @@ export function PesquisasTable({
     const temPlanoAcao = hasPermission('plano_acao', 'view');
     const temVisualizarPesquisas = hasPermission('visualizar_pesquisas', 'view');
     
-    console.log('🔐 [PesquisasTable] Verificando permissões completas:', {
-      temLancarPesquisas,
-      temPlanoAcao,
-      temVisualizarPesquisas,
-      resultado: temLancarPesquisas && temPlanoAcao && temVisualizarPesquisas
-    });
-    
     return temLancarPesquisas && temPlanoAcao && temVisualizarPesquisas;
   }, [hasPermission]);
 
@@ -110,7 +103,6 @@ export function PesquisasTable({
   const podeEditarExcluir = (pesquisa: Pesquisa): boolean => {
     // Se tem permissões completas, pode editar/excluir qualquer pesquisa
     if (temPermissoesCompletas) {
-      console.log('✅ [PesquisasTable] Usuário tem permissões completas - pode editar/excluir qualquer pesquisa');
       return true;
     }
     
@@ -118,31 +110,17 @@ export function PesquisasTable({
     const temLancarPesquisas = hasPermission('lancar_pesquisas', 'view');
     if (temLancarPesquisas) {
       const ehAutor = pesquisa.autor_id === user?.id;
-      console.log('🔍 [PesquisasTable] Verificando autoria:', {
-        pesquisaId: pesquisa.id,
-        autorPesquisa: pesquisa.autor_id,
-        usuarioLogado: user?.id,
-        ehAutor,
-        podeEditar: ehAutor
-      });
       return ehAutor;
     }
     
     // Sem permissão
-    console.log('❌ [PesquisasTable] Usuário sem permissão para editar/excluir');
     return false;
   };
 
   // Função para verificar se usuário pode enviar uma pesquisa
   const podeEnviar = (pesquisa: Pesquisa): boolean => {
     // Apenas usuários com permissões completas podem enviar
-    const pode = temPermissoesCompletas;
-    console.log('📤 [PesquisasTable] Verificando permissão de envio:', {
-      pesquisaId: pesquisa.id,
-      temPermissoesCompletas,
-      podeEnviar: pode
-    });
-    return pode;
+    return temPermissoesCompletas;
   };
 
   // Criar mapa de empresas para validação rápida
