@@ -79,11 +79,12 @@ export const useBancoHorasCalculos = (
       return resultado;
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 2 * 60 * 1000, // ✅ OTIMIZAÇÃO AJUSTADA: 2 minutos (reduzido de 5min) - dados ficam "frescos" por 2min
-    gcTime: 30 * 60 * 1000, // ✅ OTIMIZAÇÃO: 30 minutos - mantém cache por mais tempo
-    retry: 1, // ✅ OTIMIZAÇÃO: Reduzir tentativas de 2 para 1
-    refetchOnMount: true, // ✅ CORREÇÃO: Sempre refetch ao montar para garantir dados atualizados
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos do servidor
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter dados em cache (limpar imediatamente)
+    retry: 1, // Reduzir tentativas para falhar mais rápido
+    refetchOnMount: true, // Sempre refetch ao montar componente
     refetchOnWindowFocus: false, // Não refetch ao focar janela
+    refetchOnReconnect: true, // Refetch ao reconectar internet
   });
 
   // Mutation para forçar recálculo
@@ -95,19 +96,25 @@ export const useBancoHorasCalculos = (
       return await bancoHorasService.calcularMes(empresaId, mes, ano);
     },
     onSuccess: async (novoCalculo) => {
-      // Invalidar cache do cálculo atual
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
+      // Isso garante que alterações em um mês afetem todos os meses subsequentes
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-calculo', empresaId, mes, ano]
+        queryKey: ['banco-horas-calculo', empresaId]
       });
 
-      // Invalidar cache de cálculos segmentados
+      // Invalidar cache de cálculos segmentados de TODOS os meses
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-calculos-segmentados', empresaId, mes, ano]
+        queryKey: ['banco-horas-calculos-segmentados', empresaId]
       });
 
-      // Invalidar cache de versões
+      // Invalidar cache de versões de TODOS os meses
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-versoes', empresaId, mes, ano]
+        queryKey: ['banco-horas-versoes', empresaId]
+      });
+
+      // Invalidar cache de versões do período completo
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-versoes-periodo', empresaId]
       });
 
       // NÃO exibir toast aqui - será exibido apenas no final do recálculo completo
@@ -167,8 +174,8 @@ export const useAlocacoes = (empresaId: string | undefined) => {
       return await alocacoesService.listarAlocacoes(empresaId);
     },
     enabled: !!empresaId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
   });
 
   return {
@@ -235,8 +242,8 @@ export const useCalculosSegmentados = (
       );
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
   });
 
   return {
@@ -287,9 +294,9 @@ export const useReajustes = (
       return await reajustesService.listarReajustes(empresaId, mes, ano);
     },
     enabled: !!empresaId,
-    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
-    gcTime: 5 * 60 * 1000, // 5 minutos
-    refetchOnMount: true, // Refetch ao montar componente
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
+    refetchOnMount: true, // Sempre refetch ao montar componente
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
@@ -341,9 +348,9 @@ export const useVersoes = (
       return await bancoHorasVersionamentoService.listarVersoes(empresaId, mes, ano);
     },
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
-    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    refetchOnMount: true, // Refetch ao montar componente
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
+    refetchOnMount: true, // Sempre refetch ao montar componente
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
@@ -407,9 +414,9 @@ export const useVersoesPeriodo = (
       return versoesCombinadasOrdenadas;
     },
     enabled: !!empresaId && !!mesesDoPeriodo && mesesDoPeriodo.length > 0,
-    staleTime: 0, // Sempre considerar dados como stale para forçar refetch
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    refetchOnMount: true, // Refetch ao montar componente
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
+    refetchOnMount: true, // Sempre refetch ao montar componente
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
@@ -442,7 +449,8 @@ export const useVersao = (versaoId: string | undefined) => {
       return await bancoHorasVersionamentoService.buscarVersao(versaoId);
     },
     enabled: !!versaoId,
-    staleTime: 10 * 60 * 1000, // 10 minutos (versões são imutáveis)
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
   });
 };
 
@@ -462,7 +470,8 @@ export const useReajuste = (reajusteId: string | undefined) => {
       return await reajustesService.buscarReajuste(reajusteId);
     },
     enabled: !!reajusteId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
+    gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
   });
 };
 
@@ -503,19 +512,24 @@ export const useCalcularMes = () => {
     onSuccess: async (calculo, variables) => {
       const { empresaId, mes, ano } = variables;
 
-      // Invalidar cache do cálculo atual
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-calculo', empresaId, mes, ano]
+        queryKey: ['banco-horas-calculo', empresaId]
       });
 
-      // Invalidar cache de cálculos segmentados
+      // Invalidar cache de cálculos segmentados de TODOS os meses
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-calculos-segmentados', empresaId, mes, ano]
+        queryKey: ['banco-horas-calculos-segmentados', empresaId]
       });
 
-      // Invalidar cache de versões
+      // Invalidar cache de versões de TODOS os meses
       await queryClient.invalidateQueries({
-        queryKey: ['banco-horas-versoes', empresaId, mes, ano]
+        queryKey: ['banco-horas-versoes', empresaId]
+      });
+
+      // Invalidar cache de versões do período completo
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-versoes-periodo', empresaId]
       });
 
       toast.success('Cálculo realizado com sucesso!');
@@ -594,24 +608,30 @@ export const useCriarReajuste = () => {
     onSuccess: async (reajuste, variables) => {
       const { empresaId, mes, ano } = variables;
 
-      // Invalidar cache de reajustes
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os reajustes da empresa
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-reajustes', empresaId]
       });
 
-      // Invalidar cache do cálculo atual e subsequentes
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
+      // Reajustes afetam o mês atual e todos os meses subsequentes
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-calculo', empresaId]
       });
 
-      // Invalidar cache de cálculos segmentados
+      // Invalidar cache de cálculos segmentados de TODOS os meses
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-calculos-segmentados', empresaId]
       });
 
-      // Invalidar cache de versões
+      // Invalidar cache de versões de TODOS os meses
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-versoes', empresaId]
+      });
+
+      // Invalidar cache de versões do período completo
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-versoes-periodo', empresaId]
       });
 
       toast.success('Reajuste aplicado com sucesso! Meses subsequentes foram recalculados.');
@@ -702,14 +722,20 @@ export const useSalvarAlocacoes = () => {
     onSuccess: async (alocacoes, variables) => {
       const { empresaId } = variables;
 
-      // Invalidar cache de alocações
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
+      // Alocações afetam todos os cálculos segmentados
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-alocacoes', empresaId]
       });
 
-      // Invalidar cache de cálculos segmentados (precisam ser recalculados)
+      // Invalidar cache de cálculos segmentados de TODOS os meses
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-calculos-segmentados', empresaId]
+      });
+
+      // Invalidar cache de cálculos consolidados também
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-calculo', empresaId]
       });
 
       toast.success('Alocações salvas com sucesso!');
@@ -779,14 +805,25 @@ export const useSalvarParametros = () => {
     onSuccess: async (data, variables) => {
       const { empresaId } = variables;
 
-      // Invalidar cache de cálculos (parâmetros afetam todos os cálculos)
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
+      // Parâmetros afetam todos os cálculos (baseline, período, repasse, etc.)
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-calculo', empresaId]
       });
 
-      // Invalidar cache de cálculos segmentados
+      // Invalidar cache de cálculos segmentados de TODOS os meses
       await queryClient.invalidateQueries({
         queryKey: ['banco-horas-calculos-segmentados', empresaId]
+      });
+
+      // Invalidar cache de versões de TODOS os meses
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-versoes', empresaId]
+      });
+
+      // Invalidar cache de versões do período completo
+      await queryClient.invalidateQueries({
+        queryKey: ['banco-horas-versoes-periodo', empresaId]
       });
 
       toast.success('Parâmetros salvos com sucesso!');

@@ -739,29 +739,37 @@ export function VisaoConsolidada({
                       const mesAtual = hoje.getMonth() + 1;
                       const anoAtual = hoje.getFullYear();
                       
-                      // Início da vigência ou 12 meses atrás
-                      let mesInicio = mesAtual - 12;
-                      let anoInicio = anoAtual;
+                      // ✅ CORREÇÃO: Usar SEMPRE a vigência da empresa como início
+                      // Se não tem vigência, usar 12 meses atrás como fallback
+                      let mesInicio: number;
+                      let anoInicio: number;
                       
-                      if (mesInicio < 1) {
-                        mesInicio += 12;
-                        anoInicio -= 1;
-                      }
-                      
-                      // Se tem vigência, usar como limite
                       if (empresaAtual.inicio_vigencia) {
+                        // Usar data de vigência da empresa
                         const vigencia = new Date(empresaAtual.inicio_vigencia);
-                        const mesVigencia = vigencia.getUTCMonth() + 1;
-                        const anoVigencia = vigencia.getUTCFullYear();
+                        mesInicio = vigencia.getUTCMonth() + 1;
+                        anoInicio = vigencia.getUTCFullYear();
                         
-                        // Usar o mais recente entre vigência e 12 meses atrás
-                        const dataVigencia = new Date(anoVigencia, mesVigencia - 1);
-                        const data12MesesAtras = new Date(anoInicio, mesInicio - 1);
+                        console.log('📅 [VisaoConsolidada] Usando vigência da empresa:', {
+                          empresa: empresaAtual.nome_abreviado,
+                          inicio_vigencia: empresaAtual.inicio_vigencia,
+                          mesInicio,
+                          anoInicio
+                        });
+                      } else {
+                        // Fallback: 12 meses atrás se não tem vigência
+                        mesInicio = mesAtual - 12;
+                        anoInicio = anoAtual;
                         
-                        if (dataVigencia > data12MesesAtras) {
-                          mesInicio = mesVigencia;
-                          anoInicio = anoVigencia;
+                        if (mesInicio < 1) {
+                          mesInicio += 12;
+                          anoInicio -= 1;
                         }
+                        
+                        console.log('📅 [VisaoConsolidada] Sem vigência, usando 12 meses atrás:', {
+                          mesInicio,
+                          anoInicio
+                        });
                       }
                       
                       // Gerar períodos do início até 6 meses no futuro

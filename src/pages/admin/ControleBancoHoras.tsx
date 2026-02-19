@@ -746,17 +746,6 @@ export default function ControleBancoHoras() {
                   Gerencie o banco de horas por contratos de empresas clientes
                 </p>
               </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRecalcular}
-                disabled={!empresaSelecionada || isRecalculatingAny || isLoading}
-                className="flex items-center gap-2 w-full sm:w-auto"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRecalculatingAny ? 'animate-spin' : ''}`} />
-                <span className="text-sm">{isRecalculatingAny ? 'Recalculando...' : 'Recalcular'}</span>
-              </Button>
             </div>
           </div>
 
