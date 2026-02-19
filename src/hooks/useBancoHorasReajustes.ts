@@ -40,15 +40,29 @@ export function useBancoHorasReajustes() {
         description: `${resultado.meses_recalculados} mês(es) recalculado(s)`,
       });
 
-      // Invalidar queries relacionadas
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os cálculos da empresa
       queryClient.invalidateQueries({ 
-        queryKey: ['banco-horas-calculos', dados.empresa_id] 
+        queryKey: ['banco-horas-calculo', dados.empresa_id] 
       });
+      
+      // Invalidar cálculos segmentados de TODOS os meses
       queryClient.invalidateQueries({ 
-        queryKey: ['banco-horas-versoes'] // ← Invalidar TODAS as versões
+        queryKey: ['banco-horas-calculos-segmentados', dados.empresa_id] 
       });
+      
+      // Invalidar versões de TODOS os meses
       queryClient.invalidateQueries({ 
-        queryKey: ['banco-horas-reajustes'] // ← Invalidar TODOS os reajustes
+        queryKey: ['banco-horas-versoes', dados.empresa_id] 
+      });
+      
+      // Invalidar versões do período completo
+      queryClient.invalidateQueries({ 
+        queryKey: ['banco-horas-versoes-periodo', dados.empresa_id] 
+      });
+      
+      // Invalidar reajustes de TODOS os meses
+      queryClient.invalidateQueries({ 
+        queryKey: ['banco-horas-reajustes', dados.empresa_id] 
       });
     },
     onError: (error: any) => {
@@ -74,8 +88,12 @@ export function useBancoHorasReajustes() {
         description: 'O reajuste foi desativado com sucesso',
       });
 
-      // Invalidar queries relacionadas
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache de TODOS os reajustes e cálculos
       queryClient.invalidateQueries({ queryKey: ['banco-horas-reajustes'] });
+      queryClient.invalidateQueries({ queryKey: ['banco-horas-calculo'] });
+      queryClient.invalidateQueries({ queryKey: ['banco-horas-calculos-segmentados'] });
+      queryClient.invalidateQueries({ queryKey: ['banco-horas-versoes'] });
+      queryClient.invalidateQueries({ queryKey: ['banco-horas-versoes-periodo'] });
     },
     onError: (error: any) => {
       console.error('Erro ao desativar reajuste:', error);
