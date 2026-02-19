@@ -8,6 +8,7 @@ import sql from 'mssql';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { sincronizarApontamentosIncremental } from './services/incrementalSyncApontamentosService';
 
 dotenv.config();
 
@@ -117,6 +118,8 @@ interface DadosApontamentoSqlServer {
   Data_Atividade: Date | null;
   Data_Fechamento: Date | null;
   Data_Ult_Modificacao: Date | null;
+  Data_Ult_Modificacao_Geral: Date | null;
+  Data_Ult_Modificacao_tarefa: Date | null;
   Ativi_Interna: string;
   Caso_Estado: string;
   Caso_Grupo: string;
@@ -1684,6 +1687,115 @@ app.post('/api/sync-apontamentos-full', async (req, res) => {
   await sincronizarApontamentos(req, res, true);
 });
 
+/**
+ * Sincronização incremental inteligente baseada em Data_Ult_Modificacao_Geral
+ * 
+ * Esta é a nova implementação que:
+ * 1. Busca a maior Data_Ult_Modificacao_Geral do Supabase
+ * 2. Busca registros do SQL Server >= (maior_data - 1 dia de folga)
+ * 3. Para cada registro:
+ *    - Se não existe → INSERT
+ *    - Se existe e data SQL > data Supabase → UPDATE
+ *    - Se existe e data SQL <= data Supabase → SKIP
+ */
+app.post('/api/sync-apontamentos-incremental', async (req, res) => {
+  try {
+    console.log('🚀 [API] Iniciando sincronização incremental de apontamentos...');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [API] Conectado ao SQL Server');
+    
+    // Executar sincronização incremental
+    const limite = req.body.limite || 500; // Limite configurável via body
+    const resultado = await sincronizarApontamentosIncremental(pool, limite);
+    
+    // Fechar conexão
+    await pool.close();
+    console.log('🔌 [API] Conexão SQL Server fechada');
+    
+    // Retornar resultado
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    });
+    
+  } catch (error) {
+    console.error('💥 [API] Erro na sincronização incremental:', error);
+    res.status(500).json({
+      sucesso: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT PARA CORRIGIR CAMPOS NULL
+// ============================================
+
+/**
+ * Corrigir campos NULL em apontamentos
+ * 
+ * Atualiza registros no Supabase que têm data_ult_modificacao_geral NULL
+ * buscando os dados corretos do SQL Server
+ * 
+ * POST /api/fix-null-fields-apontamentos
+ * Body (opcional):
+ *   - limite: número máximo de registros a processar (padrão: 1000)
+ * 
+ * Retorna:
+ *   - sucesso: boolean
+ *   - total_processados: número de registros processados
+ *   - atualizados: número de registros atualizados
+ *   - nao_encontrados: número de registros não encontrados no SQL Server
+ *   - erros: número de erros
+ *   - mensagens: array de mensagens
+ */
+app.post('/api/fix-null-fields-apontamentos', async (req, res) => {
+  try {
+    console.log('🔧 [API] Iniciando correção de campos NULL em apontamentos...');
+    
+    // Importar serviço
+    const { corrigirCamposNull } = await import('./services/fixNullFieldsService');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [API] Conectado ao SQL Server');
+    
+    // Executar correção
+    const limite = req.body.limite || 1000; // Limite configurável via body
+    const resultado = await corrigirCamposNull(pool, limite);
+    
+    // Fechar conexão
+    await pool.close();
+    console.log('🔌 [API] Conexão SQL Server fechada');
+    
+    // Retornar resultado
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      atualizados: resultado.atualizados,
+      nao_encontrados: resultado.nao_encontrados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    });
+    
+  } catch (error) {
+    console.error('💥 [API] Erro na correção de campos NULL:', error);
+    res.status(500).json({
+      sucesso: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+  }
+});
+
 // ============================================
 // ENDPOINTS PARA TICKETS
 // ============================================
@@ -1890,6 +2002,8 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
           [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
           [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
+          Data_Ult_Modificacao_Geral,
+          [Data_Ult_Modificacao_tarefa (Date-Hour-Minute-Second)] as Data_Ult_Modificacao_tarefa,
           Ativi_Interna,
           Caso_Estado,
           Caso_Grupo,
@@ -2019,6 +2133,8 @@ async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta
           data_atividade: formatarDataSemTimezone(registro.Data_Atividade),
           data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
           data_ult_modificacao: formatarDataSemTimezone(registro.Data_Ult_Modificacao),
+          data_ult_modificacao_geral: formatarDataSemTimezone(registro.Data_Ult_Modificacao_Geral),
+          data_ult_modificacao_tarefa: formatarDataSemTimezone(registro.Data_Ult_Modificacao_tarefa),
           ativi_interna: registro.Ativi_Interna || null,
           caso_estado: registro.Caso_Estado || null,
           caso_grupo: registro.Caso_Grupo || null,
