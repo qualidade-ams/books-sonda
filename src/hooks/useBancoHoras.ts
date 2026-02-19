@@ -74,6 +74,8 @@ export const useBancoHorasCalculos = (
         ano,
         consumo_horas: resultado.consumo_horas,
         requerimentos_horas: resultado.requerimentos_horas,
+        saldo_horas: resultado.saldo_horas,
+        repasse_horas: resultado.repasse_horas,
         timestamp: new Date().toISOString()
       });
       return resultado;
@@ -82,7 +84,7 @@ export const useBancoHorasCalculos = (
     staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos do servidor
     gcTime: 0, // ✅ CACHE DESABILITADO: Não manter dados em cache (limpar imediatamente)
     retry: 1, // Reduzir tentativas para falhar mais rápido
-    refetchOnMount: true, // Sempre refetch ao montar componente
+    refetchOnMount: 'always', // ✅ CRÍTICO: Sempre refetch ao montar, mesmo se dados existem
     refetchOnWindowFocus: false, // Não refetch ao focar janela
     refetchOnReconnect: true, // Refetch ao reconectar internet
   });
@@ -296,7 +298,7 @@ export const useReajustes = (
     enabled: !!empresaId,
     staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
     gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
-    refetchOnMount: true, // Sempre refetch ao montar componente
+    refetchOnMount: 'always', // ✅ CRÍTICO: Sempre refetch ao montar, mesmo se dados existem
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
@@ -350,7 +352,7 @@ export const useVersoes = (
     enabled: !!empresaId && mes >= 1 && mes <= 12 && ano >= 2020,
     staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
     gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
-    refetchOnMount: true, // Sempre refetch ao montar componente
+    refetchOnMount: 'always', // ✅ CRÍTICO: Sempre refetch ao montar, mesmo se dados existem
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
@@ -416,7 +418,7 @@ export const useVersoesPeriodo = (
     enabled: !!empresaId && !!mesesDoPeriodo && mesesDoPeriodo.length > 0,
     staleTime: 0, // ✅ CACHE DESABILITADO: Sempre buscar dados frescos
     gcTime: 0, // ✅ CACHE DESABILITADO: Não manter em cache
-    refetchOnMount: true, // Sempre refetch ao montar componente
+    refetchOnMount: 'always', // ✅ CRÍTICO: Sempre refetch ao montar, mesmo se dados existem
     refetchOnWindowFocus: false, // Não refetch ao focar janela
   });
 
