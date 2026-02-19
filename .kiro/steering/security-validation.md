@@ -389,3 +389,213 @@ END $$;
 4. **SEMPRE verificar duplicatas após criar políticas**
 5. **SEMPRE usar `SECURITY DEFINER` e `SET search_path = public` em funções**
 6. **SEMPRE usar `(SELECT auth.uid())` em vez de `auth.uid()` para performance**
+
+---
+
+## Padrão de Timezone - Horário de Brasília (UTC-3)
+
+### 🌍 REGRA CRÍTICA: Todos os campos TIMESTAMPTZ devem usar UTC
+
+**⚠️ IMPORTANTE**: O PostgreSQL/Supabase armazena TIMESTAMPTZ sempre em UTC internamente. O horário de Brasília (UTC-3) é aplicado apenas na EXIBIÇÃO, não no armazenamento.
+
+### ✅ Padrão Correto para Criação de Campos
+
+```sql
+-- ✅ CORRETO: Usar TIMESTAMP WITH TIME ZONE (armazena em UTC)
+CREATE TABLE exemplo (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  data_evento TIMESTAMP WITH TIME ZONE,
+  data_modificacao TIMESTAMP WITH TIME ZONE
+);
+
+-- ✅ CORRETO: Criar índices para performance
+CREATE INDEX idx_exemplo_created_at ON exemplo(created_at);
+CREATE INDEX idx_exemplo_updated_at ON exemplo(updated_at);
+
+-- ✅ CORRETO: Trigger para atualizar updated_at automaticamente
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER update_exemplo_updated_at
+  BEFORE UPDATE ON exemplo
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 📝 Conversão de Timezone em Queries
+
+```sql
+-- ✅ CORRETO: Converter para horário de Brasília na query
+SELECT 
+  id,
+  created_at AT TIME ZONE 'America/Sao_Paulo' as created_at_brasilia,
+  updated_at AT TIME ZONE 'America/Sao_Paulo' as updated_at_brasilia
+FROM exemplo;
+
+-- ✅ CORRETO: Filtrar por data no horário de Brasília
+SELECT *
+FROM exemplo
+WHERE created_at AT TIME ZONE 'America/Sao_Paulo' >= '2024-01-01 00:00:00'
+  AND created_at AT TIME ZONE 'America/Sao_Paulo' < '2024-02-01 00:00:00';
+
+-- ✅ CORRETO: Inserir data específica do horário de Brasília
+INSERT INTO exemplo (data_evento)
+VALUES ('2024-01-15 14:30:00-03:00'::TIMESTAMPTZ);
+
+-- ❌ ERRADO: Usar TIMESTAMP sem timezone
+CREATE TABLE exemplo_errado (
+  created_at TIMESTAMP DEFAULT NOW()  -- ❌ Não usa timezone!
+);
+```
+
+### 🔧 Migração de Campos Existentes
+
+```sql
+-- Se você tem campos TIMESTAMP sem timezone, converta para TIMESTAMPTZ:
+
+-- PASSO 1: Adicionar nova coluna com timezone
+ALTER TABLE tabela_existente 
+ADD COLUMN created_at_new TIMESTAMP WITH TIME ZONE;
+
+-- PASSO 2: Copiar dados assumindo que estão em horário de Brasília
+UPDATE tabela_existente
+SET created_at_new = created_at AT TIME ZONE 'America/Sao_Paulo';
+
+-- PASSO 3: Remover coluna antiga e renomear nova
+ALTER TABLE tabela_existente DROP COLUMN created_at;
+ALTER TABLE tabela_existente RENAME COLUMN created_at_new TO created_at;
+
+-- PASSO 4: Adicionar default e índice
+ALTER TABLE tabela_existente 
+ALTER COLUMN created_at SET DEFAULT NOW();
+
+CREATE INDEX idx_tabela_created_at ON tabela_existente(created_at);
+```
+
+### 📊 Verificação de Campos com Timezone
+
+```sql
+-- Verificar quais tabelas têm campos sem timezone
+SELECT 
+  table_name,
+  column_name,
+  data_type,
+  CASE 
+    WHEN data_type = 'timestamp without time zone' 
+    THEN '❌ SEM TIMEZONE - CORRIGIR'
+    WHEN data_type = 'timestamp with time zone' 
+    THEN '✅ COM TIMEZONE'
+    ELSE data_type
+  END as status
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND data_type LIKE '%timestamp%'
+ORDER BY table_name, column_name;
+```
+
+### 🎯 Boas Práticas de Timezone
+
+1. **SEMPRE use `TIMESTAMP WITH TIME ZONE`** (ou `TIMESTAMPTZ`)
+2. **NUNCA use `TIMESTAMP` sem timezone** para dados que precisam de contexto temporal
+3. **Armazene em UTC** (automático com TIMESTAMPTZ)
+4. **Converta para timezone local** apenas na exibição (queries ou frontend)
+5. **Use `NOW()`** para timestamp atual (já retorna em UTC)
+6. **Use `AT TIME ZONE 'America/Sao_Paulo'`** para converter para horário de Brasília
+7. **Crie índices** em campos de data/hora para performance
+8. **Use triggers** para atualizar `updated_at` automaticamente
+
+### 📋 Template Completo de Tabela com Timestamps
+
+```sql
+-- Template padrão para novas tabelas
+CREATE TABLE nome_da_tabela (
+  -- Identificação
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Campos de negócio
+  nome TEXT NOT NULL,
+  descricao TEXT,
+  
+  -- Campos de auditoria (SEMPRE incluir)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,  -- Para soft delete
+  
+  -- Campos de rastreamento
+  created_by UUID REFERENCES auth.users(id),
+  updated_by UUID REFERENCES auth.users(id)
+);
+
+-- Índices para performance
+CREATE INDEX idx_nome_da_tabela_created_at ON nome_da_tabela(created_at);
+CREATE INDEX idx_nome_da_tabela_updated_at ON nome_da_tabela(updated_at);
+CREATE INDEX idx_nome_da_tabela_deleted_at ON nome_da_tabela(deleted_at) WHERE deleted_at IS NULL;
+
+-- Trigger para updated_at
+CREATE TRIGGER update_nome_da_tabela_updated_at
+  BEFORE UPDATE ON nome_da_tabela
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Comentários
+COMMENT ON TABLE nome_da_tabela IS 'Descrição da tabela';
+COMMENT ON COLUMN nome_da_tabela.created_at IS 'Data de criação (UTC, exibir em America/Sao_Paulo)';
+COMMENT ON COLUMN nome_da_tabela.updated_at IS 'Data de última atualização (UTC, exibir em America/Sao_Paulo)';
+COMMENT ON COLUMN nome_da_tabela.deleted_at IS 'Data de exclusão lógica (UTC, exibir em America/Sao_Paulo)';
+```
+
+### 🚨 Checklist de Validação de Timezone
+
+Antes de aplicar migration com campos de data/hora:
+
+- [ ] Todos os campos de timestamp usam `TIMESTAMP WITH TIME ZONE`
+- [ ] Campos `created_at` e `updated_at` têm `DEFAULT NOW()`
+- [ ] Trigger de `updated_at` está configurado
+- [ ] Índices criados em campos de data/hora
+- [ ] Comentários documentam que timestamps estão em UTC
+- [ ] Queries de exibição usam `AT TIME ZONE 'America/Sao_Paulo'` quando necessário
+- [ ] Testes validam conversão de timezone corretamente
+
+### ⚠️ Erros Comuns a Evitar
+
+```sql
+-- ❌ ERRADO: TIMESTAMP sem timezone
+created_at TIMESTAMP DEFAULT NOW()
+
+-- ✅ CORRETO: TIMESTAMPTZ com timezone
+created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+-- ❌ ERRADO: Converter timezone no armazenamento
+created_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() AT TIME ZONE 'America/Sao_Paulo')
+
+-- ✅ CORRETO: Armazenar em UTC, converter na query
+created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- E na query: SELECT created_at AT TIME ZONE 'America/Sao_Paulo' FROM tabela
+
+-- ❌ ERRADO: Comparar datas sem considerar timezone
+WHERE created_at >= '2024-01-01'
+
+-- ✅ CORRETO: Especificar timezone na comparação
+WHERE created_at >= '2024-01-01 00:00:00-03:00'::TIMESTAMPTZ
+-- Ou: WHERE created_at AT TIME ZONE 'America/Sao_Paulo' >= '2024-01-01 00:00:00'
+```
+
+### 📚 Referências
+
+- **Timezone do Brasil**: `America/Sao_Paulo` (UTC-3 ou UTC-2 no horário de verão)
+- **Função NOW()**: Retorna timestamp atual em UTC
+- **Operador AT TIME ZONE**: Converte entre timezones
+- **Tipo TIMESTAMPTZ**: Alias para `TIMESTAMP WITH TIME ZONE`
+
+---

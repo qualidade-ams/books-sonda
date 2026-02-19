@@ -129,10 +129,13 @@ class BooksDataCollectorService {
         ),
         backlog: await this.gerarDadosBacklog(empresa.nome_completo, mes, ano),
         consumo: await this.gerarDadosConsumo(
-          requerimentosPeriodo,
-          requerimentosHistorico,
+          empresaId,
+          empresa.nome_completo,
+          empresa.nome_abreviado,
           mes,
-          ano
+          ano,
+          tipoContratoValido,
+          empresa.baseline_horas || 0
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano)
       };
@@ -1205,38 +1208,143 @@ class BooksDataCollectorService {
   }
 
   /**
-   * Gera dados de consumo
+   * Gera dados de consumo baseado no tipo de contrato
+   * - tipo_contrato = 'horas': Busca de apontamentos_aranda
+   * - tipo_contrato = 'tickets': Busca de apontamentos_tickets_aranda
+   * - tipo_contrato = 'ambos': Busca de ambas as tabelas
    */
   private async gerarDadosConsumo(
-    requerimentos: any[],
-    historico: any[],
+    empresaId: string,
+    empresaNomeCompleto: string,
+    empresaNomeAbreviado: string,
     mes: number,
-    ano: number
+    ano: number,
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null,
+    baselineHoras: number
   ): Promise<BookConsumoData> {
-    // Calcular horas totais
-    const horasTotal = requerimentos.reduce((sum, r) => {
-      const horas = this.converterHorasParaDecimal(r.horas_total);
-      return sum + horas;
-    }, 0);
+    console.log('📊 Gerando dados de consumo:', {
+      empresa: empresaNomeCompleto,
+      mes,
+      ano,
+      tipoContrato,
+      baselineHoras
+    });
 
-    const horasIncidente = requerimentos
-      .filter(r => r.tipo_cobranca === 'Incidente' || r.descricao?.toLowerCase().includes('incidente'))
-      .reduce((sum, r) => sum + this.converterHorasParaDecimal(r.horas_total), 0);
+    let horasTotal = 0;
+    let horasIncidente = 0;
+    let horasSolicitacao = 0;
+    let totalRegistros = 0;
+    let distribuicaoCausa: any[] = [];
 
-    const horasSolicitacao = horasTotal - horasIncidente;
+    const dataInicio = new Date(ano, mes - 1, 1);
+    const proximoMesInicio = new Date(ano, mes, 1);
 
-    // Baseline (buscar da empresa ou usar padrão)
-    const baselineHoras = 40; // TODO: Buscar da empresa
+    // Buscar dados baseado no tipo de contrato
+    if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
+      // Buscar de apontamentos_aranda (horas)
+      const { data: apontamentosHoras } = await supabase
+        .from('apontamentos_aranda')
+        .select('*')
+        .ilike('empresa', `%${empresaNomeCompleto}%`)
+        .gte('data', dataInicio.toISOString())
+        .lt('data', proximoMesInicio.toISOString());
 
+      if (apontamentosHoras && apontamentosHoras.length > 0) {
+        const horasApontadas = apontamentosHoras.reduce((sum, a) => {
+          const horas = this.converterHorasParaDecimal(a.horas_apontadas || a.horas || 0);
+          return sum + horas;
+        }, 0);
+
+        horasTotal += horasApontadas;
+        totalRegistros += apontamentosHoras.length;
+
+        console.log('✅ Horas de apontamentos_aranda:', {
+          registros: apontamentosHoras.length,
+          horas: horasApontadas
+        });
+      }
+    }
+
+    if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+      // Buscar de apontamentos_tickets_aranda (tickets fechados)
+      const { data: ticketsFechados } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('*')
+        .ilike('organizacao', `%${empresaNomeCompleto}%`)
+        .gte('data_solucao', dataInicio.toISOString())
+        .lt('data_solucao', proximoMesInicio.toISOString())
+        .neq('cod_tipo', 'Problema')
+        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+        .eq('caso_pai', 'SIM')
+        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+      if (ticketsFechados && ticketsFechados.length > 0) {
+        // Calcular horas de tickets
+        const horasTickets = ticketsFechados.reduce((sum, t) => {
+          const horas = this.converterHorasParaDecimal(t.tempo_solucao || 0);
+          return sum + horas;
+        }, 0);
+
+        // Separar por tipo
+        const horasTicketsIncidente = ticketsFechados
+          .filter(t => t.cod_tipo === 'Incidente')
+          .reduce((sum, t) => sum + this.converterHorasParaDecimal(t.tempo_solucao || 0), 0);
+
+        const horasTicketsSolicitacao = horasTickets - horasTicketsIncidente;
+
+        horasTotal += horasTickets;
+        horasIncidente += horasTicketsIncidente;
+        horasSolicitacao += horasTicketsSolicitacao;
+        totalRegistros += ticketsFechados.length;
+
+        // Distribuição por causa (cod_resolucao)
+        const causasMap = new Map<string, number>();
+        ticketsFechados.forEach(t => {
+          const causa = t.cod_resolucao || 'SEM CAUSA';
+          causasMap.set(causa, (causasMap.get(causa) || 0) + 1);
+        });
+
+        distribuicaoCausa = Array.from(causasMap.entries()).map(([causa, quantidade]) => ({
+          causa,
+          quantidade,
+          percentual: totalRegistros > 0 ? Math.round((quantidade / totalRegistros) * 100) : 0
+        }));
+
+        console.log('✅ Horas de apontamentos_tickets_aranda:', {
+          registros: ticketsFechados.length,
+          horas: horasTickets,
+          incidente: horasTicketsIncidente,
+          solicitacao: horasTicketsSolicitacao
+        });
+      }
+    }
+
+    // Se não houver separação de incidente/solicitação (caso de horas puras), considerar tudo como solicitação
+    if (horasIncidente === 0 && horasSolicitacao === 0 && horasTotal > 0) {
+      horasSolicitacao = horasTotal;
+    }
+
+    // Calcular percentual consumido
     const percentualConsumido = baselineHoras > 0
       ? Math.round((horasTotal / baselineHoras) * 100)
       : 0;
 
     // Histórico de consumo (últimos 6 meses)
-    const historicoConsumo = this.calcularHistoricoConsumo(historico, mes, ano);
+    const historicoConsumo = await this.calcularHistoricoConsumoReal(
+      empresaNomeCompleto,
+      mes,
+      ano,
+      tipoContrato
+    );
 
-    // Distribuição por causa (tipo de cobrança)
-    const distribuicaoCausa = this.agruparPorTipoCobranca(requerimentos);
+    console.log('✅ Dados de consumo calculados:', {
+      horasTotal,
+      horasIncidente,
+      horasSolicitacao,
+      baselineHoras,
+      percentualConsumido,
+      totalRegistros
+    });
 
     return {
       horas_consumo: this.formatarHoras(horasTotal),
@@ -1245,8 +1353,10 @@ class BooksDataCollectorService {
       solicitacao: this.formatarHoras(horasSolicitacao),
       percentual_consumido: percentualConsumido,
       historico_consumo: historicoConsumo,
-      distribuicao_causa: distribuicaoCausa,
-      total_geral: requerimentos.length
+      distribuicao_causa: distribuicaoCausa.length > 0 ? distribuicaoCausa : [
+        { causa: 'SEM DADOS', quantidade: 0, percentual: 0 }
+      ],
+      total_geral: totalRegistros
     };
   }
 
@@ -1557,7 +1667,7 @@ class BooksDataCollectorService {
   }
 
   /**
-   * Calcula histórico de consumo
+   * Calcula histórico de consumo (método antigo - mantido para compatibilidade)
    */
   private calcularHistoricoConsumo(historico: any[], mesAtual: number, anoAtual: number) {
     const mesesMap = new Map<string, number>();
@@ -1576,6 +1686,91 @@ class BooksDataCollectorService {
       horas: this.formatarHoras(horas),
       valor_numerico: Math.round(horas * 100) / 100
     }));
+  }
+
+  /**
+   * Calcula histórico de consumo real dos últimos 6 meses
+   * Busca de apontamentos_aranda e/ou apontamentos_tickets_aranda baseado no tipo_contrato
+   */
+  private async calcularHistoricoConsumoReal(
+    empresaNomeCompleto: string,
+    mesAtual: number,
+    anoAtual: number,
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null
+  ) {
+    const MESES_NOMES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 
+                         'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    
+    const resultado = [];
+
+    // Calcular para os últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      let mes = mesAtual - i;
+      let ano = anoAtual;
+      
+      while (mes <= 0) {
+        mes += 12;
+        ano -= 1;
+      }
+
+      const dataInicio = new Date(ano, mes - 1, 1);
+      const proximoMesInicio = new Date(ano, mes, 1);
+
+      let horasMes = 0;
+
+      // Buscar de apontamentos_aranda se necessário
+      if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
+        const { data: apontamentosHoras } = await supabase
+          .from('apontamentos_aranda')
+          .select('horas_apontadas, horas')
+          .ilike('empresa', `%${empresaNomeCompleto}%`)
+          .gte('data', dataInicio.toISOString())
+          .lt('data', proximoMesInicio.toISOString());
+
+        if (apontamentosHoras) {
+          const horasApontadas = apontamentosHoras.reduce((sum, a) => {
+            return sum + this.converterHorasParaDecimal(a.horas_apontadas || a.horas || 0);
+          }, 0);
+          horasMes += horasApontadas;
+        }
+      }
+
+      // Buscar de apontamentos_tickets_aranda se necessário
+      if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+        const { data: ticketsFechados } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('tempo_solucao')
+          .ilike('organizacao', `%${empresaNomeCompleto}%`)
+          .gte('data_solucao', dataInicio.toISOString())
+          .lt('data_solucao', proximoMesInicio.toISOString())
+          .neq('cod_tipo', 'Problema')
+          .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+          .eq('caso_pai', 'SIM')
+          .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+        if (ticketsFechados) {
+          const horasTickets = ticketsFechados.reduce((sum, t) => {
+            return sum + this.converterHorasParaDecimal(t.tempo_solucao || 0);
+          }, 0);
+          horasMes += horasTickets;
+        }
+      }
+
+      resultado.push({
+        mes: MESES_NOMES[mes - 1],
+        horas: this.formatarHoras(horasMes),
+        valor_numerico: Math.round(horasMes * 100) / 100
+      });
+    }
+
+    console.log('📈 Histórico de consumo calculado:', {
+      empresa: empresaNomeCompleto,
+      tipoContrato,
+      meses: resultado.length,
+      dados: resultado
+    });
+
+    return resultado;
   }
 
   /**
