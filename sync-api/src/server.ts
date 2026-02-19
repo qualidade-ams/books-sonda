@@ -9,6 +9,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { sincronizarApontamentosIncremental } from './services/incrementalSyncApontamentosService';
+import { sincronizarTicketsIncremental } from './services/incrementalSyncTicketsService';
 
 dotenv.config();
 
@@ -1675,16 +1676,87 @@ app.get('/api/table-structure-apontamentos', async (req, res) => {
 
 /**
  * Sincronizar apontamentos do SQL Server (incremental)
+ * NOTA: Este endpoint agora usa o serviço incremental inteligente
  */
 app.post('/api/sync-apontamentos', async (req, res) => {
-  await sincronizarApontamentos(req, res, false);
+  try {
+    console.log('🚀 [API] Sincronização incremental de apontamentos (endpoint legado)...');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [API] Conectado ao SQL Server');
+    
+    // Executar sincronização incremental
+    const resultado = await sincronizarApontamentosIncremental(pool);
+    
+    // Fechar conexão
+    await pool.close();
+    console.log('🔌 [API] Conexão SQL Server fechada');
+    
+    // Retornar resultado
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    });
+    
+  } catch (error) {
+    console.error('💥 [API] Erro na sincronização:', error);
+    res.status(500).json({
+      sucesso: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+  }
 });
 
 /**
- * Sincronização completa de apontamentos (todos os registros desde 01/08/2025)
+ * Sincronização completa de apontamentos
+ * NOTA: Endpoint obsoleto - use /api/sync-apontamentos-incremental
+ * Mantido apenas para compatibilidade
  */
 app.post('/api/sync-apontamentos-full', async (req, res) => {
-  await sincronizarApontamentos(req, res, true);
+  try {
+    console.log('⚠️ [API] Endpoint /api/sync-apontamentos-full está obsoleto');
+    console.log('🚀 [API] Redirecionando para sincronização incremental...');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [API] Conectado ao SQL Server');
+    
+    // Executar sincronização incremental
+    const resultado = await sincronizarApontamentosIncremental(pool);
+    
+    // Fechar conexão
+    await pool.close();
+    console.log('🔌 [API] Conexão SQL Server fechada');
+    
+    // Retornar resultado
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: [
+        '⚠️ Este endpoint está obsoleto. Use /api/sync-apontamentos-incremental',
+        ...resultado.mensagens
+      ]
+    });
+    
+  } catch (error) {
+    console.error('💥 [API] Erro na sincronização:', error);
+    res.status(500).json({
+      sucesso: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    });
+  }
 });
 
 /**
@@ -1706,9 +1778,8 @@ app.post('/api/sync-apontamentos-incremental', async (req, res) => {
     const pool = await sql.connect(sqlConfig);
     console.log('✅ [API] Conectado ao SQL Server');
     
-    // Executar sincronização incremental
-    const limite = req.body.limite || 500; // Limite configurável via body
-    const resultado = await sincronizarApontamentosIncremental(pool, limite);
+    // Executar sincronização incremental (busca TODOS os registros modificados)
+    const resultado = await sincronizarApontamentosIncremental(pool);
     
     // Fechar conexão
     await pool.close();
@@ -1870,359 +1941,127 @@ app.get('/api/table-structure-tickets', async (req, res) => {
 
 /**
  * Sincronizar tickets do SQL Server (incremental)
+ * NOTA: Este endpoint agora usa o serviço incremental inteligente
  */
 app.post('/api/sync-tickets', async (req, res) => {
-  await sincronizarTickets(req, res, false);
+  try {
+    console.log('🚀 [API] Sincronização incremental de tickets (endpoint legado)...');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    
+    // Usar novo serviço incremental
+    const resultado = await sincronizarTicketsIncremental(pool);
+    
+    await pool.close();
+    
+    res.json(resultado);
+    
+  } catch (error) {
+    console.error('❌ [API] Erro na sincronização de tickets:', error);
+    res.status(500).json({
+      sucesso: false,
+      total_processados: 0,
+      inseridos: 0,
+      atualizados: 0,
+      ignorados: 0,
+      erros: 1,
+      mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
+    });
+  }
 });
 
 /**
- * Sincronização completa de tickets (todos os registros desde 01/08/2025)
+ * Sincronização completa de tickets
+ * NOTA: Endpoint obsoleto - use /api/sync-tickets-incremental
+ * Mantido apenas para compatibilidade
  */
 app.post('/api/sync-tickets-full', async (req, res) => {
-  await sincronizarTickets(req, res, true);
+  try {
+    console.log('⚠️ [API] Endpoint /api/sync-tickets-full está obsoleto');
+    console.log('🚀 [API] Redirecionando para sincronização incremental...');
+    
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    
+    // Usar serviço incremental (mesmo para "full")
+    const resultado = await sincronizarTicketsIncremental(pool);
+    
+    await pool.close();
+    
+    res.json({
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: [
+        '⚠️ Este endpoint está obsoleto. Use /api/sync-tickets-incremental',
+        ...resultado.mensagens
+      ]
+    });
+    
+  } catch (error) {
+    console.error('❌ [API] Erro na sincronização de tickets:', error);
+    res.status(500).json({
+      sucesso: false,
+      total_processados: 0,
+      novos: 0,
+      atualizados: 0,
+      ignorados: 0,
+      erros: 1,
+      mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
+    });
+  }
 });
 
 /**
- * Função principal de sincronização de apontamentos
+ * Sincronização incremental de tickets (endpoint principal)
+ * 
+ * Lógica inteligente de UPSERT:
+ * - Busca maior Data_Ultima_Modificacao do Supabase
+ * - Aplica folga de 1 dia para segurança
+ * - Busca TODOS os registros modificados do SQL Server
+ * - Para cada registro:
+ *    - Se não existe → INSERT
+ *    - Se existe e data SQL > data Supabase → UPDATE
+ *    - Se existe e data SQL <= data Supabase → SKIP
  */
-async function sincronizarApontamentos(req: any, res: any, sincronizacaoCompleta: boolean = false) {
-  const resultado = {
-    sucesso: false,
-    total_processados: 0,
-    novos: 0,
-    atualizados: 0,
-    erros: 0,
-    mensagens: [] as string[],
-    detalhes_erros: [] as any[]
-  };
-
+app.post('/api/sync-tickets-incremental', async (req, res) => {
   try {
-    console.log('🔄 [APONTAMENTOS] Iniciando sincronização de apontamentos...');
-    resultado.mensagens.push('Iniciando sincronização com SQL Server (AMSapontamento)...');
-
+    console.log('🚀 [API] Iniciando sincronização incremental de tickets...');
+    
     // Conectar ao SQL Server
-    console.log('🔌 [APONTAMENTOS] Tentando conectar ao SQL Server...');
     const pool = await sql.connect(sqlConfig);
-    console.log('✅ [APONTAMENTOS] Conectado ao SQL Server');
-    resultado.mensagens.push('Conectado ao SQL Server');
-
-    let query: string;
-    let ultimaDataSincronizacao: Date | null = null;
-
-    if (sincronizacaoCompleta) {
-      // Sincronização completa - buscar registros progressivamente (limitado a 500 por vez)
-      console.log('📋 [APONTAMENTOS] Modo: Sincronização COMPLETA (progressiva)');
-      resultado.mensagens.push('Modo: Sincronização COMPLETA (até 500 registros por vez)');
-      
-      // Buscar última data sincronizada para continuar de onde parou
-      const { data: ultimoRegistro } = await supabase
-        .from('apontamentos_aranda')
-        .select('data_abertura')
-        .eq('origem', 'sql_server')
-        .order('data_abertura', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
-        ? new Date(ultimoRegistro.data_abertura)
-        : new Date('2024-02-28T00:00:00.000Z'); // Data inicial: 28/02/2024
-
-      console.log('📅 [APONTAMENTOS] Última data sincronizada:', ultimaDataSincronizacao.toISOString());
-      console.log('📅 [APONTAMENTOS] Buscando próximos 500 registros após esta data...');
-      resultado.mensagens.push(`Última data sincronizada: ${ultimaDataSincronizacao.toISOString()}`);
-      resultado.mensagens.push('Buscando próximos 500 registros...');
-      
-      query = `
-        SELECT TOP 500
-          Nro_Chamado,
-          Tipo_Chamado,
-          Org_Us_Final,
-          categoria,
-          Causa_Raiz,
-          Solicitante,
-          Us_Final_Afetado,
-          [Data_Abertura (Date-Hour-Minute-Second)] as Data_Abertura,
-          [Data_Sistema (Date-Hour-Minute-Second)] as Data_Sistema,
-          [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
-          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
-          [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
-          Ativi_Interna,
-          Caso_Estado,
-          Caso_Grupo,
-          Nro_Tarefa,
-          Descricao_Tarefa,
-          Tempo_Gasto_Segundos,
-          Tempo_Gasto_Minutos,
-          Tempo_Gasto_Horas,
-          Item_Configuracao,
-          Analista_Tarefa,
-          Analista_Caso,
-          Estado_Tarefa,
-          Resumo_Tarefa,
-          Grupo_Tarefa,
-          Problema,
-          Cod_Resolucao,
-          LOG
-        FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2024-02-28 00:00:00'
-        ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
-      `;
-    } else {
-      // Sincronização incremental - buscar apenas registros novos
-      console.log('📋 [APONTAMENTOS] Modo: Sincronização INCREMENTAL');
-      resultado.mensagens.push('Modo: Sincronização INCREMENTAL');
-
-      // Buscar última data de sincronização no Supabase
-      const { data: ultimoRegistro } = await supabase
-        .from('apontamentos_aranda')
-        .select('data_abertura')
-        .eq('origem', 'sql_server')
-        .order('data_abertura', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      ultimaDataSincronizacao = ultimoRegistro?.data_abertura 
-        ? new Date(ultimoRegistro.data_abertura)
-        : new Date('2025-08-01T00:00:00.000Z'); // Data inicial: 01/08/2025
-
-      console.log('📅 [APONTAMENTOS] Última sincronização:', ultimaDataSincronizacao.toISOString());
-      resultado.mensagens.push(`Última sincronização: ${ultimaDataSincronizacao.toISOString()}`);
-
-      query = `
-        SELECT
-          Nro_Chamado,
-          Tipo_Chamado,
-          Org_Us_Final,
-          categoria,
-          Causa_Raiz,
-          Solicitante,
-          Us_Final_Afetado,
-          [Data_Abertura (Date-Hour-Minute-Second)] as Data_Abertura,
-          [Data_Sistema (Date-Hour-Minute-Second)] as Data_Sistema,
-          [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
-          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
-          [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
-          Data_Ult_Modificacao_Geral,
-          [Data_Ult_Modificacao_tarefa (Date-Hour-Minute-Second)] as Data_Ult_Modificacao_tarefa,
-          Ativi_Interna,
-          Caso_Estado,
-          Caso_Grupo,
-          Nro_Tarefa,
-          Descricao_Tarefa,
-          Tempo_Gasto_Segundos,
-          Tempo_Gasto_Minutos,
-          Tempo_Gasto_Horas,
-          Item_Configuracao,
-          Analista_Tarefa,
-          Analista_Caso,
-          Estado_Tarefa,
-          Resumo_Tarefa,
-          Grupo_Tarefa,
-          Problema,
-          Cod_Resolucao,
-          LOG
-        FROM AMSapontamento
-        WHERE [Data_Abertura (Date-Hour-Minute-Second)] >= '2024-02-28 00:00:00'       
-        ORDER BY [Data_Abertura (Date-Hour-Minute-Second)] ASC
-      `;
-    }
-
-    const request = pool.request();
     
-    // Adicionar parâmetro para sincronização incremental E completa (ambas usam ultimaData agora)
-    if (ultimaDataSincronizacao) {
-      request.input('ultimaData', sql.DateTime, ultimaDataSincronizacao);
-    }
+    // Executar sincronização incremental
+    const resultado = await sincronizarTicketsIncremental(pool);
     
-    const result = await request.query(query);
-    const registros = result.recordset as DadosApontamentoSqlServer[];
-    
-    resultado.total_processados = registros.length;
-    resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
-    console.log(`📊 [APONTAMENTOS] ${registros.length} registros encontrados`);
-
     await pool.close();
-    console.log('🔌 [APONTAMENTOS] Conexão SQL Server fechada');
-
-    if (registros.length === 0) {
-      console.log('⚠️ [APONTAMENTOS] Nenhum registro novo encontrado no SQL Server');
-      
-      // Buscar total de registros no Supabase para exibir no modal
-      try {
-        const { count: totalSupabase } = await supabase
-          .from('apontamentos_aranda')
-          .select('*', { count: 'exact', head: true })
-          .eq('origem', 'sql_server');
-        
-        console.log(`📊 [APONTAMENTOS] Total de registros no Supabase: ${totalSupabase || 0}`);
-        resultado.total_processados = totalSupabase || 0;
-      } catch (error) {
-        console.warn('⚠️ [APONTAMENTOS] Erro ao buscar total do Supabase:', error);
-      }
-      
-      resultado.sucesso = true;
-      resultado.mensagens.push('Nenhum registro novo para sincronizar');
-      return res.json(resultado);
-    }
-
-    // Processar cada registro
-    console.log('🔄 [APONTAMENTOS] Iniciando processamento de registros...');
-    resultado.mensagens.push('Iniciando processamento de registros...');
     
-    for (let i = 0; i < registros.length; i++) {
-      const registro = registros[i];
-      
-      if (i % 50 === 0) {
-        console.log(`📝 [APONTAMENTOS] Processando registro ${i + 1}/${registros.length}...`);
-      }
-      
-      try {
-        // Validar dados do registro antes de processar
-        if (!registro.Nro_Chamado || registro.Nro_Chamado.trim() === '') {
-          console.error(`❌ [APONTAMENTOS] Registro ${i + 1} tem Nro_Chamado inválido:`, registro);
-          resultado.erros++;
-          resultado.detalhes_erros.push({
-            registro: {
-              Nro_Chamado: registro.Nro_Chamado,
-              Nro_Tarefa: registro.Nro_Tarefa
-            },
-            erro: 'Nro_Chamado é obrigatório mas está vazio/nulo'
-          });
-          continue; // Pular este registro
-        }
-
-        if (!registro.Nro_Tarefa || registro.Nro_Tarefa.trim() === '') {
-          console.error(`❌ [APONTAMENTOS] Registro ${i + 1} tem Nro_Tarefa inválido:`, registro);
-          resultado.erros++;
-          resultado.detalhes_erros.push({
-            registro: {
-              Nro_Chamado: registro.Nro_Chamado,
-              Nro_Tarefa: registro.Nro_Tarefa
-            },
-            erro: 'Nro_Tarefa é obrigatório mas está vazio/nulo'
-          });
-          continue; // Pular este registro
-        }
-        
-        const idUnico = gerarIdUnicoApontamento(registro);
-
-        // Verificar se já existe
-        const { data: existente, error: erroConsulta } = await supabase
-          .from('apontamentos_aranda')
-          .select('id')
-          .eq('id_externo', idUnico)
-          .maybeSingle();
-        
-        if (erroConsulta) {
-          console.error('❌ [APONTAMENTOS] Erro ao consultar registro existente:', erroConsulta);
-          throw erroConsulta;
-        }
-
-        const dadosApontamento = {
-          origem: 'sql_server' as const,
-          id_externo: idUnico,
-          nro_chamado: registro.Nro_Chamado || null,
-          tipo_chamado: registro.Tipo_Chamado || null,
-          org_us_final: registro.Org_Us_Final || null,
-          categoria: registro.categoria || null,
-          causa_raiz: registro.Causa_Raiz || null,
-          solicitante: registro.Solicitante || null,
-          us_final_afetado: registro.Us_Final_Afetado || null,
-          data_abertura: formatarDataSemTimezone(registro.Data_Abertura),
-          data_sistema: formatarDataSemTimezone(registro.Data_Sistema),
-          data_atividade: formatarDataSemTimezone(registro.Data_Atividade),
-          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
-          data_ult_modificacao: formatarDataSemTimezone(registro.Data_Ult_Modificacao),
-          data_ult_modificacao_geral: formatarDataSemTimezone(registro.Data_Ult_Modificacao_Geral),
-          data_ult_modificacao_tarefa: formatarDataSemTimezone(registro.Data_Ult_Modificacao_tarefa),
-          ativi_interna: registro.Ativi_Interna || null,
-          caso_estado: registro.Caso_Estado || null,
-          caso_grupo: registro.Caso_Grupo || null,
-          nro_tarefa: registro.Nro_Tarefa || null,
-          descricao_tarefa: registro.Descricao_Tarefa || null,
-          tempo_gasto_segundos: registro.Tempo_Gasto_Segundos || null,
-          tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
-          tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
-          item_configuracao: registro.Item_Configuracao || null,
-          analista_tarefa: registro.Analista_Tarefa || null,
-          analista_caso: registro.Analista_Caso || null,
-          estado_tarefa: registro.Estado_Tarefa || null,
-          resumo_tarefa: registro.Resumo_Tarefa || null,
-          grupo_tarefa: registro.Grupo_Tarefa || null,
-          problema: registro.Problema || null,
-          cod_resolucao: registro.Cod_Resolucao || null,
-          log: formatarDataSemTimezone(registro.LOG)
-        };
-
-        if (existente) {
-          // ✅ Registro já existe - PULAR (não atualizar para preservar edições manuais)
-          console.log(`⏭️ [APONTAMENTOS] Registro ${i + 1} já existe - pulando (ID: ${idUnico})`);
-          // Não incrementar nenhum contador - registro ignorado
-          continue;
-        } else {
-          // ✅ Inserir novo registro
-          const { error } = await supabase
-            .from('apontamentos_aranda')
-            .insert({
-              ...dadosApontamento,
-              autor_id: null,
-              autor_nome: 'SQL Server Sync'
-            });
-
-          if (error) {
-            console.error('❌ [APONTAMENTOS] Erro ao inserir:', error);
-            throw error;
-          }
-          resultado.novos++;
-        }
-      } catch (erro) {
-        console.error(`💥 [APONTAMENTOS] Erro no registro ${i + 1}:`, erro);
-        resultado.erros++;
-        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
-        resultado.detalhes_erros.push({
-          registro: {
-            Nro_Chamado: registro.Nro_Chamado,
-            Nro_Tarefa: registro.Nro_Tarefa
-          },
-          erro: erroMsg
-        });
-        
-        // Se houver muitos erros, parar
-        if (resultado.erros >= 10) {
-          console.log('🛑 [APONTAMENTOS] Muitos erros detectados, parando sincronização...');
-          resultado.mensagens.push('Sincronização interrompida devido a múltiplos erros');
-          break;
-        }
-      }
-    }
-    
-    console.log('✅ [APONTAMENTOS] Processamento concluído');
-
-    resultado.sucesso = resultado.erros === 0;
-    resultado.mensagens.push(
-      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`
-    );
-
-    console.log('📊 [APONTAMENTOS] Sincronização de apontamentos concluída:', resultado);
     res.json(resultado);
-
+    
   } catch (error) {
-    console.error('💥 [APONTAMENTOS] Erro crítico na sincronização de apontamentos:', error);
-    console.error('🔍 [APONTAMENTOS] Stack trace:', error instanceof Error ? error.stack : 'N/A');
-    
-    resultado.sucesso = false;
-    resultado.mensagens.push(`Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    
-    // Adicionar detalhes do erro para debug
-    resultado.detalhes_erros.push({
-      registro: { acao: 'sincronizacao_geral' },
-      erro: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : 'N/A'
+    console.error('❌ [API] Erro na sincronização incremental de tickets:', error);
+    res.status(500).json({
+      sucesso: false,
+      total_processados: 0,
+      inseridos: 0,
+      atualizados: 0,
+      ignorados: 0,
+      erros: 1,
+      mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
     });
-    
-    res.status(500).json(resultado);
   }
-}
+});
+
+// ============================================
+// FUNÇÃO REMOVIDA: sincronizarApontamentos()
+// ============================================
+// Esta função foi movida para incrementalSyncApontamentosService.ts
+// Use sincronizarApontamentosIncremental() em vez disso
+// ============================================
 
 /**
  * Função principal de sincronização de tickets

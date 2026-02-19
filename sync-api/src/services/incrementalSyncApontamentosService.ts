@@ -6,11 +6,17 @@
  * 
  * Regras:
  * 1. Busca maior Data_Ult_Modificacao_Geral do Supabase
- * 2. Busca registros do SQL Server >= (maior_data - 1 dia)
+ * 2. Busca TODOS os registros do SQL Server >= (maior_data - 1 dia de folga)
  * 3. Para cada registro:
  *    - Se não existe → INSERT
  *    - Se existe e data SQL > data Supabase → UPDATE
  *    - Se existe e data SQL <= data Supabase → SKIP (não sobrescrever)
+ * 
+ * MELHORIAS APLICADAS:
+ * - Folga de 1 dia garante que nenhum registro seja perdido
+ * - Busca TODOS os registros modificados (sem limite de 500)
+ * - Filtro SQL usa CAST e >= para comparação correta
+ * - Lógica de comparação de timestamps evita sobrescrever dados mais recentes
  */
 
 import sql from 'mssql';
@@ -150,36 +156,98 @@ async function buscarUltimaDataSincronizada(): Promise<Date> {
   }
 
   const ultimaData = new Date(data.data_ult_modificacao_geral);
-  console.log('✅ [SYNC] Última data sincronizada:', ultimaData.toISOString());
+  console.log('✅ [SYNC] Última data sincronizada encontrada:', ultimaData.toISOString());
+  console.log('🔍 [DEBUG] Tipo da última data:', typeof ultimaData);
+  console.log('🔍 [DEBUG] Valor raw do Supabase:', data.data_ult_modificacao_geral);
   
   return ultimaData;
 }
 
 /**
- * Calcula data de início da sincronização (última data - 1 dia de folga)
+ * Calcula data de início da sincronização com 1 dia de folga
+ * IMPORTANTE: Subtrai 1 dia para garantir que nenhum registro seja perdido
+ * devido a diferenças de timezone ou atualizações simultâneas
  */
 function calcularDataInicioComFolga(ultimaData: Date): Date {
   const dataComFolga = new Date(ultimaData);
-  dataComFolga.setDate(dataComFolga.getDate() - 1); // Subtrair 1 dia
+  dataComFolga.setDate(dataComFolga.getDate() - 1); // Subtrair 1 dia de folga
   
-  console.log('📅 [SYNC] Data de início com folga de 1 dia:', dataComFolga.toISOString());
+  console.log('📅 [SYNC] ========================================');
+  console.log('📅 [SYNC] CÁLCULO DE DATA DE INÍCIO:');
+  console.log(`📅 [SYNC] Última sincronização real: ${ultimaData.toISOString()}`);
+  console.log(`📅 [SYNC] Data de início (com folga): ${dataComFolga.toISOString()}`);
+  console.log('📅 [SYNC] ⚠️ Folga de 1 dia garante que nenhum registro seja perdido');
+  console.log('📅 [SYNC] ========================================');
   
   return dataComFolga;
 }
 
 /**
  * Busca registros do SQL Server modificados após a data especificada
+ * IMPORTANTE: Busca TODOS os registros modificados (sem limite)
  */
 async function buscarRegistrosModificados(
   pool: sql.ConnectionPool,
   dataInicio: Date,
-  limite: number = 500
+  limite: number = 0 // 0 = sem limite, busca todos
 ): Promise<DadosApontamentoSqlServer[]> {
-  console.log(`📊 [SYNC] Buscando até ${limite} registros modificados após ${dataInicio.toISOString()}...`);
+  console.log(`📊 [SYNC] Buscando TODOS os registros modificados após ${dataInicio.toISOString()}...`);
   
-  // ✅ CORREÇÃO: Usar CONVERT para garantir comparação correta de datas
+  // ✅ DEBUG: Verificar tipo e valor do parâmetro
+  console.log('🔍 [DEBUG] Tipo de dataInicio:', typeof dataInicio);
+  console.log('🔍 [DEBUG] Valor de dataInicio:', dataInicio);
+  console.log('🔍 [DEBUG] dataInicio.toISOString():', dataInicio.toISOString());
+  
+  // ✅ TESTE: Verificar tipo de dado do campo Data_Ult_Modificacao_Geral
+  const queryTipoDado = `
+    SELECT TOP 1
+      Data_Ult_Modificacao_Geral,
+      SQL_VARIANT_PROPERTY(Data_Ult_Modificacao_Geral, 'BaseType') as tipo_dado
+    FROM AMSapontamento
+    WHERE Data_Ult_Modificacao_Geral IS NOT NULL
+  `;
+  
+  const tipoDadoResult = await pool.request().query(queryTipoDado);
+  if (tipoDadoResult.recordset.length > 0) {
+    console.log(`🔍 [DEBUG] Tipo de dado do campo Data_Ult_Modificacao_Geral: ${tipoDadoResult.recordset[0].tipo_dado}`);
+    console.log(`🔍 [DEBUG] Exemplo de valor: ${tipoDadoResult.recordset[0].Data_Ult_Modificacao_Geral}`);
+  }
+  
+  // ✅ TESTE: Primeiro vamos contar quantos registros existem com data >= dataInicio
+  const queryCount = `
+    SELECT COUNT(*) as total
+    FROM AMSapontamento
+    WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
+      AND Data_Ult_Modificacao_Geral IS NOT NULL
+  `;
+  
+  const countResult = await pool.request()
+    .input('dataInicio', sql.DateTime, dataInicio)
+    .query(queryCount);
+  
+  const totalRegistros = countResult.recordset[0].total;
+  console.log(`🔍 [DEBUG] Total de registros com Data_Ult_Modificacao_Geral >= ${dataInicio.toISOString()}: ${totalRegistros}`);
+  
+  // ✅ TESTE: Buscar o menor e maior valor de Data_Ult_Modificacao_Geral
+  const queryMinMax = `
+    SELECT 
+      MIN(CAST(Data_Ult_Modificacao_Geral AS DATETIME)) as menor_data,
+      MAX(CAST(Data_Ult_Modificacao_Geral AS DATETIME)) as maior_data
+    FROM AMSapontamento
+    WHERE Data_Ult_Modificacao_Geral IS NOT NULL
+  `;
+  
+  const minMaxResult = await pool.request().query(queryMinMax);
+  console.log(`🔍 [DEBUG] Menor data no SQL Server: ${minMaxResult.recordset[0].menor_data}`);
+  console.log(`🔍 [DEBUG] Maior data no SQL Server: ${minMaxResult.recordset[0].maior_data}`);
+  console.log(`🔍 [DEBUG] Data de filtro (dataInicio): ${dataInicio.toISOString()}`);
+  
+  // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os registros (sem TOP/limite)
+  // Se limite = 0, busca todos; caso contrário, usa o limite especificado
+  const topClause = limite > 0 ? `TOP ${limite}` : '';
+  
   const query = `
-    SELECT TOP ${limite}
+    SELECT ${topClause}
       Nro_Chamado,
       Tipo_Chamado,
       Org_Us_Final,
@@ -212,24 +280,33 @@ async function buscarRegistrosModificados(
       Cod_Resolucao,
       LOG
     FROM AMSapontamento
-    WHERE CONVERT(DATETIME, Data_Ult_Modificacao_Geral, 120) > CONVERT(DATETIME, @dataInicio, 120)
+    WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
       AND Data_Ult_Modificacao_Geral IS NOT NULL
-    ORDER BY Data_Ult_Modificacao_Geral ASC
+    ORDER BY CAST(Data_Ult_Modificacao_Geral AS DATETIME) ASC
   `;
 
+  console.log(`🔍 [DEBUG] Executando query principal ${limite > 0 ? `com limite de ${limite}` : 'SEM LIMITE (todos os registros)'}...`);
+  
   const result = await pool.request()
     .input('dataInicio', sql.DateTime, dataInicio)
     .query(query);
 
-  console.log(`✅ [SYNC] ${result.recordset.length} registros encontrados no SQL Server`);
-  console.log(`📅 [SYNC] Filtro aplicado: Data_Ult_Modificacao_Geral > ${dataInicio.toISOString()}`);
+  console.log(`✅ [SYNC] ${result.recordset.length} registros encontrados no SQL Server (de ${totalRegistros} total)`);
+  console.log(`📅 [SYNC] Filtro aplicado: CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= ${dataInicio.toISOString()}`);
   
-  // Log dos primeiros 3 registros para debug
+  // Log dos primeiros 3 e últimos 3 registros para debug
   if (result.recordset.length > 0) {
-    console.log('📋 [SYNC] Primeiros registros encontrados:');
+    console.log('📋 [SYNC] Primeiros 3 registros encontrados:');
     result.recordset.slice(0, 3).forEach((reg: any, idx: number) => {
-      console.log(`   ${idx + 1}. ${reg.Nro_Chamado}/${reg.Nro_Tarefa} - Data: ${reg.Data_Ult_Modificacao_Geral?.toISOString()}`);
+      console.log(`   ${idx + 1}. ${reg.Nro_Chamado}/${reg.Nro_Tarefa} - Data: ${reg.Data_Ult_Modificacao_Geral}`);
     });
+    
+    if (result.recordset.length > 3) {
+      console.log('📋 [SYNC] Últimos 3 registros encontrados:');
+      result.recordset.slice(-3).forEach((reg: any, idx: number) => {
+        console.log(`   ${result.recordset.length - 2 + idx}. ${reg.Nro_Chamado}/${reg.Nro_Tarefa} - Data: ${reg.Data_Ult_Modificacao_Geral}`);
+      });
+    }
   }
   
   return result.recordset as DadosApontamentoSqlServer[];
@@ -418,10 +495,10 @@ async function processarRegistro(
 
 /**
  * Função principal de sincronização incremental
+ * Busca TODOS os registros modificados (sem limite)
  */
 export async function sincronizarApontamentosIncremental(
-  pool: sql.ConnectionPool,
-  limite: number = 500
+  pool: sql.ConnectionPool
 ): Promise<{
   sucesso: boolean;
   total_processados: number;
@@ -447,16 +524,18 @@ export async function sincronizarApontamentosIncremental(
 
     // 1. Buscar última data sincronizada
     const ultimaData = await buscarUltimaDataSincronizada();
-    resultado.mensagens.push(`Última data sincronizada: ${ultimaData.toISOString()}`);
-    console.log(`📅 [SYNC] Última data sincronizada no Supabase: ${ultimaData.toISOString()}`);
+    console.log(`📅 [SYNC] Última sincronização: ${ultimaData.toISOString()}`);
+    resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
 
     // 2. Calcular data de início com folga de 1 dia
     const dataInicio = calcularDataInicioComFolga(ultimaData);
-    resultado.mensagens.push(`Buscando registros modificados desde: ${dataInicio.toISOString()} (com folga de 1 dia)`);
-    console.log(`📅 [SYNC] Buscando registros com Data_Ult_Modificacao_Geral > ${dataInicio.toISOString()}`);
+    console.log(`📅 [SYNC] Data de início (com folga de 1 dia): ${dataInicio.toISOString()}`);
+    console.log(`⚠️ [SYNC] Folga de 1 dia garante que nenhum registro seja perdido`);
+    resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()} (folga de 1 dia para segurança)`);
+    console.log(`📅 [SYNC] Buscando registros com Data_Ult_Modificacao_Geral >= ${dataInicio.toISOString()}`);
 
-    // 3. Buscar registros modificados do SQL Server
-    const registros = await buscarRegistrosModificados(pool, dataInicio, limite);
+    // 3. Buscar TODOS os registros modificados do SQL Server (sem limite)
+    const registros = await buscarRegistrosModificados(pool, dataInicio, 0); // 0 = sem limite
     resultado.total_processados = registros.length;
     resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
 

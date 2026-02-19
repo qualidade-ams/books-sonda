@@ -75,8 +75,8 @@ export function useSincronizarSqlServer() {
         );
       }
 
-      // Mostrar resultado dos especialistas
-      if (resultado.especialistas) {
+      // Mostrar resultado dos especialistas (apenas se foi selecionado)
+      if (resultado.especialistas && resultado.especialistas.selecionado !== false) {
         if (resultado.especialistas.sucesso) {
           toast.success(
             `Especialistas sincronizados! ${resultado.especialistas.novos} novos, ${resultado.especialistas.atualizados} atualizados, ${resultado.especialistas.removidos} removidos`,
@@ -90,8 +90,8 @@ export function useSincronizarSqlServer() {
         }
       }
 
-      // Mostrar resultado dos apontamentos
-      if (resultado.apontamentos) {
+      // Mostrar resultado dos apontamentos (apenas se foi selecionado)
+      if (resultado.apontamentos && resultado.apontamentos.selecionado !== false) {
         if (resultado.apontamentos.sucesso) {
           toast.success(
             `Apontamentos sincronizados! ${resultado.apontamentos.novos} novos, ${resultado.apontamentos.atualizados} atualizados`,
@@ -105,8 +105,8 @@ export function useSincronizarSqlServer() {
         }
       }
 
-      // Mostrar resultado dos tickets
-      if (resultado.tickets) {
+      // Mostrar resultado dos tickets (apenas se foi selecionado)
+      if (resultado.tickets && resultado.tickets.selecionado !== false) {
         if (resultado.tickets.sucesso) {
           toast.success(
             `Tickets sincronizados! ${resultado.tickets.novos} novos, ${resultado.tickets.atualizados} atualizados`,

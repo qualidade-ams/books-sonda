@@ -270,6 +270,7 @@ export async function sincronizarDados(tabelas?: {
       console.log('2/4 - Especialistas: PULADO (não selecionado)');
       resultadoEspecialistas = {
         sucesso: true,
+        selecionado: false, // ← Indica que não foi selecionado
         mensagens: ['Especialistas não foram selecionados para sincronização']
       };
     }
@@ -277,7 +278,7 @@ export async function sincronizarDados(tabelas?: {
     // 3. Sincronizar apontamentos (se selecionado)
     if (tabelasParaSincronizar.apontamentos) {
       console.log('3/4 - Sincronizando apontamentos...');
-      const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos`, {
+      const responseApontamentos = await safeFetch(`${API_URL}/api/sync-apontamentos-incremental`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -288,8 +289,8 @@ export async function sincronizarDados(tabelas?: {
         resultadoApontamentos = {
           sucesso: false,
           mensagens: [
-            'Endpoint de sincronização de apontamentos não implementado na API.',
-            'A API está online mas o endpoint /api/sync-apontamentos não existe.'
+            'Endpoint de sincronização incremental de apontamentos não implementado na API.',
+            'A API está online mas o endpoint /api/sync-apontamentos-incremental não existe.'
           ]
         };
       } else if (responseApontamentos.ok) {
@@ -311,6 +312,7 @@ export async function sincronizarDados(tabelas?: {
       console.log('3/4 - Apontamentos: PULADO (não selecionado)');
       resultadoApontamentos = {
         sucesso: true,
+        selecionado: false, // ← Indica que não foi selecionado
         mensagens: ['Apontamentos não foram selecionados para sincronização']
       };
     }
@@ -352,26 +354,45 @@ export async function sincronizarDados(tabelas?: {
       console.log('4/4 - Tickets: PULADO (não selecionado)');
       resultadoTickets = {
         sucesso: true,
+        selecionado: false, // ← Indica que não foi selecionado
         mensagens: ['Tickets não foram selecionados para sincronização']
       };
     }
 
-    // 5. Combinar resultados
+    // 5. Combinar resultados - INCLUIR APENAS MENSAGENS DAS TABELAS SELECIONADAS
+    const mensagensCombinadas: string[] = [];
+    
+    // Adicionar mensagens de pesquisas (se selecionado)
+    if (tabelasParaSincronizar.pesquisas) {
+      mensagensCombinadas.push('--- Pesquisas ---');
+      mensagensCombinadas.push(...(resultadoPesquisas?.mensagens || ['Erro na sincronização de pesquisas']));
+    }
+    
+    // Adicionar mensagens de especialistas (se selecionado)
+    if (tabelasParaSincronizar.especialistas) {
+      mensagensCombinadas.push('--- Especialistas ---');
+      mensagensCombinadas.push(...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas']));
+    }
+    
+    // Adicionar mensagens de apontamentos (se selecionado)
+    if (tabelasParaSincronizar.apontamentos) {
+      mensagensCombinadas.push('--- Apontamentos ---');
+      mensagensCombinadas.push(...(resultadoApontamentos?.mensagens || ['Erro na sincronização de apontamentos']));
+    }
+    
+    // Adicionar mensagens de tickets (se selecionado)
+    if (tabelasParaSincronizar.tickets) {
+      mensagensCombinadas.push('--- Tickets ---');
+      mensagensCombinadas.push(...(resultadoTickets?.mensagens || ['Erro na sincronização de tickets']));
+    }
+    
     const resultadoCombinado = {
       ...resultadoPesquisas,
       especialistas: resultadoEspecialistas,
       apontamentos: resultadoApontamentos,
       tickets: resultadoTickets,
-      totais_reais_banco: totaisReaisBanco, // ← NOVO: Totais reais do banco
-      mensagens: [
-        ...resultadoPesquisas.mensagens,
-        '--- Especialistas ---',
-        ...(resultadoEspecialistas?.mensagens || ['Erro na sincronização de especialistas']),
-        '--- Apontamentos ---',
-        ...(resultadoApontamentos?.mensagens || ['Erro na sincronização de apontamentos']),
-        '--- Tickets ---',
-        ...(resultadoTickets?.mensagens || ['Erro na sincronização de tickets'])
-      ]
+      totais_reais_banco: totaisReaisBanco,
+      mensagens: mensagensCombinadas
     };
 
     console.log('✅ [FINAL] Sincronização seletiva finalizada');
