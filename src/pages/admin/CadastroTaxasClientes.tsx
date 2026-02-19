@@ -58,7 +58,7 @@ import { useTaxas, useCriarTaxa, useAtualizarTaxa, useDeletarTaxa } from '@/hook
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCriarTaxaPadrao } from '@/hooks/useTaxasPadrao';
 import type { TaxaClienteCompleta, TaxaFormData } from '@/types/taxasClientes';
-import { calcularValores, getFuncoesPorProduto } from '@/types/taxasClientes';
+import { calcularValores, getFuncoesPorProduto, getCamposEspecificosPorCliente, clienteTemCamposEspecificos } from '@/types/taxasClientes';
 import { useVirtualPagination } from '@/utils/requerimentosPerformance';
 
 type OrdenacaoColuna = 'cliente' | 'tipo_produto' | 'vigencia_inicio' | 'vigencia_fim' | 'status';
@@ -1800,6 +1800,39 @@ function CadastroTaxasClientes() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Campos Específicos por Cliente */}
+                {taxaVisualizando.cliente?.nome_abreviado && clienteTemCamposEspecificos(taxaVisualizando.cliente.nome_abreviado) && (
+                  <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Campos Específicos - {taxaVisualizando.cliente.nome_abreviado}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-2 gap-4">
+                        {getCamposEspecificosPorCliente(taxaVisualizando.cliente.nome_abreviado).map((campoConfig) => {
+                          // Buscar valor do campo específico na taxa
+                          const valor = (taxaVisualizando as any)[campoConfig.campo];
+                          
+                          return (
+                            <div key={campoConfig.campo}>
+                              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                {campoConfig.label}
+                              </p>
+                              <p className="text-base font-semibold text-gray-900 dark:text-white">
+                                {valor !== null && valor !== undefined 
+                                  ? `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : '-'
+                                }
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Tabela de Valores Remotos */}
                 <div>
