@@ -124,6 +124,12 @@ export default function ControleBancoHoras() {
   
   // Calcular os meses do período baseado na vigência
   const mesesDoPeriodo = useMemo(() => {
+    console.log('🔄 [mesesDoPeriodo] Recalculando meses do período:', {
+      mesAno,
+      empresaId: empresaAtual?.id,
+      periodo_apuracao: empresaAtual?.periodo_apuracao
+    });
+    
     if (!empresaAtual?.inicio_vigencia || !empresaAtual?.periodo_apuracao) {
       // Fallback: usar meses sequenciais
       const meses = [];
@@ -138,6 +144,7 @@ export default function ControleBancoHoras() {
         
         meses.push({ mes, ano });
       }
+      console.log('📅 [mesesDoPeriodo] Meses calculados (fallback):', meses);
       return meses;
     }
 
@@ -176,6 +183,7 @@ export default function ControleBancoHoras() {
       meses.push({ mes, ano });
     }
     
+    console.log('📅 [mesesDoPeriodo] Meses calculados:', meses);
     return meses;
   }, [mesAno, empresaAtual]);
 
@@ -421,46 +429,57 @@ export default function ControleBancoHoras() {
     }
   }, [empresaSelecionada]); // Executar sempre que empresa muda
   
-  // Calcular período quando empresa muda (OTIMIZADO)
+  // ✅ NOVO: Hook para calcular período sequencialmente
+  // Garante que os meses sejam calculados na ordem correta para repasses
   useEffect(() => {
     if (!empresaSelecionada || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return;
     
-    const calcularPeriodoOtimizado = async () => {
+    console.log('🎯 [useEffect] Detectada mudança - iniciando cálculo sequencial:', {
+      empresaSelecionada,
+      mesesDoPeriodo,
+      motivo: 'Empresa ou período mudou'
+    });
+    
+    const calcularPeriodoSequencial = async () => {
       try {
         setIsCalculandoPeriodo(true);
-        console.log('🔄 Calculando período (otimizado)...');
+        console.log('🔄 [ControleBancoHoras] Calculando período sequencialmente...');
         console.log(`📊 Total de meses a calcular: ${mesesDoPeriodo.length}`);
+        console.log(`📅 Período: ${mesesDoPeriodo.map(m => `${m.mes}/${m.ano}`).join(', ')}`);
         
-        // ✅ OTIMIZAÇÃO 1: Calcular em paralelo (70% mais rápido)
-        // ✅ OTIMIZAÇÃO 2: Remover delays desnecessários (50% mais rápido)
-        const promises = [];
-        
+        // ✅ CRÍTICO: Calcular SEQUENCIALMENTE para garantir repasses corretos
+        // Cada mês precisa do repasse do mês anterior, então não podemos calcular em paralelo
         for (let i = 0; i < mesesDoPeriodo.length; i++) {
           const { mes, ano } = mesesDoPeriodo[i];
-          console.log(`📅 Iniciando cálculo do mês ${mes}/${ano}...`);
+          console.log(`📅 Calculando mês ${mes}/${ano} (${i + 1}/${mesesDoPeriodo.length})...`);
           
-          // Adicionar promise ao array para execução paralela
+          // Calcular mês e aguardar conclusão antes de prosseguir
           if (i === 0 && recalcular1) {
-            promises.push(recalcular1().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular1();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           } else if (i === 1 && recalcular2) {
-            promises.push(recalcular2().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular2();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           } else if (i === 2 && recalcular3) {
-            promises.push(recalcular3().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular3();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           } else if (i === 3 && recalcular4) {
-            promises.push(recalcular4().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular4();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           } else if (i === 4 && recalcular5) {
-            promises.push(recalcular5().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular5();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           } else if (i === 5 && recalcular6) {
-            promises.push(recalcular6().then(() => console.log(`✅ Mês ${mes}/${ano} calculado`)));
+            await recalcular6();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           }
+          
+          // ✅ CRÍTICO: Pequeno delay para garantir que o banco salvou
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        // Aguardar TODOS os cálculos completarem em paralelo
-        await Promise.all(promises);
+        console.log('✅ Período calculado sequencialmente com sucesso!');
         
-        console.log('✅ Período calculado com sucesso!');
-        
-        // Exibir toast apenas uma vez no final
         toast({
           title: 'Cálculo concluído',
           description: `${mesesDoPeriodo.length} mês(es) calculado(s) com sucesso`,
@@ -477,9 +496,10 @@ export default function ControleBancoHoras() {
       }
     };
     
-    // Executar apenas quando empresa E meses do período mudam
-    calcularPeriodoOtimizado();
-  }, [empresaSelecionada, mesesDoPeriodo]); // Empresa E meses do período
+    // ✅ CRÍTICO: Executar quando empresa OU meses do período mudam
+    // Isso garante que ao navegar entre períodos, os cálculos sejam refeitos
+    calcularPeriodoSequencial();
+  }, [empresaSelecionada, JSON.stringify(mesesDoPeriodo)]); // ✅ Empresa OU período
   
   // Verificar se há alocações
   const temAlocacoes = alocacoes && alocacoes.length > 0;

@@ -305,7 +305,8 @@ export class BancoHorasService {
         observacao: 'Este valor será usado como repasse_mes_anterior no próximo mês',
         horas: resultadoRepasseHoras.repasse,
         tickets: resultadoRepasseTickets.repasse,
-        gerarExcedente: resultadoRepasseHoras.gerarExcedente || resultadoRepasseTickets.gerarExcedente
+        gerarExcedente: resultadoRepasseHoras.gerarExcedente || resultadoRepasseTickets.gerarExcedente,
+        '⚠️ IMPORTANTE': `O repasse de ${resultadoRepasseHoras.repasse} será salvo no campo repasse_horas e usado como repasse_mes_anterior no próximo mês`
       });
 
       // 11. Calcular excedentes (se aplicável)
@@ -527,7 +528,8 @@ export class BancoHorasService {
         repasseHoras: resultadoRepasseHoras.repasse,
         taxa_hora_utilizada: taxaHoraUtilizada,
         valor_a_faturar: valorAFaturar,
-        observacao: '⚠️ IMPORTANTE: O valor de repasse_horas salvo aqui será usado como repasse_mes_anterior no próximo mês'
+        '⚠️ CRÍTICO': `repasse_horas = ${resultadoRepasseHoras.repasse} foi salvo no banco e será usado como repasse_mes_anterior no próximo mês`,
+        '🔍 DEBUG': 'Verifique no banco se o campo repasse_horas foi salvo corretamente'
       });
 
       return calculo;
@@ -838,12 +840,16 @@ export class BancoHorasService {
       .eq('ano', anoAnterior)
       .maybeSingle(); // Usar maybeSingle() em vez de single() para evitar erro 406
 
-    console.log('📊 Resultado da busca:', {
+    console.log('📊 Resultado da busca de repasse do mês anterior:', {
       encontrado: !!calculoAnterior,
+      mesAnterior: `${mesAnterior}/${anoAnterior}`,
+      mesAtual: `${mes}/${ano}`,
       repasseHoras: (calculoAnterior as any)?.repasse_horas,
       repasseTickets: (calculoAnterior as any)?.repasse_tickets,
       error: error?.message,
-      errorCode: error?.code
+      errorCode: error?.code,
+      '⚠️ IMPORTANTE': 'Este valor vem do campo repasse_horas do mês anterior',
+      '🔍 DEBUG': calculoAnterior ? 'Repasse encontrado no banco' : 'Repasse NÃO encontrado no banco'
     });
 
     // Ignorar TODOS os erros ao buscar repasse do mês anterior
