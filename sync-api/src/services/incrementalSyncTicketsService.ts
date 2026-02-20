@@ -218,6 +218,7 @@ async function buscarRegistrosModificados(
     FROM AMSticketsabertos
     WHERE CAST(Data_Ultima_Modificacao AS DATETIME) >= @dataInicio
       AND Data_Ultima_Modificacao IS NOT NULL
+      AND (Nome_Grupo NOT LIKE 'AMS SAP%' OR Nome_Grupo IS NULL)
   `;
   
   const countResult = await pool.request()
@@ -303,6 +304,7 @@ async function buscarRegistrosModificados(
     FROM AMSticketsabertos
     WHERE CAST(Data_Ultima_Modificacao AS DATETIME) >= @dataInicio
       AND Data_Ultima_Modificacao IS NOT NULL
+      AND (Nome_Grupo NOT LIKE 'AMS SAP%' OR Nome_Grupo IS NULL)
     ORDER BY CAST(Data_Ultima_Modificacao AS DATETIME) ASC
   `;
 

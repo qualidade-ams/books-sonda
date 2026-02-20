@@ -859,6 +859,7 @@ const EmpresasClientes = () => {
             {selectedEmpresa && (
               <EmpresaForm
                 mode="edit"
+                empresaId={selectedEmpresa.id}
                 initialData={getInitialDataForEdit(selectedEmpresa)}
                 grupos={grupos}
                 onSubmit={handleUpdate}
