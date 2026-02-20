@@ -38,7 +38,7 @@ class BooksDataCollectorService {
       // Buscar informações da empresa
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla')
+        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal')
         .eq('id', empresaId)
         .single();
 
@@ -50,6 +50,24 @@ class BooksDataCollectorService {
       if (!empresa) {
         console.error('❌ Empresa não encontrada:', empresaId);
         throw new Error('Empresa não encontrada');
+      }
+
+      // Converter baseline_horas_mensal (INTERVAL) para número decimal (horas)
+      // INTERVAL vem como string no formato "HH:MM:SS" ou objeto
+      let baselineHoras = 0;
+      if (empresa.baseline_horas_mensal) {
+        // Se vier como string "HH:MM:SS"
+        if (typeof empresa.baseline_horas_mensal === 'string') {
+          const parts = empresa.baseline_horas_mensal.split(':');
+          if (parts.length >= 2) {
+            const hours = parseInt(parts[0]) || 0;
+            const minutes = parseInt(parts[1]) || 0;
+            baselineHoras = hours + (minutes / 60);
+          }
+        } else if (typeof empresa.baseline_horas_mensal === 'object') {
+          // Se vier como objeto com propriedades
+          baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
+        }
       }
 
       console.log('✅ Empresa encontrada:', {
@@ -135,7 +153,7 @@ class BooksDataCollectorService {
           mes,
           ano,
           tipoContratoValido,
-          empresa.baseline_horas || 0
+          baselineHoras
         ),
         pesquisa: await this.gerarDadosPesquisa(empresaId, mes, ano)
       };
@@ -1242,16 +1260,25 @@ class BooksDataCollectorService {
     // Buscar dados baseado no tipo de contrato
     if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
       // Buscar de apontamentos_aranda (horas)
+      // IMPORTANTE: Usa nome_completo da tabela empresas_clientes para buscar em org_us_final
+      // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao
+      console.log('🔍 Buscando apontamentos_aranda com nome_completo:', empresaNomeCompleto);
+      
       const { data: apontamentosHoras } = await supabase
         .from('apontamentos_aranda')
         .select('*')
-        .ilike('empresa', `%${empresaNomeCompleto}%`)
-        .gte('data', dataInicio.toISOString())
-        .lt('data', proximoMesInicio.toISOString());
+        .ilike('org_us_final', `%${empresaNomeCompleto}%`)
+        .eq('ativi_interna', 'Não')
+        .in('tipo_chamado', ['IM', 'RF', 'PM'])
+        .neq('item_configuracao', '000000 - PROJETOS APL')
+        .gte('data_atividade', dataInicio.toISOString())
+        .lt('data_atividade', proximoMesInicio.toISOString());
 
       if (apontamentosHoras && apontamentosHoras.length > 0) {
+        // Calcular horas baseado em tempo_gasto_minutos (campo correto)
         const horasApontadas = apontamentosHoras.reduce((sum, a) => {
-          const horas = this.converterHorasParaDecimal(a.horas_apontadas || a.horas || 0);
+          const minutos = a.tempo_gasto_minutos || 0;
+          const horas = minutos / 60;
           return sum + horas;
         }, 0);
 
@@ -1260,8 +1287,16 @@ class BooksDataCollectorService {
 
         console.log('✅ Horas de apontamentos_aranda:', {
           registros: apontamentosHoras.length,
-          horas: horasApontadas
+          horas: horasApontadas,
+          filtros: {
+            org_us_final: empresaNomeCompleto,
+            ativi_interna: 'Não',
+            tipo_chamado: ['IM', 'RF', 'PM'],
+            item_configuracao_excluido: '000000 - PROJETOS APL'
+          }
         });
+      } else {
+        console.log('⚠️ Nenhum apontamento encontrado em apontamentos_aranda para:', empresaNomeCompleto);
       }
     }
 
@@ -1279,16 +1314,26 @@ class BooksDataCollectorService {
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
       if (ticketsFechados && ticketsFechados.length > 0) {
-        // Calcular horas de tickets
+        // Calcular horas de tickets usando tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos
         const horasTickets = ticketsFechados.reduce((sum, t) => {
-          const horas = this.converterHorasParaDecimal(t.tempo_solucao || 0);
-          return sum + horas;
+          const dias = Number(t.tempo_gasto_dias) || 0;
+          const horas = Number(t.tempo_gasto_horas) || 0;
+          const minutos = Number(t.tempo_gasto_minutos) || 0;
+          
+          // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
+          const totalHoras = (dias * 24) + horas + (minutos / 60);
+          return sum + totalHoras;
         }, 0);
 
         // Separar por tipo
         const horasTicketsIncidente = ticketsFechados
           .filter(t => t.cod_tipo === 'Incidente')
-          .reduce((sum, t) => sum + this.converterHorasParaDecimal(t.tempo_solucao || 0), 0);
+          .reduce((sum, t) => {
+            const dias = Number(t.tempo_gasto_dias) || 0;
+            const horas = Number(t.tempo_gasto_horas) || 0;
+            const minutos = Number(t.tempo_gasto_minutos) || 0;
+            return sum + (dias * 24) + horas + (minutos / 60);
+          }, 0);
 
         const horasTicketsSolicitacao = horasTickets - horasTicketsIncidente;
 
@@ -1720,18 +1765,27 @@ class BooksDataCollectorService {
 
       // Buscar de apontamentos_aranda se necessário
       if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
+        console.log(`🔍 Buscando histórico apontamentos_aranda (${MESES_NOMES[mes - 1]}/${ano}) com nome_completo:`, empresaNomeCompleto);
+        
         const { data: apontamentosHoras } = await supabase
           .from('apontamentos_aranda')
-          .select('horas_apontadas, horas')
-          .ilike('empresa', `%${empresaNomeCompleto}%`)
-          .gte('data', dataInicio.toISOString())
-          .lt('data', proximoMesInicio.toISOString());
+          .select('tempo_gasto_minutos')
+          .ilike('org_us_final', `%${empresaNomeCompleto}%`)
+          .eq('ativi_interna', 'Não')
+          .in('tipo_chamado', ['IM', 'RF', 'PM'])
+          .neq('item_configuracao', '000000 - PROJETOS APL')
+          .gte('data_atividade', dataInicio.toISOString())
+          .lt('data_atividade', proximoMesInicio.toISOString());
 
         if (apontamentosHoras) {
           const horasApontadas = apontamentosHoras.reduce((sum, a) => {
-            return sum + this.converterHorasParaDecimal(a.horas_apontadas || a.horas || 0);
+            const minutos = a.tempo_gasto_minutos || 0;
+            const horas = minutos / 60;
+            return sum + horas;
           }, 0);
           horasMes += horasApontadas;
+          
+          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosHoras.length} registros, ${horasApontadas.toFixed(2)}h`);
         }
       }
 
@@ -1739,7 +1793,7 @@ class BooksDataCollectorService {
       if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
         const { data: ticketsFechados } = await supabase
           .from('apontamentos_tickets_aranda')
-          .select('tempo_solucao')
+          .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos')
           .ilike('organizacao', `%${empresaNomeCompleto}%`)
           .gte('data_solucao', dataInicio.toISOString())
           .lt('data_solucao', proximoMesInicio.toISOString())
@@ -1750,7 +1804,12 @@ class BooksDataCollectorService {
 
         if (ticketsFechados) {
           const horasTickets = ticketsFechados.reduce((sum, t) => {
-            return sum + this.converterHorasParaDecimal(t.tempo_solucao || 0);
+            const dias = Number(t.tempo_gasto_dias) || 0;
+            const horas = Number(t.tempo_gasto_horas) || 0;
+            const minutos = Number(t.tempo_gasto_minutos) || 0;
+            
+            // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
+            return sum + (dias * 24) + horas + (minutos / 60);
           }, 0);
           horasMes += horasTickets;
         }
