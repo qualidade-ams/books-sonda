@@ -307,22 +307,30 @@ export class BancoHorasIntegracaoService {
       // - data_atividade dentro do período
       // - data_atividade e data_sistema no mesmo mês (NOVA REGRA 3)
       
-      const nomeAbreviado = empresa.nome_abreviado;
       const nomeCompleto = empresa.nome_completo;
       
-      console.log('🔍 Buscando apontamentos com AMBOS os nomes:', {
-        nomeAbreviado,
+      console.log('🔍 Buscando apontamentos APENAS pelo nome completo:', {
         nomeCompleto,
-        observacao: 'Busca por nome abreviado OU nome completo para garantir match'
+        observacao: 'Busca direta sem modificações no nome'
       });
 
-      // CORREÇÃO CRÍTICA: Buscar por AMBOS os nomes (abreviado E completo)
-      // Problema: org_us_final pode conter nome completo enquanto cadastro usa nome abreviado
-      // Exemplo: AMCOR (abreviado) vs "BEMIS DO BRASIL INDUSTRIA..." (completo em org_us_final)
-      // Solução: Usar .or() para buscar por qualquer um dos nomes
+      // CORREÇÃO CRÍTICA: Buscar APENAS pelo nome completo
+      // Problema: org_us_final contém o nome completo da empresa
+      // Exemplo 1: "ENEL BRASIL S.A (AMPLA)" no cadastro = "ENEL BRASIL S.A (AMPLA)" no org_us_final
+      // Exemplo 2: "CAIEIRAS INDUSTRIA E COMERCIO DE PAPEIS ESPECIAIS LTDA" no cadastro = "CAIEIRAS..." no org_us_final
+      // Solução: Buscar DIRETAMENTE pelo nome completo, sem modificações
       
-      // Construir filtro OR para buscar por ambos os nomes
-      let query = supabase
+      if (!nomeCompleto) {
+        throw new IntegrationError(
+          'empresas_clientes',
+          'Nome completo da empresa não está cadastrado. É obrigatório para buscar apontamentos.',
+          'NOME_COMPLETO_MISSING',
+          false
+        );
+      }
+      
+      // Construir query com filtro pelo nome completo
+      const query = supabase
         .from('apontamentos_aranda' as any)
         .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
         .eq('ativi_interna', 'Não')
@@ -331,17 +339,13 @@ export class BancoHorasIntegracaoService {
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
+        .ilike('org_us_final', `%${nomeCompleto}%`) // Buscar APENAS pelo nome completo
         .limit(10000); // Limite de segurança para evitar timeout
       
-      // Adicionar filtro OR para buscar por nome abreviado OU nome completo
-      if (nomeAbreviado && nomeCompleto && nomeAbreviado !== nomeCompleto) {
-        // Se tem ambos os nomes e são diferentes, buscar por qualquer um
-        query = query.or(`org_us_final.ilike.%${nomeAbreviado}%,org_us_final.ilike.%${nomeCompleto}%`);
-      } else {
-        // Se tem apenas um nome, buscar por ele
-        const nomeParaBusca = nomeAbreviado || nomeCompleto;
-        query = query.ilike('org_us_final', `%${nomeParaBusca}%`);
-      }
+      console.log('🔍 [DEBUG] Filtro aplicado:', {
+        nomeCompleto,
+        filtroILIKE: `%${nomeCompleto}%`
+      });
       
       const { data: apontamentos, error: apontamentosError } = await query as any;
 
@@ -357,7 +361,17 @@ export class BancoHorasIntegracaoService {
 
       console.log('📊 Apontamentos encontrados:', {
         quantidade: apontamentos?.length || 0,
-        apontamentos: apontamentos?.slice(0, 5) // Mostrar apenas primeiros 5 para debug
+        empresaBuscada: {
+          nome_completo: nomeCompleto
+        },
+        primeiros5: apontamentos?.slice(0, 5).map(a => ({
+          nro_chamado: a.nro_chamado,
+          org_us_final: a.org_us_final,
+          tipo_chamado: a.tipo_chamado,
+          tempo_gasto_minutos: a.tempo_gasto_minutos,
+          data_atividade: a.data_atividade
+        })),
+        observacao: 'Verificar se org_us_final dos apontamentos corresponde ao nome completo'
       });
 
       // Somar horas

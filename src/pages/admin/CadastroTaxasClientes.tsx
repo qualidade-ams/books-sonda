@@ -91,9 +91,9 @@ function CadastroTaxasClientes() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroTipoProduto, setFiltroTipoProduto] = useState<string>('todos');
-  const [filtroStatus, setFiltroStatus] = useState<string>('todos');
-  const [filtroTipoTaxa, setFiltroTipoTaxa] = useState<string>('todos'); // Novo filtro
-  const [filtroTipoCalculo, setFiltroTipoCalculo] = useState<string>('todos'); // Novo filtro
+  const [filtroStatus, setFiltroStatus] = useState<string>('vigente'); // ✅ PADRÃO: Vigente (query otimizada)
+  const [filtroTipoTaxa, setFiltroTipoTaxa] = useState<string>('todos');
+  const [filtroTipoCalculo, setFiltroTipoCalculo] = useState<string>('todos');
   const [exportando, setExportando] = useState(false);
   
   // Estados de filtro - Aba 2 (Clientes Sem Taxa)
@@ -107,7 +107,12 @@ function CadastroTaxasClientes() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Queries e mutations
-  const { data: taxas = [], isLoading, refetch } = useTaxas();
+  // ✅ OTIMIZADO: Query dinâmica baseada no filtro de status
+  // - Se filtro = "vigente": Busca apenas vigentes (otimizado)
+  // - Se filtro != "vigente": Busca todas as taxas (permite filtrar não vigentes e vencidas)
+  const { data: taxasBackend = [], isLoading, refetch } = useTaxas({ 
+    vigente: filtroStatus === 'vigente' ? true : undefined 
+  });
   const { empresas = [], isLoading: isLoadingEmpresas } = useEmpresas({ status: ['ativo'] });
   const criarTaxa = useCriarTaxa();
   const atualizarTaxa = useAtualizarTaxa();
@@ -267,7 +272,7 @@ function CadastroTaxasClientes() {
   const limparFiltros = () => {
     setFiltroCliente('');
     setFiltroTipoProduto('todos');
-    setFiltroStatus('todos');
+    setFiltroStatus('vigente'); // ✅ PADRÃO: Voltar para vigente (query otimizada)
     setFiltroTipoTaxa('todos');
     setFiltroTipoCalculo('todos');
     setCurrentPage(1);
@@ -283,7 +288,7 @@ function CadastroTaxasClientes() {
 
   // Filtrar e ordenar taxas
   const taxasFiltradas = useMemo(() => {
-    let resultado = [...taxas];
+    let resultado = [...taxasBackend];
 
     // Filtro por cliente
     if (filtroCliente) {
@@ -344,7 +349,7 @@ function CadastroTaxasClientes() {
     }
 
     return resultado;
-  }, [taxas, filtroCliente, filtroTipoProduto, filtroStatus, filtroTipoTaxa, filtroTipoCalculo]);
+  }, [taxasBackend, filtroCliente, filtroTipoProduto, filtroStatus, filtroTipoTaxa, filtroTipoCalculo]);
 
   // Ordenar taxas filtradas
   const taxasOrdenadas = useMemo(() => {
@@ -409,7 +414,7 @@ function CadastroTaxasClientes() {
       
       // Verificar GALLERY (apenas se o cliente TEM este produto)
       if (temGallery) {
-        const taxasGallery = taxas.filter(taxa => 
+        const taxasGallery = taxasBackend.filter(taxa => 
           taxa.cliente_id === empresa.id && 
           taxa.tipo_produto === 'GALLERY'
         );
@@ -442,7 +447,7 @@ function CadastroTaxasClientes() {
       if (temComexOuFiscal) {
         // Buscar taxas que servem para COMEX/FISCAL
         // COMEX e FISCAL são armazenados como 'OUTROS' no banco de dados
-        const taxasComex = taxas.filter(taxa => {
+        const taxasComex = taxasBackend.filter(taxa => {
           if (taxa.cliente_id !== empresa.id) return false;
           
           // Aceitar taxas com tipo_produto 'OUTROS' (que serve para COMEX/FISCAL)
@@ -483,7 +488,7 @@ function CadastroTaxasClientes() {
     });
     
     return resultado;
-  }, [empresas, taxas]);
+  }, [empresas, taxasBackend]);
 
   // Filtrar clientes sem taxa (Aba 2)
   const clientesSemTaxaFiltrados = useMemo(() => {
