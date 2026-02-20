@@ -320,6 +320,13 @@ export class BancoHorasService {
 
       // SEMPRE buscar a taxa para exibição, independente de ser fim de período
       if (parametros.tipo_contrato !== 'tickets') {
+        console.log('🔍 [bancoHorasService] Buscando taxa de hora para exibição:', {
+          empresaId,
+          mes,
+          ano,
+          tipo_contrato: parametros.tipo_contrato
+        });
+        
         const taxaHora = await excedentesService.buscarTaxaMes(
           empresaId,
           mes,
@@ -327,7 +334,13 @@ export class BancoHorasService {
           parametros.tipo_contrato
         );
         taxaHoraUtilizada = taxaHora;
-        console.log('📊 Taxa de hora buscada para exibição:', taxaHoraUtilizada);
+        
+        console.log('📊 [bancoHorasService] Taxa de hora buscada para exibição:', {
+          taxaHoraUtilizada,
+          tipo: typeof taxaHoraUtilizada,
+          valor_formatado: taxaHoraUtilizada ? `R$ ${taxaHoraUtilizada.toFixed(2)}` : 'null',
+          mes: `${mes}/${ano}`
+        });
       }
 
       if (parametros.tipo_contrato !== 'horas') {
@@ -488,6 +501,15 @@ export class BancoHorasService {
       });
 
       // 13. Persistir cálculo
+      console.log('💾 [bancoHorasService] Persistindo cálculo com taxas:', {
+        mes: `${mes}/${ano}`,
+        taxa_hora_utilizada: taxaHoraUtilizada,
+        taxa_ticket_utilizada: taxaTicketUtilizada,
+        tipo_taxa_hora: typeof taxaHoraUtilizada,
+        tipo_taxa_ticket: typeof taxaTicketUtilizada,
+        is_fim_periodo: isFimPeriodo
+      });
+      
       const calculo = await this.persistirCalculo({
         empresa_id: empresaId,
         mes,
@@ -527,6 +549,7 @@ export class BancoHorasService {
         saldoHoras: saldoHoras,
         repasseHoras: resultadoRepasseHoras.repasse,
         taxa_hora_utilizada: taxaHoraUtilizada,
+        taxa_hora_persistida: calculo.taxa_hora_utilizada,
         valor_a_faturar: valorAFaturar,
         '⚠️ CRÍTICO': `repasse_horas = ${resultadoRepasseHoras.repasse} foi salvo no banco e será usado como repasse_mes_anterior no próximo mês`,
         '🔍 DEBUG': 'Verifique no banco se o campo repasse_horas foi salvo corretamente'

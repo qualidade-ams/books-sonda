@@ -116,8 +116,8 @@ export async function buscarTaxas(filtros?: FiltrosTaxa): Promise<TaxaClienteCom
             valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
             valor_apos_19h30: v.valor_apos_19h30 ?? 0,
             valor_fim_semana: v.valor_fim_semana ?? 0,
-            valor_adicional: 0,
-            valor_standby: 0
+            valor_adicional: v.valor_adicional ?? null,
+            valor_standby: v.valor_standby ?? null
           } as ValorTaxaCalculado;
           
           console.log(`🔍 [DEBUG] Valor local EXATO para ${v.funcao}:`, valorExato);
@@ -226,8 +226,8 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
         valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
         valor_apos_19h30: v.valor_apos_19h30 ?? 0,
         valor_fim_semana: v.valor_fim_semana ?? 0,
-        valor_adicional: v.valor_adicional ?? 0,
-        valor_standby: v.valor_standby ?? 0
+        valor_adicional: v.valor_adicional ?? null,
+        valor_standby: v.valor_standby ?? null
       } as ValorTaxaCalculado));
       
       valoresLocalCalculados = valoresLocal.map(v => ({
@@ -236,8 +236,8 @@ export async function buscarTaxaPorId(id: string): Promise<TaxaClienteCompleta |
         valor_17h30_19h30: v.valor_17h30_19h30 ?? 0,
         valor_apos_19h30: v.valor_apos_19h30 ?? 0,
         valor_fim_semana: v.valor_fim_semana ?? 0,
-        valor_adicional: 0, // Local não tem valor adicional
-        valor_standby: 0    // Local não tem valor standby
+        valor_adicional: null, // Local não tem valor adicional
+        valor_standby: null    // Local não tem valor standby
       } as ValorTaxaCalculado));
     } else {
       // Para taxas não-personalizadas, calcular automaticamente
@@ -472,6 +472,39 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
   const funcoes = getFuncoesPorProduto(dados.tipo_produto);
   const valoresParaInserir: any[] = [];
 
+  // ✅ CORREÇÃO: Preparar array com todos os valores base para cálculo da média
+  const todasFuncoesRemota = funcoes.map(f => {
+    let valorBase = 0;
+    if (f === 'Funcional') {
+      valorBase = dados.valores_remota.funcional;
+    } else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') {
+      valorBase = dados.valores_remota.tecnico;
+    } else if (f === 'ABAP - PL/SQL') {
+      valorBase = (dados.valores_remota as any).abap || 0;
+    } else if (f === 'DBA / Basis' || f === 'DBA') {
+      valorBase = dados.valores_remota.dba;
+    } else if (f === 'Gestor') {
+      valorBase = dados.valores_remota.gestor;
+    }
+    return { funcao: f, valor_base: valorBase };
+  });
+
+  const todasFuncoesLocal = funcoes.map(f => {
+    let valorBase = 0;
+    if (f === 'Funcional') {
+      valorBase = valoresLocaisFinais.funcional;
+    } else if (f === 'Técnico / ABAP' || f === 'Técnico (Instalação / Atualização)') {
+      valorBase = valoresLocaisFinais.tecnico;
+    } else if (f === 'ABAP - PL/SQL') {
+      valorBase = (valoresLocaisFinais as any).abap || 0;
+    } else if (f === 'DBA / Basis' || f === 'DBA') {
+      valorBase = valoresLocaisFinais.dba;
+    } else if (f === 'Gestor') {
+      valorBase = valoresLocaisFinais.gestor;
+    }
+    return { funcao: f, valor_base: valorBase };
+  });
+
   funcoes.forEach(funcao => {
     // Simplificar mapeamento
     let valorRemota = 0;
@@ -494,15 +527,39 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       valorLocal = valoresLocaisFinais.gestor;
     }
 
+    // ✅ CORREÇÃO: Calcular valores usando a função calcularValores
+    const valoresCalculadosRemota = calcularValores(
+      valorRemota,
+      funcao,
+      todasFuncoesRemota,
+      dados.tipo_calculo_adicional || 'media',
+      dados.tipo_produto,
+      false
+    );
+
+    const valoresCalculadosLocal = calcularValores(
+      valorLocal,
+      funcao,
+      todasFuncoesLocal,
+      dados.tipo_calculo_adicional || 'media',
+      dados.tipo_produto,
+      true
+    );
+
     // Valor remota
     const valorRemotaData: any = {
       taxa_id: taxa.id,
       funcao,
       tipo_hora: 'remota',
-      valor_base: valorRemota
+      valor_base: valorRemota,
+      valor_17h30_19h30: valoresCalculadosRemota.valor_17h30_19h30,
+      valor_apos_19h30: valoresCalculadosRemota.valor_apos_19h30,
+      valor_fim_semana: valoresCalculadosRemota.valor_fim_semana,
+      valor_adicional: valoresCalculadosRemota.valor_adicional,
+      valor_standby: valoresCalculadosRemota.valor_standby
     };
 
-    // Se for personalizado, adicionar valores personalizados
+    // Se for personalizado, sobrescrever com valores personalizados
     if (dados.personalizado && dados.valores_remota_personalizados && dados.valores_remota_personalizados[funcao]) {
       const valoresPersonalizados = dados.valores_remota_personalizados[funcao];
       valorRemotaData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
@@ -519,15 +576,22 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
       taxa_id: taxa.id,
       funcao,
       tipo_hora: 'local',
-      valor_base: valorLocal
+      valor_base: valorLocal,
+      valor_17h30_19h30: valoresCalculadosLocal.valor_17h30_19h30,
+      valor_apos_19h30: valoresCalculadosLocal.valor_apos_19h30,
+      valor_fim_semana: valoresCalculadosLocal.valor_fim_semana,
+      valor_adicional: valoresCalculadosLocal.valor_adicional,
+      valor_standby: valoresCalculadosLocal.valor_standby
     };
 
-    // Se for personalizado, adicionar valores personalizados locais
+    // Se for personalizado, sobrescrever com valores personalizados locais
     if (dados.personalizado && dados.valores_local_personalizados && dados.valores_local_personalizados[funcao]) {
       const valoresPersonalizados = dados.valores_local_personalizados[funcao];
       valorLocalData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30;
       valorLocalData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30;
       valorLocalData.valor_fim_semana = valoresPersonalizados.valor_fim_semana;
+      valorLocalData.valor_adicional = valoresPersonalizados.valor_adicional;
+      valorLocalData.valor_standby = valoresPersonalizados.valor_standby;
     }
 
     valoresParaInserir.push(valorLocalData);
@@ -638,14 +702,18 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
           taxa_id: taxaReajustada.id,
           funcao,
           tipo_hora: 'remota',
-          valor_base: valorRemota
+          valor_base: valorRemota,
+          valor_adicional: null,
+          valor_standby: null
         });
 
         valoresReajustadosParaInserir.push({
           taxa_id: taxaReajustada.id,
           funcao,
           tipo_hora: 'local',
-          valor_base: valorLocal
+          valor_base: valorLocal,
+          valor_adicional: null,
+          valor_standby: null
         });
       });
 
@@ -783,14 +851,18 @@ export async function atualizarTaxa(
         taxa_id: novaTaxaData.id,
         funcao,
         tipo_hora: 'remota',
-        valor_base: valorRemota
+        valor_base: valorRemota,
+        valor_adicional: null,
+        valor_standby: null
       });
 
       valoresParaInserir.push({
         taxa_id: novaTaxaData.id,
         funcao,
         tipo_hora: 'local',
-        valor_base: valorLocal
+        valor_base: valorLocal,
+        valor_adicional: null,
+        valor_standby: null
       });
     });
 
@@ -1029,10 +1101,13 @@ export async function atualizarTaxa(
         taxa_id: id,
         funcao,
         tipo_hora: 'remota',
-        valor_base: valorRemota
+        valor_base: valorRemota,
+        valor_adicional: null,
+        valor_standby: null
       };
 
       // CORREÇÃO CRÍTICA: Sempre preservar valores personalizados existentes
+      // IMPORTANTE: Usar NULL em vez de 0 para valor_adicional e valor_standby (constraint do banco)
       if (dados.personalizado) {
         if (dados.valores_remota_personalizados && dados.valores_remota_personalizados[funcao]) {
           // Usar novos valores personalizados se fornecidos, senão preservar existentes
@@ -1040,23 +1115,23 @@ export async function atualizarTaxa(
           valorRemotaData.valor_17h30_19h30 = valoresPersonalizados.valor_17h30_19h30 ?? (valorExistenteRemoto?.valor_17h30_19h30 || 0);
           valorRemotaData.valor_apos_19h30 = valoresPersonalizados.valor_apos_19h30 ?? (valorExistenteRemoto?.valor_apos_19h30 || 0);
           valorRemotaData.valor_fim_semana = valoresPersonalizados.valor_fim_semana ?? (valorExistenteRemoto?.valor_fim_semana || 0);
-          valorRemotaData.valor_adicional = valoresPersonalizados.valor_adicional ?? (valorExistenteRemoto?.valor_adicional || 0);
-          valorRemotaData.valor_standby = valoresPersonalizados.valor_standby ?? (valorExistenteRemoto?.valor_standby || 0);
+          valorRemotaData.valor_adicional = valoresPersonalizados.valor_adicional ?? (valorExistenteRemoto?.valor_adicional || null);
+          valorRemotaData.valor_standby = valoresPersonalizados.valor_standby ?? (valorExistenteRemoto?.valor_standby || null);
         } else if (valorExistenteRemoto) {
           // Preservar TODOS os valores personalizados existentes
           valorRemotaData.valor_17h30_19h30 = valorExistenteRemoto.valor_17h30_19h30 || 0;
           valorRemotaData.valor_apos_19h30 = valorExistenteRemoto.valor_apos_19h30 || 0;
           valorRemotaData.valor_fim_semana = valorExistenteRemoto.valor_fim_semana || 0;
-          valorRemotaData.valor_adicional = valorExistenteRemoto.valor_adicional || 0;
-          valorRemotaData.valor_standby = valorExistenteRemoto.valor_standby || 0;
+          valorRemotaData.valor_adicional = valorExistenteRemoto.valor_adicional || null;
+          valorRemotaData.valor_standby = valorExistenteRemoto.valor_standby || null;
         }
       } else if (valorExistenteRemoto) {
         // Mesmo para taxas não personalizadas, preservar valores existentes
         valorRemotaData.valor_17h30_19h30 = valorExistenteRemoto.valor_17h30_19h30 || 0;
         valorRemotaData.valor_apos_19h30 = valorExistenteRemoto.valor_apos_19h30 || 0;
         valorRemotaData.valor_fim_semana = valorExistenteRemoto.valor_fim_semana || 0;
-        valorRemotaData.valor_adicional = valorExistenteRemoto.valor_adicional || 0;
-        valorRemotaData.valor_standby = valorExistenteRemoto.valor_standby || 0;
+        valorRemotaData.valor_adicional = valorExistenteRemoto.valor_adicional || null;
+        valorRemotaData.valor_standby = valorExistenteRemoto.valor_standby || null;
       }
 
       valoresParaUpsert.push(valorRemotaData);
@@ -1066,7 +1141,9 @@ export async function atualizarTaxa(
         taxa_id: id,
         funcao,
         tipo_hora: 'local',
-        valor_base: valorLocal
+        valor_base: valorLocal,
+        valor_adicional: null, // Local não tem valor adicional
+        valor_standby: null    // Local não tem valor standby
       };
 
       // CORREÇÃO CRÍTICA: Sempre preservar valores personalizados locais existentes
