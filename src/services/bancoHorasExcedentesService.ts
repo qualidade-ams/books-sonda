@@ -251,22 +251,27 @@ export async function buscarTaxaMes(
   tipoContrato: 'horas' | 'tickets' | 'ambos'
 ): Promise<number | null> {
   try {
-    console.log('🔍 BancoHorasExcedentesService.buscarTaxaMes:', {
+    console.log('🔍 [buscarTaxaMes] INÍCIO - Buscando taxa:', {
       empresaId,
       mes,
       ano,
-      tipoContrato
+      tipoContrato,
+      timestamp: new Date().toISOString()
     });
 
     // Calcular data de referência (primeiro dia do mês)
     const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
 
-    console.log('📅 Data de referência:', dataReferencia);
+    console.log('📅 [buscarTaxaMes] Data de referência calculada:', {
+      dataReferencia,
+      mes_formatado: String(mes).padStart(2, '0'),
+      ano
+    });
 
     // Buscar taxas disponíveis (vigentes ou vencidas)
     // Busca TODAS as taxas que iniciaram antes ou no mês de referência
     // Isso permite exibir a taxa mesmo que esteja vencida
-    console.log('🔍 Buscando taxas com filtros:', {
+    console.log('🔍 [buscarTaxaMes] Buscando taxas com filtros:', {
       cliente_id: empresaId,
       vigencia_inicio_lte: dataReferencia,
       explicacao: 'Busca taxas que iniciaram antes ou no mês de referência'
@@ -287,20 +292,26 @@ export async function buscarTaxaMes(
     }> | null;
 
     if (error) {
-      console.error('❌ Erro ao buscar taxas:', error);
+      console.error('❌ [buscarTaxaMes] Erro ao buscar taxas:', {
+        error,
+        errorMessage: error.message,
+        errorCode: error.code,
+        empresaId,
+        dataReferencia
+      });
       throw new Error(`Erro ao buscar taxas: ${error.message}`);
     }
 
     if (!taxas || taxas.length === 0) {
-      console.log('⚠️ Nenhuma taxa encontrada para o período');
-      console.log('🔍 Possíveis causas:');
+      console.log('⚠️ [buscarTaxaMes] Nenhuma taxa encontrada para o período');
+      console.log('🔍 [buscarTaxaMes] Possíveis causas:');
       console.log('  1. Cliente não tem taxas cadastradas');
       console.log('  2. Todas as taxas têm vigencia_inicio APÓS', dataReferencia);
       console.log('  3. Cliente ID incorreto:', empresaId);
       return null;
     }
 
-    console.log('📊 Taxas encontradas:', {
+    console.log('📊 [buscarTaxaMes] Taxas encontradas:', {
       quantidade: taxas.length,
       taxas: taxas.map(t => {
         const vigenciaInicioDate = new Date(t.vigencia_inicio);
@@ -327,16 +338,22 @@ export async function buscarTaxaMes(
     // Pegar a taxa mais recente (primeira da lista ordenada por vigencia_inicio DESC)
     const taxaMaisRecente = taxas[0];
 
-    console.log('✅ Taxa mais recente selecionada:', {
+    console.log('✅ [buscarTaxaMes] Taxa mais recente selecionada:', {
       id: taxaMaisRecente.id,
       vigencia_inicio: taxaMaisRecente.vigencia_inicio,
-      vigencia_fim: taxaMaisRecente.vigencia_fim
+      vigencia_fim: taxaMaisRecente.vigencia_fim,
+      tipo_produto: taxaMaisRecente.tipo_produto
     });
 
     // Buscar valores da taxa
     // Para horas: calcular Hora Adicional (Excedente do Banco) da função Funcional
     // Para tickets: buscar valor_ticket da tabela taxas_clientes
     if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
+      console.log('🔍 [buscarTaxaMes] Buscando valores para contrato de HORAS:', {
+        taxa_id: taxaMaisRecente.id,
+        tipoContrato
+      });
+      
       // Buscar tipo de cálculo adicional e valor base da função Funcional
       const { data: taxaDataRaw, error: taxaError } = await (supabase as any)
         .from('taxas_clientes')
@@ -347,15 +364,27 @@ export async function buscarTaxaMes(
       const taxaData = taxaDataRaw as { tipo_calculo_adicional: string } | null;
 
       if (taxaError) {
-        console.error('❌ Erro ao buscar tipo de cálculo adicional:', taxaError);
+        console.error('❌ [buscarTaxaMes] Erro ao buscar tipo de cálculo adicional:', {
+          taxaError,
+          errorMessage: taxaError.message,
+          taxa_id: taxaMaisRecente.id
+        });
         throw new Error(`Erro ao buscar tipo de cálculo adicional: ${taxaError.message}`);
       }
 
       const tipoCalculoAdicional = taxaData?.tipo_calculo_adicional || 'media';
 
-      console.log('📊 Tipo de cálculo adicional:', tipoCalculoAdicional);
+      console.log('📊 [buscarTaxaMes] Tipo de cálculo adicional:', {
+        tipoCalculoAdicional,
+        taxa_id: taxaMaisRecente.id
+      });
 
       // ✅ CORREÇÃO: Buscar valor_adicional REAL da tabela (não calcular)
+      console.log('🔍 [buscarTaxaMes] Buscando valores na tabela valores_taxas_funcoes:', {
+        taxa_id: taxaMaisRecente.id,
+        tipo_hora: 'remota'
+      });
+      
       const { data: valoresData, error: valoresError } = await (supabase as any)
         .from('valores_taxas_funcoes')
         .select('valor_base, valor_adicional, funcao')
@@ -369,71 +398,149 @@ export async function buscarTaxaMes(
       }> | null;
 
       if (valoresError) {
-        console.error('❌ Erro ao buscar valores da taxa:', valoresError);
+        console.error('❌ [buscarTaxaMes] Erro ao buscar valores da taxa:', {
+          valoresError,
+          errorMessage: valoresError.message,
+          taxa_id: taxaMaisRecente.id
+        });
         throw new Error(`Erro ao buscar valores da taxa: ${valoresError.message}`);
       }
 
+      console.log('📊 [buscarTaxaMes] Valores encontrados na tabela:', {
+        quantidade: valores?.length || 0,
+        valores: valores?.map(v => ({
+          funcao: v.funcao,
+          valor_base: v.valor_base,
+          valor_adicional: v.valor_adicional,
+          tem_valor_adicional: v.valor_adicional !== null && v.valor_adicional !== undefined
+        }))
+      });
+
       if (!valores || valores.length === 0) {
-        console.log('⚠️ Nenhum valor de taxa encontrado');
+        console.log('⚠️ [buscarTaxaMes] Nenhum valor de taxa encontrado na tabela valores_taxas_funcoes');
+        console.log('🔍 [buscarTaxaMes] Possíveis causas:');
+        console.log('  1. Tabela valores_taxas_funcoes não tem registros para taxa_id:', taxaMaisRecente.id);
+        console.log('  2. Tipo de hora diferente de "remota"');
+        console.log('  3. Taxa cadastrada mas sem valores');
         return null;
       }
 
       // ✅ CORREÇÃO: Buscar valor_adicional REAL da função Funcional
       const valorFuncional = valores.find(v => v.funcao === 'Funcional');
       
+      console.log('🔍 [buscarTaxaMes] Buscando função Funcional:', {
+        encontrada: !!valorFuncional,
+        valorFuncional: valorFuncional ? {
+          funcao: valorFuncional.funcao,
+          valor_base: valorFuncional.valor_base,
+          valor_adicional: valorFuncional.valor_adicional,
+          tem_valor_adicional: valorFuncional.valor_adicional !== null && valorFuncional.valor_adicional !== undefined,
+          valor_adicional_maior_que_zero: valorFuncional.valor_adicional !== null && 
+                                          valorFuncional.valor_adicional !== undefined && 
+                                          valorFuncional.valor_adicional > 0
+        } : null
+      });
+      
       if (!valorFuncional) {
-        console.log('⚠️ Função Funcional não encontrada');
+        console.log('⚠️ [buscarTaxaMes] Função Funcional não encontrada');
+        console.log('🔍 [buscarTaxaMes] Funções disponíveis:', valores.map(v => v.funcao));
         return null;
       }
 
-      // ✅ PRIORIDADE: Usar valor_adicional cadastrado (se existir), senão calcular
+      // ⚠️ AVISO: Detectar se valor_adicional está cadastrado como ZERO
+      if (valorFuncional.valor_adicional !== null && 
+          valorFuncional.valor_adicional !== undefined && 
+          valorFuncional.valor_adicional === 0) {
+        console.warn('⚠️ [buscarTaxaMes] ATENÇÃO: valor_adicional está cadastrado como ZERO!', {
+          funcao: 'Funcional',
+          valor_adicional: valorFuncional.valor_adicional,
+          valor_base: valorFuncional.valor_base,
+          tipo_calculo_adicional: tipoCalculoAdicional,
+          acao: 'Ignorando valor_adicional = 0 e usando fallback (cálculo baseado em valor_base ou média)'
+        });
+      }
+
+      // ✅ PRIORIDADE: Usar valor_adicional cadastrado (se existir E for > 0), senão calcular
       let taxaHoraAdicional: number;
 
-      if (valorFuncional.valor_adicional !== null && valorFuncional.valor_adicional !== undefined) {
+      // ✅ CORREÇÃO CRÍTICA: Verificar se valor_adicional > 0 (não apenas se não é NULL)
+      // Problema: valor_adicional pode estar cadastrado como 0.00, o que causava retorno de taxa zerada
+      if (valorFuncional.valor_adicional !== null && 
+          valorFuncional.valor_adicional !== undefined && 
+          valorFuncional.valor_adicional > 0) {
         // ✅ Usar valor REAL cadastrado na tabela
         taxaHoraAdicional = valorFuncional.valor_adicional;
-        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) REAL da tabela:', {
+        console.log('✅ [buscarTaxaMes] Taxa de Hora Adicional (Excedente do Banco) REAL da tabela:', {
           funcao: 'Funcional',
           valor_adicional_cadastrado: valorFuncional.valor_adicional,
           taxaUtilizada: `R$ ${taxaHoraAdicional.toFixed(2)}`,
           observacao: 'Valor REAL da coluna valor_adicional (não calculado)'
         });
+        return taxaHoraAdicional;
       } else if (tipoCalculoAdicional === 'normal') {
         // Fallback: calcular se não tiver valor cadastrado
         taxaHoraAdicional = valorFuncional.valor_base * 1.15; // +15%
-        console.log('⚠️ Taxa de Hora Adicional calculada (fallback - normal):', {
+        console.log('⚠️ [buscarTaxaMes] Taxa de Hora Adicional calculada (fallback - normal):', {
           valorBase: valorFuncional.valor_base,
           percentual: '15%',
           taxaCalculada: `R$ ${taxaHoraAdicional.toFixed(2)}`,
           observacao: 'Calculado porque valor_adicional está NULL'
         });
+        return taxaHoraAdicional;
       } else {
-        // Media: média das três primeiras funções (Funcional, Técnico/ABAP, DBA/Basis)
-        const funcoesPrincipais = ['Funcional', 'Técnico / ABAP', 'DBA / Basis'];
+        // Media: média das três primeiras funções (Funcional, Técnico, ABAP)
+        // IMPORTANTE: Usar nomes EXATOS do banco de dados
+        const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
+        
+        // Para cada função, usar valor_adicional se existir e > 0, senão calcular valor_base * 1.15
         const valoresPrincipais = valores
           .filter(v => funcoesPrincipais.includes(v.funcao))
-          .map(v => v.valor_base);
+          .map(v => {
+            const taxaExcedente = (v.valor_adicional && v.valor_adicional > 0) 
+              ? v.valor_adicional 
+              : v.valor_base * 1.15;
+            
+            return {
+              funcao: v.funcao,
+              valor_base: v.valor_base,
+              valor_adicional: v.valor_adicional,
+              taxa_excedente_usada: taxaExcedente
+            };
+          });
+
+        console.log('🔍 [buscarTaxaMes] Calculando média das funções principais:', {
+          funcoesPrincipais,
+          valores_encontrados: valoresPrincipais,
+          quantidade: valoresPrincipais.length
+        });
 
         if (valoresPrincipais.length === 0) {
-          console.log('⚠️ Nenhum valor das funções principais encontrado');
+          console.log('⚠️ [buscarTaxaMes] Nenhum valor das funções principais encontrado');
+          console.log('🔍 [buscarTaxaMes] Funções disponíveis:', valores.map(v => v.funcao));
           return null;
         }
 
-        const soma = valoresPrincipais.reduce((acc, val) => acc + val, 0);
+        const soma = valoresPrincipais.reduce((acc, val) => acc + val.taxa_excedente_usada, 0);
         taxaHoraAdicional = soma / valoresPrincipais.length;
 
-        console.log('✅ Taxa de Hora Adicional (Excedente do Banco) calculada (média):', {
+        console.log('✅ [buscarTaxaMes] Taxa de Hora Adicional (Excedente do Banco) calculada (média):', {
           funcoes: valoresPrincipais.length,
-          valores: valoresPrincipais,
-          media: `R$ ${taxaHoraAdicional.toFixed(2)}`
+          detalhes: valoresPrincipais.map(v => ({
+            funcao: v.funcao,
+            valor_base: `R$ ${v.valor_base.toFixed(2)}`,
+            valor_adicional: v.valor_adicional ? `R$ ${v.valor_adicional.toFixed(2)}` : 'NULL',
+            taxa_usada: `R$ ${v.taxa_excedente_usada.toFixed(2)}`
+          })),
+          soma: `R$ ${soma.toFixed(2)}`,
+          media: `R$ ${taxaHoraAdicional.toFixed(2)}`,
+          observacao: 'Média calculada usando valor_adicional quando disponível, senão valor_base * 1.15'
         });
+        return taxaHoraAdicional;
       }
-
-      return taxaHoraAdicional;
     }
 
     if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
-      console.log('🔍 Buscando taxa de ticket excedente (dentro de buscarTaxaMes):', {
+      console.log('🔍 [buscarTaxaMes] Buscando taxa de ticket excedente:', {
         tipoContrato,
         taxaMaisRecenteId: taxaMaisRecente.id
       });
@@ -461,10 +568,19 @@ export async function buscarTaxaMes(
         ticket_excedente: number | null;
       } | null;
 
-      console.log('📊 Dados de taxa de ticket retornados:', taxaData);
+      console.log('📊 [buscarTaxaMes] Dados de taxa de ticket retornados:', {
+        taxaData,
+        tem_valor_ticket_excedente: taxaData?.valor_ticket_excedente !== null,
+        tem_ticket_excedente_2: taxaData?.ticket_excedente_2 !== null,
+        tem_ticket_excedente: taxaData?.ticket_excedente !== null
+      });
 
       if (taxaError) {
-        console.error('❌ Erro ao buscar valor de ticket excedente:', taxaError);
+        console.error('❌ [buscarTaxaMes] Erro ao buscar valor de ticket excedente:', {
+          taxaError,
+          errorMessage: taxaError.message,
+          taxa_id: taxaMaisRecente.id
+        });
         throw new Error(`Erro ao buscar valor de ticket excedente: ${taxaError.message}`);
       }
 
@@ -479,23 +595,41 @@ export async function buscarTaxaMes(
           taxaData.ticket_excedente;
 
         if (taxaTicketExcedente) {
-          console.log('✅ Taxa de ticket excedente encontrada:', {
+          console.log('✅ [buscarTaxaMes] Taxa de ticket excedente encontrada:', {
             valor: `R$ ${taxaTicketExcedente.toFixed(2)}`,
             campo_usado: taxaData.valor_ticket_excedente ? 'valor_ticket_excedente (VOTORANTIM/CSN)' :
                          taxaData.ticket_excedente_2 ? 'ticket_excedente_2 (CHIESI)' :
                          'ticket_excedente (NIDEC)'
           });
           return taxaTicketExcedente;
+        } else {
+          console.log('⚠️ [buscarTaxaMes] Taxa de ticket excedente não encontrada - todos os campos estão NULL:', {
+            valor_ticket_excedente: taxaData.valor_ticket_excedente,
+            ticket_excedente_2: taxaData.ticket_excedente_2,
+            ticket_excedente: taxaData.ticket_excedente
+          });
         }
       }
 
-      console.log('⚠️ Taxa de ticket excedente não encontrada');
+      console.log('⚠️ [buscarTaxaMes] Taxa de ticket excedente não encontrada');
     }
 
-    console.log('⚠️ Taxa encontrada mas sem valores configurados');
+    console.log('⚠️ [buscarTaxaMes] Taxa encontrada mas sem valores configurados');
+    console.log('🔍 [buscarTaxaMes] Resumo final:', {
+      tipoContrato,
+      taxa_id: taxaMaisRecente.id,
+      resultado: 'null (sem valores)'
+    });
     return null;
   } catch (error) {
-    console.error('❌ Erro ao buscar taxa do mês:', error);
+    console.error('❌ [buscarTaxaMes] Erro ao buscar taxa do mês:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : 'Erro desconhecido',
+      empresaId,
+      mes,
+      ano,
+      tipoContrato
+    });
     throw new Error(
       `Erro ao buscar taxa do mês: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
     );

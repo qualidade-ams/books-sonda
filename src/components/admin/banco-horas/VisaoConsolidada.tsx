@@ -440,7 +440,17 @@ export function VisaoConsolidada({
       taxaHoraCalculada: taxaHoraCalculada,
       isLoadingTaxas: isLoadingTaxas,
       tipoCobranca: tipoCobranca,
-      isTicket: isTicket
+      isTicket: isTicket,
+      // ✅ ADICIONADO: Debug detalhado dos cálculos
+      calculos_debug: calculos.map(c => ({
+        mes: c.mes,
+        ano: c.ano,
+        taxa_hora_utilizada: c.taxa_hora_utilizada,
+        taxa_ticket_utilizada: c.taxa_ticket_utilizada,
+        is_fim_periodo: c.is_fim_periodo
+      })),
+      calculoPrincipal_taxa_hora: calculoPrincipal?.taxa_hora_utilizada,
+      calculoFimPeriodo_taxa_hora: calculoFimPeriodo?.taxa_hora_utilizada
     });
     
     // Verificar se tem taxa específica cadastrada (para clientes especiais como EXXONMOBIL)
@@ -469,9 +479,13 @@ export function VisaoConsolidada({
     }
     
     // Se não tem nenhuma taxa, retornar 0
-    console.log('⚠️ [VisaoConsolidada] Nenhuma taxa encontrada - usando R$ 0,00');
+    console.log('⚠️ [VisaoConsolidada] Nenhuma taxa encontrada - usando R$ 0,00', {
+      motivo: 'taxaHoraCalculada é null, undefined ou 0',
+      taxaHoraCalculada: taxaHoraCalculada,
+      taxasEspecificas: taxasEspecificas
+    });
     return 0;
-  }, [taxasEspecificas, taxaHoraCalculada, isLoadingTaxas, calculoPrincipal, tipoCobranca, isTicket]);
+  }, [taxasEspecificas, taxaHoraCalculada, isLoadingTaxas, calculoPrincipal, tipoCobranca, isTicket, calculos, calculoFimPeriodo]);
   
   const taxaHoraExibir = getTaxaExcedente;
   
