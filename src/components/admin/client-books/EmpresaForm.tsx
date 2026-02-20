@@ -37,6 +37,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { inativarTaxasCliente } from '@/services/taxasClientesService';
 import { SegmentacaoBaselineForm } from './SegmentacaoBaselineForm';
 import SecaoBaselineComHistorico from './SecaoBaselineComHistorico';
+import SecaoPercentualRepasseComHistorico from './SecaoPercentualRepasseComHistorico';
 
 import type {
   EmpresaFormData,
@@ -264,6 +265,7 @@ interface EmpresaFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   mode: 'create' | 'edit' | 'view';
+  empresaId?: string; // ID da empresa para gerenciamento de histórico
 }
 
 const EmpresaForm: React.FC<EmpresaFormProps> = ({
@@ -273,9 +275,11 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   onCancel,
   isLoading = false,
   mode,
+  empresaId,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('informacoes');
+  
   const { bookTemplateOptions, loading: templatesLoading } = useBookTemplates();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -521,6 +525,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
   };
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         {/* Tabs de Navegação */}
@@ -1221,61 +1226,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   </FormItem>
                 )}
               />
-
-              {/* Percentual de Repasse Mensal - Sempre visível */}
-              <FormField
-                control={form.control}
-                name="percentual_repasse_mensal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      Percentual de Repasse Mensal (%)
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0 a 100%"
-                        {...field}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '') {
-                            field.onChange(0);
-                            return;
-                          }
-                          const numValue = parseInt(value);
-                          // Validar entre 0 e 100
-                          if (numValue >= 0 && numValue <= 100) {
-                            field.onChange(numValue);
-                          } else if (numValue > 100) {
-                            field.onChange(100);
-                            e.target.value = '100';
-                          } else if (numValue < 0) {
-                            field.onChange(0);
-                            e.target.value = '0';
-                          }
-                        }}
-                        onBlur={(e) => {
-                          // Garantir valor válido ao sair do campo
-                          const value = e.target.value;
-                          if (value === '' || parseInt(value) < 0 || parseInt(value) > 100) {
-                            field.onChange(0);
-                            e.target.value = '0';
-                          }
-                        }}
-                        value={field.value ?? 0}
-                        disabled={isFieldDisabled}
-                        min={0}
-                        max={100}
-                        className={form.formState.errors.percentual_repasse_mensal ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
-            {/* Campos de Meta SLA - Logo após Percentual de Repasse Mensal */}
+            {/* Campos de Meta SLA */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -1376,6 +1329,13 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                 )}
               />
             </div>
+
+            {/* Seção de Percentual de Repasse com Histórico */}
+            <SecaoPercentualRepasseComHistorico
+              empresaId={empresaId}
+              empresaNome={form.getValues('nomeAbreviado') || ''}
+              disabled={isFieldDisabled}
+            />
 
             {/* Baseline - Campos condicionais baseados no tipo de contrato */}
             {/* CARD ANTIGO REMOVIDO - Agora usa apenas SecaoBaselineComHistorico */}
@@ -1564,6 +1524,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         </div>
       </form>
     </Form>
+    </>
   );
 };
 

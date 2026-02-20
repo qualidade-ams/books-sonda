@@ -219,6 +219,7 @@ async function buscarRegistrosModificados(
     FROM AMSapontamento
     WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
       AND Data_Ult_Modificacao_Geral IS NOT NULL
+      AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
   `;
   
   const countResult = await pool.request()
@@ -282,6 +283,7 @@ async function buscarRegistrosModificados(
     FROM AMSapontamento
     WHERE CAST(Data_Ult_Modificacao_Geral AS DATETIME) >= @dataInicio
       AND Data_Ult_Modificacao_Geral IS NOT NULL
+      AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
     ORDER BY CAST(Data_Ult_Modificacao_Geral AS DATETIME) ASC
   `;
 

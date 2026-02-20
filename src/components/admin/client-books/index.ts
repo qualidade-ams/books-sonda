@@ -19,3 +19,9 @@ export { default as GerenciadorBaselineHistorico } from './GerenciadorBaselineHi
 export { default as ModalNovoBaseline } from './ModalNovoBaseline';
 export { default as ModalEditarBaseline } from './ModalEditarBaseline';
 export { default as SecaoBaselineComHistorico } from './SecaoBaselineComHistorico';
+
+// Gerenciamento de Percentual de Repasse
+export { default as GerenciadorPercentualRepasseHistorico } from './GerenciadorPercentualRepasseHistorico';
+export { default as ModalNovoPercentualRepasse } from './ModalNovoPercentualRepasse';
+export { default as ModalEditarPercentualRepasse } from './ModalEditarPercentualRepasse';
+export { default as SecaoPercentualRepasseComHistorico } from './SecaoPercentualRepasseComHistorico';
