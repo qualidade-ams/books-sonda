@@ -21,37 +21,50 @@ export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SERVI
 // Função para verificar se o usuário atual tem permissões de administrador
 export const checkAdminPermissions = async (userId: string): Promise<boolean> => {
   try {
-    // Verificar se o usuário tem permissões de administrador
-    // Você pode implementar sua própria lógica aqui baseada na tabela de permissões
-    const { data, error } = await supabaseAdmin
+    console.log('🔍 Verificando permissões para usuário:', userId);
+
+    // Buscar grupos do usuário
+    const { data: assignments, error: assignmentError } = await supabaseAdmin
       .from('user_group_assignments')
-      .select(`
-        user_groups (
-          name,
-          screen_permissions (
-            screen_key,
-            permission_level
-          )
-        )
-      `)
+      .select('group_id')
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('Erro ao verificar permissões:', error);
+    if (assignmentError) {
+      console.error('❌ Erro ao buscar grupos do usuário:', assignmentError);
       return false;
     }
 
-    // Verificar se o usuário tem permissões de administrador para gerenciar usuários
-    const hasAdminPermission = data?.some(assignment => 
-      assignment.user_groups?.screen_permissions?.some(permission => 
-        permission.screen_key === 'cadastro-usuarios' && 
-        ['admin', 'edit'].includes(permission.permission_level)
-      )
-    );
+    if (!assignments || assignments.length === 0) {
+      console.warn('⚠️ Usuário não está em nenhum grupo');
+      return false;
+    }
 
-    return hasAdminPermission || false;
+    const groupIds = assignments.map(a => a.group_id);
+    console.log('📋 Grupos do usuário:', groupIds);
+
+    // Buscar permissões dos grupos
+    const { data: permissions, error: permissionError } = await supabaseAdmin
+      .from('screen_permissions')
+      .select('screen_key, permission_level')
+      .in('group_id', groupIds)
+      .eq('screen_key', 'cadastro-usuarios');
+
+    if (permissionError) {
+      console.error('❌ Erro ao buscar permissões:', permissionError);
+      return false;
+    }
+
+    console.log('🔐 Permissões encontradas:', permissions);
+
+    // Verificar se tem permissão de edição ou admin
+    const hasPermission = permissions?.some(p => 
+      ['admin', 'edit'].includes(p.permission_level)
+    ) || false;
+
+    console.log(hasPermission ? '✅ Usuário tem permissão' : '❌ Usuário NÃO tem permissão');
+    return hasPermission;
   } catch (error) {
-    console.error('Erro ao verificar permissões administrativas:', error);
+    console.error('❌ Erro ao verificar permissões administrativas:', error);
     return false;
   }
 };
