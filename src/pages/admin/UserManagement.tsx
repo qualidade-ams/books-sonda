@@ -77,14 +77,28 @@ const UserManagement = () => {
   const loadUsers = async () => {
     try {
       setIsLoading(true);
+      console.log('🔄 Iniciando carregamento de usuários...');
 
       const users = await userManagementService.listUsers();
+      console.log('✅ Usuários carregados com sucesso:', users.length);
       setUsers(users);
     } catch (error: any) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('❌ Erro ao carregar usuários:', error);
+      
+      // Mensagem de erro mais específica
+      let errorMessage = "Ocorreu um erro ao carregar a lista de usuários.";
+      
+      if (error.message?.includes('não tem permissões')) {
+        errorMessage = "Você não tem permissões para gerenciar usuários. Entre em contato com o administrador do sistema.";
+      } else if (error.message?.includes('não autenticado')) {
+        errorMessage = "Sessão expirada. Por favor, faça login novamente.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro ao carregar usuários",
-        description: error.message || "Ocorreu um erro ao carregar a lista de usuários.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
