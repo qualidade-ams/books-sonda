@@ -16,13 +16,19 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Filter,
+  X,
+  Search
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -60,11 +66,31 @@ const MESES_NOMES: Record<number, string> = {
 
 export default function GeracaoBooks() {
   const { toast } = useToast();
-  const { mes, ano, mesNome, periodoLabel, proximoPeriodo, periodoAnterior } = usePeriodoNavigation();
   
-  // Calcular mês de referência (mês anterior) - igual ao Disparo
-  const mesReferencia = mes === 1 ? 12 : mes - 1;
-  const anoReferencia = mes === 1 ? ano - 1 : ano;
+  // Estados de filtros
+  const [showFilters, setShowFilters] = useState(false);
+  const [filtros, setFiltros] = useState({
+    busca: '',
+    status: 'all' as 'all' | 'gerado' | 'pendente' | 'erro',
+    periodo: '' // Período no formato MM/YYYY
+  });
+
+  // Extrair mês e ano do filtro de período, ou usar período atual
+  const getPeriodoAtual = () => {
+    if (filtros.periodo) {
+      const [mes, ano] = filtros.periodo.split('/');
+      return { mes: parseInt(mes), ano: parseInt(ano) };
+    }
+    // Se não há filtro, usar período atual (mês atual)
+    const hoje = new Date();
+    return { mes: hoje.getMonth() + 1, ano: hoje.getFullYear() };
+  };
+
+  const { mes: mesAtual, ano: anoAtual } = getPeriodoAtual();
+  
+  // Calcular mês de referência (mês anterior ao período selecionado)
+  const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
+  const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
   
   const { books, isLoading, gerarBooks, atualizarBooks, isGerando, isAtualizando } = useBooks({
     mes: mesReferencia,
@@ -91,6 +117,66 @@ export default function GeracaoBooks() {
   const [showAtualizarDialog, setShowAtualizarDialog] = useState(false);
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
+
+  // Funções de navegação de período
+  const handleProximoPeriodo = () => {
+    const novoMes = mesAtual === 12 ? 1 : mesAtual + 1;
+    const novoAno = mesAtual === 12 ? anoAtual + 1 : anoAtual;
+    const novoPeriodo = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+    setFiltros({ ...filtros, periodo: novoPeriodo });
+  };
+
+  const handlePeriodoAnterior = () => {
+    const novoMes = mesAtual === 1 ? 12 : mesAtual - 1;
+    const novoAno = mesAtual === 1 ? anoAtual - 1 : anoAtual;
+    const novoPeriodo = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
+    setFiltros({ ...filtros, periodo: novoPeriodo });
+  };
+
+  // Formatar período para exibição
+  const mesNome = MESES_NOMES[mesAtual];
+  const periodoLabel = `${mesNome} ${anoAtual}`;
+  const periodoReferenciaLabel = `${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
+
+  // Função para verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    return filtros.busca !== '' || filtros.status !== 'all' || filtros.periodo !== '';
+  };
+
+  // Função para limpar filtros
+  const limparFiltros = () => {
+    setFiltros({
+      busca: '',
+      status: 'all',
+      periodo: ''
+    });
+  };
+
+  // Filtrar books
+  const booksFiltrados = books.filter(book => {
+    // Filtro de busca
+    if (filtros.busca) {
+      const busca = filtros.busca.toLowerCase();
+      if (!book.empresa_nome.toLowerCase().includes(busca)) {
+        return false;
+      }
+    }
+
+    // Filtro de status
+    if (filtros.status !== 'all' && book.status !== filtros.status) {
+      return false;
+    }
+
+    // Filtro de período (MM/YYYY)
+    if (filtros.periodo) {
+      const [mes, ano] = filtros.periodo.split('/');
+      if (book.mes !== parseInt(mes) || book.ano !== parseInt(ano)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const handleGerarBooks = () => {
     if (!hasSelection) return;
@@ -172,8 +258,12 @@ export default function GeracaoBooks() {
     }
   };
 
-  const booksGerados = books.filter(b => b.status === 'gerado').length;
-  const booksPendentes = books.filter(b => b.status === 'pendente').length;
+  // Debug: Logar estatísticas recebidas
+  console.log('📊 [GeracaoBooks] Stats recebidas:', {
+    mesReferencia,
+    anoReferencia,
+    stats
+  });
 
   return (
     <AdminLayout>
@@ -191,72 +281,47 @@ export default function GeracaoBooks() {
 
           {/* Cards de Estatísticas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+            {/* Card 1: Total de Clientes */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Total de Empresas
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total_empresas}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  <p className="text-xs font-medium text-gray-500">Total de Clientes</p>
                 </div>
+                <p className="text-2xl font-bold text-gray-900">{stats.total_empresas || 0}</p>
               </CardContent>
             </Card>
 
+            {/* Card 2: Books Gerados */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-sonda-blue">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Total Horas
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-sonda-blue">
-                  {stats.total_horas}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <p className="text-xs font-medium text-green-500">Books Gerados</p>
                 </div>
+                <p className="text-2xl font-bold text-green-600">{stats.books_gerados || 0}</p>
               </CardContent>
             </Card>
 
+            {/* Card 3: Books Pendentes */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Valor Total
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-green-600">
-                  R$ {stats.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <p className="text-xs font-medium text-gray-500">Books Pendentes</p>
                 </div>
+                <p className="text-2xl font-bold text-gray-900">{stats.books_pendentes || 0}</p>
               </CardContent>
             </Card>
 
+            {/* Card 4: Books Atualizados */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Valores Selecionados
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xl lg:text-2xl font-bold text-orange-600">
-                  R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <RefreshCw className="h-4 w-4 text-blue-500" />
+                  <p className="text-xs font-medium text-blue-500">Books Atualizados</p>
                 </div>
-                {hasSelection && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {selectedCount} {selectedCount === 1 ? 'empresa selecionada' : 'empresas selecionadas'}
-                  </div>
-                )}
+                <p className="text-2xl font-bold text-blue-600">{stats.books_atualizados || 0}</p>
               </CardContent>
             </Card>
           </div>
@@ -268,7 +333,7 @@ export default function GeracaoBooks() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={periodoAnterior}
+                  onClick={handlePeriodoAnterior}
                   disabled={isLoading || isGerando || isAtualizando}
                   className="flex items-center gap-2"
                 >
@@ -280,18 +345,15 @@ export default function GeracaoBooks() {
                   <div className="text-lg font-semibold text-gray-900 dark:text-white">
                     {periodoLabel}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                    (Referência {MESES_NOMES[mesReferencia]} {anoReferencia})
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {booksGerados} gerados • {booksPendentes} pendentes
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    (Referência {periodoReferenciaLabel})
                   </div>
                 </div>
                 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={proximoPeriodo}
+                  onClick={handleProximoPeriodo}
                   disabled={isLoading || isGerando || isAtualizando}
                   className="flex items-center gap-2"
                 >
@@ -312,6 +374,29 @@ export default function GeracaoBooks() {
                 </CardTitle>
 
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center justify-center space-x-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filtros</span>
+                  </Button>
+                  
+                  {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={limparFiltros}
+                      className="whitespace-nowrap hover:border-red-300"
+                    >
+                      <X className="h-4 w-4 mr-2 text-red-600" />
+                      Limpar Filtro
+                    </Button>
+                  )}
+
                   {hasSelection && (
                     <>
                       <Button
@@ -345,6 +430,57 @@ export default function GeracaoBooks() {
                   )}
                 </div>
               </div>
+
+              {/* Área de filtros expansível */}
+              {showFilters && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Campo de busca com ícone */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Buscar por empresa..."
+                          value={filtros.busca}
+                          onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
+                          className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filtro Status */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Status</div>
+                      <Select 
+                        value={filtros.status} 
+                        onValueChange={(value: any) => setFiltros({...filtros, status: value})}
+                      >
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os status</SelectItem>
+                          <SelectItem value="gerado">Gerado</SelectItem>
+                          <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="erro">Erro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Período (Mês/Ano) */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Período</div>
+                      <MonthYearPicker
+                        value={filtros.periodo}
+                        onChange={(value) => setFiltros({...filtros, periodo: value || ''})}
+                        placeholder="Todos os períodos"
+                        className="focus:ring-sonda-blue focus:border-sonda-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             
             <CardContent>
@@ -352,7 +488,7 @@ export default function GeracaoBooks() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
                 </div>
-              ) : books.length === 0 ? (
+              ) : booksFiltrados.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
                     <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -377,13 +513,13 @@ export default function GeracaoBooks() {
                       htmlFor="select-all"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
-                      Selecionar todos ({books.length})
+                      Selecionar todos ({booksFiltrados.length})
                     </label>
                   </div>
 
                   {/* Lista de Empresas - Uma por Linha */}
                   <div className="space-y-3">
-                    {books.map((book) => (
+                    {booksFiltrados.map((book) => (
                       <div
                         key={book.id}
                         className="flex items-center justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"

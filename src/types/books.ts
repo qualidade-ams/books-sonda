@@ -294,9 +294,12 @@ export interface BookListItem {
  */
 export interface BooksStats {
   total_empresas: number;
-  total_horas: string;
-  valor_total: number;
-  valores_selecionados: number;
+  books_gerados: number;
+  books_pendentes: number;
+  books_atualizados: number;
+  total_horas: string; // Deprecated - manter por compatibilidade
+  valor_total: number; // Deprecated - manter por compatibilidade
+  valores_selecionados: number; // Deprecated - manter por compatibilidade
 }
 
 /**
