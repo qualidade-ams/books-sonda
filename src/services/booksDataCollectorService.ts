@@ -1261,7 +1261,7 @@ class BooksDataCollectorService {
     if (tipoContrato === 'horas' || tipoContrato === 'ambos') {
       // Buscar de apontamentos_aranda (horas)
       // IMPORTANTE: Usa nome_completo da tabela empresas_clientes para buscar em org_us_final
-      // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao
+      // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao, cod_resolucao
       console.log('🔍 Buscando apontamentos_aranda com nome_completo:', empresaNomeCompleto);
       console.log('📅 Período:', { dataInicio, proximoMesInicio });
       
@@ -1270,8 +1270,26 @@ class BooksDataCollectorService {
         .select('*')
         .ilike('org_us_final', `%${empresaNomeCompleto}%`)
         .eq('ativi_interna', 'Não')
-        .in('tipo_chamado', ['IM', 'RF', 'PM'])
+        .in('tipo_chamado', ['IM', 'RF'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
+        .in('cod_resolucao', [
+          'Alocação - T&M',
+          'AMS SAP',
+          'Aplicação de Nota / Licença - Contratados',
+          'Consultoria',
+          'Consultoria - Banco de Dados',
+          'Consultoria - Nota Publicada',
+          'Consultoria - Solução Paliativa',
+          'Dúvida',
+          'Erro de classificação na abertura',
+          'Erro de programa específico (SEM SLA)',
+          'Levantamento de Versão / Orçamento',
+          'Monitoramento DBA',
+          'Nota Publicada',
+          'Parametrização / Cadastro',
+          'Parametrização / Funcionalidade',
+          'Validação de Arquivo'
+        ])
         .gte('data_atividade', dataInicio.toISOString())
         .lt('data_atividade', proximoMesInicio.toISOString());
 
@@ -1306,7 +1324,10 @@ class BooksDataCollectorService {
       if (apontamentosHoras && apontamentosHoras.length > 0) {
         // Calcular horas baseado em tempo_gasto_horas (formato: "HH:MM:SS" ou "HH:MM")
         // IMPORTANTE: Ignorar segundos, considerar apenas horas e minutos
+        // SEPARAR por tipo_chamado: IM = Incidente, RF = Solicitação
         let detalhesConversao: any[] = [];
+        let horasApontadasIncidente = 0;
+        let horasApontadasSolicitacao = 0;
         
         const horasApontadas = apontamentosHoras.reduce((sum, a) => {
           const tempoStr = a.tempo_gasto_horas;
@@ -1331,27 +1352,45 @@ class BooksDataCollectorService {
           
           const totalHoras = horas + (minutos / 60);
           
+          // Separar por tipo de chamado
+          if (a.tipo_chamado === 'IM') {
+            horasApontadasIncidente += totalHoras;
+          } else if (a.tipo_chamado === 'RF') {
+            horasApontadasSolicitacao += totalHoras;
+          } else {
+            // PM (Problema) ou outros tipos vão para solicitação
+            horasApontadasSolicitacao += totalHoras;
+          }
+          
           detalhesConversao.push({
             nro_chamado: a.nro_chamado,
             nro_tarefa: a.nro_tarefa,
+            tipo_chamado: a.tipo_chamado,
             tempo_original: tempoStr,
             horas_extraidas: horas,
             minutos_extraidos: minutos,
             segundos_ignorados: partes[2] || '0',
             horas_decimal: totalHoras.toFixed(4),
-            analista: a.analista_tarefa
+            analista: a.analista_tarefa,
+            classificacao: a.tipo_chamado === 'IM' ? 'INCIDENTE' : 'SOLICITAÇÃO'
           });
           
           return sum + totalHoras;
         }, 0);
 
+        // Somar aos totais gerais
         horasTotal += horasApontadas;
+        horasIncidente += horasApontadasIncidente;
+        horasSolicitacao += horasApontadasSolicitacao;
         totalRegistros += apontamentosHoras.length;
 
         console.log('✅ Horas de apontamentos_aranda:', {
           registros: apontamentosHoras.length,
           horasCalculadas: horasApontadas.toFixed(4),
           horasFormatadas: this.formatarHoras(horasApontadas),
+          horasIncidente: horasApontadasIncidente.toFixed(4),
+          horasSolicitacao: horasApontadasSolicitacao.toFixed(4),
+          verificacao: `${horasApontadasIncidente.toFixed(4)} + ${horasApontadasSolicitacao.toFixed(4)} = ${(horasApontadasIncidente + horasApontadasSolicitacao).toFixed(4)} (deve ser igual a ${horasApontadas.toFixed(4)})`,
           somaManual: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
           observacao: 'Segundos são ignorados, apenas horas e minutos são considerados',
           filtros: {
@@ -1363,16 +1402,18 @@ class BooksDataCollectorService {
         });
 
         // Log detalhado de TODOS os registros para debug
-        console.log('🔍 DETALHAMENTO COMPLETO DOS 30 REGISTROS:');
+        console.log('🔍 DETALHAMENTO COMPLETO DOS REGISTROS:');
         console.table(detalhesConversao);
         
         console.log('📊 RESUMO DA CONVERSÃO:', {
           totalRegistros: detalhesConversao.length,
           somaHorasDecimais: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
-          esperadoPeloUsuario: '20:55 = 20.9167 horas',
-          calculadoPeloSistema: horasApontadas.toFixed(4) + ' horas',
-          diferenca: (horasApontadas - 20.9167).toFixed(4) + ' horas',
-          diferencaMinutos: ((horasApontadas - 20.9167) * 60).toFixed(2) + ' minutos'
+          horasIncidente: horasApontadasIncidente.toFixed(4) + ' horas',
+          horasSolicitacao: horasApontadasSolicitacao.toFixed(4) + ' horas',
+          horasTotal: horasApontadas.toFixed(4) + ' horas',
+          registrosIncidente: detalhesConversao.filter(d => d.tipo_chamado === 'IM').length,
+          registrosSolicitacao: detalhesConversao.filter(d => d.tipo_chamado === 'RF').length,
+          registrosOutros: detalhesConversao.filter(d => d.tipo_chamado !== 'IM' && d.tipo_chamado !== 'RF').length
         });
       } else {
         console.log('⚠️ Nenhum apontamento encontrado em apontamentos_aranda para:', empresaNomeCompleto);
@@ -1443,15 +1484,40 @@ class BooksDataCollectorService {
       }
     }
 
-    // Se não houver separação de incidente/solicitação (caso de horas puras), considerar tudo como solicitação
-    if (horasIncidente === 0 && horasSolicitacao === 0 && horasTotal > 0) {
-      horasSolicitacao = horasTotal;
-    }
-
     // Calcular percentual consumido
     const percentualConsumido = baselineHoras > 0
       ? Math.round((horasTotal / baselineHoras) * 100)
       : 0;
+
+    // Calcular percentuais individuais de incidente e solicitação
+    const percentualIncidente = horasTotal > 0
+      ? Math.round((horasIncidente / horasTotal) * 100)
+      : 0;
+    
+    const percentualSolicitacao = horasTotal > 0
+      ? Math.round((horasSolicitacao / horasTotal) * 100)
+      : 0;
+
+    // Verificação de consistência
+    const somaVerificacao = horasIncidente + horasSolicitacao;
+    const diferencaVerificacao = Math.abs(horasTotal - somaVerificacao);
+    
+    if (diferencaVerificacao > 0.01) {
+      console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
+        horasTotal: horasTotal.toFixed(4),
+        horasIncidente: horasIncidente.toFixed(4),
+        horasSolicitacao: horasSolicitacao.toFixed(4),
+        soma: somaVerificacao.toFixed(4),
+        diferenca: diferencaVerificacao.toFixed(4)
+      });
+    } else {
+      console.log('✅ VERIFICAÇÃO OK: Incidente + Solicitação = Total', {
+        horasIncidente: horasIncidente.toFixed(4),
+        horasSolicitacao: horasSolicitacao.toFixed(4),
+        soma: somaVerificacao.toFixed(4),
+        horasTotal: horasTotal.toFixed(4)
+      });
+    }
 
     // Histórico de consumo (últimos 6 meses)
     const historicoConsumo = await this.calcularHistoricoConsumoReal(
@@ -1461,11 +1527,27 @@ class BooksDataCollectorService {
       tipoContrato
     );
 
+    // Histórico de requerimentos (últimos 6 meses)
+    const historicoRequerimentos = await this.calcularHistoricoRequerimentos(
+      empresaId,
+      mes,
+      ano
+    );
+
+    // Mesclar histórico de consumo com histórico de requerimentos
+    const historicoCompleto = historicoConsumo.map((consumo, index) => ({
+      ...consumo,
+      requerimentos_horas: historicoRequerimentos[index]?.requerimentos_horas || '00:00',
+      requerimentos_valor_numerico: historicoRequerimentos[index]?.requerimentos_valor_numerico || 0
+    }));
+
     console.log('✅ Dados de consumo calculados:', {
       horasTotal: horasTotal.toFixed(2),
       horasTotalFormatado: this.formatarHoras(horasTotal),
       horasIncidente: horasIncidente.toFixed(2),
       horasSolicitacao: horasSolicitacao.toFixed(2),
+      percentualIncidente: percentualIncidente + '%',
+      percentualSolicitacao: percentualSolicitacao + '%',
       baselineHoras: baselineHoras.toFixed(2),
       percentualConsumido,
       totalRegistros,
@@ -1473,18 +1555,145 @@ class BooksDataCollectorService {
       periodo: `${mes}/${ano}`
     });
 
+    // Buscar requerimentos descontados do período
+    const requerimentosDescontados = await this.buscarRequerimentosDescontados(
+      empresaId,
+      mes,
+      ano
+    );
+
     return {
       horas_consumo: this.formatarHoras(horasTotal),
       baseline_apl: this.formatarHoras(baselineHoras),
       incidente: horasIncidente > 0 ? this.formatarHoras(horasIncidente) : '--',
       solicitacao: this.formatarHoras(horasSolicitacao),
       percentual_consumido: percentualConsumido,
-      historico_consumo: historicoConsumo,
+      percentual_incidente: percentualIncidente,
+      percentual_solicitacao: percentualSolicitacao,
+      historico_consumo: historicoCompleto,
       distribuicao_causa: distribuicaoCausa.length > 0 ? distribuicaoCausa : [
         { causa: 'SEM DADOS', quantidade: 0, percentual: 0 }
       ],
+      requerimentos_descontados: requerimentosDescontados,
       total_geral: totalRegistros
     };
+  }
+
+  /**
+   * Busca requerimentos descontados do banco de horas no período
+   * IMPORTANTE: O book do mês X mostra requerimentos do mês X
+   * Exemplo: Book de Janeiro/2026 mostra requerimentos de Janeiro/2026
+   */
+  private async buscarRequerimentosDescontados(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ) {
+    try {
+      // Buscar requerimentos do MESMO mês do book
+      const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
+      
+      console.log('🔍 Buscando requerimentos descontados:', {
+        empresaId,
+        mesBook: `${String(mes).padStart(2, '0')}/${ano}`,
+        mesRequerimento: mesCobranca,
+        observacao: 'Book do mês X mostra requerimentos do mês X'
+      });
+
+      // Buscar diretamente por cliente_id - APENAS BANCO DE HORAS
+      const { data: requerimentos, error } = await supabase
+        .from('requerimentos')
+        .select('*')
+        .eq('cliente_id', empresaId)
+        .eq('mes_cobranca', mesCobranca)
+        .eq('tipo_cobranca', 'Banco de Horas')
+        .in('status', ['enviado_faturamento', 'faturado', 'concluido'])
+        .order('data_envio_faturamento', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar requerimentos:', error);
+        return [];
+      }
+
+      console.log('✅ Requerimentos encontrados:', requerimentos?.length || 0);
+
+      return (requerimentos || []).map(req => {
+        console.log(`\n🔍 Processando requerimento ${req.chamado}:`, {
+          horas_funcional_raw: req.horas_funcional,
+          horas_funcional_type: typeof req.horas_funcional,
+          horas_tecnico_raw: req.horas_tecnico,
+          horas_tecnico_type: typeof req.horas_tecnico
+        });
+
+        // Converter horas para decimal (pode vir como número ou string HH:MM)
+        let horasFuncional = 0;
+        let horasTecnico = 0;
+        
+        // Processar horas_funcional
+        if (req.horas_funcional) {
+          const horasFuncionalValue = req.horas_funcional as string | number;
+          if (typeof horasFuncionalValue === 'string' && horasFuncionalValue.includes(':')) {
+            // Formato HH:MM
+            const [h, m] = horasFuncionalValue.split(':').map(Number);
+            horasFuncional = h + (m / 60);
+            console.log(`  ✅ horas_funcional (HH:MM): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`);
+          } else {
+            // Formato decimal
+            horasFuncional = Number(horasFuncionalValue) || 0;
+            console.log(`  ✅ horas_funcional (decimal): ${horasFuncionalValue} → ${horasFuncional.toFixed(2)}h`);
+          }
+        } else {
+          console.log(`  ⚠️ horas_funcional: null/undefined`);
+        }
+        
+        // Processar horas_tecnico
+        if (req.horas_tecnico) {
+          const horasTecnicoValue = req.horas_tecnico as string | number;
+          if (typeof horasTecnicoValue === 'string' && horasTecnicoValue.includes(':')) {
+            // Formato HH:MM
+            const [h, m] = horasTecnicoValue.split(':').map(Number);
+            horasTecnico = h + (m / 60);
+            console.log(`  ✅ horas_tecnico (HH:MM): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`);
+          } else {
+            // Formato decimal
+            horasTecnico = Number(horasTecnicoValue) || 0;
+            console.log(`  ✅ horas_tecnico (decimal): ${horasTecnicoValue} → ${horasTecnico.toFixed(2)}h`);
+          }
+        } else {
+          console.log(`  ⚠️ horas_tecnico: null/undefined`);
+        }
+        
+        const totalHorasDecimal = horasFuncional + horasTecnico;
+        
+        // Formatar total como HH:MM
+        const totalHorasFormatado = totalHorasDecimal > 0 
+          ? this.formatarHoras(totalHorasDecimal)
+          : '00:00';
+        
+        console.log(`  📊 TOTAL: ${totalHorasDecimal.toFixed(2)}h → ${totalHorasFormatado}\n`);
+        
+        return {
+          id: req.id,
+          numero_chamado: req.chamado || '--',
+          cliente: req.cliente_id || '--',
+          modulo: req.modulo || '--',
+          tipo_cobranca: req.tipo_cobranca || '--',
+          horas_funcional: req.horas_funcional?.toString() || '00:00',
+          horas_tecnica: req.horas_tecnico?.toString() || '00:00',
+          total_horas: totalHorasFormatado,
+          tickets: 0,
+          data_envio: req.data_envio_faturamento || null,
+          data_aprovacao: req.data_aprovacao || null,
+          valor_total: req.valor_total_funcional && req.valor_total_tecnico
+            ? (Number(req.valor_total_funcional) || 0) + (Number(req.valor_total_tecnico) || 0)
+            : 0,
+          periodo_cobranca: req.mes_cobranca || mesCobranca
+        };
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar requerimentos descontados:', error);
+      return [];
+    }
   }
 
   /**
@@ -1854,8 +2063,26 @@ class BooksDataCollectorService {
           .select('tempo_gasto_minutos')
           .ilike('org_us_final', `%${empresaNomeCompleto}%`)
           .eq('ativi_interna', 'Não')
-          .in('tipo_chamado', ['IM', 'RF', 'PM'])
+          .in('tipo_chamado', ['IM', 'RF'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
+          .in('cod_resolucao', [
+            'Alocação - T&M',
+            'AMS SAP',
+            'Aplicação de Nota / Licença - Contratados',
+            'Consultoria',
+            'Consultoria - Banco de Dados',
+            'Consultoria - Nota Publicada',
+            'Consultoria - Solução Paliativa',
+            'Dúvida',
+            'Erro de classificação na abertura',
+            'Erro de programa específico (SEM SLA)',
+            'Levantamento de Versão / Orçamento',
+            'Monitoramento DBA',
+            'Nota Publicada',
+            'Parametrização / Cadastro',
+            'Parametrização / Funcionalidade',
+            'Validação de Arquivo'
+          ])
           .gte('data_atividade', dataInicio.toISOString())
           .lt('data_atividade', proximoMesInicio.toISOString());
 
@@ -1915,6 +2142,76 @@ class BooksDataCollectorService {
   }
 
   /**
+   * Calcula histórico de requerimentos consumidos dos últimos 6 meses
+   * Busca requerimentos da tabela requerimentos com status enviado/faturado/concluído
+   * IMPORTANTE: Requerimentos do mês X aparecem no gráfico do mês X
+   * Exemplo: Requerimentos de Dezembro/2025 aparecem no ponto de Dezembro/2025
+   */
+  private async calcularHistoricoRequerimentos(
+    empresaId: string,
+    mesAtual: number,
+    anoAtual: number
+  ) {
+    const MESES_NOMES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 
+                         'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    
+    const resultado = [];
+
+    // Calcular para os últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      let mes = mesAtual - i;
+      let ano = anoAtual;
+      
+      while (mes <= 0) {
+        mes += 12;
+        ano -= 1;
+      }
+
+      // Buscar requerimentos do MESMO mês (não do mês anterior)
+      const mesCobranca = `${String(mes).padStart(2, '0')}/${ano}`;
+
+      console.log(`🔍 Buscando histórico requerimentos para ${MESES_NOMES[mes - 1]}/${ano} (mes_cobranca: ${mesCobranca}) - empresaId:`, empresaId);
+      
+      // Buscar diretamente por cliente_id - APENAS BANCO DE HORAS
+      const { data: requerimentos } = await supabase
+        .from('requerimentos')
+        .select('horas_funcional, horas_tecnico')
+        .eq('cliente_id', empresaId)
+        .eq('mes_cobranca', mesCobranca)
+        .eq('tipo_cobranca', 'Banco de Horas')
+        .in('status', ['enviado_faturamento', 'faturado', 'concluido']);
+
+      let horasMes = 0;
+
+      if (requerimentos && requerimentos.length > 0) {
+        horasMes = requerimentos.reduce((sum, req) => {
+          const horasFuncional = Number(req.horas_funcional) || 0;
+          const horasTecnico = Number(req.horas_tecnico) || 0;
+          return sum + horasFuncional + horasTecnico;
+        }, 0);
+        
+        console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${requerimentos.length} requerimentos (de ${mesCobranca}), ${horasMes.toFixed(2)}h`);
+      } else {
+        console.log(`⚠️ ${MESES_NOMES[mes - 1]}/${ano}: Nenhum requerimento encontrado (buscou ${mesCobranca})`);
+      }
+
+      resultado.push({
+        mes: MESES_NOMES[mes - 1],
+        requerimentos_horas: this.formatarHoras(horasMes),
+        requerimentos_valor_numerico: Math.round(horasMes * 100) / 100
+      });
+    }
+
+    console.log('📈 Histórico de requerimentos calculado:', {
+      empresaId,
+      meses: resultado.length,
+      dados: resultado
+    });
+
+    return resultado;
+  }
+
+  /**
    * Agrupa por tipo de cobrança
    */
   private agruparPorTipoCobranca(requerimentos: any[]) {
@@ -1956,13 +2253,13 @@ class BooksDataCollectorService {
 
   /**
    * Formata horas para exibição (HH:MM:SS)
+   * IMPORTANTE: Não calcula segundos pois estamos ignorando-os na entrada
    */
   private formatarHoras(horasDecimal: number): string {
     const horas = Math.floor(horasDecimal);
-    const minutos = Math.floor((horasDecimal - horas) * 60);
-    const segundos = Math.floor(((horasDecimal - horas) * 60 - minutos) * 60);
+    const minutos = Math.round((horasDecimal - horas) * 60); // Arredondar minutos
     
-    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
   }
 }
 

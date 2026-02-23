@@ -187,7 +187,9 @@ export interface BookConsumoData {
   baseline_apl: string; // Ex: "40:00:00"
   incidente: string; // Ex: "--" ou horas
   solicitacao: string; // Ex: "26:10:12"
-  percentual_consumido: number; // Ex: 100
+  percentual_consumido: number; // Ex: 100 (percentual total em relação ao baseline)
+  percentual_incidente: number; // Ex: 35 (percentual de incidente em relação ao total)
+  percentual_solicitacao: number; // Ex: 65 (percentual de solicitação em relação ao total)
   
   // Gráfico: Histórico de Consumo Mensal
   historico_consumo: HistoricoConsumoData[];
@@ -195,14 +197,35 @@ export interface BookConsumoData {
   // Gráfico: Distribuição de Causa
   distribuicao_causa: DistribuicaoCausaData[];
   
+  // Lista de Requerimentos Descontados
+  requerimentos_descontados?: RequerimentoDescontadoData[];
+  
   // Total geral
   total_geral: number;
+}
+
+export interface RequerimentoDescontadoData {
+  id: string;
+  numero_chamado: string;
+  cliente: string;
+  modulo: string;
+  tipo_cobranca: string;
+  horas_funcional?: string;
+  horas_tecnica?: string;
+  total_horas?: string;
+  tickets?: number;
+  data_envio?: string;
+  data_aprovacao?: string;
+  valor_total?: number;
+  periodo_cobranca: string;
 }
 
 export interface HistoricoConsumoData {
   mes: string; // Ex: "ABR", "MAI", "JUN"
   horas: string; // Ex: "23:15"
   valor_numerico: number; // Para o gráfico
+  requerimentos_horas?: string; // Ex: "10:30" - horas de requerimentos consumidos
+  requerimentos_valor_numerico?: number; // Para o gráfico de requerimentos
 }
 
 export interface DistribuicaoCausaData {

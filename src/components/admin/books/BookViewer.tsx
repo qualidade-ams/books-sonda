@@ -202,6 +202,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
                 <BookConsumo 
                   data={bookData.consumo}
                   empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  empresaId={bookData.empresa_id}
                 />
               </TabsContent>
 
