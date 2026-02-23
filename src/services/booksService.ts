@@ -669,6 +669,8 @@ class BooksService {
       incidente: '--',
       solicitacao: '26:10:12',
       percentual_consumido: 100,
+      percentual_incidente: 0,
+      percentual_solicitacao: 100,
       historico_consumo: [
         { mes: 'ABR', horas: '23:15', valor_numerico: 23.25 },
         { mes: 'MAI', horas: '08:25', valor_numerico: 8.42 },
@@ -683,6 +685,7 @@ class BooksService {
         { causa: 'Correção Standard', quantidade: 2, percentual: 13 },
         { causa: 'Outros', quantidade: 2, percentual: 13 }
       ],
+      requerimentos_descontados: [],
       total_geral: 15
     };
   }

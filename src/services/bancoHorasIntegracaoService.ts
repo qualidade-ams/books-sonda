@@ -282,7 +282,7 @@ export class BancoHorasIntegracaoService {
         'Consultoria - Solução Paliativa',
         'Dúvida',
         'Erro de classificação na abertura',
-        'Erro de programa especifico (SEM SLA)',
+        'Erro de programa específico (SEM SLA)',
         'Levantamento de Versão / Orçamento',
         'Monitoramento DBA',
         'Nota Publicada',

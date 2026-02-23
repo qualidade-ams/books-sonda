@@ -24,6 +24,20 @@ class BooksPDFService {
   };
 
   /**
+   * Formata horas removendo os segundos (HH:MM:SS -> HH:MM)
+   */
+  private formatarHorasSemSegundos(horasCompletas: string): string {
+    if (!horasCompletas || horasCompletas === '--') return horasCompletas;
+    
+    // Se já está no formato HH:MM, retorna direto
+    if (horasCompletas.split(':').length === 2) return horasCompletas;
+    
+    // Remove os segundos (pega apenas HH:MM)
+    const partes = horasCompletas.split(':');
+    return `${partes[0]}:${partes[1]}`;
+  }
+
+  /**
    * Gera PDF completo do book
    */
   async gerarPDF(bookData: BookData): Promise<Blob> {
@@ -466,10 +480,10 @@ class BooksPDFService {
     const cardWidth = (pageWidth - 50) / 4;
     const cardHeight = 25;
     const cards = [
-      { label: 'HORAS CONSUMO', value: bookData.consumo.horas_consumo, color: this.COLORS.sondaBlue },
-      { label: 'BASELINE DE APL', value: bookData.consumo.baseline_apl, color: '#9333ea' },
-      { label: 'INCIDENTE', value: bookData.consumo.incidente, color: this.COLORS.gray600 },
-      { label: 'SOLICITAÇÃO', value: bookData.consumo.solicitacao, color: this.COLORS.green }
+      { label: 'HORAS CONSUMO', value: this.formatarHorasSemSegundos(bookData.consumo.horas_consumo), color: this.COLORS.sondaBlue },
+      { label: 'BASELINE DE APL', value: this.formatarHorasSemSegundos(bookData.consumo.baseline_apl), color: '#9333ea' },
+      { label: 'INCIDENTE', value: bookData.consumo.incidente === '--' ? '--' : this.formatarHorasSemSegundos(bookData.consumo.incidente), color: this.COLORS.gray600 },
+      { label: 'SOLICITAÇÃO', value: this.formatarHorasSemSegundos(bookData.consumo.solicitacao), color: this.COLORS.green }
     ];
 
     cards.forEach((card, index) => {
