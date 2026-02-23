@@ -1263,8 +1263,9 @@ class BooksDataCollectorService {
       // IMPORTANTE: Usa nome_completo da tabela empresas_clientes para buscar em org_us_final
       // FILTROS CORRETOS: org_us_final, data_atividade, ativi_interna, tipo_chamado, item_configuracao
       console.log('🔍 Buscando apontamentos_aranda com nome_completo:', empresaNomeCompleto);
+      console.log('📅 Período:', { dataInicio, proximoMesInicio });
       
-      const { data: apontamentosHoras } = await supabase
+      const { data: apontamentosHoras, error: errorApontamentos } = await supabase
         .from('apontamentos_aranda')
         .select('*')
         .ilike('org_us_final', `%${empresaNomeCompleto}%`)
@@ -1274,12 +1275,74 @@ class BooksDataCollectorService {
         .gte('data_atividade', dataInicio.toISOString())
         .lt('data_atividade', proximoMesInicio.toISOString());
 
+      if (errorApontamentos) {
+        console.error('❌ Erro ao buscar apontamentos_aranda:', errorApontamentos);
+      }
+
+      console.log('📊 Resultado da busca apontamentos_aranda:', {
+        total: apontamentosHoras?.length || 0,
+        primeiros10: apontamentosHoras?.slice(0, 10).map(a => ({
+          id: a.id,
+          id_externo: a.id_externo,
+          nro_chamado: a.nro_chamado,
+          nro_tarefa: a.nro_tarefa,
+          tempo_gasto_horas: a.tempo_gasto_horas,
+          tempo_gasto_minutos: a.tempo_gasto_minutos,
+          analista: a.analista_tarefa,
+          data_atividade: a.data_atividade,
+          tipo_chamado: a.tipo_chamado,
+          ativi_interna: a.ativi_interna,
+          item_configuracao: a.item_configuracao
+        })),
+        filtrosAplicados: {
+          org_us_final: empresaNomeCompleto,
+          ativi_interna: 'Não',
+          tipo_chamado: ['IM', 'RF', 'PM'],
+          item_configuracao_diferente_de: '000000 - PROJETOS APL',
+          periodo: `${dataInicio.toISOString()} até ${proximoMesInicio.toISOString()}`
+        }
+      });
+
       if (apontamentosHoras && apontamentosHoras.length > 0) {
-        // Calcular horas baseado em tempo_gasto_minutos (campo correto)
+        // Calcular horas baseado em tempo_gasto_horas (formato: "HH:MM:SS" ou "HH:MM")
+        // IMPORTANTE: Ignorar segundos, considerar apenas horas e minutos
+        let detalhesConversao: any[] = [];
+        
         const horasApontadas = apontamentosHoras.reduce((sum, a) => {
-          const minutos = a.tempo_gasto_minutos || 0;
-          const horas = minutos / 60;
-          return sum + horas;
+          const tempoStr = a.tempo_gasto_horas;
+          
+          if (!tempoStr) {
+            console.log('⚠️ Registro sem tempo_gasto_horas:', {
+              id: a.id,
+              id_externo: a.id_externo,
+              nro_chamado: a.nro_chamado,
+              nro_tarefa: a.nro_tarefa,
+              tempo_gasto_minutos: a.tempo_gasto_minutos
+            });
+            return sum;
+          }
+          
+          // Converter formato "HH:MM:SS" ou "HH:MM" para horas decimais
+          // IGNORANDO SEGUNDOS (apenas horas e minutos)
+          const partes = tempoStr.split(':');
+          const horas = parseInt(partes[0]) || 0;
+          const minutos = parseInt(partes[1]) || 0;
+          // Segundos são ignorados propositalmente (partes[2] não é usado)
+          
+          const totalHoras = horas + (minutos / 60);
+          
+          detalhesConversao.push({
+            nro_chamado: a.nro_chamado,
+            nro_tarefa: a.nro_tarefa,
+            tempo_original: tempoStr,
+            horas_extraidas: horas,
+            minutos_extraidos: minutos,
+            segundos_ignorados: partes[2] || '0',
+            horas_decimal: totalHoras.toFixed(4),
+            analista: a.analista_tarefa
+          });
+          
+          return sum + totalHoras;
         }, 0);
 
         horasTotal += horasApontadas;
@@ -1287,13 +1350,29 @@ class BooksDataCollectorService {
 
         console.log('✅ Horas de apontamentos_aranda:', {
           registros: apontamentosHoras.length,
-          horas: horasApontadas,
+          horasCalculadas: horasApontadas.toFixed(4),
+          horasFormatadas: this.formatarHoras(horasApontadas),
+          somaManual: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
+          observacao: 'Segundos são ignorados, apenas horas e minutos são considerados',
           filtros: {
             org_us_final: empresaNomeCompleto,
             ativi_interna: 'Não',
             tipo_chamado: ['IM', 'RF', 'PM'],
             item_configuracao_excluido: '000000 - PROJETOS APL'
           }
+        });
+
+        // Log detalhado de TODOS os registros para debug
+        console.log('🔍 DETALHAMENTO COMPLETO DOS 30 REGISTROS:');
+        console.table(detalhesConversao);
+        
+        console.log('📊 RESUMO DA CONVERSÃO:', {
+          totalRegistros: detalhesConversao.length,
+          somaHorasDecimais: detalhesConversao.reduce((sum, d) => sum + parseFloat(d.horas_decimal), 0).toFixed(4),
+          esperadoPeloUsuario: '20:55 = 20.9167 horas',
+          calculadoPeloSistema: horasApontadas.toFixed(4) + ' horas',
+          diferenca: (horasApontadas - 20.9167).toFixed(4) + ' horas',
+          diferencaMinutos: ((horasApontadas - 20.9167) * 60).toFixed(2) + ' minutos'
         });
       } else {
         console.log('⚠️ Nenhum apontamento encontrado em apontamentos_aranda para:', empresaNomeCompleto);
@@ -1383,12 +1462,15 @@ class BooksDataCollectorService {
     );
 
     console.log('✅ Dados de consumo calculados:', {
-      horasTotal,
-      horasIncidente,
-      horasSolicitacao,
-      baselineHoras,
+      horasTotal: horasTotal.toFixed(2),
+      horasTotalFormatado: this.formatarHoras(horasTotal),
+      horasIncidente: horasIncidente.toFixed(2),
+      horasSolicitacao: horasSolicitacao.toFixed(2),
+      baselineHoras: baselineHoras.toFixed(2),
       percentualConsumido,
-      totalRegistros
+      totalRegistros,
+      empresa: empresaNomeCompleto,
+      periodo: `${mes}/${ano}`
     });
 
     return {

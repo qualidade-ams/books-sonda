@@ -231,7 +231,8 @@ export function aplicarFechamento(
   saldo: string,
   possuiRepasseEspecial: boolean,
   cicloAtual: number,
-  ciclosParaZerar: number
+  ciclosParaZerar: number,
+  percentualRepasseEspecial: number = 100
 ): ResultadoFechamento {
   // Validar ciclos
   if (cicloAtual < 1) {
@@ -265,18 +266,54 @@ export function aplicarFechamento(
     };
   }
   
-  // Com repasse especial: verificar ciclo
+  // Com repasse especial: verificar posição dentro do conjunto de ciclos
+  // ✅ CORREÇÃO CRÍTICA: Usar módulo para calcular posição dentro do conjunto de ciclos
+  // Exemplo: ciclosParaZerar = 2
+  // - Ciclo 1: posicaoDentroCiclo = 1 (aplica 70%)
+  // - Ciclo 2: posicaoDentroCiclo = 0 (zera)
+  // - Ciclo 3: posicaoDentroCiclo = 1 (aplica 70%)
+  // - Ciclo 4: posicaoDentroCiclo = 0 (zera)
+  const posicaoDentroCiclo = cicloAtual % ciclosParaZerar;
+  const isUltimoCicloDoConjunto = posicaoDentroCiclo === 0;
   
-  // Se ainda não atingiu o último ciclo: repassa saldo para próximo período
-  if (cicloAtual < ciclosParaZerar) {
+  console.log('🔢 Calculando posição dentro do conjunto de ciclos:', {
+    cicloAtual,
+    ciclosParaZerar,
+    posicaoDentroCiclo,
+    isUltimoCicloDoConjunto,
+    calculo: `${cicloAtual} % ${ciclosParaZerar} = ${posicaoDentroCiclo}`
+  });
+  
+  // Se NÃO é o último ciclo do conjunto: repassa percentual especial do saldo para próximo período
+  if (!isUltimoCicloDoConjunto) {
+    const repasseCalculado = calcularRepasse(saldo, percentualRepasseEspecial);
+    
+    console.log('🔄 Aplicando repasse especial entre ciclos:', {
+      saldo,
+      cicloAtual,
+      posicaoDentroCiclo,
+      ciclosParaZerar,
+      percentualRepasseEspecial,
+      repasseCalculado,
+      observacao: `Aplicando ${percentualRepasseEspecial}% do saldo ${saldo} = ${repasseCalculado}`
+    });
+    
     return {
       saldoFinal: saldo,
       gerarExcedente: false,
-      repasse: saldo // Repassa 100% do saldo positivo
+      repasse: repasseCalculado // Repassa percentual especial do saldo positivo
     };
   }
   
-  // Se atingiu o último ciclo: zera saldo positivo
+  // Se É o último ciclo do conjunto: zera saldo positivo
+  console.log('🏁 Último ciclo do conjunto atingido - zerando saldo:', {
+    saldo,
+    cicloAtual,
+    posicaoDentroCiclo,
+    ciclosParaZerar,
+    observacao: 'Saldo será zerado pois atingiu o último ciclo'
+  });
+  
   return {
     saldoFinal: '0:00',
     gerarExcedente: false,
@@ -327,7 +364,8 @@ export function calcularRepasseCompleto(
   percentualRepasse: number,
   possuiRepasseEspecial: boolean,
   cicloAtual: number,
-  ciclosParaZerar: number
+  ciclosParaZerar: number,
+  percentualRepasseEspecial: number = 100
 ): ResultadoRepasse {
   // Verificar se é fim de período
   const fimPeriodo = isFimPeriodo(mes, ano, inicioVigencia, periodoApuracao);
@@ -347,7 +385,8 @@ export function calcularRepasseCompleto(
     saldo,
     possuiRepasseEspecial,
     cicloAtual,
-    ciclosParaZerar
+    ciclosParaZerar,
+    percentualRepasseEspecial
   );
   
   return {
@@ -393,9 +432,10 @@ export class RepasseService {
     saldo: string,
     possuiRepasseEspecial: boolean,
     cicloAtual: number,
-    ciclosParaZerar: number
+    ciclosParaZerar: number,
+    percentualRepasseEspecial: number = 100
   ): ResultadoFechamento {
-    return aplicarFechamento(saldo, possuiRepasseEspecial, cicloAtual, ciclosParaZerar);
+    return aplicarFechamento(saldo, possuiRepasseEspecial, cicloAtual, ciclosParaZerar, percentualRepasseEspecial);
   }
   
   /**
@@ -411,7 +451,8 @@ export class RepasseService {
     percentualRepasse: number,
     possuiRepasseEspecial: boolean,
     cicloAtual: number,
-    ciclosParaZerar: number
+    ciclosParaZerar: number,
+    percentualRepasseEspecial: number = 100
   ): ResultadoRepasse {
     return calcularRepasseCompleto(
       saldo,
@@ -422,7 +463,8 @@ export class RepasseService {
       percentualRepasse,
       possuiRepasseEspecial,
       cicloAtual,
-      ciclosParaZerar
+      ciclosParaZerar,
+      percentualRepasseEspecial
     );
   }
 }

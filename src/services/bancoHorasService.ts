@@ -85,6 +85,7 @@ interface ParametrosEmpresa {
   possui_repasse_especial: boolean;
   ciclos_para_zerar: number;
   percentual_repasse_mensal: number;
+  percentual_repasse_especial?: number;
   ciclo_atual: number;
 }
 
@@ -271,7 +272,11 @@ export class BancoHorasService {
       console.log('🏁 Fim de período:', isFimPeriodo);
 
       // 10. Calcular repasse
-      console.log('📊 Percentual de repasse configurado:', parametros.percentual_repasse_mensal);
+      console.log('📊 Percentual de repasse configurado:', {
+        percentual_repasse_mensal: parametros.percentual_repasse_mensal,
+        percentual_repasse_especial: parametros.percentual_repasse_especial,
+        possui_repasse_especial: parametros.possui_repasse_especial
+      });
       
       const resultadoRepasseHoras = repasseService.calcularRepasseCompleto(
         saldoHoras,
@@ -282,7 +287,8 @@ export class BancoHorasService {
         parametros.percentual_repasse_mensal,
         parametros.possui_repasse_especial,
         parametros.ciclo_atual,
-        parametros.ciclos_para_zerar
+        parametros.ciclos_para_zerar,
+        parametros.percentual_repasse_especial || 100
       );
 
       const resultadoRepasseTickets = repasseService.calcularRepasseCompleto(
@@ -294,13 +300,15 @@ export class BancoHorasService {
         parametros.percentual_repasse_mensal,
         parametros.possui_repasse_especial,
         parametros.ciclo_atual,
-        parametros.ciclos_para_zerar
+        parametros.ciclos_para_zerar,
+        parametros.percentual_repasse_especial || 100
       );
 
       console.log('🔄 Repasse:', {
         mesAtual: `${mes}/${ano}`,
         saldoAtual: saldoHoras,
         percentualRepasse: parametros.percentual_repasse_mensal,
+        percentualRepasseEspecial: parametros.percentual_repasse_especial,
         repasseCalculado: resultadoRepasseHoras.repasse,
         observacao: 'Este valor será usado como repasse_mes_anterior no próximo mês',
         horas: resultadoRepasseHoras.repasse,
@@ -712,6 +720,7 @@ export class BancoHorasService {
         possui_repasse_especial,
         ciclos_para_zerar,
         percentual_repasse_mensal,
+        percentual_repasse_especial,
         ciclo_atual
       `)
       .eq('id', empresaId)
@@ -751,8 +760,8 @@ export class BancoHorasService {
     }
 
     // ✅ NOVO: Buscar baseline do histórico se mês/ano fornecidos
-    let baselineHorasMensal = empresa.baseline_horas_mensal;
-    let baselineTicketsMensal = empresa.baseline_tickets_mensal;
+    let baselineHorasMensal: string | undefined = empresa.baseline_horas_mensal as string | undefined;
+    let baselineTicketsMensal: number | undefined = empresa.baseline_tickets_mensal as number | undefined;
 
     if (mes && ano) {
       try {
@@ -767,7 +776,8 @@ export class BancoHorasService {
         });
 
         // Buscar baseline vigente usando função SQL
-        const { data: baselineVigente, error: baselineError } = await supabase
+        // @ts-ignore - Função get_baseline_vigente existe no banco mas tipos não foram regenerados
+        const { data: baselineVigente, error: baselineError } = await (supabase as any)
           .rpc('get_baseline_vigente', {
             p_empresa_id: empresaId,
             p_data: dataReferencia
@@ -825,18 +835,110 @@ export class BancoHorasService {
       possui_repasse_especial: empresa.possui_repasse_especial || false,
       ciclos_para_zerar: empresa.ciclos_para_zerar || 1,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal ?? 100, // Padrão 100% se não configurado
-      ciclo_atual: empresa.ciclo_atual || 1
+      percentual_repasse_especial: empresa.percentual_repasse_especial ?? 100, // Padrão 100% se não configurado
+      ciclo_atual: this.calcularCicloAtual(
+        mes || new Date().getMonth() + 1,
+        ano || new Date().getFullYear(),
+        new Date(empresa.inicio_vigencia),
+        empresa.periodo_apuracao
+      )
     };
   }
 
   /**
+   * Calcula o ciclo atual baseado no mês/ano e início de vigência
+   * 
+   * @param mes - Mês atual (1-12)
+   * @param ano - Ano atual
+   * @param inicioVigencia - Data de início da vigência
+   * @param periodoApuracao - Período de apuração em meses
+   * @returns Número do ciclo atual (1, 2, 3, ...)
+   * 
+   * @example
+   * // Início: Janeiro/26, Período: 6 meses
+   * calcularCicloAtual(1, 2026, new Date('2026-01-01'), 6) // Retorna 1 (Janeiro = 1º mês = ciclo 1)
+   * calcularCicloAtual(6, 2026, new Date('2026-01-01'), 6) // Retorna 1 (Junho = 6º mês = ciclo 1)
+   * calcularCicloAtual(7, 2026, new Date('2026-01-01'), 6) // Retorna 2 (Julho = 7º mês = ciclo 2)
+   * calcularCicloAtual(12, 2026, new Date('2026-01-01'), 6) // Retorna 2 (Dezembro = 12º mês = ciclo 2)
+   */
+  private calcularCicloAtual(
+    mes: number,
+    ano: number,
+    inicioVigencia: Date,
+    periodoApuracao: number
+  ): number {
+    const mesInicio = inicioVigencia.getUTCMonth() + 1;
+    const anoInicio = inicioVigencia.getUTCFullYear();
+    
+    // Calcular quantos meses se passaram desde o início
+    const mesesPassados = ((ano - anoInicio) * 12) + (mes - mesInicio + 1);
+    
+    // Calcular o ciclo atual (arredonda para cima)
+    const cicloAtual = Math.ceil(mesesPassados / periodoApuracao);
+    
+    console.log('🔢 Calculando ciclo atual:', {
+      mes,
+      ano,
+      mesInicio,
+      anoInicio,
+      periodoApuracao,
+      mesesPassados,
+      cicloAtual,
+      calculo: `Math.ceil(${mesesPassados} / ${periodoApuracao}) = ${cicloAtual}`
+    });
+    
+    return cicloAtual;
+  }
+
+  /**
    * Busca repasses do mês anterior
+   * 
+   * REGRA ESPECIAL: Para clientes com repasse especial, APENAS o primeiro mês do contrato
+   * (mesesPassados === 1) deve iniciar com repasse zerado.
    */
   private async buscarRepassesMesAnterior(
     empresaId: string,
     mes: number,
     ano: number
   ): Promise<{ repasseHoras: string; repasseTickets: number }> {
+    // Buscar parâmetros da empresa para verificar se tem repasse especial
+    const parametros = await this.buscarParametrosEmpresa(empresaId, mes, ano);
+    
+    // ✅ CORREÇÃO FINAL: Se possui repasse especial, zerar repasse APENAS no primeiro mês do contrato
+    if (parametros.possui_repasse_especial) {
+      // Calcular quantos meses se passaram desde o início da vigência
+      const mesInicio = parametros.inicio_vigencia.getUTCMonth() + 1;
+      const anoInicio = parametros.inicio_vigencia.getUTCFullYear();
+      const mesesPassados = ((ano - anoInicio) * 12) + (mes - mesInicio + 1);
+      
+      console.log('🔍 Verificando se deve zerar repasse (repasse especial):', {
+        possui_repasse_especial: parametros.possui_repasse_especial,
+        mes_atual: `${mes}/${ano}`,
+        inicio_vigencia: parametros.inicio_vigencia.toISOString(),
+        periodo_apuracao: parametros.periodo_apuracao,
+        mesesPassados,
+        decisao: (mesesPassados === 1) 
+          ? 'ZERAR (primeiro mês do contrato)' 
+          : 'BUSCAR REPASSE NORMAL'
+      });
+      
+      // Zerar repasse APENAS se for o primeiro mês do contrato (mesesPassados === 1)
+      // Isso garante que:
+      // - Janeiro/26 (mesesPassados=1): Zera ✅
+      // - Janeiro/27 (mesesPassados=13): NÃO zera, recebe repasse de Dezembro/26 ✅
+      if (mesesPassados === 1) {
+        console.log('✅ Primeiro mês do contrato - zerando repasse:', {
+          mes: `${mes}/${ano}`,
+          mesesPassados,
+          motivo: 'Apenas o primeiro mês do contrato inicia com repasse zerado'
+        });
+        return {
+          repasseHoras: '0:00',
+          repasseTickets: 0
+        };
+      }
+    }
+    
     // Calcular mês anterior
     let mesAnterior = mes - 1;
     let anoAnterior = ano;

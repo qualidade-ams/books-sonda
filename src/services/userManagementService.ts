@@ -34,78 +34,41 @@ class UserManagementService {
   // Listar todos os usuários (requer permissões de admin)
   async listUsers(): Promise<UserData[]> {
     try {
-      // Verificar se o usuário atual tem permissões
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      // Usar função RPC para listar usuários (mais seguro que usar supabaseAdmin no frontend)
+      const { data, error } = await supabase.rpc('list_all_users');
 
-      const hasPermission = await checkAdminPermissions(user.id);
-      if (!hasPermission) {
-        throw new Error('Usuário não tem permissões para gerenciar usuários');
-      }
-
-      // Buscar usuários do auth usando cliente administrativo
-      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-
-      if (authError) {
-        console.error('Erro ao buscar usuários do auth:', authError);
-        throw authError;
-      }
-
-      // Buscar perfis dos usuários
-      const { data: profiles, error: profilesError } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email, full_name, created_at, updated_at');
-
-      if (profilesError) {
-        console.warn('Erro ao buscar perfis:', profilesError);
-      }
-
-      // Buscar grupos dos usuários
-      const { data: userGroups, error: groupsError } = await supabaseAdmin
-        .from('user_group_assignments')
-        .select(`
-          user_id,
-          user_groups (
-            name
-          )
-        `);
-
-      if (groupsError) {
-        console.warn('Erro ao buscar grupos:', groupsError);
-      }
-
-      // Combinar dados
-      const combinedUsers: UserData[] = authUsers.users.map(user => {
-        const profile = profiles?.find(p => p.id === user.id);
-        const userGroup = userGroups?.find(ug => ug.user_id === user.id);
-
-        return {
-          id: user.id,
-          email: user.email || '',
-          full_name: profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name,
-          active: true, // Por padrão ativo
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-          group_name: userGroup?.user_groups?.name
-        };
-      });
-
-      // Ordenar alfabeticamente por nome (full_name), depois por email se não tiver nome
-      combinedUsers.sort((a, b) => {
-        const nameA = a.full_name || a.email || '';
-        const nameB = b.full_name || b.email || '';
+      if (error) {
+        console.error('❌ Erro ao buscar usuários via RPC:', error);
         
-        return nameA.localeCompare(nameB, 'pt-BR', {
-          sensitivity: 'base',
-          ignorePunctuation: true
-        });
-      });
+        // Mensagens de erro mais amigáveis
+        if (error.message?.includes('não tem permissões')) {
+          throw new Error('Você não tem permissões para gerenciar usuários');
+        } else if (error.message?.includes('não autenticado')) {
+          throw new Error('Sessão expirada. Por favor, faça login novamente');
+        }
+        
+        throw error;
+      }
 
-      return combinedUsers;
+      if (!data) {
+        return [];
+      }
+
+      // Mapear dados da RPC para o formato esperado
+      const users: UserData[] = data.map((user: any) => ({
+        id: user.user_id,
+        email: user.user_email || '',
+        full_name: user.user_full_name,
+        active: true,
+        created_at: user.user_created_at,
+        last_sign_in_at: user.user_last_sign_in_at,
+        group_name: user.group_name
+      }));
+
+      console.log('✅ Usuários carregados com sucesso:', users.length);
+      return users;
     } catch (error) {
-      console.error('Erro no serviço de listagem de usuários:', error);
+      console.error('❌ Erro no serviço de listagem de usuários:', error);
       throw error;
     }
   }
