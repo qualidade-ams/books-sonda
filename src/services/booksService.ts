@@ -261,26 +261,77 @@ class BooksService {
    */
   async buscarEstatisticas(filtros: BooksFiltros): Promise<BooksStats> {
     try {
-      // Buscar total de empresas ativas
-      const { count: totalEmpresas } = await supabase
-        .from('empresas_clientes')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo');
+      const { mes, ano } = filtros;
 
-      // TODO: Implementar cálculo real de horas e valores
-      // Por enquanto, retorna valores mockados
+      console.log('🔍 [buscarEstatisticas] Iniciando busca:', { mes, ano });
+
+      // PASSO 1: Buscar todas as empresas que devem ter books
+      // (mesma lógica do método listarBooks)
+      const { data: empresas, error: empresasError } = await supabase
+        .from('empresas_clientes')
+        .select('id, nome_completo, nome_abreviado, status, tipo_book')
+        .or('status.eq.ativo,status.eq.AMS')
+        .or('tipo_book.is.null,tipo_book.eq.qualidade');
+
+      if (empresasError) {
+        console.error('❌ [buscarEstatisticas] Erro ao buscar empresas:', empresasError);
+        throw empresasError;
+      }
+
+      const totalEmpresas = empresas?.length || 0;
+      console.log('📊 [buscarEstatisticas] Total de empresas:', totalEmpresas);
+
+      // PASSO 2: Buscar books existentes para o período
+      const { data: books, error: booksError } = await supabase
+        .from('books')
+        .select('id, status, created_at, updated_at, empresa_id')
+        .eq('mes', mes)
+        .eq('ano', ano);
+
+      if (booksError) {
+        console.error('❌ [buscarEstatisticas] Erro ao buscar books:', booksError);
+        throw booksError;
+      }
+
+      console.log('📊 [buscarEstatisticas] Books encontrados:', books?.length || 0);
+
+      // PASSO 3: Calcular estatísticas
+      const booksGerados = books?.filter(b => b.status === 'gerado').length || 0;
       
-      return {
-        total_empresas: totalEmpresas || 0,
-        total_horas: '455h20min',
-        valor_total: 26554.92,
-        valores_selecionados: 0
+      // Books pendentes = empresas que NÃO têm books gerados
+      const empresasComBooksGerados = new Set(
+        books?.filter(b => b.status === 'gerado').map(b => b.empresa_id) || []
+      );
+      const booksPendentes = totalEmpresas - empresasComBooksGerados.size;
+      
+      // Books atualizados = books que têm updated_at diferente de created_at
+      const booksAtualizados = books?.filter(b => {
+        if (!b.created_at || !b.updated_at) return false;
+        // Considerar atualizado se a diferença for maior que 1 segundo
+        return new Date(b.updated_at).getTime() - new Date(b.created_at).getTime() > 1000;
+      }).length || 0;
+      
+      const resultado = {
+        total_empresas: totalEmpresas,
+        books_gerados: booksGerados,
+        books_pendentes: booksPendentes,
+        books_atualizados: booksAtualizados,
+        total_horas: '0h00min', // Deprecated - manter por compatibilidade
+        valor_total: 0, // Deprecated - manter por compatibilidade
+        valores_selecionados: 0 // Deprecated - manter por compatibilidade
       };
+
+      console.log('✅ [buscarEstatisticas] Estatísticas calculadas:', resultado);
+      
+      return resultado;
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
+      console.error('❌ [buscarEstatisticas] Erro geral:', error);
       
       return {
         total_empresas: 0,
+        books_gerados: 0,
+        books_pendentes: 0,
+        books_atualizados: 0,
         total_horas: '0h00min',
         valor_total: 0,
         valores_selecionados: 0

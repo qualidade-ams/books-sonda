@@ -22,6 +22,9 @@ export function useBooksStats(filtros: BooksFiltros) {
     staleTime: 1000 * 60 * 5, // 5 minutos
     placeholderData: {
       total_empresas: 0,
+      books_gerados: 0,
+      books_pendentes: 0,
+      books_atualizados: 0,
       total_horas: '0h00min',
       valor_total: 0,
       valores_selecionados: 0
@@ -31,6 +34,9 @@ export function useBooksStats(filtros: BooksFiltros) {
   return {
     stats: stats || {
       total_empresas: 0,
+      books_gerados: 0,
+      books_pendentes: 0,
+      books_atualizados: 0,
       total_horas: '0h00min',
       valor_total: 0,
       valores_selecionados: 0
