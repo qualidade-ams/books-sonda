@@ -236,6 +236,13 @@ export interface DistribuicaoCausaData {
 
 /**
  * Dados de pesquisa (satisfação do cliente)
+ * 
+ * REGRA DE NEGÓCIO:
+ * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
+ * - Pesquisas com data_resposta preenchido = RESPONDIDAS
+ * - Pesquisas com data_resposta NULL = NÃO RESPONDIDAS
+ * - EXCLUI grupos: "AMS APL - TÉCNICO" e "CA SDM"
+ * - EXCLUI tipo_caso: "PM"
  */
 export interface BookPesquisaData {
   // Cards circulares
