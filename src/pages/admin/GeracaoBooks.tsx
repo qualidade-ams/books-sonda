@@ -374,29 +374,6 @@ export default function GeracaoBooks() {
                 </CardTitle>
 
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center justify-center space-x-2"
-                  >
-                    <Filter className="h-4 w-4" />
-                    <span>Filtros</span>
-                  </Button>
-                  
-                  {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
-                  {hasActiveFilters() && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={limparFiltros}
-                      className="whitespace-nowrap hover:border-red-300"
-                    >
-                      <X className="h-4 w-4 mr-2 text-red-600" />
-                      Limpar Filtro
-                    </Button>
-                  )}
-
                   {hasSelection && (
                     <>
                       <Button
@@ -427,6 +404,29 @@ export default function GeracaoBooks() {
                         Gerar Book ({selectedCount})
                       </Button>
                     </>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center justify-center space-x-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filtros</span>
+                  </Button>
+                  
+                  {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={limparFiltros}
+                      className="whitespace-nowrap hover:border-red-300"
+                    >
+                      <X className="h-4 w-4 mr-2 text-red-600" />
+                      Limpar Filtro
+                    </Button>
                   )}
                 </div>
               </div>

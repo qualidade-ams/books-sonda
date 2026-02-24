@@ -1,15 +1,29 @@
 import { useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useCacheManager } from '@/hooks/useCacheManager';
 import { toast } from 'sonner';
 
 /**
  * Componente para limpeza inicial de cache quando o usuário acessa o sistema
  * Garante que os dados estejam sempre atualizados na primeira sessão
+ * APENAS se o usuário estiver autenticado
  */
 export const CacheInitializer = () => {
+  const { user, isReady } = useAuth();
   const { clearAllCache, getCacheStats } = useCacheManager();
 
   useEffect(() => {
+    // Aguardar até que a autenticação esteja pronta
+    if (!isReady) {
+      return;
+    }
+
+    // Só limpar cache se o usuário estiver autenticado
+    if (!user) {
+      console.log('⏸️ Limpeza de cache não executada - usuário não autenticado');
+      return;
+    }
+
     const initializeCache = async () => {
       try {
         console.info('🧹 Iniciando limpeza de cache inicial...');
@@ -64,7 +78,7 @@ export const CacheInitializer = () => {
         console.debug(`ℹ️ Cache já inicializado em: ${initializedAt}`);
       }
     }
-  }, [clearAllCache, getCacheStats]);
+  }, [user, isReady, clearAllCache, getCacheStats]);
 
   // Componente não renderiza nada
   return null;

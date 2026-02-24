@@ -151,22 +151,12 @@ export function useCorrelacaoEspecialistas(nomePrestador: string | undefined) {
 export function useCorrelacaoMultiplosEspecialistas(prestadores: string | undefined) {
   const { todosEspecialistas, isLoading: loadingEspecialistas } = useEspecialistasComBusca();
 
-  console.log('🔄 [useCorrelacaoMultiplosEspecialistas] Hook chamado com:', {
-    prestadores,
-    loadingEspecialistas,
-    totalEspecialistas: todosEspecialistas.length
-  });
-
   return useQuery({
-    queryKey: ['correlacao-multiplos-especialistas', prestadores], // Remover Date.now() que causa loop
+    queryKey: ['correlacao-multiplos-especialistas', prestadores],
     queryFn: async (): Promise<string[]> => {
       if (!prestadores || !prestadores.trim()) {
         return [];
       }
-
-      console.log('🔍 [Correlação Múltipla] === INÍCIO ===');
-      console.log('🔍 [Correlação Múltipla] Processando prestadores:', prestadores);
-      console.log('🔍 [Correlação Múltipla] Total de especialistas no banco:', todosEspecialistas.length);
 
       // Dividir por vírgula, ponto e vírgula ou quebra de linha
       const nomesPrestadores = prestadores

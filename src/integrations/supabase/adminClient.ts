@@ -2,24 +2,51 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SECRET_KEY = import.meta.env.VITE_SUPABASE_SECRET_KEY;
+
+// ⚠️ AVISO DE SEGURANÇA:
+// Este cliente administrativo usa Secret Key e só deve ser usado em:
+// - Edge Functions (backend)
+// - Scripts de manutenção (Node.js)
+// - NUNCA no código que roda no browser!
+//
+// Se você está vendo este erro no browser, significa que você está
+// tentando usar operações administrativas no frontend, o que é INSEGURO.
 
 // Validar se as variáveis de ambiente estão definidas
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_SERVICE_ROLE_KEY são obrigatórias para operações administrativas');
+if (!SUPABASE_URL) {
+  throw new Error('Variável de ambiente VITE_SUPABASE_URL é obrigatória');
 }
 
-// Cliente administrativo com service_role key
-// ATENÇÃO: Este cliente deve ser usado APENAS no backend ou em operações administrativas seguras
-export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+// Cliente administrativo - só será criado se a Secret Key estiver presente
+// Isso permite que o código compile mesmo sem a Secret Key no frontend
+let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
+
+if (SUPABASE_SECRET_KEY) {
+  supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+} else {
+  console.warn('⚠️ VITE_SUPABASE_SECRET_KEY não está definida. Operações administrativas não estarão disponíveis.');
+}
+
+// Exportar o cliente (pode ser null se Secret Key não estiver presente)
+export { supabaseAdmin };
+
+// Exportar também como adminClient para compatibilidade
+export const adminClient = supabaseAdmin;
 
 // Função para verificar se o usuário atual tem permissões de administrador
 export const checkAdminPermissions = async (userId: string): Promise<boolean> => {
+  // Se não há cliente admin, não podemos verificar permissões
+  if (!supabaseAdmin) {
+    console.error('❌ Cliente administrativo não disponível (Secret Key não configurada)');
+    return false;
+  }
+
   try {
     console.log('🔍 Verificando permissões para usuário:', userId);
 

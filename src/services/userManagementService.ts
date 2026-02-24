@@ -74,14 +74,18 @@ class UserManagementService {
   }
 
   // Criar novo usuário (requer permissões de admin)
-  async createUser(userData: CreateUserData): Promise<{ success: boolean; user?: any; error?: string }> {
+  async createUser(userData: CreateUserData): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
-      // Verificar se o usuário atual tem permissões
+      // Validar se o cliente admin está disponível
+      if (!supabaseAdmin) {
+        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
+      }
+
+      // Verificar se o usuário atual está autenticado
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
-
 
       const hasPermission = await checkAdminPermissions(user.id);
       if (!hasPermission) {
@@ -234,6 +238,11 @@ class UserManagementService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Usuário não autenticado');
+      }
+
+      // Validar se o cliente admin está disponível
+      if (!supabaseAdmin) {
+        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
       }
 
       const hasPermission = await checkAdminPermissions(user.id);

@@ -225,37 +225,15 @@ export function useSalvarEspecialistasElogio() {
 export function useEspecialistasIdsPesquisa(pesquisaId: string | undefined, prestador?: string) {
   const { data: especialistas = [], isLoading } = useEspecialistasPesquisa(pesquisaId);
   
-  console.log('🔍 [useEspecialistasIdsPesquisa] === INÍCIO ===');
-  console.log('🔍 [useEspecialistasIdsPesquisa] Pesquisa ID:', pesquisaId);
-  console.log('🔍 [useEspecialistasIdsPesquisa] Especialistas recebidos do hook:', especialistas);
-  console.log('🔍 [useEspecialistasIdsPesquisa] Quantidade de especialistas:', especialistas.length);
-  console.log('🔍 [useEspecialistasIdsPesquisa] isLoading:', isLoading);
-  console.log('🔍 [useEspecialistasIdsPesquisa] Prestador:', prestador);
-  
   // Se já tem especialistas relacionados, usar eles
   if (especialistas.length > 0) {
     const ids = especialistas.map(e => e.id);
-    console.log('✅ [useEspecialistasIdsPesquisa] Retornando IDs dos especialistas relacionados:', ids);
-    console.log('🔍 [useEspecialistasIdsPesquisa] Verificando duplicação:', {
-      idsOriginais: ids,
-      idsUnicos: [...new Set(ids)],
-      temDuplicacao: ids.length !== new Set(ids).size
-    });
-    console.log('🔍 [useEspecialistasIdsPesquisa] === FIM (COM ESPECIALISTAS) ===');
     return { ids, isLoading };
   }
   
   // Se não tem relacionamentos mas tem prestador, tentar correlação automática
-  if (prestador && prestador.trim()) {
-    console.log('🔄 [useEspecialistasIdsPesquisa] Tentando correlação automática para prestador:', prestador);
-    // Importar dinamicamente para evitar dependência circular
-    import('./useCorrelacaoEspecialistas').then(({ useCorrelacaoMultiplosEspecialistas }) => {
-      // Esta correlação será feita no componente que usa este hook
-    });
-  }
+  // (A correlação será feita no componente que usa este hook)
   
-  console.log('❌ [useEspecialistasIdsPesquisa] Nenhum especialista encontrado, retornando array vazio');
-  console.log('🔍 [useEspecialistasIdsPesquisa] === FIM (SEM ESPECIALISTAS) ===');
   return { ids: [], isLoading };
 }
 

@@ -158,13 +158,6 @@ function VisualizarPesquisas() {
   // Buscar especialistas relacionados à pesquisa (para edição) - RETORNA { ids, isLoading }
   const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
   
-  console.log('🔍 [VisualizarPesquisas] === DADOS DE ESPECIALISTAS ===');
-  console.log('🔍 [VisualizarPesquisas] Pesquisa Editando:', pesquisaEditando?.id);
-  console.log('🔍 [VisualizarPesquisas] Prestador:', pesquisaEditando?.prestador);
-  console.log('🔍 [VisualizarPesquisas] IDs Relacionados (do banco):', especialistasIdsRelacionados);
-  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Relacionados:', especialistasIdsRelacionados.length);
-  console.log('🔍 [VisualizarPesquisas] Loading Relacionados:', loadingRelacionados);
-  
   // Buscar especialistas para visualização
   const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
   
@@ -175,26 +168,12 @@ function VisualizarPesquisas() {
       : undefined
   );
   
-  console.log('🔍 [VisualizarPesquisas] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
-  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
-  console.log('🔍 [VisualizarPesquisas] Loading Correlação:', loadingCorrelacao);
-  console.log('🔍 [VisualizarPesquisas] Condição para correlação:', {
-    temPrestador: !!pesquisaEditando?.prestador,
-    prestador: pesquisaEditando?.prestador,
-    relacionadosVazio: especialistasIdsRelacionados.length === 0,
-    deveCorrelacionar: !!(pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0)
-  });
-  
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
   const especialistasIdsUnicos = [...new Set(
     especialistasIdsRelacionados.length > 0 
       ? especialistasIdsRelacionados 
       : especialistasIdsCorrelacionados
   )];
-  
-  console.log('🔍 [VisualizarPesquisas] IDs Únicos (após Set):', especialistasIdsUnicos);
-  console.log('🔍 [VisualizarPesquisas] Quantidade de IDs Únicos:', especialistasIdsUnicos.length);
-  console.log('🔍 [VisualizarPesquisas] === FIM DADOS DE ESPECIALISTAS ===');
   
   const especialistasIds = especialistasIdsUnicos;
   const especialistasLoading = loadingRelacionados || loadingCorrelacao;

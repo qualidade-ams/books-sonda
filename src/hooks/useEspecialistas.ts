@@ -4,7 +4,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { buscarEspecialistasAtivos, buscarEspecialistaPorId } from '@/integrations/supabase/admin-client';
 import type { Especialista, FiltrosEspecialistas, EstatisticasEspecialistas } from '@/types/especialistas';
 
 // ============================================
@@ -64,6 +63,7 @@ export function useEspecialistas(filtros: FiltrosEspecialistas = {}) {
 
 /**
  * Hook para buscar apenas especialistas ativos (para selectbox)
+ * IMPORTANTE: Usa cliente normal com RLS, não o admin client
  */
 export function useEspecialistasAtivos() {
   return useQuery({
@@ -72,16 +72,29 @@ export function useEspecialistasAtivos() {
       console.log('🔍 [useEspecialistasAtivos] Iniciando busca de especialistas ativos...');
       
       try {
-        const data = await buscarEspecialistasAtivos();
+        const { data, error } = await supabase
+          .from('especialistas')
+          .select(`
+            id,
+            nome,
+            email,
+            codigo,
+            empresa,
+            departamento,
+            cargo
+          `)
+          .eq('status', 'ativo')
+          .order('nome', { ascending: true })
+          .limit(1000);
+
+        if (error) {
+          console.error('❌ [useEspecialistasAtivos] Erro ao buscar especialistas:', error);
+          throw error;
+        }
         
         console.log('✅ [useEspecialistasAtivos] Especialistas encontrados:', data?.length || 0);
         
-        // Ordenar por nome para melhor UX
-        const dataOrdenada = data?.sort((a, b) => 
-          a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
-        ) || [];
-
-        return dataOrdenada;
+        return data || [];
       } catch (error) {
         console.error('❌ [useEspecialistasAtivos] Erro ao buscar especialistas ativos:', error);
         throw error;
@@ -94,6 +107,7 @@ export function useEspecialistasAtivos() {
 
 /**
  * Hook para buscar especialista por ID
+ * IMPORTANTE: Usa cliente normal com RLS, não o admin client
  */
 export function useEspecialista(id: string) {
   return useQuery({
@@ -102,7 +116,20 @@ export function useEspecialista(id: string) {
       if (!id) return null;
 
       try {
-        const data = await buscarEspecialistaPorId(id);
+        const { data, error } = await supabase
+          .from('especialistas')
+          .select('id, nome, email, codigo, empresa, departamento, cargo')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            return null; // Não encontrado
+          }
+          console.error('Erro ao buscar especialista por ID:', error);
+          throw error;
+        }
+
         return data;
       } catch (error) {
         console.error('Erro ao buscar especialista:', error);
