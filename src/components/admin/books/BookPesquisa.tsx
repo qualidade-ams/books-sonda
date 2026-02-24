@@ -3,9 +3,8 @@
  * Exibe dados de pesquisas de satisfação e aderência
  */
 
-import { Download, Smile, Meh, Frown } from 'lucide-react';
+import { Smile, Meh, Frown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -28,16 +27,13 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
   return (
     <div className="space-y-6">
       {/* Título da Seção */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Pesquisa {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
-          </h2>
-        </div>
-        <Button variant="outline" size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
-          <Download className="h-4 w-4 mr-2" />
-          Exportar PDF
-        </Button>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Pesquisa {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+        </h2>
+        <p className="text-muted-foreground mt-1">
+          Acompanhe as pesquisas de satisfação e aderência dos clientes
+        </p>
       </div>
 
       {/* Cards Circulares de Pesquisas */}

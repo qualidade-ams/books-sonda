@@ -6,6 +6,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { adminClient } from '@/integrations/supabase/adminClient';
 
+// Helper para validar se adminClient está disponível
+function validateAdminClient(): void {
+  if (!adminClient) {
+    throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
+  }
+}
+
 export interface StorageBucketConfig {
   id: string;
   name: string;
@@ -82,7 +89,9 @@ export class AnexoStorageService {
 
     for (const config of bucketConfigs) {
       try {
-        const { error } = await adminClient.storage.createBucket(config.id, {
+        validateAdminClient();
+
+        const { error } = await adminClient!.storage.createBucket(config.id, {
           public: config.public,
           fileSizeLimit: config.fileSizeLimit,
           allowedMimeTypes: config.allowedMimeTypes
@@ -184,7 +193,7 @@ export class AnexoStorageService {
       }
 
       // Upload para bucket permanente
-      const { error: uploadError } = await adminClient.storage
+      const { error: uploadError } = await adminClient!.storage
         .from(this.BUCKET_PERMANENTE)
         .upload(caminhoPermanente, arquivo);
 
@@ -193,7 +202,7 @@ export class AnexoStorageService {
       }
 
       // Remover do bucket temporário
-      const { error: deleteError } = await adminClient.storage
+      const { error: deleteError } = await adminClient!.storage
         .from(this.BUCKET_TEMPORARIO)
         .remove([caminhoTemporario]);
 
@@ -212,7 +221,9 @@ export class AnexoStorageService {
    * Remove arquivo do storage
    */
   static async removerArquivo(bucket: string, caminho: string): Promise<void> {
-    const { error } = await adminClient.storage
+    validateAdminClient();
+    
+    const { error } = await adminClient!.storage
       .from(bucket)
       .remove([caminho]);
 
@@ -325,7 +336,7 @@ export class AnexoStorageService {
       }
 
       // Atualizar status no banco usando a função SQL
-      await adminClient.rpc('limpar_anexos_expirados');
+      await adminClient!.rpc('limpar_anexos_expirados');
 
       console.log(`Limpeza concluída: ${removidos} arquivos removidos`);
       return removidos;

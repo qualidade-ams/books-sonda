@@ -1,13 +1,28 @@
 /**
  * Componente para inicialização automática do job scheduler
  * Garante que o scheduler seja iniciado quando a aplicação carrega
+ * APENAS se o usuário estiver autenticado
  */
 
 import { useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { jobSchedulerService } from '@/services/jobSchedulerService';
 
 export function AutoSchedulerInitializer() {
+  const { user, isReady } = useAuth();
+
   useEffect(() => {
+    // Aguardar até que a autenticação esteja pronta
+    if (!isReady) {
+      return;
+    }
+
+    // Só iniciar o scheduler se o usuário estiver autenticado
+    if (!user) {
+      console.log('⏸️ Job scheduler não iniciado - usuário não autenticado');
+      return;
+    }
+
     // Verificar se o scheduler já está rodando
     const status = jobSchedulerService.getStatus();
     
@@ -28,7 +43,7 @@ export function AutoSchedulerInitializer() {
     } else {
       console.log('✅ Job scheduler já está em execução');
     }
-  }, []);
+  }, [user, isReady]);
 
   // Este componente não renderiza nada
   return null;

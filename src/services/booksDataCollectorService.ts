@@ -1704,9 +1704,112 @@ class BooksDataCollectorService {
     mes: number,
     ano: number
   ): Promise<BookPesquisaData> {
-    // TODO: Implementar quando houver tabela de pesquisas
-    // Por enquanto, retorna dados vazios
-    
+    console.log('📊 Buscando dados de pesquisa:', { empresaId, mes, ano });
+
+    try {
+      // 1. Buscar nome completo da empresa
+      const { data: empresaData, error: empresaError } = await supabase
+        .from('empresas_clientes')
+        .select('nome_completo')
+        .eq('id', empresaId)
+        .single();
+
+      if (empresaError || !empresaData) {
+        console.error('❌ Erro ao buscar empresa:', empresaError);
+        return this.retornarDadosPesquisaVazios();
+      }
+
+      const nomeCompletoEmpresa = empresaData.nome_completo;
+      console.log('🏢 Nome completo da empresa:', nomeCompletoEmpresa);
+
+      // 2. Buscar todas as pesquisas da empresa no período (mes_abertura e ano_abertura)
+      const { data: pesquisas, error: pesquisasError } = await supabase
+        .from('pesquisas_satisfacao')
+        .select('*')
+        .eq('empresa', nomeCompletoEmpresa)
+        .eq('mes_abertura', mes)
+        .eq('ano_abertura', ano);
+
+      if (pesquisasError) {
+        console.error('❌ Erro ao buscar pesquisas:', pesquisasError);
+        return this.retornarDadosPesquisaVazios();
+      }
+
+      console.log(`📋 Total de pesquisas encontradas: ${pesquisas?.length || 0}`);
+
+      // Se não houver pesquisas, retornar dados vazios
+      if (!pesquisas || pesquisas.length === 0) {
+        return this.retornarDadosPesquisaVazios();
+      }
+
+      // 3. Separar pesquisas respondidas e não respondidas
+      const pesquisasRespondidas = pesquisas.filter(p => p.data_resposta !== null);
+      const pesquisasNaoRespondidas = pesquisas.filter(p => p.data_resposta === null);
+
+      console.log('✅ Pesquisas respondidas:', pesquisasRespondidas.length);
+      console.log('⏳ Pesquisas não respondidas:', pesquisasNaoRespondidas.length);
+
+      // 4. Calcular percentual de aderência
+      const percentualAderencia = pesquisas.length > 0 
+        ? (pesquisasRespondidas.length / pesquisas.length) * 100 
+        : 0;
+
+      // 5. Calcular nível de satisfação (apenas das respondidas)
+      const nivelSatisfacao = {
+        insatisfeito: 0,
+        neutro: 0,
+        satisfeito: 0
+      };
+
+      pesquisasRespondidas.forEach(p => {
+        const resposta = p.resposta?.toLowerCase() || '';
+        
+        if (resposta.includes('insatisfeito') || resposta.includes('ruim') || resposta.includes('péssimo')) {
+          nivelSatisfacao.insatisfeito++;
+        } else if (resposta.includes('neutro') || resposta.includes('regular') || resposta.includes('médio')) {
+          nivelSatisfacao.neutro++;
+        } else if (resposta.includes('satisfeito') || resposta.includes('bom') || resposta.includes('ótimo') || resposta.includes('excelente')) {
+          nivelSatisfacao.satisfeito++;
+        }
+      });
+
+      // 6. Montar resumo de pesquisas (apenas as respondidas)
+      const resumoPesquisas = pesquisasRespondidas.map(p => ({
+        chamado: p.nro_caso || 'N/A',
+        tipo: (p.tipo_caso === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
+        solicitante: p.solicitante || 'N/A',
+        grupo: p.grupo || 'N/A',
+        resposta: p.resposta || null
+      }));
+
+      console.log('📊 Estatísticas calculadas:', {
+        total: pesquisas.length,
+        respondidas: pesquisasRespondidas.length,
+        naoRespondidas: pesquisasNaoRespondidas.length,
+        percentualAderencia: percentualAderencia.toFixed(1) + '%',
+        nivelSatisfacao
+      });
+
+      return {
+        pesquisas_respondidas: pesquisasRespondidas.length,
+        pesquisas_nao_respondidas: pesquisasNaoRespondidas.length,
+        pesquisas_enviadas: pesquisas.length,
+        resumo_pesquisas: resumoPesquisas,
+        percentual_aderencia: percentualAderencia,
+        nivel_satisfacao: nivelSatisfacao,
+        sem_avaliacoes: pesquisasRespondidas.length === 0
+      };
+
+    } catch (error) {
+      console.error('❌ Erro ao gerar dados de pesquisa:', error);
+      return this.retornarDadosPesquisaVazios();
+    }
+  }
+
+  /**
+   * Retorna estrutura de dados de pesquisa vazia
+   */
+  private retornarDadosPesquisaVazios(): BookPesquisaData {
     return {
       pesquisas_respondidas: 0,
       pesquisas_nao_respondidas: 0,

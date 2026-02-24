@@ -29,6 +29,11 @@ class VigenciaService {
    */
   async executarInativacaoAutomatica(): Promise<number> {
     try {
+      // Validar se o cliente admin está disponível
+      if (!supabaseAdmin) {
+        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
+      }
+
       const { data, error } = await supabaseAdmin.rpc('inativar_empresas_vencidas');
       
       if (error) {

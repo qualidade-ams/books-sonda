@@ -1,12 +1,38 @@
 /**
  * Hook otimizado para especialistas com cache, debounce e paginação
+ * IMPORTANTE: Usa cliente normal com RLS, não o admin client
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback, useMemo } from 'react';
 import * as React from 'react';
-import { buscarEspecialistasAtivos, limparCacheEspecialistas } from '@/integrations/supabase/admin-client';
+import { supabase } from '@/integrations/supabase/client';
 import type { Especialista } from '@/types/especialistas';
+
+// Função para buscar especialistas ativos (substituindo a do admin-client)
+async function buscarEspecialistasAtivos(): Promise<Especialista[]> {
+  const { data, error } = await supabase
+    .from('especialistas')
+    .select(`
+      id,
+      nome,
+      email,
+      codigo,
+      empresa,
+      departamento,
+      cargo
+    `)
+    .eq('status', 'ativo')
+    .order('nome', { ascending: true })
+    .limit(1000);
+
+  if (error) {
+    console.error('Erro ao buscar especialistas ativos:', error);
+    throw error;
+  }
+
+  return data || [];
+}
 
 // Hook principal otimizado
 export function useEspecialistasAtivosOtimizado() {
@@ -122,8 +148,8 @@ export function useInvalidarCacheEspecialistas() {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
-    limparCacheEspecialistas();
     queryClient.invalidateQueries({ queryKey: ['especialistas-ativos-otimizado'] });
+    queryClient.invalidateQueries({ queryKey: ['especialistas-ativos'] });
     console.log('🔄 Cache de especialistas invalidado');
   }, [queryClient]);
 }

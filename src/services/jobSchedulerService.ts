@@ -389,11 +389,6 @@ class JobSchedulerService {
 // Instância singleton
 export const jobSchedulerService = new JobSchedulerService();
 
-// Auto-iniciar o scheduler em produção e desenvolvimento
-if (typeof window !== 'undefined') {
-  // Aguardar um pouco antes de iniciar para garantir que a aplicação carregou
-  setTimeout(() => {
-    console.log('🚀 Iniciando job scheduler automaticamente...');
-    jobSchedulerService.start();
-  }, 3000); // Reduzido para 3 segundos
-}
+// NOTA: O scheduler NÃO é mais auto-iniciado aqui.
+// Ele é iniciado pelo AutoSchedulerInitializer apenas quando o usuário está autenticado.
+// Isso evita erros 401 ao tentar fazer requisições sem autenticação.

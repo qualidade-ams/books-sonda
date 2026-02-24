@@ -7,15 +7,15 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SECRET_KEY = import.meta.env.VITE_SUPABASE_SECRET_KEY;
 
 // Validar se as variáveis de ambiente estão definidas
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  throw new Error('Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_SERVICE_ROLE_KEY são obrigatórias');
+if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  throw new Error('Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_SECRET_KEY são obrigatórias');
 }
 
-// Cliente com service role - USAR COM CUIDADO!
-export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+// Cliente com secret key - USAR COM CUIDADO!
+export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
