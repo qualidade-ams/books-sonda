@@ -28,7 +28,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -75,23 +74,16 @@ export default function GeracaoBooks() {
     periodo: '' // Período no formato MM/YYYY
   });
 
-  // Extrair mês e ano do filtro de período, ou usar período atual
-  const getPeriodoAtual = () => {
-    if (filtros.periodo) {
-      const [mes, ano] = filtros.periodo.split('/');
-      return { mes: parseInt(mes), ano: parseInt(ano) };
-    }
-    // Se não há filtro, usar período atual (mês atual)
-    const hoje = new Date();
-    return { mes: hoje.getMonth() + 1, ano: hoje.getFullYear() };
-  };
-
-  const { mes: mesAtual, ano: anoAtual } = getPeriodoAtual();
+  // Período atual (para navegação) - INDEPENDENTE do filtro
+  const hoje = new Date();
+  const [mesAtual, setMesAtual] = useState(hoje.getMonth() + 1);
+  const [anoAtual, setAnoAtual] = useState(hoje.getFullYear());
   
   // Calcular mês de referência (mês anterior ao período selecionado)
   const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
   
+  // Hook useBooks sempre busca o período de referência atual (não afetado pelo filtro)
   const { books, isLoading, gerarBooks, atualizarBooks, isGerando, isAtualizando } = useBooks({
     mes: mesReferencia,
     ano: anoReferencia
@@ -122,15 +114,15 @@ export default function GeracaoBooks() {
   const handleProximoPeriodo = () => {
     const novoMes = mesAtual === 12 ? 1 : mesAtual + 1;
     const novoAno = mesAtual === 12 ? anoAtual + 1 : anoAtual;
-    const novoPeriodo = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-    setFiltros({ ...filtros, periodo: novoPeriodo });
+    setMesAtual(novoMes);
+    setAnoAtual(novoAno);
   };
 
   const handlePeriodoAnterior = () => {
     const novoMes = mesAtual === 1 ? 12 : mesAtual - 1;
     const novoAno = mesAtual === 1 ? anoAtual - 1 : anoAtual;
-    const novoPeriodo = `${String(novoMes).padStart(2, '0')}/${novoAno}`;
-    setFiltros({ ...filtros, periodo: novoPeriodo });
+    setMesAtual(novoMes);
+    setAnoAtual(novoAno);
   };
 
   // Formatar período para exibição
@@ -138,9 +130,9 @@ export default function GeracaoBooks() {
   const periodoLabel = `${mesNome} ${anoAtual}`;
   const periodoReferenciaLabel = `${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
 
-  // Função para verificar se há filtros ativos
+  // Função para verificar se há filtros ativos (exceto período, que é navegação)
   const hasActiveFilters = () => {
-    return filtros.busca !== '' || filtros.status !== 'all' || filtros.periodo !== '';
+    return filtros.busca !== '' || filtros.status !== 'all';
   };
 
   // Função para limpar filtros
@@ -165,14 +157,6 @@ export default function GeracaoBooks() {
     // Filtro de status
     if (filtros.status !== 'all' && book.status !== filtros.status) {
       return false;
-    }
-
-    // Filtro de período (MM/YYYY)
-    if (filtros.periodo) {
-      const [mes, ano] = filtros.periodo.split('/');
-      if (book.mes !== parseInt(mes) || book.ano !== parseInt(ano)) {
-        return false;
-      }
     }
 
     return true;
@@ -434,7 +418,7 @@ export default function GeracaoBooks() {
               {/* Área de filtros expansível */}
               {showFilters && (
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Campo de busca com ícone */}
                     <div>
                       <div className="text-sm font-medium mb-2">Buscar</div>
@@ -466,17 +450,6 @@ export default function GeracaoBooks() {
                           <SelectItem value="erro">Erro</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    {/* Filtro Período (Mês/Ano) */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Período</div>
-                      <MonthYearPicker
-                        value={filtros.periodo}
-                        onChange={(value) => setFiltros({...filtros, periodo: value || ''})}
-                        placeholder="Todos os períodos"
-                        className="focus:ring-sonda-blue focus:border-sonda-blue"
-                      />
                     </div>
                   </div>
                 </div>

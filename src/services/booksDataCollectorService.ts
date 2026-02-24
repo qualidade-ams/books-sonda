@@ -1698,6 +1698,13 @@ class BooksDataCollectorService {
 
   /**
    * Gera dados de pesquisa
+   * 
+   * REGRA DE NEGÓCIO:
+   * - Busca pesquisas pelo campo data_fechamento (mês/ano do book)
+   * - Pesquisas com data_resposta preenchido = RESPONDIDAS
+   * - Pesquisas com data_resposta NULL = NÃO RESPONDIDAS
+   * - EXCLUI grupos: "AMS APL - TÉCNICO" e "CA SDM"
+   * - EXCLUI tipo_caso: "PM"
    */
   private async gerarDadosPesquisa(
     empresaId: string,
@@ -1722,39 +1729,54 @@ class BooksDataCollectorService {
       const nomeCompletoEmpresa = empresaData.nome_completo;
       console.log('🏢 Nome completo da empresa:', nomeCompletoEmpresa);
 
-      // 2. Buscar todas as pesquisas da empresa no período (mes_abertura e ano_abertura)
+      // 2. Calcular intervalo de datas do mês do book (data_fechamento)
+      const dataInicio = new Date(ano, mes - 1, 1); // Primeiro dia do mês
+      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999); // Último dia do mês
+
+      console.log('📅 Período de busca (data_fechamento):', {
+        dataInicio: dataInicio.toISOString(),
+        dataFim: dataFim.toISOString()
+      });
+      console.log('🚫 Grupos excluídos: "AMS APL - TÉCNICO", "CA SDM"');
+      console.log('🚫 Tipo de caso excluído: "PM"');
+
+      // 3. Buscar todas as pesquisas da empresa no período (data_fechamento)
+      // Excluindo grupos "AMS APL - TÉCNICO" e "CA SDM"
+      // Excluindo tipo_caso "PM"
       const { data: pesquisas, error: pesquisasError } = await supabase
         .from('pesquisas_satisfacao')
         .select('*')
         .eq('empresa', nomeCompletoEmpresa)
-        .eq('mes_abertura', mes)
-        .eq('ano_abertura', ano);
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lte('data_fechamento', dataFim.toISOString())
+        .not('grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")')
+        .neq('tipo_caso', 'PM');
 
       if (pesquisasError) {
         console.error('❌ Erro ao buscar pesquisas:', pesquisasError);
         return this.retornarDadosPesquisaVazios();
       }
 
-      console.log(`📋 Total de pesquisas encontradas: ${pesquisas?.length || 0}`);
+      console.log(`📋 Total de pesquisas encontradas (data_fechamento): ${pesquisas?.length || 0}`);
 
       // Se não houver pesquisas, retornar dados vazios
       if (!pesquisas || pesquisas.length === 0) {
         return this.retornarDadosPesquisaVazios();
       }
 
-      // 3. Separar pesquisas respondidas e não respondidas
+      // 4. Separar pesquisas respondidas e não respondidas (baseado em data_resposta)
       const pesquisasRespondidas = pesquisas.filter(p => p.data_resposta !== null);
       const pesquisasNaoRespondidas = pesquisas.filter(p => p.data_resposta === null);
 
-      console.log('✅ Pesquisas respondidas:', pesquisasRespondidas.length);
-      console.log('⏳ Pesquisas não respondidas:', pesquisasNaoRespondidas.length);
+      console.log('✅ Pesquisas respondidas (data_resposta preenchido):', pesquisasRespondidas.length);
+      console.log('⏳ Pesquisas não respondidas (data_resposta NULL):', pesquisasNaoRespondidas.length);
 
-      // 4. Calcular percentual de aderência
+      // 5. Calcular percentual de aderência
       const percentualAderencia = pesquisas.length > 0 
         ? (pesquisasRespondidas.length / pesquisas.length) * 100 
         : 0;
 
-      // 5. Calcular nível de satisfação (apenas das respondidas)
+      // 6. Calcular nível de satisfação (apenas das respondidas)
       const nivelSatisfacao = {
         insatisfeito: 0,
         neutro: 0,
@@ -1773,7 +1795,7 @@ class BooksDataCollectorService {
         }
       });
 
-      // 6. Montar resumo de pesquisas (apenas as respondidas)
+      // 7. Montar resumo de pesquisas (apenas as respondidas)
       const resumoPesquisas = pesquisasRespondidas.map(p => ({
         chamado: p.nro_caso || 'N/A',
         tipo: (p.tipo_caso === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
@@ -1782,7 +1804,7 @@ class BooksDataCollectorService {
         resposta: p.resposta || null
       }));
 
-      console.log('📊 Estatísticas calculadas:', {
+      console.log('📊 Estatísticas calculadas (baseado em data_fechamento):', {
         total: pesquisas.length,
         respondidas: pesquisasRespondidas.length,
         naoRespondidas: pesquisasNaoRespondidas.length,
