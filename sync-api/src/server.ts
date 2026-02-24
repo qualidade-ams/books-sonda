@@ -96,6 +96,17 @@ interface DadosSqlServer {
   Data_Resposta: Date | null; // Pode ser null para pesquisas não respondidas
   Resposta: string;
   Comentario_Pesquisa: string;
+  Servico: string | null;
+  Nome_Pesquisa: string | null;
+  Data_Fechamento: Date | null;
+  Data_Ultima_Modificacao: Date | null;
+  Autor_Notificacao: string | null;
+  Estado: string | null;
+  Descricao: string | null;
+  Pesquisa_Recebida: string | null;
+  Pergunta: string | null;
+  SequenciaPregunta: string | null;
+  LOG: Date | null;
 }
 
 // Interface dos dados de especialistas (estrutura real da tabela AMSespecialistas)
@@ -866,7 +877,18 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Mes_abertura,
           [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
           Resposta,
-          Comentario_Pesquisa
+          Comentario_Pesquisa,
+          Servico,
+          Nome_Pesquisa,
+          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+          [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
+          Autor_Notificacao,
+          Estado,
+          Descricao,
+          Pesquisa_Recebida,
+          Pergunta,
+          SequenciaPregunta,
+          LOG
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
         WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
           AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
@@ -909,7 +931,18 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           Mes_abertura,
           [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
           Resposta,
-          Comentario_Pesquisa
+          Comentario_Pesquisa,
+          Servico,
+          Nome_Pesquisa,
+          [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+          [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
+          Autor_Notificacao,
+          Estado,
+          Descricao,
+          Pesquisa_Recebida,
+          Pergunta,
+          SequenciaPregunta,
+          LOG
         FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
         WHERE (
           -- Registros com resposta após a última sincronização
@@ -1050,7 +1083,18 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           data_resposta: formatarDataSemTimezone(registro.Data_Resposta),
           resposta: registro.Resposta || null,
           comentario_pesquisa: registro.Comentario_Pesquisa || null,
-          status: statusPesquisa
+          status: statusPesquisa,
+          servico: registro.Servico || null,
+          nome_pesquisa: registro.Nome_Pesquisa || null,
+          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
+          data_ultima_modificacao: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          autor_notificacao: registro.Autor_Notificacao || null,
+          estado: registro.Estado || null,
+          descricao: registro.Descricao || null,
+          pesquisa_recebida: registro.Pesquisa_Recebida || null,
+          pergunta: registro.Pergunta || null,
+          sequencia_pergunta: registro.SequenciaPregunta || null,
+          log: formatarDataSemTimezone(registro.LOG)
         };
 
         // Validar valores numéricos antes de inserir
@@ -1074,10 +1118,32 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         }
 
         if (existente) {
-          // ✅ Registro já existe - PULAR (não atualizar para preservar edições manuais)
-          console.log(`⏭️ [PESQUISAS] Registro ${i + 1} já existe - pulando (ID: ${idUnico})`);
-          // Não incrementar nenhum contador - registro ignorado
-          continue;
+          // ✅ Registro já existe - ATUALIZAR apenas os novos campos
+          console.log(`🔄 [PESQUISAS] Registro ${i + 1} já existe - atualizando novos campos (ID: ${idUnico})`);
+          
+          // Atualizar APENAS os 11 novos campos, preservando os outros
+          const { error } = await supabase
+            .from('pesquisas_satisfacao')
+            .update({
+              servico: dadosPesquisa.servico,
+              nome_pesquisa: dadosPesquisa.nome_pesquisa,
+              data_fechamento: dadosPesquisa.data_fechamento,
+              data_ultima_modificacao: dadosPesquisa.data_ultima_modificacao,
+              autor_notificacao: dadosPesquisa.autor_notificacao,
+              estado: dadosPesquisa.estado,
+              descricao: dadosPesquisa.descricao,
+              pesquisa_recebida: dadosPesquisa.pesquisa_recebida,
+              pergunta: dadosPesquisa.pergunta,
+              sequencia_pergunta: dadosPesquisa.sequencia_pergunta,
+              log: dadosPesquisa.log
+            })
+            .eq('id_externo', idUnico);
+
+          if (error) {
+            console.error('Erro ao atualizar:', error);
+            throw error;
+          }
+          resultado.atualizados++;
         } else {
           // ✅ Inserir novo registro
           const { error } = await supabase
