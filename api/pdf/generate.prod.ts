@@ -1,14 +1,13 @@
 /**
- * API Route para geração de PDF usando Puppeteer - VERSÃO DESENVOLVIMENTO
+ * API Route para geração de PDF usando Puppeteer
  * Endpoint: POST /api/pdf/generate
  * 
- * Esta versão usa o Chrome instalado localmente em vez do @sparticuz/chromium
- * Use esta versão para desenvolvimento local
+ * Recebe HTML ou URL e retorna PDF com fidelidade visual total
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import puppeteer from 'puppeteer-core';
-import { existsSync } from 'fs';
+import chromium from '@sparticuz/chromium';
 
 interface GeneratePDFRequest {
   html?: string;
@@ -25,41 +24,6 @@ interface GeneratePDFRequest {
       right?: string;
     };
   };
-}
-
-// Caminhos comuns do Chrome por sistema operacional
-const CHROME_PATHS = {
-  win32: [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
-  ],
-  darwin: [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ],
-  linux: [
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
-  ],
-};
-
-function findChrome(): string {
-  const platform = process.platform as keyof typeof CHROME_PATHS;
-  const paths = CHROME_PATHS[platform] || [];
-  
-  for (const path of paths) {
-    try {
-      if (existsSync(path)) {
-        console.log('✅ Chrome encontrado:', path);
-        return path;
-      }
-    } catch (e) {
-      // Ignorar erros
-    }
-  }
-  
-  throw new Error('Chrome não encontrado. Instale o Google Chrome: https://www.google.com/chrome/');
 }
 
 export default async function handler(
@@ -87,23 +51,19 @@ export default async function handler(
       return;
     }
 
-    console.log('🚀 Iniciando geração de PDF (DEV MODE)...');
+    console.log('🚀 Iniciando geração de PDF...');
     console.log('📦 Tamanho do HTML:', body.html?.length || 0, 'caracteres');
 
-    // Encontrar Chrome instalado
-    const chromePath = findChrome();
-    
-    // Configurar Puppeteer para desenvolvimento local
+    // Configurar Puppeteer para Vercel
     console.log('🔧 Configurando Puppeteer...');
     
+    const executablePath = await chromium.executablePath();
+    console.log('📍 Chromium path:', executablePath);
+    
     browser = await puppeteer.launch({
-      executablePath: chromePath,
+      args: chromium.args,
+      executablePath: executablePath,
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-      ],
     });
 
     console.log('✅ Browser iniciado');
@@ -135,14 +95,14 @@ export default async function handler(
     const pdfOptions = {
       format: body.options?.format || 'A4',
       landscape: body.options?.orientation === 'landscape',
-      printBackground: body.options?.printBackground !== false,
+      printBackground: body.options?.printBackground !== false, // true por padrão
       margin: {
         top: body.options?.margin?.top || '10mm',
         bottom: body.options?.margin?.bottom || '10mm',
         left: body.options?.margin?.left || '10mm',
         right: body.options?.margin?.right || '10mm',
       },
-      preferCSSPageSize: true,
+      preferCSSPageSize: true, // Respeitar @page CSS
     };
 
     // Gerar PDF
@@ -163,6 +123,7 @@ export default async function handler(
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
     console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    console.error('📋 Tipo de erro:', error instanceof Error ? error.constructor.name : typeof error);
     
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');

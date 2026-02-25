@@ -35,7 +35,35 @@ interface GeneratePDFFromURLParams {
 }
 
 class PuppeteerPDFService {
-  private readonly API_ENDPOINT = '/api/pdf/generate';
+  private readonly API_ENDPOINT: string;
+
+  constructor() {
+    // Detectar ambiente automaticamente
+    const isDev = import.meta.env.DEV;
+    const currentPort = window.location.port;
+    
+    if (isDev) {
+      if (currentPort === '8080') {
+        // Vite dev server - tentar usar proxy primeiro
+        // Se não funcionar, usuário deve usar porta 3000
+        this.API_ENDPOINT = '/api/pdf/generate';
+        console.log('🔧 Modo: Vite Dev (porta 8080)');
+        console.log('⚠️ Se der erro 404, acesse: http://localhost:3000');
+      } else if (currentPort === '3000') {
+        // Vercel dev server - funciona direto
+        this.API_ENDPOINT = '/api/pdf/generate';
+        console.log('🔧 Modo: Vercel Dev (porta 3000) ✅');
+      } else {
+        // Outro ambiente de desenvolvimento
+        this.API_ENDPOINT = '/api/pdf/generate';
+        console.log('🔧 Modo: Dev (porta ' + currentPort + ')');
+      }
+    } else {
+      // Produção
+      this.API_ENDPOINT = '/api/pdf/generate';
+      console.log('🔧 Modo: Produção');
+    }
+  }
 
   /**
    * Gera PDF a partir de HTML
@@ -47,6 +75,7 @@ class PuppeteerPDFService {
   }: GeneratePDFFromHTMLParams): Promise<Blob> {
     try {
       console.log('📄 Gerando PDF a partir de HTML...');
+      console.log('🔗 Endpoint:', this.API_ENDPOINT);
 
       const response = await fetch(this.API_ENDPOINT, {
         method: 'POST',
@@ -63,9 +92,47 @@ class PuppeteerPDFService {
         }),
       });
 
+      console.log('📡 Response status:', response.status);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao gerar PDF');
+        // Clonar response para poder ler múltiplas vezes
+        const responseClone = response.clone();
+        
+        // Tentar ler erro como JSON
+        let errorMessage = 'Erro ao gerar PDF';
+        let errorDetails = '';
+        
+        try {
+          const error = await response.json();
+          console.error('❌ Erro (JSON):', error);
+          errorMessage = error.message || error.error || errorMessage;
+          errorDetails = JSON.stringify(error, null, 2);
+        } catch {
+          // Se não for JSON, ler como texto do clone
+          try {
+            const errorText = await responseClone.text();
+            console.error('❌ Erro (texto completo):', errorText);
+            errorDetails = errorText;
+            
+            if (response.status === 404) {
+              errorMessage = '⚠️ API de PDF não encontrada.\n\n' +
+                'SOLUÇÃO:\n' +
+                '1. Pare o Vite (Ctrl+C)\n' +
+                '2. Acesse: http://localhost:3000\n' +
+                '3. Ou execute: vercel dev\n\n' +
+                'O Vercel Dev já está rodando na porta 3000!';
+            } else if (response.status === 500) {
+              errorMessage = `Erro 500 no servidor.\n\nVerifique os logs do Vercel Dev no terminal para mais detalhes.\n\nErro: ${errorText.substring(0, 200)}`;
+            } else {
+              errorMessage = `Erro ${response.status}: ${errorText.substring(0, 100)}`;
+            }
+          } catch {
+            errorMessage = `Erro ${response.status}`;
+          }
+        }
+        
+        console.error('📋 Detalhes do erro:', errorDetails);
+        throw new Error(errorMessage);
       }
 
       const blob = await response.blob();
@@ -74,6 +141,11 @@ class PuppeteerPDFService {
       return blob;
     } catch (error) {
       console.error('❌ Erro ao gerar PDF:', error);
+      
+      // Mensagem mais clara para o usuário
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error('Não foi possível gerar o PDF');
     }
   }
