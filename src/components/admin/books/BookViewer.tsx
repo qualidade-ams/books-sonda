@@ -18,7 +18,7 @@ import { useBookData } from '@/hooks/useBooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookTab } from '@/types/books';
 import { BOOK_TABS_LABELS } from '@/types/books';
-import { booksPDFService } from '@/services/booksPDFService';
+import { booksPDFServicePuppeteer } from '@/services/booksPDFServicePuppeteer';
 import { booksService } from '@/services/booksService';
 
 // Importar componentes das abas
@@ -71,17 +71,17 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
         return;
       }
 
-      // Caso contrário, gerar PDF agora
+      // Caso contrário, gerar PDF agora com Puppeteer
       toast({
-        title: 'Gerando PDF',
-        description: 'Aguarde enquanto o PDF é gerado...',
+        title: 'Gerando PDF com Puppeteer',
+        description: 'Aguarde enquanto o PDF é gerado com fidelidade visual total...',
       });
 
-      await booksPDFService.baixarPDF(bookData, `book_${bookData.empresa_nome}_${bookData.mes}_${bookData.ano}.pdf`);
+      await booksPDFServicePuppeteer.baixarPDF(bookData, `book_${bookData.empresa_nome}_${bookData.mes}_${bookData.ano}.pdf`);
 
       toast({
         title: 'PDF baixado com sucesso',
-        description: 'O arquivo foi salvo no seu computador.',
+        description: 'O arquivo foi salvo no seu computador com fidelidade visual total.',
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
