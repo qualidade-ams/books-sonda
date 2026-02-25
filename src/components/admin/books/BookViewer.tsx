@@ -85,9 +85,16 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
+      
+      // Mensagem de erro mais útil
+      const errorMessage = error instanceof Error ? error.message : 'Não foi possível gerar o PDF. Tente novamente.';
+      const isApiError = errorMessage.includes('API de PDF não encontrada') || errorMessage.includes('404');
+      
       toast({
         title: 'Erro ao baixar PDF',
-        description: 'Não foi possível gerar o PDF. Tente novamente.',
+        description: isApiError 
+          ? '⚠️ API não encontrada. Acesse http://localhost:3000 ou execute: vercel dev'
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {

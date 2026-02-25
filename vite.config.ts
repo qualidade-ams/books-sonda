@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     proxy: {
       // Proxy para API de PDF em desenvolvimento
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001', // Porta 3001 (Vercel Dev)
         changeOrigin: true,
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {

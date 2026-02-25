@@ -201,7 +201,7 @@ export function RequerimentoMultiploForm({
 
   // Calcular totalizadores
   const totalizadores = useMemo(() => {
-    let totalHoras = 0;
+    let totalMinutos = 0;
     let totalValor = 0;
 
     blocos.forEach(bloco => {
@@ -213,7 +213,8 @@ export function RequerimentoMultiploForm({
         ? converterParaHorasDecimal(bloco.horas_tecnico)
         : bloco.horas_tecnico || 0;
 
-      totalHoras += horasFuncional + horasTecnico;
+      // Converter horas decimais para minutos e somar
+      totalMinutos += Math.round((horasFuncional + horasTecnico) * 60);
 
       // Calcular valor apenas para tipos com valor/hora
       if (['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(bloco.tipo_cobranca)) {
@@ -222,7 +223,12 @@ export function RequerimentoMultiploForm({
       }
     });
 
-    return { totalHoras, totalValor };
+    // Converter total de minutos para formato HH:MM
+    const horas = Math.floor(totalMinutos / 60);
+    const minutos = totalMinutos % 60;
+    const totalHorasFormatado = `${horas}:${minutos.toString().padStart(2, '0')}`;
+
+    return { totalHoras: totalHorasFormatado, totalValor };
   }, [blocos]);
 
   // Validar formulário
@@ -608,7 +614,7 @@ export function RequerimentoMultiploForm({
             <div>
               <p className="text-xs text-muted-foreground mb-1">Total de Horas</p>
               <p className="text-lg font-semibold">
-                {formatarHorasParaExibicao(totalizadores.totalHoras.toString(), 'completo')}
+                {formatarHorasParaExibicao(totalizadores.totalHoras, 'completo')}
               </p>
             </div>
             <div>

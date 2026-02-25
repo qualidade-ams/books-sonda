@@ -89,6 +89,7 @@ class BooksPDFServicePuppeteer {
       position: relative;
       padding: 40px;
       display: flex;
+      margin-right: 20px;
       align-items: flex-end;
     }
 
@@ -112,7 +113,7 @@ class BooksPDFServicePuppeteer {
       font-weight: 300;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: -20px;
     }
 
     .capa-titulo {
@@ -142,32 +143,38 @@ class BooksPDFServicePuppeteer {
     .capa-fonte {
       color: var(--sonda-blue);
       font-size: 10pt;
-      margin-top: 10px;
+      margin-top: 30px;
     }
 
     .capa-logo-sonda {
-      height: 40px;
+      height: 50px;
+      margin-right: 60px;
     }
 
     /* Páginas internas */
     .page-content {
-      padding: 20px 30px;
+      padding: 15px 25px;
     }
 
     .page-header {
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
 
     .page-title {
-      font-size: 20pt;
+      font-size: 18pt;
+      font-weight: 400;
+      color: #1f2937;
+    }
+
+    .page-title .empresa-nome {
+      color: var(--sonda-blue);
       font-weight: 700;
-      color: var(--gray-900);
-      margin-bottom: 5px;
     }
 
     .page-subtitle {
-      font-size: 10pt;
-      color: var(--gray-600);
+      font-size: 9pt;
+      color: #9ca3af;
+      font-weight: 400;
     }
 
     /* Cards de métricas */
@@ -206,12 +213,424 @@ class BooksPDFServicePuppeteer {
     .metric-value.green { color: #10b981; }
     .metric-value.red { color: #ef4444; }
 
+    /* Cards de métricas simplificados (novo layout) - COMPACTOS */
+    .metrics-grid-simple {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .metric-card-simple {
+      background: white;
+      border: 2px solid #0d6abf;
+      border-radius: 35.5px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-label-simple {
+      font-size: 7pt;
+      font-weight: 500;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metric-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .metric-icon-circle.gray-bg {
+      background: #f3f4f6;
+    }
+
+    .metric-icon-circle.blue-bg {
+      background: #dbeafe;
+    }
+
+    .metric-icon-circle.yellow-bg {
+      background: #fef3c7;
+    }
+
+    .metric-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+    }
+
+    .icon-file {
+      fill: none;
+      stroke: #4b5563;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-trending {
+      fill: none;
+      stroke: #ca8a04;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-alert {
+      fill: none;
+      stroke: #4b5563;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .metric-values {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-row-value {
+      font-size: 28pt;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .metric-row-label {
+      font-size: 8pt;
+      color: #000000;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* Cores dos valores */
+    .value-gray { color: #000000; }
+    .value-blue { color: #000000; }
+    .value-orange { color: #f59e0b; }
+
+    .metric-total-value {
+      font-size: 28pt;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .metric-subtitle {
+      font-size: 6pt;
+      color: #9ca3af;
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    .metric-variation {
+      font-size: 6pt;
+      font-weight: 400;
+      margin-top: 3px;
+    }
+
+    .metric-variation.positive { color: #10b981; }
+    .metric-variation.negative { color: #ef4444; }
+
+    /* Layout com gráfico e card lateral */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .chart-container {
+      background: white;
+      border: 2px solid #0d6abf;
+      border-radius: 35.5px;
+      padding: 12px;
+    }
+
+    .chart-title {
+      font-size: 10pt;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 2px;
+    }
+
+    .chart-subtitle {
+      font-size: 6pt;
+      color: var(--gray-500);
+      margin-bottom: 10px;
+    }
+
+    /* Gráfico de barras CSS - IDÊNTICO AO MODAL */
+    .chart-bars {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      height: 160px;
+      padding: 10px 15px 10px 30px;
+      margin-bottom: 8px;
+      background: white;
+    }
+
+    /* Linhas de grade horizontais */
+    .chart-bars::before {
+      content: '';
+      position: absolute;
+      left: 30px;
+      right: 15px;
+      top: 10px;
+      bottom: 10px;
+      background-image: 
+        linear-gradient(to bottom, transparent 0%, transparent calc(100% - 1px), #e5e7eb calc(100% - 1px), #e5e7eb 100%),
+        linear-gradient(to bottom, transparent 0%, transparent calc(75% - 1px), #e5e7eb calc(75% - 1px), #e5e7eb 75%),
+        linear-gradient(to bottom, transparent 0%, transparent calc(50% - 1px), #e5e7eb calc(50% - 1px), #e5e7eb 50%),
+        linear-gradient(to bottom, transparent 0%, transparent calc(25% - 1px), #e5e7eb calc(25% - 1px), #e5e7eb 25%);
+      background-size: 100% 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Eixo Y com escala */
+    .chart-bars::after {
+      content: '32\A 24\A 16\A 8\A 0';
+      white-space: pre;
+      position: absolute;
+      left: 5px;
+      top: 10px;
+      bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: #9ca3af;
+      line-height: 1;
+      z-index: 1;
+    }
+
+    .chart-bar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      max-width: 100px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .chart-bars-pair {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      height: 140px;
+      margin-bottom: 5px;
+    }
+
+    .chart-bar-wrapper {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      width: 32px;
+    }
+
+    .chart-bar {
+      width: 100%;
+      border-radius: 2px 2px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 20px;
+      position: relative;
+    }
+
+    .chart-bar.bar-gray {
+      background: #0d6abf;
+    }
+
+    .chart-bar.bar-blue {
+      background: #2563eb;
+    }
+
+    .chart-bar .bar-value {
+      color: white;
+      font-size: 9pt;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .chart-bar-label {
+      font-size: 7pt;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-top: 3px;
+      text-align: center;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    /* Legenda do gráfico */
+    .chart-legend {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .legend-color.legend-gray {
+      background: #0d6abf;
+    }
+
+    .legend-color.legend-blue {
+      background: #2563eb;
+    }
+
+    .legend-label {
+      font-size: 7pt;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Card lateral - COMPACTO */
+    .side-card {
+      background: white;
+      border: 2px solid #0d6abf;
+      border-radius: 35.5px;
+      padding: 12px;
+    }
+
+    .side-card-title {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--gray-900);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .side-card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .grupo-item-compact {
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .grupo-item-compact:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .grupo-header-compact {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .grupo-nome-compact {
+      font-size: 7pt;
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1.2;
+    }
+
+    .grupo-total-compact {
+      font-size: 6pt;
+      color: var(--gray-500);
+    }
+
+    .grupo-bars-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .grupo-bar-compact {
+      border-radius: 4px;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-width: 60px;
+      transition: width 0.3s ease;
+    }
+
+    .gray-bar-compact {
+      background: #0d6abf;
+    }
+
+    .blue-bar-compact {
+      background: var(--sonda-blue);
+    }
+
+    .bar-value-compact {
+      font-size: 11pt;
+      font-weight: 700;
+      line-height: 1;
+      color: white;
+    }
+
+    .bar-label-compact {
+      font-size: 6pt;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    /* Container de tabela */
+    .table-container {
+      background: white;
+      border: 2px solid #0d6abf;
+      border-radius: 35.5px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .table-title {
+      font-size: 10pt;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+
     /* Tabelas */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 10pt;
+      font-size: 8pt;
+      border-radius: 35.5px;
+      overflow: hidden;
     }
 
     thead {
@@ -219,30 +638,61 @@ class BooksPDFServicePuppeteer {
     }
 
     th {
-      padding: 10px;
+      padding: 6px 8px;
       text-align: left;
       font-weight: 700;
-      color: var(--gray-900);
+      font-size: 7pt;
+      color: var(--gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
       border: 1px solid var(--gray-200);
+    }
+
+    th.th-center {
+      text-align: center;
+    }
+
+    th.th-gray {
+      background: #0d6abf;
+      color: white;
+    }
+
+    th.th-blue {
+      background: var(--sonda-blue);
+      color: white;
     }
 
     td {
-      padding: 8px 10px;
+      padding: 5px 8px;
       border: 1px solid var(--gray-200);
+      font-size: 7pt;
     }
 
-    tbody tr:nth-child(even) {
+    td.td-center {
+      text-align: center;
+    }
+
+    td.td-gray {
+      background: #e3f2fd;
+    }
+
+    td.td-blue {
+      background: #eff6ff;
+    }
+
+    tbody tr:hover {
       background: var(--gray-50);
     }
 
     tfoot {
-      background: var(--sonda-blue);
+      background: #0d6abf;
       color: white;
       font-weight: 700;
     }
 
     tfoot td {
-      border-color: var(--sonda-dark-blue);
+      border-color: #0a5a9f;
+      padding: 6px 8px;
     }
 
     /* Rodapé */
@@ -264,7 +714,7 @@ class BooksPDFServicePuppeteer {
   <!-- CAPA -->
   <div class="page capa">
     <div class="capa-superior">
-      <img src="/images/logo-capa-book.png" alt="Logo N" class="capa-logo-n" />
+      <img src="https://books-sonda.vercel.app/images/logo-capa-book.png" alt="Logo N" class="capa-logo-n" />
       <div class="capa-conteudo">
         <div class="capa-empresa">${(bookData.capa.empresa_nome_abreviado || bookData.empresa_nome).toUpperCase()}</div>
         <div class="capa-titulo">Book Mensal</div>
@@ -275,7 +725,7 @@ class BooksPDFServicePuppeteer {
         <div class="capa-periodo-box">${bookData.capa.periodo}</div>
         <div class="capa-fonte">Fonte: Aranda</div>
       </div>
-      <img src="/images/sonda-logo.png" alt="Sonda" class="capa-logo-sonda" />
+      <img src="https://books-sonda.vercel.app//images/sonda-logo.png" alt="Sonda" class="capa-logo-sonda" />
     </div>
   </div>
 
@@ -283,54 +733,225 @@ class BooksPDFServicePuppeteer {
   <div class="page">
     <div class="page-content">
       <div class="page-header">
-        <div class="page-title">Volumetria ${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</div>
+        <div class="page-title">Volumetria <span class="empresa-nome">${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</span></div>
         <div class="page-subtitle">Visão Geral de Chamados e Desempenho Operacional</div>
       </div>
 
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">Abertos | Mês</div>
-          <div class="metric-value gray">${bookData.volumetria.abertos_mes.solicitacao + bookData.volumetria.abertos_mes.incidente}</div>
+      <!-- Cards de métricas - layout idêntico à aba -->
+      <div class="metrics-grid-simple">
+        <!-- Card 1: Abertos | Mês -->
+        <div class="metric-card-simple">
+          <div class="metric-label-simple">
+            <div class="metric-icon-circle gray-bg">
+              <svg class="metric-icon icon-file" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            ABERTOS | MÊS
+          </div>
+          <div class="metric-values">
+            <div class="metric-row">
+              <span class="metric-row-value value-gray">${bookData.volumetria.abertos_mes.solicitacao}</span>
+              <span class="metric-row-label">SOLICITAÇÃO</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-row-value value-gray">${bookData.volumetria.abertos_mes.incidente}</span>
+              <span class="metric-row-label">INCIDENTE</span>
+            </div>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-label">Fechados | Mês</div>
-          <div class="metric-value blue">${bookData.volumetria.fechados_mes.solicitacao + bookData.volumetria.fechados_mes.incidente}</div>
+
+        <!-- Card 2: Fechados | Mês -->
+        <div class="metric-card-simple">
+          <div class="metric-label-simple">
+            <div class="metric-icon-circle blue-bg">
+              <svg class="metric-icon icon-file" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            FECHADOS | MÊS
+          </div>
+          <div class="metric-values">
+            <div class="metric-row">
+              <span class="metric-row-value value-blue">${bookData.volumetria.fechados_mes.solicitacao}</span>
+              <span class="metric-row-label">SOLICITAÇÃO</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-row-value value-blue">${bookData.volumetria.fechados_mes.incidente}</span>
+              <span class="metric-row-label">INCIDENTE</span>
+            </div>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-label">SLA Médio</div>
-          <div class="metric-value orange">${bookData.volumetria.sla_medio.toFixed(1)}%</div>
+
+        <!-- Card 3: SLA Médio -->
+        <div class="metric-card-simple">
+          <div class="metric-label-simple">
+            <div class="metric-icon-circle yellow-bg">
+              <svg class="metric-icon icon-trending" viewBox="0 0 24 24">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+            </div>
+            SLA MÉDIO
+          </div>
+          <div class="metric-values">
+            <div class="metric-row">
+              <span class="metric-total-value value-orange">${bookData.volumetria.sla_medio.toFixed(1)}%</span>
+            </div>
+          </div>
+          ${bookData.volumetria.sla_medio_variacao !== undefined && bookData.volumetria.sla_medio_variacao !== 0 ? `
+            <div class="metric-variation ${bookData.volumetria.sla_medio_variacao > 0 ? 'positive' : 'negative'}">
+              ${bookData.volumetria.sla_medio_variacao > 0 ? '↑' : '↓'} ${bookData.volumetria.sla_medio_variacao > 0 ? '+' : ''}${bookData.volumetria.sla_medio_variacao.toFixed(1)}% vs mês ant.
+            </div>
+          ` : ''}
         </div>
-        <div class="metric-card">
-          <div class="metric-label">Total Backlog</div>
-          <div class="metric-value gray">${bookData.volumetria.total_backlog}</div>
+
+        <!-- Card 4: Total Backlog -->
+        <div class="metric-card-simple">
+          <div class="metric-label-simple">
+            <div class="metric-icon-circle gray-bg">
+              <svg class="metric-icon icon-alert" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            TOTAL BACKLOG
+          </div>
+          <div class="metric-values">
+            <div class="metric-row">
+              <span class="metric-total-value value-gray">${bookData.volumetria.total_backlog}</span>
+            </div>
+          </div>
+          <div class="metric-subtitle">Pendentes de atuação</div>
         </div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>ORIGEM</th>
-            <th style="text-align: center;">ABERTOS</th>
-            <th style="text-align: center;">FECHADOS</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${bookData.volumetria.backlog_por_causa.map(item => `
-            <tr>
-              <td><strong>${item.origem}</strong></td>
-              <td style="text-align: center;">${item.abertos || 0}</td>
-              <td style="text-align: center;">${item.fechados || 0}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td><strong>TOTAL</strong></td>
-            <td style="text-align: center;">${bookData.volumetria.backlog_por_causa.reduce((sum, item) => sum + (item.abertos || 0), 0)}</td>
-            <td style="text-align: center;">${bookData.volumetria.backlog_por_causa.reduce((sum, item) => sum + (item.fechados || 0), 0)}</td>
-          </tr>
-        </tfoot>
-      </table>
+      <!-- Layout: Coluna esquerda (gráfico + tabela) e direita (card lateral) -->
+      <div class="content-grid">
+        <!-- Coluna esquerda: Gráfico + Tabela -->
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+          <!-- Gráfico: Chamados | Semestre -->
+          <div class="chart-container">
+            <div class="chart-title">Chamados | Semestre</div>
+            <div class="chart-subtitle">Monitoramento do volume mensal (${bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0 ? `${bookData.volumetria.chamados_semestre[0].mes}/${bookData.ano} - ${bookData.volumetria.chamados_semestre[bookData.volumetria.chamados_semestre.length - 1].mes}/${bookData.ano}` : ''})</div>
+            
+            <!-- Gráfico de barras CSS -->
+            <div class="chart-bars">
+              ${bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0 ? 
+                bookData.volumetria.chamados_semestre.map(item => {
+                  const maxValue = Math.max(
+                    ...bookData.volumetria.chamados_semestre.map(d => Math.max(d.abertos, d.fechados)),
+                    32 // Valor mínimo da escala
+                  );
+                  const abertosHeight = maxValue > 0 ? (item.abertos / maxValue) * 100 : 0;
+                  const fechadosHeight = maxValue > 0 ? (item.fechados / maxValue) * 100 : 0;
+                  
+                  return `
+                    <div class="chart-bar-group">
+                      <div class="chart-bars-pair">
+                        <div class="chart-bar-wrapper">
+                          <div class="chart-bar bar-gray" style="height: ${abertosHeight}%">
+                            ${item.abertos > 0 ? `<span class="bar-value">${item.abertos}</span>` : ''}
+                          </div>
+                        </div>
+                        <div class="chart-bar-wrapper">
+                          <div class="chart-bar bar-blue" style="height: ${fechadosHeight}%">
+                            ${item.fechados > 0 ? `<span class="bar-value">${item.fechados}</span>` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="chart-bar-label">${item.mes.toUpperCase()}</div>
+                    </div>
+                  `;
+                }).join('')
+              : '<p style="text-align: center; color: #9ca3af; padding: 40px 0;">Sem dados</p>'}
+            </div>
+            
+            <!-- Legenda -->
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-color legend-gray"></span>
+                <span class="legend-label">ABERTOS</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color legend-blue"></span>
+                <span class="legend-label">FECHADOS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela: Chamados X CAUSA -->
+          <div class="table-container">
+            <div class="table-title">Chamados X CAUSA</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ORIGEM</th>
+                  <th class="th-center th-gray">ABERTOS</th>
+                  <th class="th-center th-blue">FECHADOS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bookData.volumetria.backlog_por_causa.map(item => `
+                  <tr>
+                    <td><strong>${item.origem}</strong></td>
+                    <td class="td-center td-gray">${item.abertos || 0}</td>
+                    <td class="td-center td-blue">${item.fechados || 0}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>TOTAL</strong></td>
+                  <td class="td-center">${bookData.volumetria.backlog_por_causa.reduce((sum, item) => sum + (item.abertos || 0), 0)}</td>
+                  <td class="td-center">${bookData.volumetria.backlog_por_causa.reduce((sum, item) => sum + (item.fechados || 0), 0)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Coluna direita: Card lateral (altura total) -->
+        <div class="side-card">
+          <div class="side-card-title">CHAMADOS | GRUPO | MÊS</div>
+          <div class="side-card-content">
+            ${bookData.volumetria.chamados_por_grupo.slice(0, 5).map(grupo => {
+              // Calcular largura proporcional das barras
+              const maxValue = Math.max(grupo.abertos, grupo.fechados);
+              const abertosWidth = maxValue > 0 ? (grupo.abertos / maxValue) * 100 : 0;
+              const fechadosWidth = maxValue > 0 ? (grupo.fechados / maxValue) * 100 : 0;
+              
+              return `
+              <div class="grupo-item-compact">
+                <div class="grupo-header-compact">
+                  <span class="grupo-nome-compact">${grupo.grupo}</span>
+                  <span class="grupo-total-compact">Total: ${grupo.total}</span>
+                </div>
+                <div class="grupo-bars-compact">
+                  <div class="grupo-bar-compact gray-bar-compact" style="width: ${abertosWidth}%">
+                    <span class="bar-value-compact">${grupo.abertos}</span>
+                    <span class="bar-label-compact">ABERTOS</span>
+                  </div>
+                  <div class="grupo-bar-compact blue-bar-compact" style="width: ${fechadosWidth}%">
+                    <span class="bar-value-compact">${grupo.fechados}</span>
+                    <span class="bar-label-compact">FECHADOS</span>
+                  </div>
+                </div>
+              </div>
+            `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
@@ -339,6 +960,250 @@ class BooksPDFServicePuppeteer {
   </div>
 
   <!-- Adicionar outras páginas aqui: SLA, Backlog, Consumo, Pesquisa -->
+  
+  <!-- SLA -->
+  <div class="page">
+    <div class="page-content">
+      <div class="page-header">
+        <div class="page-title">SLA ${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</div>
+        <div class="page-subtitle">Nível de Serviço e Desempenho de Atendimento</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">SLA Atingido</div>
+          <div class="metric-value ${bookData.sla.status === 'no_prazo' ? 'green' : 'red'}">${bookData.sla.sla_percentual.toFixed(1)}%</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Fechados</div>
+          <div class="metric-value blue">${bookData.sla.fechados}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Incidentes</div>
+          <div class="metric-value purple">${bookData.sla.incidentes}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Violados</div>
+          <div class="metric-value red">${bookData.sla.violados}</div>
+        </div>
+      </div>
+
+      ${bookData.sla.chamados_violados && bookData.sla.chamados_violados.length > 0 ? `
+      <table>
+        <thead>
+          <tr>
+            <th>CHAMADO</th>
+            <th>TIPO</th>
+            <th style="text-align: center;">DATA ABERTURA</th>
+            <th style="text-align: center;">DATA SOLUÇÃO</th>
+            <th>GRUPO ATENDEDOR</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bookData.sla.chamados_violados.slice(0, 10).map(item => `
+            <tr>
+              <td><strong>${item.id_chamado}</strong></td>
+              <td>${item.tipo}</td>
+              <td style="text-align: center;">${item.data_abertura}</td>
+              <td style="text-align: center;">${item.data_solucao}</td>
+              <td>${item.grupo_atendedor}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${bookData.sla.chamados_violados.length > 10 ? `
+      <div style="margin-top: 10px; text-align: center; color: var(--gray-600); font-size: 9pt;">
+        Exibindo 10 de ${bookData.sla.chamados_violados.length} chamados violados
+      </div>
+      ` : ''}
+      ` : `
+      <div style="text-align: center; padding: 40px; color: var(--gray-600);">
+        <div style="font-size: 14pt; font-weight: 600; margin-bottom: 10px;">✅ Nenhum chamado violado</div>
+        <div style="font-size: 10pt;">Todos os chamados foram atendidos dentro do prazo estabelecido.</div>
+      </div>
+      `}
+    </div>
+    <div class="page-footer">
+      <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
+      <span>Página 3 de 6</span>
+    </div>
+  </div>
+
+  <!-- BACKLOG -->
+  <div class="page">
+    <div class="page-content">
+      <div class="page-header">
+        <div class="page-title">Backlog ${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</div>
+        <div class="page-subtitle">Pendências e Envelhecimento de Chamados</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Total Backlog</div>
+          <div class="metric-value gray">${bookData.backlog.total}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Incidentes</div>
+          <div class="metric-value purple">${bookData.backlog.incidente}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Solicitações</div>
+          <div class="metric-value blue">${bookData.backlog.solicitacao}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Grupos Ativos</div>
+          <div class="metric-value orange">${bookData.backlog.distribuicao_por_grupo?.length || 0}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>CAUSA</th>
+            <th style="text-align: center;">INCIDENTE</th>
+            <th style="text-align: center;">SOLICITAÇÃO</th>
+            <th style="text-align: center;">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bookData.backlog.backlog_por_causa.map(item => `
+            <tr>
+              <td><strong>${item.origem}</strong></td>
+              <td style="text-align: center;">${item.incidente || 0}</td>
+              <td style="text-align: center;">${item.solicitacao || 0}</td>
+              <td style="text-align: center;"><strong>${item.total || 0}</strong></td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td><strong>TOTAL</strong></td>
+            <td style="text-align: center;">${bookData.backlog.backlog_por_causa.reduce((sum, item) => sum + (item.incidente || 0), 0)}</td>
+            <td style="text-align: center;">${bookData.backlog.backlog_por_causa.reduce((sum, item) => sum + (item.solicitacao || 0), 0)}</td>
+            <td style="text-align: center;">${bookData.backlog.backlog_por_causa.reduce((sum, item) => sum + (item.total || 0), 0)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="page-footer">
+      <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
+      <span>Página 4 de 6</span>
+    </div>
+  </div>
+
+  <!-- CONSUMO -->
+  <div class="page">
+    <div class="page-content">
+      <div class="page-header">
+        <div class="page-title">Consumo ${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</div>
+        <div class="page-subtitle">Horas Consumidas e Baseline</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Horas Consumo</div>
+          <div class="metric-value blue">${bookData.consumo.horas_consumo}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Baseline APL</div>
+          <div class="metric-value gray">${bookData.consumo.baseline_apl}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">% Consumido</div>
+          <div class="metric-value ${bookData.consumo.percentual_consumido > 100 ? 'red' : bookData.consumo.percentual_consumido > 80 ? 'orange' : 'green'}">${bookData.consumo.percentual_consumido.toFixed(1)}%</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Requerimentos</div>
+          <div class="metric-value purple">${bookData.consumo.requerimentos_descontados?.length || 0}</div>
+        </div>
+      </div>
+
+      ${bookData.consumo.requerimentos_descontados && bookData.consumo.requerimentos_descontados.length > 0 ? `
+      <table>
+        <thead>
+          <tr>
+            <th>CHAMADO</th>
+            <th>CLIENTE</th>
+            <th>MÓDULO</th>
+            <th style="text-align: center;">H FUNC</th>
+            <th style="text-align: center;">H TEC</th>
+            <th style="text-align: center;">TOTAL</th>
+            <th style="text-align: right;">VALOR</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bookData.consumo.requerimentos_descontados.slice(0, 8).map(item => `
+            <tr>
+              <td><strong>${item.numero_chamado}</strong></td>
+              <td>${item.cliente}</td>
+              <td>${item.modulo}</td>
+              <td style="text-align: center;">${item.horas_funcional || '--'}</td>
+              <td style="text-align: center;">${item.horas_tecnica || '--'}</td>
+              <td style="text-align: center;"><strong>${item.total_horas || '--'}</strong></td>
+              <td style="text-align: right;">${item.valor_total ? `R$ ${item.valor_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : '--'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${bookData.consumo.requerimentos_descontados.length > 8 ? `
+      <div style="margin-top: 10px; text-align: center; color: var(--gray-600); font-size: 9pt;">
+        Exibindo 8 de ${bookData.consumo.requerimentos_descontados.length} requerimentos
+      </div>
+      ` : ''}
+      ` : `
+      <div style="text-align: center; padding: 40px; color: var(--gray-600);">
+        <div style="font-size: 14pt; font-weight: 600; margin-bottom: 10px;">Nenhum requerimento descontado</div>
+        <div style="font-size: 10pt;">Não há requerimentos descontados neste período.</div>
+      </div>
+      `}
+    </div>
+    <div class="page-footer">
+      <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
+      <span>Página 5 de 6</span>
+    </div>
+  </div>
+
+  <!-- PESQUISA -->
+  <div class="page">
+    <div class="page-content">
+      <div class="page-header">
+        <div class="page-title">Pesquisa de Satisfação ${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</div>
+        <div class="page-subtitle">Avaliação da Qualidade do Atendimento</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Respondidas</div>
+          <div class="metric-value green">${bookData.pesquisa.pesquisas_respondidas}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Não Respondidas</div>
+          <div class="metric-value orange">${bookData.pesquisa.pesquisas_nao_respondidas}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Enviadas</div>
+          <div class="metric-value blue">${bookData.pesquisa.pesquisas_respondidas + bookData.pesquisa.pesquisas_nao_respondidas}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Taxa Resposta</div>
+          <div class="metric-value purple">${bookData.pesquisa.pesquisas_respondidas + bookData.pesquisa.pesquisas_nao_respondidas > 0 ? ((bookData.pesquisa.pesquisas_respondidas / (bookData.pesquisa.pesquisas_respondidas + bookData.pesquisa.pesquisas_nao_respondidas)) * 100).toFixed(1) : 0}%</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; padding: 40px; color: var(--gray-600);">
+        <div style="font-size: 14pt; font-weight: 600; margin-bottom: 10px;">📊 Dados de Pesquisa</div>
+        <div style="font-size: 10pt;">
+          ${bookData.pesquisa.pesquisas_respondidas > 0 
+            ? `Total de ${bookData.pesquisa.pesquisas_respondidas} pesquisas respondidas neste período.`
+            : 'Nenhuma pesquisa respondida neste período.'}
+        </div>
+      </div>
+    </div>
+    <div class="page-footer">
+      <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
+      <span>Página 6 de 6</span>
+    </div>
+  </div>
   
 </body>
 </html>
