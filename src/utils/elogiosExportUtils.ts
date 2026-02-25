@@ -126,8 +126,8 @@ export const exportarElogiosPDF = (
     const dataAtual = new Date().toLocaleDateString('pt-BR');
     
     // Configurações de estilo
-    const corPrimaria = [41, 128, 185]; // Azul
-    const corSecundaria = [52, 73, 94]; // Cinza escuro
+    const corPrimaria: [number, number, number] = [41, 128, 185]; // Azul
+    const corSecundaria: [number, number, number] = [52, 73, 94]; // Cinza escuro
     
     // Cabeçalho
     doc.setFillColor(...corPrimaria);
