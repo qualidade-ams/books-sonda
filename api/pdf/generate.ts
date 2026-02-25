@@ -5,7 +5,7 @@
  * Recebe HTML ou URL e retorna PDF com fidelidade visual total
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { IncomingMessage, ServerResponse } from 'http';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
@@ -27,12 +27,15 @@ interface GeneratePDFRequest {
 }
 
 export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
+  req: IncomingMessage & { body: GeneratePDFRequest; method?: string },
+  res: ServerResponse
 ) {
   // Apenas POST é permitido
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.statusCode = 405;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: 'Method not allowed' }));
+    return;
   }
 
   let browser;
@@ -42,9 +45,10 @@ export default async function handler(
 
     // Validação
     if (!body.html && !body.url) {
-      return res.status(400).json({ 
-        error: 'HTML ou URL é obrigatório' 
-      });
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'HTML ou URL é obrigatório' }));
+      return;
     }
 
     console.log('🚀 Iniciando geração de PDF...');
@@ -52,9 +56,8 @@ export default async function handler(
     // Configurar Puppeteer para Vercel
     browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
     });
 
     const page = await browser.newPage();
@@ -100,20 +103,23 @@ export default async function handler(
 
     // Configurar headers para download
     const filename = body.filename || `documento_${Date.now()}.pdf`;
+    res.statusCode = 200;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdf.length);
+    res.setHeader('Content-Length', pdf.length.toString());
 
     // Retornar PDF
-    return res.status(200).send(pdf);
+    res.end(pdf);
 
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
     
-    return res.status(500).json({ 
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ 
       error: 'Erro ao gerar PDF',
       message: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    }));
   } finally {
     if (browser) {
       await browser.close();
