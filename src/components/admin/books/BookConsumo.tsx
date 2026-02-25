@@ -232,8 +232,8 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-green-600" />
-              <div className="text-3xl font-bold text-green-600">{totalHorasRequerimentos}</div>
+              <FileText className="h-5 w-5 text-orange-600" />
+              <div className="text-3xl font-bold text-orange-600">{totalHorasRequerimentos}</div>
             </div>
             <div className="text-xs text-gray-600 mt-2">
               {data.requerimentos_descontados?.length || 0} requerimento(s)
@@ -275,8 +275,8 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
             {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
               <>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <div className="text-3xl font-bold text-green-600">00:00</div>
+                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                  <div className="text-3xl font-bold text-blue-600">00:00</div>
                 </div>
                 <div className="text-xs text-gray-600 mt-2">
                   0% do total consumido
@@ -285,8 +285,8 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-orange-600" />
-                  <div className="text-3xl font-bold text-orange-600">{formatarHorasSemSegundos(data.incidente)}</div>
+                  <AlertCircle className="h-5 w-5 text-blue-600" />
+                  <div className="text-3xl font-bold text-blue-600">{formatarHorasSemSegundos(data.incidente)}</div>
                 </div>
                 <div className="text-xs text-gray-600 mt-2">
                   {data.percentual_incidente || 0}% do total consumido
@@ -305,8 +305,8 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <div className="text-3xl font-bold text-green-600">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
+              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              <div className="text-3xl font-bold text-blue-600">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
             </div>
             <div className="text-xs text-gray-600 mt-2">
               {data.percentual_solicitacao || 0}% do total consumido
@@ -407,13 +407,13 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
                   }}
                 />
                 
-                {/* Linha de Requerimentos (Verde) - Clicável */}
+                {/* Linha de Requerimentos (Laranja) - Clicável */}
                 <Line 
                   type="monotone" 
                   dataKey="requerimentos_valor_numerico" 
-                  stroke="#10b981" 
+                  stroke="#ea580c" 
                   strokeWidth={3}
-                  dot={{ fill: '#10b981', r: 5, cursor: 'pointer' }}
+                  dot={{ fill: '#ea580c', r: 5, cursor: 'pointer' }}
                   activeDot={{ 
                     r: 7, 
                     cursor: 'pointer',
@@ -460,7 +460,7 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
                         <text
                           x={x + xOffset}
                           y={y + yOffset}
-                          fill="#10b981"
+                          fill="#ea580c"
                           fontSize={11}
                           fontWeight="600"
                           textAnchor={textAnchor}
