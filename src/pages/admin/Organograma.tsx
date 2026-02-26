@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Users, Filter, Search, Loader2, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Users, Filter, Search, Loader2, Edit, Trash2, X, ArrowUpDown, Eye } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,13 +16,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FormPessoa } from '@/components/admin/organograma/FormPessoa';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
+import { GerenciadorOrdemSimples } from '@/components/admin/organograma/GerenciadorOrdemSimples';
 import { useOrganograma } from '@/hooks/useOrganograma';
 import type { PessoaOrganograma } from '@/types/organograma';
 
 export default function Organograma() {
   const { pessoas, loading, construirArvoreHierarquica, fetchPessoas } = useOrganograma();
   const [modalOpen, setModalOpen] = useState(false);
+  const [modoVisualizacao, setModoVisualizacao] = useState(false);
   const [pessoaEditando, setPessoaEditando] = useState<PessoaOrganograma | undefined>();
+  const [mostrarGerenciadorOrdem, setMostrarGerenciadorOrdem] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState('arvore');
   const [showFilters, setShowFilters] = useState(false);
   const [filtros, setFiltros] = useState({
     busca: '',
@@ -48,11 +52,19 @@ export default function Organograma() {
 
   const handleNovaPessoa = () => {
     setPessoaEditando(undefined);
+    setModoVisualizacao(false);
     setModalOpen(true);
   };
 
   const handleEditarPessoa = (pessoa: PessoaOrganograma) => {
     setPessoaEditando(pessoa);
+    setModoVisualizacao(false);
+    setModalOpen(true);
+  };
+
+  const handleVisualizarPessoa = (pessoa: PessoaOrganograma) => {
+    setPessoaEditando(pessoa);
+    setModoVisualizacao(true);
     setModalOpen(true);
   };
 
@@ -62,16 +74,18 @@ export default function Organograma() {
 
   const arvoreHierarquica = construirArvoreHierarquica();
 
-  // Filtrar pessoas
-  const pessoasFiltradas = pessoas.filter((pessoa) => {
-    const matchBusca = pessoa.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
-                       pessoa.email.toLowerCase().includes(filtros.busca.toLowerCase()) ||
-                       pessoa.cargo.toLowerCase().includes(filtros.busca.toLowerCase());
-    const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
-    const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
-    
-    return matchBusca && matchDepartamento && matchCargo;
-  });
+  // Filtrar e ordenar pessoas por nome (A-Z)
+  const pessoasFiltradas = pessoas
+    .filter((pessoa) => {
+      const matchBusca = pessoa.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
+                         pessoa.email.toLowerCase().includes(filtros.busca.toLowerCase()) ||
+                         pessoa.cargo.toLowerCase().includes(filtros.busca.toLowerCase());
+      const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
+      const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
+      
+      return matchBusca && matchDepartamento && matchCargo;
+    })
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
   // Obter departamentos únicos
   const departamentos = Array.from(new Set(pessoas.map(p => p.departamento))).sort();
@@ -296,21 +310,36 @@ export default function Organograma() {
                   <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
                 </div>
               ) : (
-                <Tabs defaultValue="arvore" className="w-full">
-                  <TabsList className="bg-gray-100 p-1 rounded-lg">
-                    <TabsTrigger 
-                      value="arvore"
-                      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
-                    >
-                      Visualização em Árvore
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="lista"
-                      className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
-                    >
-                      Lista de Pessoas
-                    </TabsTrigger>
-                  </TabsList>
+                <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList className="bg-gray-100 p-1 rounded-lg">
+                      <TabsTrigger 
+                        value="arvore"
+                        className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                      >
+                        Visualização em Árvore
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="lista"
+                        className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                      >
+                        Lista de Pessoas
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    {/* Botão Gerenciar Ordem - só aparece na aba Árvore */}
+                    {abaAtiva === 'arvore' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMostrarGerenciadorOrdem(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                        Gerenciar Ordem
+                      </Button>
+                    )}
+                  </div>
 
                   <TabsContent value="arvore" className="mt-4">
                     <OrganoTree 
@@ -324,15 +353,15 @@ export default function Organograma() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-gray-50">
-                            <TableHead className="font-semibold text-gray-700">Foto</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Nome</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Cargo</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Email</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Telefone</TableHead>
-                            <TableHead className="font-semibold text-gray-700">Superior</TableHead>
-                            <TableHead className="font-semibold text-gray-700 text-center w-24">Ações</TableHead>
+                          <TableRow>
+                            <TableHead className="text-xs sm:text-sm py-2">Foto</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">Nome</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2">Cargo</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">Departamento</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">Email</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2">Telefone</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">Superior</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2 w-32">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -394,7 +423,17 @@ export default function Organograma() {
                                         variant="outline" 
                                         size="sm" 
                                         className="h-8 w-8 p-0"
+                                        onClick={() => handleVisualizarPessoa(pessoa)}
+                                        title="Visualizar"
+                                      >
+                                        <Eye className="h-4 w-4 text-blue-600" />
+                                      </Button>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-8 w-8 p-0"
                                         onClick={() => handleEditarPessoa(pessoa)}
+                                        title="Editar"
                                       >
                                         <Edit className="h-4 w-4" />
                                       </Button>
@@ -408,6 +447,7 @@ export default function Organograma() {
                                             console.log('Excluir pessoa:', pessoa.id);
                                           }
                                         }}
+                                        title="Excluir"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -432,7 +472,15 @@ export default function Organograma() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         pessoa={pessoaEditando}
+        modoVisualizacao={modoVisualizacao}
         onSuccess={handleSuccess}
+      />
+
+      <GerenciadorOrdemSimples
+        open={mostrarGerenciadorOrdem}
+        onOpenChange={setMostrarGerenciadorOrdem}
+        pessoas={arvoreHierarquica}
+        onSave={handleSuccess}
       />
     </AdminLayout>
   );

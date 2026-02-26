@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Tree from 'react-d3-tree';
 import { Edit, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,18 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
   const { toast } = useToast();
   const { deletarPessoa } = useOrganograma();
   const [pessoaParaDeletar, setPessoaParaDeletar] = useState<string | null>(null);
-  const [translate] = useState({ x: 0, y: 0 });
+  
+  // Centralizar o organograma no meio da tela
+  const [translate, setTranslate] = useState({ x: 0, y: 100 });
+  
+  // Calcular posição central quando o componente montar
+  useEffect(() => {
+    const container = document.querySelector('.rd3t-tree-container');
+    if (container) {
+      const width = container.clientWidth;
+      setTranslate({ x: width / 2, y: 100 });
+    }
+  }, []);
 
   // Converter estrutura de dados para formato do react-d3-tree
   const convertToTreeData = (pessoas: PessoaComSubordinados[]): TreeNode[] => {
@@ -202,6 +213,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
     };
 
     const corTextoDepartamento = getCorTextoDepartamento();
+    
     return (
       <g>
         <foreignObject x="-225" y="-180" width="450" height="360">
@@ -318,8 +330,11 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
                       size="sm"
                       className="h-8 w-8 p-0 bg-white hover:bg-gray-100"
                       onClick={() => {
+                        // Extrair ID real (remover sufixo _PRODUTO se existir)
+                        const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+                        
                         const pessoaCompleta: PessoaComSubordinados = {
-                          id: pessoa.id,
+                          id: idReal,
                           nome: nodeDatum.name,
                           cargo: pessoa.cargo,
                           departamento: pessoa.departamento,
@@ -341,7 +356,11 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
                       variant="outline"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-600 hover:text-red-800 bg-white hover:bg-gray-100"
-                      onClick={() => setPessoaParaDeletar(pessoa.id)}
+                      onClick={() => {
+                        // Extrair ID real (remover sufixo _PRODUTO se existir)
+                        const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+                        setPessoaParaDeletar(idReal);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -398,7 +417,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
 
   return (
     <>
-      <div className="w-full h-[800px] border rounded-lg bg-white">
+      <div className="w-full h-[800px] border rounded-lg bg-white relative">       
         <Tree
           data={treeData}
           orientation="vertical"

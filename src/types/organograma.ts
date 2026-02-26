@@ -20,6 +20,7 @@ export interface PessoaOrganograma {
   telefone?: string;
   foto_url?: string;
   superior_id?: string; // Mantido para compatibilidade (será removido após migração completa)
+  ordem_exibicao?: number; // Ordem de exibição no organograma
   created_at: string;
   updated_at: string;
 }

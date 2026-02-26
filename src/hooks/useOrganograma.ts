@@ -46,6 +46,7 @@ export function useOrganograma() {
         `)
         .eq('organizacao_produto.produto', produto)
         .order('cargo', { ascending: true })
+        .order('ordem_exibicao', { ascending: true })
         .order('nome', { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -70,6 +71,7 @@ export function useOrganograma() {
         .from('organizacao_estrutura')
         .select('*')
         .order('cargo', { ascending: true })
+        .order('ordem_exibicao', { ascending: true })
         .order('nome', { ascending: true });
 
       if (pessoasError) throw pessoasError;
@@ -105,6 +107,7 @@ export function useOrganograma() {
       .from('organizacao_estrutura')
       .select('*')
       .order('cargo', { ascending: true })
+      .order('ordem_exibicao', { ascending: true })
       .order('nome', { ascending: true });
 
     if (fetchError) throw fetchError;
@@ -209,7 +212,12 @@ export function useOrganograma() {
 
     const raizes: PessoaComSubordinados[] = [];
     
-    pessoasFiltradas.forEach(pessoa => {
+    // Separar Central Escalação para tratamento especial
+    const centraisEscalacao = pessoasFiltradas.filter(p => p.cargo === 'Central Escalação');
+    const outrasPessoas = pessoasFiltradas.filter(p => p.cargo !== 'Central Escalação');
+    
+    // Construir hierarquia normal (sem Central Escalação)
+    outrasPessoas.forEach(pessoa => {
       const pessoaComSub = pessoasMap.get(pessoa.id)!;
       
       if (pessoa.superior_id) {
@@ -224,6 +232,50 @@ export function useOrganograma() {
         raizes.push(pessoaComSub);
       }
     });
+
+    // Adicionar Central Escalação de forma centralizada
+    if (centraisEscalacao.length > 0) {
+      // Para cada Central Escalação
+      centraisEscalacao.forEach(central => {
+        // Obter produtos do Central Escalação
+        const produtosCentral = central.produtos || [central.produto];
+        
+        console.log(`📍 Processando Central Escalação "${central.nome}" com produtos:`, produtosCentral);
+        
+        // Para cada produto do Central Escalação
+        produtosCentral.forEach(produtoCentral => {
+          // Filtrar coordenadores deste produto específico
+          const coordenadoresProduto = outrasPessoas.filter(p => 
+            p.cargo === 'Coordenador' && 
+            (p.produto === produtoCentral || p.produtos?.includes(produtoCentral))
+          );
+          
+          if (coordenadoresProduto.length > 0) {
+            // Pegar o coordenador do meio (ou primeiro se houver apenas um)
+            const indiceMeio = Math.floor(coordenadoresProduto.length / 2);
+            const coordenadorCentral = pessoasMap.get(coordenadoresProduto[indiceMeio].id);
+            
+            if (coordenadorCentral) {
+              // Criar uma cópia do Central Escalação para este produto
+              const centralComSub: PessoaComSubordinados = {
+                ...central,
+                id: `${central.id}_${produtoCentral}`, // ID único por produto
+                produto: produtoCentral, // Produto específico
+                produtos: [produtoCentral], // Array com apenas este produto
+                subordinados: []
+              };
+              
+              coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
+              coordenadorCentral.subordinados.push(centralComSub);
+              
+              console.log(`✅ Central Escalação "${central.nome}" (${produtoCentral}) adicionado ao coordenador "${coordenadorCentral.nome}"`);
+            }
+          } else {
+            console.log(`⚠️ Nenhum coordenador encontrado para o produto ${produtoCentral}`);
+          }
+        });
+      });
+    }
 
     console.log('🌲 Raízes encontradas:', raizes.length, raizes.map(r => ({ nome: r.nome, cargo: r.cargo, produto: r.produto })));
 
