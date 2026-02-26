@@ -358,7 +358,8 @@ class BooksPDFServicePuppeteer {
       background: white;
       border: 2px solid #0d6abf;
       border-radius: 35.5px;
-      padding: 12px;
+      padding: 16px;
+      position: relative;
     }
 
     .chart-title {
@@ -374,51 +375,93 @@ class BooksPDFServicePuppeteer {
       margin-bottom: 10px;
     }
 
+    /* Wrapper do gráfico */
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      margin-bottom: 8px;
+    }
+    
+    /* Altura fixa para área de barras (250px = 300px - 15px top - 35px bottom) */
+    :root {
+      --chart-height: 250px;
+    }
+
+    /* Linha vertical do eixo Y */
+    .chart-y-line {
+      position: absolute;
+      left: 32px;
+      top: 15px;
+      bottom: 35px;
+      width: 2px;
+      background: #e5e7eb;
+      z-index: 1;
+    }
+
+    /* Linha horizontal do eixo X */
+    .chart-x-line {
+      position: absolute;
+      left: 32px;
+      right: 15px;
+      bottom: 35px;
+      height: 2px;
+      background: #e5e7eb;
+      z-index: 1;
+    }
+
     /* Gráfico de barras CSS - IDÊNTICO AO MODAL */
     .chart-bars {
-      position: relative;
+      position: absolute;
+      left: 35px;
+      right: 15px;
+      top: 15px;
+      bottom: 35px;
       display: flex;
       align-items: flex-end;
       justify-content: space-around;
-      height: 160px;
-      padding: 10px 15px 10px 30px;
-      margin-bottom: 8px;
       background: white;
-    }
-
-    /* Linhas de grade horizontais */
-    .chart-bars::before {
-      content: '';
-      position: absolute;
-      left: 30px;
-      right: 15px;
-      top: 10px;
-      bottom: 10px;
-      background-image: 
-        linear-gradient(to bottom, transparent 0%, transparent calc(100% - 1px), #e5e7eb calc(100% - 1px), #e5e7eb 100%),
-        linear-gradient(to bottom, transparent 0%, transparent calc(75% - 1px), #e5e7eb calc(75% - 1px), #e5e7eb 75%),
-        linear-gradient(to bottom, transparent 0%, transparent calc(50% - 1px), #e5e7eb calc(50% - 1px), #e5e7eb 50%),
-        linear-gradient(to bottom, transparent 0%, transparent calc(25% - 1px), #e5e7eb calc(25% - 1px), #e5e7eb 25%);
-      background-size: 100% 100%;
-      pointer-events: none;
-      z-index: 0;
+      z-index: 2;
     }
 
     /* Eixo Y com escala */
-    .chart-bars::after {
-      content: '32\A 24\A 16\A 8\A 0';
-      white-space: pre;
+    .chart-y-axis {
       position: absolute;
       left: 5px;
-      top: 10px;
-      bottom: 10px;
+      top: 15px;
+      bottom: 35px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      font-size: 7pt;
+      font-size: 9pt;
       color: #9ca3af;
       line-height: 1;
+      z-index: 3;
+      width: 25px;
+    }
+
+    .chart-y-axis span {
+      display: block;
+      text-align: right;
+    }
+
+    /* Linhas de grade horizontais */
+    .chart-grid-lines {
+      position: absolute;
+      left: 35px;
+      right: 15px;
+      top: 15px;
+      bottom: 35px;
+      pointer-events: none;
       z-index: 1;
+    }
+
+    .grid-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #f0f0f0;
     }
 
     .chart-bar-group {
@@ -428,15 +471,14 @@ class BooksPDFServicePuppeteer {
       flex: 1;
       max-width: 100px;
       position: relative;
-      z-index: 2;
     }
 
     .chart-bars-pair {
       display: flex;
       gap: 4px;
       align-items: flex-end;
-      height: 140px;
-      margin-bottom: 5px;
+      height: 250px; /* Altura fixa em pixels */
+      margin-bottom: 0; /* Sem margem - barras coladas na linha X */
     }
 
     .chart-bar-wrapper {
@@ -444,6 +486,7 @@ class BooksPDFServicePuppeteer {
       flex-direction: column;
       justify-content: flex-end;
       width: 32px;
+      height: 100%;
     }
 
     .chart-bar {
@@ -452,8 +495,8 @@ class BooksPDFServicePuppeteer {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 20px;
       position: relative;
+      /* Altura será definida inline em pixels */
     }
 
     .chart-bar.bar-gray {
@@ -466,16 +509,16 @@ class BooksPDFServicePuppeteer {
 
     .chart-bar .bar-value {
       color: white;
-      font-size: 9pt;
+      font-size: 10pt;
       font-weight: 700;
       text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
     .chart-bar-label {
-      font-size: 7pt;
+      font-size: 9pt;
       color: #6b7280;
       text-transform: uppercase;
-      margin-top: 3px;
+      margin-top: 10px; /* Espaço entre linha X e labels dos meses */
       text-align: center;
       font-weight: 600;
       letter-spacing: 0.3px;
@@ -523,7 +566,7 @@ class BooksPDFServicePuppeteer {
       background: white;
       border: 2px solid #0d6abf;
       border-radius: 35.5px;
-      padding: 12px;
+      padding: 16px;
     }
 
     .side-card-title {
@@ -613,15 +656,15 @@ class BooksPDFServicePuppeteer {
       background: white;
       border: 2px solid #0d6abf;
       border-radius: 35.5px;
-      padding: 10px;
+      padding: 16px;
       overflow: hidden;
     }
 
     .table-title {
       font-size: 10pt;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--gray-900);
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     /* Tabelas */
@@ -638,46 +681,48 @@ class BooksPDFServicePuppeteer {
     }
 
     th {
-      padding: 6px 8px;
+      padding: 12px 16px;
       text-align: left;
-      font-weight: 700;
-      font-size: 7pt;
+      font-weight: 600;
+      font-size: 8pt;
       color: var(--gray-700);
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      border: 1px solid var(--gray-200);
+      border: none;
     }
 
     th.th-center {
       text-align: center;
     }
 
-    th.th-gray {
+    th.th-abertos {
       background: #0d6abf;
       color: white;
     }
 
-    th.th-blue {
-      background: var(--sonda-blue);
+    th.th-fechados {
+      background: #2563eb;
       color: white;
     }
 
     td {
-      padding: 5px 8px;
-      border: 1px solid var(--gray-200);
-      font-size: 7pt;
+      padding: 12px 16px;
+      border: none;
+      font-size: 8pt;
     }
 
     td.td-center {
       text-align: center;
     }
 
-    td.td-gray {
+    td.td-abertos {
       background: #e3f2fd;
     }
 
-    td.td-blue {
+    td.td-fechados {
       background: #eff6ff;
+    }
+
+    tbody tr {
+      border-bottom: none;
     }
 
     tbody tr:hover {
@@ -691,8 +736,16 @@ class BooksPDFServicePuppeteer {
     }
 
     tfoot td {
-      border-color: #0a5a9f;
-      padding: 6px 8px;
+      padding: 12px 16px;
+    }
+
+    tfoot:hover {
+      background: #2563eb;
+    }
+
+    tfoot td {
+      border: none;
+      padding: 12px 16px;
     }
 
     /* Rodapé */
@@ -844,36 +897,78 @@ class BooksPDFServicePuppeteer {
             <div class="chart-title">Chamados | Semestre</div>
             <div class="chart-subtitle">Monitoramento do volume mensal (${bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0 ? `${bookData.volumetria.chamados_semestre[0].mes}/${bookData.ano} - ${bookData.volumetria.chamados_semestre[bookData.volumetria.chamados_semestre.length - 1].mes}/${bookData.ano}` : ''})</div>
             
-            <!-- Gráfico de barras CSS -->
-            <div class="chart-bars">
-              ${bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0 ? 
-                bookData.volumetria.chamados_semestre.map(item => {
-                  const maxValue = Math.max(
-                    ...bookData.volumetria.chamados_semestre.map(d => Math.max(d.abertos, d.fechados)),
-                    32 // Valor mínimo da escala
-                  );
-                  const abertosHeight = maxValue > 0 ? (item.abertos / maxValue) * 100 : 0;
-                  const fechadosHeight = maxValue > 0 ? (item.fechados / maxValue) * 100 : 0;
-                  
+            <!-- Wrapper do gráfico com eixo Y e linhas de grade -->
+            <div class="chart-wrapper">
+              <!-- Eixo Y com escala dinâmica -->
+              <div class="chart-y-axis">
+                ${(() => {
+                  const maxValue = bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0
+                    ? Math.max(...bookData.volumetria.chamados_semestre.map(d => Math.max(d.abertos, d.fechados)))
+                    : 32;
+                  const roundedMax = Math.ceil(maxValue / 4) * 4;
+                  const step = roundedMax / 4;
                   return `
-                    <div class="chart-bar-group">
-                      <div class="chart-bars-pair">
-                        <div class="chart-bar-wrapper">
-                          <div class="chart-bar bar-gray" style="height: ${abertosHeight}%">
-                            ${item.abertos > 0 ? `<span class="bar-value">${item.abertos}</span>` : ''}
-                          </div>
-                        </div>
-                        <div class="chart-bar-wrapper">
-                          <div class="chart-bar bar-blue" style="height: ${fechadosHeight}%">
-                            ${item.fechados > 0 ? `<span class="bar-value">${item.fechados}</span>` : ''}
-                          </div>
-                        </div>
-                      </div>
-                      <div class="chart-bar-label">${item.mes.toUpperCase()}</div>
-                    </div>
+                <span>${roundedMax}</span>
+                <span>${roundedMax - step}</span>
+                <span>${roundedMax - step * 2}</span>
+                <span>${roundedMax - step * 3}</span>
+                <span>0</span>
                   `;
-                }).join('')
-              : '<p style="text-align: center; color: #9ca3af; padding: 40px 0;">Sem dados</p>'}
+                })()}
+              </div>
+              
+              <!-- Linha vertical do eixo Y com marcações -->
+              <div class="chart-y-line">
+                <div style="position: absolute; left: 0; top: 0%; width: 6px; height: 2px; background: #e5e7eb;"></div>
+                <div style="position: absolute; left: 0; top: 25%; width: 6px; height: 2px; background: #e5e7eb;"></div>
+                <div style="position: absolute; left: 0; top: 50%; width: 6px; height: 2px; background: #e5e7eb;"></div>
+                <div style="position: absolute; left: 0; top: 75%; width: 6px; height: 2px; background: #e5e7eb;"></div>
+                <div style="position: absolute; left: 0; top: 100%; width: 6px; height: 2px; background: #e5e7eb;"></div>
+              </div>
+              
+              <!-- Linha horizontal do eixo X -->
+              <div class="chart-x-line"></div>
+              
+              <!-- Linhas de grade horizontais -->
+              <div class="chart-grid-lines">
+                <div class="grid-line" style="top: 0%;"></div>
+                <div class="grid-line" style="top: 25%;"></div>
+                <div class="grid-line" style="top: 50%;"></div>
+                <div class="grid-line" style="top: 75%;"></div>
+                <div class="grid-line" style="top: 100%;"></div>
+              </div>
+              
+              <!-- Gráfico de barras CSS -->
+              <div class="chart-bars">
+                ${bookData.volumetria.chamados_semestre && bookData.volumetria.chamados_semestre.length > 0 ? 
+                  (() => {
+                    const maxValue = Math.max(...bookData.volumetria.chamados_semestre.map(d => Math.max(d.abertos, d.fechados)));
+                    const roundedMax = Math.ceil(maxValue / 4) * 4;
+                    const chartHeightPx = 250;
+                    
+                    return bookData.volumetria.chamados_semestre.map(item => {
+                      const abertosHeightPx = roundedMax > 0 ? Math.round((item.abertos / roundedMax) * chartHeightPx) : 0;
+                      const fechadosHeightPx = roundedMax > 0 ? Math.round((item.fechados / roundedMax) * chartHeightPx) : 0;
+                      
+                      return '<div class="chart-bar-group">' +
+                        '<div class="chart-bars-pair">' +
+                          '<div class="chart-bar-wrapper">' +
+                            '<div class="chart-bar bar-gray" style="height: ' + abertosHeightPx + 'px">' +
+                              (item.abertos > 0 ? '<span class="bar-value">' + item.abertos + '</span>' : '') +
+                            '</div>' +
+                          '</div>' +
+                          '<div class="chart-bar-wrapper">' +
+                            '<div class="chart-bar bar-blue" style="height: ' + fechadosHeightPx + 'px">' +
+                              (item.fechados > 0 ? '<span class="bar-value">' + item.fechados + '</span>' : '') +
+                            '</div>' +
+                          '</div>' +
+                        '</div>' +
+                        '<div class="chart-bar-label">' + item.mes.toUpperCase() + '</div>' +
+                      '</div>';
+                    }).join('');
+                  })()
+                : '<p style="text-align: center; color: #9ca3af; padding: 40px 0;">Sem dados</p>'}
+              </div>
             </div>
             
             <!-- Legenda -->
@@ -896,16 +991,16 @@ class BooksPDFServicePuppeteer {
               <thead>
                 <tr>
                   <th>ORIGEM</th>
-                  <th class="th-center th-gray">ABERTOS</th>
-                  <th class="th-center th-blue">FECHADOS</th>
+                  <th class="th-center th-abertos">ABERTOS</th>
+                  <th class="th-center th-fechados">FECHADOS</th>
                 </tr>
               </thead>
               <tbody>
                 ${bookData.volumetria.backlog_por_causa.map(item => `
                   <tr>
                     <td><strong>${item.origem}</strong></td>
-                    <td class="td-center td-gray">${item.abertos || 0}</td>
-                    <td class="td-center td-blue">${item.fechados || 0}</td>
+                    <td class="td-center td-abertos">${item.abertos || 0}</td>
+                    <td class="td-center td-fechados">${item.fechados || 0}</td>
                   </tr>
                 `).join('')}
               </tbody>

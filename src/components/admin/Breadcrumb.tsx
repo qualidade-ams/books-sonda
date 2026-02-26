@@ -33,7 +33,8 @@ const Breadcrumb = () => {
     'design-system': 'Design System',
     'controle-banco-horas': 'Banco de Horas',
     'geracao-books': 'Geração de Books',
-    'inconsistencia-chamados' : 'Inconsistência de Chamados'
+    'inconsistencia-chamados' : 'Inconsistência de Chamados',
+    'organograma' : 'Organograma'
   };
 
   return (

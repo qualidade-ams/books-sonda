@@ -129,6 +129,9 @@ export default async function handler(
     // Aguardar fontes e imagens carregarem
     await page.evaluateHandle('document.fonts.ready');
     
+    // Aguardar um pouco mais para garantir que o CSS seja aplicado
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     console.log('📸 Gerando PDF...');
 
     // Opções padrão
