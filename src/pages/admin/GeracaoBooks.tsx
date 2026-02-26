@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Download, 
@@ -19,7 +20,8 @@ import {
   AlertCircle,
   Filter,
   X,
-  Search
+  Search,
+  Users
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +67,7 @@ const MESES_NOMES: Record<number, string> = {
 
 export default function GeracaoBooks() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Estados de filtros
   const [showFilters, setShowFilters] = useState(false);
@@ -254,13 +257,24 @@ export default function GeracaoBooks() {
       <div className="min-h-screen bg-bg-secondary">
         <div className="px-6 py-6 space-y-6">
           {/* Cabeçalho */}
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Geração de Books
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gere e envie relatórios de books para os clientes
-            </p>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Geração de Books
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Gere e envie relatórios de books para os clientes
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
+              onClick={() => navigate('/admin/organograma')}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Organograma
+            </Button>
           </div>
 
           {/* Cards de Estatísticas */}

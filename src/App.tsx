@@ -36,6 +36,7 @@ import LancarPesquisas from "./pages/admin/LancarPesquisas";
 import VisualizarPesquisas from "./pages/admin/VisualizarPesquisas";
 import LancarElogios from "./pages/admin/LancarElogios";
 import EnviarElogios from "./pages/admin/EnviarElogios";
+import Organograma from "./pages/admin/Organograma";
 
 import PlanoAcao from "./pages/admin/PlanoAcao";
 import CadastroTaxasClientes from "./pages/admin/CadastroTaxasClientes";
@@ -90,6 +91,7 @@ const App = () => (
                   <Route path="/admin/visualizar-pesquisas" element={<ProtectedRoute screenKey="visualizar_pesquisas"><VisualizarPesquisas /></ProtectedRoute>} />
                   <Route path="/admin/lancar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><LancarElogios /></ProtectedRoute>} />
                   <Route path="/admin/enviar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><EnviarElogios /></ProtectedRoute>} />
+                  <Route path="/admin/organograma" element={<ProtectedRoute screenKey="organograma"><Organograma /></ProtectedRoute>} />
 
                   <Route path="/admin/plano-acao" element={<ProtectedRoute screenKey="plano_acao"><PlanoAcao /></ProtectedRoute>} />
                   <Route path="/admin/cadastro-taxas-clientes" element={<ProtectedRoute screenKey="cadastro_taxas_clientes"><CadastroTaxasClientes /></ProtectedRoute>} />

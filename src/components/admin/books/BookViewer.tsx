@@ -73,8 +73,8 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
 
       // Caso contrário, gerar PDF agora com Puppeteer
       toast({
-        title: 'Gerando PDF com Puppeteer',
-        description: 'Aguarde enquanto o PDF é gerado com fidelidade visual total...',
+        title: 'Gerando PDF',
+        description: 'Aguarde enquanto o PDF é gerado...',
       });
 
       await booksPDFServicePuppeteer.baixarPDF(bookData, `book_${bookData.empresa_nome}_${bookData.mes}_${bookData.ano}.pdf`);
