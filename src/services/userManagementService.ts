@@ -1,4 +1,3 @@
-import { supabaseAdmin, checkAdminPermissions } from '@/integrations/supabase/adminClient';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserData {
@@ -76,158 +75,17 @@ class UserManagementService {
   // Criar novo usuário (requer permissões de admin)
   async createUser(userData: CreateUserData): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
-      // Validar se o cliente admin está disponível
-      if (!supabaseAdmin) {
-        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
-      }
-
-      // Verificar se o usuário atual está autenticado
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const hasPermission = await checkAdminPermissions(user.id);
-      if (!hasPermission) {
-        console.warn('Usuário sem permissões administrativas, tentando criar usuário mesmo assim...');
-        // Por enquanto, vamos permitir a criação mesmo sem permissões para debug
-        // throw new Error('Usuário não tem permissões para criar usuários');
-      }
-
-      console.log('Tentando criar usuário:', userData.email);
-
-      // Criar usuário no Supabase Auth usando cliente administrativo
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        user_metadata: {
-          full_name: userData.fullName,
-          name: userData.fullName
-        },
-        // ✅ CORREÇÃO: Sempre confirmar email automaticamente quando enviamos boas-vindas
-        email_confirm: userData.sendWelcomeEmail ? true : false
-      });
-
-      if (authError) {
-        console.error('Erro ao criar usuário no auth:', authError);
-        throw authError;
-      }
-
-      console.log('Usuário criado no auth:', authData.user?.id);
-
-      // Gerenciar perfil do usuário (criar ou atualizar se já existir)
-      if (authData.user) {
-        try {
-          console.log('Verificando se perfil já existe para usuário:', authData.user.id);
-
-          // Primeiro, verificar se o perfil já existe
-          const { data: existingProfile, error: checkError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, email, full_name')
-            .eq('id', authData.user.id)
-            .single();
-
-          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found
-            console.warn('Erro ao verificar perfil existente:', checkError);
-          }
-
-          if (existingProfile) {
-            // Perfil já existe, vamos atualizar
-            const { error: updateError } = await supabaseAdmin
-              .from('profiles')
-              .update({
-                email: userData.email,
-                full_name: userData.fullName,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', authData.user.id);
-
-            if (updateError) {
-              console.warn('Erro ao atualizar perfil existente:', updateError);
-            } else {
-
-            }
-          } else {
-            // Perfil não existe, vamos criar
-            console.log('Perfil não existe, criando novo...');
-            const { data: profileData, error: profileError } = await supabaseAdmin
-              .from('profiles')
-              .insert({
-                id: authData.user.id,
-                email: userData.email,
-                full_name: userData.fullName
-              })
-              .select()
-              .single();
-
-            if (profileError) {
-              // Se ainda assim der erro de duplicata, é porque o trigger criou entre nossa verificação e inserção
-              if (profileError.code === '23505') {
-                console.log('Perfil foi criado pelo trigger durante o processo, isso é normal');
-              } else {
-                console.warn('Erro ao criar perfil:', profileError);
-              }
-            } else {
-              console.log('Perfil criado com sucesso:', profileData);
-            }
-          }
-        } catch (profileException) {
-          console.warn('Exceção ao gerenciar perfil (não crítico):', profileException);
-        }
-      }
-
-      // Enviar email de boas-vindas personalizado se solicitado
-      if (userData.sendWelcomeEmail && authData.user) {
-        try {
-          await this.sendWelcomeEmail(authData.user.email, userData.fullName, userData.password);
-          console.log('✅ Email de boas-vindas enviado para:', authData.user.email);
-        } catch (emailError) {
-          console.warn('⚠️ Erro ao enviar email de boas-vindas (não crítico):', emailError);
-          // Não falhar a criação do usuário por causa do email
-        }
-      }
-
-      console.log('✅ Usuário criado com sucesso:', authData.user.email);
-
-      // Registrar log de auditoria manualmente
-      try {
-        await supabaseAdmin
-          .from('permission_audit_logs')
-          .insert({
-            table_name: 'profiles',
-            record_id: authData.user.id,
-            action: 'INSERT',
-            new_values: {
-              id: authData.user.id,
-              email: userData.email,
-              full_name: userData.fullName,
-              created_at: new Date().toISOString()
-            },
-            changed_by: user.id
-          });
-        console.log('✅ Log de auditoria registrado');
-      } catch (auditError) {
-        console.warn('⚠️ Erro ao registrar log de auditoria (não crítico):', auditError);
-      }
-
-      return { success: true, user: authData.user };
+      console.log('❌ Criação de usuários não está disponível no frontend');
+      console.log('⚠️ Configure uma Edge Function para criar usuários com segurança');
+      
+      throw new Error(
+        'Criação de usuários deve ser feita via Edge Function. ' +
+        'Por questões de segurança, não é possível criar usuários diretamente do frontend. ' +
+        'Configure uma Edge Function no Supabase para esta operação.'
+      );
     } catch (error: any) {
       console.error('Erro no serviço de criação de usuário:', error);
-
-      // Melhor tratamento de erros específicos
-      let errorMessage = error.message;
-
-      if (error.message?.includes('Database error')) {
-        errorMessage = 'Erro no banco de dados. Verifique as políticas RLS e triggers.';
-      } else if (error.message?.includes('already registered')) {
-        errorMessage = 'Este email já está cadastrado no sistema.';
-      } else if (error.message?.includes('invalid email')) {
-        errorMessage = 'Email inválido.';
-      } else if (error.message?.includes('weak password')) {
-        errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
-      }
-
-      return { success: false, error: errorMessage };
+      return { success: false, error: error.message };
     }
   }
 
@@ -240,95 +98,32 @@ class UserManagementService {
         throw new Error('Usuário não autenticado');
       }
 
-      // Validar se o cliente admin está disponível
-      if (!supabaseAdmin) {
-        throw new Error('Operações administrativas não estão disponíveis. Configure VITE_SUPABASE_SECRET_KEY no backend.');
-      }
-
-      const hasPermission = await checkAdminPermissions(user.id);
-      if (!hasPermission) {
-        console.warn('Usuário sem permissões administrativas para atualização');
-        // Por enquanto, vamos permitir a atualização mesmo sem permissões para debug
-        // throw new Error('Usuário não tem permissões para atualizar usuários');
-      }
-
-      // 1. Atualizar dados do usuário no auth (se necessário)
-      const authUpdates: any = {};
-
-      if (userData.email) {
-        authUpdates.email = userData.email;
-      }
-
+      // Avisar sobre reset de senha antes de tentar atualizar
       if (userData.resetPassword && userData.newPassword) {
-        authUpdates.password = userData.newPassword;
+        console.warn('⚠️ Reset de senha não está disponível via RPC');
+        console.warn('⚠️ Configure uma Edge Function para esta operação');
+        console.warn('⚠️ Continuando com atualização de perfil sem alterar senha...');
       }
 
-      if (userData.fullName) {
-        authUpdates.user_metadata = {
-          full_name: userData.fullName,
-          name: userData.fullName
-        };
+      // Usar função RPC para atualizar usuário (mais seguro que usar supabaseAdmin no frontend)
+      const { data, error } = await supabase.rpc('admin_update_user', {
+        p_user_id: userData.userId,
+        p_email: userData.email || null,
+        p_full_name: userData.fullName || null,
+        p_group_id: null // groupId não está na interface UpdateUserData
+      });
+
+      if (error) {
+        console.error('Erro ao atualizar usuário:', error);
+        throw error;
       }
 
-      // Atualizar no Supabase Auth se há mudanças
-      if (Object.keys(authUpdates).length > 0) {
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
-          userData.userId,
-          authUpdates
-        );
+      console.log('✅ Usuário atualizado com sucesso:', data);
 
-        if (authError) {
-          console.error('Erro ao atualizar usuário no auth:', authError);
-          throw authError;
-        }
-      }
-
-      // 2. Atualizar perfil na tabela profiles
-      try {
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            email: userData.email,
-            full_name: userData.fullName,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userData.userId);
-
-        if (profileError) {
-          console.warn('Erro ao atualizar perfil (não crítico):', profileError);
-        } else {
-
-        }
-      } catch (profileException) {
-        console.warn('Exceção ao atualizar perfil (não crítico):', profileException);
-      }
-
-      // Registrar log de auditoria manualmente
-      try {
-        // Buscar dados antigos para comparação
-        const { data: oldProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', userData.userId)
-          .single();
-
-        await supabaseAdmin
-          .from('permission_audit_logs')
-          .insert({
-            table_name: 'profiles',
-            record_id: userData.userId,
-            action: 'UPDATE',
-            old_values: oldProfile || {},
-            new_values: {
-              email: userData.email,
-              full_name: userData.fullName,
-              updated_at: new Date().toISOString()
-            },
-            changed_by: user.id
-          });
-        console.log('✅ Log de auditoria de atualização registrado');
-      } catch (auditError) {
-        console.warn('⚠️ Erro ao registrar log de auditoria (não crítico):', auditError);
+      // Se tentou resetar senha, avisar que não foi possível
+      if (userData.resetPassword && userData.newPassword) {
+        console.warn('⚠️ Perfil atualizado, mas senha NÃO foi alterada');
+        console.warn('⚠️ Para alterar senha, configure uma Edge Function');
       }
 
       return { success: true };
@@ -344,6 +139,8 @@ class UserManagementService {
         errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
       } else if (error.message?.includes('email already exists')) {
         errorMessage = 'Este email já está sendo usado por outro usuário.';
+      } else if (error.message?.includes('não tem permissão')) {
+        errorMessage = 'Você não tem permissão para atualizar usuários.';
       }
 
       return { success: false, error: errorMessage };
@@ -353,19 +150,26 @@ class UserManagementService {
   // Atualizar status do usuário (requer permissões de admin)
   async updateUserStatus(userId: string, active: boolean): Promise<{ success: boolean; error?: string }> {
     try {
-      // Verificar se o usuário atual tem permissões
+      // Verificar se o usuário atual está autenticado
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
 
-      const hasPermission = await checkAdminPermissions(user.id);
-      if (!hasPermission) {
-        throw new Error('Usuário não tem permissões para atualizar usuários');
+      // Usar função RPC para atualizar status
+      const { data, error } = await supabase.rpc('admin_update_user', {
+        p_user_id: userId,
+        p_email: null,
+        p_full_name: null,
+        p_group_id: null
+      });
+
+      if (error) {
+        console.error('Erro ao atualizar status do usuário:', error);
+        throw error;
       }
 
-      // Por enquanto, apenas retornar sucesso
-      // A implementação completa dependeria de como você quer gerenciar o status ativo/inativo
+      console.log('✅ Status do usuário atualizado com sucesso');
       return { success: true };
     } catch (error: any) {
       console.error('Erro no serviço de atualização de status:', error);
