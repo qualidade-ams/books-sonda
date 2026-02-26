@@ -59,10 +59,11 @@ interface FormPessoaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pessoa?: PessoaComProduto;
+  modoVisualizacao?: boolean;
   onSuccess?: () => void;
 }
 
-export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoaProps) {
+export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = false, onSuccess }: FormPessoaProps) {
   const { toast } = useToast();
   const { getSuperioresDisponiveis, criarPessoa, atualizarPessoa, getProdutosPessoa } = useOrganograma();
   const [loading, setLoading] = useState(false);
@@ -284,10 +285,13 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue">
-            {pessoa ? 'Editar Pessoa' : 'Nova Pessoa'}
+            {modoVisualizacao ? 'Visualizar Pessoa' : pessoa ? 'Editar Pessoa' : 'Nova Pessoa'}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            Preencha os dados da pessoa e selecione os produtos em que ela atuará
+            {modoVisualizacao 
+              ? 'Visualize os dados da pessoa cadastrada'
+              : 'Preencha os dados da pessoa e selecione os produtos em que ela atuará'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -336,6 +340,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                     variant="outline"
                     size="sm"
                     onClick={() => document.getElementById('foto')?.click()}
+                    disabled={modoVisualizacao}
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     {previewUrl ? 'Alterar Foto' : 'Adicionar Foto'}
@@ -361,6 +366,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                       <Input
                         placeholder="Digite o nome completo"
                         {...field}
+                        disabled={modoVisualizacao}
                         className={form.formState.errors.nome 
                           ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
                           : 'focus:ring-sonda-blue focus:border-sonda-blue'
@@ -381,7 +387,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                     <FormLabel className="text-sm font-medium text-gray-700">
                       Cargo <span className="text-red-500">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={modoVisualizacao}>
                       <FormControl>
                         <SelectTrigger className={form.formState.errors.cargo 
                           ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
@@ -415,6 +421,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                       <Input
                         placeholder="Ex: TI, RH, Financeiro"
                         {...field}
+                        disabled={modoVisualizacao}
                         className={form.formState.errors.departamento 
                           ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
                           : 'focus:ring-sonda-blue focus:border-sonda-blue'
@@ -440,6 +447,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                         type="email"
                         placeholder="email@exemplo.com"
                         {...field}
+                        disabled={modoVisualizacao}
                         className={form.formState.errors.email 
                           ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
                           : 'focus:ring-sonda-blue focus:border-sonda-blue'
@@ -464,6 +472,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                       <Input
                         placeholder="(00) 00000-0000"
                         {...field}
+                        disabled={modoVisualizacao}
                         className="focus:ring-sonda-blue focus:border-sonda-blue"
                       />
                     </FormControl>
@@ -489,6 +498,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                         id={`produto-${produto}`}
                         checked={produtosSelecionados.includes(produto)}
                         onCheckedChange={(checked) => handleProdutoToggle(produto, checked as boolean)}
+                        disabled={modoVisualizacao}
                       />
                       <label
                         htmlFor={`produto-${produto}`}
@@ -552,6 +562,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
                             <Select 
                               value={superioresPorProduto[produto]} 
                               onValueChange={(value) => handleSuperiorChange(produto, value)}
+                              disabled={modoVisualizacao}
                             >
                               <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue mt-1">
                                 <SelectValue placeholder="Nenhum (vincular depois)" />
@@ -584,25 +595,37 @@ export function FormPessoa({ open, onOpenChange, pessoa, onSuccess }: FormPessoa
             </div>
 
             <DialogFooter className="pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="bg-sonda-blue hover:bg-sonda-dark-blue"
-                disabled={loading}
-              >
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {pessoa 
-                  ? 'Salvar Alterações' 
-                  : `Criar ${cargoSelecionado || 'Pessoa'}`
-                }
-              </Button>
+              {!modoVisualizacao ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    disabled={loading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                    disabled={loading}
+                  >
+                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {pessoa 
+                      ? 'Salvar Alterações' 
+                      : `Criar ${cargoSelecionado || 'Pessoa'}`
+                    }
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Fechar
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </Form>
