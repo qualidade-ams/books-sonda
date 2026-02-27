@@ -149,6 +149,16 @@ export function useBooks(filtros: BooksFiltros) {
 export function useBookData(bookId: string | null) {
   const { toast } = useToast();
 
+  // Debug: Log do bookId recebido
+  useEffect(() => {
+    console.log('🔍 useBookData - bookId recebido:', {
+      bookId,
+      tipo: typeof bookId,
+      length: bookId?.length,
+      enabled: !!bookId
+    });
+  }, [bookId]);
+
   const {
     data: bookData,
     isLoading,
@@ -156,17 +166,42 @@ export function useBookData(bookId: string | null) {
     refetch
   } = useQuery({
     queryKey: ['book-data', bookId],
-    queryFn: () => bookId ? booksService.buscarBookPorId(bookId) : null,
+    queryFn: async () => {
+      console.log('🚀 useBookData - Executando queryFn com bookId:', bookId);
+      if (!bookId) {
+        console.log('⚠️ useBookData - bookId é null, retornando null');
+        return null;
+      }
+      try {
+        const result = await booksService.buscarBookPorId(bookId);
+        console.log('✅ useBookData - Dados recebidos:', result ? 'Sucesso' : 'Null');
+        return result;
+      } catch (err) {
+        console.error('❌ useBookData - Erro na queryFn:', err);
+        throw err;
+      }
+    },
     enabled: !!bookId,
     staleTime: 0, // Sempre buscar dados frescos
     gcTime: 0, // Não manter cache
+    retry: 1, // Tentar apenas 1 vez
   });
 
   useEffect(() => {
+    console.log('📊 useBookData - Estado da query:', {
+      isLoading,
+      hasData: !!bookData,
+      hasError: !!error,
+      errorMessage: error?.message
+    });
+  }, [isLoading, bookData, error]);
+
+  useEffect(() => {
     if (error) {
+      console.error('❌ useBookData - Erro detectado:', error);
       toast({
         title: 'Erro ao carregar book',
-        description: 'Não foi possível carregar os dados do book.',
+        description: error.message || 'Não foi possível carregar os dados do book.',
         variant: 'destructive'
       });
     }

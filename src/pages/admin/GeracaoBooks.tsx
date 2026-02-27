@@ -46,7 +46,7 @@ import { useBooksStats, useSelectionStats } from '@/hooks/useBooksStats';
 import { BOOK_STATUS_LABELS, BOOK_STATUS_COLORS, MESES_LABELS } from '@/types/books';
 import type { BookListItem } from '@/types/books';
 import { BookViewer } from '@/components/admin/books';
-import { booksPDFServicePuppeteer } from '@/services/booksPDFServicePuppeteer';
+import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
 
 // Fallback para MESES_LABELS caso o import falhe
@@ -218,20 +218,16 @@ export default function GeracaoBooks() {
 
       // Caso contrário, buscar dados e gerar PDF com Puppeteer
       toast({
-        title: 'Gerando PDF com Puppeteer',
-        description: `Aguarde enquanto o PDF de ${book.empresa_nome} é gerado com fidelidade visual total...`,
+        title: 'Gerando PDF',
+        description: `Aguarde enquanto o PDF de ${book.empresa_nome} é gerado...`,
       });
 
-      const bookData = await booksService.buscarBookPorId(book.id);
-      if (!bookData) {
-        throw new Error('Dados do book não encontrados');
-      }
-
-      await booksPDFServicePuppeteer.baixarPDF(bookData, `book_${bookData.empresa_nome}_${bookData.mes}_${bookData.ano}.pdf`);
+      // Usar novo serviço V2 - muito mais simples!
+      await booksPDFServiceV2.baixarPDF(book.id, `book_${book.empresa_nome}_${book.mes}_${book.ano}.pdf`);
 
       toast({
         title: 'PDF baixado com sucesso',
-        description: `O arquivo de ${book.empresa_nome} foi salvo no seu computador com fidelidade visual total.`,
+        description: `O arquivo de ${book.empresa_nome} foi salvo no seu computador.`,
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);

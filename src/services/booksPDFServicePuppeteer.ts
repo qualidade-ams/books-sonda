@@ -782,6 +782,31 @@ class BooksPDFServicePuppeteer {
     </div>
   </div>
 
+  <!-- ORGANOGRAMAS (se houver) -->
+  ${bookData.organogramas && bookData.organogramas.length > 0 ? bookData.organogramas.map((org, index) => `
+  <div class="page">
+    <div class="page-content">
+      <div class="page-header">
+        <div class="page-title">Organograma ${org.produto.charAt(0).toUpperCase() + org.produto.slice(1).toLowerCase()} <span class="empresa-nome">${bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}</span></div>
+        <div class="page-subtitle">Estrutura Organizacional</div>
+      </div>
+
+      <!-- Screenshot do organograma -->
+      <div style="display: flex; justify-content: center; align-items: center; height: calc(100% - 80px);">
+        <img 
+          src="${org.screenshot_base64}" 
+          alt="Organograma ${org.produto}" 
+          style="max-width: 100%; max-height: 100%; object-fit: contain;"
+        />
+      </div>
+    </div>
+    <div class="page-footer">
+      <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
+      <span>Página ${index + 2} de ${6 + bookData.organogramas.length}</span>
+    </div>
+  </div>
+  `).join('') : ''}
+
   <!-- VOLUMETRIA -->
   <div class="page">
     <div class="page-content">
@@ -1050,7 +1075,7 @@ class BooksPDFServicePuppeteer {
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
-      <span>Página 2 de 6</span>
+      <span>Página ${2 + (bookData.organogramas?.length || 0)} de ${6 + (bookData.organogramas?.length || 0)}</span>
     </div>
   </div>
 
@@ -1120,7 +1145,7 @@ class BooksPDFServicePuppeteer {
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
-      <span>Página 3 de 6</span>
+      <span>Página ${3 + (bookData.organogramas?.length || 0)} de ${6 + (bookData.organogramas?.length || 0)}</span>
     </div>
   </div>
 
@@ -1182,7 +1207,7 @@ class BooksPDFServicePuppeteer {
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
-      <span>Página 4 de 6</span>
+      <span>Página ${4 + (bookData.organogramas?.length || 0)} de ${6 + (bookData.organogramas?.length || 0)}</span>
     </div>
   </div>
 
@@ -1254,7 +1279,7 @@ class BooksPDFServicePuppeteer {
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
-      <span>Página 5 de 6</span>
+      <span>Página ${5 + (bookData.organogramas?.length || 0)} de ${6 + (bookData.organogramas?.length || 0)}</span>
     </div>
   </div>
 
@@ -1296,7 +1321,7 @@ class BooksPDFServicePuppeteer {
     </div>
     <div class="page-footer">
       <span>Gerado em ${new Date().toLocaleDateString('pt-BR')} - Sistema Books SND</span>
-      <span>Página 6 de 6</span>
+      <span>Página ${6 + (bookData.organogramas?.length || 0)} de ${6 + (bookData.organogramas?.length || 0)}</span>
     </div>
   </div>
   

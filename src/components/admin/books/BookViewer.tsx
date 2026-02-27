@@ -15,10 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useBookData } from '@/hooks/useBooks';
+import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookTab } from '@/types/books';
 import { BOOK_TABS_LABELS } from '@/types/books';
-import { booksPDFServicePuppeteer } from '@/services/booksPDFServicePuppeteer';
+import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
 
 // Importar componentes das abas
@@ -28,6 +29,7 @@ import BookSLA from './BookSLA';
 import BookBacklog from './BookBacklog';
 import BookConsumo from './BookConsumo';
 import BookPesquisa from './BookPesquisa';
+import BookOrganograma from './BookOrganograma';
 
 interface BookViewerProps {
   book: BookListItem | null;
@@ -39,6 +41,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
   const [activeTab, setActiveTab] = useState<BookTab>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
   const { bookData, isLoading, refetch } = useBookData(book?.id || null);
+  const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -56,7 +59,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
   }, [open, book?.id, queryClient, refetch]);
 
   const handleDownloadPDF = async () => {
-    if (!bookData || !book) return;
+    if (!book) return;
 
     try {
       setIsDownloading(true);
@@ -71,13 +74,15 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
         return;
       }
 
-      // Caso contrário, gerar PDF agora com Puppeteer
+      // Gerar PDF usando nova rota dedicada (V2)
       toast({
         title: 'Gerando PDF',
         description: 'Aguarde enquanto o PDF é gerado...',
       });
 
-      await booksPDFServicePuppeteer.baixarPDF(bookData, `book_${bookData.empresa_nome}_${bookData.mes}_${bookData.ano}.pdf`);
+      // Usar novo serviço V2 - muito mais simples!
+      const filename = `book_${bookData?.empresa_nome}_${bookData?.mes}_${bookData?.ano}.pdf`;
+      await booksPDFServiceV2.baixarPDF(book.id, filename);
 
       toast({
         title: 'PDF baixado com sucesso',
@@ -145,6 +150,23 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
               >
                 {BOOK_TABS_LABELS.capa}
               </TabsTrigger>
+              
+              {/* Abas dinâmicas de Organograma por produto - ANTES de Volumetria */}
+              {!isLoadingProdutos && produtos && produtos.length > 0 && produtos.map((produto) => {
+                // Formatar nome do produto: primeira letra maiúscula, resto minúsculo
+                const produtoFormatado = produto.charAt(0).toUpperCase() + produto.slice(1).toLowerCase();
+                
+                return (
+                  <TabsTrigger
+                    key={`org-${produto}`}
+                    value={`org-${produto}`}
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+                  >
+                    Organograma {produtoFormatado}
+                  </TabsTrigger>
+                );
+              })}
+              
               <TabsTrigger
                 value="volumetria"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
@@ -219,6 +241,17 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
                   empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
                 />
               </TabsContent>
+
+              {/* Abas dinâmicas de Organograma - Conteúdo */}
+              {!isLoadingProdutos && produtos && produtos.length > 0 && produtos.map((produto) => (
+                <TabsContent key={`org-content-${produto}`} value={`org-${produto}`} className="mt-0">
+                  <BookOrganograma
+                    empresaId={bookData.empresa_id}
+                    produto={produto}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  />
+                </TabsContent>
+              ))}
             </div>
           </Tabs>
         ) : (

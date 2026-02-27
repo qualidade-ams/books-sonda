@@ -148,7 +148,10 @@ class BooksService {
    * Busca dados completos de um book por ID
    */
   async buscarBookPorId(bookId: string): Promise<BookData | null> {
+    console.log('🔍 booksService.buscarBookPorId - Iniciando busca:', bookId);
+    
     try {
+      console.log('📡 booksService - Fazendo query no Supabase...');
       const { data, error } = await supabase
         .from('books')
         .select(`
@@ -162,13 +165,21 @@ class BooksService {
         .single();
 
       if (error) {
-        console.error('Erro ao buscar book:', error);
+        console.error('❌ booksService - Erro do Supabase:', error);
         throw error;
       }
 
       if (!data) {
+        console.warn('⚠️ booksService - Nenhum dado retornado');
         return null;
       }
+
+      console.log('✅ booksService - Dados recebidos do Supabase:', {
+        id: data.id,
+        empresa: data.empresas_clientes?.nome_completo,
+        mes: data.mes,
+        ano: data.ano
+      });
 
       // Log para debug
       console.log('📊 Dados da empresa:', {

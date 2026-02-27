@@ -111,6 +111,18 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
+    // Configurar viewport grande ANTES de carregar conteúdo
+    await page.setViewport({
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 2
+    });
+    console.log('✅ Viewport configurado: 1920x1080 @ 2x');
+
+    // Forçar media type screen (não print)
+    await page.emulateMediaType('screen');
+    console.log('✅ Media type: screen');
+
     // Carregar conteúdo
     if (body.html) {
       console.log('📄 Carregando HTML...');
@@ -126,11 +138,52 @@ export default async function handler(
       });
     }
 
-    // Aguardar fontes e imagens carregarem
+    // Aguardar fontes carregarem
+    console.log('⏳ Aguardando fontes...');
     await page.evaluateHandle('document.fonts.ready');
     
-    // Aguardar um pouco mais para garantir que o CSS seja aplicado
+    // Aguardar estabilização inicial do React
+    console.log('⏳ Aguardando estabilização inicial do React...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Disparar resize para corrigir SVG/organograma
+    console.log('🔄 Disparando evento resize...');
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    
+    // Aguardar após resize
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // CRÍTICO: Aguardar indicador de prontidão (dados carregados)
+    console.log('⏳ Aguardando indicador de prontidão (dados carregando)...');
+    try {
+      await page.waitForFunction(
+        () => {
+          const container = document.getElementById('pdf-ready');
+          const isReady = container && container.getAttribute('data-ready') === 'true';
+          console.log('🔍 Verificando prontidão:', { 
+            hasContainer: !!container, 
+            isReady,
+            dataReady: container?.getAttribute('data-ready')
+          });
+          return isReady;
+        },
+        { 
+          timeout: 30000, // 30 segundos para dados carregarem
+          polling: 500 // Verificar a cada 500ms
+        }
+      );
+      console.log('✅ Indicador de prontidão confirmado!');
+    } catch (error) {
+      console.log('⚠️ Timeout aguardando prontidão após 30s, continuando...');
+    }
+    
+    // Aguardar mais 2 segundos extras para garantir renderização completa
+    console.log('⏳ Aguardando estabilização final...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log('✅ Página pronta para captura');
     
     console.log('📸 Gerando PDF...');
 
@@ -140,10 +193,10 @@ export default async function handler(
       landscape: body.options?.orientation === 'landscape',
       printBackground: body.options?.printBackground !== false,
       margin: {
-        top: body.options?.margin?.top || '10mm',
-        bottom: body.options?.margin?.bottom || '10mm',
-        left: body.options?.margin?.left || '10mm',
-        right: body.options?.margin?.right || '10mm',
+        top: '0mm',
+        bottom: '0mm',
+        left: '0mm',
+        right: '0mm',
       },
       preferCSSPageSize: true,
     };
