@@ -9,3 +9,4 @@ export { default as BookSLA } from './BookSLA';
 export { default as BookBacklog } from './BookBacklog';
 export { default as BookConsumo } from './BookConsumo';
 export { default as BookPesquisa } from './BookPesquisa';
+export { default as BookOrganograma } from './BookOrganograma';

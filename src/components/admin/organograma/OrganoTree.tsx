@@ -21,6 +21,10 @@ interface OrganoTreeProps {
   pessoas: PessoaComSubordinados[];
   onEdit: (pessoa: PessoaComSubordinados) => void;
   onDelete?: () => void; // Callback após exclusão bem-sucedida
+  viewOnly?: boolean; // Modo somente visualização (esconde botões de editar/excluir)
+  centerOffset?: number; // Offset adicional para centralização (útil em modais)
+  height?: number; // Altura do container em pixels (padrão: 800)
+  initialZoom?: number; // Zoom inicial (padrão: 0.7)
 }
 
 interface TreeNode {
@@ -39,7 +43,7 @@ interface TreeNode {
   children?: TreeNode[];
 }
 
-export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
+export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, centerOffset = 0, height = 800, initialZoom = 0.7 }: OrganoTreeProps) {
   const { toast } = useToast();
   const { deletarPessoa } = useOrganograma();
   const [pessoaParaDeletar, setPessoaParaDeletar] = useState<string | null>(null);
@@ -52,9 +56,11 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
     const container = document.querySelector('.rd3t-tree-container');
     if (container) {
       const width = container.clientWidth;
-      setTranslate({ x: width / 2, y: 100 });
+      // Em modo viewOnly (modal), começar mais acima para aproveitar melhor o espaço
+      const yPosition = viewOnly ? 80 : 100;
+      setTranslate({ x: (width / 2) + centerOffset, y: yPosition });
     }
-  }, []);
+  }, [centerOffset, viewOnly]);
 
   // Converter estrutura de dados para formato do react-d3-tree
   const convertToTreeData = (pessoas: PessoaComSubordinados[]): TreeNode[] => {
@@ -268,8 +274,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
                   )}
                 </div>
 
-                {/* Informações - altura fixa para alinhamento */}
-                <div className="text-center w-full px-4 min-h-[180px] flex flex-col">
+                {/* Informações - altura ajustada conforme modo */}
+                <div className={`text-center w-full px-4 flex flex-col ${viewOnly ? 'min-h-[80px]' : 'min-h-[180px]'}`}>
                   {/* Texto do Nível - ACIMA DO NOME */}
                   <div className="text-center">
                     <span className={`text-sm font-bold tracking-wide ${
@@ -318,53 +324,57 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
                     {pessoa?.email}
                   </div>
 
-                  {/* Telefone em preto e negrito */}
-                  <div className="text-sm font-bold text-black min-h-[20px]">
-                    {pessoa?.telefone || '\u00A0'}
-                  </div>
+                  {/* Telefone em preto e negrito - removido em modo viewOnly */}
+                  {!viewOnly && (
+                    <div className="text-sm font-bold text-black min-h-[20px]">
+                      {pessoa?.telefone || '\u00A0'}
+                    </div>
+                  )}
 
-                  {/* Botões de Ação - sempre no final */}
-                  <div className="flex gap-2 justify-center mt-auto pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0 bg-white hover:bg-gray-100"
-                      onClick={() => {
-                        // Extrair ID real (remover sufixo _PRODUTO se existir)
-                        const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
-                        
-                        const pessoaCompleta: PessoaComSubordinados = {
-                          id: idReal,
-                          nome: nodeDatum.name,
-                          cargo: pessoa.cargo,
-                          departamento: pessoa.departamento,
-                          email: pessoa.email,
-                          telefone: pessoa.telefone,
-                          foto_url: pessoa.foto_url,
-                          produtos: produtos,
-                          produto: pessoa.produto,
-                          superior_id: pessoa.superior_id,
-                          created_at: '',
-                          updated_at: '',
-                        };
-                        onEdit(pessoaCompleta);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 bg-white hover:bg-gray-100"
-                      onClick={() => {
-                        // Extrair ID real (remover sufixo _PRODUTO se existir)
-                        const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
-                        setPessoaParaDeletar(idReal);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {/* Botões de Ação - sempre no final (escondidos em modo viewOnly) */}
+                  {!viewOnly && (
+                    <div className="flex gap-2 justify-center mt-auto pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 bg-white hover:bg-gray-100"
+                        onClick={() => {
+                          // Extrair ID real (remover sufixo _PRODUTO se existir)
+                          const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+                          
+                          const pessoaCompleta: PessoaComSubordinados = {
+                            id: idReal,
+                            nome: nodeDatum.name,
+                            cargo: pessoa.cargo,
+                            departamento: pessoa.departamento,
+                            email: pessoa.email,
+                            telefone: pessoa.telefone,
+                            foto_url: pessoa.foto_url,
+                            produtos: produtos,
+                            produto: pessoa.produto,
+                            superior_id: pessoa.superior_id,
+                            created_at: '',
+                            updated_at: '',
+                          };
+                          onEdit(pessoaCompleta);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800 bg-white hover:bg-gray-100"
+                        onClick={() => {
+                          // Extrair ID real (remover sufixo _PRODUTO se existir)
+                          const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+                          setPessoaParaDeletar(idReal);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -417,7 +427,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
 
   return (
     <>
-      <div className="w-full h-[800px] border rounded-lg bg-white relative">       
+      <div className="w-full border rounded-lg bg-white relative" style={{ height: `${height}px` }}>       
         <Tree
           data={treeData}
           orientation="vertical"
@@ -427,8 +437,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete }: OrganoTreeProps) {
           separation={{ siblings: 1.2, nonSiblings: 1.5 }}
           renderCustomNodeElement={renderCustomNode}
           pathClassFunc={() => 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5]'}
-          zoom={0.7}
-          scaleExtent={{ min: 0.3, max: 2 }}
+          zoom={initialZoom}
+          scaleExtent={{ min: 0.4, max: 2 }}
           enableLegacyTransitions
           depthFactor={400}
         />

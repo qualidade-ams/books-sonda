@@ -93,16 +93,9 @@ class UserManagementService {
   async updateUser(userData: UpdateUserData): Promise<{ success: boolean; error?: string }> {
     try {
       // Verificar se o usuário atual tem permissões
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         throw new Error('Usuário não autenticado');
-      }
-
-      // Avisar sobre reset de senha antes de tentar atualizar
-      if (userData.resetPassword && userData.newPassword) {
-        console.warn('⚠️ Reset de senha não está disponível via RPC');
-        console.warn('⚠️ Configure uma Edge Function para esta operação');
-        console.warn('⚠️ Continuando com atualização de perfil sem alterar senha...');
       }
 
       // Usar função RPC para atualizar usuário (mais seguro que usar supabaseAdmin no frontend)
@@ -120,10 +113,39 @@ class UserManagementService {
 
       console.log('✅ Usuário atualizado com sucesso:', data);
 
-      // Se tentou resetar senha, avisar que não foi possível
+      // Se precisa resetar senha, chamar Edge Function
       if (userData.resetPassword && userData.newPassword) {
-        console.warn('⚠️ Perfil atualizado, mas senha NÃO foi alterada');
-        console.warn('⚠️ Para alterar senha, configure uma Edge Function');
+        console.log('🔐 Resetando senha via Edge Function...');
+        
+        try {
+          const resetResult = await this.resetUserPassword(userData.userId, userData.newPassword);
+          
+          if (!resetResult.success) {
+            // Se Edge Function falhar, avisar mas não bloquear atualização de perfil
+            console.warn('⚠️ Erro ao resetar senha:', resetResult.error);
+            console.warn('⚠️ Perfil foi atualizado, mas senha NÃO foi alterada');
+            console.warn('⚠️ Verifique se a Edge Function foi deployada: supabase functions deploy admin-reset-password');
+            
+            // Retornar erro específico sobre a senha
+            return { 
+              success: false, 
+              error: `Perfil atualizado, mas erro ao resetar senha: ${resetResult.error}. Verifique se a Edge Function foi deployada.`
+            };
+          }
+          
+          console.log('✅ Senha resetada com sucesso');
+        } catch (resetError: any) {
+          // Se Edge Function não estiver disponível, avisar
+          console.error('❌ Erro ao chamar Edge Function:', resetError);
+          console.warn('⚠️ Perfil foi atualizado, mas senha NÃO foi alterada');
+          console.warn('⚠️ A Edge Function pode não estar deployada');
+          console.warn('⚠️ Execute: supabase functions deploy admin-reset-password');
+          
+          return { 
+            success: false, 
+            error: 'Perfil atualizado, mas não foi possível resetar a senha. A Edge Function pode não estar deployada. Execute: supabase functions deploy admin-reset-password'
+          };
+        }
       }
 
       return { success: true };
@@ -143,6 +165,62 @@ class UserManagementService {
         errorMessage = 'Você não tem permissão para atualizar usuários.';
       }
 
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  // Resetar senha de usuário via Edge Function
+  private async resetUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Obter token de autenticação
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão não encontrada');
+      }
+
+      // Chamar Edge Function
+      const response = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/admin-reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            newPassword
+          })
+        }
+      );
+
+      // Se erro de rede ou CORS, retornar erro específico
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        throw new Error(`Edge Function retornou erro ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao resetar senha');
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Erro ao resetar senha:', error);
+      
+      // Mensagens de erro mais específicas
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        errorMessage = 'Edge Function não está acessível. Verifique se foi deployada: supabase functions deploy admin-reset-password';
+      } else if (error.message?.includes('CORS')) {
+        errorMessage = 'Erro de CORS. A Edge Function pode não estar deployada corretamente.';
+      } else if (error.message?.includes('404')) {
+        errorMessage = 'Edge Function não encontrada. Execute: supabase functions deploy admin-reset-password';
+      }
+      
       return { success: false, error: errorMessage };
     }
   }

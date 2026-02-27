@@ -1,0 +1,126 @@
+/**
+ * Estilos específicos para impressão e geração de PDF
+ * Aplicados na rota /pdf/book/:id
+ */
+
+/* Configuração global de impressão */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Container principal de impressão */
+.print-container {
+  width: 100%;
+  background: white;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Seções de página */
+.page-section {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+/* Page breaks entre seções */
+.page-break {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* Primeira seção (capa) sem page break */
+.page-section:first-child {
+  page-break-before: avoid;
+  break-before: avoid;
+}
+
+/* Desabilitar animações e transições */
+.print-container * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Garantir que SVGs e gráficos sejam renderizados corretamente */
+.print-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Organogramas - garantir renderização correta */
+.print-container [data-section^="organograma"] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+.print-container .rd3t-tree-container {
+  width: 100% !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Garantir que charts sejam renderizados */
+.print-container canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Remover scrollbars */
+.print-container {
+  overflow: visible;
+}
+
+.print-container * {
+  overflow: visible !important;
+}
+
+/* Configuração de página A4 landscape */
+@page {
+  size: A4 landscape;
+  margin: 0;
+}
+
+/* Garantir cores de fundo */
+@media print {
+  .print-container {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  .print-container * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
+
+/* Fontes - garantir carregamento */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Garantir que elementos não sejam cortados */
+.print-container img,
+.print-container svg,
+.print-container canvas {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Tabelas - evitar quebra no meio */
+.print-container table {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Cards - evitar quebra no meio */
+.print-container [class*="card"],
+.print-container [class*="Card"] {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}

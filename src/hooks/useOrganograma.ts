@@ -38,7 +38,7 @@ export function useOrganograma() {
         .from('organizacao_estrutura')
         .select(`
           *,
-          organizacao_produto!inner(
+          organizacao_produto!organizacao_produto_pessoa_id_fkey!inner(
             id,
             produto,
             superior_id

@@ -34,10 +34,21 @@ export interface BookData {
   consumo: BookConsumoData;
   pesquisa: BookPesquisaData;
   
+  // Organogramas (screenshots em base64)
+  organogramas?: BookOrganogramaData[];
+  
   // Metadados
   pdf_url?: string;
   pdf_gerado_em?: string;
   erro_detalhes?: string;
+}
+
+/**
+ * Dados de organograma (screenshot)
+ */
+export interface BookOrganogramaData {
+  produto: string; // Ex: "COMEX", "FISCAL", "GALLERY"
+  screenshot_base64: string; // Imagem em base64
 }
 
 /**
