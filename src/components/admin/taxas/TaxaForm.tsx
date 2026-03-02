@@ -72,6 +72,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
       vigencia_fim: undefined,
       tipo_produto: '',
       tipo_calculo_adicional: 'media',
+      prazo_pagamento: undefined,
       personalizado: false,
       taxa_reajuste: undefined,
       valores_remota: {
@@ -109,6 +110,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
         vigencia_fim: undefined,
         tipo_produto: '',
         tipo_calculo_adicional: 'media',
+        prazo_pagamento: undefined,
         personalizado: false,
         taxa_reajuste: undefined,
         valores_remota: {
@@ -164,6 +166,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
         vigencia_fim: undefined,
         tipo_produto: '',
         tipo_calculo_adicional: 'media',
+        prazo_pagamento: undefined,
         personalizado: false,
         taxa_reajuste: undefined,
         valores_remota: {
@@ -419,6 +422,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
             vigencia_fim: taxa.vigencia_fim ? new Date(taxa.vigencia_fim + 'T00:00:00') : undefined,
             tipo_produto: taxa.tipo_produto,
             tipo_calculo_adicional: taxa.tipo_calculo_adicional || 'media',
+            prazo_pagamento: taxa.prazo_pagamento,
             personalizado: isPersonalizado,
             taxa_reajuste: undefined,
             valores_remota: {
@@ -476,6 +480,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
     console.log('🔧 [TAXA FORM] É edição de taxa existente?', !!taxa);
     console.log('🎨 [TAXA FORM] É personalizado?', data.personalizado);
     console.log('⚡ [TAXA FORM] Estado isLoading:', isLoading);
+    console.log('💰 [TAXA FORM] Prazo de pagamento:', data.prazo_pagamento, typeof data.prazo_pagamento);
     
     // TESTE: Verificar se o botão está sendo clicado
     if (taxa) {
@@ -522,6 +527,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
       vigencia_fim: data.vigencia_fim || undefined,
       tipo_produto: data.tipo_produto,
       tipo_calculo_adicional: data.tipo_calculo_adicional,
+      prazo_pagamento: data.prazo_pagamento, // CRÍTICO: Prazo de pagamento
       personalizado: data.personalizado || false,
       taxa_reajuste: data.taxa_reajuste,
       valores_remota: data.valores_remota,
@@ -539,6 +545,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
     };
 
     console.log('📤 [TAXA FORM] Dados formatados para envio:', dadosFormatados);
+    console.log('💰 [TAXA FORM] Prazo de pagamento formatado:', dadosFormatados.prazo_pagamento, typeof dadosFormatados.prazo_pagamento);
     console.log('🚀 [TAXA FORM] Chamando onSubmit...');
 
     try {
@@ -1001,7 +1008,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
             />
           </div>
 
-          <div className={`grid grid-cols-1 ${taxa ? 'md:grid-cols-2' : ''} gap-4`}>
+          <div className={`grid grid-cols-1 ${taxa ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
             <FormField
               control={form.control}
               name="tipo_calculo_adicional"
@@ -1024,6 +1031,34 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
                     <SelectContent>
                       <SelectItem value="normal">Normal (Valor Base + 15%)</SelectItem>
                       <SelectItem value="media">Média (Cálculo por Média)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="prazo_pagamento"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prazo de Pagamento</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
+                    value={field.value?.toString() || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o prazo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="45">45 dias</SelectItem>
+                      <SelectItem value="60">60 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="120">120 dias</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

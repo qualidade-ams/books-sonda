@@ -14,6 +14,7 @@ export interface TaxaCliente {
   vigencia_fim?: string;
   tipo_produto: TipoProduto;
   tipo_calculo_adicional: TipoCalculoAdicional;
+  prazo_pagamento?: number; // Prazo de pagamento em dias (30, 45, 60, 90, 120)
   personalizado?: boolean; // Flag para indicar se os valores são personalizados
   // Campos específicos por cliente
   valor_ticket?: number; // VOTORANTIM, CSN
@@ -76,6 +77,7 @@ export interface TaxaFormData {
   vigencia_fim?: Date | string;
   tipo_produto: TipoProduto;
   tipo_calculo_adicional: TipoCalculoAdicional;
+  prazo_pagamento?: number; // Prazo de pagamento em dias (30, 45, 60, 90, 120)
   personalizado?: boolean; // Flag para permitir edição manual de todos os campos
   taxa_reajuste?: number; // Percentual de reajuste (opcional)
   valores_remota: {

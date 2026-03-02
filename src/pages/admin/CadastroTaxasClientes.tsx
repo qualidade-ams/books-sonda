@@ -1752,7 +1752,7 @@ function CadastroTaxasClientes() {
                 {/* Informações Gerais */}
                 <Card className="bg-gray-50">
                   <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                       {/* Todos os campos em uma única linha */}
                       <div>
                         <p className="text-sm font-medium text-gray-500">Cliente</p>
@@ -1800,6 +1800,14 @@ function CadastroTaxasClientes() {
                           {taxaVisualizando.vigencia_fim 
                             ? format(new Date(taxaVisualizando.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
                             : 'Indefinida'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Prazo de Pagamento</p>
+                        <p className="text-lg text-gray-900">
+                          {taxaVisualizando.prazo_pagamento 
+                            ? `${taxaVisualizando.prazo_pagamento} dias`
+                            : '-'}
                         </p>
                       </div>
                     </div>

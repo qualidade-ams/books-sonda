@@ -416,9 +416,14 @@ export async function criarTaxa(dados: TaxaFormData): Promise<TaxaCliente> {
     vigencia_fim: vigenciaFim,
     tipo_produto: dados.tipo_produto,
     tipo_calculo_adicional: dados.tipo_calculo_adicional || 'media',
+    prazo_pagamento: dados.prazo_pagamento, // NOVO: Prazo de pagamento
     personalizado: dados.personalizado || false,
     criado_por: user?.id
   };
+
+  console.log('💰 [CRIAR TAXA] Prazo de pagamento recebido:', dados.prazo_pagamento, typeof dados.prazo_pagamento);
+  console.log('📦 [CRIAR TAXA] Dados da taxa preparados:', dadosTaxa);
+  console.log('💰 [CRIAR TAXA] Prazo de pagamento no objeto:', dadosTaxa.prazo_pagamento, typeof dadosTaxa.prazo_pagamento);
 
   // Adicionar campos específicos por cliente se fornecidos
   if (dados.valor_ticket !== undefined) dadosTaxa.valor_ticket = dados.valor_ticket;
@@ -786,6 +791,7 @@ export async function atualizarTaxa(
       vigencia_fim: vigenciaFim,
       tipo_produto: dados.tipo_produto || taxaAtualData.tipo_produto,
       tipo_calculo_adicional: dados.tipo_calculo_adicional || taxaAtualData.tipo_calculo_adicional,
+      prazo_pagamento: dados.prazo_pagamento !== undefined ? dados.prazo_pagamento : taxaAtualData.prazo_pagamento, // NOVO: Prazo de pagamento
       personalizado: dados.personalizado !== undefined ? dados.personalizado : taxaAtualData.personalizado,
       criado_por: user?.id
     };
@@ -960,6 +966,11 @@ export async function atualizarTaxa(
 
   if (dados.personalizado !== undefined) {
     dadosAtualizacao.personalizado = dados.personalizado;
+  }
+
+  // NOVO: Adicionar prazo de pagamento se fornecido
+  if (dados.prazo_pagamento !== undefined) {
+    dadosAtualizacao.prazo_pagamento = dados.prazo_pagamento;
   }
 
   // Adicionar campos específicos por cliente se fornecidos
