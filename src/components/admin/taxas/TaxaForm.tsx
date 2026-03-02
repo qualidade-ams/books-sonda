@@ -1045,8 +1045,8 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
                 <FormItem>
                   <FormLabel>Prazo de Pagamento</FormLabel>
                   <Select
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
-                    value={field.value?.toString() || ""}
+                    onValueChange={(value) => field.onChange(value === "none" ? undefined : parseInt(value))}
+                    value={field.value?.toString() || "none"}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -1054,6 +1054,7 @@ export function TaxaForm({ taxa, onSubmit, onCancel, isLoading, dadosIniciais }:
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="none">Selecione o prazo</SelectItem>
                       <SelectItem value="30">30 dias</SelectItem>
                       <SelectItem value="45">45 dias</SelectItem>
                       <SelectItem value="60">60 dias</SelectItem>

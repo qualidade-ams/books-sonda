@@ -3,6 +3,9 @@
  * Aplicados na rota /pdf/book/:id
  */
 
+/* Fontes - garantir carregamento (DEVE VIR ANTES DE QUALQUER OUTRA REGRA) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 /* Configuração global de impressão */
 @media print {
   body {
@@ -91,18 +94,13 @@
   .print-container {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    color-adjust: exact;
   }
   
   .print-container * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    color-adjust: exact;
   }
 }
-
-/* Fontes - garantir carregamento */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* Garantir que elementos não sejam cortados */
 .print-container img,

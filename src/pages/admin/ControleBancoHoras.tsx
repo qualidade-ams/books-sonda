@@ -47,6 +47,7 @@ import { VisaoConsolidada } from '@/components/admin/banco-horas/VisaoConsolidad
 import { VisaoSegmentada } from '@/components/admin/banco-horas/VisaoSegmentada';
 import { ModalHistorico } from '@/components/admin/banco-horas/ModalHistorico';
 
+import type { SegmentacaoConfig } from '@/types/clientBooksTypes';
 import { 
   useBancoHorasCalculos,
   useAlocacoes,
@@ -1089,7 +1090,7 @@ export default function ControleBancoHoras() {
               <TabsContent value="segmentada" className="mt-6">
                 <VisaoSegmentada
                   empresaId={empresaSelecionada!}
-                  segmentacaoConfig={empresaAtual?.segmentacao_config}
+                  segmentacaoConfig={empresaAtual?.segmentacao_config as unknown as SegmentacaoConfig | undefined}
                   mesAno={mesAno}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
                   percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
