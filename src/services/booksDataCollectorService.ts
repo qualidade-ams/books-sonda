@@ -421,7 +421,7 @@ class BooksDataCollectorService {
     const chamadosSemestre = await this.buscarChamadosSemestre(empresaNomeCompleto, mes, ano);
 
     // Agrupar por grupo - passar os tickets abertos e fechados separadamente
-    const chamadosPorGrupo = this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
+    const chamadosPorGrupo = await this.agruparPorGrupo(ticketsAbertos, ticketsFechados);
 
     // Taxa de resolução - baseada apenas em tickets
     const taxaResolucao = apontamentosTickets.length > 0
@@ -429,7 +429,7 @@ class BooksDataCollectorService {
       : 0;
 
     // Chamados por causa - passar abertos e fechados separadamente
-    const chamadosPorCausa = this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
+    const chamadosPorCausa = await this.agruparChamadosPorCausa(ticketsAbertos, ticketsFechados);
 
     // Calcular SLA médio dos últimos 5 meses e variação vs mês anterior
     const slaMedioData = await this.calcularSLAMedioUltimos5Meses(
@@ -699,27 +699,37 @@ class BooksDataCollectorService {
 
   /**
    * Agrupa apontamentos por grupo
+   * MAPEAMENTO: nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo_book
    */
-  private agruparPorGrupo(ticketsAbertos: any[], ticketsFechados: any[]) {
+  private async agruparPorGrupo(ticketsAbertos: any[], ticketsFechados: any[]) {
+    // Buscar mapeamento de categorias
+    const mapeamento = await this.buscarMapeamentoGrupos();
+    
     const grupos = new Map<string, { total: number; abertos: number; fechados: number }>();
 
     // Processar tickets abertos
     ticketsAbertos.forEach(a => {
-      const grupo = a.nome_grupo || 'SEM GRUPO';
-      if (!grupos.has(grupo)) {
-        grupos.set(grupo, { total: 0, abertos: 0, fechados: 0 });
+      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
+      // Mapear nome_grupo para grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      
+      if (!grupos.has(grupoMapeado)) {
+        grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
       }
-      const stats = grupos.get(grupo)!;
+      const stats = grupos.get(grupoMapeado)!;
       stats.abertos++;
     });
 
     // Processar tickets fechados
     ticketsFechados.forEach(a => {
-      const grupo = a.nome_grupo || 'SEM GRUPO';
-      if (!grupos.has(grupo)) {
-        grupos.set(grupo, { total: 0, abertos: 0, fechados: 0 });
+      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
+      // Mapear nome_grupo para grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      
+      if (!grupos.has(grupoMapeado)) {
+        grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
       }
-      const stats = grupos.get(grupo)!;
+      const stats = grupos.get(grupoMapeado)!;
       stats.fechados++;
     });
 
@@ -744,10 +754,11 @@ class BooksDataCollectorService {
       })
       .sort((a, b) => b.total - a.total);
 
-    console.log('📊 Chamados agrupados por grupo (nome_grupo):', {
+    console.log('📊 Chamados agrupados por grupo (COM MAPEAMENTO):', {
       totalGrupos: gruposArray.length,
       totalAbertos: ticketsAbertos.length,
       totalFechados: ticketsFechados.length,
+      mapeamentosAplicados: mapeamento.size,
       grupos: gruposArray.map(g => ({
         nome: g.grupo,
         total: g.total,
@@ -766,8 +777,12 @@ class BooksDataCollectorService {
    * Agrupa TODOS os chamados por causa (cod_resolucao)
    * Usado na aba Volumetria
    * MODIFICADO: Agora recebe abertos e fechados separadamente para exibir na tabela
+   * MAPEAMENTO: cod_resolucao → categoria (de_para_categoria) → grupo_book
    */
-  private agruparChamadosPorCausa(ticketsAbertos: any[], ticketsFechados: any[]) {
+  private async agruparChamadosPorCausa(ticketsAbertos: any[], ticketsFechados: any[]) {
+    // Buscar mapeamento de categorias
+    const mapeamento = await this.buscarMapeamentoGrupos();
+    
     const causas = new Map<string, { 
       incidente: number; 
       solicitacao: number;
@@ -777,11 +792,14 @@ class BooksDataCollectorService {
 
     // Processar tickets ABERTOS
     ticketsAbertos.forEach(a => {
-      const causa = a.cod_resolucao || 'Sem Código de Resolução';
-      if (!causas.has(causa)) {
-        causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      // Mapear cod_resolucao para grupo_book usando de_para_categoria
+      const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
+      
+      if (!causas.has(causaMapeada)) {
+        causas.set(causaMapeada, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
-      const stats = causas.get(causa)!;
+      const stats = causas.get(causaMapeada)!;
       stats.abertos++;
       
       // Contar por tipo
@@ -794,11 +812,14 @@ class BooksDataCollectorService {
 
     // Processar tickets FECHADOS
     ticketsFechados.forEach(a => {
-      const causa = a.cod_resolucao || 'Sem Código de Resolução';
-      if (!causas.has(causa)) {
-        causas.set(causa, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      // Mapear cod_resolucao para grupo_book usando de_para_categoria
+      const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
+      
+      if (!causas.has(causaMapeada)) {
+        causas.set(causaMapeada, { incidente: 0, solicitacao: 0, abertos: 0, fechados: 0 });
       }
-      const stats = causas.get(causa)!;
+      const stats = causas.get(causaMapeada)!;
       stats.fechados++;
       
       // Contar por tipo (apenas se não foi contado nos abertos)
@@ -821,8 +842,9 @@ class BooksDataCollectorService {
       }))
       .sort((a, b) => b.total - a.total);
 
-    console.log('📊 Chamados agrupados por causa (cod_resolucao) - COM ABERTOS/FECHADOS:', {
+    console.log('📊 Chamados agrupados por causa (cod_resolucao) - COM MAPEAMENTO:', {
       totalCausas: resultado.length,
+      mapeamentosAplicados: mapeamento.size,
       causas: resultado.map(c => ({
         causa: c.origem,
         incidente: c.incidente,
@@ -839,17 +861,24 @@ class BooksDataCollectorService {
   /**
    * Agrupa BACKLOG (não fechados) por causa (cod_resolucao)
    * Usado na aba Backlog
+   * MAPEAMENTO: cod_resolucao → categoria (de_para_categoria) → grupo_book
    */
-  private agruparBacklogPorCausa(backlog: any[]) {
+  private async agruparBacklogPorCausa(backlog: any[]) {
+    // Buscar mapeamento de categorias
+    const mapeamento = await this.buscarMapeamentoGrupos();
+    
     const causas = new Map<string, { incidente: number; solicitacao: number }>();
 
     backlog.forEach(a => {
       // Usar cod_resolucao como causa
-      const causa = a.cod_resolucao || 'Sem Código de Resolução';
-      if (!causas.has(causa)) {
-        causas.set(causa, { incidente: 0, solicitacao: 0 });
+      const causaOriginal = a.cod_resolucao || 'Sem Código de Resolução';
+      // Mapear cod_resolucao para grupo_book usando de_para_categoria
+      const causaMapeada = mapeamento.get(causaOriginal) || causaOriginal;
+      
+      if (!causas.has(causaMapeada)) {
+        causas.set(causaMapeada, { incidente: 0, solicitacao: 0 });
       }
-      const stats = causas.get(causa)!;
+      const stats = causas.get(causaMapeada)!;
       
       // Usar cod_tipo para determinar se é Incidente ou Solicitação
       if (a.cod_tipo === 'Incidente') {
@@ -868,8 +897,9 @@ class BooksDataCollectorService {
       }))
       .sort((a, b) => b.total - a.total);
 
-    console.log('📊 Backlog agrupado por causa (cod_resolucao):', {
+    console.log('📊 Backlog agrupado por causa (cod_resolucao) - COM MAPEAMENTO:', {
       totalCausas: resultado.length,
+      mapeamentosAplicados: mapeamento.size,
       causas: resultado.map(c => ({
         causa: c.origem,
         incidente: c.incidente,
@@ -883,18 +913,32 @@ class BooksDataCollectorService {
 
   /**
    * Agrupa backlog por grupo (nome_grupo)
+   * MAPEAMENTO: nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo_book
    */
-  private agruparPorGrupoBacklog(backlog: any[]) {
+  private async agruparPorGrupoBacklog(backlog: any[]) {
+    // Buscar mapeamento de categorias
+    const mapeamento = await this.buscarMapeamentoGrupos();
+    
     const grupos = new Map<string, number>();
 
     backlog.forEach(a => {
-      const grupo = a.nome_grupo || 'SEM GRUPO';
-      grupos.set(grupo, (grupos.get(grupo) || 0) + 1);
+      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
+      // Mapear nome_grupo para grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      grupos.set(grupoMapeado, (grupos.get(grupoMapeado) || 0) + 1);
     });
 
-    return Array.from(grupos.entries())
+    const resultado = Array.from(grupos.entries())
       .map(([grupo, total]) => ({ grupo, total }))
       .sort((a, b) => b.total - a.total);
+
+    console.log('📊 Backlog agrupado por grupo (COM MAPEAMENTO):', {
+      totalGrupos: resultado.length,
+      mapeamentosAplicados: mapeamento.size,
+      grupos: resultado
+    });
+
+    return resultado;
   }
 
   /**
@@ -1046,7 +1090,7 @@ class BooksDataCollectorService {
       // Verificar se é elegível para avaliação (baseado em incidentes com cod_resolucao específicos)
       if (incidentesElegiveis < quantidadeMinimaIncidentes) {
         slaElegivel = false;
-        mensagemNaoElegivel = 'Volume de chamados abaixo do mínimo contratual. O SLA não é elegível para avaliação neste período.';
+        mensagemNaoElegivel = 'A quantidade mínima de chamados fechados de Incidente/Consultoria necessária para aplicação de penalidade é 7';
         status = 'no_prazo'; // Não avalia como vencido se não for elegível
         console.log('⚠️ SLA NÃO ELEGÍVEL:', {
           incidentes,
@@ -1195,7 +1239,7 @@ class BooksDataCollectorService {
     const agingChamados = this.calcularAging(backlog);
 
     // Distribuição por grupo (nome_grupo)
-    const distribuicaoPorGrupo = this.agruparPorGrupoBacklog(backlog).map(grupo => ({
+    const distribuicaoPorGrupo = (await this.agruparPorGrupoBacklog(backlog)).map(grupo => ({
       grupo: grupo.grupo,
       total: grupo.total,
       percentual: backlog.length > 0 
@@ -1204,7 +1248,7 @@ class BooksDataCollectorService {
     }));
 
     // Backlog por causa (cod_resolucao)
-    const backlogPorCausa = this.agruparBacklogPorCausa(backlog);
+    const backlogPorCausa = await this.agruparBacklogPorCausa(backlog);
 
     console.log('✅ Dados de backlog processados:', {
       total: backlog.length,
@@ -2385,6 +2429,71 @@ class BooksDataCollectorService {
     const minutos = Math.round((horasDecimal - horas) * 60); // Arredondar minutos
     
     return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
+  }
+
+  /**
+   * Cache para mapeamento de grupos (válido por 5 minutos)
+   */
+  private mapeamentoCache: Map<string, string> | null = null;
+  private mapeamentoCacheTimestamp: number = 0;
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+  /**
+   * Busca mapeamento de categorias da tabela de_para_categoria
+   * Mapeia tanto nome_grupo quanto cod_resolucao para grupo_book
+   * 
+   * REGRAS DE MAPEAMENTO:
+   * 1. nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
+   * 2. cod_resolucao (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo (retornado)
+   * 
+   * Cache de 5 minutos para otimizar performance
+   */
+  private async buscarMapeamentoGrupos(): Promise<Map<string, string>> {
+    const agora = Date.now();
+    
+    // Verificar se cache é válido
+    if (this.mapeamentoCache && (agora - this.mapeamentoCacheTimestamp) < this.CACHE_DURATION) {
+      console.log('✅ Usando cache de mapeamento de grupos');
+      return this.mapeamentoCache;
+    }
+
+    console.log('🔍 Buscando mapeamento de grupos da tabela de_para_categoria...');
+
+    try {
+      const { data: categorias, error } = await supabase
+        .from('de_para_categoria')
+        .select('categoria, grupo')
+        .eq('status', 'ativa');
+
+      if (error) {
+        console.error('❌ Erro ao buscar mapeamento de categorias:', error);
+        return new Map();
+      }
+
+      const mapeamento = new Map<string, string>();
+      
+      (categorias || []).forEach(cat => {
+        // Mapear categoria → grupo
+        mapeamento.set(cat.categoria, cat.grupo);
+      });
+
+      // Atualizar cache
+      this.mapeamentoCache = mapeamento;
+      this.mapeamentoCacheTimestamp = agora;
+
+      console.log('✅ Mapeamento de grupos carregado:', {
+        totalMapeamentos: mapeamento.size,
+        exemplos: Array.from(mapeamento.entries()).slice(0, 5).map(([cat, grupo]) => ({
+          categoria: cat,
+          grupo_book: grupo
+        }))
+      });
+
+      return mapeamento;
+    } catch (error) {
+      console.error('❌ Erro ao buscar mapeamento:', error);
+      return new Map();
+    }
   }
 }
 

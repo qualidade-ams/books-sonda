@@ -26,6 +26,8 @@ import {
   LabelList,
 } from 'recharts';
 import type { BookVolumetriaData } from '@/types/books';
+import { useGrupoBookMapping, mapearMultiplosGrupos } from '@/hooks/useGrupoBookMapping';
+import { useMemo } from 'react';
 
 interface BookVolumetriaProps {
   data: BookVolumetriaData;
@@ -35,6 +37,39 @@ interface BookVolumetriaProps {
 }
 
 export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolumetriaProps) {
+  // Buscar mapeamento de categorias para grupos
+  const { data: mappingMap, isLoading: isLoadingMapping } = useGrupoBookMapping();
+  
+  // Aplicar mapeamento aos dados de grupos
+  const chamadosPorGrupoMapeados = useMemo(() => {
+    if (!mappingMap || isLoadingMapping) {
+      console.log('⏳ [BookVolumetria] Aguardando mapeamento...');
+      return data.chamados_por_grupo;
+    }
+    
+    console.log('🔄 [BookVolumetria] Aplicando mapeamento aos grupos...');
+    const mapeados = mapearMultiplosGrupos(data.chamados_por_grupo, mappingMap);
+    console.log('✅ [BookVolumetria] Grupos mapeados:', mapeados);
+    return mapeados;
+  }, [data.chamados_por_grupo, mappingMap, isLoadingMapping]);
+  
+  const backlogPorCausaMapeado = useMemo(() => {
+    if (!mappingMap || isLoadingMapping) {
+      return data.backlog_por_causa;
+    }
+    
+    // Para backlog_por_causa, o campo é "origem" não "grupo"
+    // Então vamos mapear apenas se a origem corresponder a uma categoria
+    return data.backlog_por_causa.map(item => {
+      const grupoMapeado = mappingMap.get(item.origem);
+      if (grupoMapeado) {
+        console.log(`📧 [BookVolumetria] Mapeando origem "${item.origem}" → "${grupoMapeado}"`);
+        return { ...item, origem: grupoMapeado };
+      }
+      return item;
+    });
+  }, [data.backlog_por_causa, mappingMap, isLoadingMapping]);
+  
   // Calcular período do semestre para exibição
   const anoExibicao = ano || new Date().getFullYear();
   const mesAtual = mes || new Date().getMonth() + 1;
@@ -277,7 +312,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.backlog_por_causa.map((item, index) => (
+                    {backlogPorCausaMapeado.map((item, index) => (
                       <TableRow key={index} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{item.origem}</TableCell>
                         <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd' }}>{item.abertos || 0}</TableCell>
@@ -287,10 +322,10 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#0d6abf', color: 'white' }}>
                       <TableCell>TOTAL</TableCell>
                       <TableCell className="text-center">
-                        {data.backlog_por_causa.reduce((sum, item) => sum + (item.abertos || 0), 0)}
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
                       </TableCell>
                       <TableCell className="text-center">
-                        {data.backlog_por_causa.reduce((sum, item) => sum + (item.fechados || 0), 0)}
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.fechados || 0), 0)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -306,7 +341,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
             <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {data.chamados_por_grupo.map((grupo, index) => {
+            {chamadosPorGrupoMapeados.map((grupo, index) => {
               // Calcular largura proporcional das barras
               const maxValue = Math.max(grupo.abertos, grupo.fechados);
               const abertosWidth = maxValue > 0 ? (grupo.abertos / maxValue) * 100 : 0;

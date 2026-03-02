@@ -71,13 +71,14 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
-    // Configurar viewport grande ANTES de carregar conteúdo
+    // Configurar viewport para gerar PDF de 4150x2400 pixels
+    // Dimensão otimizada para qualidade de impressão (~355 DPI)
     await page.setViewport({
-      width: 1920,
-      height: 1080,
+      width: 2075,   // 4150 / 2
+      height: 1200,  // 2400 / 2
       deviceScaleFactor: 2
     });
-    console.log('✅ Viewport configurado: 1920x1080 @ 2x');
+    console.log('✅ Viewport configurado: 2075x1200 @ 2x (= 4150x2400 pixels)');
 
     // Forçar media type screen (não print)
     await page.emulateMediaType('screen');
@@ -147,18 +148,18 @@ export default async function handler(
     
     console.log('📸 Gerando PDF...');
 
-    // Opções padrão
+    // Opções de PDF - dimensões fixas para garantir 4150x2400 pixels
     const pdfOptions = {
-      format: body.options?.format || 'A4',
-      landscape: body.options?.orientation === 'landscape',
-      printBackground: body.options?.printBackground !== false, // true por padrão
+      width: '4150px',
+      height: '2400px',
+      printBackground: true,
       margin: {
         top: '0mm',
         bottom: '0mm',
         left: '0mm',
         right: '0mm',
       },
-      preferCSSPageSize: true, // Respeitar @page CSS
+      preferCSSPageSize: false,  // Usar dimensões explícitas em vez de CSS
     };
 
     // Gerar PDF
