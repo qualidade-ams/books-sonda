@@ -52,6 +52,11 @@ export interface Pesquisa {
   // Timestamps
   created_at: string;
   updated_at: string;
+  
+  // Join com empresas_clientes (opcional)
+  empresas_clientes?: {
+    nome_abreviado: string;
+  } | null;
 }
 
 // ============================================

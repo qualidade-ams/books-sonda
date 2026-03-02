@@ -30,7 +30,12 @@ export async function buscarTodasPesquisas(filtros?: FiltrosPesquisas): Promise<
   while (hasMore) {
     let query = supabase
       .from('pesquisas_satisfacao')
-      .select('*')
+      .select(`
+        *,
+        empresas_clientes!empresa_id (
+          nome_abreviado
+        )
+      `)
       .range(offset, offset + BATCH_SIZE - 1)
       .order('created_at', { ascending: false });
 
@@ -211,7 +216,12 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
   while (hasMore) {
     let query = supabase
       .from('pesquisas_satisfacao')
-      .select('*')
+      .select(`
+        *,
+        empresas_clientes!empresa_id (
+          nome_abreviado
+        )
+      `)
       .range(offset, offset + BATCH_SIZE - 1)
       .order('created_at', { ascending: false });
 
@@ -334,7 +344,12 @@ export async function buscarPesquisas(filtros?: FiltrosPesquisas): Promise<Pesqu
 export async function buscarPesquisaPorId(id: string): Promise<Pesquisa | null> {
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
-    .select('*')
+    .select(`
+      *,
+      empresas_clientes!empresa_id (
+        nome_abreviado
+      )
+    `)
     .eq('id', id)
     .single();
 

@@ -32,7 +32,7 @@ export function PesquisasExportButtons({
 
     setIsExporting(true);
     try {
-      const resultado = exportarPesquisasExcel(pesquisas, estatisticas);
+      const resultado = await exportarPesquisasExcel(pesquisas, estatisticas);
       
       if (resultado.success) {
         toast.success(resultado.message);
@@ -55,7 +55,7 @@ export function PesquisasExportButtons({
 
     setIsExporting(true);
     try {
-      const resultado = exportarPesquisasPDF(pesquisas, estatisticas);
+      const resultado = await exportarPesquisasPDF(pesquisas, estatisticas);
       
       if (resultado.success) {
         toast.success(resultado.message);
