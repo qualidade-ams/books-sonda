@@ -41,6 +41,7 @@ const formSchema = z.object({
   chamado: z.string().optional(),
   empresa_id: z.string().optional(),
   comentario_cliente: z.string().optional(), // Campo habilitado para planos manuais
+  causa: z.string().optional(), // NOVO: Causa raiz do problema
   descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'), // NOVO: Descrição da ação corretiva
   acao_preventiva: z.string().optional(),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
@@ -74,7 +75,14 @@ const formSchema = z.object({
     });
   }
   
-
+  // NOVO: Se data_conclusao for preenchida, causa é obrigatória
+  if (data.data_conclusao && (!data.causa || data.causa.trim() === '')) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Campo "causa" é obrigatório quando a data de conclusão está preenchida',
+      path: ['causa'],
+    });
+  }
 });
 
 interface PlanoAcaoFormProps {
@@ -110,6 +118,7 @@ export function PlanoAcaoForm({
       chamado: plano?.chamado || plano?.pesquisa?.nro_caso || '', // CORREÇÃO: Buscar da pesquisa se não tiver no plano
       empresa_id: plano?.empresa_id || '', // CORREÇÃO: Será preenchido via useEffect
       comentario_cliente: plano?.comentario_cliente || plano?.pesquisa?.comentario_pesquisa || '', 
+      causa: plano?.causa || '', // NOVO: Campo causa
       descricao_acao_corretiva: plano?.descricao_acao_corretiva || '', // NOVO: Campo em branco para ação corretiva
       acao_preventiva: plano?.acao_preventiva || '',
       prioridade: plano?.prioridade || 'media',
@@ -229,7 +238,7 @@ export function PlanoAcaoForm({
                     placeholder={
                       isPlanoManual 
                         ? "Descreva o comentário ou feedback do cliente sobre o problema..."
-                        : "Comentário ou feedback do cliente sobre o problema..."
+                        : "Cliente não relatou sobre o problema."
                     }
                     rows={3}
                     disabled={!isPlanoManual} // Habilitado apenas para planos manuais
@@ -433,6 +442,35 @@ export function PlanoAcaoForm({
               )}
             />
           </div>
+
+          {/* Campo Causa - obrigatório quando data_conclusao preenchida */}
+          <FormField
+            control={form.control}
+            name="causa"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Causa Raiz do Problema
+                  {form.watch('data_conclusao') && <span className="text-red-500 ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Descreva a causa raiz identificada do problema relatado pelo cliente..."
+                    rows={3}
+                    className={form.formState.errors.causa 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                    }
+                  />
+                </FormControl>
+                <p className="text-xs text-gray-500">
+                  Campo obrigatório quando a data de conclusão estiver preenchida
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Botões */}

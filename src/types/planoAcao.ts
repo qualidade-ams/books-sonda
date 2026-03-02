@@ -17,6 +17,7 @@ export interface PlanoAcao {
   empresa_id?: string;
   data_resposta?: string; // Data de resposta da pesquisa (copiada para facilitar filtros)
   comentario_cliente?: string; // NOVO: Comentário do cliente (antigo descricao_acao_corretiva)
+  causa?: string; // NOVO: Causa raiz do problema (obrigatório quando data_conclusao preenchida)
   descricao_acao_corretiva: string; // NOVO: Descrição da ação corretiva (campo em branco)
   acao_preventiva?: string;
   prioridade: PrioridadePlano;
@@ -66,6 +67,7 @@ export interface PlanoAcaoFormData {
   chamado?: string;
   empresa_id?: string;
   comentario_cliente?: string; // NOVO: Comentário do cliente
+  causa?: string; // NOVO: Causa raiz do problema (obrigatório quando data_conclusao preenchida)
   descricao_acao_corretiva: string; // NOVO: Descrição da ação corretiva (campo em branco)
   acao_preventiva?: string;
   prioridade: PrioridadePlano;
