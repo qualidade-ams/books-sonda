@@ -355,6 +355,174 @@ export function aplicarFechamento(
  * 
  * **Validates: Requirements 6.10, 6.11, 7.1-7.8, 8.1-8.9**
  */
+
+/**
+ * Calcula o repasse por período (novo sistema)
+ * 
+ * Sistema de repasse diferenciado por período:
+ * - Dentro do período: aplica percentual_dentro_periodo
+ * - Entre períodos: aplica percentual_entre_periodos
+ * - Ao completar todos os períodos: zera o saldo
+ * 
+ * @param saldo - Saldo do mês em formato HH:MM
+ * @param mes - Mês atual (1-12)
+ * @param ano - Ano atual
+ * @param inicioVigencia - Data de início da vigência do contrato
+ * @param duracaoPeriodoMeses - Duração de cada período em meses (ex: 3 para trimestral)
+ * @param percentualDentroPeriodo - Percentual de repasse dentro do mesmo período
+ * @param percentualEntrePeriodos - Percentual de repasse entre períodos
+ * @param periodosAteZerar - Quantidade de períodos até zerar o saldo
+ * @returns Resultado do repasse com informações sobre o período
+ * 
+ * @example
+ * // Mês 1 → Mês 2 (dentro do trimestre): repassa 100%
+ * calcularRepassePorPeriodo('10:00', 2, 2026, new Date('2026-01-01'), 3, 100, 70, 2)
+ * // { repasse: '10:00', isFimPeriodo: false, gerarExcedente: false, isTransicaoPeriodo: false }
+ * 
+ * @example
+ * // Mês 3 → Mês 4 (fim do trimestre 1, início do trimestre 2): repassa 70%
+ * calcularRepassePorPeriodo('10:00', 4, 2026, new Date('2026-01-01'), 3, 100, 70, 2)
+ * // { repasse: '7:00', isFimPeriodo: false, gerarExcedente: false, isTransicaoPeriodo: true }
+ * 
+ * @example
+ * // Mês 6 → Mês 7 (fim do semestre): zera o saldo
+ * calcularRepassePorPeriodo('10:00', 7, 2026, new Date('2026-01-01'), 3, 100, 70, 2)
+ * // { repasse: '0:00', isFimPeriodo: true, gerarExcedente: false, isTransicaoPeriodo: false }
+ */
+export function calcularRepassePorPeriodo(
+  saldo: string,
+  mes: number,
+  ano: number,
+  inicioVigencia: Date,
+  duracaoPeriodoMeses: number,
+  percentualDentroPeriodo: number,
+  percentualEntrePeriodos: number,
+  periodosAteZerar: number
+): ResultadoRepasse & { isTransicaoPeriodo: boolean } {
+  // 🔍 LOG: Parâmetros recebidos
+  console.log('🔍 [calcularRepassePorPeriodo] Parâmetros recebidos:', {
+    saldo,
+    mes,
+    ano,
+    inicioVigencia: inicioVigencia.toISOString(),
+    duracaoPeriodoMeses,
+    percentualDentroPeriodo,
+    percentualEntrePeriodos,
+    periodosAteZerar
+  });
+  
+  // Calcular quantos meses se passaram desde o início da vigência
+  const mesInicio = inicioVigencia.getUTCMonth() + 1;
+  const anoInicio = inicioVigencia.getUTCFullYear();
+  
+  // CORREÇÃO CRÍTICA: Calcular meses passados considerando que o primeiro mês é 0
+  // Se inicio_vigencia = 2025-01-01 e estamos em jan/2026:
+  // - Diferença de anos: (2026 - 2025) = 1 ano = 12 meses
+  // - Diferença de meses: (1 - 1) = 0 meses
+  // - Total: 12 meses passados desde jan/2025
+  // - Mas queremos que jan/2026 seja o mês 0 do cálculo!
+  // 
+  // SOLUÇÃO: Considerar que o primeiro mês de cálculo é o mês 0
+  // Se inicio_vigencia = 2025-01-01, então:
+  // - jan/2025 = mês 0 (não calculado ainda)
+  // - fev/2025 = mês 1 (não calculado ainda)
+  // - ...
+  // - jan/2026 = mês 12 (primeiro mês calculado) → deve ser tratado como mês 0
+  //
+  // NOVA LÓGICA: Subtrair 12 meses se o ano de cálculo for diferente do ano de início
+  let mesesPassados = ((ano - anoInicio) * 12) + (mes - mesInicio);
+  
+  // Se estamos calculando um ano diferente do início da vigência,
+  // ajustar para que o primeiro mês de cálculo seja 0
+  if (ano > anoInicio) {
+    // Exemplo: inicio_vigencia = 2025-01-01, calculando jan/2026
+    // mesesPassados = 12, mas queremos que seja 0
+    // Então subtraímos 12 (1 ano completo)
+    mesesPassados = mesesPassados - 12;
+  }
+  
+  console.log('🔍 [calcularRepassePorPeriodo] DEBUG Cálculo de meses:', {
+    mesInicio,
+    anoInicio,
+    mesAtual: mes,
+    anoAtual: ano,
+    calculo: `((${ano} - ${anoInicio}) * 12) + (${mes} - ${mesInicio})`,
+    mesesPassadosOriginal: ((ano - anoInicio) * 12) + (mes - mesInicio),
+    ajuste: ano > anoInicio ? '-12 meses (ano diferente)' : 'sem ajuste',
+    mesesPassadosAjustado: mesesPassados
+  });
+  
+  // Calcular em qual período estamos (0-indexed)
+  const periodoAtual = Math.floor(mesesPassados / duracaoPeriodoMeses);
+  
+  // Calcular posição dentro do período atual (0-indexed)
+  const posicaoDentroPeriodo = mesesPassados % duracaoPeriodoMeses;
+  
+  // Verificar se é o último mês do período (transição para próximo período)
+  const isUltimoMesPeriodo = posicaoDentroPeriodo === (duracaoPeriodoMeses - 1);
+  
+  // CORREÇÃO CRÍTICA: O ciclo deve se repetir a cada X períodos
+  // Exemplo: periodosAteZerar = 2 (2 trimestres = 1 semestre)
+  // - Período 0 (meses 0-2): não zera
+  // - Período 1 (meses 3-5): zera em junho (fim do 1º semestre)
+  // - Período 2 (meses 6-8): não zera (início do 2º semestre)
+  // - Período 3 (meses 9-11): zera em dezembro (fim do 2º semestre)
+  // - Período 4 (meses 12-14): não zera (início do 3º semestre)
+  // - E assim por diante...
+  //
+  // SOLUÇÃO: Usar módulo para verificar se está no último período do ciclo
+  const periodoNoCiclo = periodoAtual % periodosAteZerar;
+  const isUltimoPeriodoDoCiclo = (periodoNoCiclo + 1) === periodosAteZerar;
+  const completouTodosPeriodos = isUltimoPeriodoDoCiclo && isUltimoMesPeriodo;
+  
+  console.log('🔄 [calcularRepassePorPeriodo] Análise do período:', {
+    mes_atual: `${mes}/${ano}`,
+    meses_passados: mesesPassados,
+    periodo_atual: periodoAtual + 1,
+    periodo_no_ciclo: periodoNoCiclo + 1,
+    posicao_dentro_periodo: posicaoDentroPeriodo + 1,
+    duracao_periodo: duracaoPeriodoMeses,
+    is_ultimo_mes_periodo: isUltimoMesPeriodo,
+    is_ultimo_periodo_do_ciclo: isUltimoPeriodoDoCiclo,
+    completou_todos_periodos: completouTodosPeriodos,
+    periodos_ate_zerar: periodosAteZerar,
+    '🔍 DEBUG': `Período ${periodoAtual + 1} (ciclo: ${periodoNoCiclo + 1}/${periodosAteZerar}) - ${completouTodosPeriodos ? 'ZERAR' : isUltimoMesPeriodo ? 'TRANSIÇÃO' : 'NORMAL'}`
+  });
+  
+  // Se completou todos os períodos, zera o saldo
+  if (completouTodosPeriodos) {
+    console.log('✅ Completou todos os períodos - ZERANDO SALDO');
+    return {
+      repasse: '0:00',
+      isFimPeriodo: true,
+      gerarExcedente: false,
+      isTransicaoPeriodo: false
+    };
+  }
+  
+  // Se é último mês do período (transição), aplica percentual entre períodos
+  if (isUltimoMesPeriodo) {
+    const repasse = calcularRepasse(saldo, percentualEntrePeriodos);
+    console.log(`🔀 Transição de período ${periodoAtual + 1} → ${periodoAtual + 2}: repasse ${percentualEntrePeriodos}% de ${saldo} = ${repasse}`);
+    return {
+      repasse,
+      isFimPeriodo: false,
+      gerarExcedente: false,
+      isTransicaoPeriodo: true
+    };
+  }
+  
+  // Dentro do mesmo período, aplica percentual dentro do período
+  const repasse = calcularRepasse(saldo, percentualDentroPeriodo);
+  console.log(`➡️ Dentro do período ${periodoAtual + 1}: repasse ${percentualDentroPeriodo}% de ${saldo} = ${repasse}`);
+  return {
+    repasse,
+    isFimPeriodo: false,
+    gerarExcedente: false,
+    isTransicaoPeriodo: false
+  };
+}
+
 export function calcularRepasseCompleto(
   saldo: string,
   mes: number,

@@ -83,9 +83,15 @@ interface ParametrosEmpresa {
   baseline_horas_mensal?: string;
   baseline_tickets_mensal?: number;
   possui_repasse_especial: boolean;
+  tipo_repasse_especial?: 'simples' | 'por_periodo';
   ciclos_para_zerar: number;
   percentual_repasse_mensal: number;
   percentual_repasse_especial?: number;
+  // NOVO: Configuração de repasse por período
+  duracao_periodo_meses?: number;
+  percentual_dentro_periodo?: number;
+  percentual_entre_periodos?: number;
+  periodos_ate_zerar?: number;
   ciclo_atual: number;
 }
 
@@ -273,36 +279,100 @@ export class BancoHorasService {
 
       // 10. Calcular repasse
       console.log('📊 Percentual de repasse configurado:', {
+        tipo_repasse_especial: parametros.tipo_repasse_especial,
         percentual_repasse_mensal: parametros.percentual_repasse_mensal,
         percentual_repasse_especial: parametros.percentual_repasse_especial,
-        possui_repasse_especial: parametros.possui_repasse_especial
+        possui_repasse_especial: parametros.possui_repasse_especial,
+        duracao_periodo_meses: parametros.duracao_periodo_meses,
+        percentual_dentro_periodo: parametros.percentual_dentro_periodo,
+        percentual_entre_periodos: parametros.percentual_entre_periodos,
+        periodos_ate_zerar: parametros.periodos_ate_zerar
       });
       
-      const resultadoRepasseHoras = repasseService.calcularRepasseCompleto(
-        saldoHoras,
-        mes,
-        ano,
-        parametros.inicio_vigencia,
-        parametros.periodo_apuracao,
-        parametros.percentual_repasse_mensal,
-        parametros.possui_repasse_especial,
-        parametros.ciclo_atual,
-        parametros.ciclos_para_zerar,
-        parametros.percentual_repasse_especial || 100
-      );
+      let resultadoRepasseHoras: any;
+      let resultadoRepasseTickets: any;
+      
+      // 🔍 LOG: Verificar parâmetros de repasse
+      console.log('🔍 [calcularSaldoMensal] Verificando tipo de repasse:', {
+        possui_repasse_especial: parametros.possui_repasse_especial,
+        tipo_repasse_especial: parametros.tipo_repasse_especial,
+        duracao_periodo_meses: parametros.duracao_periodo_meses,
+        percentual_dentro_periodo: parametros.percentual_dentro_periodo,
+        percentual_entre_periodos: parametros.percentual_entre_periodos,
+        periodos_ate_zerar: parametros.periodos_ate_zerar
+      });
+      
+      // Verificar se usa repasse por período
+      const usaRepassePorPeriodo = parametros.possui_repasse_especial && 
+                                    parametros.tipo_repasse_especial === 'por_periodo' &&
+                                    parametros.duracao_periodo_meses &&
+                                    parametros.percentual_dentro_periodo !== undefined &&
+                                    parametros.percentual_entre_periodos !== undefined &&
+                                    parametros.periodos_ate_zerar;
+      
+      console.log(`🎯 [calcularSaldoMensal] Tipo de repasse detectado: ${usaRepassePorPeriodo ? 'POR PERÍODO' : 'SIMPLES'}`);
+      
+      if (usaRepassePorPeriodo) {
+        console.log('🔄 Usando REPASSE POR PERÍODO com parâmetros:', {
+          duracao_periodo_meses: parametros.duracao_periodo_meses,
+          percentual_dentro_periodo: parametros.percentual_dentro_periodo,
+          percentual_entre_periodos: parametros.percentual_entre_periodos,
+          periodos_ate_zerar: parametros.periodos_ate_zerar
+        });
+        
+        // Importar função de repasse por período
+        const { calcularRepassePorPeriodo } = await import('./bancoHorasRepasseService');
+        
+        resultadoRepasseHoras = calcularRepassePorPeriodo(
+          saldoHoras,
+          mes,
+          ano,
+          parametros.inicio_vigencia,
+          parametros.duracao_periodo_meses!,
+          parametros.percentual_dentro_periodo!,
+          parametros.percentual_entre_periodos!,
+          parametros.periodos_ate_zerar!
+        );
+        
+        resultadoRepasseTickets = calcularRepassePorPeriodo(
+          saldoTickets.toString(),
+          mes,
+          ano,
+          parametros.inicio_vigencia,
+          parametros.duracao_periodo_meses!,
+          parametros.percentual_dentro_periodo!,
+          parametros.percentual_entre_periodos!,
+          parametros.periodos_ate_zerar!
+        );
+      } else {
+        console.log('🔄 Usando REPASSE SIMPLES');
+        
+        resultadoRepasseHoras = repasseService.calcularRepasseCompleto(
+          saldoHoras,
+          mes,
+          ano,
+          parametros.inicio_vigencia,
+          parametros.periodo_apuracao,
+          parametros.percentual_repasse_mensal,
+          parametros.possui_repasse_especial,
+          parametros.ciclo_atual,
+          parametros.ciclos_para_zerar,
+          parametros.percentual_repasse_especial || 100
+        );
 
-      const resultadoRepasseTickets = repasseService.calcularRepasseCompleto(
-        saldoTickets.toString(),
-        mes,
-        ano,
-        parametros.inicio_vigencia,
-        parametros.periodo_apuracao,
-        parametros.percentual_repasse_mensal,
-        parametros.possui_repasse_especial,
-        parametros.ciclo_atual,
-        parametros.ciclos_para_zerar,
-        parametros.percentual_repasse_especial || 100
-      );
+        resultadoRepasseTickets = repasseService.calcularRepasseCompleto(
+          saldoTickets.toString(),
+          mes,
+          ano,
+          parametros.inicio_vigencia,
+          parametros.periodo_apuracao,
+          parametros.percentual_repasse_mensal,
+          parametros.possui_repasse_especial,
+          parametros.ciclo_atual,
+          parametros.ciclos_para_zerar,
+          parametros.percentual_repasse_especial || 100
+        );
+      }
 
       console.log('🔄 Repasse:', {
         mesAtual: `${mes}/${ano}`,
@@ -718,9 +788,14 @@ export class BancoHorasService {
         baseline_horas_mensal,
         baseline_tickets_mensal,
         possui_repasse_especial,
+        tipo_repasse_especial,
         ciclos_para_zerar,
         percentual_repasse_mensal,
         percentual_repasse_especial,
+        duracao_periodo_meses,
+        percentual_dentro_periodo,
+        percentual_entre_periodos,
+        periodos_ate_zerar,
         ciclo_atual
       `)
       .eq('id', empresaId)
@@ -733,6 +808,17 @@ export class BancoHorasService {
         { empresaId }
       );
     }
+
+    // 🔍 LOG: Verificar se campos de repasse por período estão vindo do banco
+    console.log('🔍 [buscarParametrosEmpresa] Dados da empresa carregados:', {
+      empresaId: empresa.id,
+      possui_repasse_especial: empresa.possui_repasse_especial,
+      tipo_repasse_especial: empresa.tipo_repasse_especial,
+      duracao_periodo_meses: empresa.duracao_periodo_meses,
+      percentual_dentro_periodo: empresa.percentual_dentro_periodo,
+      percentual_entre_periodos: empresa.percentual_entre_periodos,
+      periodos_ate_zerar: empresa.periodos_ate_zerar
+    });
 
     // Validar parâmetros obrigatórios
     if (!empresa.tipo_contrato) {
@@ -833,9 +919,15 @@ export class BancoHorasService {
       baseline_horas_mensal: baselineHorasMensal,
       baseline_tickets_mensal: baselineTicketsMensal,
       possui_repasse_especial: empresa.possui_repasse_especial || false,
+      tipo_repasse_especial: empresa.tipo_repasse_especial as 'simples' | 'por_periodo' || 'simples',
       ciclos_para_zerar: empresa.ciclos_para_zerar || 1,
       percentual_repasse_mensal: empresa.percentual_repasse_mensal ?? 100, // Padrão 100% se não configurado
       percentual_repasse_especial: empresa.percentual_repasse_especial ?? 100, // Padrão 100% se não configurado
+      // NOVO: Configuração de repasse por período
+      duracao_periodo_meses: empresa.duracao_periodo_meses || undefined,
+      percentual_dentro_periodo: empresa.percentual_dentro_periodo || undefined,
+      percentual_entre_periodos: empresa.percentual_entre_periodos || undefined,
+      periodos_ate_zerar: empresa.periodos_ate_zerar || undefined,
       ciclo_atual: this.calcularCicloAtual(
         mes || new Date().getMonth() + 1,
         ano || new Date().getFullYear(),
