@@ -34,7 +34,10 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
 
       // Buscar empresas ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       // E que tenham vigência inicial <= período de referência
@@ -242,7 +245,10 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
 
       // Buscar empresas selecionadas e ativas que têm AMS E são do tipo Qualidade E não têm book personalizado
       // E que tenham vigência inicial <= período de referência
@@ -577,7 +583,10 @@ class BooksDisparoService {
       // Converter para formato final, aplicando filtro de vigência inicial
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`);
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`);
 
       const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
         .filter(empresaData => {
@@ -627,7 +636,10 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
 
       // Buscar empresas ativas com book personalizado
       // E que tenham vigência inicial <= período de referência
@@ -831,7 +843,10 @@ class BooksDisparoService {
       // Calcular período de referência (mês anterior ao mês de disparo)
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`;
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = `${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`;
 
       // Buscar empresas selecionadas e ativas com book personalizado
       // E que tenham vigência inicial <= período de referência
@@ -1406,7 +1421,10 @@ class BooksDisparoService {
       // Converter para formato final, aplicando filtro de vigência inicial
       const mesReferencia = mes === 1 ? 12 : mes - 1;
       const anoReferencia = mes === 1 ? ano - 1 : ano;
-      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-31`);
+      
+      // Obter o último dia válido do mês de referência
+      const ultimoDiaMes = new Date(anoReferencia, mesReferencia, 0).getDate();
+      const dataReferenciaFim = new Date(`${anoReferencia}-${mesReferencia.toString().padStart(2, '0')}-${ultimoDiaMes.toString().padStart(2, '0')}`);
 
       const statusMensal: StatusMensal[] = Array.from(empresasMap.values())
         .filter(empresaData => {
