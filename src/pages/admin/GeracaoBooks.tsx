@@ -518,9 +518,14 @@ export default function GeracaoBooks() {
                             <div className="font-medium text-gray-900 truncate">
                               {book.empresa_nome}
                             </div>
-                            {book.data_geracao && (
+                            {book.status === 'pendente' && (
                               <div className="text-xs text-gray-500 mt-0.5">
                                 Aguardando geração
+                              </div>
+                            )}
+                            {book.status === 'gerado' && book.data_geracao && (
+                              <div className="text-xs text-green-600 mt-0.5">
+                                Gerado em {new Date(book.data_geracao).toLocaleDateString('pt-BR')}
                               </div>
                             )}
                           </div>

@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "devCommand": "vite --port 3000 --host",
   "functions": {
     "api/pdf/generate.ts": {
       "memory": 1024,
