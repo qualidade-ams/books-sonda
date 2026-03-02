@@ -188,17 +188,17 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
       {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* 1. CONSUMO TOTAL - Primeiro */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+              </div>
               CONSUMO TOTAL
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-              <div className="text-3xl font-bold text-purple-600">{consumoTotal}</div>
-            </div>
+            <div className="text-3xl font-bold text-black">{consumoTotal}</div>
             <div className="text-xs text-gray-600 mt-2">
               Consumo + Requerimentos
             </div>
@@ -206,17 +206,17 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* 2. HORAS CONSUMO */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-blue-600" />
+              </div>
               HORAS CONSUMO
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              <div className="text-3xl font-bold text-blue-600">{formatarHorasSemSegundos(data.horas_consumo) || '00:00'}</div>
-            </div>
+            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.horas_consumo) || '00:00'}</div>
             <div className="text-xs text-green-600 mt-2">
               ↑ 12% em relação ao mês anterior
             </div>
@@ -224,17 +224,17 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* 3. HORAS REQUERIMENTOS - Logo após Horas Consumo */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-orange-600" />
+              </div>
               HORAS REQUERIMENTOS
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-orange-600" />
-              <div className="text-3xl font-bold text-orange-600">{totalHorasRequerimentos}</div>
-            </div>
+            <div className="text-3xl font-bold text-black">{totalHorasRequerimentos}</div>
             <div className="text-xs text-gray-600 mt-2">
               {data.requerimentos_descontados?.length || 0} requerimento(s)
             </div>
@@ -242,17 +242,17 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* 4. BASELINE DE APL */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+              </div>
               BASELINE DE APL
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-              <div className="text-3xl font-bold text-purple-600">{formatarHorasSemSegundos(data.baseline_apl) || '00:00'}</div>
-            </div>
+            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.baseline_apl) || '00:00'}</div>
             <div className="mt-2">
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
@@ -265,29 +265,30 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* 5. INCIDENTE */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                )}
+              </div>
               INCIDENTE
             </CardTitle>
           </CardHeader>
           <CardContent>
             {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
               <>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                  <div className="text-3xl font-bold text-blue-600">00:00</div>
-                </div>
+                <div className="text-3xl font-bold text-black">00:00</div>
                 <div className="text-xs text-gray-600 mt-2">
                   0% do total consumido
                 </div>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
-                  <div className="text-3xl font-bold text-blue-600">{formatarHorasSemSegundos(data.incidente)}</div>
-                </div>
+                <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.incidente)}</div>
                 <div className="text-xs text-gray-600 mt-2">
                   {data.percentual_incidente || 0}% do total consumido
                 </div>
@@ -297,17 +298,17 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* 6. SOLICITAÇÃO */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </div>
               SOLICITAÇÃO
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-blue-600" />
-              <div className="text-3xl font-bold text-blue-600">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
-            </div>
+            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
             <div className="text-xs text-gray-600 mt-2">
               {data.percentual_solicitacao || 0}% do total consumido
             </div>
@@ -318,7 +319,7 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico: Histórico de Consumo Mensal */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader>
             <CardTitle className="text-base font-semibold">Horas Mês</CardTitle>
             <p className="text-xs text-gray-500">Histórico de consumo mensal em 2025</p>
@@ -477,7 +478,7 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
         </Card>
 
         {/* Card: Requerimentos Descontados */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FileText className="h-4 w-4" />

@@ -61,9 +61,9 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         {/* Coluna Esquerda: SLA | META DE ATENDIMENTO + Cards de Métricas */}
         <div className="space-y-6">
           {/* Card: SLA | Meta de Atendimento */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-gray-600">
                 SLA | META DE ATENDIMENTO
               </CardTitle>
             </CardHeader>
@@ -132,46 +132,52 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
 
           {/* Cards de Métricas - Abaixo do SLA */}
           <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
-                    <CheckCircle2 className="h-6 w-6 text-blue-600" />
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
                   </div>
-                  <div className="text-3xl font-bold text-blue-600">{data.fechados}</div>
-                  <div className="text-xs text-gray-500 mt-1">FECHADOS</div>
-                </div>
+                  FECHADOS
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-black">{data.fechados}</div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-2">
-                    <AlertCircle className="h-6 w-6 text-yellow-600" />
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
-                  <div className="text-3xl font-bold text-yellow-600">{data.incidentes}</div>
-                  <div className="text-xs text-gray-500 mt-1">INCIDENTES</div>
-                </div>
+                  INCIDENTES
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-black">{data.incidentes}</div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
-                    <XCircle className="h-6 w-6 text-red-600" />
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+                    <XCircle className="h-4 w-4 text-red-600" />
                   </div>
-                  <div className="text-3xl font-bold text-red-600">{data.violados}</div>
-                  <div className="text-xs text-gray-500 mt-1">VIOLADOS</div>
-                </div>
+                  VIOLADOS
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-black">{data.violados}</div>
               </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Coluna Direita: Gráfico SLA Histórico */}
-        <Card>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader>
             <CardTitle className="text-base font-semibold">SLA HISTÓRICO | MENSAL</CardTitle>
             <div className="flex items-center gap-4 text-xs mt-2">
@@ -250,7 +256,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
       </div>
 
       {/* Tabela: Chamados Violados */}
-      <Card>
+      <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -277,28 +283,30 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-blue-600 text-white hover:bg-gray-400">
-                  <TableHead className="text-white text-center font-semibold">CHAMADO</TableHead>
-                  <TableHead className="text-white text-center font-semibold">TIPO</TableHead>
-                  <TableHead className="text-white text-center font-semibold">ABERTURA</TableHead>
-                  <TableHead className="text-white text-center font-semibold">SOLUÇÃO</TableHead>
-                  <TableHead className="text-white text-center font-semibold">GRUPO</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.chamados_violados.map((chamado, index) => (
-                  <TableRow key={index} className="hover:bg-gray-50">
-                    <TableCell className="font-medium text-center text-blue-600">{chamado.id_chamado}</TableCell>
-                    <TableCell className='text-center'>{chamado.tipo}</TableCell>
-                    <TableCell className='text-center'>{chamado.data_abertura}</TableCell>
-                    <TableCell className='text-center'>{chamado.data_solucao}</TableCell>
-                    <TableCell className='text-center'>{chamado.grupo_atendedor}</TableCell>
+            <div style={{ borderRadius: '35.5px', overflow: 'hidden' }}>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>CHAMADO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>TIPO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>ABERTURA</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>SOLUÇÃO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>GRUPO</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.chamados_violados.map((chamado, index) => (
+                    <TableRow key={index} className="hover:bg-gray-50">
+                      <TableCell className="font-medium text-center text-blue-600">{chamado.id_chamado}</TableCell>
+                      <TableCell className='text-center'>{chamado.tipo}</TableCell>
+                      <TableCell className='text-center'>{chamado.data_abertura}</TableCell>
+                      <TableCell className='text-center'>{chamado.data_solucao}</TableCell>
+                      <TableCell className='text-center'>{chamado.grupo_atendedor}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
