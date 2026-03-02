@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Pesquisa, EstatisticasPesquisas } from '@/types/pesquisasSatisfacao';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExportResult {
   success: boolean;
@@ -27,13 +28,75 @@ function formatarData(data: string | null): string {
 }
 
 /**
+ * Buscar empresas cadastradas para fazer de-para
+ */
+async function buscarEmpresasParaDePara(): Promise<Map<string, string>> {
+  const empresasMap = new Map<string, string>();
+  
+  try {
+    const { data: empresas, error } = await supabase
+      .from('empresas_clientes')
+      .select('nome_completo, nome_abreviado')
+      .eq('status', 'ativo');
+
+    if (error) {
+      console.error('Erro ao buscar empresas:', error);
+      return empresasMap;
+    }
+
+    if (empresas) {
+      empresas.forEach(empresa => {
+        if (empresa.nome_completo && empresa.nome_abreviado) {
+          // Normalizar nome completo para comparação (uppercase e trim)
+          const nomeNormalizado = empresa.nome_completo.toUpperCase().trim();
+          empresasMap.set(nomeNormalizado, empresa.nome_abreviado);
+        }
+      });
+    }
+
+    console.log(`📋 Carregadas ${empresasMap.size} empresas para de-para`);
+  } catch (error) {
+    console.error('Erro ao buscar empresas:', error);
+  }
+
+  return empresasMap;
+}
+
+/**
+ * Obter nome abreviado da empresa fazendo de-para
+ */
+function obterNomeAbreviado(nomeCompleto: string, empresasMap: Map<string, string>): string {
+  if (!nomeCompleto) return '-';
+  
+  const nomeNormalizado = nomeCompleto.toUpperCase().trim();
+  
+  // Caso especial: SONDA INTERNO
+  if (nomeNormalizado === 'SONDA INTERNO') {
+    return 'SONDA INTERNO';
+  }
+  
+  const nomeAbreviado = empresasMap.get(nomeNormalizado);
+  
+  if (nomeAbreviado) {
+    console.log(`✅ De-para: "${nomeCompleto}" → "${nomeAbreviado}"`);
+    return nomeAbreviado;
+  }
+  
+  console.log(`⚠️ Empresa não encontrada no cadastro: "${nomeCompleto}"`);
+  return '-';
+}
+
+/**
  * Exportar pesquisas para Excel
  */
-export function exportarPesquisasExcel(
+export async function exportarPesquisasExcel(
   pesquisas: Pesquisa[],
   estatisticas: EstatisticasPesquisas
-): ExportResult {
+): Promise<ExportResult> {
   try {
+    // Buscar empresas para fazer de-para
+    const empresasMap = await buscarEmpresasParaDePara();
+    
     // Criar workbook
     const wb = XLSX.utils.book_new();
 
@@ -71,6 +134,7 @@ export function exportarPesquisasExcel(
     const dadosExport = pesquisas.map(p => ({
       'Origem': p.origem === 'sql_server' ? 'SQL Server' : 'Manual',
       'Empresa': p.empresa,
+      'Nome Abreviado': obterNomeAbreviado(p.empresa, empresasMap),
       'Cliente': p.cliente,
       'Categoria': p.categoria || '-',
       'Grupo': p.grupo || '-',
@@ -93,6 +157,7 @@ export function exportarPesquisasExcel(
     wsDados['!cols'] = [
       { wch: 12 }, // Origem
       { wch: 35 }, // Empresa
+      { wch: 20 }, // Nome Abreviado
       { wch: 30 }, // Cliente
       { wch: 25 }, // Categoria
       { wch: 25 }, // Grupo
@@ -132,11 +197,14 @@ export function exportarPesquisasExcel(
 /**
  * Exportar pesquisas para PDF
  */
-export function exportarPesquisasPDF(
+export async function exportarPesquisasPDF(
   pesquisas: Pesquisa[],
   estatisticas: EstatisticasPesquisas
-): ExportResult {
+): Promise<ExportResult> {
   try {
+    // Buscar empresas para fazer de-para
+    const empresasMap = await buscarEmpresasParaDePara();
+    
     const doc = new jsPDF('portrait', 'mm', 'a4');
     const corAzulSonda = '#2563eb';
     let yPos = 20;
@@ -236,7 +304,8 @@ export function exportarPesquisasPDF(
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      const idPesquisa = pesquisa.nro_caso || `PS-${pesquisa.id.substring(0, 8)}`;
+      // Se for manual e não tiver nro_caso, exibir "-" em vez do ID
+      const idPesquisa = pesquisa.nro_caso || (pesquisa.origem === 'manual' ? '-' : `PS-${pesquisa.id.substring(0, 8)}`);
       doc.text(idPesquisa, 25, cardY);
       
       // Tipo no canto direito (estilo "Banco de Horas")
@@ -262,25 +331,37 @@ export function exportarPesquisasPDF(
 
       // Linha 3: Empresa e categoria
       doc.text(`Empresa: ${pesquisa.empresa}`, 25, cardY);
-      if (pesquisa.categoria) {
-        doc.text(`Categoria: ${pesquisa.categoria}`, 120, cardY);
+      const nomeAbreviado = obterNomeAbreviado(pesquisa.empresa, empresasMap);
+      if (nomeAbreviado !== '-') {
+        doc.text(`Nome Abreviado: ${nomeAbreviado}`, 120, cardY);
       }
 
       cardY += 5;
 
-      // Linha 4: Comentário (truncado)
+      // Linha 4: Categoria
+      if (pesquisa.categoria) {
+        doc.text(`Categoria: ${pesquisa.categoria}`, 25, cardY);
+        cardY += 5;
+      }
+
+      // Linha 5: Comentário (truncado)
       if (pesquisa.comentario_pesquisa) {
-        const comentario = pesquisa.comentario_pesquisa.length > 70 
-          ? pesquisa.comentario_pesquisa.substring(0, 70) + '...'
+        // Truncar comentário para caber no card (máximo 80 caracteres para evitar sobreposição)
+        const comentario = pesquisa.comentario_pesquisa.length > 80 
+          ? pesquisa.comentario_pesquisa.substring(0, 80) + '...'
           : pesquisa.comentario_pesquisa;
         doc.setFontSize(8);
         doc.setTextColor(80, 80, 80);
-        doc.text(`Descrição: ${comentario}`, 25, cardY);
+        // Usar splitTextToSize para quebrar linha se necessário
+        const linhasComentario = doc.splitTextToSize(`Descrição: ${comentario}`, 165);
+        doc.text(linhasComentario, 25, cardY);
+        // Ajustar cardY baseado no número de linhas
+        cardY += linhasComentario.length * 3.5;
+      } else {
+        cardY += 5;
       }
 
-      cardY += 5;
-
-      // Linha 5: Data e autor (estilo similar ao "Envio: 12/12/2025 | Autor: Willian Betin Faria")
+      // Linha 6: Data e autor (estilo similar ao "Envio: 12/12/2025 | Autor: Willian Betin Faria")
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
       let infoLinha = '';
