@@ -91,9 +91,15 @@ export class EmpresasClientesService {
       baseline_horas_mensal: data.baseline_horas_mensal || null,
       baseline_tickets_mensal: data.baseline_tickets_mensal || null,
       possui_repasse_especial: data.possui_repasse_especial || false,
+      tipo_repasse_especial: data.tipo_repasse_especial || 'simples',
       ciclos_para_zerar: data.ciclos_para_zerar || null,
       percentual_repasse_mensal: data.percentual_repasse_mensal || null,
       percentual_repasse_especial: data.percentual_repasse_especial || null,
+      // NOVO: Configuração de repasse por período
+      duracao_periodo_meses: data.duracao_periodo_meses || null,
+      percentual_dentro_periodo: data.percentual_dentro_periodo || null,
+      percentual_entre_periodos: data.percentual_entre_periodos || null,
+      periodos_ate_zerar: data.periodos_ate_zerar || null,
       // NOVO: Campos de Meta SLA
       meta_sla_percentual: data.meta_sla_percentual || null,
       quantidade_minima_chamados_sla: data.quantidade_minima_chamados_sla || null,
@@ -529,9 +535,15 @@ export class EmpresasClientesService {
       if (data.baseline_horas_mensal !== undefined) updateData.baseline_horas_mensal = data.baseline_horas_mensal || null;
       if (data.baseline_tickets_mensal !== undefined) updateData.baseline_tickets_mensal = data.baseline_tickets_mensal || null;
       if (data.possui_repasse_especial !== undefined) updateData.possui_repasse_especial = data.possui_repasse_especial;
+      if (data.tipo_repasse_especial !== undefined) updateData.tipo_repasse_especial = data.tipo_repasse_especial || 'simples';
       if (data.ciclos_para_zerar !== undefined) updateData.ciclos_para_zerar = data.ciclos_para_zerar || null;
       if (data.percentual_repasse_mensal !== undefined) updateData.percentual_repasse_mensal = data.percentual_repasse_mensal || null;
       if (data.percentual_repasse_especial !== undefined) updateData.percentual_repasse_especial = data.percentual_repasse_especial || null;
+      // NOVO: Configuração de repasse por período
+      if (data.duracao_periodo_meses !== undefined) updateData.duracao_periodo_meses = data.duracao_periodo_meses || null;
+      if (data.percentual_dentro_periodo !== undefined) updateData.percentual_dentro_periodo = data.percentual_dentro_periodo || null;
+      if (data.percentual_entre_periodos !== undefined) updateData.percentual_entre_periodos = data.percentual_entre_periodos || null;
+      if (data.periodos_ate_zerar !== undefined) updateData.periodos_ate_zerar = data.periodos_ate_zerar || null;
 
       // NOVO: Incluir campos de Meta SLA
       if (data.meta_sla_percentual !== undefined) updateData.meta_sla_percentual = data.meta_sla_percentual || null;

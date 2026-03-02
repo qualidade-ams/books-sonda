@@ -99,9 +99,15 @@ const empresaSchema = z.object({
   baseline_horas_mensal: z.string().optional(),
   baseline_tickets_mensal: z.number().min(0).max(99999.99).optional(),
   possui_repasse_especial: z.boolean().optional(),
+  tipo_repasse_especial: z.enum(['simples', 'por_periodo']).optional(),
   ciclos_para_zerar: z.number().int().min(1).max(12).optional(),
   percentual_repasse_mensal: z.number().int().min(0).max(100).optional(),
   percentual_repasse_especial: z.number().int().min(0).max(100).optional(),
+  // NOVO: Configuração de repasse por período
+  duracao_periodo_meses: z.number().int().min(1).max(12).optional(),
+  percentual_dentro_periodo: z.number().int().min(0).max(100).optional(),
+  percentual_entre_periodos: z.number().int().min(0).max(100).optional(),
+  periodos_ate_zerar: z.number().int().min(1).max(12).optional(),
   
   // NOVO: Campos de Meta SLA
   meta_sla_percentual: z.number().min(0).max(100).optional(),
@@ -316,9 +322,15 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       baseline_horas_mensal: '00:00',
       baseline_tickets_mensal: undefined,
       possui_repasse_especial: false,
+      tipo_repasse_especial: 'simples',
       ciclos_para_zerar: 1,
       percentual_repasse_mensal: 0,
       percentual_repasse_especial: 0,
+      // NOVO: Configuração de repasse por período
+      duracao_periodo_meses: 3,
+      percentual_dentro_periodo: 100,
+      percentual_entre_periodos: 70,
+      periodos_ate_zerar: 2,
       // NOVO: Campos de Meta SLA - valores padrão
       meta_sla_percentual: undefined,
       quantidade_minima_chamados_sla: undefined,
@@ -362,9 +374,15 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         baseline_horas_mensal: '00:00',
         baseline_tickets_mensal: undefined,
         possui_repasse_especial: false,
+        tipo_repasse_especial: 'simples',
         ciclos_para_zerar: 1,
         percentual_repasse_mensal: 0,
         percentual_repasse_especial: 0,
+        // NOVO: Configuração de repasse por período
+        duracao_periodo_meses: 3,
+        percentual_dentro_periodo: 100,
+        percentual_entre_periodos: 70,
+        periodos_ate_zerar: 2,
         // NOVO: Campos de Meta SLA - valores padrão
         meta_sla_percentual: undefined,
         quantidade_minima_chamados_sla: undefined,
@@ -1381,83 +1399,267 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
                   {/* Campos de Repasse Especial - Só aparecem se checkbox marcado */}
                   {form.watch('possui_repasse_especial') && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="space-y-4 pt-4 border-t">
+                      {/* Tipo de Repasse Especial */}
                       <FormField
                         control={form.control}
-                        name="ciclos_para_zerar"
+                        name="tipo_repasse_especial"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium text-gray-700">
-                              Ciclos para Zerar
+                              Tipo de Repasse Especial
                             </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="1 a 12 ciclos"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                value={field.value || ''}
-                                disabled={isFieldDisabled}
-                                min={1}
-                                max={12}
-                                className={form.formState.errors.ciclos_para_zerar ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
-                              />
-                            </FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || 'simples'}
+                              disabled={isFieldDisabled}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                                  <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="simples">Simples</SelectItem>
+                                <SelectItem value="por_periodo">Por Período</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription className="text-xs">
+                              {field.value === 'simples' 
+                                ? 'Aplica o mesmo percentual de repasse a cada ciclo'
+                                : 'Permite configurar percentuais diferentes dentro do período e entre períodos'}
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="percentual_repasse_especial"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">
-                              Percentual de Repasse Especial (%)
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="0 a 100%"
-                                {...field}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '') {
-                                    field.onChange(0);
-                                    return;
-                                  }
-                                  const numValue = parseInt(value);
-                                  // Validar entre 0 e 100
-                                  if (numValue >= 0 && numValue <= 100) {
-                                    field.onChange(numValue);
-                                  } else if (numValue > 100) {
-                                    field.onChange(100);
-                                    e.target.value = '100';
-                                  } else if (numValue < 0) {
-                                    field.onChange(0);
-                                    e.target.value = '0';
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  // Garantir valor válido ao sair do campo
-                                  const value = e.target.value;
-                                  if (value === '' || parseInt(value) < 0 || parseInt(value) > 100) {
-                                    field.onChange(0);
-                                    e.target.value = '0';
-                                  }
-                                }}
-                                value={field.value ?? 0}
-                                disabled={isFieldDisabled}
-                                min={0}
-                                max={100}
-                                className={form.formState.errors.percentual_repasse_especial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Configuração Simples */}
+                      {form.watch('tipo_repasse_especial') === 'simples' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="ciclos_para_zerar"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  Ciclos para Zerar
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="1 a 12 ciclos"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    value={field.value || ''}
+                                    disabled={isFieldDisabled}
+                                    min={1}
+                                    max={12}
+                                    className={form.formState.errors.ciclos_para_zerar ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Quantidade de ciclos até zerar o saldo
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="percentual_repasse_especial"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  Percentual de Repasse (%)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="0 a 100%"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '') {
+                                        field.onChange(0);
+                                        return;
+                                      }
+                                      const numValue = parseInt(value);
+                                      if (numValue >= 0 && numValue <= 100) {
+                                        field.onChange(numValue);
+                                      } else if (numValue > 100) {
+                                        field.onChange(100);
+                                        e.target.value = '100';
+                                      } else if (numValue < 0) {
+                                        field.onChange(0);
+                                        e.target.value = '0';
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '' || parseInt(value) < 0 || parseInt(value) > 100) {
+                                        field.onChange(0);
+                                        e.target.value = '0';
+                                      }
+                                    }}
+                                    value={field.value ?? 0}
+                                    disabled={isFieldDisabled}
+                                    min={0}
+                                    max={100}
+                                    className={form.formState.errors.percentual_repasse_especial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Percentual do saldo repassado a cada ciclo
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+
+                      {/* Configuração Por Período */}
+                      {form.watch('tipo_repasse_especial') === 'por_periodo' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="duracao_periodo_meses"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  Duração do Período (meses)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="Ex: 3 (trimestral)"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    value={field.value || ''}
+                                    disabled={isFieldDisabled}
+                                    min={1}
+                                    max={12}
+                                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Quantidade de meses em cada período
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="periodos_ate_zerar"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  Períodos até Zerar
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="Ex: 2 (semestral)"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    value={field.value || ''}
+                                    disabled={isFieldDisabled}
+                                    min={1}
+                                    max={12}
+                                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Quantidade de períodos até zerar o saldo
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="percentual_dentro_periodo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  % Repasse Dentro do Período
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="Ex: 100%"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '') {
+                                        field.onChange(100);
+                                        return;
+                                      }
+                                      const numValue = parseInt(value);
+                                      if (numValue >= 0 && numValue <= 100) {
+                                        field.onChange(numValue);
+                                      }
+                                    }}
+                                    value={field.value ?? 100}
+                                    disabled={isFieldDisabled}
+                                    min={0}
+                                    max={100}
+                                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Repasse entre meses do mesmo período
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="percentual_entre_periodos"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">
+                                  % Repasse Entre Períodos
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="Ex: 70%"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '') {
+                                        field.onChange(70);
+                                        return;
+                                      }
+                                      const numValue = parseInt(value);
+                                      if (numValue >= 0 && numValue <= 100) {
+                                        field.onChange(numValue);
+                                      }
+                                    }}
+                                    value={field.value ?? 70}
+                                    disabled={isFieldDisabled}
+                                    min={0}
+                                    max={100}
+                                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                                  />
+                                </FormControl>
+                                <FormDescription className="text-xs">
+                                  Repasse ao mudar de período
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

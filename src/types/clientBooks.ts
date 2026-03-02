@@ -90,9 +90,15 @@ export interface EmpresaFormData {
   baseline_horas_mensal?: string;
   baseline_tickets_mensal?: number;
   possui_repasse_especial?: boolean;
+  tipo_repasse_especial?: 'simples' | 'por_periodo';
   ciclos_para_zerar?: number;
   percentual_repasse_mensal?: number;
   percentual_repasse_especial?: number;
+  // NOVO: Configuração de repasse por período
+  duracao_periodo_meses?: number;
+  percentual_dentro_periodo?: number;
+  percentual_entre_periodos?: number;
+  periodos_ate_zerar?: number;
   // NOVO: Campos de Meta SLA
   meta_sla_percentual?: number;
   quantidade_minima_chamados_sla?: number;
