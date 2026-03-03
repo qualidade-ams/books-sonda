@@ -109,8 +109,8 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
               {bookData?.capa.empresa_nome_abreviado || book?.empresa_nome} - {bookData?.capa.periodo}
@@ -143,7 +143,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
             onValueChange={(value) => setActiveTab(value as BookTab)}
             className="flex-1 flex flex-col overflow-hidden"
           >
-            <TabsList className="bg-gray-100 p-1 rounded-lg flex-shrink-0">
+            <TabsList className="bg-gray-100 p-1 rounded-lg flex-shrink-0 mx-6">
               <TabsTrigger
                 value="capa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
@@ -199,59 +199,70 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto mt-4">
-              <TabsContent value="capa" className="mt-0">
-                <BookCapa data={bookData.capa} />
-              </TabsContent>
+            {/* Container com scroll e escala automática para caber na tela */}
+            <div className="flex-1 overflow-auto mt-4 bg-gray-100 flex items-start justify-center p-4">
+              <div 
+                className="bg-white shadow-lg mx-auto"
+                style={{
+                  width: '1754px',
+                  height: '1240px',
+                  transform: 'scale(0.7)',
+                  transformOrigin: 'center top'
+                }}
+              >
+                <TabsContent value="capa" className="mt-0 h-full">
+                  <BookCapa data={bookData.capa} />
+                </TabsContent>
 
-              <TabsContent value="volumetria" className="mt-0">
-                <BookVolumetria 
-                  data={bookData.volumetria} 
-                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                  mes={bookData.mes}
-                  ano={bookData.ano}
-                />
-              </TabsContent>
+                <TabsContent value="volumetria" className="mt-0 h-full">
+                  <BookVolumetria 
+                    data={bookData.volumetria} 
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                    mes={bookData.mes}
+                    ano={bookData.ano}
+                  />
+                </TabsContent>
 
-              <TabsContent value="sla" className="mt-0">
-                <BookSLA 
-                  data={bookData.sla}
-                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                />
-              </TabsContent>
-
-              <TabsContent value="backlog" className="mt-0">
-                <BookBacklog 
-                  data={bookData.backlog}
-                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                />
-              </TabsContent>
-
-              <TabsContent value="consumo" className="mt-0">
-                <BookConsumo 
-                  data={bookData.consumo}
-                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                  empresaId={bookData.empresa_id}
-                />
-              </TabsContent>
-
-              <TabsContent value="pesquisa" className="mt-0">
-                <BookPesquisa 
-                  data={bookData.pesquisa}
-                  empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
-                />
-              </TabsContent>
-
-              {/* Abas dinâmicas de Organograma - Conteúdo */}
-              {!isLoadingProdutos && produtos && produtos.length > 0 && produtos.map((produto) => (
-                <TabsContent key={`org-content-${produto}`} value={`org-${produto}`} className="mt-0">
-                  <BookOrganograma
-                    empresaId={bookData.empresa_id}
-                    produto={produto}
+                <TabsContent value="sla" className="mt-0 h-full">
+                  <BookSLA 
+                    data={bookData.sla}
                     empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
                   />
                 </TabsContent>
-              ))}
+
+                <TabsContent value="backlog" className="mt-0 h-full">
+                  <BookBacklog 
+                    data={bookData.backlog}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  />
+                </TabsContent>
+
+                <TabsContent value="consumo" className="mt-0 h-full">
+                  <BookConsumo 
+                    data={bookData.consumo}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                    empresaId={bookData.empresa_id}
+                  />
+                </TabsContent>
+
+                <TabsContent value="pesquisa" className="mt-0 h-full">
+                  <BookPesquisa 
+                    data={bookData.pesquisa}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  />
+                </TabsContent>
+
+                {/* Abas dinâmicas de Organograma - Conteúdo */}
+                {!isLoadingProdutos && produtos && produtos.length > 0 && produtos.map((produto) => (
+                  <TabsContent key={`org-content-${produto}`} value={`org-${produto}`} className="mt-0 h-full">
+                    <BookOrganograma
+                      empresaId={bookData.empresa_id}
+                      produto={produto}
+                      empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                    />
+                  </TabsContent>
+                ))}
+              </div>
             </div>
           </Tabs>
         ) : (

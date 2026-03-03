@@ -30,24 +30,32 @@ interface GeneratePDFRequest {
 // Caminhos comuns do Chrome/Edge por sistema operacional
 const BROWSER_PATHS = {
   win32: [
+    // Edge (mais comum no Windows 11)
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.PROGRAMFILES + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env['PROGRAMFILES(X86)'] + '\\Microsoft\\Edge\\Application\\msedge.exe',
     // Chrome
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
-    // Edge (mais comum no Windows)
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.PROGRAMFILES + '\\Google\\Chrome\\Application\\chrome.exe',
+    process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
+    // Chromium
+    process.env.LOCALAPPDATA + '\\Chromium\\Application\\chrome.exe',
   ],
   darwin: [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
   ],
   linux: [
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
     '/usr/bin/microsoft-edge',
+    '/snap/bin/chromium',
   ],
 };
 
@@ -56,22 +64,32 @@ function findBrowser(): string {
   const paths = BROWSER_PATHS[platform] || [];
   
   console.log(`🔍 Procurando navegador no ${platform}...`);
+  console.log(`📂 Variáveis de ambiente:`);
+  console.log(`   LOCALAPPDATA: ${process.env.LOCALAPPDATA}`);
+  console.log(`   PROGRAMFILES: ${process.env.PROGRAMFILES}`);
+  console.log(`   PROGRAMFILES(X86): ${process.env['PROGRAMFILES(X86)']}`);
+  
+  const checkedPaths: string[] = [];
   
   for (const path of paths) {
     try {
+      checkedPaths.push(path);
+      console.log(`🔍 Verificando: ${path}`);
       if (existsSync(path)) {
         console.log('✅ Navegador encontrado:', path);
         return path;
+      } else {
+        console.log('❌ Não encontrado');
       }
     } catch (e) {
-      // Ignorar erros
+      console.log('❌ Erro ao verificar:', e);
     }
   }
   
   const errorMsg = `Navegador não encontrado. Instale Chrome ou Edge:\n` +
     `- Chrome: https://www.google.com/chrome/\n` +
     `- Edge: https://www.microsoft.com/edge\n\n` +
-    `Caminhos verificados:\n${paths.join('\n')}`;
+    `Caminhos verificados:\n${checkedPaths.join('\n')}`;
   
   console.error('❌', errorMsg);
   throw new Error(errorMsg);
@@ -127,14 +145,12 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
-    // Configurar viewport para gerar PDF de 4150x2400 pixels
-    // Dimensão otimizada para qualidade de impressão (~355 DPI)
+    // Configurar viewport para gerar PDF de 1754x1240 pixels (A4 landscape em 150 DPI)
     await page.setViewport({
-      width: 2075,   // 4150 / 2
-      height: 1200,  // 2400 / 2
-      deviceScaleFactor: 2
+      width: 1754,
+      height: 1240,
+      deviceScaleFactor: 1
     });
-    console.log('✅ Viewport configurado: 2075x1200 @ 2x (= 4150x2400 pixels)');
 
     // Forçar media type screen (não print)
     await page.emulateMediaType('screen');
@@ -187,27 +203,66 @@ export default async function handler(
           return isReady;
         },
         { 
-          timeout: 30000, // 30 segundos para dados carregarem
+          timeout: 40000, // 40 segundos para dados carregarem (aumentado)
           polling: 500 // Verificar a cada 500ms
         }
       );
       console.log('✅ Indicador de prontidão confirmado!');
     } catch (error) {
-      console.log('⚠️ Timeout aguardando prontidão após 30s, continuando...');
+      console.log('⚠️ Timeout aguardando prontidão após 40s, continuando...');
     }
     
-    // Aguardar mais 2 segundos extras para garantir renderização completa
-    console.log('⏳ Aguardando estabilização final...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // CRÍTICO: Aguardar organogramas renderizarem (SVG da biblioteca react-d3-tree)
+    console.log('⏳ Aguardando organogramas renderizarem...');
+    try {
+      await page.waitForFunction(
+        () => {
+          // Verificar se há seções de organograma
+          const orgSections = document.querySelectorAll('[data-section^="organograma-"]');
+          if (orgSections.length === 0) {
+            console.log('✅ Sem organogramas para aguardar');
+            return true; // Sem organogramas, pode continuar
+          }
+          
+          // Verificar se todos os organogramas têm SVG renderizado
+          let allRendered = true;
+          orgSections.forEach((section, index) => {
+            const svg = section.querySelector('svg.rd3t-tree');
+            const hasNodes = svg && svg.querySelectorAll('g.rd3t-node').length > 0;
+            console.log(`🔍 Organograma ${index + 1}:`, {
+              hasSvg: !!svg,
+              hasNodes,
+              nodeCount: svg?.querySelectorAll('g.rd3t-node').length || 0
+            });
+            if (!hasNodes) {
+              allRendered = false;
+            }
+          });
+          
+          return allRendered;
+        },
+        { 
+          timeout: 15000, // 15 segundos para organogramas renderizarem
+          polling: 500
+        }
+      );
+      console.log('✅ Organogramas renderizados!');
+    } catch (error) {
+      console.log('⚠️ Timeout aguardando organogramas após 15s, continuando...');
+    }
+    
+    // Aguardar mais 3 segundos extras para garantir renderização completa dos SVGs
+    console.log('⏳ Aguardando estabilização final dos SVGs...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     console.log('✅ Página pronta para captura');
     
     console.log('📸 Gerando PDF...');
 
-    // Opções de PDF - dimensões fixas para garantir 4150x2400 pixels
+    // Opções de PDF - dimensões fixas 1754x1240 pixels (A4 landscape em 150 DPI)
     const pdfOptions = {
-      width: '4150px',
-      height: '2400px',
+      width: '1754px',
+      height: '1240px',
       printBackground: true,
       margin: {
         top: '0mm',

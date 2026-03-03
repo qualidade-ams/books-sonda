@@ -99,7 +99,8 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
   });
   
   return (
-    <div className="space-y-6">
+    <div className="w-full h-full bg-white p-8">
+      <div className="space-y-6">
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
@@ -376,6 +377,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
             )})}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

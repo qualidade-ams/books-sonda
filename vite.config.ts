@@ -11,12 +11,12 @@ export default defineConfig(({ mode }) => ({
     strictPort: false, // Permite usar porta alternativa se 8080 estiver ocupada
     // Proxy removido - quando usar vercel dev, a API já está na mesma porta
     // Se precisar rodar npm run dev + vercel dev separados, descomente:
-    // proxy: {
-    //   '/api': {
-    //     target: 'http://localhost:3000',
-    //     changeOrigin: true,
-    //   }
-    // }
+    proxy: {
+      '/api': {
+      target: 'http://localhost:3000',
+      changeOrigin: true,
+      }
+    }
   },
   plugins: [
     react(),

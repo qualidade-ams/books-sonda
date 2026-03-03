@@ -70,11 +70,11 @@ export default function BookPrintView() {
       document.fonts.ready.then(() => {
         console.log('✅ Fontes carregadas, aguardando renderização completa...');
         
-        // Aguardar renderização completa (aumentado para 5 segundos)
+        // Aguardar renderização completa (aumentado para 8 segundos para organogramas)
         setTimeout(() => {
           setIsReady(true);
           console.log('✅ Página pronta para captura PDF (data-ready=true)');
-        }, 5000); // Aumentado de 2s para 5s
+        }, 8000); // Aumentado de 5s para 8s para dar tempo dos organogramas renderizarem
       });
     }
   }, [isLoading, isLoadingProdutos, bookData]);
