@@ -48,6 +48,9 @@ Se você precisar testar com Chrome local (desenvolvimento):
    mv api/pdf/generate.dev.ts api/pdf/generate.ts
    ```
 
+   mv api/pdf/generate.ts api/pdf/generate.dev.ts
+   mv api/pdf/generate.prod.temp.ts api/pdf/generate.ts
+
 2. Teste localmente:
    ```bash
    npm run dev
