@@ -27,31 +27,40 @@ interface GeneratePDFRequest {
   };
 }
 
-// Caminhos comuns do Chrome por sistema operacional
-const CHROME_PATHS = {
+// Caminhos comuns do Chrome/Edge por sistema operacional
+const BROWSER_PATHS = {
   win32: [
+    // Chrome
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+    // Edge (mais comum no Windows)
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
   ],
   darwin: [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
   ],
   linux: [
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
+    '/usr/bin/microsoft-edge',
   ],
 };
 
-function findChrome(): string {
-  const platform = process.platform as keyof typeof CHROME_PATHS;
-  const paths = CHROME_PATHS[platform] || [];
+function findBrowser(): string {
+  const platform = process.platform as keyof typeof BROWSER_PATHS;
+  const paths = BROWSER_PATHS[platform] || [];
+  
+  console.log(`🔍 Procurando navegador no ${platform}...`);
   
   for (const path of paths) {
     try {
       if (existsSync(path)) {
-        console.log('✅ Chrome encontrado:', path);
+        console.log('✅ Navegador encontrado:', path);
         return path;
       }
     } catch (e) {
@@ -59,7 +68,13 @@ function findChrome(): string {
     }
   }
   
-  throw new Error('Chrome não encontrado. Instale o Google Chrome: https://www.google.com/chrome/');
+  const errorMsg = `Navegador não encontrado. Instale Chrome ou Edge:\n` +
+    `- Chrome: https://www.google.com/chrome/\n` +
+    `- Edge: https://www.microsoft.com/edge\n\n` +
+    `Caminhos verificados:\n${paths.join('\n')}`;
+  
+  console.error('❌', errorMsg);
+  throw new Error(errorMsg);
 }
 
 export default async function handler(
@@ -89,15 +104,16 @@ export default async function handler(
 
     console.log('🚀 Iniciando geração de PDF (DEV MODE)...');
     console.log('📦 Tamanho do HTML:', body.html?.length || 0, 'caracteres');
+    console.log('🌐 URL:', body.url || 'N/A');
 
-    // Encontrar Chrome instalado
-    const chromePath = findChrome();
+    // Encontrar Chrome/Edge instalado
+    const browserPath = findBrowser();
     
     // Configurar Puppeteer para desenvolvimento local
     console.log('🔧 Configurando Puppeteer...');
     
     browser = await puppeteer.launch({
-      executablePath: chromePath,
+      executablePath: browserPath,
       headless: true,
       args: [
         '--no-sandbox',
@@ -221,12 +237,30 @@ export default async function handler(
     console.error('❌ Erro ao gerar PDF:', error);
     console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'N/A');
     
+    // Mensagem de erro mais detalhada
+    let errorMessage = 'Erro ao gerar PDF';
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || '';
+      
+      // Mensagens específicas para erros comuns
+      if (errorMessage.includes('Navegador não encontrado')) {
+        errorMessage = 'Chrome ou Edge não encontrado. Instale um dos navegadores para gerar PDFs.';
+      } else if (errorMessage.includes('Failed to launch')) {
+        errorMessage = 'Falha ao iniciar o navegador. Verifique se Chrome ou Edge está instalado corretamente.';
+      } else if (errorMessage.includes('Navigation timeout')) {
+        errorMessage = 'Timeout ao carregar a página. A página pode estar demorando muito para carregar.';
+      }
+    }
+    
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 
-      error: 'Erro ao gerar PDF',
-      message: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined
+      error: errorMessage,
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
     }));
   } finally {
     if (browser) {

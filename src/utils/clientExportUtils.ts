@@ -335,10 +335,38 @@ export interface EmpresaImportData {
   nomeAbreviado: string;
   status: string;
   descricaoStatus?: string;
+  emProjeto?: string; // 'Sim' ou 'Não'
   emailGestor?: string;
   linkSharepoint?: string;
   templatePadrao: string;
   produtos: string; // Produtos separados por vírgula
+  temAms?: string; // 'Sim' ou 'Não'
+  tipoBook?: string;
+  tipoCobranca?: string;
+  vigenciaInicial?: string;
+  vigenciaFinal?: string;
+  bookPersonalizado?: string; // 'Sim' ou 'Não'
+  anexo?: string; // 'Sim' ou 'Não'
+  observacao?: string;
+  // Parâmetros de Banco de Horas
+  tipoContrato?: string;
+  periodoApuracao?: number;
+  inicioVigenciaBancoHoras?: string;
+  baselineHorasMensal?: string;
+  baselineTicketsMensal?: number;
+  possuiRepasseEspecial?: string; // 'Sim' ou 'Não'
+  tipoRepasseEspecial?: string; // 'Simples' ou 'Por Período'
+  ciclosParaZerar?: number;
+  percentualRepasseMensal?: number;
+  percentualRepasseEspecial?: number;
+  // Configuração de repasse por período
+  duracaoPeriodoMeses?: number;
+  percentualDentroPeriodo?: number;
+  percentualEntrePeriodos?: number;
+  periodosAteZerar?: number;
+  // Campos de Meta SLA
+  metaSlaPercentual?: number;
+  quantidadeMinimaChamadosSla?: number;
 }
 
 // Interface para dados de importação de clientes
@@ -386,6 +414,9 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
         const descricaoStatusIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('descrição') && h.toLowerCase().includes('status')
         );
+        const emProjetoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('em projeto')
+        );
         const emailGestorIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('email') && h.toLowerCase().includes('gestor')
         );
@@ -397,6 +428,81 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
         );
         const produtosIndex = headers.findIndex(h =>
           h && h.toLowerCase().includes('produto')
+        );
+        const temAmsIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('tem ams')
+        );
+        const tipoBookIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('tipo book')
+        );
+        const tipoCobrancaIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('tipo cobrança') || h.toLowerCase().includes('tipo cobranca')
+        );
+        const vigenciaInicialIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('vigência inicial') || h.toLowerCase().includes('vigencia inicial')
+        );
+        const vigenciaFinalIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('vigência final') || h.toLowerCase().includes('vigencia final')
+        );
+        const bookPersonalizadoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('book personalizado')
+        );
+        const anexoIndex = headers.findIndex(h =>
+          h && h.toLowerCase() === 'anexo'
+        );
+        const observacaoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('observação') || h.toLowerCase().includes('observacao')
+        );
+        // Parâmetros de Banco de Horas
+        const tipoContratoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('tipo de contrato') || h.toLowerCase().includes('tipo contrato')
+        );
+        const periodoApuracaoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('período de apuração') || h.toLowerCase().includes('periodo de apuracao')
+        );
+        const inicioVigenciaBancoHorasIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('início vigência banco') || h.toLowerCase().includes('inicio vigencia banco')
+        );
+        const baselineHorasMensalIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('baseline horas mensal')
+        );
+        const baselineTicketsMensalIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('baseline tickets mensal')
+        );
+        const possuiRepasseEspecialIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('possui repasse especial')
+        );
+        const tipoRepasseEspecialIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('tipo repasse especial')
+        );
+        const ciclosParaZerarIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('ciclos para zerar')
+        );
+        const percentualRepasseMensalIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('% repasse mensal')
+        );
+        const percentualRepasseEspecialIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('% repasse especial')
+        );
+        // Configuração de repasse por período
+        const duracaoPeriodoMesesIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('duração período') || h.toLowerCase().includes('duracao periodo')
+        );
+        const percentualDentroPeriodoIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('% dentro do período') || h.toLowerCase().includes('% dentro do periodo')
+        );
+        const percentualEntrePeriodosIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('% entre períodos') || h.toLowerCase().includes('% entre periodos')
+        );
+        const periodosAteZerarIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('períodos até zerar') || h.toLowerCase().includes('periodos ate zerar')
+        );
+        // Campos de Meta SLA
+        const metaSlaPercentualIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('meta sla')
+        );
+        const quantidadeMinimaChamadosSlaIndex = headers.findIndex(h =>
+          h && h.toLowerCase().includes('qtd mínima chamados') || h.toLowerCase().includes('qtd minima chamados')
         );
 
         if (nomeCompletoIndex === -1) {
@@ -418,6 +524,9 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
             descricaoStatus: descricaoStatusIndex !== -1 && row[descricaoStatusIndex]
               ? String(row[descricaoStatusIndex]).trim()
               : undefined,
+            emProjeto: emProjetoIndex !== -1 && row[emProjetoIndex]
+              ? String(row[emProjetoIndex]).trim()
+              : undefined,
             emailGestor: emailGestorIndex !== -1 && row[emailGestorIndex]
               ? String(row[emailGestorIndex]).trim()
               : undefined,
@@ -429,7 +538,82 @@ export const processImportEmpresasExcel = (file: File): Promise<EmpresaImportDat
               : 'portugues',
             produtos: produtosIndex !== -1 && row[produtosIndex]
               ? String(row[produtosIndex]).trim()
-              : ''
+              : '',
+            temAms: temAmsIndex !== -1 && row[temAmsIndex]
+              ? String(row[temAmsIndex]).trim()
+              : undefined,
+            tipoBook: tipoBookIndex !== -1 && row[tipoBookIndex]
+              ? String(row[tipoBookIndex]).trim()
+              : undefined,
+            tipoCobranca: tipoCobrancaIndex !== -1 && row[tipoCobrancaIndex]
+              ? String(row[tipoCobrancaIndex]).trim()
+              : undefined,
+            vigenciaInicial: vigenciaInicialIndex !== -1 && row[vigenciaInicialIndex]
+              ? String(row[vigenciaInicialIndex]).trim()
+              : undefined,
+            vigenciaFinal: vigenciaFinalIndex !== -1 && row[vigenciaFinalIndex]
+              ? String(row[vigenciaFinalIndex]).trim()
+              : undefined,
+            bookPersonalizado: bookPersonalizadoIndex !== -1 && row[bookPersonalizadoIndex]
+              ? String(row[bookPersonalizadoIndex]).trim()
+              : undefined,
+            anexo: anexoIndex !== -1 && row[anexoIndex]
+              ? String(row[anexoIndex]).trim()
+              : undefined,
+            observacao: observacaoIndex !== -1 && row[observacaoIndex]
+              ? String(row[observacaoIndex]).trim()
+              : undefined,
+            // Parâmetros de Banco de Horas
+            tipoContrato: tipoContratoIndex !== -1 && row[tipoContratoIndex]
+              ? String(row[tipoContratoIndex]).trim()
+              : undefined,
+            periodoApuracao: periodoApuracaoIndex !== -1 && row[periodoApuracaoIndex]
+              ? Number(row[periodoApuracaoIndex])
+              : undefined,
+            inicioVigenciaBancoHoras: inicioVigenciaBancoHorasIndex !== -1 && row[inicioVigenciaBancoHorasIndex]
+              ? String(row[inicioVigenciaBancoHorasIndex]).trim()
+              : undefined,
+            baselineHorasMensal: baselineHorasMensalIndex !== -1 && row[baselineHorasMensalIndex]
+              ? String(row[baselineHorasMensalIndex]).trim()
+              : undefined,
+            baselineTicketsMensal: baselineTicketsMensalIndex !== -1 && row[baselineTicketsMensalIndex]
+              ? Number(row[baselineTicketsMensalIndex])
+              : undefined,
+            possuiRepasseEspecial: possuiRepasseEspecialIndex !== -1 && row[possuiRepasseEspecialIndex]
+              ? String(row[possuiRepasseEspecialIndex]).trim()
+              : undefined,
+            tipoRepasseEspecial: tipoRepasseEspecialIndex !== -1 && row[tipoRepasseEspecialIndex]
+              ? String(row[tipoRepasseEspecialIndex]).trim()
+              : undefined,
+            ciclosParaZerar: ciclosParaZerarIndex !== -1 && row[ciclosParaZerarIndex]
+              ? Number(row[ciclosParaZerarIndex])
+              : undefined,
+            percentualRepasseMensal: percentualRepasseMensalIndex !== -1 && row[percentualRepasseMensalIndex]
+              ? Number(row[percentualRepasseMensalIndex])
+              : undefined,
+            percentualRepasseEspecial: percentualRepasseEspecialIndex !== -1 && row[percentualRepasseEspecialIndex]
+              ? Number(row[percentualRepasseEspecialIndex])
+              : undefined,
+            // Configuração de repasse por período
+            duracaoPeriodoMeses: duracaoPeriodoMesesIndex !== -1 && row[duracaoPeriodoMesesIndex]
+              ? Number(row[duracaoPeriodoMesesIndex])
+              : undefined,
+            percentualDentroPeriodo: percentualDentroPeriodoIndex !== -1 && row[percentualDentroPeriodoIndex]
+              ? Number(row[percentualDentroPeriodoIndex])
+              : undefined,
+            percentualEntrePeriodos: percentualEntrePeriodosIndex !== -1 && row[percentualEntrePeriodosIndex]
+              ? Number(row[percentualEntrePeriodosIndex])
+              : undefined,
+            periodosAteZerar: periodosAteZerarIndex !== -1 && row[periodosAteZerarIndex]
+              ? Number(row[periodosAteZerarIndex])
+              : undefined,
+            // Campos de Meta SLA
+            metaSlaPercentual: metaSlaPercentualIndex !== -1 && row[metaSlaPercentualIndex]
+              ? Number(row[metaSlaPercentualIndex])
+              : undefined,
+            quantidadeMinimaChamadosSla: quantidadeMinimaChamadosSlaIndex !== -1 && row[quantidadeMinimaChamadosSlaIndex]
+              ? Number(row[quantidadeMinimaChamadosSlaIndex])
+              : undefined,
           }));
 
         resolve(empresas);

@@ -49,10 +49,10 @@ class PuppeteerPDFService {
         this.API_ENDPOINT = '/api/pdf/generate';
         console.log('🔧 Modo: Vite Dev (porta 8080)');
         console.log('⚠️ Se der erro 404, acesse: http://localhost:3000');
-      } else if (currentPort === '3000') {
-        // Vercel dev server - funciona direto
+      } else if (currentPort === '3000' || currentPort === '3001' || currentPort === '3002' || currentPort === '3003') {
+        // Vercel dev server - funciona direto (qualquer porta 3000-3003)
         this.API_ENDPOINT = '/api/pdf/generate';
-        console.log('🔧 Modo: Vercel Dev (porta 3000) ✅');
+        console.log(`🔧 Modo: Vercel Dev (porta ${currentPort}) ✅`);
       } else {
         // Outro ambiente de desenvolvimento
         this.API_ENDPOINT = '/api/pdf/generate';
@@ -177,8 +177,24 @@ class PuppeteerPDFService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao gerar PDF');
+        // Tentar ler como JSON, mas se falhar, usar texto
+        let errorMessage = 'Erro ao gerar PDF';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            errorMessage = error.message || error.error || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || `Erro ${response.status}: ${response.statusText}`;
+          }
+        } catch (parseError) {
+          console.error('⚠️ Erro ao parsear resposta de erro:', parseError);
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        
+        console.error('❌ Erro da API:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       const blob = await response.blob();
@@ -187,6 +203,17 @@ class PuppeteerPDFService {
       return blob;
     } catch (error) {
       console.error('❌ Erro ao gerar PDF:', error);
+      
+      // Se for erro de rede ou timeout
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
+      }
+      
+      // Propagar erro original se já tiver mensagem
+      if (error instanceof Error) {
+        throw error;
+      }
+      
       throw new Error('Não foi possível gerar o PDF');
     }
   }
