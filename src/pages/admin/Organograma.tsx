@@ -28,6 +28,7 @@ export default function Organograma() {
   const [mostrarGerenciadorOrdem, setMostrarGerenciadorOrdem] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('arvore');
   const [showFilters, setShowFilters] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<'COMEX' | 'FISCAL' | 'GALLERY'>('COMEX');
   const [filtros, setFiltros] = useState({
     busca: '',
     departamento: 'all',
@@ -72,9 +73,9 @@ export default function Organograma() {
     fetchPessoas();
   };
 
-  const arvoreHierarquica = construirArvoreHierarquica();
+  const arvoreHierarquica = construirArvoreHierarquica(produtoSelecionado);
 
-  // Filtrar e ordenar pessoas por nome (A-Z)
+  // Filtrar e ordenar pessoas por nome (A-Z) e produto selecionado
   const pessoasFiltradas = pessoas
     .filter((pessoa) => {
       const matchBusca = pessoa.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
@@ -82,21 +83,22 @@ export default function Organograma() {
                          pessoa.cargo.toLowerCase().includes(filtros.busca.toLowerCase());
       const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
       const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
+      const matchProduto = pessoa.produto === produtoSelecionado || pessoa.produtos?.includes(produtoSelecionado);
       
-      return matchBusca && matchDepartamento && matchCargo;
+      return matchBusca && matchDepartamento && matchCargo && matchProduto;
     })
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
   // Obter departamentos únicos
   const departamentos = Array.from(new Set(pessoas.map(p => p.departamento))).sort();
 
-  // Estatísticas
+  // Estatísticas filtradas por produto
   const stats = {
-    total: pessoas.length,
-    diretores: pessoas.filter(p => p.cargo === 'Diretor').length,
-    gerentes: pessoas.filter(p => p.cargo === 'Gerente').length,
-    coordenadores: pessoas.filter(p => p.cargo === 'Coordenador').length,
-    centralEscalacao: pessoas.filter(p => p.cargo === 'Central Escalação').length,
+    total: pessoasFiltradas.length,
+    diretores: pessoasFiltradas.filter(p => p.cargo === 'Diretor').length,
+    gerentes: pessoasFiltradas.filter(p => p.cargo === 'Gerente').length,
+    coordenadores: pessoasFiltradas.filter(p => p.cargo === 'Coordenador').length,
+    centralEscalacao: pessoasFiltradas.filter(p => p.cargo === 'Central Escalação').length,
   };
 
   return (
@@ -113,14 +115,43 @@ export default function Organograma() {
                 Visualize e gerencie a estrutura organizacional da empresa
               </p>
             </div>
-            <Button
-              size="sm"
-              className="bg-sonda-blue hover:bg-sonda-dark-blue"
-              onClick={handleNovaPessoa}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Pessoa
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Seletor de Produto */}
+              <Select value={produtoSelecionado} onValueChange={(value: any) => setProdutoSelecionado(value)}>
+                <SelectTrigger className="w-[180px] focus:ring-sonda-blue focus:border-sonda-blue">
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="COMEX">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                      <span>Comex</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="FISCAL">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
+                      <span>Fiscal</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="GALLERY">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-pink-600"></div>
+                      <span>Gallery</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button
+                size="sm"
+                className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                onClick={handleNovaPessoa}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Pessoa
+              </Button>
+            </div>
           </div>
 
           {/* Cards de Estatísticas */}
