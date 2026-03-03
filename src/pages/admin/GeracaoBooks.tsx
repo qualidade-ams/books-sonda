@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useBooks, useBooksSelection, usePeriodoNavigation } from '@/hooks/useBooks';
-import { useBooksStats, useSelectionStats } from '@/hooks/useBooksStats';
+import { useBooksStats } from '@/hooks/useBooksStats';
 import { BOOK_STATUS_LABELS, BOOK_STATUS_COLORS, MESES_LABELS } from '@/types/books';
 import type { BookListItem } from '@/types/books';
 import { BookViewer } from '@/components/admin/books';
@@ -106,8 +106,6 @@ export default function GeracaoBooks() {
     count: selectedCount
   } = useBooksSelection(books);
 
-  const { totalHoras, valorTotal } = useSelectionStats(selectedEmpresaIds, mesReferencia, anoReferencia);
-
   const [showGerarDialog, setShowGerarDialog] = useState(false);
   const [showAtualizarDialog, setShowAtualizarDialog] = useState(false);
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
@@ -130,7 +128,7 @@ export default function GeracaoBooks() {
 
   // Formatar período para exibição
   const mesNome = MESES_NOMES[mesAtual];
-  const periodoLabel = `${mesNome} ${anoAtual}`;
+  const periodoLabel = `${mesNome} ${anoAtual} - Referente a ${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
   const periodoReferenciaLabel = `${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
 
   // Função para verificar se há filtros ativos (exceto período, que é navegação)
@@ -223,7 +221,12 @@ export default function GeracaoBooks() {
       });
 
       // Usar novo serviço V2 - muito mais simples!
-      await booksPDFServiceV2.baixarPDF(book.id, `book_${book.empresa_nome}_${book.mes}_${book.ano}.pdf`);
+      // Formatar nome do arquivo: Book NOME_ABREVIADO MesExtenso Ano
+      const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
+      const mesNome = MESES_NOMES[book.mes];
+      const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
+      
+      await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
       toast({
         title: 'PDF baixado com sucesso',
@@ -601,10 +604,6 @@ export default function GeracaoBooks() {
               Deseja gerar books para {selectedCount} {selectedCount === 1 ? 'empresa' : 'empresas'} selecionada(s)?
               <br /><br />
               <strong>Período:</strong> {periodoLabel}
-              <br />
-              <strong>Total de Horas:</strong> {totalHoras}
-              <br />
-              <strong>Valor Total:</strong> R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

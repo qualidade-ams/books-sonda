@@ -48,9 +48,9 @@ class BooksService {
       console.log(`📊 Empresas encontradas: ${empresas.length} (ativas + AMS + tipo_book qualidade)`);
 
       // PASSO 2: Buscar books existentes para o período
-      const { data: booksExistentes, error: booksError } = await supabase
+      const { data: booksExistentes, error: booksError } = await (supabase as any)
         .from('books')
-        .select('*')
+        .select('id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url')
         .eq('mes', filtros.mes)
         .eq('ano', filtros.ano);
 
@@ -73,6 +73,7 @@ class BooksService {
           id: book?.id || `temp-${empresa.id}`, // ID temporário se não tem book
           empresa_id: empresa.id,
           empresa_nome: empresa.nome_completo,
+          empresa_nome_abreviado: empresa.nome_abreviado,
           mes: filtros.mes,
           ano: filtros.ano,
           status: book?.status || 'pendente',
@@ -152,10 +153,25 @@ class BooksService {
     
     try {
       console.log('📡 booksService - Fazendo query no Supabase...');
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('books')
         .select(`
-          *,
+          id,
+          empresa_id,
+          mes,
+          ano,
+          status,
+          created_at,
+          updated_at,
+          pdf_url,
+          pdf_gerado_em,
+          erro_detalhes,
+          dados_capa,
+          dados_volumetria,
+          dados_sla,
+          dados_backlog,
+          dados_consumo,
+          dados_pesquisa,
           empresas_clientes (
             nome_completo,
             nome_abreviado
@@ -293,7 +309,7 @@ class BooksService {
       console.log('📊 [buscarEstatisticas] Total de empresas:', totalEmpresas);
 
       // PASSO 2: Buscar books existentes para o período
-      const { data: books, error: booksError } = await supabase
+      const { data: books, error: booksError } = await (supabase as any)
         .from('books')
         .select('id, status, created_at, updated_at, empresa_id')
         .eq('mes', mes)
@@ -410,7 +426,7 @@ class BooksService {
           }
 
           // Verificar se já existe book para este período
-          const { data: bookExistente } = await supabase
+          const { data: bookExistente } = await (supabase as any)
             .from('books')
             .select('id')
             .eq('empresa_id', empresaId)
@@ -436,7 +452,7 @@ class BooksService {
 
           if (bookExistente) {
             // Atualizar book existente
-            const { data: bookAtualizado, error } = await supabase
+            const { data: bookAtualizado, error } = await (supabase as any)
               .from('books')
               .update({
                 status: 'gerado',
@@ -456,7 +472,7 @@ class BooksService {
             bookId = bookAtualizado.id;
           } else {
             // Criar novo book
-            const { data: novoBook, error } = await supabase
+            const { data: novoBook, error } = await (supabase as any)
               .from('books')
               .insert({
                 empresa_id: empresaId,
@@ -549,7 +565,7 @@ class BooksService {
    */
   async deletarBook(bookId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('books')
         .delete()
         .eq('id', bookId);
@@ -584,7 +600,7 @@ class BooksService {
       const pdfUrl = urlData.publicUrl;
 
       // Atualizar registro do book com a URL do PDF
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('books')
         .update({
           pdf_url: pdfUrl,
@@ -607,7 +623,7 @@ class BooksService {
   async baixarPDF(bookId: string): Promise<Blob> {
     try {
       // Buscar URL do PDF
-      const { data: book } = await supabase
+      const { data: book } = await (supabase as any)
         .from('books')
         .select('pdf_url')
         .eq('id', bookId)
