@@ -139,20 +139,48 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
     );
   }
 
+  // Definir zoom específico por produto
+  const getZoomPorProduto = () => {
+    const produtoUpper = produto.toUpperCase();
+    switch (produtoUpper) {
+      case 'FISCAL':
+        return 0.75; // Zoom menor para Fiscal (mais pessoas)
+      case 'COMEX':
+        return 0.95; // Zoom médio para Comex
+      case 'GALLERY':
+        return 0.95; // Zoom maior para Gallery
+      default:
+        return 0.75; // Zoom padrão
+    }
+  };
+
+  const zoomInicial = getZoomPorProduto();
+
   return (
     <div key={`org-container-${produto}`} className="w-full h-full bg-white p-8" data-organograma={produto}>
-      <div className="h-full">
-      {/* Reutiliza o componente OrganoTree da tela de Organograma em modo somente visualização */}
-      <OrganoTree 
-        key={`organograma-${produto}`} // Key fixa baseada no produto
-        pessoas={pessoas}
-        onEdit={() => {}} // Não usado em modo viewOnly
-        onDelete={() => {}} // Não usado em modo viewOnly
-        viewOnly={true} // Esconde botões de editar/excluir
-        centerOffset={-100} // Ajuste negativo para centralizar melhor no modal
-        height={600} // Altura reduzida para evitar scroll desnecessário
-        initialZoom={0.4} // Zoom reduzido para mostrar organograma completo
-      />
+      <div className="space-y-6">
+        {/* Título da Seção */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Organograma {produto ? `${produto.charAt(0).toUpperCase() + produto.slice(1).toLowerCase()} ` : ''}{empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          </h2>
+          <p className="text-sm text-gray-500">Visão Geral do Organograma do Produto</p>
+        </div>
+
+        {/* Card sem borda e sem sombra */}
+        <div className="bg-white" style={{ minHeight: '1100px' }}>
+          {/* Reutiliza o componente OrganoTree da tela de Organograma em modo somente visualização */}
+          <OrganoTree 
+            key={`organograma-${produto}`} // Key fixa baseada no produto
+            pessoas={pessoas}
+            onEdit={() => {}} // Não usado em modo viewOnly
+            onDelete={() => {}} // Não usado em modo viewOnly
+            viewOnly={true} // Esconde botões de editar/excluir
+            centerOffset={0} // Ajuste negativo para centralizar melhor no modal
+            height={1100} // Altura aumentada para ocupar toda a página
+            initialZoom={zoomInicial} // Zoom específico por produto
+          />
+        </div>
       </div>
     </div>
   );
