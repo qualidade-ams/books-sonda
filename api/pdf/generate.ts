@@ -87,24 +87,31 @@ export default async function handler(
     if (body.html) {
       console.log('📄 Carregando HTML...');
       await page.setContent(body.html, {
-        waitUntil: 'networkidle0',
-        timeout: 30000
+        waitUntil: 'domcontentloaded', // Mais rápido que networkidle0
+        timeout: 5000 // Reduzido de 30s para 5s
       });
     } else if (body.url) {
       console.log(`🌐 Carregando URL: ${body.url}`);
       await page.goto(body.url, {
-        waitUntil: 'networkidle0',
-        timeout: 30000
+        waitUntil: 'domcontentloaded', // Mais rápido que networkidle0
+        timeout: 5000 // Reduzido de 30s para 5s
       });
     }
 
-    // Aguardar fontes carregarem
+    // Aguardar fontes carregarem (com timeout curto)
     console.log('⏳ Aguardando fontes...');
-    await page.evaluateHandle('document.fonts.ready');
+    try {
+      await Promise.race([
+        page.evaluateHandle('document.fonts.ready'),
+        new Promise(resolve => setTimeout(resolve, 1000)) // Timeout de 1s
+      ]);
+    } catch (e) {
+      console.log('⚠️ Timeout aguardando fontes, continuando...');
+    }
     
-    // Aguardar estabilização inicial do React
-    console.log('⏳ Aguardando estabilização inicial do React...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Aguardar estabilização inicial do React (reduzido)
+    console.log('⏳ Aguardando estabilização inicial...');
+    await new Promise(resolve => setTimeout(resolve, 500)); // Reduzido de 2s para 500ms
     
     // Disparar resize para corrigir SVG/organograma
     console.log('🔄 Disparando evento resize...');
@@ -112,36 +119,30 @@ export default async function handler(
       window.dispatchEvent(new Event('resize'));
     });
     
-    // Aguardar após resize
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Aguardar após resize (reduzido)
+    await new Promise(resolve => setTimeout(resolve, 300)); // Reduzido de 1s para 300ms
     
     // CRÍTICO: Aguardar indicador de prontidão (dados carregados)
-    console.log('⏳ Aguardando indicador de prontidão (dados carregando)...');
+    console.log('⏳ Aguardando indicador de prontidão...');
     try {
       await page.waitForFunction(
         () => {
           const container = document.getElementById('pdf-ready');
-          const isReady = container && container.getAttribute('data-ready') === 'true';
-          console.log('🔍 Verificando prontidão:', { 
-            hasContainer: !!container, 
-            isReady,
-            dataReady: container?.getAttribute('data-ready')
-          });
-          return isReady;
+          return container && container.getAttribute('data-ready') === 'true';
         },
         { 
-          timeout: 30000, // 30 segundos para dados carregarem
-          polling: 500 // Verificar a cada 500ms
+          timeout: 3000, // Reduzido de 30s para 3s
+          polling: 200 // Verificar a cada 200ms (mais frequente)
         }
       );
       console.log('✅ Indicador de prontidão confirmado!');
     } catch (error) {
-      console.log('⚠️ Timeout aguardando prontidão após 30s, continuando...');
+      console.log('⚠️ Timeout aguardando prontidão, continuando...');
     }
     
-    // Aguardar mais 2 segundos extras para garantir renderização completa
+    // Aguardar estabilização final (reduzido)
     console.log('⏳ Aguardando estabilização final...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500)); // Reduzido de 2s para 500ms
     
     console.log('✅ Página pronta para captura');
     
