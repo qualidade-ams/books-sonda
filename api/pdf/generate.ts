@@ -70,14 +70,12 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
-    // Configurar viewport para gerar PDF de 4150x2400 pixels
-    // Dimensão otimizada para qualidade de impressão (~355 DPI)
+    // Configurar viewport para gerar PDF de 1754x1240 pixels (A4 landscape em 150 DPI)
     await page.setViewport({
-      width: 2075,   // 4150 / 2
-      height: 1200,  // 2400 / 2
-      deviceScaleFactor: 2
+      width: 1754,
+      height: 1240,
+      deviceScaleFactor: 1
     });
-    console.log('✅ Viewport configurado: 2075x1200 @ 2x (= 4150x2400 pixels)');
 
     // Forçar media type screen (não print)
     await page.emulateMediaType('screen');
@@ -123,35 +121,80 @@ export default async function handler(
     await new Promise(resolve => setTimeout(resolve, 300)); // Reduzido de 1s para 300ms
     
     // CRÍTICO: Aguardar indicador de prontidão (dados carregados)
-    console.log('⏳ Aguardando indicador de prontidão...');
+    console.log('⏳ Aguardando indicador de prontidão (dados carregando)...');
     try {
       await page.waitForFunction(
         () => {
           const container = document.getElementById('pdf-ready');
-          return container && container.getAttribute('data-ready') === 'true';
+          const isReady = container && container.getAttribute('data-ready') === 'true';
+          console.log('🔍 Verificando prontidão:', { 
+            hasContainer: !!container, 
+            isReady,
+            dataReady: container?.getAttribute('data-ready')
+          });
+          return isReady;
         },
         { 
-          timeout: 3000, // Reduzido de 30s para 3s
-          polling: 200 // Verificar a cada 200ms (mais frequente)
+          timeout: 8000, // Otimizado: 8s (dev usa 40s, mas precisamos ser mais rápido)
+          polling: 500 // Verificar a cada 500ms
         }
       );
       console.log('✅ Indicador de prontidão confirmado!');
     } catch (error) {
-      console.log('⚠️ Timeout aguardando prontidão, continuando...');
+      console.log('⚠️ Timeout aguardando prontidão após 8s, continuando...');
     }
     
-    // Aguardar estabilização final (reduzido)
-    console.log('⏳ Aguardando estabilização final...');
-    await new Promise(resolve => setTimeout(resolve, 500)); // Reduzido de 2s para 500ms
+    // CRÍTICO: Aguardar organogramas renderizarem (SVG da biblioteca react-d3-tree)
+    console.log('⏳ Aguardando organogramas renderizarem...');
+    try {
+      await page.waitForFunction(
+        () => {
+          // Verificar se há seções de organograma
+          const orgSections = document.querySelectorAll('[data-section^="organograma-"]');
+          if (orgSections.length === 0) {
+            console.log('✅ Sem organogramas para aguardar');
+            return true; // Sem organogramas, pode continuar
+          }
+          
+          // Verificar se todos os organogramas têm SVG renderizado
+          let allRendered = true;
+          orgSections.forEach((section, index) => {
+            const svg = section.querySelector('svg.rd3t-tree');
+            const hasNodes = svg && svg.querySelectorAll('g.rd3t-node').length > 0;
+            console.log(`🔍 Organograma ${index + 1}:`, {
+              hasSvg: !!svg,
+              hasNodes,
+              nodeCount: svg?.querySelectorAll('g.rd3t-node').length || 0
+            });
+            if (!hasNodes) {
+              allRendered = false;
+            }
+          });
+          
+          return allRendered;
+        },
+        { 
+          timeout: 6000, // Otimizado: 6s (dev usa 15s, mas precisamos ser mais rápido)
+          polling: 500
+        }
+      );
+      console.log('✅ Organogramas renderizados!');
+    } catch (error) {
+      console.log('⚠️ Timeout aguardando organogramas após 6s, continuando...');
+    }
+    
+    // Aguardar mais 1 segundo extra para garantir renderização completa dos SVGs
+    console.log('⏳ Aguardando estabilização final dos SVGs...');
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Otimizado: 1s (dev usa 3s)
     
     console.log('✅ Página pronta para captura');
     
     console.log('📸 Gerando PDF...');
 
-    // Opções de PDF - dimensões fixas para garantir 4150x2400 pixels
+    // Opções de PDF - dimensões fixas 1754x1240 pixels (A4 landscape em 150 DPI)
     const pdfOptions = {
-      width: '4150px',
-      height: '2400px',
+      width: '1754px',
+      height: '1240px',
       printBackground: true,
       margin: {
         top: '0mm',
