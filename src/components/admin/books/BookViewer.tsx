@@ -50,13 +50,43 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
     if (open && book?.id) {
       console.log('🔄 BookViewer aberto - Limpando cache e recarregando dados para book:', book.id);
       
-      // Limpar cache específico deste book
+      // Limpar cache ESPECÍFICO deste book (não todos os books!)
       queryClient.removeQueries({ queryKey: ['book-data', book.id] });
       
-      // Forçar refetch imediato
+      // Forçar refetch imediato com staleTime: 0 para garantir dados frescos
       refetch();
     }
   }, [open, book?.id, queryClient, refetch]);
+
+  // Log detalhado dos dados quando carregados
+  useEffect(() => {
+    if (bookData) {
+      console.log('📊 BookViewer - Dados carregados:', {
+        bookId: book?.id,
+        empresa: bookData.empresa_nome,
+        mes: bookData.mes,
+        ano: bookData.ano,
+        // DADOS DETALHADOS PARA DEBUG
+        volumetria: {
+          abertos_mes: bookData.volumetria.abertos_mes,
+          fechados_mes: bookData.volumetria.fechados_mes,
+          sla_medio: bookData.volumetria.sla_medio,
+          total_backlog: bookData.volumetria.total_backlog
+        },
+        sla: {
+          sla_percentual: bookData.sla.sla_percentual,
+          fechados: bookData.sla.fechados,
+          incidentes: bookData.sla.incidentes,
+          violados: bookData.sla.violados
+        },
+        backlog: {
+          total: bookData.backlog.total,
+          incidente: bookData.backlog.incidente,
+          solicitacao: bookData.backlog.solicitacao
+        }
+      });
+    }
+  }, [bookData, book?.id]);
 
   const handleDownloadPDF = async () => {
     if (!book) return;
