@@ -56,8 +56,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const container = document.querySelector('.rd3t-tree-container');
     if (container) {
       const width = container.clientWidth;
-      // Em modo viewOnly (modal), começar mais acima para aproveitar melhor o espaço
-      const yPosition = viewOnly ? 80 : 100;
+      // Em modo viewOnly (modal), começar mais abaixo para evitar corte no topo
+      const yPosition = viewOnly ? 120 : 100;
       setTranslate({ x: (width / 2) + centerOffset, y: yPosition });
     }
   }, [centerOffset, viewOnly]);
@@ -222,7 +222,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     
     return (
       <g>
-        <foreignObject x="-225" y="-180" width="450" height="360">
+        <foreignObject x="-225" y="-120" width="420" height="280"> 
           {/* Card invisível para conexão das linhas */}
           <Card className="w-full h-full border-transparent shadow-none bg-transparent">
             <CardContent className="p-4">
@@ -427,20 +427,20 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
 
   return (
     <>
-      <div className="w-full border rounded-lg bg-white relative" style={{ height: `${height}px` }}>       
+      <div className="w-full bg-white relative" style={{ height: `${height}px` }}>       
         <Tree
           data={treeData}
           orientation="vertical"
           pathFunc="step"
           translate={translate}
-          nodeSize={{ x: 500, y: 400 }}
-          separation={{ siblings: 1.2, nonSiblings: 1.5 }}
+          nodeSize={{ x: 420, y: 320 }}
+          separation={{ siblings: 0.9, nonSiblings: 1.1 }}
           renderCustomNodeElement={renderCustomNode}
           pathClassFunc={() => 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5]'}
           zoom={initialZoom}
           scaleExtent={{ min: 0.4, max: 2 }}
           enableLegacyTransitions
-          depthFactor={400}
+          depthFactor={280}
         />
       </div>
 

@@ -156,7 +156,7 @@ class BooksService {
         .from('books')
         .select(`
           *,
-          empresas_clientes!inner (
+          empresas_clientes (
             nome_completo,
             nome_abreviado
           )

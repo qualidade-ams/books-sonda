@@ -270,10 +270,10 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold text-sm py-3">ORIGEM</TableHead>
-                  <TableHead className="text-center font-semibold text-sm py-3">INCIDENTE</TableHead>
-                  <TableHead className="text-center font-semibold text-sm py-3">SOLICITAÇÃO</TableHead>
-                  <TableHead className="text-center font-semibold text-sm text-white py-3" style={{ backgroundColor: '#0d6abf' }}>TOTAL</TableHead>
+                  <TableHead className="font-semibold text-sm py-1.5">ORIGEM</TableHead>
+                  <TableHead className="text-center font-semibold text-sm py-1.5">INCIDENTE</TableHead>
+                  <TableHead className="text-center font-semibold text-sm py-1.5">SOLICITAÇÃO</TableHead>
+                  <TableHead className="text-center font-semibold text-sm text-white py-1.5" style={{ backgroundColor: '#0d6abf' }}>TOTAL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -281,21 +281,21 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                   <>
                     {backlogPorCausaMapeado.map((item, index) => (
                       <TableRow key={index} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-sm py-3">{item.origem}</TableCell>
-                        <TableCell className="text-center text-sm py-3">{item.incidente || '-'}</TableCell>
-                        <TableCell className="text-center text-sm py-3">{item.solicitacao || '-'}</TableCell>
-                        <TableCell className="text-center font-semibold text-sm py-3">{item.total}</TableCell>
+                        <TableCell className="font-medium text-sm py-1.5">{item.origem}</TableCell>
+                        <TableCell className="text-center text-sm py-1.5">{item.incidente || '-'}</TableCell>
+                        <TableCell className="text-center text-sm py-1.5">{item.solicitacao || '-'}</TableCell>
+                        <TableCell className="text-center font-semibold text-sm py-1.5">{item.total}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#0d6abf', color: 'white' }}>
-                      <TableCell className="text-sm py-3">TOTAL</TableCell>
-                      <TableCell className="text-center text-sm py-3">
+                      <TableCell className="text-sm py-1.5">TOTAL</TableCell>
+                      <TableCell className="text-center text-sm py-1.5">
                         {backlogPorCausaMapeado.reduce((sum, item) => sum + item.incidente, 0)}
                       </TableCell>
-                      <TableCell className="text-center text-sm py-3">
+                      <TableCell className="text-center text-sm py-1.5">
                         {backlogPorCausaMapeado.reduce((sum, item) => sum + item.solicitacao, 0)}
                       </TableCell>
-                      <TableCell className="text-center text-sm py-3">
+                      <TableCell className="text-center text-sm py-1.5">
                         {backlogPorCausaMapeado.reduce((sum, item) => sum + item.total, 0)}
                       </TableCell>
                     </TableRow>

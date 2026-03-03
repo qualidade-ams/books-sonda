@@ -7,7 +7,6 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
-import puppeteer from 'puppeteer-core';
 import { existsSync } from 'fs';
 
 interface GeneratePDFRequest {
@@ -26,6 +25,9 @@ interface GeneratePDFRequest {
     };
   };
 }
+
+// ✅ OTIMIZAÇÃO: Cache do caminho do navegador para evitar busca repetida
+let cachedBrowserPath: string | null = null;
 
 // Caminhos comuns do Chrome/Edge por sistema operacional
 const BROWSER_PATHS = {
@@ -60,36 +62,51 @@ const BROWSER_PATHS = {
 };
 
 function findBrowser(): string {
+  // ✅ OTIMIZAÇÃO: Retornar cache se já encontrou antes
+  if (cachedBrowserPath) {
+    console.log('⚡ Usando navegador em cache:', cachedBrowserPath);
+    return cachedBrowserPath;
+  }
+
+  // ✅ OTIMIZAÇÃO: Priorizar variável de ambiente BROWSER_PATH
+  if (process.env.BROWSER_PATH && existsSync(process.env.BROWSER_PATH)) {
+    console.log('⚡ Usando BROWSER_PATH do .env:', process.env.BROWSER_PATH);
+    cachedBrowserPath = process.env.BROWSER_PATH;
+    return cachedBrowserPath;
+  }
+
+  // ✅ OTIMIZAÇÃO: Fallback para BROWSER_PATH_FALLBACK
+  if (process.env.BROWSER_PATH_FALLBACK && existsSync(process.env.BROWSER_PATH_FALLBACK)) {
+    console.log('⚡ Usando BROWSER_PATH_FALLBACK do .env:', process.env.BROWSER_PATH_FALLBACK);
+    cachedBrowserPath = process.env.BROWSER_PATH_FALLBACK;
+    return cachedBrowserPath;
+  }
+
   const platform = process.platform as keyof typeof BROWSER_PATHS;
   const paths = BROWSER_PATHS[platform] || [];
   
   console.log(`🔍 Procurando navegador no ${platform}...`);
-  console.log(`📂 Variáveis de ambiente:`);
-  console.log(`   LOCALAPPDATA: ${process.env.LOCALAPPDATA}`);
-  console.log(`   PROGRAMFILES: ${process.env.PROGRAMFILES}`);
-  console.log(`   PROGRAMFILES(X86): ${process.env['PROGRAMFILES(X86)']}`);
-  
-  const checkedPaths: string[] = [];
   
   for (const path of paths) {
     try {
-      checkedPaths.push(path);
-      console.log(`🔍 Verificando: ${path}`);
-      if (existsSync(path)) {
+      if (path && existsSync(path)) {
         console.log('✅ Navegador encontrado:', path);
-        return path;
-      } else {
-        console.log('❌ Não encontrado');
+        cachedBrowserPath = path; // ✅ Salvar no cache
+        return cachedBrowserPath;
       }
     } catch (e) {
-      console.log('❌ Erro ao verificar:', e);
+      // Silenciar erros de verificação
     }
   }
   
-  const errorMsg = `Navegador não encontrado. Instale Chrome ou Edge:\n` +
-    `- Chrome: https://www.google.com/chrome/\n` +
-    `- Edge: https://www.microsoft.com/edge\n\n` +
-    `Caminhos verificados:\n${checkedPaths.join('\n')}`;
+  const errorMsg = `Navegador não encontrado. Soluções:\n\n` +
+    `1. Defina BROWSER_PATH no .env.local:\n` +
+    `   BROWSER_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"\n\n` +
+    `2. Ou defina BROWSER_PATH_FALLBACK para navegador alternativo:\n` +
+    `   BROWSER_PATH_FALLBACK="C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"\n\n` +
+    `3. Ou instale Chrome/Edge:\n` +
+    `   - Chrome: https://www.google.com/chrome/\n` +
+    `   - Edge: https://www.microsoft.com/edge`;
   
   console.error('❌', errorMsg);
   throw new Error(errorMsg);
@@ -129,7 +146,7 @@ export default async function handler(
     
     // Configurar Puppeteer para desenvolvimento local
     console.log('🔧 Configurando Puppeteer...');
-    
+    const puppeteer = await import('puppeteer-core');
     browser = await puppeteer.launch({
       executablePath: browserPath,
       headless: true,

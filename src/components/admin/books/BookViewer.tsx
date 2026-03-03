@@ -115,8 +115,10 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
       await booksPDFServiceV2.baixarPDF(book.id, filename);
 
       toast({
-        title: 'PDF baixado com sucesso',
-        description: 'O arquivo foi salvo no seu computador com fidelidade visual total.',
+        title: 'PDF gerado com sucesso',
+        description: process.env.NODE_ENV === 'development' 
+          ? 'Use Ctrl+P ou Cmd+P para salvar como PDF no navegador.'
+          : 'O arquivo foi salvo no seu computador.',
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);

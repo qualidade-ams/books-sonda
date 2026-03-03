@@ -6,7 +6,6 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
-import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 interface GeneratePDFRequest {
@@ -59,7 +58,7 @@ export default async function handler(
     
     const executablePath = await chromium.executablePath();
     console.log('📍 Chromium path:', executablePath);
-    
+    const puppeteer = await import('puppeteer-core');
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: executablePath,
