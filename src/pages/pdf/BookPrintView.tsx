@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBookData } from '@/hooks/useBooks';
 import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 
@@ -27,6 +28,7 @@ import BookOrganograma from '@/components/admin/books/BookOrganograma';
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   
   // Remover prefixo "book-" se existir
   const id = rawId?.startsWith('book-') ? rawId.substring(5) : rawId;
@@ -41,9 +43,22 @@ export default function BookPrintView() {
     console.log('🔍 URL completa:', window.location.href);
   }, [rawId, id]);
   
-  const { bookData, isLoading, error } = useBookData(id || null);
+  const { bookData, isLoading, error, refetch } = useBookData(id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
+
+  // CRÍTICO: Limpar cache e forçar refetch ao montar o componente
+  useEffect(() => {
+    if (id) {
+      console.log('🔄 BookPrintView - Limpando cache e recarregando dados para book:', id);
+      
+      // Limpar cache ESPECÍFICO deste book (não todos os books!)
+      queryClient.removeQueries({ queryKey: ['book-data', id] });
+      
+      // Forçar refetch imediato com staleTime: 0 para garantir dados frescos
+      refetch();
+    }
+  }, [id, queryClient, refetch]);
 
   // Debug logs
   useEffect(() => {
@@ -116,12 +131,31 @@ export default function BookPrintView() {
   }
 
   console.log('📊 Renderizando book:', {
+    bookId: id,
     empresa: bookData.empresa_nome,
     mes: bookData.mes,
     ano: bookData.ano,
     produtos: produtos?.length || 0,
     produtosArray: produtos,
-    temProdutos: produtos && produtos.length > 0
+    temProdutos: produtos && produtos.length > 0,
+    // DADOS DETALHADOS PARA DEBUG
+    volumetria: {
+      abertos_mes: bookData.volumetria.abertos_mes,
+      fechados_mes: bookData.volumetria.fechados_mes,
+      sla_medio: bookData.volumetria.sla_medio,
+      total_backlog: bookData.volumetria.total_backlog
+    },
+    sla: {
+      sla_percentual: bookData.sla.sla_percentual,
+      fechados: bookData.sla.fechados,
+      incidentes: bookData.sla.incidentes,
+      violados: bookData.sla.violados
+    },
+    backlog: {
+      total: bookData.backlog.total,
+      incidente: bookData.backlog.incidente,
+      solicitacao: bookData.backlog.solicitacao
+    }
   });
 
   return (
@@ -153,9 +187,12 @@ export default function BookPrintView() {
           );
         })
       ) : (
-        <div className="hidden">
-          {console.log('⚠️ Nenhum produto encontrado para renderizar organogramas')}
-        </div>
+        <>
+          {(() => {
+            console.log('⚠️ Nenhum produto encontrado para renderizar organogramas');
+            return null;
+          })()}
+        </>
       )}
 
       {/* Volumetria */}
