@@ -128,7 +128,7 @@ export default function GeracaoBooks() {
 
   // Formatar período para exibição
   const mesNome = MESES_NOMES[mesAtual];
-  const periodoLabel = `${mesNome} ${anoAtual} - Referente a ${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
+  const periodoLabel = `${mesNome} ${anoAtual}`;
   const periodoReferenciaLabel = `${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
 
   // Função para verificar se há filtros ativos (exceto período, que é navegação)
