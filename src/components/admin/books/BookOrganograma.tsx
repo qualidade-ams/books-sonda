@@ -140,7 +140,8 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
   }
 
   return (
-    <div key={`org-container-${produto}`} className="h-full" data-organograma={produto}>
+    <div key={`org-container-${produto}`} className="w-full h-full bg-white p-8" data-organograma={produto}>
+      <div className="h-full">
       {/* Reutiliza o componente OrganoTree da tela de Organograma em modo somente visualização */}
       <OrganoTree 
         key={`organograma-${produto}`} // Key fixa baseada no produto
@@ -152,6 +153,7 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
         height={600} // Altura reduzida para evitar scroll desnecessário
         initialZoom={0.4} // Zoom reduzido para mostrar organograma completo
       />
+      </div>
     </div>
   );
 }

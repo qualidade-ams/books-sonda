@@ -397,11 +397,13 @@ const ControleDisparos = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
                     <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
                     <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
                   </div>
+                </CardHeader>
+                <CardContent className="pt-0">
                   <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
                 </CardContent>
               </Card>
@@ -516,44 +518,60 @@ const ControleDisparos = () => {
         {/* Estatísticas - Cards no padrão do Design System */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-4 w-4 text-gray-500" />
-                <p className="text-xs font-medium text-gray-500">Total de Empresas</p>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Total de Empresas
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
               <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} clientes</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <p className="text-xs font-medium text-green-500">Enviados</p>
-              </div>
-              <p className="text-2xl font-bold text-green-600">{stats.enviados}</p>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Enviados
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.enviados}</div>
               <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} e-mails</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="h-4 w-4 text-red-500" />
-                <p className="text-xs font-medium text-red-500">Falhas</p>
-              </div>
-              <p className="text-2xl font-bold text-red-600">{stats.falhas}</p>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4" />
+                  Falhas
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-red-600">{stats.falhas}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="h-4 w-4 text-yellow-500" />
-                <p className="text-xs font-medium text-yellow-500">Pendentes</p>
-              </div>
-              <p className="text-2xl font-bold text-yellow-600">{stats.pendentes}</p>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs lg:text-sm font-medium text-yellow-600">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Pendentes
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-2xl font-bold text-yellow-600">{stats.pendentes}</div>
             </CardContent>
           </Card>
         </div>

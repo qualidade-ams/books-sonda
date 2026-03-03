@@ -177,7 +177,8 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
   const consumoTotal = calcularConsumoTotal();
 
   return (
-    <div className="space-y-6">{/* Título da Seção */}
+    <div className="w-full h-full bg-white p-8">
+      <div className="space-y-6">{/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
           Consumo {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
@@ -647,6 +648,7 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
