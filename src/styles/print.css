@@ -16,18 +16,25 @@
 
 /* Container principal de impressão */
 .print-container {
-  width: 100%;
+  width: 4150px;
+  max-width: 4150px;
   background: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-/* Seções de página */
+/* Seções de página - dimensões fixas para garantir layout */
 .page-section {
-  width: 100%;
-  min-height: 100vh;
+  width: 4150px;
+  height: 2400px;
+  max-width: 4150px;
+  max-height: 2400px;
   position: relative;
   overflow: hidden;
   background: white;
+  box-sizing: border-box;
+  padding: 30px 40px;
 }
 
 /* Page breaks entre seções */
@@ -59,7 +66,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 30px 40px;
 }
 
 .print-container .rd3t-tree-container {
@@ -83,9 +90,9 @@
   overflow: visible !important;
 }
 
-/* Configuração de página A4 landscape */
+/* Configuração de página - dimensões fixas 4150x2400px */
 @page {
-  size: A4 landscape;
+  size: 4150px 2400px;
   margin: 0;
 }
 
@@ -121,4 +128,514 @@
 .print-container [class*="Card"] {
   page-break-inside: avoid;
   break-inside: avoid;
+}
+
+/* Reduzir espaçamentos internos para melhor aproveitamento */
+.print-container h1 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  line-height: 1.1;
+  font-size: 1.5rem !important;
+}
+
+.print-container h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  font-size: 1.25rem !important;
+}
+
+.print-container h3,
+.print-container h4,
+.print-container h5,
+.print-container h6 {
+  margin-top: 0;
+  margin-bottom: 0.375rem;
+  line-height: 1.3;
+  font-size: 1rem !important;
+}
+
+.print-container p {
+  margin-top: 0;
+  margin-bottom: 0.375rem;
+  line-height: 1.4;
+}
+
+/* Reduzir espaçamentos em divs e seções */
+.print-container [class*="space-y-8"] {
+  gap: 1rem !important;
+}
+
+.print-container [class*="space-y-6"] {
+  gap: 0.75rem !important;
+}
+
+.print-container [class*="space-y-4"] {
+  gap: 0.5rem !important;
+}
+
+.print-container [class*="space-y-3"] {
+  gap: 0.375rem !important;
+}
+
+.print-container [class*="space-y-2"] {
+  gap: 0.25rem !important;
+}
+
+/* Reduzir padding em cards e containers */
+.print-container [class*="p-12"] {
+  padding: 1rem !important;
+}
+
+.print-container [class*="p-8"] {
+  padding: 0.75rem !important;
+}
+
+.print-container [class*="p-6"] {
+  padding: 0.5rem !important;
+}
+
+.print-container [class*="p-4"] {
+  padding: 0.375rem !important;
+}
+
+.print-container [class*="p-3"] {
+  padding: 0.25rem !important;
+}
+
+/* Otimizar tabelas */
+.print-container table {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.print-container th,
+.print-container td {
+  padding: 0.5rem !important;
+}
+
+/* Reduzir margens em grids */
+.print-container [class*="gap-8"] {
+  gap: 1rem !important;
+}
+
+.print-container [class*="gap-6"] {
+  gap: 0.75rem !important;
+}
+
+.print-container [class*="gap-4"] {
+  gap: 0.5rem !important;
+}
+
+.print-container [class*="gap-3"] {
+  gap: 0.375rem !important;
+}
+
+.print-container [class*="gap-2"] {
+  gap: 0.25rem !important;
+}
+
+/* Reduzir altura mínima de cards */
+.print-container .min-h-screen {
+  min-height: auto !important;
+}
+
+.print-container [class*="min-h"] {
+  min-height: auto !important;
+}
+
+/* Ajustar max-width de containers */
+.print-container [class*="max-w"] {
+  max-width: 100% !important;
+}
+
+/* Reduzir espaçamento de margins */
+.print-container [class*="my-8"] {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.print-container [class*="my-6"] {
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.print-container [class*="my-4"] {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.print-container [class*="mt-8"] {
+  margin-top: 1rem !important;
+}
+
+.print-container [class*="mt-6"] {
+  margin-top: 0.75rem !important;
+}
+
+.print-container [class*="mt-4"] {
+  margin-top: 0.5rem !important;
+}
+
+.print-container [class*="mb-8"] {
+  margin-bottom: 1rem !important;
+}
+
+.print-container [class*="mb-6"] {
+  margin-bottom: 0.75rem !important;
+}
+
+.print-container [class*="mb-4"] {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Ajustes específicos para componentes do Book */
+
+/* Capa - altura fixa */
+.print-container [data-section="capa"] {
+  padding: 0 !important;
+}
+
+/* Cards de métricas - reduzir espaçamento */
+.print-container [data-section] .grid {
+  gap: 1rem !important;
+}
+
+/* Títulos de seção - reduzir espaçamento superior */
+.print-container [data-section] > div > h1:first-child,
+.print-container [data-section] > div > h2:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Gráficos - otimizar altura */
+.print-container .recharts-wrapper {
+  max-height: 400px !important;
+}
+
+/* Tabelas - fonte menor e padding reduzido */
+.print-container table {
+  font-size: 0.875rem !important;
+}
+
+.print-container table th {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.8125rem !important;
+}
+
+.print-container table td {
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Cards - padding reduzido */
+.print-container .card,
+.print-container [class*="Card"] {
+  padding: 1rem !important;
+}
+
+.print-container .card-header,
+.print-container [class*="CardHeader"] {
+  padding: 1rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.print-container .card-content,
+.print-container [class*="CardContent"] {
+  padding: 1rem !important;
+  padding-top: 0.5rem !important;
+}
+
+/* Badges e tags - tamanho reduzido */
+.print-container [class*="badge"],
+.print-container [class*="Badge"] {
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.75rem !important;
+}
+
+/* Botões - ocultar em PDF */
+.print-container button,
+.print-container [class*="Button"] {
+  display: none !important;
+}
+
+/* Ícones - tamanho reduzido */
+.print-container svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+/* Títulos de cards - tamanho reduzido */
+.print-container [class*="CardTitle"] {
+  font-size: 1.125rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Descrições de cards - tamanho reduzido */
+.print-container [class*="CardDescription"] {
+  font-size: 0.875rem !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Organogramas - ajustar escala */
+.print-container [data-section^="organograma"] svg {
+  max-width: 100% !important;
+  max-height: 2000px !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Remover scrollbars de containers específicos */
+.print-container .overflow-auto,
+.print-container .overflow-x-auto,
+.print-container .overflow-y-auto {
+  overflow: visible !important;
+}
+
+/* Ajustar containers flex para não expandir demais */
+.print-container .flex-1 {
+  flex: 0 1 auto !important;
+}
+
+/* Reduzir espaçamento entre elementos de lista */
+.print-container ul,
+.print-container ol {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-left: 1.5rem !important;
+}
+
+.print-container li {
+  margin-bottom: 0.25rem !important;
+}
+
+/* Ajustar containers de conteúdo */
+.print-container [class*="container"] {
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Ajustes específicos para visualização de empresa (modal) */
+
+/* Reduzir espaçamento em grids */
+.print-container .grid {
+  gap: 0.75rem !important;
+}
+
+/* Ajustar tamanho de fonte em labels */
+.print-container label,
+.print-container [class*="Label"] {
+  font-size: 0.8125rem !important;
+  line-height: 1.3 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Ajustar inputs e selects */
+.print-container input,
+.print-container select,
+.print-container textarea,
+.print-container [class*="Input"],
+.print-container [class*="Select"] {
+  font-size: 0.875rem !important;
+  padding: 0.375rem 0.5rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Reduzir espaçamento em FormItem */
+.print-container [class*="FormItem"],
+.print-container .space-y-2 {
+  gap: 0.25rem !important;
+}
+
+/* Ajustar títulos de seção */
+.print-container .text-base.font-semibold {
+  font-size: 0.9375rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Ajustar espaçamento entre seções */
+.print-container .space-y-6 > * + * {
+  margin-top: 1rem !important;
+}
+
+.print-container .space-y-4 > * + * {
+  margin-top: 0.75rem !important;
+}
+
+/* Ajustar cards internos */
+.print-container .rounded-lg.border {
+  padding: 0.75rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Ajustar checkboxes e radio buttons */
+.print-container [type="checkbox"],
+.print-container [type="radio"] {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+/* Ajustar texto de descrição */
+.print-container .text-sm.text-gray-500,
+.print-container .text-sm.text-muted-foreground {
+  font-size: 0.75rem !important;
+  line-height: 1.3 !important;
+  margin-top: 0.125rem !important;
+}
+
+/* Garantir que texto não quebre linha desnecessariamente */
+.print-container .whitespace-nowrap {
+  white-space: nowrap !important;
+}
+
+/* Ajustar largura máxima de containers */
+.print-container .max-w-4xl {
+  max-width: 100% !important;
+}
+
+/* Reduzir padding de tabs */
+.print-container [role="tablist"] {
+  padding: 0.25rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.print-container [role="tab"] {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Ajustar espaçamento de FormDescription */
+.print-container [class*="FormDescription"] {
+  font-size: 0.75rem !important;
+  margin-top: 0.125rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Ajustar tooltips */
+.print-container [class*="Tooltip"] {
+  font-size: 0.75rem !important;
+}
+
+/* Garantir que elementos não ultrapassem o container */
+.print-container * {
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
+
+/* Ajustar espaçamento de badges */
+.print-container [class*="Badge"] {
+  padding: 0.125rem 0.375rem !important;
+  font-size: 0.6875rem !important;
+}
+
+/* Reduzir altura de linhas em listas */
+.print-container li {
+  line-height: 1.4 !important;
+}
+
+/* Ajustar espaçamento de dividers */
+.print-container hr,
+.print-container .border-t {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Reduzir espaçamento vertical geral */
+.print-container > * + * {
+  margin-top: 0.5rem !important;
+}
+
+/* Ajustar altura de linha global */
+.print-container {
+  line-height: 1.4 !important;
+}
+
+/* Reduzir tamanho de fonte base */
+.print-container {
+  font-size: 13px !important;
+}
+
+/* Ajustar tamanho de texto */
+.print-container .text-lg {
+  font-size: 0.9375rem !important;
+}
+
+.print-container .text-base {
+  font-size: 0.8125rem !important;
+}
+
+.print-container .text-sm {
+  font-size: 0.75rem !important;
+}
+
+.print-container .text-xs {
+  font-size: 0.6875rem !important;
+}
+
+/* Reduzir padding de DialogContent */
+.print-container [class*="DialogContent"] {
+  padding: 1rem !important;
+}
+
+/* Ajustar espaçamento de FormField */
+.print-container [class*="FormField"] {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Reduzir espaçamento entre tabs */
+.print-container [class*="TabsContent"] {
+  padding-top: 0.5rem !important;
+}
+
+/* Ajustar altura de inputs */
+.print-container input,
+.print-container select,
+.print-container textarea {
+  min-height: 2rem !important;
+  height: auto !important;
+}
+
+/* Compactar cards */
+.print-container .rounded-lg {
+  border-radius: 0.375rem !important;
+}
+
+/* Reduzir espaçamento de listas */
+.print-container ul,
+.print-container ol {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 1.25rem !important;
+}
+
+.print-container li {
+  margin-bottom: 0.125rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Ajustar espaçamento de flex containers */
+.print-container .flex {
+  gap: 0.5rem !important;
+}
+
+.print-container .space-x-4 > * + * {
+  margin-left: 0.5rem !important;
+}
+
+.print-container .space-x-2 > * + * {
+  margin-left: 0.25rem !important;
+}
+
+/* Garantir que nada ultrapasse 4150px de largura */
+.print-container,
+.print-container * {
+  max-width: 4070px !important; /* 4150 - 80 (padding lateral) */
+  box-sizing: border-box !important;
+}
+
+/* Forçar quebra de texto longo */
+.print-container {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
 }

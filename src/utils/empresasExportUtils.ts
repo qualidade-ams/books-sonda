@@ -51,6 +51,79 @@ const mapearTemplatePadrao = async (templateId: string | null | undefined): Prom
 };
 
 /**
+ * Busca baseline vigente atual de uma empresa
+ */
+const buscarBaselineVigente = async (empresaId: string): Promise<{ horas?: string; tickets?: number }> => {
+  try {
+    const dataAtual = new Date().toISOString().split('T')[0];
+    
+    // @ts-ignore - Função get_baseline_vigente existe no banco mas tipos não foram regenerados
+    const { data, error } = await (supabase as any).rpc('get_baseline_vigente', {
+      p_empresa_id: empresaId,
+      p_data: dataAtual
+    });
+
+    if (error || !data || data.length === 0) {
+      return {};
+    }
+
+    const baseline = data[0];
+    
+    // Converter baseline_horas (decimal) para formato HH:MM
+    let horasFormatadas: string | undefined;
+    if (baseline.baseline_horas != null) {
+      const horas = Math.floor(baseline.baseline_horas);
+      const minutos = Math.round((baseline.baseline_horas - horas) * 60);
+      horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+    }
+
+    return {
+      horas: horasFormatadas,
+      tickets: baseline.baseline_tickets
+    };
+  } catch (error) {
+    console.error('Erro ao buscar baseline vigente:', error);
+    return {};
+  }
+};
+
+/**
+ * Busca percentual de repasse vigente atual de uma empresa
+ */
+const buscarPercentualRepasseVigente = async (empresaId: string): Promise<{
+  percentual_repasse_mensal?: number;
+  percentual_repasse_especial?: number;
+  percentual_dentro_periodo?: number;
+  percentual_entre_periodos?: number;
+}> => {
+  try {
+    const dataAtual = new Date().toISOString().split('T')[0];
+    
+    // @ts-ignore - Função get_percentual_repasse_vigente existe no banco mas tipos não foram regenerados
+    const { data, error } = await (supabase as any).rpc('get_percentual_repasse_vigente', {
+      p_empresa_id: empresaId,
+      p_data: dataAtual
+    });
+
+    if (error || !data || data.length === 0) {
+      return {};
+    }
+
+    const repasse = data[0];
+    
+    return {
+      percentual_repasse_mensal: repasse.percentual_repasse_mensal,
+      percentual_repasse_especial: repasse.percentual_repasse_especial,
+      percentual_dentro_periodo: repasse.percentual_dentro_periodo,
+      percentual_entre_periodos: repasse.percentual_entre_periodos
+    };
+  } catch (error) {
+    console.error('Erro ao buscar percentual de repasse vigente:', error);
+    return {};
+  }
+};
+
+/**
  * Exporta dados de empresas para Excel
  */
 export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) => {
@@ -61,7 +134,14 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
   // Preparar dados para exportação com mapeamento de templates
   // ORDEM DAS COLUNAS: Mesma ordem do template de importação
   const dadosExportacao = await Promise.all(
-    empresas.map(async (empresa) => ({
+    empresas.map(async (empresa) => {
+      // Buscar baseline vigente atual
+      const baselineVigente = await buscarBaselineVigente(empresa.id);
+      
+      // Buscar percentual de repasse vigente atual
+      const repasseVigente = await buscarPercentualRepasseVigente(empresa.id);
+      
+      return {
       'Nome Completo': empresa.nome_completo,
       'Nome Abreviado': empresa.nome_abreviado,
       'Status': empresa.status,
@@ -90,27 +170,23 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
         const ano = data.getUTCFullYear();
         return `${mes}/${ano}`;
       })() : '',
-      'Baseline Horas Mensal': empresa.baseline_horas_mensal ? (() => {
-        // Converter INTERVAL do PostgreSQL para número decimal
-        // Formato esperado: '1:50:00' ou '01:50:00'
-        const intervalStr = empresa.baseline_horas_mensal.toString();
-        const match = intervalStr.match(/(\d+):(\d+):(\d+)/);
-        if (match) {
-          const horas = parseInt(match[1]);
-          const minutos = parseInt(match[2]);
-          return (horas + minutos / 60).toFixed(2);
-        }
-        return intervalStr;
-      })() : '',
-      'Baseline Tickets Mensal': empresa.baseline_tickets_mensal || '',
+      'Baseline Horas Mensal': baselineVigente.horas || '',
+      'Baseline Tickets Mensal': baselineVigente.tickets || '',
       'Possui Repasse Especial': empresa.possui_repasse_especial ? 'Sim' : 'Não',
+      'Tipo Repasse Especial': empresa.tipo_repasse_especial ? (empresa.tipo_repasse_especial === 'simples' ? 'Simples' : 'Por Período') : '',
       'Ciclos para Zerar': empresa.ciclos_para_zerar || '',
-      '% Repasse Mensal': empresa.percentual_repasse_mensal || '',
-      '% Repasse Especial': empresa.percentual_repasse_especial || '',
+      '% Repasse Mensal': repasseVigente.percentual_repasse_mensal ?? empresa.percentual_repasse_mensal ?? '',
+      '% Repasse Especial': repasseVigente.percentual_repasse_especial ?? empresa.percentual_repasse_especial ?? '',
+      // Configuração de repasse por período
+      'Duração Período (meses)': empresa.duracao_periodo_meses || '',
+      '% Dentro do Período': repasseVigente.percentual_dentro_periodo ?? empresa.percentual_dentro_periodo ?? '',
+      '% Entre Períodos': repasseVigente.percentual_entre_periodos ?? empresa.percentual_entre_periodos ?? '',
+      'Períodos até Zerar': empresa.periodos_ate_zerar || '',
       // Campos de Meta SLA
       'Meta SLA (%)': empresa.meta_sla_percentual || '',
       'Qtd Mínima Chamados SLA': empresa.quantidade_minima_chamados_sla || ''
-    }))
+    };
+    })
   );
 
   // Criar workbook
@@ -146,9 +222,15 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 20 }, // Baseline Horas Mensal
     { wch: 22 }, // Baseline Tickets Mensal
     { wch: 20 }, // Possui Repasse Especial
+    { wch: 20 }, // Tipo Repasse Especial
     { wch: 18 }, // Ciclos para Zerar
     { wch: 18 }, // % Repasse Mensal
-    { wch: 20 },  // % Repasse Especial
+    { wch: 20 }, // % Repasse Especial
+    // Configuração de repasse por período
+    { wch: 22 }, // Duração Período (meses)
+    { wch: 20 }, // % Dentro do Período
+    { wch: 18 }, // % Entre Períodos
+    { wch: 20 }, // Períodos até Zerar
     // Campos de Meta SLA
     { wch: 15 }, // Meta SLA (%)
     { wch: 25 }  // Qtd Mínima Chamados SLA
@@ -254,9 +336,15 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
 
   // Função para desenhar card de empresa
   const drawEmpresaCard = async (empresa: EmpresaClienteCompleta, y: number) => {
-    const cardHeight = 70; // Aumentado para acomodar mais informações
+    const cardHeight = 90; // Aumentado para acomodar configuração de repasse por período
     const cardMargin = 15;
     const cardWidth = pageWidth - (cardMargin * 2);
+
+    // Buscar baseline vigente atual
+    const baselineVigente = await buscarBaselineVigente(empresa.id);
+    
+    // Buscar percentual de repasse vigente atual
+    const repasseVigente = await buscarPercentualRepasseVigente(empresa.id);
 
     // Verificar se cabe na página
     if (y + cardHeight > pageHeight - 20) {
@@ -402,50 +490,64 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
 
       contentY += 5;
 
-      // Linha 2: Baseline Horas e Baseline Tickets
-      if (empresa.baseline_horas_mensal) {
+      // Linha 2: Baseline Horas e Baseline Tickets (usando baseline vigente)
+      if (baselineVigente.horas) {
         doc.setFont('helvetica', 'bold');
         doc.text('Baseline Horas:', contentX, contentY);
         doc.setFont('helvetica', 'normal');
-        // Converter INTERVAL para formato legível
-        const intervalStr = empresa.baseline_horas_mensal.toString();
-        const match = intervalStr.match(/(\d+):(\d+):(\d+)/);
-        let horasTexto = intervalStr;
-        if (match) {
-          const horas = parseInt(match[1]);
-          const minutos = parseInt(match[2]);
-          horasTexto = `${horas}h${minutos > 0 ? ` ${minutos}min` : ''}`;
-        }
+        // Converter formato HH:MM para texto legível
+        const [horas, minutos] = baselineVigente.horas.split(':').map(Number);
+        const horasTexto = `${horas}h${minutos > 0 ? ` ${minutos}min` : ''}`;
         doc.text(horasTexto, contentX + 30, contentY);
       }
 
-      if (empresa.baseline_tickets_mensal) {
+      if (baselineVigente.tickets) {
         doc.setFont('helvetica', 'bold');
         doc.text('Baseline Tickets:', rightColumnX, contentY);
         doc.setFont('helvetica', 'normal');
-        doc.text(empresa.baseline_tickets_mensal.toString(), rightColumnX + 35, contentY);
+        doc.text(baselineVigente.tickets.toString(), rightColumnX + 35, contentY);
       }
 
       contentY += 5;
 
-      // Linha 3: % Repasse Mensal e % Repasse Especial
-      if (empresa.percentual_repasse_mensal != null) {
+      // Linha 3: Tipo Repasse e % Repasse Mensal (usando valores vigentes)
+      if (empresa.tipo_repasse_especial) {
         doc.setFont('helvetica', 'bold');
-        doc.text('% Repasse Mensal:', contentX, contentY);
+        doc.text('Tipo Repasse:', contentX, contentY);
         doc.setFont('helvetica', 'normal');
-        doc.text(`${empresa.percentual_repasse_mensal}%`, contentX + 35, contentY);
+        const tipoRepasse = empresa.tipo_repasse_especial === 'simples' ? 'Simples' : 'Por Período';
+        doc.text(tipoRepasse, contentX + 28, contentY);
       }
 
-      if (empresa.possui_repasse_especial && empresa.percentual_repasse_especial != null) {
+      const percentualMensal = repasseVigente.percentual_repasse_mensal ?? empresa.percentual_repasse_mensal;
+      if (percentualMensal != null) {
         doc.setFont('helvetica', 'bold');
-        doc.text('% Repasse Especial:', rightColumnX, contentY);
+        doc.text('% Repasse Mensal:', rightColumnX, contentY);
         doc.setFont('helvetica', 'normal');
-        doc.text(`${empresa.percentual_repasse_especial}%`, rightColumnX + 40, contentY);
+        doc.text(`${percentualMensal}%`, rightColumnX + 38, contentY);
       }
 
       contentY += 5;
 
-      // Linha 4: Início Vigência e Ciclos para Zerar
+      // Linha 4: % Repasse Especial e Ciclos para Zerar (usando valores vigentes)
+      const percentualEspecial = repasseVigente.percentual_repasse_especial ?? empresa.percentual_repasse_especial;
+      if (empresa.possui_repasse_especial && percentualEspecial != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('% Repasse Especial:', contentX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${percentualEspecial}%`, contentX + 40, contentY);
+      }
+
+      if (empresa.ciclos_para_zerar) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ciclos p/ Zerar:', rightColumnX, contentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(empresa.ciclos_para_zerar.toString(), rightColumnX + 32, contentY);
+      }
+
+      contentY += 5;
+
+      // Linha 5: Início Vigência
       if (empresa.inicio_vigencia) {
         doc.setFont('helvetica', 'bold');
         doc.text('Início Vigência:', contentX, contentY);
@@ -458,11 +560,60 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
         doc.text(inicioVigencia, contentX + 32, contentY);
       }
 
-      if (empresa.ciclos_para_zerar) {
+      // Se tem repasse por período, mostrar configurações adicionais
+      if (empresa.tipo_repasse_especial === 'por_periodo' && empresa.duracao_periodo_meses) {
+        contentY += 3;
+        
+        // Linha separadora
+        doc.setDrawColor(...colors.light);
+        doc.setLineWidth(0.2);
+        doc.line(contentX, contentY, cardMargin + cardWidth - 10, contentY);
+        
+        contentY += 5;
+        
+        // Subtítulo
         doc.setFont('helvetica', 'bold');
-        doc.text('Ciclos p/ Zerar:', rightColumnX, contentY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(empresa.ciclos_para_zerar.toString(), rightColumnX + 32, contentY);
+        doc.setFontSize(8);
+        doc.setTextColor(...colors.secondary);
+        doc.text('CONFIGURAÇÃO DE REPASSE POR PERÍODO', contentX, contentY);
+        
+        contentY += 5;
+        doc.setFontSize(8);
+        doc.setTextColor(...colors.dark);
+
+        // Linha 1: Duração Período e % Dentro do Período (usando valores vigentes)
+        if (empresa.duracao_periodo_meses) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Duração Período:', contentX, contentY);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`${empresa.duracao_periodo_meses} ${empresa.duracao_periodo_meses === 1 ? 'mês' : 'meses'}`, contentX + 35, contentY);
+        }
+
+        const percentualDentro = repasseVigente.percentual_dentro_periodo ?? empresa.percentual_dentro_periodo;
+        if (percentualDentro != null) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('% Dentro Período:', rightColumnX, contentY);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`${percentualDentro}%`, rightColumnX + 38, contentY);
+        }
+
+        contentY += 5;
+
+        // Linha 2: % Entre Períodos e Períodos até Zerar (usando valores vigentes)
+        const percentualEntre = repasseVigente.percentual_entre_periodos ?? empresa.percentual_entre_periodos;
+        if (percentualEntre != null) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('% Entre Períodos:', contentX, contentY);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`${percentualEntre}%`, contentX + 38, contentY);
+        }
+
+        if (empresa.periodos_ate_zerar) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Períodos p/ Zerar:', rightColumnX, contentY);
+          doc.setFont('helvetica', 'normal');
+          doc.text(empresa.periodos_ate_zerar.toString(), rightColumnX + 38, contentY);
+        }
       }
     }
 

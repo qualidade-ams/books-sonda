@@ -8,18 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    proxy: {
-      // Proxy para API de PDF em desenvolvimento
-      '/api': {
-        target: 'http://localhost:3001', // Porta 3001 (Vercel Dev)
-        changeOrigin: true,
-        configure: (proxy, options) => {
-          proxy.on('error', (err, req, res) => {
-            console.log('⚠️ Proxy error - Use "vercel dev" para testar a API de PDF');
-          });
-        }
-      }
-    }
+    strictPort: false, // Permite usar porta alternativa se 8080 estiver ocupada
+    // Proxy removido - quando usar vercel dev, a API já está na mesma porta
+    // Se precisar rodar npm run dev + vercel dev separados, descomente:
+    // proxy: {
+    //   '/api': {
+    //     target: 'http://localhost:3000',
+    //     changeOrigin: true,
+    //   }
+    // }
   },
   plugins: [
     react(),
