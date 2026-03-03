@@ -297,6 +297,7 @@ export interface BookListItem {
   id: string;
   empresa_id: string;
   empresa_nome: string;
+  empresa_nome_abreviado?: string; // Nome abreviado da empresa
   empresa_logo_url?: string;
   mes: number;
   ano: number;

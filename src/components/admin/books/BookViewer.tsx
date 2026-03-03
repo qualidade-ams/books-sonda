@@ -117,7 +117,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
       toast({
         title: 'PDF gerado com sucesso',
         description: process.env.NODE_ENV === 'development' 
-          ? 'Use Ctrl+P ou Cmd+P para salvar como PDF no navegador.'
+          ? 'PDF salvo no navegador.'
           : 'O arquivo foi salvo no seu computador.',
       });
     } catch (error) {
