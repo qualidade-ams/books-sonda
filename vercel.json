@@ -5,16 +5,12 @@
   "framework": "vite",
   "devCommand": "vite --port 3000 --host",
   "functions": {
-    "api/pdf/generate.prod.ts": {
+    "api/pdf/generate.ts": {
       "memory": 2048,
       "maxDuration": 10
     }
   },
   "rewrites": [
-    {
-      "source": "/api/pdf/generate",
-      "destination": "/api/pdf/generate.prod"
-    },
     {
       "source": "/((?!api).*)",
       "destination": "/index.html"
