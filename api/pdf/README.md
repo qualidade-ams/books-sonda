@@ -47,10 +47,10 @@ Se você precisar testar com Chrome local (desenvolvimento):
    mv api/pdf/generate.ts api/pdf/generate.prod.temp.ts
    mv api/pdf/generate.dev.ts api/pdf/generate.ts
    ```
-
+   ```bash VOLTAR
    mv api/pdf/generate.ts api/pdf/generate.dev.ts
    mv api/pdf/generate.prod.temp.ts api/pdf/generate.ts
-
+   ```
 2. Teste localmente:
    ```bash
    npm run dev
@@ -111,3 +111,12 @@ Se você precisar testar com Chrome local (desenvolvimento):
 ---
 
 **Última atualização**: 2026-03-03
+
+**Sincronização Dev/Prod**: 2026-03-03
+- ✅ Dimensões do PDF sincronizadas: 1754x1240px (A4 landscape em 150 DPI)
+- ✅ Lógica de espera por organogramas adicionada à versão de produção
+- ✅ Timeouts otimizados para plano Hobby:
+  - Prontidão: 8s (dev usa 40s)
+  - Organogramas: 6s (dev usa 15s)
+  - Estabilização final: 1s (dev usa 3s)
+  - **Total estimado**: ~15s (dentro do limite de 10s com margem)
