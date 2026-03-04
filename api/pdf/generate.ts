@@ -1,12 +1,20 @@
 /**
- * API Route para geração de PDF usando Puppeteer
+ * API Route para geração de PDF usando Puppeteer - VERSÃO HÍBRIDA OTIMIZADA
  * Endpoint: POST /api/pdf/generate
  * 
- * Recebe HTML ou URL e retorna PDF com fidelidade visual total
+ * ⚡ OTIMIZAÇÃO INTELIGENTE:
+ * - Desenvolvimento: Usa Chrome local (RÁPIDO - inicia em 2-3s)
+ * - Produção: Usa @sparticuz/chromium (AUTOMÁTICO no Vercel)
+ * 
+ * Detecta automaticamente o ambiente e escolhe a melhor opção
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
-import chromium from '@sparticuz/chromium';
+import { existsSync } from 'fs';
+
+// ⚡ OTIMIZAÇÃO: Imports dinâmicos para não travar o vercel dev
+// Chromium só é carregado em produção (Vercel)
+// Chrome local é usado em desenvolvimento (muito mais rápido)
 
 interface GeneratePDFRequest {
   html?: string;
@@ -23,6 +31,71 @@ interface GeneratePDFRequest {
       right?: string;
     };
   };
+}
+
+// ⚡ OTIMIZAÇÃO: Cache do caminho do navegador para evitar busca repetida
+let cachedBrowserPath: string | null = null;
+
+// Detectar se está em produção (Vercel) ou desenvolvimento (local)
+const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
+// Caminhos comuns do Chrome/Edge por sistema operacional
+const BROWSER_PATHS = {
+  win32: [
+    // Edge (mais comum no Windows 11)
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env.PROGRAMFILES + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    process.env['PROGRAMFILES(X86)'] + '\\Microsoft\\Edge\\Application\\msedge.exe',
+    // Chrome
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.PROGRAMFILES + '\\Google\\Chrome\\Application\\chrome.exe',
+    process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
+  ],
+  darwin: [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  ],
+  linux: [
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/microsoft-edge',
+    '/snap/bin/chromium',
+  ],
+};
+
+function findBrowser(): string {
+  // ✅ OTIMIZAÇÃO: Retornar cache se já encontrou antes
+  if (cachedBrowserPath) {
+    return cachedBrowserPath;
+  }
+
+  // ✅ OTIMIZAÇÃO: Priorizar variável de ambiente BROWSER_PATH
+  if (process.env.BROWSER_PATH && existsSync(process.env.BROWSER_PATH)) {
+    cachedBrowserPath = process.env.BROWSER_PATH;
+    return cachedBrowserPath;
+  }
+
+  const platform = process.platform as keyof typeof BROWSER_PATHS;
+  const paths = BROWSER_PATHS[platform] || [];
+  
+  for (const path of paths) {
+    try {
+      if (path && existsSync(path)) {
+        cachedBrowserPath = path;
+        return cachedBrowserPath;
+      }
+    } catch (e) {
+      // Silenciar erros de verificação
+    }
+  }
+  
+  throw new Error('Chrome ou Edge não encontrado. Instale um dos navegadores ou defina BROWSER_PATH no .env.local');
 }
 
 export default async function handler(
@@ -51,16 +124,36 @@ export default async function handler(
     }
 
     console.log('🚀 Iniciando geração de PDF...');
+    console.log('🌍 Ambiente:', isProduction ? 'PRODUÇÃO (Vercel)' : 'DESENVOLVIMENTO (Local)');
     console.log('📦 Tamanho do HTML:', body.html?.length || 0, 'caracteres');
 
-    // Configurar Puppeteer para Vercel
-    console.log('🔧 Configurando Puppeteer...');
-    
-    const executablePath = await chromium.executablePath();
-    console.log('📍 Chromium path:', executablePath);
+    // ⚡ OTIMIZAÇÃO: Escolher navegador baseado no ambiente
+    let executablePath: string;
+    let browserArgs: string[];
+
+    if (isProduction) {
+      // PRODUÇÃO: Usar @sparticuz/chromium (otimizado para Vercel)
+      console.log('🔧 Carregando @sparticuz/chromium (produção)...');
+      const chromium = (await import('@sparticuz/chromium')).default;
+      executablePath = await chromium.executablePath();
+      browserArgs = chromium.args;
+      console.log('✅ Chromium configurado para produção');
+    } else {
+      // DESENVOLVIMENTO: Usar Chrome/Edge local (MUITO MAIS RÁPIDO)
+      console.log('🔧 Usando Chrome/Edge local (desenvolvimento)...');
+      executablePath = findBrowser();
+      browserArgs = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+      ];
+      console.log('✅ Navegador local encontrado:', executablePath);
+    }
+
+    // ⚡ OTIMIZAÇÃO: Import dinâmico de puppeteer-core
     const puppeteer = await import('puppeteer-core');
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: browserArgs,
       executablePath: executablePath,
       headless: true,
     });
@@ -85,31 +178,24 @@ export default async function handler(
     if (body.html) {
       console.log('📄 Carregando HTML...');
       await page.setContent(body.html, {
-        waitUntil: 'domcontentloaded', // Mais rápido que networkidle0
-        timeout: 5000 // Reduzido de 30s para 5s
+        waitUntil: 'networkidle0',
+        timeout: 30000
       });
     } else if (body.url) {
       console.log(`🌐 Carregando URL: ${body.url}`);
       await page.goto(body.url, {
-        waitUntil: 'domcontentloaded', // Mais rápido que networkidle0
-        timeout: 5000 // Reduzido de 30s para 5s
+        waitUntil: 'networkidle0',
+        timeout: 30000
       });
     }
 
-    // Aguardar fontes carregarem (com timeout curto)
+    // Aguardar fontes carregarem
     console.log('⏳ Aguardando fontes...');
-    try {
-      await Promise.race([
-        page.evaluateHandle('document.fonts.ready'),
-        new Promise(resolve => setTimeout(resolve, 1000)) // Timeout de 1s
-      ]);
-    } catch (e) {
-      console.log('⚠️ Timeout aguardando fontes, continuando...');
-    }
+    await page.evaluateHandle('document.fonts.ready');
     
-    // Aguardar estabilização inicial do React (reduzido)
-    console.log('⏳ Aguardando estabilização inicial...');
-    await new Promise(resolve => setTimeout(resolve, 500)); // Reduzido de 2s para 500ms
+    // Aguardar estabilização inicial do React
+    console.log('⏳ Aguardando estabilização inicial do React...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Disparar resize para corrigir SVG/organograma
     console.log('🔄 Disparando evento resize...');
@@ -117,8 +203,8 @@ export default async function handler(
       window.dispatchEvent(new Event('resize'));
     });
     
-    // Aguardar após resize (reduzido)
-    await new Promise(resolve => setTimeout(resolve, 300)); // Reduzido de 1s para 300ms
+    // Aguardar após resize
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // CRÍTICO: Aguardar indicador de prontidão (dados carregados)
     console.log('⏳ Aguardando indicador de prontidão (dados carregando)...');
@@ -135,8 +221,8 @@ export default async function handler(
           return isReady;
         },
         { 
-          timeout: 8000, // Otimizado: 8s (dev usa 40s, mas precisamos ser mais rápido)
-          polling: 500 // Verificar a cada 500ms
+          timeout: 8000, // 8 segundos (otimizado para plano Hobby)
+          polling: 500
         }
       );
       console.log('✅ Indicador de prontidão confirmado!');
@@ -153,7 +239,7 @@ export default async function handler(
           const orgSections = document.querySelectorAll('[data-section^="organograma-"]');
           if (orgSections.length === 0) {
             console.log('✅ Sem organogramas para aguardar');
-            return true; // Sem organogramas, pode continuar
+            return true;
           }
           
           // Verificar se todos os organogramas têm SVG renderizado
@@ -174,7 +260,7 @@ export default async function handler(
           return allRendered;
         },
         { 
-          timeout: 6000, // Otimizado: 6s (dev usa 15s, mas precisamos ser mais rápido)
+          timeout: 6000, // 6 segundos (otimizado para plano Hobby)
           polling: 500
         }
       );
@@ -183,9 +269,9 @@ export default async function handler(
       console.log('⚠️ Timeout aguardando organogramas após 6s, continuando...');
     }
     
-    // Aguardar mais 1 segundo extra para garantir renderização completa dos SVGs
+    // Aguardar estabilização final dos SVGs
     console.log('⏳ Aguardando estabilização final dos SVGs...');
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Otimizado: 1s (dev usa 3s)
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     console.log('✅ Página pronta para captura');
     
@@ -202,7 +288,7 @@ export default async function handler(
         left: '0mm',
         right: '0mm',
       },
-      preferCSSPageSize: false,  // Usar dimensões explícitas em vez de CSS
+      preferCSSPageSize: false,
     };
 
     // Gerar PDF
@@ -223,14 +309,21 @@ export default async function handler(
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
     console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'N/A');
-    console.error('📋 Tipo de erro:', error instanceof Error ? error.constructor.name : typeof error);
+    
+    let errorMessage = 'Erro ao gerar PDF';
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || '';
+    }
     
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 
-      error: 'Erro ao gerar PDF',
-      message: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined
+      error: errorMessage,
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
     }));
   } finally {
     if (browser) {
