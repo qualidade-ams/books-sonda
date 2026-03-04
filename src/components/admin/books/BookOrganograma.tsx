@@ -108,9 +108,13 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
     });
 
     const raizes: PessoaComSubordinados[] = [];
+    
+    // Separar Central Escalação para tratamento especial
+    const centraisEscalacao = pessoas.filter(p => p.cargo === 'Central Escalação');
+    const outrasPessoas = pessoas.filter(p => p.cargo !== 'Central Escalação');
 
-    // Construir hierarquia
-    pessoas.forEach(pessoa => {
+    // Construir hierarquia normal (sem Central Escalação)
+    outrasPessoas.forEach(pessoa => {
       const pessoaComSubordinados = pessoasPorId.get(pessoa.id)!;
       
       if (pessoa.superior_id) {
@@ -127,6 +131,73 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
         raizes.push(pessoaComSubordinados);
       }
     });
+    
+    // Ordenar subordinados por ordem_exibicao e nome
+    const ordenarSubordinados = (pessoa: PessoaComSubordinados) => {
+      if (pessoa.subordinados && pessoa.subordinados.length > 0) {
+        pessoa.subordinados.sort((a, b) => {
+          // Primeiro por ordem_exibicao
+          const ordemA = a.ordem_exibicao || 999;
+          const ordemB = b.ordem_exibicao || 999;
+          if (ordemA !== ordemB) {
+            return ordemA - ordemB;
+          }
+          // Depois por nome
+          return a.nome.localeCompare(b.nome, 'pt-BR');
+        });
+        
+        // Ordenar recursivamente
+        pessoa.subordinados.forEach(ordenarSubordinados);
+      }
+    };
+
+    // Adicionar Central Escalação de forma centralizada
+    if (centraisEscalacao.length > 0) {
+      centraisEscalacao.forEach(central => {
+        // Filtrar coordenadores deste produto específico
+        const coordenadoresProduto = outrasPessoas.filter(p => p.cargo === 'Coordenador');
+        
+        if (coordenadoresProduto.length > 0) {
+          // Ordenar coordenadores por ordem_exibicao antes de calcular o índice do meio
+          coordenadoresProduto.sort((a, b) => {
+            const ordemA = a.ordem_exibicao || 999;
+            const ordemB = b.ordem_exibicao || 999;
+            if (ordemA !== ordemB) {
+              return ordemA - ordemB;
+            }
+            return a.nome.localeCompare(b.nome, 'pt-BR');
+          });
+          
+          // Calcular índice do coordenador mais central
+          const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
+          const coordenadorCentral = pessoasPorId.get(coordenadoresProduto[indiceMeio].id);
+          
+          if (coordenadorCentral) {
+            const centralComSub: PessoaComSubordinados = {
+              ...central,
+              subordinados: []
+            };
+            
+            coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
+            coordenadorCentral.subordinados.push(centralComSub);
+            console.log(`✅ Central Escalação "${central.nome}" adicionado ao coordenador central "${coordenadorCentral.nome}" (índice ${indiceMeio} de ${coordenadoresProduto.length})`);
+          }
+        }
+      });
+    }
+    
+    // Ordenar raízes
+    raizes.sort((a, b) => {
+      const ordemA = a.ordem_exibicao || 999;
+      const ordemB = b.ordem_exibicao || 999;
+      if (ordemA !== ordemB) {
+        return ordemA - ordemB;
+      }
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    
+    // Ordenar subordinados de todas as raízes
+    raizes.forEach(ordenarSubordinados);
 
     return raizes;
   };
@@ -146,7 +217,7 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
       case 'FISCAL':
         return 0.75; // Zoom menor para Fiscal (mais pessoas)
       case 'COMEX':
-        return 0.95; // Zoom médio para Comex
+        return 0.78; // Zoom médio para Comex
       case 'GALLERY':
         return 0.95; // Zoom maior para Gallery
       default:
@@ -179,6 +250,7 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
             centerOffset={0} // Ajuste negativo para centralizar melhor no modal
             height={1100} // Altura aumentada para ocupar toda a página
             initialZoom={zoomInicial} // Zoom específico por produto
+            isFiltered={true} // Sempre filtrado por produto específico no book
           />
         </div>
       </div>

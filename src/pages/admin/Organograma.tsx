@@ -392,6 +392,7 @@ export default function Organograma() {
                       pessoas={arvoreHierarquica} 
                       onEdit={handleEditarPessoa}
                       onDelete={handleSuccess}
+                      isFiltered={produtoSelecionado !== 'TODOS'}
                     />
                   </TabsContent>
 
