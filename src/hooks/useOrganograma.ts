@@ -251,24 +251,25 @@ export function useOrganograma() {
           );
           
           if (coordenadoresProduto.length > 0) {
-            // Pegar o coordenador do meio (ou primeiro se houver apenas um)
-            const indiceMeio = Math.floor(coordenadoresProduto.length / 2);
+            // Criar uma cópia do Central Escalação para este produto
+            const centralComSub: PessoaComSubordinados = {
+              ...central,
+              id: `${central.id}_${produtoCentral}`, // ID único por produto
+              produto: produtoCentral, // Produto específico
+              produtos: [produtoCentral], // Array com apenas este produto
+              subordinados: []
+            };
+            
+            // Calcular índice do coordenador mais central
+            // Para número par: pega o da direita do meio (ex: 4 coords -> índice 2)
+            // Para número ímpar: pega o do meio exato (ex: 3 coords -> índice 1)
+            const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
             const coordenadorCentral = pessoasMap.get(coordenadoresProduto[indiceMeio].id);
             
             if (coordenadorCentral) {
-              // Criar uma cópia do Central Escalação para este produto
-              const centralComSub: PessoaComSubordinados = {
-                ...central,
-                id: `${central.id}_${produtoCentral}`, // ID único por produto
-                produto: produtoCentral, // Produto específico
-                produtos: [produtoCentral], // Array com apenas este produto
-                subordinados: []
-              };
-              
               coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
               coordenadorCentral.subordinados.push(centralComSub);
-              
-              console.log(`✅ Central Escalação "${central.nome}" (${produtoCentral}) adicionado ao coordenador "${coordenadorCentral.nome}"`);
+              console.log(`✅ Central Escalação "${central.nome}" (${produtoCentral}) adicionado ao coordenador central "${coordenadorCentral.nome}" (índice ${indiceMeio} de ${coordenadoresProduto.length})`);
             }
           } else {
             console.log(`⚠️ Nenhum coordenador encontrado para o produto ${produtoCentral}`);

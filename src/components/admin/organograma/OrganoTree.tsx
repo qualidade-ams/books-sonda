@@ -440,7 +440,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           zoom={initialZoom}
           scaleExtent={{ min: 0.4, max: 2 }}
           enableLegacyTransitions
-          depthFactor={280}
+          depthFactor={370}
         />
       </div>
 
