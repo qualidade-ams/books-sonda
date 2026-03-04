@@ -222,12 +222,9 @@ export default function GeracaoBooks() {
 
       // Usar novo serviço V2 - muito mais simples!
       // Formatar nome do arquivo: Book NOME_ABREVIADO MesExtenso Ano
-      // Usar mês de referência (mês anterior ao de geração)
       const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
-      const mesReferencia = book.mes === 1 ? 12 : book.mes - 1;
-      const anoReferencia = book.mes === 1 ? book.ano - 1 : book.ano;
-      const mesNome = MESES_NOMES[mesReferencia];
-      const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${anoReferencia}.pdf`;
+      const mesNome = MESES_NOMES[book.mes];
+      const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
       
       await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
