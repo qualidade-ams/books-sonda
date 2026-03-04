@@ -242,39 +242,67 @@ export function useOrganograma() {
         
         console.log(`📍 Processando Central Escalação "${central.nome}" com produtos:`, produtosCentral);
         
-        // Para cada produto do Central Escalação
-        produtosCentral.forEach(produtoCentral => {
-          // Filtrar coordenadores deste produto específico
-          const coordenadoresProduto = outrasPessoas.filter(p => 
-            p.cargo === 'Coordenador' && 
-            (p.produto === produtoCentral || p.produtos?.includes(produtoCentral))
-          );
-          
-          if (coordenadoresProduto.length > 0) {
-            // Criar uma cópia do Central Escalação para este produto
-            const centralComSub: PessoaComSubordinados = {
-              ...central,
-              id: `${central.id}_${produtoCentral}`, // ID único por produto
-              produto: produtoCentral, // Produto específico
-              produtos: [produtoCentral], // Array com apenas este produto
-              subordinados: []
-            };
+        // Se estiver filtrado por produto específico
+        if (produto) {
+          // Verificar se a Central atende este produto
+          if (produtosCentral.includes(produto)) {
+            // Filtrar coordenadores deste produto específico
+            const coordenadoresProduto = outrasPessoas.filter(p => 
+              p.cargo === 'Coordenador' && 
+              (p.produto === produto || p.produtos?.includes(produto))
+            );
             
-            // Calcular índice do coordenador mais central
-            // Para número par: pega o da direita do meio (ex: 4 coords -> índice 2)
-            // Para número ímpar: pega o do meio exato (ex: 3 coords -> índice 1)
-            const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
-            const coordenadorCentral = pessoasMap.get(coordenadoresProduto[indiceMeio].id);
-            
-            if (coordenadorCentral) {
-              coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
-              coordenadorCentral.subordinados.push(centralComSub);
-              console.log(`✅ Central Escalação "${central.nome}" (${produtoCentral}) adicionado ao coordenador central "${coordenadorCentral.nome}" (índice ${indiceMeio} de ${coordenadoresProduto.length})`);
+            if (coordenadoresProduto.length > 0) {
+              // Criar UMA Central com TODOS os produtos dela (para borda multicolorida)
+              const centralComSub: PessoaComSubordinados = {
+                ...central,
+                subordinados: []
+              };
+              
+              // Calcular índice do coordenador mais central
+              const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
+              const coordenadorCentral = pessoasMap.get(coordenadoresProduto[indiceMeio].id);
+              
+              if (coordenadorCentral) {
+                coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
+                coordenadorCentral.subordinados.push(centralComSub);
+                console.log(`✅ Central Escalação "${central.nome}" (filtrado: ${produto}) adicionado ao coordenador central "${coordenadorCentral.nome}" (índice ${indiceMeio} de ${coordenadoresProduto.length})`);
+              }
             }
-          } else {
-            console.log(`⚠️ Nenhum coordenador encontrado para o produto ${produtoCentral}`);
           }
-        });
+        } else {
+          // Sem filtro: criar uma Central para cada produto (comportamento original)
+          produtosCentral.forEach(produtoCentral => {
+            // Filtrar coordenadores deste produto específico
+            const coordenadoresProduto = outrasPessoas.filter(p => 
+              p.cargo === 'Coordenador' && 
+              (p.produto === produtoCentral || p.produtos?.includes(produtoCentral))
+            );
+            
+            if (coordenadoresProduto.length > 0) {
+              // Criar uma cópia do Central Escalação para este produto
+              const centralComSub: PessoaComSubordinados = {
+                ...central,
+                id: `${central.id}_${produtoCentral}`, // ID único por produto
+                produto: produtoCentral, // Produto específico
+                produtos: [produtoCentral], // Array com apenas este produto
+                subordinados: []
+              };
+              
+              // Calcular índice do coordenador mais central
+              const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
+              const coordenadorCentral = pessoasMap.get(coordenadoresProduto[indiceMeio].id);
+              
+              if (coordenadorCentral) {
+                coordenadorCentral.subordinados = coordenadorCentral.subordinados || [];
+                coordenadorCentral.subordinados.push(centralComSub);
+                console.log(`✅ Central Escalação "${central.nome}" (${produtoCentral}) adicionado ao coordenador central "${coordenadorCentral.nome}" (índice ${indiceMeio} de ${coordenadoresProduto.length})`);
+              }
+            } else {
+              console.log(`⚠️ Nenhum coordenador encontrado para o produto ${produtoCentral}`);
+            }
+          });
+        }
       });
     }
 

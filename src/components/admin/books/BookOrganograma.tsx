@@ -158,19 +158,17 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
         const coordenadoresProduto = outrasPessoas.filter(p => p.cargo === 'Coordenador');
         
         if (coordenadoresProduto.length > 0) {
-          // Ordenar coordenadores por ordem_exibicao antes de calcular o índice do meio
-          coordenadoresProduto.sort((a, b) => {
-            const ordemA = a.ordem_exibicao || 999;
-            const ordemB = b.ordem_exibicao || 999;
-            if (ordemA !== ordemB) {
-              return ordemA - ordemB;
-            }
-            return a.nome.localeCompare(b.nome, 'pt-BR');
-          });
+          console.log(`📊 Coordenadores encontrados (${coordenadoresProduto.length}):`, 
+            coordenadoresProduto.map((c, i) => `[${i}] ${c.nome} (ordem: ${c.ordem_exibicao || 'N/A'})`)
+          );
           
           // Calcular índice do coordenador mais central
+          // IMPORTANTE: Não ordenar aqui para manter a mesma ordem da tela de organograma
+          // A ordem já vem correta da query SQL (ordem_exibicao, nome)
           const indiceMeio = Math.floor((coordenadoresProduto.length - 1) / 2);
           const coordenadorCentral = pessoasPorId.get(coordenadoresProduto[indiceMeio].id);
+          
+          console.log(`🎯 Índice do meio: ${indiceMeio}, Coordenador selecionado: ${coordenadorCentral?.nome}`);
           
           if (coordenadorCentral) {
             const centralComSub: PessoaComSubordinados = {
@@ -219,9 +217,9 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
       case 'COMEX':
         return 0.78; // Zoom médio para Comex
       case 'GALLERY':
-        return 0.95; // Zoom maior para Gallery
+        return 0.78; // Zoom maior para Gallery
       default:
-        return 0.75; // Zoom padrão
+        return 0.78; // Zoom padrão
     }
   };
 
