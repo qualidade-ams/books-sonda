@@ -20,12 +20,12 @@ import type { PessoaComSubordinados } from '@/types/organograma';
 interface OrganoTreeProps {
   pessoas: PessoaComSubordinados[];
   onEdit: (pessoa: PessoaComSubordinados) => void;
-  onDelete?: () => void; // Callback após exclusão bem-sucedida
-  viewOnly?: boolean; // Modo somente visualização (esconde botões de editar/excluir)
-  centerOffset?: number; // Offset adicional para centralização (útil em modais)
-  height?: number; // Altura do container em pixels (padrão: 800)
-  initialZoom?: number; // Zoom inicial (padrão: 0.7)
-  isFiltered?: boolean; // Indica se o organograma está filtrado (para centralizar Central de Priorização)
+  onDelete?: () => void;
+  viewOnly?: boolean;
+  centerOffset?: number;
+  height?: number;
+  initialZoom?: number;
+  isFiltered?: boolean;
 }
 
 interface TreeNode {
@@ -37,7 +37,7 @@ interface TreeNode {
     email: string;
     telefone?: string;
     foto_url?: string;
-    produtos?: string; // Convertido para string (JSON)
+    produtos?: string;
     produto?: string;
     superior_id?: string;
   };
@@ -49,21 +49,17 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
   const { deletarPessoa } = useOrganograma();
   const [pessoaParaDeletar, setPessoaParaDeletar] = useState<string | null>(null);
   
-  // Centralizar o organograma no meio da tela
   const [translate, setTranslate] = useState({ x: 0, y: 100 });
   
-  // Calcular posição central quando o componente montar
   useEffect(() => {
     const container = document.querySelector('.rd3t-tree-container');
     if (container) {
       const width = container.clientWidth;
-      // Em modo viewOnly (modal), começar mais abaixo para evitar corte no topo
       const yPosition = viewOnly ? 120 : 100;
       setTranslate({ x: (width / 2) + centerOffset, y: yPosition });
     }
   }, [centerOffset, viewOnly]);
 
-  // Converter estrutura de dados para formato do react-d3-tree
   const convertToTreeData = (pessoas: PessoaComSubordinados[]): TreeNode[] => {
     return pessoas.map(pessoa => ({
       name: pessoa.nome,
@@ -84,14 +80,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
 
   const treeData = convertToTreeData(pessoas);
 
-  // Cores dos produtos
   const coresProdutos = {
-    'COMEX': '#2563eb',     // Azul
-    'FISCAL': '#03fefe',    // Ciano
-    'GALLERY': '#e91f81',   // Rosa
+    'COMEX': '#2563eb',
+    'FISCAL': '#03fefe',
+    'GALLERY': '#e91f81',
   };
 
-  // Gerar estilo de borda baseado nos produtos
   const getBorderStyle = (produtos?: string[], produto?: string) => {
     const produtosArray = produtos || (produto ? [produto] : []);
     
@@ -118,7 +112,6 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       (p) => coresProdutos[p as keyof typeof coresProdutos]
     );
 
-    // Gradiente cônico (circular) começando do topo
     const angulo = 360 / cores.length;
     const gradiente = cores
       .map((cor, i) => {
@@ -136,15 +129,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     };
   };
 
-  // Renderizar nó customizado
   const renderCustomNode = useCallback(({ nodeDatum, hierarchyPointNode }: any) => {
     const pessoa = nodeDatum.attributes;
-    // Converter produtos de volta para array
     const produtos = pessoa?.produtos ? JSON.parse(pessoa.produtos) : undefined;
     const produto = pessoa?.produto;
     const usaGradiente = produtos && produtos.length > 1;
     
-    // Calcular nível de escalação (depth do nó)
     const nivel = hierarchyPointNode?.depth || 0;
     const nivelTexto = nivel === 0 ? '1º NÍVEL DE ESCALAÇÃO' : 
                        nivel === 1 ? '2º NÍVEL DE ESCALAÇÃO' : 
@@ -152,34 +142,32 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                        nivel === 3 ? '4º NÍVEL DE ESCALAÇÃO' :
                        `${nivel + 1}º NÍVEL DE ESCALAÇÃO`;
 
-    // Determinar se é Central de Priorização (4º nível)
     const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivel === 3;
     
-    // Calcular margem para centralizar quando filtrado
-    // Quando filtrado, a Central de Priorização deve ficar centralizada nos coordenadores (nível 2)
-    const marginLeft = isFiltered && isCentralPriorizacao ? 210 : 0;
+    let numCoordenadores = 0;
+    if (isCentralPriorizacao && hierarchyPointNode?.parent?.parent?.children) {
+      numCoordenadores = hierarchyPointNode.parent.parent.children.length;
+    }
+    
+    const ehNumeroPar = numCoordenadores % 2 === 0;
+    const marginLeft = isFiltered && isCentralPriorizacao && ehNumeroPar ? 210 : 0;
 
-    // Determinar imagem de fundo baseado no cargo e produto
     const getFundoOrganograma = () => {
       const cargo = pessoa?.cargo;
       const produtosArray = produtos || (produto ? [produto] : []);
       
-      // Diretor: sempre usa fundo padrão
       if (cargo === 'Diretor') {
         return '/images/fundo_organograma.png';
       }
       
-      // Gerente: sempre usa fundo de gerente (independente do produto)
       if (cargo === 'Gerente') {
         return '/images/fundo_organograma_gerente.png';
       }
       
-      // Coordenador com mais de um produto
       if (cargo === 'Coordenador' && produtosArray.length > 1) {
         return '/images/fundo_organograma_gerente.png';
       }
       
-      // Coordenador com produto específico
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
         if (produtoUnico === 'FISCAL') {
@@ -193,28 +181,23 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         }
       }
       
-      // Padrão
       return '/images/fundo_organograma.png';
     };
 
     const fundoImagem = getFundoOrganograma();
 
-    // Determinar cor do texto do departamento
     const getCorTextoDepartamento = () => {
       const cargo = pessoa?.cargo;
       const produtosArray = produtos || (produto ? [produto] : []);
       
-      // Diretor OU Central Escalação: texto branco
       if (cargo === 'Diretor' || cargo === 'Central Escalação') {
         return 'text-white';
       }
       
-      // Gerente: sempre texto cinza escuro (preto)
       if (cargo === 'Gerente') {
         return 'text-gray-700';
       }
       
-      // Coordenador com produto COMEX ou GALLERY: texto branco
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
         if (produtoUnico === 'COMEX' || produtoUnico === 'GALLERY') {
@@ -222,11 +205,11 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         }
       }
       
-      // Padrão: texto cinza escuro
       return 'text-gray-700';
     };
 
     const corTextoDepartamento = getCorTextoDepartamento();
+
     
     return (
       <g>
@@ -234,14 +217,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           x={-225 + marginLeft} 
           y="-120" 
           width="420" 
-          height="280"
+          height="350"
         > 
-          {/* Card invisível para conexão das linhas */}
-          <Card className="w-full h-full border-transparent shadow-none bg-transparent">
-            <CardContent className="p-4">
-              <div className="flex flex-col items-center space-y-3 bg-white rounded-lg p-4">
-                {/* Foto com borda colorida por produto */}
-                <div className="relative">
+          <Card className="w-full h-full border-transparent shadow-none bg-transparent" style={{ overflow: 'visible'}}>
+            <CardContent className="p-0" style={{ overflow: 'visible' }}>
+              <div className="flex flex-col items-center space-y-3 bg-white rounded-lg" style={{ overflow: 'visible' }}>
+                <div className={`relative ${isCentralPriorizacao ? 'p-6' : ''}`} style={isCentralPriorizacao ? { overflow: 'visible' } : undefined}>
                   {usaGradiente ? (
                     <div
                       className="rounded-full"
@@ -287,9 +268,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                   )}
                 </div>
 
-                {/* Informações - altura ajustada conforme modo */}
                 <div className={`text-center w-full px-4 flex flex-col ${viewOnly ? 'min-h-[80px]' : 'min-h-[180px]'}`}>
-                  {/* Texto do Nível - ACIMA DO NOME */}
                   <div className="text-center">
                     <span className={`text-sm font-bold tracking-wide ${
                       nivel >= 2 ? 'text-blue-600' : 'text-gray-800'
@@ -298,61 +277,44 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                     </span>
                   </div>
 
-                  {/* Nome - cor baseada no nível, pode quebrar em múltiplas linhas */}
                   <h3 className={`text-lg font-bold leading-tight min-h-[28px] ${
                     nivel >= 2 ? 'text-black' : 'text-blue-600'
                   }`}>
                     {nodeDatum.name}
                   </h3>
-                  
-                  {/* Cargo com fundo cinza 
-                  <div className="flex justify-center">
-                    <div className="inline-block px-6 py-1.5 bg-gray-300 rounded-full">
-                      <span className="text-sm font-semibold text-gray-800">
-                        {pessoa?.cargo}
-                      </span>
-                    </div>
-                  </div>*/}
 
-                  {/* Departamento com imagem de fundo */}
                   <div className="relative inline-block min-h-[20px]">
-                    {/* Imagem de fundo dinâmica */}
                     <div 
                       className="absolute inset-0"
                       style={{
                         backgroundImage: `url(${fundoImagem})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        opacity: 1, // Opacidade total para cores vibrantes
+                        opacity: 1,
                       }}
                     />
-                    {/* Texto do departamento com cor dinâmica */}
                     <p className={`text-sm font-bold ${corTextoDepartamento} relative z-10 px-4 py-1`}>
                       {pessoa?.departamento}
                     </p>
                   </div>
 
-                  {/* Email em preto e negrito */}
                   <div className="text-sm font-bold text-black min-h-[20px]">
                     {pessoa?.email}
                   </div>
 
-                  {/* Telefone em preto e negrito - removido em modo viewOnly */}
                   {!viewOnly && (
                     <div className="text-sm font-bold text-black min-h-[20px]">
                       {pessoa?.telefone || '\u00A0'}
                     </div>
                   )}
 
-                  {/* Botões de Ação - sempre no final (escondidos em modo viewOnly) */}
                   {!viewOnly && (
-                    <div className="flex gap-2 justify-center mt-auto pt-2">
+                    <div className="flex gap-2 justify-center mt-2">
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0 bg-white hover:bg-gray-100"
                         onClick={() => {
-                          // Extrair ID real (remover sufixo _PRODUTO se existir)
                           const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
                           
                           const pessoaCompleta: PessoaComSubordinados = {
@@ -379,7 +341,6 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                         size="sm"
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-800 bg-white hover:bg-gray-100"
                         onClick={() => {
-                          // Extrair ID real (remover sufixo _PRODUTO se existir)
                           const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
                           setPessoaParaDeletar(idReal);
                         }}
@@ -395,7 +356,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         </foreignObject>
       </g>
     );
-  }, [onEdit]);
+  }, [onEdit, isFiltered, viewOnly]);
+
 
   const handleDelete = async () => {
     if (!pessoaParaDeletar) return;
@@ -408,7 +370,6 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       });
       setPessoaParaDeletar(null);
       
-      // Recarregar dados após exclusão
       if (onDelete) {
         onDelete();
       }
@@ -440,7 +401,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
 
   return (
     <>
-      <div className="w-full bg-white relative" style={{ height: `${height}px` }}>       
+      <div className="w-full bg-white relative" style={{ height: `${height}px`, overflow: 'visible' }}>       
         <Tree
           data={treeData}
           orientation="vertical"
@@ -450,12 +411,16 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           separation={{ siblings: 0.9, nonSiblings: 1.1 }}
           renderCustomNodeElement={renderCustomNode}
           pathClassFunc={(link: any) => {
-            // Aplicar margem na linha tracejada quando filtrado e conecta à Central de Priorização
             const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 
                                    link.target?.depth === 3;
             
             if (isFiltered && isLinkToCentral) {
-              return 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5] [transform:translateX(195px)]';
+              const numCoordenadores = link.source?.parent?.children?.length || 0;
+              const ehNumeroPar = numCoordenadores % 2 === 0;
+              
+              if (ehNumeroPar) {
+                return 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5] [transform:translateX(210px)]';
+              }
             }
             
             return 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5]';
