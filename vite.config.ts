@@ -6,17 +6,17 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "0.0.0.0",
+    host: "::",
     port: 8080,
-    strictPort: false,
-    // Proxy APENAS em desenvolvimento local
-    // Em produção, o Vercel gerencia tudo automaticamente
-    proxy: mode === 'development' ? {
+    strictPort: false, // Permite usar porta alternativa se 8080 estiver ocupada
+    // Proxy removido - quando usar vercel dev, a API já está na mesma porta
+    // Se precisar rodar npm run dev + vercel dev separados, descomente:
+    proxy: {
       '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
+      target: 'http://localhost:3000',
+      changeOrigin: true,
       }
-    } : undefined
+    }
   },
   plugins: [
     react(),

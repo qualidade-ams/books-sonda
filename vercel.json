@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-  "devCommand": "vite --port $PORT --host 0.0.0.0",
+  "devCommand": "vite --port 3000 --host",
   "functions": {
     "api/pdf/generate.ts": {
       "memory": 2048,
@@ -12,11 +12,7 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ]
