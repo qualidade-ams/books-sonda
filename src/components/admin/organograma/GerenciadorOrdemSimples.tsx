@@ -116,13 +116,17 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
       
       const flatten = (pessoas: PessoaComSubordinados[], superiorId: string | null = null) => {
         pessoas.forEach((pessoa) => {
+          // Extrair ID real (remover sufixo _PRODUTO se existir)
+          const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+          const superiorIdReal = superiorId && superiorId.includes('_') ? superiorId.split('_')[0] : superiorId;
+          
           flatList.push({
-            id: pessoa.id,
+            id: idReal,
             nome: pessoa.nome,
             cargo: pessoa.cargo,
             departamento: pessoa.departamento,
             ordem_exibicao: pessoa.ordem_exibicao || 0,
-            superior_id: superiorId,
+            superior_id: superiorIdReal,
           });
           
           if (pessoa.subordinados && pessoa.subordinados.length > 0) {
@@ -133,10 +137,20 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
       
       flatten(pessoas);
       
+      // Remover duplicatas (mesma pessoa pode aparecer em múltiplos produtos)
+      const pessoasUnicas = new Map<string, PessoaOrdem>();
+      flatList.forEach(pessoa => {
+        if (!pessoasUnicas.has(pessoa.id)) {
+          pessoasUnicas.set(pessoa.id, pessoa);
+        }
+      });
+      
+      const flatListUnico = Array.from(pessoasUnicas.values());
+      
       // Agrupar por superior_id
       const gruposMap = new Map<string, PessoaOrdem[]>();
       
-      flatList.forEach(pessoa => {
+      flatListUnico.forEach(pessoa => {
         const key = pessoa.superior_id || 'root';
         if (!gruposMap.has(key)) {
           gruposMap.set(key, []);
@@ -152,7 +166,7 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
       // Converter para array de grupos
       const gruposArray: GrupoPessoas[] = [];
       gruposMap.forEach((pessoas, superiorId) => {
-        const superior = flatList.find(p => p.id === superiorId);
+        const superior = flatListUnico.find(p => p.id === superiorId);
         gruposArray.push({
           superiorId: superiorId === 'root' ? null : superiorId,
           superiorNome: superior ? superior.nome : 'Nível Superior',

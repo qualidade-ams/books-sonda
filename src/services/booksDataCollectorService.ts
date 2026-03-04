@@ -702,16 +702,28 @@ class BooksDataCollectorService {
    * MAPEAMENTO: nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo_book
    */
   private async agruparPorGrupo(ticketsAbertos: any[], ticketsFechados: any[]) {
-    // Buscar mapeamento de categorias
+    // Buscar mapeamento de categorias → grupo_book
     const mapeamento = await this.buscarMapeamentoGrupos();
     
     const grupos = new Map<string, { total: number; abertos: number; fechados: number }>();
 
+    // Log de debug: Mostrar amostra de tickets e mapeamento
+    console.log('🔍 DEBUG MAPEAMENTO - Amostra de tickets abertos:', {
+      total: ticketsAbertos.length,
+      amostra: ticketsAbertos.slice(0, 3).map(t => ({
+        nro_solicitacao: t.nro_solicitacao,
+        categoria: t.categoria,
+        nome_grupo: t.nome_grupo,
+        grupo_mapeado: mapeamento.get(t.categoria) || t.categoria
+      }))
+    });
+
     // Processar tickets abertos
     ticketsAbertos.forEach(a => {
-      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
-      // Mapear nome_grupo para grupo_book usando de_para_categoria
-      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      // MUDANÇA: Usar campo 'categoria' do ticket em vez de 'nome_grupo'
+      const categoriaTicket = a.categoria || 'SEM CATEGORIA';
+      // Mapear categoria → grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(categoriaTicket) || categoriaTicket;
       
       if (!grupos.has(grupoMapeado)) {
         grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
@@ -722,9 +734,10 @@ class BooksDataCollectorService {
 
     // Processar tickets fechados
     ticketsFechados.forEach(a => {
-      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
-      // Mapear nome_grupo para grupo_book usando de_para_categoria
-      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      // MUDANÇA: Usar campo 'categoria' do ticket em vez de 'nome_grupo'
+      const categoriaTicket = a.categoria || 'SEM CATEGORIA';
+      // Mapear categoria → grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(categoriaTicket) || categoriaTicket;
       
       if (!grupos.has(grupoMapeado)) {
         grupos.set(grupoMapeado, { total: 0, abertos: 0, fechados: 0 });
@@ -754,7 +767,7 @@ class BooksDataCollectorService {
       })
       .sort((a, b) => b.total - a.total);
 
-    console.log('📊 Chamados agrupados por grupo (COM MAPEAMENTO):', {
+    console.log('📊 Chamados agrupados por grupo (MAPEAMENTO: categoria → grupo_book):', {
       totalGrupos: gruposArray.length,
       totalAbertos: ticketsAbertos.length,
       totalFechados: ticketsFechados.length,
@@ -913,18 +926,19 @@ class BooksDataCollectorService {
 
   /**
    * Agrupa backlog por grupo (nome_grupo)
-   * MAPEAMENTO: nome_grupo (apontamentos_tickets_aranda) → categoria (de_para_categoria) → grupo_book
+   * MAPEAMENTO: categoria (apontamentos_tickets_aranda) → grupo_book (de_para_categoria)
    */
   private async agruparPorGrupoBacklog(backlog: any[]) {
-    // Buscar mapeamento de categorias
+    // Buscar mapeamento de categorias → grupo_book
     const mapeamento = await this.buscarMapeamentoGrupos();
     
     const grupos = new Map<string, number>();
 
     backlog.forEach(a => {
-      const nomeGrupoOriginal = a.nome_grupo || 'SEM GRUPO';
-      // Mapear nome_grupo para grupo_book usando de_para_categoria
-      const grupoMapeado = mapeamento.get(nomeGrupoOriginal) || nomeGrupoOriginal;
+      // MUDANÇA: Usar campo 'categoria' do ticket em vez de 'nome_grupo'
+      const categoriaTicket = a.categoria || 'SEM CATEGORIA';
+      // Mapear categoria → grupo_book usando de_para_categoria
+      const grupoMapeado = mapeamento.get(categoriaTicket) || categoriaTicket;
       grupos.set(grupoMapeado, (grupos.get(grupoMapeado) || 0) + 1);
     });
 
@@ -932,7 +946,7 @@ class BooksDataCollectorService {
       .map(([grupo, total]) => ({ grupo, total }))
       .sort((a, b) => b.total - a.total);
 
-    console.log('📊 Backlog agrupado por grupo (COM MAPEAMENTO):', {
+    console.log('📊 Backlog agrupado por grupo (MAPEAMENTO: categoria → grupo_book):', {
       totalGrupos: resultado.length,
       mapeamentosAplicados: mapeamento.size,
       grupos: resultado
@@ -2462,7 +2476,7 @@ class BooksDataCollectorService {
     try {
       const { data: categorias, error } = await supabase
         .from('de_para_categoria')
-        .select('categoria, grupo')
+        .select('*')
         .eq('status', 'ativa');
 
       if (error) {
@@ -2472,16 +2486,18 @@ class BooksDataCollectorService {
 
       const mapeamento = new Map<string, string>();
       
-      (categorias || []).forEach(cat => {
-        // Mapear categoria → grupo
-        mapeamento.set(cat.categoria, cat.grupo);
+      (categorias || []).forEach((cat: any) => {
+        // Mapear categoria → grupo_book
+        if (cat.categoria && cat.grupo_book) {
+          mapeamento.set(cat.categoria, cat.grupo_book);
+        }
       });
 
       // Atualizar cache
       this.mapeamentoCache = mapeamento;
       this.mapeamentoCacheTimestamp = agora;
 
-      console.log('✅ Mapeamento de grupos carregado:', {
+      console.log('✅ Mapeamento de grupos carregado (categoria → grupo_book):', {
         totalMapeamentos: mapeamento.size,
         exemplos: Array.from(mapeamento.entries()).slice(0, 5).map(([cat, grupo]) => ({
           categoria: cat,

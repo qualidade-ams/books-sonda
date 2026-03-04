@@ -28,7 +28,7 @@ export default function Organograma() {
   const [mostrarGerenciadorOrdem, setMostrarGerenciadorOrdem] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('arvore');
   const [showFilters, setShowFilters] = useState(false);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<'COMEX' | 'FISCAL' | 'GALLERY'>('COMEX');
+  const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY'>('TODOS');
   const [filtros, setFiltros] = useState({
     busca: '',
     departamento: 'all',
@@ -39,7 +39,8 @@ export default function Organograma() {
   const hasActiveFilters = () => {
     return filtros.busca !== '' || 
            filtros.departamento !== 'all' || 
-           filtros.cargo !== 'all';
+           filtros.cargo !== 'all' ||
+           produtoSelecionado !== 'TODOS';
   };
 
   // Função para limpar filtros
@@ -49,6 +50,7 @@ export default function Organograma() {
       departamento: 'all',
       cargo: 'all',
     });
+    setProdutoSelecionado('TODOS');
   };
 
   const handleNovaPessoa = () => {
@@ -73,7 +75,9 @@ export default function Organograma() {
     fetchPessoas();
   };
 
-  const arvoreHierarquica = construirArvoreHierarquica(produtoSelecionado);
+  const arvoreHierarquica = construirArvoreHierarquica(
+    produtoSelecionado === 'TODOS' ? undefined : produtoSelecionado
+  );
 
   // Filtrar e ordenar pessoas por nome (A-Z) e produto selecionado
   const pessoasFiltradas = pessoas
@@ -83,7 +87,9 @@ export default function Organograma() {
                          pessoa.cargo.toLowerCase().includes(filtros.busca.toLowerCase());
       const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
       const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
-      const matchProduto = pessoa.produto === produtoSelecionado || pessoa.produtos?.includes(produtoSelecionado);
+      const matchProduto = produtoSelecionado === 'TODOS' || 
+                           pessoa.produto === produtoSelecionado || 
+                           pessoa.produtos?.includes(produtoSelecionado);
       
       return matchBusca && matchDepartamento && matchCargo && matchProduto;
     })
@@ -116,33 +122,6 @@ export default function Organograma() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Seletor de Produto */}
-              <Select value={produtoSelecionado} onValueChange={(value: any) => setProdutoSelecionado(value)}>
-                <SelectTrigger className="w-[180px] focus:ring-sonda-blue focus:border-sonda-blue">
-                  <SelectValue placeholder="Selecione o produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="COMEX">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                      <span>Comex</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="FISCAL">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
-                      <span>Fiscal</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="GALLERY">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-pink-600"></div>
-                      <span>Gallery</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
               <Button
                 size="sm"
                 className="bg-sonda-blue hover:bg-sonda-dark-blue"
@@ -275,7 +254,7 @@ export default function Organograma() {
               {/* Área de filtros */}
               {showFilters && (
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Campo de busca */}
                     <div>
                       <div className="text-sm font-medium mb-2">Buscar</div>
@@ -288,6 +267,42 @@ export default function Organograma() {
                           className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
                         />
                       </div>
+                    </div>
+
+                    {/* Filtro Produto */}
+                    <div>
+                      <div className="text-sm font-medium mb-2">Produto</div>
+                      <Select value={produtoSelecionado} onValueChange={(value: any) => setProdutoSelecionado(value)}>
+                        <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                          <SelectValue placeholder="Todos os produtos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="TODOS">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                              <span>Todos</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="COMEX">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                              <span>Comex</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="FISCAL">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
+                              <span>Fiscal</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="GALLERY">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-pink-600"></div>
+                              <span>Gallery</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {/* Filtro Departamento */}

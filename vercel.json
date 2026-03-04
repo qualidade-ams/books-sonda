@@ -1,19 +1,13 @@
 {
+  "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "framework": "vite",
-  "devCommand": "vite --port 3000 --host",
+  "devCommand": "vite --port $PORT",
   "functions": {
     "api/pdf/generate.ts": {
       "memory": 2048,
       "maxDuration": 10
     }
-  },
-  "rewrites": [
-    {
-      "source": "/((?!api).*)",
-      "destination": "/index.html"
-    }
-  ]
+  }
 }

@@ -112,9 +112,9 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
       {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Abertos | Mês */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2 whitespace-nowrap">
               <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-gray-600" />
               </div>
@@ -136,7 +136,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         </Card>
 
         {/* Fechados | Mês */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -160,7 +160,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         </Card>
 
         {/* SLA Médio */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -189,7 +189,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         </Card>
 
         {/* Total Backlog */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -214,7 +214,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         {/* Coluna esquerda: Gráfico + Tabela */}
         <div className="lg:col-span-2 space-y-6">
           {/* Gráfico: Chamados | Semestre */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader>
               <CardTitle className="text-base font-semibold">Chamados | Semestre</CardTitle>
               <p className="text-xs text-gray-500">
@@ -250,7 +250,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     />
                     <Bar 
                       dataKey="abertos" 
-                      fill="#0d6abf" 
+                      fill="#666666" 
                       name="ABERTOS"
                       radius={[4, 4, 0, 0]}
                     >
@@ -296,7 +296,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
           </Card>
 
           {/* Tabela: Chamados X CAUSA */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Chamados X CAUSA</CardTitle>           
@@ -308,7 +308,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                   <TableHeader>
                     <TableRow className="bg-gray-50">
                       <TableHead className="font-semibold">ORIGEM</TableHead>
-                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>ABERTOS</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
                       <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -354,7 +354,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                         </>
                       );
                     })()}
-                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#0d6abf', color: 'white' }}>
+                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
                       <TableCell className="py-2">TOTAL</TableCell>
                       <TableCell className="text-center py-2">
                         {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
@@ -371,7 +371,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         </div>
 
         {/* Coluna direita: Card lateral (altura total) */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
           </CardHeader>
@@ -401,15 +401,15 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                         {/* Barras horizontais empilhadas com largura proporcional */}
                         <div className="flex flex-col gap-1">
                           <div 
-                            className="bg-[#0d6abf] rounded px-2 py-0.5 flex justify-between items-center transition-all duration-300"
-                            style={{ width: `${abertosWidth}%`, minWidth: '60px' }}
+                            className="bg-[#666666] rounded px-2 py-0.5 flex justify-between items-center gap-2 transition-all duration-300"
+                            style={{ width: `${abertosWidth}%`, minWidth: '80px' }}
                           >
                             <span className="text-sm text-white font-bold leading-tight">{grupo.abertos}</span>
                             <span className="text-[9px] text-white/90 font-semibold leading-tight">ABERTOS</span>
                           </div>
                           <div 
-                            className="bg-blue-600 rounded px-2 py-0.5 flex justify-between items-center transition-all duration-300"
-                            style={{ width: `${fechadosWidth}%`, minWidth: '60px' }}
+                            className="bg-blue-600 rounded px-2 py-0.5 flex justify-between items-center gap-2 transition-all duration-300"
+                            style={{ width: `${fechadosWidth}%`, minWidth: '80px' }}
                           >
                             <span className="text-sm text-white font-bold leading-tight">{grupo.fechados}</span>
                             <span className="text-[9px] text-white/90 font-semibold leading-tight">FECHADOS</span>
