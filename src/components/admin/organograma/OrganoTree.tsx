@@ -25,6 +25,7 @@ interface OrganoTreeProps {
   centerOffset?: number; // Offset adicional para centralização (útil em modais)
   height?: number; // Altura do container em pixels (padrão: 800)
   initialZoom?: number; // Zoom inicial (padrão: 0.7)
+  isFiltered?: boolean; // Indica se o organograma está filtrado (para centralizar Central de Priorização)
 }
 
 interface TreeNode {
@@ -43,7 +44,7 @@ interface TreeNode {
   children?: TreeNode[];
 }
 
-export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, centerOffset = 0, height = 800, initialZoom = 0.7 }: OrganoTreeProps) {
+export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, centerOffset = 0, height = 800, initialZoom = 0.7, isFiltered = false }: OrganoTreeProps) {
   const { toast } = useToast();
   const { deletarPessoa } = useOrganograma();
   const [pessoaParaDeletar, setPessoaParaDeletar] = useState<string | null>(null);
@@ -151,6 +152,13 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                        nivel === 3 ? '4º NÍVEL DE ESCALAÇÃO' :
                        `${nivel + 1}º NÍVEL DE ESCALAÇÃO`;
 
+    // Determinar se é Central de Priorização (4º nível)
+    const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivel === 3;
+    
+    // Calcular margem para centralizar quando filtrado
+    // Quando filtrado, a Central de Priorização deve ficar centralizada nos coordenadores (nível 2)
+    const marginLeft = isFiltered && isCentralPriorizacao ? 210 : 0;
+
     // Determinar imagem de fundo baseado no cargo e produto
     const getFundoOrganograma = () => {
       const cargo = pessoa?.cargo;
@@ -222,7 +230,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     
     return (
       <g>
-        <foreignObject x="-225" y="-120" width="420" height="280"> 
+        <foreignObject 
+          x={-225 + marginLeft} 
+          y="-120" 
+          width="420" 
+          height="280"
+        > 
           {/* Card invisível para conexão das linhas */}
           <Card className="w-full h-full border-transparent shadow-none bg-transparent">
             <CardContent className="p-4">
@@ -436,7 +449,17 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           nodeSize={{ x: 420, y: 320 }}
           separation={{ siblings: 0.9, nonSiblings: 1.1 }}
           renderCustomNodeElement={renderCustomNode}
-          pathClassFunc={() => 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5]'}
+          pathClassFunc={(link: any) => {
+            // Aplicar margem na linha tracejada quando filtrado e conecta à Central de Priorização
+            const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 
+                                   link.target?.depth === 3;
+            
+            if (isFiltered && isLinkToCentral) {
+              return 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5] [transform:translateX(195px)]';
+            }
+            
+            return 'stroke-black stroke-2 fill-none [stroke-dasharray:5,5]';
+          }}
           zoom={initialZoom}
           scaleExtent={{ min: 0.4, max: 2 }}
           enableLegacyTransitions
