@@ -206,31 +206,32 @@ export default function GeracaoBooks() {
 
       // Se já existe PDF gerado, baixar direto
       if (book.pdf_url) {
+        const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
         window.open(book.pdf_url, '_blank');
         toast({
           title: 'Download iniciado',
-          description: `PDF de ${book.empresa_nome} está sendo baixado.`,
+          description: `PDF de ${nomeEmpresa} está sendo baixado.`,
         });
         return;
       }
 
       // Caso contrário, buscar dados e gerar PDF com Puppeteer
-      toast({
-        title: 'Gerando PDF',
-        description: `Aguarde enquanto o PDF de ${book.empresa_nome} é gerado...`,
-      });
-
-      // Usar novo serviço V2 - muito mais simples!
       // Formatar nome do arquivo: Book NOME_ABREVIADO MesExtenso Ano
       const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
       const mesNome = MESES_NOMES[book.mes];
       const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
       
+      toast({
+        title: 'Gerando PDF',
+        description: `Aguarde enquanto o PDF de ${nomeEmpresa} é gerado...`,
+      });
+
+      // Usar novo serviço V2 - muito mais simples!
       await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
       toast({
         title: 'PDF baixado com sucesso',
-        description: `O arquivo de ${book.empresa_nome} foi salvo no seu computador.`,
+        description: `O arquivo de ${nomeEmpresa} foi salvo no seu computador.`,
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);

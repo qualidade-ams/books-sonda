@@ -113,7 +113,7 @@ Se você precisar testar com Chrome local (desenvolvimento):
 **Última atualização**: 2026-03-03
 
 **Sincronização Dev/Prod**: 2026-03-03
-- ✅ Dimensões do PDF sincronizadas: 1754x1240px (A4 landscape em 150 DPI)
+- ✅ Dimensões do PDF sincronizadas: 2657x1328px (A4 landscape em 150 DPI)
 - ✅ Lógica de espera por organogramas adicionada à versão de produção
 - ✅ Timeouts otimizados para plano Hobby:
   - Prontidão: 8s (dev usa 40s)
