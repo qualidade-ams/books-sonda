@@ -78,7 +78,19 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     }));
   };
 
-  const treeData = convertToTreeData(pessoas);
+  // react-d3-tree não suporta múltiplas raízes, então criamos uma raiz virtual
+  const treeData = pessoas.length > 1 
+    ? [{
+        name: 'Organograma',
+        attributes: {
+          id: 'root-virtual',
+          cargo: 'Root',
+          departamento: '',
+          email: '',
+        },
+        children: convertToTreeData(pessoas)
+      }]
+    : convertToTreeData(pessoas);
 
   const coresProdutos = {
     'COMEX': '#2563eb',
@@ -136,13 +148,29 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const usaGradiente = produtos && produtos.length > 1;
     
     const nivel = hierarchyPointNode?.depth || 0;
-    const nivelTexto = nivel === 0 ? '1º NÍVEL DE ESCALAÇÃO' : 
-                       nivel === 1 ? '2º NÍVEL DE ESCALAÇÃO' : 
-                       nivel === 2 ? '3º NÍVEL DE ESCALAÇÃO' : 
-                       nivel === 3 ? '4º NÍVEL DE ESCALAÇÃO' :
-                       `${nivel + 1}º NÍVEL DE ESCALAÇÃO`;
+    
+    // Esconder raiz virtual (root-cs, root-comercial ou root-virtual para múltiplas raízes)
+    const isRaizVirtual = pessoa?.id === 'root-cs' || pessoa?.id === 'root-comercial' || pessoa?.id === 'root-virtual';
+    
+    if (isRaizVirtual) {
+      return <g></g>; // Não renderizar nada para a raiz virtual
+    }
+    
+    // Ajustar nível para compensar a raiz virtual
+    const nivelAjustado = pessoas.length > 1 ? Math.max(0, nivel - 1) : nivel;
+    
+    // Customer Success e Comercial quando aparecem sozinhos (nivel 0) não mostram nível
+    const isCustomerSuccessOuComercial = pessoa?.cargo === 'Customer Success' || pessoa?.cargo === 'Comercial';
+    const mostrarNivel = !(isCustomerSuccessOuComercial && nivelAjustado === 0);
+    const nivelExibicao = isCustomerSuccessOuComercial && nivelAjustado > 0 ? 3 : nivelAjustado;
+    
+    const nivelTexto = nivelExibicao === 0 ? '1º NÍVEL DE ESCALAÇÃO' : 
+                       nivelExibicao === 1 ? '2º NÍVEL DE ESCALAÇÃO' : 
+                       nivelExibicao === 2 ? '3º NÍVEL DE ESCALAÇÃO' : 
+                       nivelExibicao === 3 ? '4º NÍVEL DE ESCALAÇÃO' :
+                       `${nivelExibicao + 1}º NÍVEL DE ESCALAÇÃO`;
 
-    const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivel === 3;
+    const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivelAjustado === 3;
     
     let numCoordenadores = 0;
     if (isCentralPriorizacao && hierarchyPointNode?.parent?.parent?.children) {
@@ -162,6 +190,10 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       
       if (cargo === 'Gerente') {
         return '/images/fundo_organograma_gerente.png';
+      }
+      
+      if (cargo === 'Customer Success' || cargo === 'Comercial') {
+        return '/images/fundo_organograma.png';
       }
       
       if (cargo === 'Coordenador' && produtosArray.length > 1) {
@@ -194,6 +226,10 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         return 'text-white';
       }
       
+      if (cargo === 'Customer Success' || cargo === 'Comercial') {
+        return 'text-white';
+      }
+      
       if (cargo === 'Gerente') {
         return 'text-gray-700';
       }
@@ -210,9 +246,26 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
 
     const corTextoDepartamento = getCorTextoDepartamento();
 
+    // Ajuste de posição para Customer Success (mover horizontalmente para a direita)
+    let translateX = 0;
+    
+    if (pessoa?.cargo === 'Customer Success' && isFiltered) {
+      const produtoUpper = produto?.toUpperCase();
+      
+      // Ajuste horizontal para alinhar com o último coordenador
+      if (produtoUpper === 'COMEX') {
+        translateX = -210; // Espaçamento de um card completo para a direita
+      } else if (produtoUpper === 'FISCAL') {
+        translateX = -210; // Mesmo espaçamento para Fiscal
+      } 
+      
+      if (translateX !== 0) {
+        console.log(`🎨 [Customer Success] Ajustando posição horizontal: translateX(${translateX}) para produto ${produtoUpper}`);
+      }
+    }
     
     return (
-      <g>
+      <g transform={translateX !== 0 ? `translate(${translateX}, 0)` : undefined}>
         <foreignObject 
           x={-225 + marginLeft} 
           y="-120" 
@@ -269,16 +322,18 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                 </div>
 
                 <div className={`text-center w-full px-4 flex flex-col ${viewOnly ? 'min-h-[80px]' : 'min-h-[180px]'}`}>
-                  <div className="text-center">
-                    <span className={`text-sm font-bold tracking-wide ${
-                      nivel >= 2 ? 'text-blue-600' : 'text-gray-800'
-                    }`}>
-                      {nivelTexto}
-                    </span>
-                  </div>
+                  {mostrarNivel && (
+                    <div className="text-center">
+                      <span className={`text-sm font-bold tracking-wide ${
+                        nivelExibicao >= 2 ? 'text-blue-600' : 'text-gray-800'
+                      }`}>
+                        {nivelTexto}
+                      </span>
+                    </div>
+                  )}
 
                   <h3 className={`text-lg font-bold leading-tight min-h-[28px] ${
-                    nivel >= 2 ? 'text-black' : 'text-blue-600'
+                    nivelExibicao >= 2 || !mostrarNivel ? 'text-black' : 'text-blue-600'
                   }`}>
                     {nodeDatum.name}
                   </h3>
@@ -356,7 +411,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         </foreignObject>
       </g>
     );
-  }, [onEdit, isFiltered, viewOnly]);
+  }, [onEdit, isFiltered, viewOnly, pessoas]);
 
 
   const handleDelete = async () => {
@@ -401,6 +456,13 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
 
   return (
     <>
+      <style>{`
+        .customer-success-link-hidden {
+          stroke: white !important;
+          stroke-width: 0 !important;
+          opacity: 0 !important;
+        }
+      `}</style>
       <div className="w-full bg-white relative" style={{ height: `${height}px`, overflow: 'visible' }}>       
         <Tree
           data={treeData}
@@ -413,6 +475,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           pathClassFunc={(link: any) => {
             const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 
                                    link.target?.depth === 3;
+            
+            // Ocultar linha para Customer Success (tornar branca/invisível)
+            const isLinkToCustomerSuccess = link.target?.data?.attributes?.cargo === 'Customer Success';
+            if (isLinkToCustomerSuccess) {
+              return 'customer-success-link-hidden'; // Classe especial para ocultar
+            }
             
             if (isFiltered && isLinkToCentral) {
               const numCoordenadores = link.source?.parent?.children?.length || 0;

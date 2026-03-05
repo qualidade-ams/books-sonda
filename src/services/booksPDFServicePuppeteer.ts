@@ -40,7 +40,7 @@ class BooksPDFServicePuppeteer {
 
     /* Configuração de página para impressão */
     @page {
-      size: 395mm 225mm; /* Landscape customizado */
+      size: 450mm 225mm; /* Proporção 2:1 (ultra-wide) */
       margin: 0;
     }
 
@@ -64,7 +64,7 @@ class BooksPDFServicePuppeteer {
     }
 
     .page {
-      width: 395mm;
+      width: 450mm;
       height: 225mm;
       page-break-after: always;
       position: relative;
@@ -87,18 +87,17 @@ class BooksPDFServicePuppeteer {
     .capa-superior {
       flex: 0.7;
       position: relative;
-      padding: 40px;
+      padding: 0px;
       display: flex;
-      margin-right: 20px;
       align-items: flex-end;
     }
 
     .capa-logo-n {
       position: absolute;
-      right: -10px;
+      right: 0;
       top: 50%;
       transform: translateY(-50%);
-      width: 40%;
+      width: 52%;
       height: 102%;
       object-fit: cover;
     }
@@ -148,7 +147,6 @@ class BooksPDFServicePuppeteer {
 
     .capa-logo-sonda {
       height: 50px;
-      margin-right: 60px;
     }
 
     /* Páginas internas */

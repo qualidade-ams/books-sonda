@@ -414,8 +414,30 @@ class BooksDataCollectorService {
       }
     });
 
-    // Backlog = chamados sem data_solucao (usar todos os tickets combinados)
-    const totalBacklog = apontamentosTickets.filter(a => !a.data_solucao).length;
+    // Backlog = TODOS os chamados em aberto da empresa (mesmo critério da aba Backlog)
+    // IMPORTANTE: Usa status em aberto (NOT IN Closed, Resolved, Canceled) em vez de data_solucao
+    console.log('📊 Buscando backlog total (todos os chamados em aberto)...');
+    const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase
+      .from('apontamentos_tickets_aranda')
+      .select('nro_solicitacao')
+      .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .not('status', 'in', '("Closed","Resolved","Canceled")')
+      .neq('cod_tipo', 'Problema')
+      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
+      .eq('caso_pai', 'SIM')
+      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+
+    if (errorBacklog) {
+      console.error('❌ Erro ao buscar backlog total:', errorBacklog);
+    }
+
+    const totalBacklog = (ticketsBacklogTotal || []).length;
+    
+    console.log('✅ Backlog total calculado:', {
+      total: totalBacklog,
+      criterio: 'status NOT IN (Closed, Resolved, Canceled)',
+      alinhado_com: 'aba Backlog'
+    });
 
     // Gerar dados do semestre (últimos 6 meses) - buscar dados reais
     const chamadosSemestre = await this.buscarChamadosSemestre(empresaNomeCompleto, mes, ano);

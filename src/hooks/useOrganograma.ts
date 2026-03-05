@@ -185,6 +185,8 @@ export function useOrganograma() {
 
   const getSuperioresDisponiveis = useCallback((cargo: Cargo, produto?: Produto): PessoaComProduto[] => {
     if (cargo === 'Diretor') return [];
+    if (cargo === 'Customer Success') return [];
+    if (cargo === 'Comercial') return [];
     if (cargo === 'Gerente') return getPessoasPorCargo('Diretor', produto);
     if (cargo === 'Coordenador') return getPessoasPorCargo('Gerente', produto);
     if (cargo === 'Central Escalação') return getPessoasPorCargo('Coordenador', produto);
@@ -212,11 +214,24 @@ export function useOrganograma() {
 
     const raizes: PessoaComSubordinados[] = [];
     
-    // Separar Central Escalação para tratamento especial
+    // Separar cargos especiais que não aparecem na árvore hierárquica
     const centraisEscalacao = pessoasFiltradas.filter(p => p.cargo === 'Central Escalação');
-    const outrasPessoas = pessoasFiltradas.filter(p => p.cargo !== 'Central Escalação');
+    const cargosIndependentes = pessoasFiltradas.filter(p => 
+      p.cargo === 'Customer Success' || p.cargo === 'Comercial'
+    );
+    const outrasPessoas = pessoasFiltradas.filter(p => 
+      p.cargo !== 'Central Escalação' && 
+      p.cargo !== 'Customer Success' && 
+      p.cargo !== 'Comercial'
+    );
     
-    // Construir hierarquia normal (sem Central Escalação)
+    console.log('📊 Distribuição:', {
+      centraisEscalacao: centraisEscalacao.length,
+      cargosIndependentes: cargosIndependentes.length,
+      outrasPessoas: outrasPessoas.length
+    });
+    
+    // Construir hierarquia normal (sem Central Escalação, Customer Success e Comercial)
     outrasPessoas.forEach(pessoa => {
       const pessoaComSub = pessoasMap.get(pessoa.id)!;
       
@@ -312,21 +327,54 @@ export function useOrganograma() {
   }, [pessoas]);
 
   const uploadFoto = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    try {
+      // Validar tamanho do arquivo (máximo 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB em bytes
+      if (file.size > maxSize) {
+        throw new Error('Arquivo muito grande. Tamanho máximo: 5MB');
+      }
 
-    const { error: uploadError } = await supabase.storage
-      .from('organograma')
-      .upload(filePath, file);
+      // Validar tipo de arquivo
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP');
+      }
 
-    if (uploadError) throw uploadError;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-    const { data } = supabase.storage
-      .from('organograma')
-      .getPublicUrl(filePath);
+      console.log('📤 Fazendo upload da foto:', {
+        fileName,
+        fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+        fileType: file.type
+      });
 
-    return data.publicUrl;
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('organograma')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        throw new Error(`Erro ao fazer upload da foto: ${uploadError.message}`);
+      }
+
+      console.log('✅ Upload concluído:', uploadData);
+
+      const { data } = supabase.storage
+        .from('organograma')
+        .getPublicUrl(filePath);
+
+      console.log('🔗 URL pública gerada:', data.publicUrl);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('❌ Erro ao fazer upload da foto:', error);
+      throw error instanceof Error ? error : new Error('Erro desconhecido ao fazer upload da foto');
+    }
   };
 
   const deleteFoto = async (fotoUrl: string) => {
@@ -356,8 +404,15 @@ export function useOrganograma() {
 
     let fotoUrl: string | undefined;
 
+    // Tentar fazer upload da foto (não bloquear criação se falhar)
     if (foto) {
-      fotoUrl = await uploadFoto(foto);
+      try {
+        fotoUrl = await uploadFoto(foto);
+      } catch (fotoError) {
+        console.warn('⚠️ Erro ao fazer upload da foto, continuando sem foto:', fotoError);
+        // Não lançar erro, apenas continuar sem foto
+        fotoUrl = undefined;
+      }
     }
 
     console.log('📝 Criando pessoa com dados:', {
@@ -484,16 +539,29 @@ export function useOrganograma() {
     const pessoaAtual = pessoas.find(p => p.id === id);
     let fotoUrl: string | null | undefined = undefined;
 
-    if (foto === null) {
-      if (pessoaAtual?.foto_url) {
-        await deleteFoto(pessoaAtual.foto_url);
+    try {
+      if (foto === null) {
+        // Remover foto existente
+        if (pessoaAtual?.foto_url) {
+          await deleteFoto(pessoaAtual.foto_url);
+        }
+        fotoUrl = null;
+      } else if (foto) {
+        // Substituir foto existente
+        if (pessoaAtual?.foto_url) {
+          await deleteFoto(pessoaAtual.foto_url);
+        }
+        try {
+          fotoUrl = await uploadFoto(foto);
+        } catch (fotoError) {
+          console.warn('⚠️ Erro ao fazer upload da nova foto, mantendo foto anterior:', fotoError);
+          // Manter foto anterior em caso de erro
+          fotoUrl = undefined;
+        }
       }
-      fotoUrl = null;
-    } else if (foto) {
-      if (pessoaAtual?.foto_url) {
-        await deleteFoto(pessoaAtual.foto_url);
-      }
-      fotoUrl = await uploadFoto(foto);
+    } catch (error) {
+      console.warn('⚠️ Erro ao processar foto, continuando com atualização:', error);
+      fotoUrl = undefined;
     }
 
     const dadosParaAtualizar: any = { ...dados };

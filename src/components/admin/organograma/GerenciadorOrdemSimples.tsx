@@ -114,11 +114,34 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
     if (open) {
       const flatList: PessoaOrdem[] = [];
       
+      // Função para verificar se é um UUID válido
+      const isValidUUID = (id: string): boolean => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(id);
+      };
+      
       const flatten = (pessoas: PessoaComSubordinados[], superiorId: string | null = null) => {
         pessoas.forEach((pessoa) => {
           // Extrair ID real (remover sufixo _PRODUTO se existir)
-          const idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
-          const superiorIdReal = superiorId && superiorId.includes('_') ? superiorId.split('_')[0] : superiorId;
+          let idReal = pessoa.id.includes('_') ? pessoa.id.split('_')[0] : pessoa.id;
+          
+          // Se o ID não for um UUID válido, pular esta pessoa (é um nó virtual como root-cs)
+          if (!isValidUUID(idReal)) {
+            console.log(`⚠️ Pulando pessoa com ID inválido: ${idReal}`);
+            
+            // Mas processar seus subordinados
+            if (pessoa.subordinados && pessoa.subordinados.length > 0) {
+              flatten(pessoa.subordinados, superiorId); // Manter o superior original
+            }
+            return;
+          }
+          
+          let superiorIdReal = superiorId && superiorId.includes('_') ? superiorId.split('_')[0] : superiorId;
+          
+          // Se o superior não for um UUID válido, definir como null
+          if (superiorIdReal && !isValidUUID(superiorIdReal)) {
+            superiorIdReal = null;
+          }
           
           flatList.push({
             id: idReal,

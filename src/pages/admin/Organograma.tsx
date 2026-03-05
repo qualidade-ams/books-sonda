@@ -21,19 +21,31 @@ import { useOrganograma } from '@/hooks/useOrganograma';
 import type { PessoaOrganograma } from '@/types/organograma';
 
 export default function Organograma() {
-  const { pessoas, loading, construirArvoreHierarquica, fetchPessoas } = useOrganograma();
+  const { pessoas, loading, construirArvoreHierarquica, fetchPessoas, setProdutoSelecionado: setHookProdutoSelecionado } = useOrganograma();
   const [modalOpen, setModalOpen] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState(false);
   const [pessoaEditando, setPessoaEditando] = useState<PessoaOrganograma | undefined>();
   const [mostrarGerenciadorOrdem, setMostrarGerenciadorOrdem] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('arvore');
   const [showFilters, setShowFilters] = useState(false);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY'>('TODOS');
+  const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL'>('TODOS');
   const [filtros, setFiltros] = useState({
     busca: '',
     departamento: 'all',
     cargo: 'all',
   });
+
+  // Sincronizar filtro de produto com o hook
+  const handleProdutoChange = (value: 'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL') => {
+    setProdutoSelecionado(value);
+    
+    // Mapear para o formato do hook (ou 'all' para Customer Success e Comercial)
+    if (value === 'CUSTOMER_SUCCESS' || value === 'COMERCIAL' || value === 'TODOS') {
+      setHookProdutoSelecionado('all');
+    } else {
+      setHookProdutoSelecionado(value);
+    }
+  };
 
   // Função para verificar se há filtros ativos
   const hasActiveFilters = () => {
@@ -50,7 +62,7 @@ export default function Organograma() {
       departamento: 'all',
       cargo: 'all',
     });
-    setProdutoSelecionado('TODOS');
+    handleProdutoChange('TODOS');
   };
 
   const handleNovaPessoa = () => {
@@ -75,9 +87,59 @@ export default function Organograma() {
     fetchPessoas();
   };
 
-  const arvoreHierarquica = construirArvoreHierarquica(
-    produtoSelecionado === 'TODOS' ? undefined : produtoSelecionado
-  );
+  // Construir árvore hierárquica ou lista de cargos independentes
+  let arvoreHierarquica;
+  
+  if (produtoSelecionado === 'CUSTOMER_SUCCESS') {
+    // Criar uma raiz virtual para agrupar todos os Customer Success
+    const pessoasCS = pessoas
+      .filter(p => p.cargo === 'Customer Success')
+      .map(p => ({ ...p, subordinados: [] }));
+    
+    // Se houver pessoas, criar estrutura com raiz virtual
+    if (pessoasCS.length > 0) {
+      arvoreHierarquica = [{
+        id: 'root-cs',
+        nome: 'Customer Success',
+        cargo: 'Customer Success' as any,
+        departamento: 'Nível Superior',
+        email: '',
+        created_at: '',
+        updated_at: '',
+        produto: 'COMEX' as any,
+        subordinados: pessoasCS
+      }];
+    } else {
+      arvoreHierarquica = [];
+    }
+  } else if (produtoSelecionado === 'COMERCIAL') {
+    // Criar uma raiz virtual para agrupar todos os Comercial
+    const pessoasComercial = pessoas
+      .filter(p => p.cargo === 'Comercial')
+      .map(p => ({ ...p, subordinados: [] }));
+    
+    // Se houver pessoas, criar estrutura com raiz virtual
+    if (pessoasComercial.length > 0) {
+      arvoreHierarquica = [{
+        id: 'root-comercial',
+        nome: 'Comercial',
+        cargo: 'Comercial' as any,
+        departamento: 'Nível Superior',
+        email: '',
+        created_at: '',
+        updated_at: '',
+        produto: 'COMEX' as any,
+        subordinados: pessoasComercial
+      }];
+    } else {
+      arvoreHierarquica = [];
+    }
+  } else {
+    // Construir hierarquia normal
+    arvoreHierarquica = construirArvoreHierarquica(
+      produtoSelecionado === 'TODOS' ? undefined : produtoSelecionado
+    );
+  }
 
   // Filtrar e ordenar pessoas por nome (A-Z) e produto selecionado
   const pessoasFiltradas = pessoas
@@ -87,9 +149,17 @@ export default function Organograma() {
                          pessoa.cargo.toLowerCase().includes(filtros.busca.toLowerCase());
       const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
       const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
-      const matchProduto = produtoSelecionado === 'TODOS' || 
-                           pessoa.produto === produtoSelecionado || 
-                           pessoa.produtos?.includes(produtoSelecionado);
+      
+      // Filtro de produto/cargo especial
+      let matchProduto = true;
+      if (produtoSelecionado === 'CUSTOMER_SUCCESS') {
+        matchProduto = pessoa.cargo === 'Customer Success';
+      } else if (produtoSelecionado === 'COMERCIAL') {
+        matchProduto = pessoa.cargo === 'Comercial';
+      } else if (produtoSelecionado !== 'TODOS') {
+        matchProduto = pessoa.produto === produtoSelecionado || 
+                       pessoa.produtos?.includes(produtoSelecionado);
+      }
       
       return matchBusca && matchDepartamento && matchCargo && matchProduto;
     })
@@ -105,6 +175,8 @@ export default function Organograma() {
     gerentes: pessoasFiltradas.filter(p => p.cargo === 'Gerente').length,
     coordenadores: pessoasFiltradas.filter(p => p.cargo === 'Coordenador').length,
     centralEscalacao: pessoasFiltradas.filter(p => p.cargo === 'Central Escalação').length,
+    customerSuccess: pessoasFiltradas.filter(p => p.cargo === 'Customer Success').length,
+    comercial: pessoasFiltradas.filter(p => p.cargo === 'Comercial').length,
   };
 
   return (
@@ -272,7 +344,7 @@ export default function Organograma() {
                     {/* Filtro Produto */}
                     <div>
                       <div className="text-sm font-medium mb-2">Produto</div>
-                      <Select value={produtoSelecionado} onValueChange={(value: any) => setProdutoSelecionado(value)}>
+                      <Select value={produtoSelecionado} onValueChange={(value: any) => handleProdutoChange(value)}>
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
                           <SelectValue placeholder="Todos os produtos" />
                         </SelectTrigger>
@@ -299,6 +371,18 @@ export default function Organograma() {
                             <div className="flex items-center gap-2">
                               <div className="w-3 h-3 rounded-full bg-pink-600"></div>
                               <span>Gallery</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="CUSTOMER_SUCCESS">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-emerald-600"></div>
+                              <span>Customer Success</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="COMERCIAL">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-amber-600"></div>
+                              <span>Comercial</span>
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -342,6 +426,8 @@ export default function Organograma() {
                           <SelectItem value="Gerente">Gerente</SelectItem>
                           <SelectItem value="Coordenador">Coordenador</SelectItem>
                           <SelectItem value="Central Escalação">Central Escalação</SelectItem>
+                          <SelectItem value="Customer Success">Customer Success</SelectItem>
+                          <SelectItem value="Comercial">Comercial</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -452,6 +538,10 @@ export default function Organograma() {
                                           ? 'bg-blue-100 text-blue-800 text-xs'
                                           : pessoa.cargo === 'Coordenador'
                                           ? 'bg-green-100 text-green-800 text-xs'
+                                          : pessoa.cargo === 'Customer Success'
+                                          ? 'bg-emerald-100 text-emerald-800 text-xs'
+                                          : pessoa.cargo === 'Comercial'
+                                          ? 'bg-amber-100 text-amber-800 text-xs'
                                           : 'bg-orange-100 text-orange-800 text-xs'
                                       }
                                     >
