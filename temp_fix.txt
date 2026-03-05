@@ -1,0 +1,39 @@
+        const { data: taxasArray, error } = await supabase
+          .from('taxas_clientes')
+          .select('*')
+          .eq('cliente_id', empresaId)
+          .order('vigencia_inicio', { ascending: false })
+          .limit(1);
+        
+        const taxas = taxasArray && taxasArray.length > 0 ? taxasArray[0] : null;
+        
+        console.log('📊 [buscarTaxaPadraoEmpresa] Resultado da query:', {
+          taxas,
+          error,
+          tem_dados: !!taxas,
+          campos_disponiveis: taxas ? Object.keys(taxas) : []
+        });
+        
+        if (error) {
+          console.error('❌ [buscarTaxaPadraoEmpresa] Erro ao buscar taxa:', error);
+          return;
+        }
+        
+        // Tentar diferentes nomes de campos possíveis
+        const valorTaxa = (taxas as any)?.valor_hora_excedente || 
+                         (taxas as any)?.taxa_hora_excedente ||
+                         (taxas as any)?.taxa_hora_utilizada ||
+                         0;
+        
+        if (valorTaxa > 0) {
+          setTaxaPadraoEmpresa(valorTaxa);
+          console.log('✅ [buscarTaxaPadraoEmpresa] Taxa padrão encontrada e definida:', {
+            valor: valorTaxa,
+            valor_formatado: new Intl.NumberFormat('pt-BR', { 
+              style: 'currency', 
+              currency: 'BRL' 
+            }).format(valorTaxa)
+          });
+        } else {
+          console.log('⚠️ [buscarTaxaPadraoEmpresa] Nenhuma taxa padrão encontrada para esta empresa');
+        }

@@ -255,7 +255,7 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
                 style={{
                   width: '2657px',
                   height: '1328px',
-                  transform: 'scale(0.52)',
+                  transform: 'scale(0.7)',
                   transformOrigin: 'center top'
                 }}
               >
@@ -291,6 +291,8 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
                     data={bookData.consumo}
                     empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
                     empresaId={bookData.empresa_id}
+                    mes={bookData.mes}
+                    ano={bookData.ano}
                   />
                 </TabsContent>
 
