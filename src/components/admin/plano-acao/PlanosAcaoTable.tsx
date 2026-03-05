@@ -2,10 +2,10 @@
 // COMPONENTE: TABELA DE PLANOS DE AÇÃO
 // =====================================================
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Edit, Eye, Trash2 } from 'lucide-react';
+import { Clock, Edit, Eye, Trash2, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,18 +80,18 @@ export function PlanosAcaoTable({
   }
 
   return (
-    <div className="rounded-md mt-4 overflow-x-auto max-h-[400px] overflow-y-auto">
-      <Table>
-        <TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-10">
+    <div className="w-full overflow-x-auto">
+      <Table className="w-full text-xs sm:text-sm">
+        <TableHeader>
           <TableRow>
-            <TableHead className="w-[120px] text-center">Chamado</TableHead>
-            <TableHead className="w-[200px] text-center">Empresa</TableHead>
-            <TableHead className="text-center hidden lg:table-cell">Ação Corretiva</TableHead>
-            <TableHead className="w-[100px] text-center hidden md:table-cell">Prioridade</TableHead>
-            <TableHead className="w-[120px] text-center">Status</TableHead>
-            <TableHead className="w-[110px] text-center hidden xl:table-cell">Data Início</TableHead>
-            <TableHead className="w-[120px] text-center">Tempo Resolução</TableHead>
-            <TableHead className="w-[120px] text-center">Ações</TableHead>
+            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+            <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Ação Corretiva</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 hidden md:table-cell">Prioridade</TableHead>
+            <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2 hidden xl:table-cell">Data Início</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+            <TableHead className="w-32 text-xs sm:text-sm py-2">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -101,27 +101,21 @@ export function PlanosAcaoTable({
             return (
               <TableRow key={plano.id}>
                 {/* Coluna Chamado */}
-                <TableCell className="text-center">
-                  <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
-                    {plano.pesquisa?.tipo_caso && (
-                      <span className="text-xs text-muted-foreground">
-                        {plano.pesquisa.tipo_caso}
-                      </span>
-                    )}
-                    {plano.pesquisa?.nro_caso && (
-                      <span className="font-mono text-xs">
-                        {plano.pesquisa.nro_caso}
-                      </span>
-                    )}
-                    {!plano.pesquisa?.nro_caso && (
-                      <span className="text-xs text-muted-foreground">-</span>
-                    )}
+                <TableCell className="font-medium py-2 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium">
+                      {plano.pesquisa?.tipo_caso && plano.pesquisa?.nro_caso
+                        ? `${plano.pesquisa.tipo_caso}-${plano.pesquisa.nro_caso}`
+                        : plano.pesquisa?.nro_caso || '-'
+                      }
+                    </span>
                   </div>
                 </TableCell>
                 
-                {/* Coluna Empresa (com Cliente abaixo) */}
-                <TableCell className="text-center">
-                  <div className="flex flex-col gap-1 items-center">
+                {/* Coluna Cliente */}
+                <TableCell className="py-2 text-center">
+                  <div className="flex flex-col items-center gap-1">
                     {/* Nome da Empresa */}
                     <div className="font-medium text-xs sm:text-sm">
                       {(() => {
@@ -161,7 +155,7 @@ export function PlanosAcaoTable({
                     </div>
                     {/* Nome do Cliente (pequeno, abaixo) */}
                     {plano.pesquisa?.cliente && (
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 break-words leading-tight text-center">
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">
                         {plano.pesquisa.cliente}
                       </div>
                     )}
@@ -169,40 +163,38 @@ export function PlanosAcaoTable({
                 </TableCell>
                 
                 {/* Coluna Ação Corretiva */}
-                <TableCell className="text-center hidden lg:table-cell">
-                  <div className="flex justify-center">
-                    {(() => {
-                      const descricao = plano.descricao_acao_corretiva || '';
-                      const palavras = descricao.split(' ');
-                      const textoTruncado = palavras.length > 5 
-                        ? palavras.slice(0, 5).join(' ') + '...'
-                        : descricao;
-                      
-                      return palavras.length > 5 ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="max-w-[300px] cursor-help text-xs sm:text-sm text-center">
-                                {textoTruncado}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md">
-                              <p className="text-xs whitespace-pre-wrap">{descricao}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <div className="max-w-[300px] text-xs sm:text-sm text-center">
-                          {descricao || '-'}
-                        </div>
-                      );
-                    })()}
-                  </div>
+                <TableCell className="py-2 text-center hidden lg:table-cell">
+                  {(() => {
+                    const descricao = plano.descricao_acao_corretiva || '';
+                    const palavras = descricao.split(' ');
+                    const textoTruncado = palavras.length > 6 
+                      ? palavras.slice(0, 6).join(' ') + '...'
+                      : descricao;
+                    
+                    return palavras.length > 6 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="max-w-[200px] cursor-help text-xs sm:text-sm text-center">
+                              {textoTruncado}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            <p className="text-xs whitespace-pre-wrap">{descricao}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <div className="max-w-[200px] text-xs sm:text-sm text-center">
+                        {descricao || '-'}
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 
                 {/* Coluna Prioridade */}
-                <TableCell className="text-center hidden md:table-cell">
-                  <Badge className={`${getCorPrioridade(plano.prioridade || 'baixa')} text-xs px-2 py-1`}>
+                <TableCell className="py-2 text-center hidden md:table-cell">
+                  <Badge className={`${getCorPrioridade(plano.prioridade || 'baixa')} text-xs`}>
                     {plano.prioridade 
                       ? plano.prioridade.charAt(0).toUpperCase() + plano.prioridade.slice(1)
                       : 'Baixa'
@@ -211,8 +203,8 @@ export function PlanosAcaoTable({
                 </TableCell>
                 
                 {/* Coluna Status */}
-                <TableCell className="text-center">
-                  <Badge className={`${getCorStatus(plano.status_plano || 'aberto')} text-xs px-2 py-1`}>
+                <TableCell className="py-2 text-center">
+                  <Badge className={`${getCorStatus(plano.status_plano || 'aberto')} text-xs`}>
                     {!plano.status_plano 
                       ? 'Aberto'
                       : plano.status_plano === 'em_andamento'
@@ -226,87 +218,54 @@ export function PlanosAcaoTable({
                 </TableCell>
                 
                 {/* Coluna Data Início */}
-                <TableCell className="text-center hidden xl:table-cell">
-                  <div className="text-xs sm:text-sm text-gray-500">
+                <TableCell className="py-2 text-center hidden xl:table-cell">
+                  <span className="text-xs sm:text-sm">
                     {format(new Date(plano.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
-                  </div>
+                  </span>
                 </TableCell>
                 
-                {/* Coluna Tempo de Resolução */}
-                <TableCell className="text-center">
-                  <div className="text-xs sm:text-sm text-gray-500">
-                    {(() => {
-                      if (plano.status_plano === 'concluido' && plano.data_conclusao) {
-                        const dataInicio = new Date(plano.data_inicio);
-                        const dataConclusao = new Date(plano.data_conclusao);
-                        const diffTime = Math.abs(dataConclusao.getTime() - dataInicio.getTime());
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        return `${diffDays} dias`;
-                      }
-                      return '-';
-                    })()}
-                  </div>
+                {/* Coluna Período (Data Resposta) */}
+                <TableCell className="py-2 text-center">
+                  <span className="text-xs sm:text-sm">
+                    {plano.pesquisa?.data_resposta 
+                      ? format(new Date(plano.pesquisa.data_resposta), 'MM/yyyy', { locale: ptBR })
+                      : '-'
+                    }
+                  </span>
                 </TableCell>
 
                 {/* Coluna Ações */}
-                <TableCell className="text-center">
+                <TableCell className="py-2">
                   <div className="flex justify-center gap-1">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onVisualizar?.(plano)}
-                            disabled={isLoading}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Visualizar detalhes</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onVisualizar?.(plano)}
+                      disabled={isLoading}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Eye className="h-4 w-4 text-blue-600" />
+                    </Button>
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onEditar?.(plano)}
-                            disabled={isLoading}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Editar plano</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditar?.(plano)}
+                      disabled={isLoading}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onExcluir?.(plano.id)}
-                            disabled={isLoading}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Excluir plano e pesquisa relacionada</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onExcluir?.(plano.id)}
+                      disabled={isLoading}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

@@ -32,7 +32,9 @@ export async function buscarPlanosAcao(
         nro_caso,
         comentario_pesquisa,
         resposta,
-        data_resposta
+        data_resposta,
+        prestador,
+        coordenador_id
       )
     `)
     .order('criado_em', { ascending: false });
@@ -200,10 +202,13 @@ export async function criarPlanoAcao(dados: PlanoAcaoFormData): Promise<PlanoAca
   // Buscar usuário autenticado
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Separar coordenador_id para atualizar na pesquisa
+  const { coordenador_id, ...dadosPlano } = dados;
+
   // Limpar valores vazios e null para evitar erros de validação
-  const dadosLimpos = Object.entries(dados).reduce((acc, [key, value]) => {
+  const dadosLimpos = Object.entries(dadosPlano).reduce((acc, [key, value]) => {
     // Pular campos que não existem na tabela planos_acao (até migração ser executada)
-    if (key === 'chamado' || key === 'empresa_id') {
+    if (key === 'chamado' || key === 'empresa_id' || key === 'especialistas_ids') {
       console.log(`⏭️ Pulando campo ${key} (não existe na tabela):`, value);
       return acc;
     }
@@ -230,6 +235,21 @@ export async function criarPlanoAcao(dados: PlanoAcaoFormData): Promise<PlanoAca
     throw new Error('Erro ao criar plano de ação');
   }
 
+  // Atualizar coordenador_id na pesquisa se fornecido
+  if (coordenador_id && dados.pesquisa_id) {
+    const { error: errorPesquisa } = await supabase
+      .from('pesquisas_satisfacao')
+      .update({ coordenador_id: coordenador_id || null })
+      .eq('id', dados.pesquisa_id);
+
+    if (errorPesquisa) {
+      console.error('⚠️ Erro ao atualizar coordenador na pesquisa:', errorPesquisa);
+      // Não falhar a operação por causa disso
+    } else {
+      console.log('✅ Coordenador atualizado na pesquisa');
+    }
+  }
+
   return data as PlanoAcao;
 }
 
@@ -242,10 +262,13 @@ export async function atualizarPlanoAcao(
 ): Promise<PlanoAcao> {
   console.log('🔧 Dados recebidos para atualização:', dados);
   
+  // Separar coordenador_id para atualizar na pesquisa
+  const { coordenador_id, ...dadosPlano } = dados;
+  
   // Limpar valores vazios e null para evitar erros de validação
-  const dadosLimpos = Object.entries(dados).reduce((acc, [key, value]) => {
+  const dadosLimpos = Object.entries(dadosPlano).reduce((acc, [key, value]) => {
     // Pular campos que não existem na tabela planos_acao (até migração ser executada)
-    if (key === 'chamado' || key === 'empresa_id') {
+    if (key === 'chamado' || key === 'empresa_id' || key === 'especialistas_ids') {
       console.log(`⏭️ Pulando campo ${key} (não existe na tabela):`, value);
       return acc;
     }
@@ -285,6 +308,21 @@ export async function atualizarPlanoAcao(
       code: error.code
     });
     throw new Error('Erro ao atualizar plano de ação');
+  }
+
+  // Atualizar coordenador_id na pesquisa se fornecido
+  if (coordenador_id !== undefined && dados.pesquisa_id) {
+    const { error: errorPesquisa } = await supabase
+      .from('pesquisas_satisfacao')
+      .update({ coordenador_id: coordenador_id || null })
+      .eq('id', dados.pesquisa_id);
+
+    if (errorPesquisa) {
+      console.error('⚠️ Erro ao atualizar coordenador na pesquisa:', errorPesquisa);
+      // Não falhar a operação por causa disso
+    } else {
+      console.log('✅ Coordenador atualizado na pesquisa');
+    }
   }
 
   return data as PlanoAcao;

@@ -138,9 +138,9 @@ export function useHistoricoPlano(planoId: string) {
       // Aqui você pode implementar a busca do histórico
       // Por enquanto, retornando um array vazio como placeholder
       const { data, error } = await supabase
-        .from('planos_acao_historico') // assumindo que existe uma tabela de histórico
+        .from('plano_acao_historico') // tabela correta (singular)
         .select('*')
-        .eq('plano_id', planoId)
+        .eq('plano_acao_id', planoId)
         .order('criado_em', { ascending: false });
 
       if (error) {
