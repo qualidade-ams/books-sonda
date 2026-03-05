@@ -450,7 +450,7 @@ export function PlanoAcaoForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Causa Raiz do Problema
+                  Causa Raiz
                   {form.watch('data_conclusao') && <span className="text-red-500 ml-1">*</span>}
                 </FormLabel>
                 <FormControl>

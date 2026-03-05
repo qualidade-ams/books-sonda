@@ -1,6 +1,6 @@
 // Tipos para o sistema de organograma
 
-export type Cargo = 'Diretor' | 'Gerente' | 'Coordenador' | 'Central Escalação';
+export type Cargo = 'Diretor' | 'Gerente' | 'Coordenador' | 'Central Escalação' | 'Customer Success' | 'Comercial';
 export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY';
 
 export const PRODUTOS: Produto[] = ['COMEX', 'FISCAL', 'GALLERY'];

@@ -236,9 +236,9 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
               <div 
                 className="bg-white shadow-lg mx-auto"
                 style={{
-                  width: '1754px',
-                  height: '1240px',
-                  transform: 'scale(0.7)',
+                  width: '2657px',
+                  height: '1328px',
+                  transform: 'scale(0.52)',
                   transformOrigin: 'center top'
                 }}
               >

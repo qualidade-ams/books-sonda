@@ -20,8 +20,8 @@
 
 /* Container principal de impressão - CENTRALIZADO */
 .print-container {
-  width: 1754px;
-  max-width: 1754px;
+  width: 2657px;
+  max-width: 2657px;
   background: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   margin: 0 auto; /* Centralizar horizontalmente */
@@ -30,10 +30,10 @@
 
 /* Seções de página - dimensões fixas para garantir layout - CENTRALIZADAS */
 .page-section {
-  width: 1754px;
-  height: 1240px;
-  max-width: 1754px;
-  max-height: 1240px;
+  width: 2657px;
+  height: 1328px;
+  max-width: 2657px;
+  max-height: 1328px;
   position: relative;
   overflow: hidden;
   background: white;
@@ -45,10 +45,10 @@
 
 /* Forçar componentes internos a ocuparem todo o espaço */
 .page-section > * {
-  width: 1754px !important;
-  height: 1240px !important;
-  max-width: 1754px !important;
-  max-height: 1240px !important;
+  width: 2657px !important;
+  height: 1328px !important;
+  max-width: 2657px !important;
+  max-height: 1328px !important;
   display: block !important;
 }
 
@@ -119,7 +119,7 @@
 
 /* Configuração de página - dimensões fixas 1754x1240px */
 @page {
-  size: 1754px 1240px;
+  size: 2657px 1328px;
   margin: 20px 0 0 0; /* 20px no topo, 0 nas outras margens */
 }
 
@@ -189,7 +189,7 @@
 /* Garantir que elementos não ultrapassem 1754px de largura */
 .print-container,
 .print-container * {
-  max-width: 1754px !important;
+  max-width: 2657px !important;
   box-sizing: border-box !important;
 }
 

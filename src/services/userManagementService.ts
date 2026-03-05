@@ -75,17 +75,81 @@ class UserManagementService {
   // Criar novo usuário (requer permissões de admin)
   async createUser(userData: CreateUserData): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
-      console.log('❌ Criação de usuários não está disponível no frontend');
-      console.log('⚠️ Configure uma Edge Function para criar usuários com segurança');
+      console.log('🔄 Criando usuário via Edge Function...');
       
-      throw new Error(
-        'Criação de usuários deve ser feita via Edge Function. ' +
-        'Por questões de segurança, não é possível criar usuários diretamente do frontend. ' +
-        'Configure uma Edge Function no Supabase para esta operação.'
+      // Obter token de autenticação
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão não encontrada. Por favor, faça login novamente.');
+      }
+
+      // Chamar Edge Function para criar usuário
+      const response = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            password: userData.password,
+            fullName: userData.fullName,
+            active: userData.active,
+            sendWelcomeEmail: userData.sendWelcomeEmail
+          })
+        }
       );
+
+      // Verificar se a resposta foi bem-sucedida
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        
+        // Mensagens de erro mais específicas
+        if (response.status === 404) {
+          throw new Error(
+            'Edge Function não encontrada. A função de criação de usuários não está deployada no Supabase. ' +
+            'Entre em contato com o administrador do sistema.'
+          );
+        } else if (response.status === 403) {
+          throw new Error('Você não tem permissões para criar usuários.');
+        } else {
+          throw new Error(`Erro ao criar usuário: ${errorText}`);
+        }
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao criar usuário');
+      }
+
+      console.log('✅ Usuário criado com sucesso:', result.userId);
+      return { 
+        success: true, 
+        userId: result.userId 
+      };
+
     } catch (error: any) {
-      console.error('Erro no serviço de criação de usuário:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Erro no serviço de criação de usuário:', error);
+      
+      // Mensagens de erro mais amigáveis
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+      } else if (error.message?.includes('CORS')) {
+        errorMessage = 'Erro de configuração do servidor. Entre em contato com o administrador.';
+      } else if (error.message?.includes('already registered')) {
+        errorMessage = 'Este email já está cadastrado no sistema.';
+      } else if (error.message?.includes('invalid email')) {
+        errorMessage = 'Email inválido.';
+      } else if (error.message?.includes('weak password')) {
+        errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
+      }
+      
+      return { success: false, error: errorMessage };
     }
   }
 

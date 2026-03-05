@@ -37,14 +37,14 @@ import { PRODUTOS, PRODUTO_LABELS } from '@/types/organograma';
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  cargo: z.enum(['Diretor', 'Gerente', 'Coordenador', 'Central Escalação']),
+  cargo: z.enum(['Diretor', 'Gerente', 'Coordenador', 'Central Escalação', 'Customer Success', 'Comercial']),
   departamento: z.string().min(2, 'Departamento é obrigatório'),
   email: z.string().email('Email inválido'),
   telefone: z.string().optional(),
   produtos: z.array(z.string()).min(1, 'Selecione pelo menos um produto'),
 }).refine((data) => {
-  // Diretor não pode ter superior
-  if (data.cargo === 'Diretor') {
+  // Diretor, Customer Success e Comercial não podem ter superior
+  if (data.cargo === 'Diretor' || data.cargo === 'Customer Success' || data.cargo === 'Comercial') {
     return true;
   }
   return true;
@@ -401,6 +401,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                         <SelectItem value="Gerente">Gerente</SelectItem>
                         <SelectItem value="Coordenador">Coordenador</SelectItem>
                         <SelectItem value="Central Escalação">Central Escalação</SelectItem>
+                        <SelectItem value="Customer Success">Customer Success</SelectItem>
+                        <SelectItem value="Comercial">Comercial</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -515,7 +517,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
               </div>
 
               {/* Superiores por Produto */}
-              {cargoSelecionado !== 'Diretor' && produtosSelecionados.length > 0 && (
+              {cargoSelecionado !== 'Diretor' && cargoSelecionado !== 'Customer Success' && cargoSelecionado !== 'Comercial' && produtosSelecionados.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-gray-300">
                   {cargoSelecionado === 'Central Escalação' ? (
                     // Central Escalação: Mostrar aviso que será vinculado a todos os coordenadores
