@@ -31,6 +31,22 @@ import BookConsumo from './BookConsumo';
 import BookPesquisa from './BookPesquisa';
 import BookOrganograma from './BookOrganograma';
 
+// Mapeamento de meses para nomes
+const MESES_NOMES: Record<number, string> = {
+  1: 'Janeiro',
+  2: 'Fevereiro',
+  3: 'Março',
+  4: 'Abril',
+  5: 'Maio',
+  6: 'Junho',
+  7: 'Julho',
+  8: 'Agosto',
+  9: 'Setembro',
+  10: 'Outubro',
+  11: 'Novembro',
+  12: 'Dezembro'
+};
+
 interface BookViewerProps {
   book: BookListItem | null;
   open: boolean;
@@ -105,20 +121,21 @@ export default function BookViewer({ book, open, onOpenChange }: BookViewerProps
       }
 
       // Gerar PDF usando nova rota dedicada (V2)
+      const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome || 'empresa';
+      const mesNome = MESES_NOMES[book.mes];
+      const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
+      
       toast({
         title: 'Gerando PDF',
-        description: 'Aguarde enquanto o PDF é gerado...',
+        description: `Aguarde enquanto o PDF de ${nomeEmpresa} é gerado...`,
       });
 
       // Usar novo serviço V2 - muito mais simples!
-      const filename = `book_${bookData?.empresa_nome}_${bookData?.mes}_${bookData?.ano}.pdf`;
-      await booksPDFServiceV2.baixarPDF(book.id, filename);
+      await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
       toast({
-        title: 'PDF gerado com sucesso',
-        description: process.env.NODE_ENV === 'development' 
-          ? 'PDF salvo no navegador.'
-          : 'O arquivo foi salvo no seu computador.',
+        title: 'PDF baixado com sucesso',
+        description: `O arquivo de ${nomeEmpresa} foi salvo no seu computador.`,
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
