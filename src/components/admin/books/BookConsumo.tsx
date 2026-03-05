@@ -3,7 +3,7 @@
  * Exibe visão detalhada de utilização de horas e baseline
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, TrendingUp, AlertCircle, CheckCircle2, FileText, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,11 +18,14 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { BookConsumoData, RequerimentoDescontadoData } from '@/types/books';
+import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
 
 interface BookConsumoProps {
   data: BookConsumoData;
   empresaNome?: string; // Nome abreviado do cliente
   empresaId?: string; // ID da empresa para buscar requerimentos
+  mes?: number; // Mês do book
+  ano?: number; // Ano do book
 }
 
 /**
@@ -39,11 +42,337 @@ function formatarHorasSemSegundos(horasCompletas: string): string {
   return `${partes[0]}:${partes[1]}`;
 }
 
-export default function BookConsumo({ data, empresaNome, empresaId }: BookConsumoProps) {
+export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: BookConsumoProps) {
   const [modalRequerimentosAberto, setModalRequerimentosAberto] = useState(false);
   const [mesSelecionado, setMesSelecionado] = useState<string>('');
   const [requerimentosMes, setRequerimentosMes] = useState<RequerimentoDescontadoData[]>([]);
   const [carregandoRequerimentos, setCarregandoRequerimentos] = useState(false);
+  const [bancoHorasTrimestre, setBancoHorasTrimestre] = useState<any[]>([]);
+  const [carregandoBancoHoras, setCarregandoBancoHoras] = useState(false);
+  const [taxaPadraoEmpresa, setTaxaPadraoEmpresa] = useState<number>(0);
+
+  // Buscar taxas específicas do cliente (igual à tela de banco de horas)
+  const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(empresaId) as {
+    taxasEspecificas: TaxasEspecificasCliente | null | undefined;
+    isLoading: boolean;
+  };
+  
+  console.log('💰 Taxas específicas do cliente:', {
+    taxasEspecificas,
+    ticket_excedente_simples: taxasEspecificas?.ticket_excedente_simples,
+    todos_campos: taxasEspecificas ? Object.keys(taxasEspecificas) : []
+  });
+
+  // ✅ NOVO: Buscar taxa usando a MESMA LÓGICA do serviço de excedentes do banco de horas
+  useEffect(() => {
+    const buscarTaxaExcedente = async () => {
+      if (!empresaId || !mes || !ano) {
+        console.log('⚠️ [buscarTaxaExcedente] Parâmetros faltando:', { empresaId, mes, ano });
+        return;
+      }
+      
+      console.log('🔍 [buscarTaxaExcedente] Iniciando busca de taxa (mesma lógica do banco de horas):', {
+        empresaId,
+        mes,
+        ano
+      });
+      
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        // Calcular data de referência (primeiro dia do mês)
+        const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+        
+        console.log('📅 [buscarTaxaExcedente] Data de referência:', dataReferencia);
+        
+        // ✅ MESMA LÓGICA DO BANCO DE HORAS: Buscar taxas disponíveis (vigentes ou vencidas)
+        // Busca TODAS as taxas que iniciaram antes ou no mês de referência
+        const { data: taxasArray, error } = await supabase
+          .from('taxas_clientes')
+          .select('id, vigencia_inicio, vigencia_fim, tipo_produto, tipo_calculo_adicional')
+          .eq('cliente_id', empresaId)
+          .lte('vigencia_inicio', dataReferencia)
+          .order('vigencia_inicio', { ascending: false }); // Mais recente primeiro
+        
+        const taxas = taxasArray as Array<{
+          id: string;
+          vigencia_inicio: string;
+          vigencia_fim: string | null;
+          tipo_produto: string;
+          tipo_calculo_adicional: string;
+        }> | null;
+        
+        if (error) {
+          console.error('❌ [buscarTaxaExcedente] Erro ao buscar taxas:', error);
+          return;
+        }
+        
+        if (!taxas || taxas.length === 0) {
+          console.log('⚠️ [buscarTaxaExcedente] Nenhuma taxa encontrada para o período');
+          setTaxaPadraoEmpresa(0);
+          return;
+        }
+        
+        console.log('📊 [buscarTaxaExcedente] Taxas encontradas:', {
+          quantidade: taxas.length,
+          taxas: taxas.map(t => ({
+            id: t.id,
+            vigencia_inicio: t.vigencia_inicio,
+            vigencia_fim: t.vigencia_fim,
+            tipo_produto: t.tipo_produto
+          }))
+        });
+        
+        // Pegar a taxa mais recente (primeira da lista)
+        const taxaMaisRecente = taxas[0];
+        
+        console.log('✅ [buscarTaxaExcedente] Taxa mais recente selecionada:', {
+          id: taxaMaisRecente.id,
+          vigencia_inicio: taxaMaisRecente.vigencia_inicio,
+          vigencia_fim: taxaMaisRecente.vigencia_fim
+        });
+        
+        // ✅ BUSCAR VALOR_ADICIONAL DA FUNÇÃO FUNCIONAL (Hora Adicional - Excedente do Banco)
+        // Mesma lógica do bancoHorasExcedentesService.ts
+        const { data: valoresArray, error: valoresError } = await supabase
+          .from('valores_taxas_funcoes')
+          .select('valor_base, valor_adicional, funcao')
+          .eq('taxa_id', taxaMaisRecente.id)
+          .eq('tipo_hora', 'remota');
+        
+        const valores = valoresArray as Array<{
+          valor_base: number;
+          valor_adicional: number | null;
+          funcao: string;
+        }> | null;
+        
+        if (valoresError) {
+          console.error('❌ [buscarTaxaExcedente] Erro ao buscar valores:', valoresError);
+          return;
+        }
+        
+        if (!valores || valores.length === 0) {
+          console.log('⚠️ [buscarTaxaExcedente] Nenhum valor encontrado na tabela valores_taxas_funcoes');
+          setTaxaPadraoEmpresa(0);
+          return;
+        }
+        
+        console.log('📊 [buscarTaxaExcedente] Valores encontrados:', {
+          quantidade: valores.length,
+          valores: valores.map(v => ({
+            funcao: v.funcao,
+            valor_base: v.valor_base,
+            valor_adicional: v.valor_adicional
+          }))
+        });
+        
+        // Buscar função Funcional
+        const valorFuncional = valores.find(v => v.funcao === 'Funcional');
+        
+        if (!valorFuncional) {
+          console.log('⚠️ [buscarTaxaExcedente] Função Funcional não encontrada');
+          setTaxaPadraoEmpresa(0);
+          return;
+        }
+        
+        // ✅ PRIORIDADE: Usar valor_adicional cadastrado (se existir E for > 0), senão calcular
+        let taxaHoraAdicional: number;
+        
+        if (valorFuncional.valor_adicional !== null && 
+            valorFuncional.valor_adicional !== undefined && 
+            valorFuncional.valor_adicional > 0) {
+          // Usar valor REAL cadastrado
+          taxaHoraAdicional = valorFuncional.valor_adicional;
+          console.log('✅ [buscarTaxaExcedente] Taxa de Hora Adicional REAL da tabela:', {
+            valor_adicional_cadastrado: valorFuncional.valor_adicional,
+            taxaUtilizada: `R$ ${taxaHoraAdicional.toFixed(2)}`
+          });
+        } else if (taxaMaisRecente.tipo_calculo_adicional === 'normal') {
+          // Fallback: calcular +15%
+          taxaHoraAdicional = valorFuncional.valor_base * 1.15;
+          console.log('⚠️ [buscarTaxaExcedente] Taxa calculada (fallback - normal):', {
+            valorBase: valorFuncional.valor_base,
+            percentual: '15%',
+            taxaCalculada: `R$ ${taxaHoraAdicional.toFixed(2)}`
+          });
+        } else {
+          // Media: média das três primeiras funções
+          const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
+          
+          const valoresPrincipais = valores
+            .filter(v => funcoesPrincipais.includes(v.funcao))
+            .map(v => {
+              const taxaExcedente = (v.valor_adicional && v.valor_adicional > 0) 
+                ? v.valor_adicional 
+                : v.valor_base * 1.15;
+              
+              return {
+                funcao: v.funcao,
+                taxa_excedente_usada: taxaExcedente
+              };
+            });
+          
+          if (valoresPrincipais.length === 0) {
+            console.log('⚠️ [buscarTaxaExcedente] Nenhum valor das funções principais encontrado');
+            setTaxaPadraoEmpresa(0);
+            return;
+          }
+          
+          const soma = valoresPrincipais.reduce((acc, val) => acc + val.taxa_excedente_usada, 0);
+          taxaHoraAdicional = soma / valoresPrincipais.length;
+          
+          console.log('✅ [buscarTaxaExcedente] Taxa calculada (média):', {
+            funcoes: valoresPrincipais.length,
+            media: `R$ ${taxaHoraAdicional.toFixed(2)}`
+          });
+        }
+        
+        setTaxaPadraoEmpresa(taxaHoraAdicional);
+        
+        console.log('✅ [buscarTaxaExcedente] Taxa final definida:', {
+          taxa: taxaHoraAdicional,
+          valor_formatado: new Intl.NumberFormat('pt-BR', { 
+            style: 'currency', 
+            currency: 'BRL' 
+          }).format(taxaHoraAdicional)
+        });
+      } catch (error) {
+        console.error('❌ [buscarTaxaExcedente] Erro ao buscar taxa:', error);
+        setTaxaPadraoEmpresa(0);
+      }
+    };
+    
+    buscarTaxaExcedente();
+  }, [empresaId, mes, ano]);
+
+  // Buscar dados de banco de horas do trimestre ao montar o componente
+  useEffect(() => {
+    const buscarBancoHorasTrimestre = async () => {
+      if (!empresaId || !mes || !ano) {
+        console.log('⚠️ Faltam parâmetros:', { empresaId, mes, ano });
+        return;
+      }
+      
+      setCarregandoBancoHoras(true);
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
+        const { data: empresa, error: empresaError } = await supabase
+          .from('empresas_clientes')
+          .select('periodo_apuracao, inicio_vigencia')
+          .eq('id', empresaId)
+          .single();
+        
+        if (empresaError) {
+          console.error('❌ Erro ao buscar dados da empresa:', empresaError);
+          return;
+        }
+        
+        console.log('📊 Dados da empresa:', empresa);
+        
+        const periodoApuracao = empresa?.periodo_apuracao || 3; // Default: trimestral
+        const inicioVigencia = empresa?.inicio_vigencia;
+        
+        // 2. Calcular os meses do ciclo baseado no periodo_apuracao e inicio_vigencia
+        let mesesCiclo: { mes: number; ano: number }[] = [];
+        
+        if (inicioVigencia) {
+          // Extrair mês e ano do inicio_vigencia (formato: YYYY-MM-DD)
+          const [anoVigencia, mesVigencia] = inicioVigencia.split('-').map(Number);
+          
+          console.log(`📅 Início vigência: ${mesVigencia}/${anoVigencia}`);
+          console.log(`📅 Período apuração: ${periodoApuracao} meses`);
+          console.log(`📅 Mês atual do book: ${mes}/${ano}`);
+          
+          // Calcular quantos meses se passaram desde o início da vigência
+          const mesesDesdeInicio = (ano - anoVigencia) * 12 + (mes - mesVigencia);
+          
+          // Calcular em qual ciclo estamos
+          const cicloAtual = Math.floor(mesesDesdeInicio / periodoApuracao);
+          
+          // Calcular o primeiro mês deste ciclo
+          const mesesAteInicioCiclo = cicloAtual * periodoApuracao;
+          let mesInicioCiclo = mesVigencia + mesesAteInicioCiclo;
+          let anoInicioCiclo = anoVigencia;
+          
+          // Ajustar ano se necessário
+          while (mesInicioCiclo > 12) {
+            mesInicioCiclo -= 12;
+            anoInicioCiclo += 1;
+          }
+          
+          console.log(`📅 Ciclo ${cicloAtual + 1}: inicia em ${mesInicioCiclo}/${anoInicioCiclo}`);
+          
+          // Gerar os meses do ciclo
+          for (let i = 0; i < periodoApuracao; i++) {
+            let mesCalc = mesInicioCiclo + i;
+            let anoCalc = anoInicioCiclo;
+            
+            while (mesCalc > 12) {
+              mesCalc -= 12;
+              anoCalc += 1;
+            }
+            
+            mesesCiclo.push({ mes: mesCalc, ano: anoCalc });
+          }
+        } else {
+          // Fallback: usar cálculo trimestral padrão
+          console.log('⚠️ Empresa sem início de vigência, usando cálculo trimestral padrão');
+          const primeiroMes = Math.floor((mes - 1) / 3) * 3 + 1;
+          
+          for (let i = 0; i < 3; i++) {
+            const mesCalc = primeiroMes + i;
+            if (mesCalc <= 12) {
+              mesesCiclo.push({ mes: mesCalc, ano });
+            } else {
+              mesesCiclo.push({ mes: mesCalc - 12, ano: ano + 1 });
+            }
+          }
+        }
+        
+        console.log('📅 Meses do ciclo:', mesesCiclo);
+        console.log('📊 Buscando banco de horas para os meses:', mesesCiclo);
+        
+        // 3. Buscar dados de cada mês do ciclo
+        const promessas = mesesCiclo.map(async ({ mes: m, ano: a }) => {
+          console.log(`🔍 Buscando dados para ${m}/${a}...`);
+          
+          const { data: bancoHorasData, error } = await supabase
+            .from('banco_horas_calculos')
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .eq('mes', m)
+            .eq('ano', a)
+            .maybeSingle();
+          
+          if (error && error.code !== 'PGRST116') {
+            console.error(`❌ Erro ao buscar banco de horas ${m}/${a}:`, error);
+          } else if (bancoHorasData) {
+            console.log(`✅ Dados encontrados para ${m}/${a}:`, bancoHorasData);
+          } else {
+            console.log(`⚠️ Nenhum dado encontrado para ${m}/${a}`);
+          }
+          
+          return {
+            mes: m,
+            ano: a,
+            dados: bancoHorasData || null
+          };
+        });
+        
+        const resultados = await Promise.all(promessas);
+        setBancoHorasTrimestre(resultados);
+        console.log('📊 Banco de horas do ciclo carregado:', resultados);
+      } catch (error) {
+        console.error('❌ Erro ao buscar banco de horas do ciclo:', error);
+      } finally {
+        setCarregandoBancoHoras(false);
+      }
+    };
+
+    buscarBancoHorasTrimestre();
+  }, [empresaId, mes, ano]);
 
   // Função para buscar requerimentos de um mês específico
   const buscarRequerimentosMes = async (mes: string, ano: string) => {
@@ -321,11 +650,11 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico: Histórico de Consumo Mensal */}
         <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">Horas Mês</CardTitle>
             <p className="text-xs text-gray-500">Histórico de consumo mensal em 2025</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart 
                 data={data.historico_consumo}
@@ -475,6 +804,18 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
                 />
               </LineChart>
             </ResponsiveContainer>
+            
+            {/* Legenda abaixo do gráfico */}
+            <div className="flex items-center justify-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                <span className="text-sm font-medium text-gray-700">Chamados</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-orange-600"></div>
+                <span className="text-sm font-medium text-gray-700">Requerimentos</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -548,6 +889,204 @@ export default function BookConsumo({ data, empresaNome, empresaId }: BookConsum
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabela de Banco de Horas - Cores atualizadas conforme tela de banco de horas */}
+      {bancoHorasTrimestre.length > 0 && (
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Banco de Horas - {empresaNome}
+            </CardTitle>
+            <p className="text-xs text-gray-500">Controle trimestral de horas contratadas</p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+                <thead>
+                  {/* Primeira linha - Azul com meses */}
+                  <tr className="bg-blue-600 text-white">
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Período - 1º Trimestre
+                    </th>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <th key={index} className="px-4 py-3 text-center font-semibold">
+                        {new Date(item.ano, item.mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {/* Banco Contratado */}
+                  <tr className="text-white" style={{ backgroundColor: '#666666' }}>
+                    <td className="px-4 py-2 font-semibold">Banco Contratado</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center font-semibold">
+                        {item.dados?.baseline_horas ? item.dados.baseline_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Repasse mês anterior */}
+                  <tr className="bg-gray-200">
+                    <td className="px-4 py-2">Repasse mês anterior</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center text-green-600 font-semibold">
+                        {item.dados?.repasses_mes_anterior_horas ? item.dados.repasses_mes_anterior_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Saldo a utilizar */}
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-2 font-semibold">Saldo a utilizar</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center text-green-600 font-bold">
+                        {item.dados?.saldo_a_utilizar_horas ? item.dados.saldo_a_utilizar_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Consumo Chamados */}
+                  <tr className="bg-white">
+                    <td className="px-4 py-2">Consumo Chamados</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center">
+                        {item.dados?.consumo_horas ? item.dados.consumo_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Requerimentos */}
+                  <tr className="bg-white">
+                    <td className="px-4 py-2">Requerimentos</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center">
+                        {item.dados?.requerimentos_horas ? item.dados.requerimentos_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Reajuste */}
+                  <tr className="bg-white">
+                    <td className="px-4 py-2">Reajuste</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center">
+                        {item.dados?.reajustes_horas ? item.dados.reajustes_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Consumo Total */}
+                  <tr className="bg-white">
+                    <td className="px-4 py-2 font-semibold">Consumo Total</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center font-bold">
+                        {item.dados?.consumo_total_horas ? item.dados.consumo_total_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Saldo */}
+                  <tr className="bg-gray-200">
+                    <td className="px-4 py-2 font-semibold">Saldo</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center text-green-600 font-bold">
+                        {item.dados?.saldo_horas ? item.dados.saldo_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Repasse - 50% */}
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-2">Repasse - 50%</td>
+                    {bancoHorasTrimestre.map((item, index) => (
+                      <td key={index} className="px-4 py-2 text-center text-green-600 font-semibold">
+                        {item.dados?.repasse_horas ? item.dados.repasse_horas.substring(0, 5) : '00:00'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA */}
+                  <tr className="text-white" style={{ backgroundColor: '#666666' }}>
+                    <td className="px-4 py-2 font-semibold">Taxa/hora Excedente</td>
+                    {bancoHorasTrimestre.map((item, index) => {
+                      const isPenultima = index === bancoHorasTrimestre.length - 2;
+                      const isUltima = index === bancoHorasTrimestre.length - 1;
+                      
+                      if (isPenultima) {
+                        // Penúltima coluna: exibir "Valor Total"
+                        return (
+                          <td key={index} className="px-4 py-2 text-center font-semibold">
+                            Valor Total
+                          </td>
+                        );
+                      } else if (isUltima) {
+                        // Última coluna: exibir valor total dos excedentes
+                        return (
+                          <td key={index} className="px-4 py-2 text-center font-semibold">
+                            {item.dados?.valor_excedentes_horas 
+                              ? `R$ ${item.dados.valor_excedentes_horas.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : 'R$ 0,00'
+                            }
+                          </td>
+                        );
+                      } else {
+                        // ✅ NOVA LÓGICA: Exibir taxa usando MESMA LÓGICA do banco de horas
+                        // A taxa já foi buscada corretamente no useEffect acima seguindo:
+                        // 1. Busca taxa mais recente (vigente ou vencida)
+                        // 2. Busca valor_adicional da função Funcional (Hora Adicional - Excedente do Banco)
+                        // 3. Se valor_adicional > 0: usa valor cadastrado
+                        // 4. Se não: calcula baseado em tipo_calculo_adicional ('normal' = +15%, 'media' = média das 3 funções)
+                        
+                        // Prioridade de exibição:
+                        // 1. Taxa específica do cliente (ticket_excedente_simples) - casos especiais
+                        // 2. Taxa padrão calculada (taxaPadraoEmpresa) - valor correto do banco de horas
+                        const taxaEspecifica = taxasEspecificas?.ticket_excedente_simples;
+                        const taxa = (taxaEspecifica && taxaEspecifica > 0) 
+                          ? taxaEspecifica 
+                          : (taxaPadraoEmpresa || 0);
+                        
+                        console.log(`📊 [Tabela] Taxa mês ${item.mes}/${item.ano}:`, {
+                          taxasEspecificas,
+                          ticket_excedente_simples: taxaEspecifica,
+                          taxa_padrao_calculada: taxaPadraoEmpresa,
+                          taxa_final: taxa,
+                          vai_exibir: taxa > 0,
+                          origem: taxaEspecifica && taxaEspecifica > 0 ? 'taxa_especifica' : 'taxa_padrao_banco_horas'
+                        });
+                        
+                        return (
+                          <td key={index} className="px-4 py-2 text-center font-semibold">
+                            {taxa > 0 
+                              ? `R$ ${taxa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : ''
+                            }
+                          </td>
+                        );
+                      }
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loading state para banco de horas */}
+      {carregandoBancoHoras && (
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <CardContent className="py-12">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Carregando banco de horas...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal de Detalhes dos Requerimentos do Mês */}
       <Dialog open={modalRequerimentosAberto} onOpenChange={setModalRequerimentosAberto}>
