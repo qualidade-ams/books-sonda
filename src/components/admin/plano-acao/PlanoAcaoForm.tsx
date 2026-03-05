@@ -26,13 +26,15 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useEmpresas } from '@/hooks/useEmpresas';
+import { useCoordenadores } from '@/hooks/useCoordenadores';
+import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
+import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
+import { useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { ContatosList } from './ContatosList';
 import type { PlanoAcaoFormData, PlanoAcaoCompleto } from '@/types/planoAcao';
 import {
   PRIORIDADE_OPTIONS,
   STATUS_PLANO_OPTIONS,
-  MEIO_CONTATO_OPTIONS,
-  RETORNO_CLIENTE_OPTIONS,
   STATUS_FINAL_OPTIONS,
 } from '@/types/planoAcao';
 
@@ -40,6 +42,8 @@ const formSchema = z.object({
   pesquisa_id: z.string().min(1, 'Pesquisa é obrigatória'),
   chamado: z.string().optional(),
   empresa_id: z.string().optional(),
+  especialistas_ids: z.array(z.string()).optional(), // NOVO: IDs dos consultores
+  coordenador_id: z.string().optional(), // NOVO: ID do coordenador
   comentario_cliente: z.string().optional(), // Campo habilitado para planos manuais
   causa: z.string().optional(), // NOVO: Causa raiz do problema
   descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'), // NOVO: Descrição da ação corretiva
@@ -103,6 +107,24 @@ export function PlanoAcaoForm({
   // Buscar empresas para o select
   const { empresas = [], isLoading: isLoadingEmpresas } = useEmpresas({});
 
+  // Buscar coordenadores usando o hook (igual as demais tabelas)
+  const { data: coordenadores = [], isLoading: isLoadingCoordenadores } = useCoordenadores();
+
+  // Buscar especialistas relacionados à pesquisa
+  const { data: especialistasRelacionados = [] } = useEspecialistasPesquisa(pesquisaId);
+  
+  // IDs dos especialistas já relacionados
+  const especialistasIdsRelacionados = Array.isArray(especialistasRelacionados) 
+    ? (especialistasRelacionados as any[]).map((e: any) => e.id)
+    : [];
+  
+  // Correlação automática baseada no campo prestador
+  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+    plano?.pesquisa?.prestador && especialistasIdsRelacionados.length === 0 
+      ? plano.pesquisa.prestador 
+      : undefined
+  );
+
   // Ordenar empresas por nome abreviado
   const empresasOrdenadas = [...empresas].sort((a, b) => 
     a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR')
@@ -111,15 +133,23 @@ export function PlanoAcaoForm({
   // Determinar se é um plano manual (novo plano sem pesquisa associada ou sem dados preenchidos automaticamente)
   const isPlanoManual = !plano || !plano.pesquisa || (!plano.pesquisa.comentario_pesquisa && !plano.pesquisa.nro_caso && !plano.pesquisa.empresa);
 
-  const form = useForm<PlanoAcaoFormData>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       pesquisa_id: pesquisaId,
-      chamado: plano?.chamado || plano?.pesquisa?.nro_caso || '', // CORREÇÃO: Buscar da pesquisa se não tiver no plano
-      empresa_id: plano?.empresa_id || '', // CORREÇÃO: Será preenchido via useEffect
+      chamado: plano?.chamado || plano?.pesquisa?.nro_caso || '',
+      empresa_id: plano?.empresa_id || '',
+      especialistas_ids: (
+        Array.isArray(especialistasIdsRelacionados) && especialistasIdsRelacionados.length > 0 
+          ? especialistasIdsRelacionados 
+          : Array.isArray(especialistasIdsCorrelacionados) && (especialistasIdsCorrelacionados as string[]).length > 0
+          ? (especialistasIdsCorrelacionados as string[])
+          : []
+      ) as string[],
+      coordenador_id: plano?.pesquisa?.coordenador_id || '',
       comentario_cliente: plano?.comentario_cliente || plano?.pesquisa?.comentario_pesquisa || '', 
-      causa: plano?.causa || '', // NOVO: Campo causa
-      descricao_acao_corretiva: plano?.descricao_acao_corretiva || '', // NOVO: Campo em branco para ação corretiva
+      causa: plano?.causa || '',
+      descricao_acao_corretiva: plano?.descricao_acao_corretiva || '',
       acao_preventiva: plano?.acao_preventiva || '',
       prioridade: plano?.prioridade || 'media',
       status_plano: plano?.status_plano || 'aberto',
@@ -165,6 +195,20 @@ export function PlanoAcaoForm({
       }
     }
   }, [plano, empresas, form]);
+
+  // Atualizar especialistas quando a correlação estiver pronta
+  useEffect(() => {
+    const idsRelacionados = especialistasIdsRelacionados as string[];
+    const idsCorrelacionados = (especialistasIdsCorrelacionados as string[]) || [];
+    
+    if (idsRelacionados.length > 0) {
+      console.log('� Especialistas relacionados encontrados:', idsRelacionados);
+      form.setValue('especialistas_ids', idsRelacionados);
+    } else if (idsCorrelacionados.length > 0) {
+      console.log('🔗 Especialistas correlacionados encontrados:', idsCorrelacionados);
+      form.setValue('especialistas_ids', idsCorrelacionados);
+    }
+  }, [especialistasIdsRelacionados, especialistasIdsCorrelacionados, form]);
 
   return (
     <Form {...form}>
@@ -220,6 +264,62 @@ export function PlanoAcaoForm({
               )}
             />
           </div>
+
+          {/* Campo Consultores */}
+          <FormField
+            control={form.control}
+            name="especialistas_ids"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Consultores</FormLabel>
+                <FormControl>
+                  <MultiSelectEspecialistas
+                    value={field.value || []}
+                    onValueChange={field.onChange}
+                    placeholder="Selecione os consultores..."
+                    className="focus:ring-sonda-blue focus:border-sonda-blue"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Campo Coordenador */}
+          <FormField
+            control={form.control}
+            name="coordenador_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Coordenador</FormLabel>
+                <Select 
+                  onValueChange={(value) => {
+                    // Se selecionar "none", limpar o campo (string vazia)
+                    field.onChange(value === "none" ? "" : value);
+                  }} 
+                  value={field.value || "none"}
+                  disabled={isLoadingCoordenadores}
+                >
+                  <FormControl>
+                    <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                      <SelectValue placeholder="Selecione um coordenador(a)" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">Selecione um coordenador(a)</span>
+                    </SelectItem>
+                    {coordenadores.map((coordenador) => (
+                      <SelectItem key={coordenador.id} value={coordenador.id}>
+                        {coordenador.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Seção: Ação Corretiva */}
@@ -464,9 +564,6 @@ export function PlanoAcaoForm({
                     }
                   />
                 </FormControl>
-                <p className="text-xs text-gray-500">
-                  Campo obrigatório quando a data de conclusão estiver preenchida
-                </p>
                 <FormMessage />
               </FormItem>
             )}

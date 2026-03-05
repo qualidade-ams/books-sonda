@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContatosList } from './ContatosList';
+import { useEspecialistas } from '@/hooks/useEspecialistas';
+import { useCoordenador } from '@/hooks/useCoordenadores';
 import type { PlanoAcaoCompleto, PlanoAcaoHistorico } from '@/types/planoAcao';
 import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
 import {
@@ -31,6 +33,30 @@ interface PlanoAcaoDetalhesProps {
 }
 
 export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) {
+  // Buscar dados dos especialistas relacionados à pesquisa
+  const { data: especialistasRelacionados = [] } = useEspecialistas({});
+  
+  // Buscar dados do coordenador
+  const { data: coordenador } = useCoordenador(plano.pesquisa?.coordenador_id);
+  
+  // Buscar especialistas da pesquisa através do prestador
+  const especialistasPlano = especialistasRelacionados.filter(esp => {
+    if (!plano.pesquisa?.prestador) return false;
+    
+    // Normalizar nomes para comparação
+    const nomePrestador = plano.pesquisa.prestador.toLowerCase().trim();
+    const nomeEspecialista = esp.nome.toLowerCase().trim();
+    
+    // Verificar se o nome do especialista está contido no prestador
+    return nomePrestador.includes(nomeEspecialista) || nomeEspecialista.includes(nomePrestador);
+  });
+  
+  console.log('🔍 Debug Especialistas:', {
+    prestador: plano.pesquisa?.prestador,
+    especialistasEncontrados: especialistasPlano.map(e => e.nome),
+    totalEspecialistas: especialistasRelacionados.length
+  });
+  
   return (
     <Tabs defaultValue="informacoes" className="w-full">
       <TabsList className="grid w-full grid-cols-4">
@@ -79,14 +105,32 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
               <p className="text-sm text-muted-foreground">Resposta</p>
               <p className="font-medium">{plano.pesquisa?.resposta || '-'}</p>
             </div>
-          </div>
-          {(plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa) && (
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Comentário do Cliente</p>
-              <p className="text-sm bg-muted p-3 rounded-md">
-                {plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa}
-              </p>
+              <p className="text-sm text-muted-foreground">Consultor(es)</p>
+              {especialistasPlano.length > 0 ? (
+                <p className="font-medium">
+                  {especialistasPlano.map(esp => esp.nome).join(', ')}
+                </p>
+              ) : (
+                <p className="font-medium text-muted-foreground">-</p>
+              )}
             </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Coordenador(a)</p>
+              <p className="font-medium">{coordenador?.nome || '-'}</p>
+            </div>
+          </div>
+          
+          {(plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa) && (
+            <>
+              <Separator className="my-4" />
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Comentário do Cliente</p>
+                <p className="text-sm bg-muted p-3 rounded-md">
+                  {plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa}
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

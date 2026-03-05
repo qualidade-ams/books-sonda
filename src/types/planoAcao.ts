@@ -58,6 +58,10 @@ export interface PlanoAcaoCompleto extends PlanoAcao {
     nro_caso?: string;
     comentario_pesquisa?: string;
     resposta?: string;
+    data_resposta?: string;
+    prestador?: string; // Nome do prestador/consultor
+    especialistas_ids?: string[]; // IDs dos consultores
+    coordenador_id?: string; // ID do coordenador
   };
 }
 
@@ -66,6 +70,8 @@ export interface PlanoAcaoFormData {
   pesquisa_id: string;
   chamado?: string;
   empresa_id?: string;
+  especialistas_ids?: string[]; // NOVO: IDs dos consultores
+  coordenador_id?: string; // NOVO: ID do coordenador
   comentario_cliente?: string; // NOVO: Comentário do cliente
   causa?: string; // NOVO: Causa raiz do problema (obrigatório quando data_conclusao preenchida)
   descricao_acao_corretiva: string; // NOVO: Descrição da ação corretiva (campo em branco)
