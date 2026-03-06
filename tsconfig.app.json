@@ -26,5 +26,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "src/vite-env.d.ts", "src/**/*.test.tsx", "src/**/*.test.ts"]
+  "include": ["src", "src/vite-env.d.ts", "src/**/*.test.tsx", "src/**/*.test.ts"],
+  "exclude": ["api", "node_modules", "dist"]
 }
