@@ -34,8 +34,8 @@ export function getApiBaseUrl(): string {
   } else {
     // Em produção, usa HTTP por enquanto (servidor não suporta HTTPS)
     // TODO: Quando o servidor suportar HTTPS, mudar para:
-    // return isHttpsEnvironment() ? `https://${baseHost}` : `http://${baseHost}`;
-    return `http://${baseHost}`;
+    return isHttpsEnvironment() ? `https://${baseHost}` : `http://${baseHost}`;
+    //return `http://${baseHost}`;
   }
 }
 
