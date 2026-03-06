@@ -160,7 +160,7 @@ export function DiagnosticoApi() {
           <Server className="h-4 w-4" />
           <span>URL: </span>
           <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-            {diagnostico?.configInfo?.apiUrl || import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001'}
+            {diagnostico?.configInfo?.apiUrl || import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001'}
           </code>
         </div>
 
