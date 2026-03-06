@@ -134,121 +134,195 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
         </Card>
       </div>
 
-      {/* Gráfico e Card Lateral - COMPACTOS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Gráfico: Aging dos Chamados - OTIMIZADO */}
-        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Aging dos Chamados</CardTitle>
-            <div className="flex items-center gap-4 text-xs mt-1">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2563eb' }} />
-                <span>Solicitação</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#0d6abf' }} />
-                <span>Incidente</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={data.aging_chamados}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="faixa" 
-                  tick={{ fontSize: 11 }}
-                  stroke="#666"
-                  angle={-15}
-                  textAnchor="end"
-                  height={70}
-                />
-                <YAxis 
-                  tick={{ fontSize: 11 }}
-                  stroke="#666"
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '11px'
-                  }}
-                />
-                <Legend 
-                  wrapperStyle={{ fontSize: '11px' }}
-                  iconType="circle"
-                />
-                <Bar 
-                  dataKey="solicitacao" 
-                  fill="#2563eb" 
-                  name="Solicitação"
-                  radius={[4, 4, 0, 0]}
-                >
-                  <LabelList 
+      {/* Layout: Coluna esquerda (gráfico + tabela) e direita (card lateral) - ESTILO VOLUMETRIA */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Coluna esquerda: Gráfico + Tabela */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Gráfico: Aging dos Chamados */}
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Aging dos Chamados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data.aging_chamados}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="faixa" 
+                    tick={{ fontSize: 11 }}
+                    stroke="#666"
+                    angle={-15}
+                    textAnchor="end"
+                    height={70}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11 }}
+                    stroke="#666"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '11px'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: '14px' }}
+                    iconType="circle"
+                  />
+                  <Bar 
                     dataKey="solicitacao" 
-                    position="inside" 
-                    style={{ 
-                      fill: '#fff', 
-                      fontSize: '12px', 
-                      fontWeight: 'bold' 
-                    }}
-                    formatter={(value: number) => value > 0 ? value : ''}
-                  />
-                </Bar>
-                <Bar 
-                  dataKey="incidente" 
-                  fill="#0d6abf" 
-                  name="Incidente"
-                  radius={[4, 4, 0, 0]}
-                >
-                  <LabelList 
+                    fill="#2563eb" 
+                    name="Solicitação"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    <LabelList 
+                      dataKey="solicitacao" 
+                      position="inside" 
+                      style={{ 
+                        fill: '#fff', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}
+                      formatter={(value: number) => value > 0 ? value : ''}
+                    />
+                  </Bar>
+                  <Bar 
                     dataKey="incidente" 
-                    position="inside" 
-                    style={{ 
-                      fill: '#fff', 
-                      fontSize: '12px', 
-                      fontWeight: 'bold' 
-                    }}
-                    formatter={(value: number) => value > 0 ? value : ''}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+                    fill="#0d6abf" 
+                    name="Incidente"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    <LabelList 
+                      dataKey="incidente" 
+                      position="inside" 
+                      style={{ 
+                        fill: '#fff', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}
+                      formatter={(value: number) => value > 0 ? value : ''}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Card: Distribuição por Grupo - COMPACTO */}
+          {/* Tabela: Backlog Atualizado X CAUSA */}
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div style={{ borderRadius: '35.5px', overflow: 'hidden' }}>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="font-semibold text-sm py-1.5">ORIGEM</TableHead>
+                      <TableHead className="text-center font-semibold text-sm py-1.5">INCIDENTE</TableHead>
+                      <TableHead className="text-center font-semibold text-sm py-1.5">SOLICITAÇÃO</TableHead>
+                      <TableHead className="text-center font-semibold text-sm text-white py-1.5" style={{ backgroundColor: '#0d6abf' }}>TOTAL</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(backlogPorCausaMapeado && backlogPorCausaMapeado.length > 0) ? (
+                      <>
+                        {backlogPorCausaMapeado.map((item, index) => (
+                          <TableRow key={index} className="hover:bg-gray-50">
+                            <TableCell className="font-medium text-sm py-1.5">{item.origem}</TableCell>
+                            <TableCell className="text-center text-sm py-1.5">{item.incidente || '-'}</TableCell>
+                            <TableCell className="text-center text-sm py-1.5">{item.solicitacao || '-'}</TableCell>
+                            <TableCell className="text-center font-semibold text-sm py-1.5">{item.total}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#0d6abf', color: 'white' }}>
+                          <TableCell className="text-sm py-1.5">TOTAL</TableCell>
+                          <TableCell className="text-center text-sm py-1.5">
+                            {backlogPorCausaMapeado.reduce((sum, item) => sum + item.incidente, 0)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm py-1.5">
+                            {backlogPorCausaMapeado.reduce((sum, item) => sum + item.solicitacao, 0)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm py-1.5">
+                            {backlogPorCausaMapeado.reduce((sum, item) => sum + item.total, 0)}
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          Nenhum dado de backlog por causa disponível
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna direita: Card lateral (altura total) */}
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {distribuicaoPorGrupoMapeada && distribuicaoPorGrupoMapeada.length > 0 ? (
-              distribuicaoPorGrupoMapeada.map((grupo, index) => {
+              (() => {
+                const maxGrupos = 8;
+                const gruposExibir = distribuicaoPorGrupoMapeada.slice(0, maxGrupos);
+                const temMaisGrupos = distribuicaoPorGrupoMapeada.length > maxGrupos;
+                const gruposRestantes = distribuicaoPorGrupoMapeada.length - maxGrupos;
+                
                 // Calcular largura proporcional da barra
                 const maxTotal = Math.max(...distribuicaoPorGrupoMapeada.map(g => g.total));
-                const barWidth = maxTotal > 0 ? (grupo.total / maxTotal) * 100 : 0;
                 
                 return (
-                  <div key={index} className="pb-2 border-b last:border-b-0 last:pb-0">
-                    {/* Nome e Total na mesma linha */}
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="font-semibold text-xs leading-tight">{grupo.grupo}</div>
-                      <div className="text-xs text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
-                    </div>
+                  <>
+                    {gruposExibir.map((grupo, index) => {
+                      const barWidth = maxTotal > 0 ? (grupo.total / maxTotal) * 100 : 0;
+                      
+                      return (
+                        <div key={index} className="pb-1.5 border-b last:border-b-0 last:pb-0">
+                          {/* Nome e Total na mesma linha - mais compacto */}
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-[10px] leading-tight">{grupo.grupo}</div>
+                            <div className="text-[9px] text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
+                          </div>
+                          
+                          {/* Barra horizontal com largura proporcional */}
+                          <div 
+                            className="bg-[#0d6abf] rounded px-2 py-1 flex justify-between items-center transition-all duration-300"
+                            style={{ width: `${barWidth}%`, minWidth: '80px' }}
+                          >
+                            <span className="text-sm text-white font-bold leading-tight">{grupo.total}</span>
+                            <span className="text-[9px] text-white/90 font-semibold leading-tight">{grupo.percentual}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                     
-                    {/* Barra horizontal com largura proporcional */}
-                    <div 
-                      className="bg-[#0d6abf] rounded px-3 py-2 flex justify-between items-center transition-all duration-300"
-                      style={{ width: `${barWidth}%`, minWidth: '70px' }}
-                    >
-                      <span className="text-base text-white font-bold leading-tight">{grupo.total}</span>
-                      <span className="text-xs text-white/90 font-semibold leading-tight">{grupo.percentual}%</span>
-                    </div>
-                  </div>
+                    {/* Mensagem quando há mais grupos */}
+                    {temMaisGrupos && (
+                      <div className="pt-2 mt-2 border-t border-gray-200">
+                        <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                          <p className="text-[10px] text-gray-600 font-medium">
+                            + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
+                          </p>
+                          <p className="text-[9px] text-gray-500 mt-0.5">
+                            Exibindo os {maxGrupos} primeiros grupos
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 );
-              })
+              })()
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <p className="text-sm">Nenhum grupo encontrado</p>
@@ -257,61 +331,6 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Tabela: Backlog Atualizado X CAUSA - COMPACTA */}
-      <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div style={{ borderRadius: '35.5px', overflow: 'hidden' }}>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold text-sm py-1.5">ORIGEM</TableHead>
-                  <TableHead className="text-center font-semibold text-sm py-1.5">INCIDENTE</TableHead>
-                  <TableHead className="text-center font-semibold text-sm py-1.5">SOLICITAÇÃO</TableHead>
-                  <TableHead className="text-center font-semibold text-sm text-white py-1.5" style={{ backgroundColor: '#0d6abf' }}>TOTAL</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(backlogPorCausaMapeado && backlogPorCausaMapeado.length > 0) ? (
-                  <>
-                    {backlogPorCausaMapeado.map((item, index) => (
-                      <TableRow key={index} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-sm py-1.5">{item.origem}</TableCell>
-                        <TableCell className="text-center text-sm py-1.5">{item.incidente || '-'}</TableCell>
-                        <TableCell className="text-center text-sm py-1.5">{item.solicitacao || '-'}</TableCell>
-                        <TableCell className="text-center font-semibold text-sm py-1.5">{item.total}</TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#0d6abf', color: 'white' }}>
-                      <TableCell className="text-sm py-1.5">TOTAL</TableCell>
-                      <TableCell className="text-center text-sm py-1.5">
-                        {backlogPorCausaMapeado.reduce((sum, item) => sum + item.incidente, 0)}
-                      </TableCell>
-                      <TableCell className="text-center text-sm py-1.5">
-                        {backlogPorCausaMapeado.reduce((sum, item) => sum + item.solicitacao, 0)}
-                      </TableCell>
-                      <TableCell className="text-center text-sm py-1.5">
-                        {backlogPorCausaMapeado.reduce((sum, item) => sum + item.total, 0)}
-                      </TableCell>
-                    </TableRow>
-                  </>
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                      Nenhum dado de backlog por causa disponível
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
       </div>
     </div>
   );
