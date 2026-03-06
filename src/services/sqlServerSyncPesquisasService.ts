@@ -39,7 +39,7 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
  */
 async function buscarDadosSqlServer(): Promise<DadosSqlServer[]> {
   // URL da API de sincronização
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
   
   try {
     const response = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
@@ -160,7 +160,7 @@ export async function sincronizarDados(tabelas?: {
     tickets: number;
   };
 }> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
   
   // Se não foram especificadas tabelas, sincronizar todas por padrão (comportamento anterior)
   const tabelasParaSincronizar = tabelas || {
@@ -483,7 +483,7 @@ export async function verificarUltimaSincronizacao(): Promise<{
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
-  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'http://SAPSERVDB.sondait.com.br:3001';
+  const API_URL = import.meta.env.VITE_SYNC_API_URL || 'https://SAPSERVDB.sondait.com.br:3001';
   
   try {
     console.log('Testando conexão com SQL Server via API...');
