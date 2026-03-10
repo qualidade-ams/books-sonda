@@ -95,7 +95,8 @@ class UserManagementService {
           body: JSON.stringify({
             email: userData.email,
             password: userData.password,
-            fullName: userData.fullName,
+            name: userData.fullName, // Corrigido: era fullName, agora é name
+            group_id: null, // TODO: Adicionar group_id quando disponível
             active: userData.active,
             sendWelcomeEmail: userData.sendWelcomeEmail
           })
