@@ -12,7 +12,7 @@ import { ContatosList } from './ContatosList';
 import { useEspecialistas } from '@/hooks/useEspecialistas';
 import { useCoordenador } from '@/hooks/useCoordenadores';
 import type { PlanoAcaoCompleto, PlanoAcaoHistorico } from '@/types/planoAcao';
-import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
+import { getCorPrioridade, getCorStatus, TIPO_ACAO_OPTIONS } from '@/types/planoAcao';
 import {
   Calendar,
   User,
@@ -141,6 +141,21 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
           <CardTitle className="text-lg">Ações Planejadas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Tipo de Ação */}
+          {plano.tipo_acao && (
+            <div>
+              <p className="text-sm font-medium mb-2">Tipo de Ação</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {plano.tipo_acao}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {TIPO_ACAO_OPTIONS.find(opt => opt.value === plano.tipo_acao)?.description}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div>
             <p className="text-sm font-medium mb-2">Ação Corretiva</p>
             <p className="text-sm bg-muted p-3 rounded-md">
