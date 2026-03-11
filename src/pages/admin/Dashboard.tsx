@@ -26,7 +26,15 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { usePlanosAcao, useEstatisticasPlanosAcao } from '@/hooks/usePlanosAcao';
-import { PlanosAcaoTable } from '@/components/admin/plano-acao/PlanosAcaoTable';
+import { usePesquisasSatisfacao } from '@/hooks/usePesquisasSatisfacao';
+import { PlanosAcaoTable, PlanoAcaoDetalhes } from '@/components/admin/plano-acao';
+import type { PlanoAcaoCompleto } from '@/types/planoAcao';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   DollarSign, 
   Clock, 
@@ -3146,14 +3154,33 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     dados: any;
   } | null>(null);
 
+  // Estado para filtro de prioridade
+  const [prioridadeFiltro, setPrioridadeFiltro] = useState<'baixa' | 'media' | 'alta' | 'critica' | null>(null);
+
+  // Estado para modal de visualização
+  const [planoVisualizando, setPlanoVisualizando] = useState<PlanoAcaoCompleto | null>(null);
+  const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
+
   // Buscar dados reais da tabela planos_acao
-  const { data: planosAcao = [], isLoading: loadingPlanos } = usePlanosAcao({
+  const { data: planosAcaoCompletos = [], isLoading: loadingPlanos } = usePlanosAcao({
     ano: anoSelecionado,
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
 
+  // Filtrar planos por prioridade se houver filtro ativo
+  const planosAcao = useMemo(() => {
+    if (!prioridadeFiltro) return planosAcaoCompletos;
+    return planosAcaoCompletos.filter(plano => plano.prioridade === prioridadeFiltro);
+  }, [planosAcaoCompletos, prioridadeFiltro]);
+
   // Buscar estatísticas dos planos de ação
   const { data: estatisticasPlanos } = useEstatisticasPlanosAcao({
+    ano: anoSelecionado,
+    mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
+  });
+
+  // Buscar pesquisas de satisfação para calcular indicadores
+  const { data: pesquisasSatisfacao = [] } = usePesquisasSatisfacao({
     ano: anoSelecionado,
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
@@ -3180,6 +3207,52 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   const tempoMedioResolucao = estatisticasPlanos?.tempo_medio_resolucao || 0;
   const porPrioridade = estatisticasPlanos?.por_prioridade || { baixa: 0, media: 0, alta: 0, critica: 0 };
   const dadosMensais = estatisticasPlanos?.por_mes || [];
+
+  // Calcular novos indicadores de pesquisas
+  const totalPesquisas = pesquisasSatisfacao.length;
+  const pesquisasRespondidas = pesquisasSatisfacao.filter(p => p.resposta === 'sim').length;
+  const pesquisasInsatisfeitas = pesquisasSatisfacao.filter(p => 
+    p.resposta && (p.resposta.toLowerCase().includes('insatisfeito') || p.resposta === 'insatisfeito' || p.resposta === 'muito_insatisfeito')
+  ).length;
+  
+  // % de insatisfações sobre total de pesquisas
+  const percInsatisfacaoTotal = totalPesquisas > 0 
+    ? ((pesquisasInsatisfeitas / totalPesquisas) * 100).toFixed(1)
+    : '0.0';
+  
+  // % de insatisfações sobre total de pesquisas respondidas
+  const percInsatisfacaoRespondidas = pesquisasRespondidas > 0 
+    ? ((pesquisasInsatisfeitas / pesquisasRespondidas) * 100).toFixed(1)
+    : '0.0';
+
+  // Calcular reincidência por cliente/consultor
+  const reincidenciaPorCliente: Record<string, { total: number; consultor: string }> = {};
+  planosAcaoCompletos.forEach(plano => {
+    if (plano.pesquisa?.empresa) {
+      const cliente = plano.pesquisa.empresa;
+      const consultor = plano.pesquisa.prestador || 'N/A';
+      
+      if (!reincidenciaPorCliente[cliente]) {
+        reincidenciaPorCliente[cliente] = { total: 0, consultor };
+      }
+      reincidenciaPorCliente[cliente].total++;
+    }
+  });
+
+  // Encontrar cliente com maior reincidência
+  const clienteMaiorReincidencia = Object.entries(reincidenciaPorCliente)
+    .sort((a, b) => b[1].total - a[1].total)[0];
+
+  // Função para limpar filtro de prioridade
+  const limparFiltroPrioridade = () => {
+    setPrioridadeFiltro(null);
+  };
+
+  // Função para visualizar plano de ação
+  const handleVisualizarPlano = (plano: PlanoAcaoCompleto) => {
+    setPlanoVisualizando(plano);
+    setModalVisualizarAberto(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -3281,6 +3354,69 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             </div>
             <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
               <Users className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Terceira linha de cards - Novos indicadores */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Total)</p>
+              <div className="flex items-center gap-2">
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600">{percInsatisfacaoTotal}%</p>
+                <span className="text-xs text-gray-500">
+                  {pesquisasInsatisfeitas} de {totalPesquisas}
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+              <PieChart className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Respondidas)</p>
+              <div className="flex items-center gap-2">
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{percInsatisfacaoRespondidas}%</p>
+                <span className="text-xs text-gray-500">
+                  {pesquisasInsatisfeitas} de {pesquisasRespondidas}
+                </span>
+              </div>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <BarChart3 className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Maior Reincidência</p>
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                  {clienteMaiorReincidencia ? clienteMaiorReincidencia[0] : 'N/A'}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-semibold text-purple-600">
+                    {clienteMaiorReincidencia ? clienteMaiorReincidencia[1].total : 0} planos
+                  </span>
+                  {clienteMaiorReincidencia && (
+                    <span className="text-xs text-gray-500 truncate">
+                      • {clienteMaiorReincidencia[1].consultor}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <Ticket className="h-4 w-4 text-purple-600" />
             </div>
           </CardHeader>
         </Card>
@@ -3443,47 +3579,89 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         {/* Distribuição por Prioridade */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Distribuição por Prioridade</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-gray-600" />
+                <CardTitle className="text-lg font-semibold">Distribuição por Prioridade</CardTitle>
+              </div>
+              {prioridadeFiltro && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={limparFiltroPrioridade}
+                  className="whitespace-nowrap hover:border-red-300"
+                >
+                  <X className="h-4 w-4 mr-2 text-red-600" />
+                  Limpar Filtro
+                </Button>
+              )}
             </div>
+            {prioridadeFiltro && (
+              <p className="text-xs text-blue-600 mt-2">
+                Filtrando por: {prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'critica' ? null : 'critica')}
+              >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Crítica</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-red-600">{porPrioridade.critica}</span>
                   <span className="text-xs text-gray-500">
                     ({totalPlanos > 0 ? Math.round((porPrioridade.critica / totalPlanos) * 100) : 0}%)
                   </span>
+                  {prioridadeFiltro === 'critica' && (
+                    <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'alta' ? null : 'alta')}
+              >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Alta</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-orange-600">{porPrioridade.alta}</span>
                   <span className="text-xs text-gray-500">
                     ({totalPlanos > 0 ? Math.round((porPrioridade.alta / totalPlanos) * 100) : 0}%)
                   </span>
+                  {prioridadeFiltro === 'alta' && (
+                    <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'media' ? null : 'media')}
+              >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Média</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-yellow-600">{porPrioridade.media}</span>
                   <span className="text-xs text-gray-500">
                     ({totalPlanos > 0 ? Math.round((porPrioridade.media / totalPlanos) * 100) : 0}%)
                   </span>
+                  {prioridadeFiltro === 'media' && (
+                    <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'baixa' ? null : 'baixa')}
+              >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Baixa</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-blue-600">{porPrioridade.baixa}</span>
                   <span className="text-xs text-gray-500">
                     ({totalPlanos > 0 ? Math.round((porPrioridade.baixa / totalPlanos) * 100) : 0}%)
                   </span>
+                  {prioridadeFiltro === 'baixa' && (
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  )}
                 </div>
               </div>
             </div>
@@ -3494,18 +3672,41 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       {/* Tabela de Planos de Ação */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <FileText className="h-4 w-4 text-blue-600" />
-            <CardTitle className="text-lg font-semibold">Lista de Planos de Ação</CardTitle>
+            <CardTitle className="text-lg font-semibold text-center">
+              Lista de Planos de Ação
+              {prioridadeFiltro && (
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'} - Prioridade: {prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)})
+                </span>
+              )}
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <PlanosAcaoTable
             planos={planosAcao}
             isLoading={loadingPlanos}
+            onVisualizar={handleVisualizarPlano}
+            showActions={{ visualizar: true, editar: false, excluir: false }}
           />
         </CardContent>
       </Card>
+
+      {/* Modal de Visualização */}
+      <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-sonda-blue">
+              Detalhes do Plano de Ação
+            </DialogTitle>
+          </DialogHeader>
+          {planoVisualizando && (
+            <PlanoAcaoDetalhes plano={planoVisualizando} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

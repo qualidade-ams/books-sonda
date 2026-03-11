@@ -33,6 +33,11 @@ interface PlanosAcaoTableProps {
   onEditar?: (plano: PlanoAcaoCompleto) => void;
   onVisualizar?: (plano: PlanoAcaoCompleto) => void;
   onExcluir?: (id: string) => void;
+  showActions?: {
+    visualizar?: boolean;
+    editar?: boolean;
+    excluir?: boolean;
+  };
 }
 
 export function PlanosAcaoTable({
@@ -41,6 +46,7 @@ export function PlanosAcaoTable({
   onEditar,
   onVisualizar,
   onExcluir,
+  showActions = { visualizar: true, editar: true, excluir: true },
 }: PlanosAcaoTableProps) {
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
@@ -91,7 +97,7 @@ export function PlanosAcaoTable({
             <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Status</TableHead>
             <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2 hidden xl:table-cell">Data Início</TableHead>
             <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-            <TableHead className="w-32 text-xs sm:text-sm py-2">Ações</TableHead>
+            <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -237,35 +243,41 @@ export function PlanosAcaoTable({
                 {/* Coluna Ações */}
                 <TableCell className="py-2">
                   <div className="flex justify-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onVisualizar?.(plano)}
-                      disabled={isLoading}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Eye className="h-4 w-4 text-blue-600" />
-                    </Button>
+                    {showActions.visualizar && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onVisualizar?.(plano)}
+                        disabled={isLoading}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Eye className="h-4 w-4 text-blue-600" />
+                      </Button>
+                    )}
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditar?.(plano)}
-                      disabled={isLoading}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    {showActions.editar && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditar?.(plano)}
+                        disabled={isLoading}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onExcluir?.(plano.id)}
-                      disabled={isLoading}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {showActions.excluir && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onExcluir?.(plano.id)}
+                        disabled={isLoading}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
