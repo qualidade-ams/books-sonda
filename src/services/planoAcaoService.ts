@@ -465,8 +465,15 @@ export async function obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<Est
   const porMes = meses.map((mesNome, index) => {
     const mesNumero = index + 1;
     const planosMes = planosCompletos.filter(plano => {
-      const dataInicio = new Date(plano.data_inicio);
-      return dataInicio.getMonth() + 1 === mesNumero;
+      // Usar data_resposta da pesquisa relacionada em vez de data_inicio do plano
+      const dataResposta = plano.pesquisa?.data_resposta;
+      
+      if (!dataResposta) {
+        return false;
+      }
+      
+      const data = new Date(dataResposta);
+      return data.getMonth() + 1 === mesNumero;
     });
 
     return {

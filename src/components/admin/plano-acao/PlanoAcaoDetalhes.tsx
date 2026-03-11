@@ -40,22 +40,52 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
   const { data: coordenador } = useCoordenador(plano.pesquisa?.coordenador_id);
   
   // Buscar especialistas da pesquisa através do prestador
-  const especialistasPlano = especialistasRelacionados.filter(esp => {
-    if (!plano.pesquisa?.prestador) return false;
+  const especialistasPlano = (() => {
+    if (!plano.pesquisa?.prestador) return [];
     
-    // Normalizar nomes para comparação
-    const nomePrestador = plano.pesquisa.prestador.toLowerCase().trim();
-    const nomeEspecialista = esp.nome.toLowerCase().trim();
+    // Limpar e normalizar o campo prestador (remover duplicatas)
+    const nomesPrestador = plano.pesquisa.prestador
+      .split(',')
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
     
-    // Verificar se o nome do especialista está contido no prestador
-    return nomePrestador.includes(nomeEspecialista) || nomeEspecialista.includes(nomePrestador);
-  });
-  
-  console.log('🔍 Debug Especialistas:', {
-    prestador: plano.pesquisa?.prestador,
-    especialistasEncontrados: especialistasPlano.map(e => e.nome),
-    totalEspecialistas: especialistasRelacionados.length
-  });
+    // Remover duplicatas do campo prestador
+    const nomesUnicos = Array.from(new Set(nomesPrestador));
+    
+    console.log('🔍 Debug Prestador:', {
+      prestadorOriginal: plano.pesquisa.prestador,
+      nomesSeparados: nomesPrestador,
+      nomesUnicos: nomesUnicos,
+      hasDuplicatas: nomesPrestador.length !== nomesUnicos.length
+    });
+    
+    // Buscar especialistas que correspondam aos nomes únicos
+    const especialistasEncontrados = especialistasRelacionados.filter(esp => {
+      const nomeEspecialista = esp.nome.toLowerCase().trim();
+      
+      // Verificar se o nome do especialista corresponde a algum dos nomes únicos
+      return nomesUnicos.some(nomePrestador => {
+        const nomeNormalizado = nomePrestador.toLowerCase().trim();
+        return nomeNormalizado.includes(nomeEspecialista) || nomeEspecialista.includes(nomeNormalizado);
+      });
+    });
+    
+    // Remover duplicatas baseado no ID do especialista
+    const resultado = especialistasEncontrados.reduce((acc, esp) => {
+      if (!acc.find(e => e.id === esp.id)) {
+        acc.push(esp);
+      }
+      return acc;
+    }, [] as typeof especialistasRelacionados);
+    
+    console.log('🔍 Debug Especialistas:', {
+      especialistasEncontrados: especialistasEncontrados.map(e => e.nome),
+      especialistasUnicos: resultado.map(e => e.nome),
+      totalEspecialistas: especialistasRelacionados.length
+    });
+    
+    return resultado;
+  })();
   
   return (
     <Tabs defaultValue="informacoes" className="w-full">
