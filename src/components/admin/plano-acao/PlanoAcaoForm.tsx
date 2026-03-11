@@ -24,6 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCoordenadores } from '@/hooks/useCoordenadores';
@@ -36,6 +44,7 @@ import {
   PRIORIDADE_OPTIONS,
   STATUS_PLANO_OPTIONS,
   STATUS_FINAL_OPTIONS,
+  TIPO_ACAO_OPTIONS,
 } from '@/types/planoAcao';
 
 const formSchema = z.object({
@@ -44,9 +53,10 @@ const formSchema = z.object({
   empresa_id: z.string().optional(),
   especialistas_ids: z.array(z.string()).optional(), // NOVO: IDs dos consultores
   coordenador_id: z.string().optional(), // NOVO: ID do coordenador
+  tipo_acao: z.enum(['NC', 'OM']).optional(), // NOVO: Tipo de ação
   comentario_cliente: z.string().optional(), // Campo habilitado para planos manuais
   causa: z.string().optional(), // NOVO: Causa raiz do problema
-  descricao_acao_corretiva: z.string().min(10, 'Descreva a ação corretiva (mínimo 10 caracteres)'), // NOVO: Descrição da ação corretiva
+  descricao_acao_corretiva: z.string().optional(), // NOVO: Descrição da ação corretiva
   acao_preventiva: z.string().optional(),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   status_plano: z.enum(['aberto', 'em_andamento', 'aguardando_retorno', 'concluido', 'cancelado']).optional(),
@@ -68,6 +78,24 @@ const formSchema = z.object({
   // Se status_plano for "cancelado", não validar outros campos
   if (data.status_plano === 'cancelado') {
     return;
+  }
+  
+  // NOVO: Se tipo_acao for "NC", descricao_acao_corretiva é obrigatória
+  if (data.tipo_acao === 'NC' && (!data.descricao_acao_corretiva || data.descricao_acao_corretiva.trim() === '')) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Ação Corretiva é obrigatória para Não Conformidade (NC)',
+      path: ['descricao_acao_corretiva'],
+    });
+  }
+  
+  // NOVO: Se tipo_acao for "OM", acao_preventiva é obrigatória
+  if (data.tipo_acao === 'OM' && (!data.acao_preventiva || data.acao_preventiva.trim() === '')) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Ação Preventiva/Melhoria é obrigatória para Oportunidade de Melhoria (OM)',
+      path: ['acao_preventiva'],
+    });
   }
   
   // Se status_final for preenchido, data_conclusao é obrigatória
@@ -147,6 +175,7 @@ export function PlanoAcaoForm({
           : []
       ) as string[],
       coordenador_id: plano?.pesquisa?.coordenador_id || '',
+      tipo_acao: plano?.tipo_acao || undefined,
       comentario_cliente: plano?.comentario_cliente || plano?.pesquisa?.comentario_pesquisa || '', 
       causa: plano?.causa || '',
       descricao_acao_corretiva: plano?.descricao_acao_corretiva || '',
@@ -322,9 +351,54 @@ export function PlanoAcaoForm({
           />
         </div>
 
-        {/* Seção: Ação Corretiva */}
+        {/* Campo Tipo de Ação - Radio Buttons */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Ação Corretiva</h3>
+          <FormField
+            control={form.control}
+            name="tipo_acao"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel className="text-sm font-medium text-gray-700">Tipo de Ação</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    className="flex items-center gap-6"
+                  >
+                    {TIPO_ACAO_OPTIONS.map((option) => (
+                      <TooltipProvider key={option.value}>
+                        <Tooltip delayDuration={300}>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center space-x-2 cursor-pointer">
+                              <RadioGroupItem 
+                                value={option.value} 
+                                id={`tipo-${option.value}`}
+                                className="border-gray-300"
+                              />
+                              <Label 
+                                htmlFor={`tipo-${option.value}`}
+                                className="text-sm cursor-pointer font-normal"
+                              >
+                                {option.label}
+                              </Label>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            side="bottom" 
+                            align="start" 
+                            sideOffset={5}
+                          >
+                            <p className="text-sm">{option.description}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))}
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
           <FormField
             control={form.control}
@@ -355,12 +429,19 @@ export function PlanoAcaoForm({
             name="descricao_acao_corretiva"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Descrição da Ação Corretiva *</FormLabel>
+                <FormLabel>
+                  Descrição da Ação Corretiva
+                  {form.watch('tipo_acao') === 'NC' && <span className="text-red-500 ml-1">*</span>}
+                </FormLabel>
                 <FormControl>
                   <Textarea
                     {...field}
                     placeholder="Descreva detalhadamente o que será feito para resolver o problema..."
                     rows={4}
+                    className={form.formState.errors.descricao_acao_corretiva 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -373,12 +454,19 @@ export function PlanoAcaoForm({
             name="acao_preventiva"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ação Preventiva</FormLabel>
+                <FormLabel>
+                  Ação Preventiva/Melhoria
+                  {form.watch('tipo_acao') === 'OM' && <span className="text-red-500 ml-1">*</span>}
+                </FormLabel>
                 <FormControl>
                   <Textarea
                     {...field}
                     placeholder="Descreva o que será feito para evitar que o problema ocorra novamente..."
                     rows={3}
+                    className={form.formState.errors.acao_preventiva 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'focus:ring-sonda-blue focus:border-sonda-blue'
+                    }
                   />
                 </FormControl>
                 <FormMessage />
