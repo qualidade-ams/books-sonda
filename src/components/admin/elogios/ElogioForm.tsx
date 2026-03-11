@@ -286,29 +286,41 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
             <FormField
               control={form.control}
               name="empresa"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa *</FormLabel>
-                  <Select value={field.value || ''} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a empresa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {empresas
-                        .filter((empresa) => empresa.status === 'ativo')
-                        .sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'))
-                        .map(empresa => (
+              render={({ field, fieldState }) => {
+                // Adicionar "SONDA INTERNO" às empresas
+                const empresasComSondaInterno = [
+                  { 
+                    id: 'sonda-interno', 
+                    nome_completo: 'SONDA INTERNO', 
+                    nome_abreviado: 'SONDA INTERNO',
+                    status: 'ativo'
+                  },
+                  ...empresas.filter((empresa) => empresa.status === 'ativo')
+                ].sort((a, b) => a.nome_abreviado.localeCompare(b.nome_abreviado, 'pt-BR'));
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Empresa *</FormLabel>
+                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={cn(
+                          fieldState.error && "border-red-500 focus:border-red-500"
+                        )}>
+                          <SelectValue placeholder="Selecione a empresa" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {empresasComSondaInterno.map(empresa => (
                           <SelectItem key={empresa.id} value={empresa.nome_completo}>
                             {empresa.nome_abreviado}
                           </SelectItem>
                         ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField

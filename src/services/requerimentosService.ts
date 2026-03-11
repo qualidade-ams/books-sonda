@@ -12,6 +12,7 @@ import {
 import { 
   converterParaHorasDecimal, 
   converterDeHorasDecimal,
+  converterHorasParaMinutos,
   somarHoras,
   formatarHorasParaExibicao 
 } from '@/utils/horasUtils';
@@ -931,10 +932,12 @@ export class RequerimentosService {
 
     // Calcular estatísticas
     requerimentos.forEach(req => {
-      stats.total_horas += Number(req.horas_total || 0);
+      // Converter horas_total (formato HH:MM) para minutos antes de somar
+      const horasTotalMinutos = converterHorasParaMinutos(req.horas_total?.toString() || '0');
+      stats.total_horas += horasTotalMinutos;
       stats.requerimentos_por_status[req.status] += 1;
       stats.requerimentos_por_tipo_cobranca[req.tipo_cobranca] += 1;
-      stats.horas_por_tipo_cobranca[req.tipo_cobranca] += Number(req.horas_total || 0);
+      stats.horas_por_tipo_cobranca[req.tipo_cobranca] += horasTotalMinutos;
     });
 
     return stats;
