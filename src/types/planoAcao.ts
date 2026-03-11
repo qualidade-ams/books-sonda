@@ -8,6 +8,7 @@ export type MeioContato = 'whatsapp' | 'email' | 'ligacao';
 export type RetornoCliente = 'aguardando' | 'respondeu' | 'solicitou_mais_informacoes';
 export type StatusFinal = 'resolvido' | 'nao_resolvido' | 'resolvido_parcialmente';
 export type TipoAtualizacao = 'criacao' | 'atualizacao' | 'contato' | 'conclusao' | 'reabertura' | 'cancelamento';
+export type TipoAcao = 'NC' | 'OM';
 
 // Interface principal do Plano de Ação
 export interface PlanoAcao {
@@ -16,6 +17,7 @@ export interface PlanoAcao {
   chamado?: string;
   empresa_id?: string;
   data_resposta?: string; // Data de resposta da pesquisa (copiada para facilitar filtros)
+  tipo_acao?: TipoAcao; // NOVO: Tipo de ação (NC ou OM)
   comentario_cliente?: string; // NOVO: Comentário do cliente (antigo descricao_acao_corretiva)
   causa?: string; // NOVO: Causa raiz do problema (obrigatório quando data_conclusao preenchida)
   descricao_acao_corretiva: string; // NOVO: Descrição da ação corretiva (campo em branco)
@@ -72,6 +74,7 @@ export interface PlanoAcaoFormData {
   empresa_id?: string;
   especialistas_ids?: string[]; // NOVO: IDs dos consultores
   coordenador_id?: string; // NOVO: ID do coordenador
+  tipo_acao?: TipoAcao; // NOVO: Tipo de ação (NC ou OM)
   comentario_cliente?: string; // NOVO: Comentário do cliente
   causa?: string; // NOVO: Causa raiz do problema (obrigatório quando data_conclusao preenchida)
   descricao_acao_corretiva: string; // NOVO: Descrição da ação corretiva (campo em branco)
@@ -159,6 +162,11 @@ export const STATUS_FINAL_OPTIONS: { value: StatusFinal; label: string }[] = [
   { value: 'resolvido', label: 'Resolvido' },
   { value: 'nao_resolvido', label: 'Não Resolvido' },
   { value: 'resolvido_parcialmente', label: 'Resolvido Parcialmente' },
+];
+
+export const TIPO_ACAO_OPTIONS: { value: TipoAcao; label: string; description: string }[] = [
+  { value: 'NC', label: 'NC', description: 'Não Conformidade' },
+  { value: 'OM', label: 'OM', description: 'Oportunidade de Melhoria' },
 ];
 
 // Função para obter cor por prioridade
