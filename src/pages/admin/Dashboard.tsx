@@ -381,7 +381,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Processados</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{statsElogios?.total || 0}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.total || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -395,7 +395,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Validados</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{statsElogios?.compartilhados || 0}</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.compartilhados || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -409,7 +409,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Enviados por Email</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{statsElogios?.enviados || 0}</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.enviados || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -423,7 +423,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                   {statsElogios?.satisfacaoMedia ? `${(Math.floor(statsElogios.satisfacaoMedia * 10) / 10).toFixed(1)}/5` : 'N/A'}
                 </p>
               </div>
@@ -1625,7 +1625,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Mapeado</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{colaboradoresUnicos}</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{colaboradoresUnicos}</p>
                 <span className="text-xs font-medium text-green-600">colaboradores</span>
               </div>
             </div>
@@ -2579,7 +2579,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios no Mês</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{elogiosMesAtual.length}</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosMesAtual.length}</p>
                 <span className={`text-xs font-medium ${crescimento >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {crescimento >= 0 ? '+' : ''}{crescimento.toFixed(0)}%
                 </span>
@@ -2595,7 +2595,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Acumulado Ano</p>
-              <p className="text-2xl font-bold">{elogiosFiltradosComFiltro.length}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosFiltradosComFiltro.length}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <Calendar className="h-4 w-4 text-purple-600" />
@@ -2607,7 +2607,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pessoas Elogiadas</p>
-              <p className="text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.prestador).filter(Boolean)).size}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.prestador).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
               <Users className="h-4 w-4 text-orange-600" />
@@ -2619,7 +2619,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Categorias Citadas</p>
-              <p className="text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.categoria).filter(Boolean)).size}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.categoria).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
               <Building2 className="h-4 w-4 text-green-600" />
@@ -2856,7 +2856,7 @@ const MotivosElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios 
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Motivos Identificados</p>
-              <p className="text-2xl font-bold">{elogiosFiltrados.length}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosFiltrados.length}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <Heart className="h-4 w-4 text-blue-600" />
@@ -2916,7 +2916,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Enviadas</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                 {loadingEstatisticas ? '...' : stats.total_enviadas}
               </p>
             </div>
@@ -2930,7 +2930,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Respondidas</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                 {loadingEstatisticas ? '...' : stats.total_respondidas}
               </p>
             </div>
@@ -2944,7 +2944,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Não Respondidas</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                 {loadingEstatisticas ? '...' : stats.total_nao_respondidas}
               </p>
             </div>
@@ -2959,7 +2959,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa de Resposta</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                   {loadingEstatisticas ? '...' : `${stats.taxa_resposta}%`}
                 </p>
                 {!loadingEstatisticas && (
@@ -3100,7 +3100,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                     {elogiosFiltrados.length}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -3190,7 +3190,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total de Planos</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{totalPlanos}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{totalPlanos}</p>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -3204,7 +3204,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Concluídos</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-green-600">{concluidos}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-green-600">{concluidos}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((concluidos / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3221,7 +3221,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Andamento</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-blue-600">{emAndamento}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xltext-xl lg:text-2xl font-bold text-blue-600">{emAndamento}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((emAndamento / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3238,7 +3238,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tempo Médio Resolução</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl lg:text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
                 <span className="text-xs text-gray-500">dias</span>
               </div>
             </div>
@@ -3256,7 +3256,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Aguardando Retorno</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((aguardandoRetorno / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3273,7 +3273,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Cancelados</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-red-600">{cancelados}</p>
+                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{cancelados}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((cancelados / totalPlanos) * 100) : 0}%)
                 </span>
@@ -4272,7 +4272,7 @@ const Dashboard = () => {
             {/* Aba de Requerimentos */}
             {activeTab === 'requerimentos' && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
                   Requerimentos
                 </h2>
@@ -4293,10 +4293,10 @@ const Dashboard = () => {
                             )}
                           </p>
                           <div className="flex items-center gap-2">
-                            <p className="text-2xl font-bold">{statsRequerimentosFiltradas?.total || 0}</p>
+                            <p className="text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-bold">{statsRequerimentosFiltradas?.total || 0}</p>
                             {/* Sempre mostrar crescimento mensal de requerimentos */}
                             {statsRequerimentos?.crescimentoMensalRequerimentos !== undefined && (
-                              <span className={`text-xs font-medium ${
+                              <span className={`text-[10px] lg:text-xs font-medium ${
                                 statsRequerimentos.crescimentoMensalRequerimentos >= 0 
                                   ? 'text-green-600' 
                                   : 'text-red-600'
@@ -4328,7 +4328,7 @@ const Dashboard = () => {
                             <TooltipProvider>
                               <UITooltip>
                                 <TooltipTrigger asChild>
-                                  <p className="text-2xl font-bold cursor-help">{converterMinutosParaHoras(statsRequerimentosFiltradas?.totalHoras || 0).replace('h', '')}</p>
+                                  <p className="text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-bold cursor-help">{converterMinutosParaHoras(statsRequerimentosFiltradas?.totalHoras || 0).replace('h', '')}</p>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="text-sm">
@@ -4357,10 +4357,10 @@ const Dashboard = () => {
                             )}
                           </p>
                           <div className="flex items-center gap-2">
-                            <p className="text-2xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentosFiltradas?.totalValor || 0)}</p>
+                            <p className="text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsRequerimentosFiltradas?.totalValor || 0)}</p>
                             {/* Sempre mostrar crescimento mensal de faturamento */}
                             {statsRequerimentos?.crescimentoMensalFaturamento !== undefined && (
-                              <span className={`text-xs font-medium ${
+                              <span className={`text-[10px] lg:text-xs font-medium ${
                                 statsRequerimentos.crescimentoMensalFaturamento >= 0 
                                   ? 'text-green-600' 
                                   : 'text-red-600'
@@ -4388,7 +4388,7 @@ const Dashboard = () => {
                               </span>
                             )}
                           </p>
-                          <p className="text-2xl font-bold">{statsRequerimentosFiltradas?.totalTickets || 0}</p>
+                          <p className="text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-bold">{statsRequerimentosFiltradas?.totalTickets || 0}</p>
                         </div>
                         <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                           <Ticket className="h-4 w-4 text-orange-600" />
@@ -5171,7 +5171,7 @@ const Dashboard = () => {
             {/* Aba de Elogios */}
             {activeTab === 'elogios' && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Heart className="h-6 w-6 text-blue-600" />
                   Elogios
                 </h2>
@@ -5190,7 +5190,7 @@ const Dashboard = () => {
             {/* Aba de Planos de Ação */}
             {activeTab === 'planos-acao' && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
                   Planos de Ação
                 </h2>
