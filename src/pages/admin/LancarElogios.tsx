@@ -414,6 +414,16 @@ function LancarElogios() {
   const obterDadosEmpresa = (nomeCompleto: string | undefined): { nome: string; encontrada: boolean } => {
     if (!nomeCompleto) return { nome: '-', encontrada: false };
     
+    const nomeNormalizado = nomeCompleto.trim().toUpperCase();
+    
+    // SONDA INTERNO é sempre considerada válida (não precisa estar cadastrada)
+    if (nomeNormalizado === 'SONDA INTERNO') {
+      return {
+        nome: 'SONDA INTERNO',
+        encontrada: true
+      };
+    }
+    
     // Buscar empresa correspondente pelo nome completo ou abreviado
     const empresaEncontrada = empresas.find(
       e => e.nome_completo === nomeCompleto || e.nome_abreviado === nomeCompleto
