@@ -11,6 +11,15 @@ import type { DadosSqlServer, ResultadoSincronizacao } from '@/types/pesquisasSa
 // CONFIGURAÇÃO
 // ============================================
 
+/**
+ * 🧪 CONFIGURAÇÃO DE ENDPOINT DE PESQUISAS
+ * 
+ * Altere aqui para escolher qual endpoint usar:
+ * - '/api/sync-pesquisas-incremental-test' = Novo serviço incremental (em teste)
+ * - '/api/sync-pesquisas' = Serviço antigo (estável)
+ */
+const ENDPOINT_PESQUISAS = '/api/sync-pesquisas-incremental-test';
+
 interface ConfigSqlServer {
   server: string;
   database: string;
@@ -143,13 +152,17 @@ async function buscarTotaisReaisBanco(): Promise<{
  * Agora usa a API Node.js que faz todo o processamento
  * INCLUI sincronização de pesquisas, especialistas, apontamentos E tickets
  * @param tabelas - Objeto indicando quais tabelas sincronizar (opcional - se não fornecido, sincroniza todas)
+ * @param onLog - Callback opcional para receber logs em tempo real
  */
-export async function sincronizarDados(tabelas?: {
-  pesquisas?: boolean;
-  especialistas?: boolean;
-  apontamentos?: boolean;
-  tickets?: boolean;
-}): Promise<ResultadoSincronizacao & { 
+export async function sincronizarDados(
+  tabelas?: {
+    pesquisas?: boolean;
+    especialistas?: boolean;
+    apontamentos?: boolean;
+    tickets?: boolean;
+  },
+  onLog?: (mensagem: string) => void
+): Promise<ResultadoSincronizacao & { 
   especialistas?: any; 
   apontamentos?: any; 
   tickets?: any;
@@ -172,9 +185,11 @@ export async function sincronizarDados(tabelas?: {
   
   try {
     console.log('Iniciando sincronização seletiva:', tabelasParaSincronizar);
+    onLog?.('Iniciando sincronização seletiva...');
     
     // Buscar totais reais do banco ANTES da sincronização
     console.log('📊 Buscando totais reais do banco...');
+    onLog?.('📊 Buscando totais reais do banco...');
     const totaisReaisBanco = await buscarTotaisReaisBanco();
     console.log('📊 Totais reais do banco:', totaisReaisBanco);
     
@@ -183,17 +198,22 @@ export async function sincronizarDados(tabelas?: {
     let resultadoApontamentos = null;
     let resultadoTickets = null;
 
-    // 1. Sincronizar pesquisas (se selecionado)
+    // 1. Sincronizar pesquisas (se selecionado) - COM LOGS EM TEMPO REAL
     if (tabelasParaSincronizar.pesquisas) {
       console.log('1/4 - Sincronizando pesquisas...');
-      const responsePesquisas = await safeFetch(`${API_URL}/api/sync-pesquisas`, {
+      onLog?.('1/4 - Sincronizando pesquisas...');
+      console.log(`📍 Usando endpoint: ${ENDPOINT_PESQUISAS}`);
+      onLog?.(`📍 Usando endpoint: ${ENDPOINT_PESQUISAS}`);
+      
+      // Usar fetch nativo para suportar streaming
+      const response = await fetch(`${API_URL}${ENDPOINT_PESQUISAS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
       });
 
-      if (responsePesquisas.status === 404) {
+      if (response.status === 404) {
         resultadoPesquisas = {
           sucesso: false,
           total_processados: 0,
@@ -202,20 +222,82 @@ export async function sincronizarDados(tabelas?: {
           erros: 1,
           mensagens: [
             'Endpoint de sincronização de pesquisas não implementado na API.',
-            'A API está online mas o endpoint /api/sync-pesquisas não existe.',
+            'A API está online mas o endpoint não existe.',
             'Verifique se a API foi atualizada com os endpoints de sincronização.'
           ],
           detalhes_erros: []
         };
-      } else if (!responsePesquisas.ok) {
-        throw new Error(`Erro HTTP na sincronização de pesquisas: ${responsePesquisas.status}`);
+      } else if (!response.ok) {
+        throw new Error(`Erro HTTP na sincronização de pesquisas: ${response.status}`);
       } else {
-        resultadoPesquisas = await responsePesquisas.json();
+        // Processar stream de Server-Sent Events
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        
+        if (reader) {
+          let buffer = '';
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Processar linhas completas
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Manter última linha incompleta no buffer
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  
+                  if (data.tipo === 'log') {
+                    // Log em tempo real
+                    console.log(data.mensagem);
+                    onLog?.(data.mensagem);
+                    
+                    // Também adicionar ao modal via função global
+                    if ((window as any).__addSyncLog) {
+                      (window as any).__addSyncLog(data.mensagem);
+                    }
+                  } else if (data.tipo === 'resultado') {
+                    // Resultado final
+                    resultadoPesquisas = {
+                      sucesso: data.sucesso,
+                      total_processados: data.total_processados,
+                      novos: data.novos,
+                      atualizados: data.atualizados,
+                      erros: data.erros,
+                      mensagens: data.mensagens,
+                      detalhes_erros: []
+                    };
+                  } else if (data.tipo === 'erro') {
+                    // Erro
+                    resultadoPesquisas = {
+                      sucesso: false,
+                      total_processados: 0,
+                      novos: 0,
+                      atualizados: 0,
+                      erros: 1,
+                      mensagens: data.mensagens,
+                      detalhes_erros: []
+                    };
+                  }
+                } catch (e) {
+                  console.error('Erro ao parsear SSE:', e);
+                }
+              }
+            }
+          }
+        }
       }
 
       console.log('Resultado da sincronização de pesquisas:', resultadoPesquisas);
     } else {
       console.log('1/4 - Pesquisas: PULADO (não selecionado)');
+      onLog?.('1/4 - Pesquisas: PULADO (não selecionado)');
       resultadoPesquisas = {
         sucesso: true,
         total_processados: 0,

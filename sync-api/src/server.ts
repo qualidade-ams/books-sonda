@@ -3,15 +3,18 @@
  * Conecta ao banco Aranda (172.26.2.136) e sincroniza tabela AMSpesquisa
  */
 
+import dotenv from 'dotenv';
+
+// ⚠️ IMPORTANTE: Carregar variáveis de ambiente ANTES de importar os serviços
+dotenv.config();
+
 import express from 'express';
 import sql from 'mssql';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { sincronizarApontamentosIncremental } from './services/incrementalSyncApontamentosService';
 import { sincronizarTicketsIncremental } from './services/incrementalSyncTicketsService';
-
-dotenv.config();
+import { sincronizarPesquisasIncremental } from './services/incrementalSyncPesquisasService';
 
 const app = express();
 app.use(cors());
@@ -275,14 +278,14 @@ function aplicarTransformacaoAMS(dados: {
 
 /**
  * Gerar ID único para registro de pesquisa
+ * Padrão: Empresa|Cliente|Nro_Caso
+ * IMPORTANTE: Não incluir Data_Resposta para evitar duplicação quando pesquisa for respondida
  */
 function gerarIdUnico(registro: DadosSqlServer): string {
   const partes = [
     registro.Empresa,
     registro.Cliente,
-    registro.Nro_Caso,
-    // Para registros sem resposta, usar 'PENDENTE' como identificador
-    registro.Data_Resposta?.toISOString() || 'PENDENTE'
+    registro.Nro_Caso
   ].filter(Boolean);
   
   return partes.join('|');
@@ -509,8 +512,10 @@ app.get('/api/table-structure', async (req, res) => {
 
 /**
  * Sincronizar pesquisas do SQL Server (incremental)
+ * NOTA: Temporariamente usando a função antiga até resolver o problema do serviço incremental
  */
 app.post('/api/sync-pesquisas', async (req, res) => {
+  // Usar a função antiga temporariamente
   await sincronizarPesquisas(req, res, false);
 });
 
@@ -519,6 +524,107 @@ app.post('/api/sync-pesquisas', async (req, res) => {
  */
 app.post('/api/sync-pesquisas-full', async (req, res) => {
   await sincronizarPesquisas(req, res, true);
+});
+
+/**
+ * NOVO: Endpoint de teste para sincronização incremental COM LOGS EM TEMPO REAL
+ * Usa o novo serviço incremental (mesmo padrão de apontamentos)
+ * Envia logs em tempo real via Server-Sent Events (SSE)
+ */
+app.post('/api/sync-pesquisas-incremental-test', async (req, res) => {
+  // Modificar console.log ANTES de qualquer coisa
+  const originalLog = console.log;
+  
+  try {
+    // Configurar headers para Server-Sent Events (SSE)
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Desabilitar buffering do Nginx
+    
+    // Função para enviar log em tempo real
+    const enviarLog = (mensagem: string) => {
+      res.write(`data: ${JSON.stringify({ tipo: 'log', mensagem })}\n\n`);
+    };
+    
+    // Interceptar console.log ANTES de iniciar
+    console.log = (...args: any[]) => {
+      const mensagem = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      
+      // Enviar log em tempo real
+      enviarLog(mensagem);
+      
+      // Chamar console.log original
+      originalLog(...args);
+    };
+    
+    enviarLog('🧪 [TEST] Iniciando sincronização incremental de pesquisas...');
+    
+    // Conectar ao SQL Server
+    enviarLog('🔌 [TEST] Conectando ao SQL Server...');
+    const pool = await sql.connect(sqlConfig);
+    enviarLog('✅ [TEST] Conectado ao SQL Server');
+    
+    // Executar sincronização incremental
+    enviarLog('🔄 [TEST] Executando sincronização incremental...');
+    
+    const resultado = await sincronizarPesquisasIncremental(pool);
+    
+    enviarLog('✅ [TEST] Sincronização incremental concluída');
+    
+    // Fechar conexão
+    await pool.close();
+    enviarLog('🔌 [TEST] Conexão SQL Server fechada');
+    
+    // ⚠️ NÃO RESTAURAR console.log AQUI - deixar para o final
+    
+    // Enviar resultado final
+    const resultadoFinal = {
+      tipo: 'resultado',
+      sucesso: resultado.sucesso,
+      total_processados: resultado.total_processados,
+      novos: resultado.inseridos,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados,
+      erros: resultado.erros,
+      mensagens: resultado.mensagens
+    };
+    
+    res.write(`data: ${JSON.stringify(resultadoFinal)}\n\n`);
+    
+    // ✅ Restaurar console.log SOMENTE DEPOIS de enviar resultado final
+    console.log = originalLog;
+    
+    res.end();
+    
+  } catch (error) {
+    // Restaurar console.log em caso de erro
+    console.log = originalLog;
+    
+    console.error('💥 [TEST] Erro na sincronização incremental:', error);
+    console.error('💥 [TEST] Stack trace:', error instanceof Error ? error.stack : 'N/A');
+    
+    const erroFinal = {
+      tipo: 'erro',
+      sucesso: false,
+      total_processados: 0,
+      novos: 0,
+      atualizados: 0,
+      ignorados: 0,
+      erros: 1,
+      mensagens: [
+        'Erro fatal: ' + (error instanceof Error ? error.message : 'Erro desconhecido'),
+        'Stack: ' + (error instanceof Error ? error.stack : 'N/A')
+      ],
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : 'N/A'
+    };
+    
+    res.write(`data: ${JSON.stringify(erroFinal)}\n\n`);
+    res.end();
+  }
 });
 
 // ============================================
@@ -841,6 +947,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
     atualizados: 0,
     erros: 0,
     filtrados: 0, // Novo campo para contar registros filtrados
+    ignorados: 0, // Novo campo para contar registros ignorados (status bloqueado)
     mensagens: [] as string[],
     detalhes_erros: [] as any[]
   };
@@ -1029,7 +1136,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         // Verificar se já existe
         const { data: existente, error: erroConsulta } = await supabase
           .from('pesquisas_satisfacao')
-          .select('id')
+          .select('id, status')
           .eq('id_externo', idUnico)
           .maybeSingle();
         
@@ -1118,7 +1225,14 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
         }
 
         if (existente) {
-          // ✅ Registro já existe - ATUALIZAR apenas os novos campos
+          // 🔒 VALIDAÇÃO: Só atualizar se status = 'pendente'
+          if (existente.status !== 'pendente') {
+            console.log(`🔒 [PESQUISAS] Registro ${i + 1} BLOQUEADO - Status '${existente.status}' não permite atualização (ID: ${idUnico})`);
+            resultado.ignorados = (resultado.ignorados || 0) + 1;
+            continue; // Pular este registro
+          }
+          
+          // ✅ Registro já existe e status = 'pendente' - ATUALIZAR apenas os novos campos
           console.log(`🔄 [PESQUISAS] Registro ${i + 1} já existe - atualizando novos campos (ID: ${idUnico})`);
           
           // Atualizar APENAS os 11 novos campos, preservando os outros
@@ -1212,6 +1326,12 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
     if (resultado.filtrados > 0) {
       mensagemResultado += `, ${resultado.filtrados} filtrados (cliente de teste)`;
       console.log(`🚫 [FILTRO] Total de registros filtrados: ${resultado.filtrados} (cliente "User - Ams - Teste")`);
+    }
+    
+    // Adicionar informação sobre registros ignorados (status bloqueado) se houver
+    if (resultado.ignorados > 0) {
+      mensagemResultado += `, ${resultado.ignorados} ignorados (status bloqueado)`;
+      console.log(`🔒 [BLOQUEIO] Total de registros ignorados: ${resultado.ignorados} (status diferente de 'pendente')`);
     }
     
     resultado.mensagens.push(mensagemResultado);

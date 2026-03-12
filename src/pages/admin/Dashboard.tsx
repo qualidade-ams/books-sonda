@@ -26,7 +26,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { usePlanosAcao, useEstatisticasPlanosAcao } from '@/hooks/usePlanosAcao';
-import { usePesquisasSatisfacao } from '@/hooks/usePesquisasSatisfacao';
+import { usePesquisasSatisfacao, useTodasPesquisasSatisfacao } from '@/hooks/usePesquisasSatisfacao';
 import { PlanosAcaoTable, PlanoAcaoDetalhes } from '@/components/admin/plano-acao';
 import type { PlanoAcaoCompleto } from '@/types/planoAcao';
 import {
@@ -389,7 +389,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Processados</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.total || 0}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.total || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -3179,8 +3179,8 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
 
-  // Buscar pesquisas de satisfação para calcular indicadores
-  const { data: pesquisasSatisfacao = [] } = usePesquisasSatisfacao({
+  // Buscar pesquisas de satisfação para calcular indicadores (TODAS as pesquisas do ano)
+  const { data: pesquisasSatisfacao = [] } = useTodasPesquisasSatisfacao({
     ano: anoSelecionado,
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
@@ -3210,19 +3210,40 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   // Calcular novos indicadores de pesquisas
   const totalPesquisas = pesquisasSatisfacao.length;
-  const pesquisasRespondidas = pesquisasSatisfacao.filter(p => p.resposta === 'sim').length;
-  const pesquisasInsatisfeitas = pesquisasSatisfacao.filter(p => 
-    p.resposta && (p.resposta.toLowerCase().includes('insatisfeito') || p.resposta === 'insatisfeito' || p.resposta === 'muito_insatisfeito')
-  ).length;
   
-  // % de insatisfações sobre total de pesquisas
+  // Pesquisas respondidas = pesquisas que têm data_resposta
+  const pesquisasRespondidas = pesquisasSatisfacao.filter(p => p.data_resposta).length;
+  
+  // Calcular pesquisas com plano de ação (insatisfação)
+  // Uma pesquisa é considerada "insatisfeita" se tem plano de ação associado
+  const pesquisasComPlanoAcao = pesquisasSatisfacao.filter(pesquisa => {
+    // Verificar se existe algum plano de ação para esta pesquisa
+    return planosAcaoCompletos.some(plano => plano.pesquisa_id === pesquisa.id);
+  }).length;
+  
+  // Debug: Verificar dados
+  console.log('🔍 Debug Cards Insatisfação:', {
+    totalPesquisas,
+    pesquisasRespondidas,
+    pesquisasComPlanoAcao,
+    totalPlanosAcao: planosAcaoCompletos.length,
+    anoSelecionado,
+    mesSelecionado,
+    amostraPesquisas: pesquisasSatisfacao.slice(0, 3).map(p => ({
+      id: p.id,
+      data_resposta: p.data_resposta,
+      tem_plano: planosAcaoCompletos.some(plano => plano.pesquisa_id === p.id)
+    }))
+  });
+  
+  // % de insatisfações sobre total de pesquisas (pesquisas com plano de ação)
   const percInsatisfacaoTotal = totalPesquisas > 0 
-    ? ((pesquisasInsatisfeitas / totalPesquisas) * 100).toFixed(1)
+    ? ((pesquisasComPlanoAcao / totalPesquisas) * 100).toFixed(1)
     : '0.0';
   
-  // % de insatisfações sobre total de pesquisas respondidas
+  // % de insatisfações sobre total de pesquisas respondidas (pesquisas com plano de ação / pesquisas respondidas)
   const percInsatisfacaoRespondidas = pesquisasRespondidas > 0 
-    ? ((pesquisasInsatisfeitas / pesquisasRespondidas) * 100).toFixed(1)
+    ? ((pesquisasComPlanoAcao / pesquisasRespondidas) * 100).toFixed(1)
     : '0.0';
 
   // Calcular reincidência por cliente/consultor
@@ -3263,7 +3284,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total de Planos</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{totalPlanos}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{totalPlanos}</p>
               </div>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -3277,7 +3298,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Concluídos</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-green-600">{concluidos}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-green-600">{concluidos}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((concluidos / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3294,7 +3315,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Andamento</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xltext-xl lg:text-2xl font-bold text-blue-600">{emAndamento}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl text-xl font-bold text-blue-600">{emAndamento}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((emAndamento / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3311,7 +3332,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tempo Médio Resolução</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl lg:text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
                 <span className="text-xs text-gray-500">dias</span>
               </div>
             </div>
@@ -3329,7 +3350,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Aguardando Retorno</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((aguardandoRetorno / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3346,7 +3367,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Cancelados</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{cancelados}</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{cancelados}</p>
                 <span className="text-xs text-gray-500">
                   ({totalPlanos > 0 ? Math.round((cancelados / totalPlanos) * 100) : 0}%)
                 </span>
@@ -3366,9 +3387,9 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Total)</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600">{percInsatisfacaoTotal}%</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600">{percInsatisfacaoTotal}%</p>
                 <span className="text-xs text-gray-500">
-                  {pesquisasInsatisfeitas} de {totalPesquisas}
+                  {pesquisasComPlanoAcao} de {totalPesquisas}
                 </span>
               </div>
             </div>
@@ -3383,9 +3404,9 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Respondidas)</p>
               <div className="flex items-center gap-2">
-                <p className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{percInsatisfacaoRespondidas}%</p>
+                <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{percInsatisfacaoRespondidas}%</p>
                 <span className="text-xs text-gray-500">
-                  {pesquisasInsatisfeitas} de {pesquisasRespondidas}
+                  {pesquisasComPlanoAcao} de {pesquisasRespondidas}
                 </span>
               </div>
             </div>
@@ -3672,7 +3693,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       {/* Tabela de Planos de Ação */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-blue-600" />
             <CardTitle className="text-lg font-semibold text-center">
               Lista de Planos de Ação
@@ -4473,7 +4494,7 @@ const Dashboard = () => {
             {/* Aba de Requerimentos */}
             {activeTab === 'requerimentos' && (
               <div className="space-y-4">
-                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
                   Requerimentos
                 </h2>
@@ -5372,7 +5393,7 @@ const Dashboard = () => {
             {/* Aba de Elogios */}
             {activeTab === 'elogios' && (
               <div className="space-y-4">
-                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Heart className="h-6 w-6 text-blue-600" />
                   Elogios
                 </h2>
@@ -5391,7 +5412,7 @@ const Dashboard = () => {
             {/* Aba de Planos de Ação */}
             {activeTab === 'planos-acao' && (
               <div className="space-y-4">
-                <h2 className="text-base text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
                   Planos de Ação
                 </h2>
