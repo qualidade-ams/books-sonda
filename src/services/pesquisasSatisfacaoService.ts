@@ -123,7 +123,8 @@ export async function buscarTodasPesquisas(filtros?: FiltrosPesquisas): Promise<
         // Calcular primeiro e último dia do mês
         const mesInicio = `${filtros.ano}-${mesStr}-01`;
         const proximoMes = filtros.mes === 12 ? 1 : filtros.mes + 1;
-        const proximoAno = filtros.mes === 12 ? filtros.ano + 1 : filtros.ano;
+        const anoNumerico = typeof filtros.ano === 'string' ? parseInt(filtros.ano) : filtros.ano;
+        const proximoAno = filtros.mes === 12 ? anoNumerico + 1 : anoNumerico;
         const proximoMesStr = proximoMes.toString().padStart(2, '0');
         const mesFim = `${proximoAno}-${proximoMesStr}-01`;
         
@@ -421,6 +422,7 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     ano_abertura: ano_abertura,
     mes_abertura: mes_abertura,
     data_resposta: dados.data_resposta?.toISOString() || null,
+    data_fechamento: dados.data_resposta?.toISOString() || null, // Para pesquisas manuais, data_fechamento = data_resposta
     resposta: dados.resposta || null,
     comentario_pesquisa: dados.comentario_pesquisa || null,
     empresa_id: dados.empresa_id || null,
@@ -501,16 +503,28 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
     updateData.mes_abertura = dataResposta.getMonth() + 1; // getMonth() retorna 0-11, precisamos 1-12
     updateData.data_resposta = dados.data_resposta.toISOString();
     
+    // Para pesquisas manuais, data_fechamento deve ser igual a data_resposta
+    if (pesquisaAtual.origem === 'manual') {
+      updateData.data_fechamento = dados.data_resposta.toISOString();
+      console.log('📅 [ATUALIZAR] Pesquisa manual: data_fechamento = data_resposta');
+    }
+    
     console.log('📅 [ATUALIZAR] Extraído ano/mês da data_resposta:', {
       data_resposta: dados.data_resposta,
       ano_abertura: updateData.ano_abertura,
-      mes_abertura: updateData.mes_abertura
+      mes_abertura: updateData.mes_abertura,
+      data_fechamento: updateData.data_fechamento
     });
   } else if (dados.data_resposta === null) {
     // Se data_resposta foi explicitamente definida como null, limpar também ano e mês
     updateData.data_resposta = null;
     updateData.ano_abertura = null;
     updateData.mes_abertura = null;
+    
+    // Para pesquisas manuais, limpar também data_fechamento
+    if (pesquisaAtual.origem === 'manual') {
+      updateData.data_fechamento = null;
+    }
   }
 
   // Mapear apenas campos que foram fornecidos, aplicando transformações quando necessário

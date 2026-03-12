@@ -2,7 +2,7 @@
  * Modal de progresso de sincronização
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Loader2, CheckCircle2, XCircle, Database } from 'lucide-react';
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SyncProgressModalProps {
   open: boolean;
@@ -170,7 +171,8 @@ export function SyncProgressModal({
         const novoIndex = Math.floor((currentProgress / 95) * totalMensagens);
         if (novoIndex < totalMensagens && novoIndex !== mensagemIndex) {
           mensagemIndex = novoIndex;
-          setCurrentMessage(mensagensProgresso[mensagemIndex]);
+          const novaMensagem = mensagensProgresso[mensagemIndex];
+          setCurrentMessage(novaMensagem);
         }
         
         if (currentProgress >= 95) {
@@ -228,6 +230,8 @@ export function SyncProgressModal({
               </div>
             </div>
           )}
+
+
 
           {/* Resultado */}
           {!isLoading && resultado && (
