@@ -32,6 +32,7 @@ export interface Pesquisa {
   tipo_caso: string | null;
   ano_abertura: number | null;
   mes_abertura: number | null;
+  data_fechamento: string | null; // ISO string - Data de fechamento do caso
   data_resposta: string | null; // ISO string
   resposta: string | null;
   comentario_pesquisa: string | null;
@@ -113,6 +114,8 @@ export interface FiltrosPesquisas {
   grupo?: string;
   ano_abertura?: number;
   mes_abertura?: number;
+  ano_fechamento?: number; // Ano da data de fechamento
+  mes_fechamento?: number; // Mês da data de fechamento
   mes?: number | 'todos'; // Mês da data de resposta
   ano?: number | 'todos'; // Ano da data de resposta
   data_inicio?: string;
