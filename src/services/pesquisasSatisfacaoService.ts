@@ -92,6 +92,46 @@ export async function buscarTodasPesquisas(filtros?: FiltrosPesquisas): Promise<
         query = query.eq('mes_abertura', filtros.mes_abertura);
       }
 
+      // Filtro por ano da data de fechamento
+      if (filtros.ano_fechamento) {
+        console.log('🔍 Filtrando pesquisas por ano da data_fechamento:', filtros.ano_fechamento);
+        
+        // Filtrar registros que têm data_fechamento não nula
+        query = query.not('data_fechamento', 'is', null);
+        
+        const anoInicio = `${filtros.ano_fechamento}-01-01`;
+        const anoFim = `${filtros.ano_fechamento}-12-31`;
+        
+        query = query.gte('data_fechamento', anoInicio);
+        query = query.lte('data_fechamento', anoFim);
+        
+        console.log(`📅 Buscando registros com data_fechamento entre ${anoInicio} e ${anoFim}`);
+      }
+
+      // Filtro por mês da data de fechamento (só se ano também estiver definido)
+      if (filtros.mes_fechamento && filtros.ano_fechamento) {
+        const mesStr = filtros.mes_fechamento.toString().padStart(2, '0');
+        
+        console.log('🔍 Refinando filtro para mês específico da data_fechamento:', { 
+          mes: filtros.mes_fechamento, 
+          ano: filtros.ano_fechamento,
+          mesStr
+        });
+        
+        // Calcular primeiro e último dia do mês
+        const mesInicio = `${filtros.ano_fechamento}-${mesStr}-01`;
+        const proximoMes = filtros.mes_fechamento === 12 ? 1 : filtros.mes_fechamento + 1;
+        const proximoAno = filtros.mes_fechamento === 12 ? filtros.ano_fechamento + 1 : filtros.ano_fechamento;
+        const proximoMesStr = proximoMes.toString().padStart(2, '0');
+        const mesFim = `${proximoAno}-${proximoMesStr}-01`;
+        
+        // Remover filtros de ano anteriores e aplicar filtro de mês específico
+        query = query.gte('data_fechamento', mesInicio);
+        query = query.lt('data_fechamento', mesFim);
+        
+        console.log(`📆 Buscando registros com data_fechamento entre ${mesInicio} e ${mesFim} (exclusivo)`);
+      }
+
       // Filtro por ano da data de resposta
       if (filtros.ano) {
         console.log('🔍 Filtrando pesquisas por ano da data_resposta:', filtros.ano);

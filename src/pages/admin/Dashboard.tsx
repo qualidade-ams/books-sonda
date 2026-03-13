@@ -51,6 +51,8 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Search,
   X
 } from 'lucide-react';
@@ -3161,17 +3163,60 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   const [planoVisualizando, setPlanoVisualizando] = useState<PlanoAcaoCompleto | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
 
+  // Estados para controlar expansão dos cards de top clientes e consultores
+  const [topClientesExpandido, setTopClientesExpandido] = useState(false);
+  const [topConsultoresExpandido, setTopConsultoresExpandido] = useState(false);
+
+  // Estados para filtros de empresa e consultor
+  const [empresaFiltrada, setEmpresaFiltrada] = useState<string | null>(null);
+  const [consultorFiltrado, setConsultorFiltrado] = useState<string | null>(null);
+
+  // Estados para paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(25);
+
   // Buscar dados reais da tabela planos_acao
   const { data: planosAcaoCompletos = [], isLoading: loadingPlanos } = usePlanosAcao({
     ano: anoSelecionado,
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
 
+  // Buscar TODOS os planos de ação (sem filtro de mês/ano) para verificação de associação com pesquisas
+  // Isso é necessário porque uma pesquisa com data_fechamento em fevereiro pode ter um plano criado em março
+  const { data: todosPlanos = [] } = usePlanosAcao({});
+
   // Filtrar planos por prioridade se houver filtro ativo
   const planosAcao = useMemo(() => {
-    if (!prioridadeFiltro) return planosAcaoCompletos;
-    return planosAcaoCompletos.filter(plano => plano.prioridade === prioridadeFiltro);
-  }, [planosAcaoCompletos, prioridadeFiltro]);
+    let planosFiltrados = planosAcaoCompletos;
+    
+    // Filtrar por prioridade
+    if (prioridadeFiltro) {
+      planosFiltrados = planosFiltrados.filter(plano => plano.prioridade === prioridadeFiltro);
+    }
+    
+    // Filtrar por empresa
+    if (empresaFiltrada) {
+      planosFiltrados = planosFiltrados.filter(plano => plano.pesquisa?.empresa === empresaFiltrada);
+    }
+    
+    // Filtrar por consultor
+    if (consultorFiltrado) {
+      planosFiltrados = planosFiltrados.filter(plano => plano.pesquisa?.prestador === consultorFiltrado);
+    }
+    
+    return planosFiltrados;
+  }, [planosAcaoCompletos, prioridadeFiltro, empresaFiltrada, consultorFiltrado]);
+
+  // Calcular paginação
+  const totalPaginas = Math.ceil(planosAcao.length / itensPorPagina);
+  const indiceInicio = (paginaAtual - 1) * itensPorPagina;
+  const indiceFim = indiceInicio + itensPorPagina;
+  const planosAcaoPaginados = planosAcao.slice(indiceInicio, indiceFim);
+
+  // Resetar página quando filtros mudarem
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [prioridadeFiltro, empresaFiltrada, consultorFiltrado, itensPorPagina]);
 
   // Buscar estatísticas dos planos de ação
   const { data: estatisticasPlanos } = useEstatisticasPlanosAcao({
@@ -3179,10 +3224,17 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
   });
 
-  // Buscar pesquisas de satisfação para calcular indicadores (TODAS as pesquisas do ano)
+  // Buscar pesquisas de satisfação para calcular indicadores
+  // Para % Insatisfação (Total): buscar por data_fechamento (data de fechamento do caso)
+  const { data: pesquisasSatisfacaoFechamento = [] } = useTodasPesquisasSatisfacao({
+    ano_fechamento: anoSelecionado,
+    mes_fechamento: mesSelecionado === 'todos' ? undefined : Number(mesSelecionado)
+  });
+
+  // Para % Insatisfação (Respondidas): buscar por data_resposta (mantém lógica original)
   const { data: pesquisasSatisfacao = [] } = useTodasPesquisasSatisfacao({
     ano: anoSelecionado,
-    mes: mesSelecionado === 'todos' ? undefined : mesSelecionado
+    mes: mesSelecionado === 'todos' ? undefined : Number(mesSelecionado)
   });
 
   // Se estiver carregando, mostrar loading
@@ -3209,39 +3261,64 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   const dadosMensais = estatisticasPlanos?.por_mes || [];
 
   // Calcular novos indicadores de pesquisas
+  // Para % Insatisfação (Total): 
+  // - Numerador (pesquisas com plano): usar data_resposta (igual ao Card 2)
+  // - Denominador (total): usar data_fechamento
+  const totalPesquisasFechamento = pesquisasSatisfacaoFechamento.length;
+  
+  // Pesquisas com plano de ação baseado em data_resposta (igual ao Card 2)
+  // Usar TODOS os planos (sem filtro de mês) para verificar associação
+  const pesquisasComPlanoAcaoFechamento = pesquisasSatisfacao.filter(pesquisa => {
+    // Verificar se existe algum plano de ação para esta pesquisa
+    return todosPlanos.some(plano => plano.pesquisa_id === pesquisa.id);
+  }).length;
+  
+  // Para % Insatisfação (Respondidas): usar pesquisas filtradas por data_resposta
   const totalPesquisas = pesquisasSatisfacao.length;
   
   // Pesquisas respondidas = pesquisas que têm data_resposta
   const pesquisasRespondidas = pesquisasSatisfacao.filter(p => p.data_resposta).length;
   
-  // Calcular pesquisas com plano de ação (insatisfação)
+  // Calcular pesquisas com plano de ação (insatisfação) baseado em data_resposta
   // Uma pesquisa é considerada "insatisfeita" se tem plano de ação associado
+  // Usar TODOS os planos (sem filtro de mês) para verificar associação
   const pesquisasComPlanoAcao = pesquisasSatisfacao.filter(pesquisa => {
     // Verificar se existe algum plano de ação para esta pesquisa
-    return planosAcaoCompletos.some(plano => plano.pesquisa_id === pesquisa.id);
+    return todosPlanos.some(plano => plano.pesquisa_id === pesquisa.id);
   }).length;
   
   // Debug: Verificar dados
   console.log('🔍 Debug Cards Insatisfação:', {
+    // Card % Insatisfação (Total) - numerador por data_resposta, denominador por data_fechamento
+    totalPesquisasFechamento,
+    pesquisasComPlanoAcaoFechamento,
+    totalPlanosDisponiveis: todosPlanos.length,
+    planosFiltradosPorMes: planosAcaoCompletos.length,
+    amostraPesquisasFechamento: pesquisasSatisfacaoFechamento.slice(0, 3).map(p => ({
+      id: p.id,
+      data_fechamento: p.data_fechamento,
+      status: p.status,
+      empresa: p.empresa
+    })),
+    // Card % Insatisfação (Respondidas) - baseado em data_resposta
     totalPesquisas,
     pesquisasRespondidas,
     pesquisasComPlanoAcao,
-    totalPlanosAcao: planosAcaoCompletos.length,
     anoSelecionado,
     mesSelecionado,
     amostraPesquisas: pesquisasSatisfacao.slice(0, 3).map(p => ({
       id: p.id,
       data_resposta: p.data_resposta,
-      tem_plano: planosAcaoCompletos.some(plano => plano.pesquisa_id === p.id)
+      tem_plano: todosPlanos.some(plano => plano.pesquisa_id === p.id)
     }))
   });
   
-  // % de insatisfações sobre total de pesquisas (pesquisas com plano de ação)
-  const percInsatisfacaoTotal = totalPesquisas > 0 
-    ? ((pesquisasComPlanoAcao / totalPesquisas) * 100).toFixed(1)
+  // % de insatisfações sobre total de pesquisas (baseado em data_fechamento)
+  const percInsatisfacaoTotal = totalPesquisasFechamento > 0 
+    ? ((pesquisasComPlanoAcaoFechamento / totalPesquisasFechamento) * 100).toFixed(1)
     : '0.0';
   
-  // % de insatisfações sobre total de pesquisas respondidas (pesquisas com plano de ação / pesquisas respondidas)
+  // % de insatisfações sobre total de pesquisas respondidas (baseado em data_resposta)
   const percInsatisfacaoRespondidas = pesquisasRespondidas > 0 
     ? ((pesquisasComPlanoAcao / pesquisasRespondidas) * 100).toFixed(1)
     : '0.0';
@@ -3260,13 +3337,63 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     }
   });
 
-  // Encontrar cliente com maior reincidência
-  const clienteMaiorReincidencia = Object.entries(reincidenciaPorCliente)
-    .sort((a, b) => b[1].total - a[1].total)[0];
+  // Calcular top clientes (empresas com mais planos de ação)
+  const topClientes = Object.entries(reincidenciaPorCliente)
+    .sort((a, b) => b[1].total - a[1].total); // Todos os clientes, sem limite
+
+  // Calcular top consultores (prestadores com mais planos de ação)
+  const reincidenciaPorConsultor: Record<string, { total: number; empresas: Set<string> }> = {};
+  planosAcaoCompletos.forEach(plano => {
+    if (plano.pesquisa?.prestador) {
+      const consultor = plano.pesquisa.prestador;
+      const empresa = plano.pesquisa.empresa || 'N/A';
+      
+      if (!reincidenciaPorConsultor[consultor]) {
+        reincidenciaPorConsultor[consultor] = { total: 0, empresas: new Set() };
+      }
+      reincidenciaPorConsultor[consultor].total++;
+      reincidenciaPorConsultor[consultor].empresas.add(empresa);
+    }
+  });
+
+  const topConsultores = Object.entries(reincidenciaPorConsultor)
+    .map(([nome, dados]) => ({
+      nome,
+      total: dados.total,
+      empresaPrincipal: Array.from(dados.empresas)[0] || 'N/A'
+    }))
+    .sort((a, b) => b.total - a.total); // Todos os consultores, sem limite
 
   // Função para limpar filtro de prioridade
   const limparFiltroPrioridade = () => {
     setPrioridadeFiltro(null);
+  };
+
+  // Função para limpar todos os filtros
+  const limparTodosFiltros = () => {
+    setPrioridadeFiltro(null);
+    setEmpresaFiltrada(null);
+    setConsultorFiltrado(null);
+  };
+
+  // Função para filtrar por empresa
+  const handleFiltrarEmpresa = (empresa: string) => {
+    if (empresaFiltrada === empresa) {
+      setEmpresaFiltrada(null); // Remove filtro se clicar na mesma empresa
+    } else {
+      setEmpresaFiltrada(empresa);
+      setConsultorFiltrado(null); // Limpa filtro de consultor
+    }
+  };
+
+  // Função para filtrar por consultor
+  const handleFiltrarConsultor = (consultor: string) => {
+    if (consultorFiltrado === consultor) {
+      setConsultorFiltrado(null); // Remove filtro se clicar no mesmo consultor
+    } else {
+      setConsultorFiltrado(consultor);
+      setEmpresaFiltrada(null); // Limpa filtro de empresa
+    }
   };
 
   // Função para visualizar plano de ação
@@ -3343,8 +3470,8 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         </Card>
       </div>
 
-      {/* Segunda linha de cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+      {/* Segunda linha de cards - 4 cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -3378,10 +3505,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             </div>
           </CardHeader>
         </Card>
-      </div>
 
-      {/* Terceira linha de cards - Novos indicadores */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -3389,7 +3513,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600">{percInsatisfacaoTotal}%</p>
                 <span className="text-xs text-gray-500">
-                  {pesquisasComPlanoAcao} de {totalPesquisas}
+                  {pesquisasComPlanoAcaoFechamento} de {totalPesquisasFechamento}
                 </span>
               </div>
             </div>
@@ -3412,32 +3536,6 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             </div>
             <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
               <BarChart3 className="h-4 w-4 text-red-600" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Maior Reincidência</p>
-              <div className="flex flex-col">
-                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {clienteMaiorReincidencia ? clienteMaiorReincidencia[0] : 'N/A'}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-semibold text-purple-600">
-                    {clienteMaiorReincidencia ? clienteMaiorReincidencia[1].total : 0} planos
-                  </span>
-                  {clienteMaiorReincidencia && (
-                    <span className="text-xs text-gray-500 truncate">
-                      • {clienteMaiorReincidencia[1].consultor}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-              <Ticket className="h-4 w-4 text-purple-600" />
             </div>
           </CardHeader>
         </Card>
@@ -3690,28 +3788,243 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         </Card>
       </div>
 
+      {/* Top Clientes e Top Consultores com Planos de Ação */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Clientes com Planos de Ação */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-red-600" />
+                <CardTitle className="text-sm font-semibold">Top Clientes com Reincidência de Insatisfação</CardTitle>
+              </div>
+              {topClientes.length > 6 && (
+                <button
+                  onClick={() => setTopClientesExpandido(!topClientesExpandido)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  {topClientesExpandido ? 'Recolher' : 'Expandir'}
+                  <ChevronUp className={`h-4 w-4 transition-transform ${topClientesExpandido ? '' : 'rotate-180'}`} />
+                </button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {topClientes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Building2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Nenhum plano de ação no período</p>
+              </div>
+            ) : (
+              <div className={`space-y-3 ${topClientesExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+                {(topClientesExpandido ? topClientes : topClientes.slice(0, 6)).map(([cliente, dados], index) => {
+                  const totalPlanosPeriodo = planosAcaoCompletos.length;
+                  const percentual = totalPlanosPeriodo > 0 ? ((dados.total / totalPlanosPeriodo) * 100).toFixed(1) : '0.0';
+                  // Cores de alerta (vermelho a laranja) para indicar problemas de insatisfação
+                  const barColors = ['bg-red-500', 'bg-red-400', 'bg-orange-500', 'bg-orange-400', 'bg-amber-500', 'bg-amber-400', 'bg-red-600', 'bg-orange-600', 'bg-amber-600', 'bg-red-300'];
+                  const barColor = barColors[index % barColors.length];
+                  const isFiltered = empresaFiltrada === cliente;
+                  
+                  return (
+                    <div 
+                      key={cliente} 
+                      className={`space-y-1 py-1 px-2 rounded-lg cursor-pointer transition-all ${
+                        isFiltered 
+                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-400' 
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                      onClick={() => handleFiltrarEmpresa(cliente)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white uppercase truncate max-w-[60%]">
+                          {cliente}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold text-red-600">{dados.total}</span>
+                          <span className="text-xs text-gray-500">({percentual}%)</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                        <div
+                          className={`${barColor} h-2.5 rounded-full transition-all duration-500 shadow-sm`}
+                          style={{ width: `${Math.min(parseFloat(percentual), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Consultores com Planos de Ação */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-red-600" />
+                <CardTitle className="text-sm font-semibold">Top Consultores com Reincidência de Insatisfação</CardTitle>
+              </div>
+              {topConsultores.length > 5 && (
+                <button
+                  onClick={() => setTopConsultoresExpandido(!topConsultoresExpandido)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  {topConsultoresExpandido ? 'Recolher' : 'Expandir'}
+                  <ChevronUp className={`h-4 w-4 transition-transform ${topConsultoresExpandido ? '' : 'rotate-180'}`} />
+                </button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {topConsultores.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Nenhum plano de ação no período</p>
+              </div>
+            ) : (
+              <div className={`space-y-3 ${topConsultoresExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+                {(topConsultoresExpandido ? topConsultores : topConsultores.slice(0, 5)).map((consultor, index) => {
+                  // Cores de alerta para os 3 primeiros (mais críticos) - indicam problemas
+                  const alertColors = ['text-red-600', 'text-orange-600', 'text-amber-600'];
+                  const borderLeftColors = ['border-l-red-400', 'border-l-orange-400', 'border-l-amber-400'];
+                  const bgSubtleColors = ['bg-red-50/50 dark:bg-red-900/10', 'bg-orange-50/50 dark:bg-orange-900/10', 'bg-amber-50/50 dark:bg-amber-900/10'];
+                  const isTopThree = index < 3;
+                  const isFiltered = consultorFiltrado === consultor.nome;
+                  
+                  return (
+                    <div 
+                      key={consultor.nome} 
+                      className={`flex items-center gap-3 py-2 px-3 rounded-lg border-l-4 cursor-pointer transition-all ${
+                        isFiltered
+                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-400 border-l-blue-400'
+                          : isTopThree 
+                            ? `${borderLeftColors[index]} ${bgSubtleColors[index]} hover:opacity-80` 
+                            : 'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+                      } border-b border-gray-100 dark:border-gray-700 last:border-b-0`}
+                      onClick={() => handleFiltrarConsultor(consultor.nome)}
+                    >
+                      {/* Posição com indicador de alerta - números em vez de medalhas */}
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                        <span className={`text-xs font-bold ${isTopThree ? alertColors[index] : 'text-gray-500'}`}>
+                          {index + 1}º
+                        </span>
+                      </div>
+                      
+                      {/* Info do consultor */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white uppercase truncate">
+                          {consultor.nome}
+                        </p>
+                        <span className="text-xs font-semibold text-red-600">
+                          {consultor.total} {consultor.total === 1 ? 'reclamação' : 'reclamações'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Tabela de Planos de Ação */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <CardTitle className="text-lg font-semibold text-center">
-              Lista de Planos de Ação
-              {prioridadeFiltro && (
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  ({planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'} - Prioridade: {prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)})
-                </span>
-              )}
-            </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-lg font-semibold text-center">
+                Lista de Planos de Ação
+                {(prioridadeFiltro || empresaFiltrada || consultorFiltrado) && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    ({planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'}
+                    {prioridadeFiltro && ` • Prioridade: ${prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}`}
+                    {empresaFiltrada && ` • Empresa: ${empresaFiltrada}`}
+                    {consultorFiltrado && ` • Consultor: ${consultorFiltrado}`}
+                    )
+                  </span>
+                )}
+              </CardTitle>
+            </div>
+            {(prioridadeFiltro || empresaFiltrada || consultorFiltrado) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={limparTodosFiltros}
+                className="whitespace-nowrap hover:border-red-300"
+              >
+                <X className="h-4 w-4 mr-2 text-red-600" />
+                Limpar Filtros
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <PlanosAcaoTable
-            planos={planosAcao}
+            planos={planosAcaoPaginados}
             isLoading={loadingPlanos}
             onVisualizar={handleVisualizarPlano}
             showActions={{ visualizar: true, editar: false, excluir: false }}
           />
+          
+          {/* Paginação no padrão de Pesquisas de Satisfação */}
+          {planosAcao.length > 0 && (
+            <div className="flex items-center justify-between px-2 py-4 border-t">
+              {/* Lado esquerdo: Dropdown "Mostrar" */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                <Select
+                  value={itensPorPagina.toString()}
+                  onValueChange={(value) => setItensPorPagina(Number(value))}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="500">500</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Centro: Navegação de páginas */}
+              {totalPaginas > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                    disabled={paginaAtual === 1}
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                    Página {paginaAtual} de {totalPaginas}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                    disabled={paginaAtual === totalPaginas}
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Lado direito: Contador de registros */}
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {indiceInicio + 1}-{Math.min(indiceFim, planosAcao.length)} de {planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
