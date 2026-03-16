@@ -34,7 +34,8 @@ export async function buscarPlanosAcao(
         resposta,
         data_resposta,
         prestador,
-        coordenador_id
+        coordenador_id,
+        categoria
       )
     `)
     .order('criado_em', { ascending: false });

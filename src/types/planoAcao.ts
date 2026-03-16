@@ -64,6 +64,7 @@ export interface PlanoAcaoCompleto extends PlanoAcao {
     prestador?: string; // Nome do prestador/consultor
     especialistas_ids?: string[]; // IDs dos consultores
     coordenador_id?: string; // ID do coordenador
+    categoria?: string; // Categoria da pesquisa (para mapeamento de grupo)
   };
 }
 

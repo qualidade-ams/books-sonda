@@ -3170,6 +3170,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Estados para filtros de empresa e consultor
   const [empresaFiltrada, setEmpresaFiltrada] = useState<string | null>(null);
   const [consultorFiltrado, setConsultorFiltrado] = useState<string | null>(null);
+  const [grupoFiltro, setGrupoFiltro] = useState<string | null>(null);
 
   // Estados para paginação
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -3184,6 +3185,9 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Buscar TODOS os planos de ação (sem filtro de mês/ano) para verificação de associação com pesquisas
   // Isso é necessário porque uma pesquisa com data_fechamento em fevereiro pode ter um plano criado em março
   const { data: todosPlanos = [] } = usePlanosAcao({});
+
+  // Buscar de-para de categorias para agrupar planos por grupo
+  const { data: deParaCategoriasDash = [] } = useDeParaCategoria();
 
   // Filtrar planos por prioridade se houver filtro ativo
   const planosAcao = useMemo(() => {
@@ -3204,8 +3208,34 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       planosFiltrados = planosFiltrados.filter(plano => plano.pesquisa?.prestador === consultorFiltrado);
     }
     
+    // Filtrar por grupo (categoria → de_para_categoria → grupo)
+    if (grupoFiltro) {
+      const categoriaParaGrupoMap = new Map<string, string>();
+      deParaCategoriasDash.forEach(item => {
+        categoriaParaGrupoMap.set(item.categoria, item.grupo);
+      });
+      const agrupar = (grupo: string): string => {
+        if (grupo.startsWith('COMEX')) return 'COMEX';
+        if (grupo.startsWith('FISCAL GALLERY')) return 'FISCAL GALLERY';
+        if (grupo.startsWith('FISCAL')) return 'FISCAL';
+        if (grupo === 'T&M') return 'T&M';
+        if (grupo === 'PROJETO') return 'PROJETO';
+        if (grupo === 'INTERNOS') return 'INTERNOS';
+        if (grupo === 'GERENTE') return 'GERENTE';
+        if (grupo.startsWith('Qualidade AMS')) return 'Qualidade AMS';
+        return 'OUTROS';
+      };
+      planosFiltrados = planosFiltrados.filter(plano => {
+        const categoria = plano.pesquisa?.categoria;
+        if (!categoria) return grupoFiltro === 'OUTROS';
+        const grupo = categoriaParaGrupoMap.get(categoria);
+        if (!grupo) return grupoFiltro === 'OUTROS';
+        return agrupar(grupo) === grupoFiltro;
+      });
+    }
+    
     return planosFiltrados;
-  }, [planosAcaoCompletos, prioridadeFiltro, empresaFiltrada, consultorFiltrado]);
+  }, [planosAcaoCompletos, prioridadeFiltro, empresaFiltrada, consultorFiltrado, grupoFiltro, deParaCategoriasDash]);
 
   // Calcular paginação
   const totalPaginas = Math.ceil(planosAcao.length / itensPorPagina);
@@ -3216,7 +3246,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Resetar página quando filtros mudarem
   useEffect(() => {
     setPaginaAtual(1);
-  }, [prioridadeFiltro, empresaFiltrada, consultorFiltrado, itensPorPagina]);
+  }, [prioridadeFiltro, empresaFiltrada, consultorFiltrado, grupoFiltro, itensPorPagina]);
 
   // Buscar estatísticas dos planos de ação
   const { data: estatisticasPlanos } = useEstatisticasPlanosAcao({
@@ -3364,6 +3394,80 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     }))
     .sort((a, b) => b.total - a.total); // Todos os consultores, sem limite
 
+  // Calcular distribuição por grupo (COMEX, Fiscal, T&M, PROJETO, INTERNOS, GERENTE)
+  // Mapeia a categoria de cada plano para o grupo correspondente na tabela de_para_categoria
+  const distribuicaoPorGrupo = useMemo(() => {
+    // Criar mapa de categoria → grupo
+    const categoriaParaGrupo = new Map<string, string>();
+    deParaCategoriasDash.forEach(item => {
+      categoriaParaGrupo.set(item.categoria, item.grupo);
+    });
+
+    // Função para agrupar subgrupos no grupo principal
+    const agruparGrupo = (grupo: string): string => {
+      if (grupo.startsWith('COMEX')) return 'COMEX';
+      if (grupo.startsWith('FISCAL GALLERY')) return 'FISCAL GALLERY';
+      if (grupo.startsWith('FISCAL')) return 'FISCAL';
+      if (grupo === 'T&M') return 'T&M';
+      if (grupo === 'PROJETO') return 'PROJETO';
+      if (grupo === 'INTERNOS') return 'INTERNOS';
+      if (grupo === 'GERENTE') return 'GERENTE';
+      if (grupo.startsWith('Qualidade AMS')) return 'Qualidade AMS';
+      return 'OUTROS';
+    };
+
+    // Contar planos por grupo
+    const contagem: Record<string, number> = {
+      'COMEX': 0,
+      'FISCAL': 0,
+      'FISCAL GALLERY': 0,
+      'T&M': 0,
+      'PROJETO': 0,
+      'INTERNOS': 0,
+      'GERENTE': 0,
+      'Qualidade AMS': 0,
+      'OUTROS': 0,
+    };
+
+    planosAcaoCompletos.forEach(plano => {
+      const categoria = plano.pesquisa?.categoria;
+      if (categoria) {
+        const grupo = categoriaParaGrupo.get(categoria);
+        if (grupo) {
+          const grupoAgrupado = agruparGrupo(grupo);
+          contagem[grupoAgrupado] = (contagem[grupoAgrupado] || 0) + 1;
+        } else {
+          contagem['OUTROS'] = (contagem['OUTROS'] || 0) + 1;
+        }
+      }
+    });
+
+    const totalComGrupo = Object.values(contagem).reduce((sum, val) => sum + val, 0);
+
+    // Cores para cada grupo
+    const cores: Record<string, string> = {
+      'COMEX': '#2563eb',
+      'FISCAL': '#00FFFF',
+      'FISCAL GALLERY': '#06b6d4',
+      'T&M': '#f59e0b',
+      'PROJETO': '#8b5cf6',
+      'INTERNOS': '#ec4899',
+      'GERENTE': '#ef4444',
+      'Qualidade AMS': '#14b8a6',
+      'OUTROS': '#6b7280',
+    };
+
+    return Object.entries(contagem)
+      .filter(([_, total]) => total > 0)
+      .map(([grupo, total]) => ({
+        nome: grupo,
+        total,
+        percentual: totalComGrupo > 0 ? ((total / totalComGrupo) * 100).toFixed(1) : '0.0',
+        cor: cores[grupo] || '#6b7280',
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [planosAcaoCompletos, deParaCategoriasDash]);
+
   // Função para limpar filtro de prioridade
   const limparFiltroPrioridade = () => {
     setPrioridadeFiltro(null);
@@ -3374,25 +3478,55 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     setPrioridadeFiltro(null);
     setEmpresaFiltrada(null);
     setConsultorFiltrado(null);
+    setGrupoFiltro(null);
+  };
+
+  // Função para filtrar por grupo (toggle) e scroll para tabela
+  const handleFiltrarGrupo = (grupo: string) => {
+    if (grupoFiltro === grupo) {
+      setGrupoFiltro(null);
+    } else {
+      setGrupoFiltro(grupo);
+      scrollParaTabela();
+    }
+  };
+
+  // Scroll suave para a tabela de planos
+  const scrollParaTabela = () => {
+    setTimeout(() => {
+      document.getElementById('tabela-planos-acao')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   // Função para filtrar por empresa
   const handleFiltrarEmpresa = (empresa: string) => {
     if (empresaFiltrada === empresa) {
-      setEmpresaFiltrada(null); // Remove filtro se clicar na mesma empresa
+      setEmpresaFiltrada(null);
     } else {
       setEmpresaFiltrada(empresa);
-      setConsultorFiltrado(null); // Limpa filtro de consultor
+      setConsultorFiltrado(null);
+      scrollParaTabela();
     }
   };
 
   // Função para filtrar por consultor
   const handleFiltrarConsultor = (consultor: string) => {
     if (consultorFiltrado === consultor) {
-      setConsultorFiltrado(null); // Remove filtro se clicar no mesmo consultor
+      setConsultorFiltrado(null);
     } else {
       setConsultorFiltrado(consultor);
-      setEmpresaFiltrada(null); // Limpa filtro de empresa
+      setEmpresaFiltrada(null);
+      scrollParaTabela();
+    }
+  };
+
+  // Função para filtrar por prioridade com scroll
+  const handleFiltrarPrioridade = (prioridade: 'baixa' | 'media' | 'alta' | 'critica') => {
+    if (prioridadeFiltro === prioridade) {
+      setPrioridadeFiltro(null);
+    } else {
+      setPrioridadeFiltro(prioridade);
+      scrollParaTabela();
     }
   };
 
@@ -3541,11 +3675,9 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         </Card>
       </div>
 
-      {/* Gráficos e tabelas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Evolução Mensal dos Planos de Ação */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
+      {/* Evolução dos Planos de Ação - Largura total */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-gray-600" />
               <CardTitle className="text-lg font-semibold">Evolução dos Planos de Ação</CardTitle>
@@ -3695,6 +3827,8 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           </CardContent>
         </Card>
 
+      {/* Distribuição por Prioridade e por Grupo - lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribuição por Prioridade */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
@@ -3725,7 +3859,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="space-y-4">
               <div 
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'critica' ? null : 'critica')}
+                onClick={() => handleFiltrarPrioridade('critica')}
               >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Crítica</span>
                 <div className="flex items-center gap-2">
@@ -3740,7 +3874,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
               <div 
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'alta' ? null : 'alta')}
+                onClick={() => handleFiltrarPrioridade('alta')}
               >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Alta</span>
                 <div className="flex items-center gap-2">
@@ -3755,7 +3889,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
               <div 
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'media' ? null : 'media')}
+                onClick={() => handleFiltrarPrioridade('media')}
               >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Média</span>
                 <div className="flex items-center gap-2">
@@ -3770,7 +3904,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
               <div 
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                onClick={() => setPrioridadeFiltro(prioridadeFiltro === 'baixa' ? null : 'baixa')}
+                onClick={() => handleFiltrarPrioridade('baixa')}
               >
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Baixa</span>
                 <div className="flex items-center gap-2">
@@ -3784,6 +3918,135 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Distribuição por Grupo - Gráfico de Pizza (Donut) */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-gray-600" />
+                <CardTitle className="text-lg font-semibold">Distribuição por Grupo</CardTitle>
+              </div>
+              {grupoFiltro && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGrupoFiltro(null)}
+                  className="whitespace-nowrap hover:border-red-300"
+                >
+                  <X className="h-4 w-4 mr-2 text-red-600" />
+                  Limpar Filtro
+                </Button>
+              )}
+            </div>
+            {grupoFiltro && (
+              <p className="text-xs text-blue-600 mt-2">
+                Filtrando por: {grupoFiltro}
+              </p>
+            )}
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Planos de ação agrupados por grupo da tabela de categorias
+            </p>
+          </CardHeader>
+          <CardContent>
+            {distribuicaoPorGrupo.length === 0 ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="text-center">
+                  <PieChart className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600">Nenhum plano de ação com categoria associada</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-6">
+                {/* Gráfico de Pizza Donut */}
+                <div className="flex justify-center">
+                  <ResponsiveContainer width={280} height={280}>
+                    <RechartsPieChart>
+                      <Pie
+                        data={distribuicaoPorGrupo}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={70}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="total"
+                        strokeWidth={0}
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, value, payload }) => {
+                          const totalVisivel = distribuicaoPorGrupo.reduce((acc, item) => acc + item.total, 0);
+                          const porcentagem = totalVisivel > 0 ? (value / totalVisivel) * 100 : 0;
+                          if (porcentagem < 3) return null;
+                          
+                          const RADIAN = Math.PI / 180;
+                          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          
+                          // Texto preto para cores claras como ciano (#00FFFF)
+                          const coresClaras = ['#00FFFF', '#f59e0b'];
+                          const corTexto = coresClaras.includes(payload?.cor) ? '#000000' : 'white';
+                          
+                          return (
+                            <text 
+                              x={x} 
+                              y={y} 
+                              fill={corTexto} 
+                              textAnchor="middle" 
+                              dominantBaseline="central"
+                              fontSize="9"
+                              fontWeight="200"
+                            >
+                              {`${porcentagem.toFixed(1)}%`}
+                            </text>
+                          );
+                        }}
+                        labelLine={false}
+                      >
+                        {distribuicaoPorGrupo.map((entry, index) => (
+                          <Cell 
+                            key={`cell-grupo-${index}`} 
+                            fill={entry.cor} 
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleFiltrarGrupo(entry.nome)}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: any, name: string, props: any) => {
+                          const totalVisivel = distribuicaoPorGrupo.reduce((acc, item) => acc + item.total, 0);
+                          const porcentagem = totalVisivel > 0 ? (value / totalVisivel) * 100 : 0;
+                          const nomeGrupo = props?.payload?.nome || name;
+                          return [`${value} (${porcentagem.toFixed(1)}%)`, nomeGrupo];
+                        }}
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                          fontSize: '12px'
+                        }}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legenda abaixo do gráfico */}
+                <div className="flex items-center justify-center gap-4 flex-wrap">
+                  {distribuicaoPorGrupo.map((grupo) => (
+                    <div key={grupo.nome} className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: grupo.cor }}
+                      />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {grupo.nome} ({grupo.total})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -3931,25 +4194,26 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       </div>
 
       {/* Tabela de Planos de Ação */}
-      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+      <Card id="tabela-planos-acao" className="bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-blue-600" />
               <CardTitle className="text-lg font-semibold text-center">
                 Lista de Planos de Ação
-                {(prioridadeFiltro || empresaFiltrada || consultorFiltrado) && (
+                {(prioridadeFiltro || empresaFiltrada || consultorFiltrado || grupoFiltro) && (
                   <span className="text-sm font-normal text-gray-500 ml-2">
                     ({planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'}
                     {prioridadeFiltro && ` • Prioridade: ${prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}`}
                     {empresaFiltrada && ` • Empresa: ${empresaFiltrada}`}
                     {consultorFiltrado && ` • Consultor: ${consultorFiltrado}`}
+                    {grupoFiltro && ` • Grupo: ${grupoFiltro}`}
                     )
                   </span>
                 )}
               </CardTitle>
             </div>
-            {(prioridadeFiltro || empresaFiltrada || consultorFiltrado) && (
+            {(prioridadeFiltro || empresaFiltrada || consultorFiltrado || grupoFiltro) && (
               <Button
                 variant="outline"
                 size="sm"
