@@ -156,6 +156,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Hook para buscar empresas
   const { empresas } = useEmpresas();
 
+  // Hook para buscar pesquisas de satisfação (para cálculo de crescimento por grupo)
+  const { data: pesquisasCrescimento = [] } = useTodasPesquisasSatisfacao({});
+
   // Função para fazer de-para da categoria para grupo
   const obterGrupoPorCategoria = (categoria: string): string => {
     if (!categoria) return '';
@@ -419,19 +422,21 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   {(() => {
-                    // Função para obter grupo da categoria usando de_para_categoria e extrair primeira palavra
-                    const obterGrupoSimplificado = (categoria: string): string => {
+                    // Função para obter grupo da categoria usando de_para_categoria
+                    const obterGrupoDaCategoria = (categoria: string): string => {
                       if (!categoria) return 'OUTROS';
                       
-                      // Usar a função existente que faz o de-para com a tabela
-                      const grupoCompleto = obterGrupoPorCategoria(categoria);
+                      // Busca exata na tabela de_para_categoria
+                      let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
                       
-                      if (!grupoCompleto) return 'OUTROS';
+                      // Busca parcial se não encontrar exata
+                      if (!encontrado) {
+                        encontrado = deParaCategorias.find(
+                          dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+                        );
+                      }
                       
-                      // Extrair apenas a primeira palavra do grupo
-                      const primeiraPalavra = grupoCompleto.split(/[\s-]+/)[0].trim().toUpperCase();
-                      
-                      return primeiraPalavra || 'OUTROS';
+                      return encontrado?.grupo || 'OUTROS';
                     };
 
                     // Calcular crescimento por grupo baseado no filtro selecionado
@@ -441,58 +446,53 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      // Se "todos os meses", comparar mês vigente atual vs mês vigente ano anterior
                       const mesVigente = new Date().getMonth() + 1;
                       mesComparacao = mesVigente;
                       anoComparacao = anoSelecionado;
                       mesAnterior = mesVigente;
                       anoAnterior = anoSelecionado - 1;
                     } else {
-                      // Se mês específico, comparar mês selecionado vs mês anterior
                       mesComparacao = mesSelecionado as number;
                       anoComparacao = anoSelecionado;
                       mesAnterior = mesComparacao === 1 ? 12 : mesComparacao - 1;
                       anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
                     }
                     
-                    // Elogios do período atual
-                    const elogiosPeriodoAtual = elogios?.filter(e => {
-                      if (!e.data_resposta) return false;
-                      const dataResposta = new Date(e.data_resposta);
-                      
+                    // Pesquisas do período atual (da tabela pesquisas_satisfacao)
+                    const pesquisasPeriodoAtual = pesquisasCrescimento.filter(p => {
+                      if (!p.data_resposta) return false;
+                      const dataResposta = new Date(p.data_resposta);
                       return dataResposta.getMonth() + 1 === mesComparacao && 
-                             dataResposta.getFullYear() === anoComparacao &&
-                             (e.status === 'compartilhado' || e.status === 'enviado');
-                    }) || [];
+                             dataResposta.getFullYear() === anoComparacao;
+                    });
                     
-                    // Elogios do período anterior
-                    const elogiosPeriodoAnterior = elogios?.filter(e => {
-                      if (!e.data_resposta) return false;
-                      const dataResposta = new Date(e.data_resposta);
-                      
+                    // Pesquisas do período anterior
+                    const pesquisasPeriodoAnterior = pesquisasCrescimento.filter(p => {
+                      if (!p.data_resposta) return false;
+                      const dataResposta = new Date(p.data_resposta);
                       return dataResposta.getMonth() + 1 === mesAnterior && 
-                             dataResposta.getFullYear() === anoAnterior &&
-                             (e.status === 'compartilhado' || e.status === 'enviado');
-                    }) || [];
+                             dataResposta.getFullYear() === anoAnterior;
+                    });
                     
-                    // Contar por grupo
+                    // Contar por grupo usando de_para_categoria
                     const contagemAtual: Record<string, number> = {};
                     const contagemAnterior: Record<string, number> = {};
                     
-                    elogiosPeriodoAtual.forEach(elogio => {
-                      const categoria = elogio.pesquisa?.categoria || '';
-                      const grupo = obterGrupoSimplificado(categoria);
+                    pesquisasPeriodoAtual.forEach(pesquisa => {
+                      const categoria = pesquisa.categoria || '';
+                      const grupo = obterGrupoDaCategoria(categoria);
                       contagemAtual[grupo] = (contagemAtual[grupo] || 0) + 1;
                     });
                     
-                    elogiosPeriodoAnterior.forEach(elogio => {
-                      const categoria = elogio.pesquisa?.categoria || '';
-                      const grupo = obterGrupoSimplificado(categoria);
+                    pesquisasPeriodoAnterior.forEach(pesquisa => {
+                      const categoria = pesquisa.categoria || '';
+                      const grupo = obterGrupoDaCategoria(categoria);
                       contagemAnterior[grupo] = (contagemAnterior[grupo] || 0) + 1;
                     });
                     
-                    // Calcular crescimento - apenas valores positivos
-                    let maiorCrescimento: { grupo: string; percentual: number } | null = null;
+                    // Calcular crescimento por grupo - separar reais vs novos
+                    const crescimentosReais: { grupo: string; percentual: number; qtdAtual: number }[] = [];
+                    const crescimentosNovos: { grupo: string; percentual: number; qtdAtual: number }[] = [];
                     
                     Object.keys(contagemAtual).forEach(grupo => {
                       const atual = contagemAtual[grupo] || 0;
@@ -500,33 +500,63 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       
                       if (anterior > 0) {
                         const crescimento = ((atual - anterior) / anterior) * 100;
-                        // Só considerar crescimentos positivos
-                        if (crescimento > 0 && (!maiorCrescimento || crescimento > maiorCrescimento.percentual)) {
-                          maiorCrescimento = { grupo, percentual: crescimento };
+                        if (crescimento > 0) {
+                          crescimentosReais.push({ grupo, percentual: crescimento, qtdAtual: atual });
                         }
                       } else if (atual > 0) {
-                        // Novo grupo (crescimento infinito, mas só considerar se não há outros crescimentos)
-                        if (!maiorCrescimento) {
-                          maiorCrescimento = { grupo, percentual: 100 };
-                        }
+                        // Grupo novo (não existia no período anterior)
+                        crescimentosNovos.push({ grupo, percentual: 100, qtdAtual: atual });
                       }
                     });
+                    
+                    // Priorizar crescimentos reais; se não houver, usar novos
+                    let crescimentosFinais: { grupo: string; percentual: number; qtdAtual: number }[];
+                    let isNovo = false;
+                    
+                    if (crescimentosReais.length > 0) {
+                      // Ordenar por percentual decrescente, desempate por quantidade atual
+                      crescimentosReais.sort((a, b) => b.percentual - a.percentual || b.qtdAtual - a.qtdAtual);
+                      crescimentosFinais = crescimentosReais;
+                    } else {
+                      // Só grupos novos - ordenar por quantidade atual decrescente
+                      crescimentosNovos.sort((a, b) => b.qtdAtual - a.qtdAtual);
+                      crescimentosFinais = crescimentosNovos;
+                      isNovo = true;
+                    }
+                    
+                    // Pegar o maior e todos que empatam no mesmo percentual E quantidade
+                    let gruposComMaiorCrescimento: typeof crescimentosFinais = [];
+                    if (crescimentosFinais.length > 0) {
+                      const melhor = crescimentosFinais[0];
+                      if (isNovo) {
+                        // Para novos, empate por quantidade atual
+                        gruposComMaiorCrescimento = crescimentosFinais.filter(
+                          c => c.qtdAtual === melhor.qtdAtual
+                        );
+                      } else {
+                        // Para reais, empate por percentual
+                        gruposComMaiorCrescimento = crescimentosFinais.filter(
+                          c => c.percentual === melhor.percentual
+                        );
+                      }
+                    }
 
-                    // Debug logs
-                    console.log('🔍 DEBUG Crescimento Grupo:', {
+                    console.log('🔍 DEBUG Crescimento Grupo (pesquisas_satisfacao):', {
                       mesSelecionado,
                       anoSelecionado,
                       mesComparacao,
                       mesAnterior,
                       anoAnterior,
-                      elogiosAtual: elogiosPeriodoAtual.length,
-                      elogiosAnterior: elogiosPeriodoAnterior.length,
+                      pesquisasAtual: pesquisasPeriodoAtual.length,
+                      pesquisasAnterior: pesquisasPeriodoAnterior.length,
                       contagemAtual,
                       contagemAnterior,
-                      maiorCrescimento
+                      crescimentosReais,
+                      crescimentosNovos,
+                      gruposComMaiorCrescimento
                     });
                     
-                    if (!maiorCrescimento) {
+                    if (gruposComMaiorCrescimento.length === 0) {
                       return (
                         <>
                           <div>
@@ -541,16 +571,27 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       );
                     }
                     
-                    const sinal = maiorCrescimento.percentual >= 0 ? '+' : '';
-                    const grupoFormatado = maiorCrescimento.grupo;
+                    const sinal = '+';
+                    // Extrair apenas a parte ANTES do " - " do grupo (ex: "COMEX - Importação" → "COMEX")
+                    const extrairGrupoNome = (grupo: string): string => {
+                      const partes = grupo.split(' - ');
+                      return partes[0].trim();
+                    };
+                    // Agrupar por nome do grupo (parte antes do "-") e pegar nomes únicos
+                    const nomesGrupos = [...new Set(gruposComMaiorCrescimento.map(g => extrairGrupoNome(g.grupo)))];
+                    const gruposFormatados = nomesGrupos.join(', ');
+                    const melhor = gruposComMaiorCrescimento[0];
+                    const descricao = isNovo
+                      ? `Novo (${melhor.qtdAtual} pesquisa${melhor.qtdAtual > 1 ? 's' : ''} no período)`
+                      : `${sinal}${melhor.percentual.toFixed(0)}% vs período anterior`;
                     
                     return (
                       <>
                         <div>
                           <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento - Grupo</p>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{grupoFormatado}</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{gruposFormatados}</p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {sinal}{maiorCrescimento.percentual.toFixed(0)}% vs período anterior
+                            {descricao}
                           </p>
                         </div>
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -568,12 +609,26 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   {(() => {
-                    // Função para extrair módulo da categoria (última parte após qualquer ponto)
-                    const extrairModulo = (categoria: string): string => {
-                      if (!categoria) return '';
-                      const partes = categoria.split('.');
-                      // Pegar apenas a última parte
-                      return partes[partes.length - 1].trim();
+                    // Função para obter grupo da categoria usando de_para_categoria
+                    const obterGrupoDaCategoriaModulo = (categoria: string): string => {
+                      if (!categoria) return 'OUTROS';
+                      
+                      let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
+                      
+                      if (!encontrado) {
+                        encontrado = deParaCategorias.find(
+                          dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
+                        );
+                      }
+                      
+                      return encontrado?.grupo || 'OUTROS';
+                    };
+                    
+                    // Função para extrair módulo do grupo (parte DEPOIS do " - ")
+                    const extrairModuloDoGrupo = (grupo: string): string => {
+                      const partes = grupo.split(' - ');
+                      // Se não tem " - ", retorna o grupo inteiro
+                      return partes.length > 1 ? partes.slice(1).join(' - ').trim() : grupo;
                     };
 
                     // Calcular crescimento por módulo baseado no filtro selecionado
@@ -583,96 +638,118 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      // Se "todos os meses", comparar mês vigente atual vs mês vigente ano anterior
                       const mesVigente = new Date().getMonth() + 1;
                       mesComparacao = mesVigente;
                       anoComparacao = anoSelecionado;
                       mesAnterior = mesVigente;
                       anoAnterior = anoSelecionado - 1;
                     } else {
-                      // Se mês específico, comparar mês selecionado vs mês anterior
                       mesComparacao = mesSelecionado as number;
                       anoComparacao = anoSelecionado;
                       mesAnterior = mesComparacao === 1 ? 12 : mesComparacao - 1;
                       anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
                     }
                     
-                    // Elogios do período atual
-                    const elogiosPeriodoAtual = elogios?.filter(e => {
-                      if (!e.data_resposta) return false;
-                      const dataResposta = new Date(e.data_resposta);
-                      
+                    // Pesquisas do período atual (da tabela pesquisas_satisfacao)
+                    const pesquisasPeriodoAtualMod = pesquisasCrescimento.filter(p => {
+                      if (!p.data_resposta) return false;
+                      const dataResposta = new Date(p.data_resposta);
                       return dataResposta.getMonth() + 1 === mesComparacao && 
-                             dataResposta.getFullYear() === anoComparacao &&
-                             (e.status === 'compartilhado' || e.status === 'enviado');
-                    }) || [];
+                             dataResposta.getFullYear() === anoComparacao;
+                    });
                     
-                    // Elogios do período anterior
-                    const elogiosPeriodoAnterior = elogios?.filter(e => {
-                      if (!e.data_resposta) return false;
-                      const dataResposta = new Date(e.data_resposta);
-                      
+                    // Pesquisas do período anterior
+                    const pesquisasPeriodoAnteriorMod = pesquisasCrescimento.filter(p => {
+                      if (!p.data_resposta) return false;
+                      const dataResposta = new Date(p.data_resposta);
                       return dataResposta.getMonth() + 1 === mesAnterior && 
-                             dataResposta.getFullYear() === anoAnterior &&
-                             (e.status === 'compartilhado' || e.status === 'enviado');
-                    }) || [];
+                             dataResposta.getFullYear() === anoAnterior;
+                    });
                     
-                    // Contar por módulo
-                    const contagemAtual: Record<string, number> = {};
-                    const contagemAnterior: Record<string, number> = {};
+                    // Contar por módulo (parte depois do " - " do grupo)
+                    const contagemAtualMod: Record<string, number> = {};
+                    const contagemAnteriorMod: Record<string, number> = {};
                     
-                    elogiosPeriodoAtual.forEach(elogio => {
-                      const categoria = elogio.pesquisa?.categoria || '';
-                      const modulo = extrairModulo(categoria);
+                    pesquisasPeriodoAtualMod.forEach(pesquisa => {
+                      const categoria = pesquisa.categoria || '';
+                      const grupo = obterGrupoDaCategoriaModulo(categoria);
+                      const modulo = extrairModuloDoGrupo(grupo);
                       if (modulo) {
-                        contagemAtual[modulo] = (contagemAtual[modulo] || 0) + 1;
+                        contagemAtualMod[modulo] = (contagemAtualMod[modulo] || 0) + 1;
                       }
                     });
                     
-                    elogiosPeriodoAnterior.forEach(elogio => {
-                      const categoria = elogio.pesquisa?.categoria || '';
-                      const modulo = extrairModulo(categoria);
+                    pesquisasPeriodoAnteriorMod.forEach(pesquisa => {
+                      const categoria = pesquisa.categoria || '';
+                      const grupo = obterGrupoDaCategoriaModulo(categoria);
+                      const modulo = extrairModuloDoGrupo(grupo);
                       if (modulo) {
-                        contagemAnterior[modulo] = (contagemAnterior[modulo] || 0) + 1;
+                        contagemAnteriorMod[modulo] = (contagemAnteriorMod[modulo] || 0) + 1;
                       }
                     });
                     
-                    // Calcular crescimento - apenas valores positivos
-                    let maiorCrescimento: { modulo: string; percentual: number } | null = null;
+                    // Calcular crescimento por módulo - separar reais vs novos
+                    const crescimentosReaisMod: { modulo: string; percentual: number; qtdAtual: number }[] = [];
+                    const crescimentosNovosMod: { modulo: string; percentual: number; qtdAtual: number }[] = [];
                     
-                    Object.keys(contagemAtual).forEach(modulo => {
-                      const atual = contagemAtual[modulo] || 0;
-                      const anterior = contagemAnterior[modulo] || 0;
+                    Object.keys(contagemAtualMod).forEach(modulo => {
+                      const atual = contagemAtualMod[modulo] || 0;
+                      const anterior = contagemAnteriorMod[modulo] || 0;
                       
                       if (anterior > 0) {
                         const crescimento = ((atual - anterior) / anterior) * 100;
-                        // Só considerar crescimentos positivos
-                        if (crescimento > 0 && (!maiorCrescimento || crescimento > maiorCrescimento.percentual)) {
-                          maiorCrescimento = { modulo, percentual: crescimento };
+                        if (crescimento > 0) {
+                          crescimentosReaisMod.push({ modulo, percentual: crescimento, qtdAtual: atual });
                         }
                       } else if (atual > 0) {
-                        // Novo módulo (crescimento infinito, mas só considerar se não há outros crescimentos)
-                        if (!maiorCrescimento) {
-                          maiorCrescimento = { modulo, percentual: 100 };
-                        }
+                        crescimentosNovosMod.push({ modulo, percentual: 100, qtdAtual: atual });
                       }
                     });
+                    
+                    // Priorizar crescimentos reais; se não houver, usar novos
+                    let crescimentosFinaisMod: { modulo: string; percentual: number; qtdAtual: number }[];
+                    let isNovoMod = false;
+                    
+                    if (crescimentosReaisMod.length > 0) {
+                      crescimentosReaisMod.sort((a, b) => b.percentual - a.percentual || b.qtdAtual - a.qtdAtual);
+                      crescimentosFinaisMod = crescimentosReaisMod;
+                    } else {
+                      crescimentosNovosMod.sort((a, b) => b.qtdAtual - a.qtdAtual);
+                      crescimentosFinaisMod = crescimentosNovosMod;
+                      isNovoMod = true;
+                    }
+                    
+                    // Pegar o maior e todos que empatam
+                    let modulosComMaiorCrescimento: typeof crescimentosFinaisMod = [];
+                    if (crescimentosFinaisMod.length > 0) {
+                      const melhorMod = crescimentosFinaisMod[0];
+                      if (isNovoMod) {
+                        modulosComMaiorCrescimento = crescimentosFinaisMod.filter(
+                          c => c.qtdAtual === melhorMod.qtdAtual
+                        );
+                      } else {
+                        modulosComMaiorCrescimento = crescimentosFinaisMod.filter(
+                          c => c.percentual === melhorMod.percentual
+                        );
+                      }
+                    }
 
-                    // Debug logs
-                    console.log('🔍 DEBUG Crescimento Módulo:', {
+                    console.log('🔍 DEBUG Crescimento Módulo (pesquisas_satisfacao):', {
                       mesSelecionado,
                       anoSelecionado,
                       mesComparacao,
                       mesAnterior,
                       anoAnterior,
-                      elogiosAtual: elogiosPeriodoAtual.length,
-                      elogiosAnterior: elogiosPeriodoAnterior.length,
-                      contagemAtual,
-                      contagemAnterior,
-                      maiorCrescimento
+                      pesquisasAtual: pesquisasPeriodoAtualMod.length,
+                      pesquisasAnterior: pesquisasPeriodoAnteriorMod.length,
+                      contagemAtualMod,
+                      contagemAnteriorMod,
+                      crescimentosReaisMod,
+                      crescimentosNovosMod,
+                      modulosComMaiorCrescimento
                     });
                     
-                    if (!maiorCrescimento) {
+                    if (modulosComMaiorCrescimento.length === 0) {
                       return (
                         <>
                           <div>
@@ -687,17 +764,20 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       );
                     }
                     
-                    const sinal = maiorCrescimento.percentual >= 0 ? '+' : '';
-                    // Exibir apenas o nome do módulo
-                    const moduloFormatado = maiorCrescimento.modulo.toUpperCase();
+                    const sinalMod = '+';
+                    const modulosFormatados = modulosComMaiorCrescimento.map(m => m.modulo).join(', ');
+                    const melhorMod = modulosComMaiorCrescimento[0];
+                    const descricaoMod = isNovoMod
+                      ? `Novo (${melhorMod.qtdAtual} pesquisa${melhorMod.qtdAtual > 1 ? 's' : ''} no período)`
+                      : `${sinalMod}${melhorMod.percentual.toFixed(0)}% vs período anterior`;
                     
                     return (
                       <>
                         <div>
                           <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Maior Crescimento - Módulo</p>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{moduloFormatado}</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{modulosFormatados}</p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {sinal}{maiorCrescimento.percentual.toFixed(0)}% vs período anterior
+                            {descricaoMod}
                           </p>
                         </div>
                         <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
