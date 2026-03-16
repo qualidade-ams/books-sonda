@@ -907,7 +907,12 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                     <Input 
                       {...field} 
                       placeholder="Nº do chamado"
+                      inputMode="numeric"
                       value={field.value || ''}
+                      onChange={(e) => {
+                        const valor = e.target.value.replace(/\D/g, '');
+                        field.onChange(valor);
+                      }}
                       className={cn(
                         fieldState.error && "border-red-500 focus:border-red-500"
                       )}

@@ -6,6 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -54,7 +63,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  X
+  X,
+  Eye,
+  Database,
+  FileEdit
 } from 'lucide-react';
 import { converterMinutosParaHoras, converterMinutosParaHorasDecimal } from '@/utils/horasUtils';
 import { getHexColor } from '@/utils/requerimentosColors';
@@ -203,14 +215,16 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   // Função para filtrar elogios baseado na seleção
   const obterElogiosFiltrados = () => {
-    if (!itemSelecionado) return [];
-    
+    // Base: todos os elogios do ano com status válido
     const elogiosFiltrados = elogios?.filter(e => {
       if (!e.data_resposta) return false;
       const dataResposta = new Date(e.data_resposta);
       return dataResposta.getFullYear() === anoSelecionado &&
              (e.status === 'compartilhado' || e.status === 'enviado');
     }) || [];
+
+    // Se nenhum item selecionado, retorna todos
+    if (!itemSelecionado) return elogiosFiltrados;
 
     switch (itemSelecionado.tipo) {
       case 'empresa':
@@ -226,7 +240,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       case 'volume':
         return elogiosFiltrados;
       default:
-        return [];
+        return elogiosFiltrados;
     }
   };
 
@@ -234,6 +248,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   // Estado para controlar linhas expandidas
   const [linhasExpandidas, setLinhasExpandidas] = useState<Set<string>>(new Set());
+
+  // Estado para modal de visualização
+  const [elogioVisualizando, setElogioVisualizando] = useState<any | null>(null);
+  const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
 
   // Função para alternar expansão de linha
   const toggleLinha = (elogioId: string) => {
@@ -246,141 +264,22 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     setLinhasExpandidas(novasLinhasExpandidas);
   };
 
-  // Componente de detalhes dos elogios
-  const DetalhesElogios = () => {
-    if (!itemSelecionado) return null;
+  // Paginação para tabela de detalhes
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
 
-    return (
-      <Card className="bg-white dark:bg-gray-800 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                Detalhes dos Elogios
-              </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
-                {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
-                {itemSelecionado.tipo === 'elogio' && 'Elogio Selecionado'}
-                {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Ano'}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setItemSelecionado(null)}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Fechar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Total de elogios encontrados: {elogiosDetalhados.length}
-            </div>
-            
-            {/* Cabeçalho da tabela */}
-            <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-              <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                <div className="col-span-2">Nº Chamado</div>
-                <div className="col-span-2">Empresa</div>
-                <div className="col-span-3">Colaborador</div>
-                <div className="col-span-2">Data Resposta</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-1 text-center"></div>
-              </div>
-            </div>
-            
-            {/* Lista de elogios como linhas expansíveis */}
-            <div className="max-h-96 overflow-y-auto space-y-1">
-              {elogiosDetalhados.map((elogio, index) => {
-                const elogioId = elogio.id || `elogio-${index}`;
-                const isExpanded = linhasExpandidas.has(elogioId);
-                
-                return (
-                  <div key={elogioId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    {/* Linha principal (sempre visível) */}
-                    <div 
-                      className="grid grid-cols-12 gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                      onClick={() => toggleLinha(elogioId)}
-                    >
-                      <div className="col-span-2">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {elogio.pesquisa?.nro_caso || 'N/A'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
-                        </span>
-                      </div>
-                      <div className="col-span-3">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {elogio.pesquisa?.prestador || 'N/A'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {elogio.data_resposta ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR') : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                          elogio.status === 'enviado' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                        }`}>
-                          {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
-                        </span>
-                      </div>
-                      <div className="col-span-1 text-center">
-                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`} />
-                      </div>
-                    </div>
-                    
-                    {/* Conteúdo expandido (comentário) */}
-                    {isExpanded && elogio.pesquisa?.comentario_pesquisa && (
-                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
-                        <div className="space-y-2">
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            Comentário:
-                          </span>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {elogio.pesquisa.comentario_pesquisa}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Mensagem quando não há comentário */}
-                    {isExpanded && !elogio.pesquisa?.comentario_pesquisa && (
-                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                          Nenhum comentário disponível para este elogio.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Mensagem quando não há elogios */}
-            {elogiosDetalhados.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum elogio encontrado para a seleção atual.</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // Reset página quando muda seleção
+  const handleSelecionarItem = (item: typeof itemSelecionado) => {
+    setItemSelecionado(item);
+    setPaginaAtual(1);
+    setLinhasExpandidas(new Set());
   };
+
+  // Dados paginados
+  const totalPaginas = Math.ceil(elogiosDetalhados.length / itensPorPagina);
+  const indiceInicio = (paginaAtual - 1) * itensPorPagina;
+  const indiceFim = indiceInicio + itensPorPagina;
+  const elogiosPaginados = elogiosDetalhados.slice(indiceInicio, indiceFim);
 
   return (
     <div className="space-y-6">
@@ -445,114 +344,8 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         </Card>
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Volume de Elogios por Mês */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Volume de Elogios</CardTitle>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Evolução mensal no ano {anoSelecionado}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={statsElogios?.porMes || []}
-                  margin={{
-                    top: 10,
-                    right: 30,
-                    left: 0,
-                    bottom: 0,
-                  }}
-                  onClick={() => setItemSelecionado({
-                    tipo: 'volume',
-                    dados: 'todos'
-                  })}
-                >
-                  <defs>
-                    <linearGradient id="colorValidados" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="colorEnviados" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis 
-                    dataKey="mesNome" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
-                  />
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                    formatter={(value: any, name: string) => {
-                      if (name === 'compartilhados') return [value, 'Validados'];
-                      if (name === 'enviados') return [value, 'Enviados'];
-                      return [value, name];
-                    }}
-                    labelFormatter={(label) => `Mês: ${label}`}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="compartilhados"
-                    stackId="1"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorValidados)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="enviados"
-                    stackId="1"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorEnviados)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Legenda centralizada */}
-            <div className="flex items-center justify-center text-sm mt-4 pt-4 border-t">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-600">Validados</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-600">Enviados</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Destaques ou Detalhes dos Elogios */}
-        {itemSelecionado ? (
-          <DetalhesElogios />
-        ) : (
-          <div className="space-y-4">
+      {/* Destaques */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Top Colaborador Mensal */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm">
               <CardHeader className="pb-3">
@@ -916,9 +709,108 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 </div>
               </CardHeader>
             </Card>
-          </div>
-        )}
       </div>
+
+      {/* Volume de Elogios por Mês - Full Width */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-gray-600" />
+            <CardTitle className="text-lg font-semibold">Volume de Elogios</CardTitle>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Evolução mensal no ano {anoSelecionado}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={statsElogios?.porMes || []}
+                margin={{
+                  top: 10,
+                  right: 30,
+                  left: 0,
+                  bottom: 0,
+                }}
+                onClick={() => handleSelecionarItem({
+                  tipo: 'volume',
+                  dados: 'todos'
+                })}
+              >
+                <defs>
+                  <linearGradient id="colorValidados" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  </linearGradient>
+                  <linearGradient id="colorEnviados" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="mesNome" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                  formatter={(value: any, name: string) => {
+                    if (name === 'compartilhados') return [value, 'Validados'];
+                    if (name === 'enviados') return [value, 'Enviados'];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => `Mês: ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="compartilhados"
+                  stackId="1"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorValidados)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="enviados"
+                  stackId="1"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorEnviados)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          
+          {/* Legenda centralizada */}
+          <div className="flex items-center justify-center text-sm mt-4 pt-4 border-t">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-gray-600">Validados</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-gray-600">Enviados</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Seção inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -927,31 +819,22 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-orange-600" />
+                <Building2 className="h-4 w-4 text-orange-600" />
                 <CardTitle className="text-sm font-semibold">Top Empresas com Elogios</CardTitle>
               </div>
               {statsElogios?.porEmpresa && Object.keys(statsElogios.porEmpresa).length > 5 && (
                 <button
                   onClick={() => setEmpresasExpandido(!empresasExpandido)}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  {empresasExpandido ? (
-                    <>
-                      <span>Recolher</span>
-                      <ChevronUp className="h-3 w-3" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Ver todas</span>
-                      <ChevronDown className="h-3 w-3" />
-                    </>
-                  )}
+                  {empresasExpandido ? 'Recolher' : 'Expandir'}
+                  <ChevronUp className={`h-4 w-4 transition-transform ${empresasExpandido ? '' : 'rotate-180'}`} />
                 </button>
               )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`space-y-4 ${empresasExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+            <div className={`space-y-3 ${empresasExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
               {statsElogios?.porEmpresa && Object.entries(statsElogios.porEmpresa)
                 .sort((a, b) => (b[1] as any).count - (a[1] as any).count)
                 .slice(0, empresasExpandido ? undefined : 5)
@@ -959,40 +842,34 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   const dadosTyped = dados as { count: number; registrados: number; compartilhados: number; enviados: number; arquivados: number };
                   const porcentagem = statsElogios.total > 0 ? ((dadosTyped.count / statsElogios.total) * 100) : 0;
                   
-                  // Cores variadas para as barras
-                  const coresBarras = [
-                    'from-blue-500 to-blue-600',
-                    'from-green-500 to-green-600',
-                    'from-purple-500 to-purple-600',
-                    'from-orange-500 to-orange-600',
-                    'from-red-500 to-red-600'
-                  ];
+                  // Cores positivas sólidas para elogios (azul, verde, roxo, teal, cyan)
+                  const coresBarras = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-teal-500', 'bg-cyan-500', 'bg-blue-400', 'bg-green-400', 'bg-purple-400', 'bg-teal-400', 'bg-cyan-400'];
                   const corBarra = coresBarras[index % coresBarras.length];
                   
                   return (
                     <div 
                       key={empresa} 
-                      className="space-y-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                      onClick={() => setItemSelecionado({
+                      className="space-y-1 py-1 px-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => handleSelecionarItem({
                         tipo: 'empresa',
                         dados: obterNomeAbreviadoEmpresa(empresa)
                       })}
                     >
                       {/* Linha superior: nome da empresa e valores */}
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[180px]">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white uppercase truncate max-w-[60%]">
                           {obterNomeAbreviadoEmpresa(empresa)}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{dadosTyped.count}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold text-blue-600">{dadosTyped.count}</span>
                           <span className="text-xs text-gray-500">({porcentagem.toFixed(1)}%)</span>
                         </div>
                       </div>
                       
                       {/* Barra de progresso colorida */}
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                         <div 
-                          className={`bg-gradient-to-r ${corBarra} h-full rounded-full transition-all duration-500 ease-out`}
+                          className={`${corBarra} h-2.5 rounded-full transition-all duration-500 shadow-sm`}
                           style={{ width: `${porcentagem}%` }}
                         ></div>
                       </div>
@@ -1007,12 +884,6 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               )}
             </div>
             
-            {/* Indicador de scroll quando expandido */}
-            {empresasExpandido && statsElogios?.porEmpresa && Object.keys(statsElogios.porEmpresa).length > 8 && (
-              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-400">Role para ver mais empresas</span>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -1041,19 +912,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 return totalColaboradores > 3 ? (
                   <button
                     onClick={() => setColaboradoresExpandido(!colaboradoresExpandido)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                   >
-                    {colaboradoresExpandido ? (
-                      <>
-                        <span>Recolher</span>
-                        <ChevronUp className="h-3 w-3" />
-                      </>
-                    ) : (
-                      <>
-                        <span>Ver todas</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </>
-                    )}
+                    {colaboradoresExpandido ? 'Recolher' : 'Expandir'}
+                    <ChevronUp className={`h-4 w-4 transition-transform ${colaboradoresExpandido ? '' : 'rotate-180'}`} />
                   </button>
                 ) : null;
               })()}
@@ -1127,7 +989,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               ];
 
               return (
-                <div className={`space-y-3 ${colaboradoresExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+                <div className={`space-y-3 ${colaboradoresExpandido ? 'max-h-64 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
                   {colaboradoresExibir.map(([nome, quantidade], index) => {
                     const posicao = index + 1;
                     const temMedalha = posicao <= 3;
@@ -1137,7 +999,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       <div 
                         key={nome} 
                         className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
-                        onClick={() => setItemSelecionado({
+                        onClick={() => handleSelecionarItem({
                           tipo: 'colaborador',
                           dados: nome
                         })}
@@ -1153,7 +1015,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase truncate">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase break-words">
                               {nome}
                             </h3>
                             <div className="flex items-center gap-2">
@@ -1178,25 +1040,6 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               );
             })()}
             
-            {/* Indicador de scroll quando expandido */}
-            {colaboradoresExpandido && (() => {
-              const elogiosAno = elogios?.filter(e => {
-                if (!e.data_resposta) return false;
-                const dataResposta = new Date(e.data_resposta);
-                return dataResposta.getFullYear() === anoSelecionado &&
-                       (e.status === 'compartilhado' || e.status === 'enviado');
-              }) || [];
-              const contagemPorPrestador: Record<string, number> = {};
-              elogiosAno.forEach(elogio => {
-                const prestador = elogio.pesquisa?.prestador || 'Sem nome';
-                contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
-              });
-              return Object.keys(contagemPorPrestador).length > 5;
-            })() && (
-              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-400">Role para ver mais colaboradores</span>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -1219,26 +1062,17 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 return todosElogios.length > 3 ? (
                   <button
                     onClick={() => setElogiosExpandido(!elogiosExpandido)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                   >
-                    {elogiosExpandido ? (
-                      <>
-                        <span>Recolher</span>
-                        <ChevronUp className="h-3 w-3" />
-                      </>
-                    ) : (
-                      <>
-                        <span>Ver todas</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </>
-                    )}
+                    {elogiosExpandido ? 'Recolher' : 'Expandir'}
+                    <ChevronUp className={`h-4 w-4 transition-transform ${elogiosExpandido ? '' : 'rotate-180'}`} />
                   </button>
                 ) : null;
               })()}
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`space-y-4 ${elogiosExpandido ? 'max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
+            <div className={`space-y-4 ${elogiosExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
               {(() => {
                 // Filtrar elogios válidos e ordenar por data_resposta
                 const todosElogiosRecentes = elogios
@@ -1254,7 +1088,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     return dataB - dataA;
                   }) || [];
 
-                // Mostrar 3 ou todos se expandido
+                // Mostrar todos, scroll controla visibilidade quando expandido
                 const elogiosRecentes = elogiosExpandido 
                   ? todosElogiosRecentes 
                   : todosElogiosRecentes.slice(0, 3);
@@ -1301,7 +1135,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     <div 
                       key={elogio.id} 
                       className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                      onClick={() => setItemSelecionado({
+                      onClick={() => handleSelecionarItem({
                         tipo: 'elogio',
                         dados: elogio
                       })}
@@ -1328,23 +1162,294 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               })()}
             </div>
             
-            {/* Indicador de scroll quando expandido */}
-            {elogiosExpandido && (() => {
-              const todosElogios = elogios?.filter(e => 
-                e.pesquisa?.cliente && 
-                e.pesquisa?.comentario_pesquisa && 
-                e.data_resposta &&
-                (e.status === 'compartilhado' || e.status === 'enviado')
-              ) || [];
-              return todosElogios.length > 6;
-            })() && (
-              <div className="text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-400">Role para ver mais elogios</span>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabela de Detalhes dos Elogios - sempre visível */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Heart className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-lg font-semibold">
+                Detalhes dos Elogios
+              </CardTitle>
+            </div>
+            {itemSelecionado && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelecionarItem(null)}
+                className="whitespace-nowrap hover:border-red-300"
+              >
+                <X className="h-4 w-4 mr-2 text-red-600" />
+                Limpar Filtro
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {elogiosDetalhados.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum elogio encontrado para o período selecionado.</p>
+            </div>
+          ) : (
+            <>
+              <div className="w-full overflow-x-auto">
+                <Table className="w-full text-xs sm:text-sm">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Empresa</TableHead>
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Resposta</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Colaborador</TableHead>
+                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Comentário</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {elogiosPaginados.map((elogio, index) => {
+                      const elogioId = elogio.id || `elogio-${index}`;
+                      const comentario = elogio.pesquisa?.comentario_pesquisa || '';
+                      const comentarioTruncado = comentario.length > 50
+                        ? comentario.substring(0, 50) + '...'
+                        : comentario;
+
+                      return (
+                        <TableRow key={elogioId} className="hover:bg-gray-50">
+                          <TableCell className="text-center py-3">
+                            {elogio.pesquisa?.nro_caso ? (
+                              <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                                )}
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
+                                  <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600" />
+                                )}
+                                <span>-</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <span className="font-medium text-xs sm:text-sm">
+                              {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm text-muted-foreground">
+                            {elogio.data_resposta ? new Date(elogio.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">{elogio.pesquisa?.cliente || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">{elogio.pesquisa?.prestador || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 hidden lg:table-cell max-w-[200px]">
+                            <TooltipProvider>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-gray-600 cursor-help line-clamp-2">
+                                    {comentarioTruncado || <span className="italic text-gray-400">Sem comentário</span>}
+                                  </span>
+                                </TooltipTrigger>
+                                {comentario && (
+                                  <TooltipContent className="max-w-md">
+                                    <p className="text-xs whitespace-pre-wrap">{comentario}</p>
+                                  </TooltipContent>
+                                )}
+                              </UITooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <Badge className={`text-xs ${
+                              elogio.status === 'enviado'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setElogioVisualizando(elogio);
+                                  setModalVisualizarAberto(true);
+                                }}
+                                className="h-8 w-8 p-0"
+                                title="Visualizar"
+                              >
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Paginação no padrão de Planos de Ação */}
+              {elogiosDetalhados.length > 0 && (
+                <div className="flex items-center justify-between px-2 py-4 border-t">
+                  {/* Lado esquerdo: Dropdown "Mostrar" */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                    <Select
+                      value={itensPorPagina.toString()}
+                      onValueChange={(value) => {
+                        setItensPorPagina(Number(value));
+                        setPaginaAtual(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Centro: Navegação de páginas */}
+                  {totalPaginas > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                        disabled={paginaAtual === 1}
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                        Página {paginaAtual} de {totalPaginas}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                        disabled={paginaAtual === totalPaginas}
+                        aria-label="Próxima página"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Lado direito: Contador de registros */}
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {indiceInicio + 1}-{Math.min(indiceFim, elogiosDetalhados.length)} de {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? 'elogio' : 'elogios'}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Visualização de Elogio */}
+      <Dialog open={modalVisualizarAberto} onOpenChange={setModalVisualizarAberto}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-sonda-blue">
+              Detalhes do Elogio
+            </DialogTitle>
+          </DialogHeader>
+          {elogioVisualizando && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Chamado</p>
+                  <div className="flex items-center gap-2">
+                    {elogioVisualizando.pesquisa?.origem === 'sql_server' ? (
+                      <Database className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <FileEdit className="h-4 w-4 text-gray-600" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {elogioVisualizando.pesquisa?.tipo_caso && `${elogioVisualizando.pesquisa.tipo_caso} `}
+                      {elogioVisualizando.pesquisa?.nro_caso || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Status</p>
+                  <Badge className={`text-xs ${
+                    elogioVisualizando.status === 'enviado'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {elogioVisualizando.status === 'enviado' ? 'Enviado' : 'Validado'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Empresa</p>
+                  <p className="text-sm font-medium">{obterNomeAbreviadoEmpresa(elogioVisualizando.pesquisa?.empresa || 'N/A')}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Data Resposta</p>
+                  <p className="text-sm">{elogioVisualizando.data_resposta ? new Date(elogioVisualizando.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Cliente</p>
+                  <p className="text-sm">{elogioVisualizando.pesquisa?.cliente || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Colaborador</p>
+                  <p className="text-sm">{elogioVisualizando.pesquisa?.prestador || '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Categoria</p>
+                  <p className="text-sm">{elogioVisualizando.pesquisa?.categoria || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Resposta</p>
+                  <p className="text-sm">{elogioVisualizando.pesquisa?.resposta || '-'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-gray-500">Comentário</p>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizando.pesquisa?.comentario_pesquisa || 'Sem comentário'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -3267,18 +3372,6 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     mes: mesSelecionado === 'todos' ? undefined : Number(mesSelecionado)
   });
 
-  // Se estiver carregando, mostrar loading
-  if (loadingPlanos) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando planos de ação...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Usar dados das estatísticas ou valores padrão
   const totalPlanos = estatisticasPlanos?.total || 0;
   const abertos = estatisticasPlanos?.abertos || 0;
@@ -3467,6 +3560,18 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       }))
       .sort((a, b) => b.total - a.total);
   }, [planosAcaoCompletos, deParaCategoriasDash]);
+
+  // Se estiver carregando, mostrar loading
+  if (loadingPlanos) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando planos de ação...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Função para limpar filtro de prioridade
   const limparFiltroPrioridade = () => {
