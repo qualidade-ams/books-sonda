@@ -289,6 +289,14 @@ function LancarPesquisas() {
                 enviados: 0,
                 sql_server: 0,
                 manuais: 0,
+                sem_resposta: 0,
+                pendentes_lancamento: 0,
+                respondidos: 0,
+                muito_satisfeito: 0,
+                satisfeito: 0,
+                neutro: 0,
+                insatisfeito: 0,
+                muito_insatisfeito: 0,
                 por_empresa: {},
                 por_categoria: {},
                 por_mes: {}
@@ -552,7 +560,7 @@ function LancarPesquisas() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {pesquisaEditando ? 'Editar Pesquisa' : 'Novo Pesquisa'}
+              {pesquisaEditando ? 'Editar Pesquisa' : 'Nova Pesquisa'}
             </DialogTitle>
           </DialogHeader>
           <PesquisaForm

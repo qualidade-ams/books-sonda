@@ -1151,7 +1151,11 @@ function VisualizarPesquisas() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Número do Chamado</label>
                       <Input 
                         value={dadosEdicao.nro_caso}
-                        onChange={(e) => setDadosEdicao(prev => ({ ...prev, nro_caso: e.target.value }))}
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          const valor = e.target.value.replace(/\D/g, '');
+                          setDadosEdicao(prev => ({ ...prev, nro_caso: valor }));
+                        }}
                         className="focus:ring-sonda-blue focus:border-sonda-blue font-mono"
                         placeholder="Número do chamado"
                       />
