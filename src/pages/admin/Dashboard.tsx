@@ -221,7 +221,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     // Base: todos os elogios do ano com status válido
     const elogiosFiltrados = elogios?.filter(e => {
       if (!e.data_resposta) return false;
-      const dataResposta = new Date(e.data_resposta);
+      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
       return dataResposta.getFullYear() === anoSelecionado &&
              (e.status === 'compartilhado' || e.status === 'enviado');
     }) || [];
@@ -372,7 +372,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     // Calcular colaborador com mais elogios no período selecionado
                     let elogiosFiltrados = elogios?.filter(e => {
                       if (!e.data_resposta) return false;
-                      const dataResposta = new Date(e.data_resposta);
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
                       
                       // Filtrar por ano
                       if (dataResposta.getFullYear() !== anoSelecionado) return false;
@@ -2718,12 +2718,23 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
     return nomeEmpresa;
   };
 
-  // Filtrar elogios do ano
-  const elogiosFiltrados = elogios?.filter(e => {
+  // Total do ano (SEMPRE sem filtro de mês - para card Acumulado Ano)
+  const elogiosAnoCompletoVol = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     return dataResposta.getFullYear() === anoSelecionado &&
            (e.status === 'compartilhado' || e.status === 'enviado');
+  }) || [];
+
+  // Filtrar elogios do ano (e mês se selecionado)
+  const elogiosFiltrados = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+    if (dataResposta.getFullYear() !== anoSelecionado) return false;
+    if (mesSelecionado !== 'todos') {
+      if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+    }
+    return e.status === 'compartilhado' || e.status === 'enviado';
   }) || [];
 
   // Aplicar filtros múltiplos
@@ -2767,7 +2778,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
       elogiosFiltrados.forEach(elogio => {
         const prestador = elogio.pesquisa?.prestador || '';
         if (colaboradoresSelecionados.includes(prestador)) {
-          const dataResposta = new Date(elogio.data_resposta!);
+          const dataResposta = new Date(elogio.data_resposta! + 'T00:00:00');
           const mes = dataResposta.getMonth() + 1;
           dadosPorColaborador[prestador][mes] = (dadosPorColaborador[prestador][mes] || 0) + 1;
         }
@@ -2794,7 +2805,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
         const empresa = elogio.pesquisa?.empresa || '';
         const nomeAbreviado = obterNomeAbreviadoEmpresa(empresa);
         if (empresasSelecionadas.includes(nomeAbreviado)) {
-          const dataResposta = new Date(elogio.data_resposta!);
+          const dataResposta = new Date(elogio.data_resposta! + 'T00:00:00');
           const mes = dataResposta.getMonth() + 1;
           dadosPorEmpresa[nomeAbreviado][mes] = (dadosPorEmpresa[nomeAbreviado][mes] || 0) + 1;
         }
@@ -2813,7 +2824,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
     const contagemPorMes: Record<number, number> = {};
     
     elogiosFiltradosComFiltro.forEach(elogio => {
-      const dataResposta = new Date(elogio.data_resposta!);
+      const dataResposta = new Date(elogio.data_resposta! + 'T00:00:00');
       const mes = dataResposta.getMonth() + 1;
       contagemPorMes[mes] = (contagemPorMes[mes] || 0) + 1;
     });
@@ -2825,104 +2836,58 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
   }, [elogiosFiltrados, colaboradoresSelecionados, empresasSelecionadas, tipoFiltro]);
 
   // Calcular estatísticas
-  const mesAtual = new Date().getMonth() + 1;
+  // Quando mês específico selecionado, usar esse mês; senão, encontrar último mês com dados
+  const mesesComDadosVol = new Set<number>();
+  elogiosFiltradosComFiltro.forEach(e => {
+    if (e.data_resposta) {
+      const d = new Date(e.data_resposta + 'T00:00:00');
+      if (d.getFullYear() === anoSelecionado) {
+        mesesComDadosVol.add(d.getMonth() + 1);
+      }
+    }
+  });
+  const mesesOrdenadosVol = Array.from(mesesComDadosVol).sort((a, b) => b - a);
+  
+  // Se mês específico selecionado, usar ele; senão, último mês com dados
+  const mesUltimoComDados = mesSelecionado !== 'todos' ? mesSelecionado : (mesesOrdenadosVol[0] || new Date().getMonth() + 1);
+  
+  // Para crescimento: comparar com mês anterior
+  let mesPenultimoComDados: number;
+  if (mesSelecionado !== 'todos') {
+    mesPenultimoComDados = mesSelecionado === 1 ? 12 : mesSelecionado - 1;
+  } else {
+    mesPenultimoComDados = mesesOrdenadosVol[1] || 0;
+  }
+
   const elogiosMesAtual = elogiosFiltradosComFiltro.filter(e => {
-    const dataResposta = new Date(e.data_resposta!);
-    return dataResposta.getMonth() + 1 === mesAtual;
+    const dataResposta = new Date(e.data_resposta! + 'T00:00:00');
+    return dataResposta.getMonth() + 1 === mesUltimoComDados;
   });
 
-  const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1;
-  const anoAnterior = mesAtual === 1 ? anoSelecionado - 1 : anoSelecionado;
+  const anoParaMesAnterior = (mesSelecionado !== 'todos' && mesSelecionado === 1) ? anoSelecionado - 1 : anoSelecionado;
   const elogiosMesAnterior = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
-    return dataResposta.getMonth() + 1 === mesAnterior && 
-           dataResposta.getFullYear() === anoAnterior &&
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+    return dataResposta.getMonth() + 1 === mesPenultimoComDados && 
+           dataResposta.getFullYear() === anoParaMesAnterior &&
            (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
 
   const crescimento = elogiosMesAnterior.length > 0 
     ? ((elogiosMesAtual.length - elogiosMesAnterior.length) / elogiosMesAnterior.length) * 100 
-    : 0;
+    : elogiosMesAtual.length > 0 ? 100 : 0;
+
+  // Nome do mês para exibição
+  const nomeMesUltimo = new Date(2000, mesUltimoComDados - 1).toLocaleDateString('pt-BR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase());
 
   return (
     <div className="space-y-6">
-      {/* Filtros */}
-      <Card className="bg-white dark:bg-gray-800 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Linha com botões de filtro e seleção múltipla */}
-            <div className="flex flex-col lg:flex-row gap-4 items-start">
-              {/* Botões de tipo de filtro */}
-              <div className="flex-shrink-0">
-                <Label className="text-sm font-medium mb-2 block">Filtrar por:</Label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={tipoFiltro === 'colaborador' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setTipoFiltro('colaborador');
-                      setColaboradoresSelecionados([]);
-                      setEmpresasSelecionadas([]);
-                    }}
-                  >
-                    Colaborador
-                  </Button>
-                  <Button
-                    variant={tipoFiltro === 'empresa' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setTipoFiltro('empresa');
-                      setColaboradoresSelecionados([]);
-                      setEmpresasSelecionadas([]);
-                    }}
-                  >
-                    Empresa
-                  </Button>
-                </div>
-              </div>
-
-              {/* Seleção múltipla de colaboradores */}
-              {tipoFiltro === 'colaborador' && (
-                <div className="flex-1 min-w-0">
-                  <Label className="text-sm font-medium mb-2 block">Colaboradores para comparação:</Label>
-                  <MultiSelect
-                    options={colaboradoresUnicos}
-                    selected={colaboradoresSelecionados}
-                    onSelectionChange={setColaboradoresSelecionados}
-                    placeholder="Selecione colaboradores para comparar..."
-                    searchPlaceholder="Buscar colaborador..."
-                  />
-                </div>
-              )}
-
-              {/* Seleção múltipla de empresas */}
-              {tipoFiltro === 'empresa' && (
-                <div className="flex-1 min-w-0">
-                  <Label className="text-sm font-medium mb-2 block">Empresas para comparação:</Label>
-                  <MultiSelect
-                    options={empresasUnicas}
-                    selected={empresasSelecionadas}
-                    onSelectionChange={setEmpresasSelecionadas}
-                    placeholder="Selecione empresas para comparar..."
-                    searchPlaceholder="Buscar empresa..."
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios no Mês</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios em {nomeMesUltimo}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosMesAtual.length}</p>
                 <span className={`text-xs font-medium ${crescimento >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -2940,7 +2905,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Acumulado Ano</p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosFiltradosComFiltro.length}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosAnoCompletoVol.length}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <Calendar className="h-4 w-4 text-purple-600" />
@@ -2972,6 +2937,69 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           </CardHeader>
         </Card>
       </div>
+
+      {/* Filtros */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+              <div className="flex-shrink-0">
+                <Label className="text-sm font-medium mb-2 block">Filtrar por:</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={tipoFiltro === 'colaborador' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setTipoFiltro('colaborador');
+                      setColaboradoresSelecionados([]);
+                      setEmpresasSelecionadas([]);
+                    }}
+                  >
+                    Colaborador
+                  </Button>
+                  <Button
+                    variant={tipoFiltro === 'empresa' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setTipoFiltro('empresa');
+                      setColaboradoresSelecionados([]);
+                      setEmpresasSelecionadas([]);
+                    }}
+                  >
+                    Empresa
+                  </Button>
+                </div>
+              </div>
+
+              {tipoFiltro === 'colaborador' && (
+                <div className="flex-1 min-w-0">
+                  <Label className="text-sm font-medium mb-2 block">Colaboradores para comparação:</Label>
+                  <MultiSelect
+                    options={colaboradoresUnicos}
+                    selected={colaboradoresSelecionados}
+                    onSelectionChange={setColaboradoresSelecionados}
+                    placeholder="Selecione colaboradores para comparar..."
+                    searchPlaceholder="Buscar colaborador..."
+                  />
+                </div>
+              )}
+
+              {tipoFiltro === 'empresa' && (
+                <div className="flex-1 min-w-0">
+                  <Label className="text-sm font-medium mb-2 block">Empresas para comparação:</Label>
+                  <MultiSelect
+                    options={empresasUnicas}
+                    selected={empresasSelecionadas}
+                    onSelectionChange={setEmpresasSelecionadas}
+                    placeholder="Selecione empresas para comparar..."
+                    searchPlaceholder="Buscar empresa..."
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Gráfico de Volume por Mês */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -3189,7 +3217,7 @@ const MotivosElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios 
 }) => {
   const elogiosFiltrados = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     return dataResposta.getFullYear() === anoSelecionado &&
            (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
@@ -3248,7 +3276,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
   // Dados dos elogios filtrados (apenas para comparação)
   const elogiosFiltrados = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     return dataResposta.getFullYear() === anoSelecionado &&
            (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
@@ -5020,7 +5048,7 @@ const Dashboard = () => {
       dados = dados.filter(e => {
         // Usar APENAS data_resposta - excluir elogios sem data_resposta
         if (!e.data_resposta) return false;
-        const ano = new Date(e.data_resposta).getFullYear();
+        const ano = new Date(e.data_resposta + 'T00:00:00').getFullYear();
         return ano === anoSelecionado;
       });
     }
@@ -5029,7 +5057,7 @@ const Dashboard = () => {
     if (mesSelecionado !== 'todos') {
       dados = dados.filter(e => {
         if (!e.data_resposta) return false;
-        const mes = new Date(e.data_resposta).getMonth() + 1; // getMonth() retorna 0-11, então +1
+        const mes = new Date(e.data_resposta + 'T00:00:00').getMonth() + 1; // getMonth() retorna 0-11, então +1
         return mes === mesSelecionado;
       });
     }
@@ -5076,7 +5104,7 @@ const Dashboard = () => {
       // Usar APENAS data_resposta - pular elogios sem data_resposta
       if (!e.data_resposta) return acc;
       
-      const data = new Date(e.data_resposta);
+      const data = new Date(e.data_resposta + 'T00:00:00');
       const mes = `${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
       if (!acc[mes]) {
         acc[mes] = { 
