@@ -30,12 +30,11 @@ import { EmptyState } from '@/components/admin/dashboard/EmptyState';
 import { EmpresasTab } from '@/components/admin/dashboard/EmpresasTab';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
 import { useElogios, useEstatisticasElogios } from '@/hooks/useElogios';
-import { useEstatisticasPesquisasLocal, type EstatisticasPesquisas } from '@/hooks/useEstatisticasPesquisasLocal';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { usePlanosAcao, useEstatisticasPlanosAcao } from '@/hooks/usePlanosAcao';
-import { usePesquisasSatisfacao, useTodasPesquisasSatisfacao } from '@/hooks/usePesquisasSatisfacao';
+import { usePesquisasSatisfacao, useTodasPesquisasSatisfacao, useTodasEstatisticasPesquisas } from '@/hooks/usePesquisasSatisfacao';
 import { PlanosAcaoTable, PlanoAcaoDetalhes } from '@/components/admin/plano-acao';
 import type { PlanoAcaoCompleto } from '@/types/planoAcao';
 import {
@@ -3259,18 +3258,23 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
-  // Hook para buscar estatísticas de pesquisas da tabela local (sempre todos os grupos)
-  const { data: estatisticasPesquisas, isLoading: loadingEstatisticas, error } = useEstatisticasPesquisasLocal(
-    anoSelecionado, 
-    'todos'
+  // Hook para buscar estatísticas de pesquisas (filtra por ano/mês da data_fechamento)
+  const filtrosPesquisas = {
+    ano_fechamento: anoSelecionado,
+    ...(mesSelecionado !== 'todos' && { mes_fechamento: mesSelecionado })
+  };
+  const { data: estatisticasPesquisas, isLoading: loadingEstatisticas, error } = useTodasEstatisticasPesquisas(
+    filtrosPesquisas
   );
   
-  // Garantir que temos dados válidos com cast explícito
-  const stats: EstatisticasPesquisas = (estatisticasPesquisas as EstatisticasPesquisas) ?? {
-    total_enviadas: 0,
-    total_respondidas: 0,
-    total_nao_respondidas: 0,
-    taxa_resposta: 0
+  // Mapear campos para o formato usado nos cards
+  const stats = {
+    total_enviadas: estatisticasPesquisas?.total ?? 0,
+    total_respondidas: estatisticasPesquisas?.respondidos ?? 0,
+    total_nao_respondidas: (estatisticasPesquisas?.total ?? 0) - (estatisticasPesquisas?.respondidos ?? 0),
+    taxa_resposta: estatisticasPesquisas?.total 
+      ? Math.round(((estatisticasPesquisas?.respondidos ?? 0) / estatisticasPesquisas.total) * 100)
+      : 0
   };
   
   // Dados dos elogios filtrados (apenas para comparação)
@@ -3288,8 +3292,8 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Enviadas</p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Pesquisas Enviadas</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_enviadas}
               </p>
             </div>
@@ -3302,8 +3306,8 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pesquisas Respondidas</p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
+              <p className="text-xs font-medium text-green-600 dark:text-green-400">Pesquisas Respondidas</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_respondidas}
               </p>
             </div>
@@ -3316,13 +3320,13 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Não Respondidas</p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
+              <p className="text-xs font-medium text-red-600 dark:text-red-400">Não Respondidas</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_nao_respondidas}
               </p>
             </div>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-              <Clock className="h-4 w-4 text-orange-600" />
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <Clock className="h-4 w-4 text-red-600" />
             </div>
           </CardHeader>
         </Card>
@@ -3354,7 +3358,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
       </div>
       
       {/* Gráfico de Comparação */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Enviadas vs Respondidas</CardTitle>
@@ -3419,7 +3423,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                       />
                       <Bar 
                         dataKey="nao_respondidas" 
-                        fill="#f59e0b" 
+                        fill="#ef4444" 
                         name="nao_respondidas" 
                         radius={[4, 4, 0, 0]}
                         maxBarSize={60}
@@ -3440,7 +3444,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                       <span className="text-gray-600">Respondidas</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                       <span className="text-gray-600">Não Respondidas</span>
                     </div>
                   </div>
@@ -3451,54 +3455,6 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                 Nenhum dado disponível
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Dados Processados no Sistema</CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Elogios já sincronizados e processados no sistema
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Elogios Processados
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Dados sincronizados da ferramenta ITSM
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
-                    {elogiosFiltrados.length}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    no ano {anoSelecionado}
-                  </p>
-                </div>
-              </div>
-              
-              {!loadingEstatisticas && (
-                <div className="text-center p-4 border-t">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Cobertura de Sincronização:</strong>
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {stats.total_respondidas > 0 
-                      ? ((elogiosFiltrados.length / stats.total_respondidas) * 100).toFixed(1)
-                      : '0'
-                    }%
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    dos elogios respondidos foram sincronizados
-                  </p>
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>
