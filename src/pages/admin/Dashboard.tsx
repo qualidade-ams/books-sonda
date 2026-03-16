@@ -226,25 +226,40 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
              (e.status === 'compartilhado' || e.status === 'enviado');
     }) || [];
 
-    // Se nenhum item selecionado, retorna todos
-    if (!itemSelecionado) return elogiosFiltrados;
+    let resultado: typeof elogiosFiltrados;
 
-    switch (itemSelecionado.tipo) {
-      case 'empresa':
-        return elogiosFiltrados.filter(e => 
-          obterNomeAbreviadoEmpresa(e.pesquisa?.empresa || '') === itemSelecionado.dados
-        );
-      case 'colaborador':
-        return elogiosFiltrados.filter(e => 
-          e.pesquisa?.prestador === itemSelecionado.dados
-        );
-      case 'elogio':
-        return [itemSelecionado.dados];
-      case 'volume':
-        return elogiosFiltrados;
-      default:
-        return elogiosFiltrados;
+    // Se nenhum item selecionado, retorna todos
+    if (!itemSelecionado) {
+      resultado = elogiosFiltrados;
+    } else {
+      switch (itemSelecionado.tipo) {
+        case 'empresa':
+          resultado = elogiosFiltrados.filter(e => 
+            obterNomeAbreviadoEmpresa(e.pesquisa?.empresa || '') === itemSelecionado.dados
+          );
+          break;
+        case 'colaborador':
+          resultado = elogiosFiltrados.filter(e => 
+            e.pesquisa?.prestador === itemSelecionado.dados
+          );
+          break;
+        case 'elogio':
+          resultado = [itemSelecionado.dados];
+          break;
+        case 'volume':
+          resultado = elogiosFiltrados;
+          break;
+        default:
+          resultado = elogiosFiltrados;
+      }
     }
+
+    // Ordenar por data_resposta do mais recente para o mais antigo
+    return resultado.sort((a, b) => {
+      const dataA = a.data_resposta ? new Date(a.data_resposta + 'T00:00:00').getTime() : 0;
+      const dataB = b.data_resposta ? new Date(b.data_resposta + 'T00:00:00').getTime() : 0;
+      return dataB - dataA;
+    });
   };
 
   const elogiosDetalhados = obterElogiosFiltrados();
@@ -336,7 +351,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
-                  {statsElogios?.satisfacaoMedia ? `${(Math.floor(statsElogios.satisfacaoMedia * 10) / 10).toFixed(1)}/5` : 'N/A'}
+                  {statsElogios?.satisfacaoMedia ? `${Number((Math.floor(statsElogios.satisfacaoMedia * 10) / 10).toFixed(1))}/5` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -425,32 +440,62 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     // Função para obter grupo da categoria usando de_para_categoria
                     const obterGrupoDaCategoria = (categoria: string): string => {
                       if (!categoria) return 'OUTROS';
-                      
-                      // Busca exata na tabela de_para_categoria
                       let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
-                      
-                      // Busca parcial se não encontrar exata
                       if (!encontrado) {
                         encontrado = deParaCategorias.find(
                           dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
                         );
                       }
-                      
                       return encontrado?.grupo || 'OUTROS';
                     };
 
-                    // Calcular crescimento por grupo baseado no filtro selecionado
+                    // Extrair parte ANTES do " - " (ex: "COMEX - Importação" → "COMEX")
+                    const extrairGrupoPrincipal = (grupo: string): string => {
+                      const partes = grupo.split(' - ');
+                      return partes[0].trim();
+                    };
+
+                    // Elogios válidos do ano selecionado
+                    const elogiosValidos = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+                      return dataResposta.getFullYear() === anoSelecionado &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
+
+                    // Calcular períodos de comparação
                     let mesComparacao: number;
                     let anoComparacao: number;
                     let mesAnterior: number;
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      const mesVigente = new Date().getMonth() + 1;
-                      mesComparacao = mesVigente;
-                      anoComparacao = anoSelecionado;
-                      mesAnterior = mesVigente;
-                      anoAnterior = anoSelecionado - 1;
+                      // Encontrar o último mês com dados no ano selecionado
+                      const mesesComDados = new Set<number>();
+                      elogiosValidos.forEach(e => {
+                        const d = new Date(e.data_resposta + 'T00:00:00');
+                        mesesComDados.add(d.getMonth() + 1);
+                      });
+                      const mesesOrdenados = Array.from(mesesComDados).sort((a, b) => b - a);
+                      
+                      if (mesesOrdenados.length >= 2) {
+                        // Comparar último mês com dados vs penúltimo mês com dados
+                        mesComparacao = mesesOrdenados[0];
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = mesesOrdenados[1];
+                        anoAnterior = anoSelecionado;
+                      } else if (mesesOrdenados.length === 1) {
+                        // Só tem 1 mês com dados, comparar com mesmo mês do ano anterior
+                        mesComparacao = mesesOrdenados[0];
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = mesesOrdenados[0];
+                        anoAnterior = anoSelecionado - 1;
+                      } else {
+                        mesComparacao = 0;
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = 0;
+                        anoAnterior = anoSelecionado;
+                      }
                     } else {
                       mesComparacao = mesSelecionado as number;
                       anoComparacao = anoSelecionado;
@@ -458,39 +503,43 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
                     }
                     
-                    // Pesquisas do período atual (da tabela pesquisas_satisfacao)
-                    const pesquisasPeriodoAtual = pesquisasCrescimento.filter(p => {
-                      if (!p.data_resposta) return false;
-                      const dataResposta = new Date(p.data_resposta);
+                    // Elogios do período atual (tabela elogios com join pesquisas_satisfacao)
+                    const elogiosPeriodoAtual = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
                       return dataResposta.getMonth() + 1 === mesComparacao && 
-                             dataResposta.getFullYear() === anoComparacao;
-                    });
+                             dataResposta.getFullYear() === anoComparacao &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
                     
-                    // Pesquisas do período anterior
-                    const pesquisasPeriodoAnterior = pesquisasCrescimento.filter(p => {
-                      if (!p.data_resposta) return false;
-                      const dataResposta = new Date(p.data_resposta);
+                    // Elogios do período anterior
+                    const elogiosPeriodoAnterior = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
                       return dataResposta.getMonth() + 1 === mesAnterior && 
-                             dataResposta.getFullYear() === anoAnterior;
-                    });
+                             dataResposta.getFullYear() === anoAnterior &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
                     
-                    // Contar por grupo usando de_para_categoria
+                    // Contar por GRUPO PRINCIPAL (parte antes do " - ")
                     const contagemAtual: Record<string, number> = {};
                     const contagemAnterior: Record<string, number> = {};
                     
-                    pesquisasPeriodoAtual.forEach(pesquisa => {
-                      const categoria = pesquisa.categoria || '';
-                      const grupo = obterGrupoDaCategoria(categoria);
-                      contagemAtual[grupo] = (contagemAtual[grupo] || 0) + 1;
+                    elogiosPeriodoAtual.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const grupoCompleto = obterGrupoDaCategoria(categoria);
+                      const grupoPrincipal = extrairGrupoPrincipal(grupoCompleto);
+                      contagemAtual[grupoPrincipal] = (contagemAtual[grupoPrincipal] || 0) + 1;
                     });
                     
-                    pesquisasPeriodoAnterior.forEach(pesquisa => {
-                      const categoria = pesquisa.categoria || '';
-                      const grupo = obterGrupoDaCategoria(categoria);
-                      contagemAnterior[grupo] = (contagemAnterior[grupo] || 0) + 1;
+                    elogiosPeriodoAnterior.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
+                      const grupoCompleto = obterGrupoDaCategoria(categoria);
+                      const grupoPrincipal = extrairGrupoPrincipal(grupoCompleto);
+                      contagemAnterior[grupoPrincipal] = (contagemAnterior[grupoPrincipal] || 0) + 1;
                     });
                     
-                    // Calcular crescimento por grupo - separar reais vs novos
+                    // Calcular crescimento - separar reais vs novos
                     const crescimentosReais: { grupo: string; percentual: number; qtdAtual: number }[] = [];
                     const crescimentosNovos: { grupo: string; percentual: number; qtdAtual: number }[] = [];
                     
@@ -504,57 +553,29 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           crescimentosReais.push({ grupo, percentual: crescimento, qtdAtual: atual });
                         }
                       } else if (atual > 0) {
-                        // Grupo novo (não existia no período anterior)
                         crescimentosNovos.push({ grupo, percentual: 100, qtdAtual: atual });
                       }
                     });
                     
-                    // Priorizar crescimentos reais; se não houver, usar novos
                     let crescimentosFinais: { grupo: string; percentual: number; qtdAtual: number }[];
                     let isNovo = false;
                     
                     if (crescimentosReais.length > 0) {
-                      // Ordenar por percentual decrescente, desempate por quantidade atual
                       crescimentosReais.sort((a, b) => b.percentual - a.percentual || b.qtdAtual - a.qtdAtual);
                       crescimentosFinais = crescimentosReais;
                     } else {
-                      // Só grupos novos - ordenar por quantidade atual decrescente
                       crescimentosNovos.sort((a, b) => b.qtdAtual - a.qtdAtual);
                       crescimentosFinais = crescimentosNovos;
                       isNovo = true;
                     }
                     
-                    // Pegar o maior e todos que empatam no mesmo percentual E quantidade
                     let gruposComMaiorCrescimento: typeof crescimentosFinais = [];
                     if (crescimentosFinais.length > 0) {
                       const melhor = crescimentosFinais[0];
-                      if (isNovo) {
-                        // Para novos, empate por quantidade atual
-                        gruposComMaiorCrescimento = crescimentosFinais.filter(
-                          c => c.qtdAtual === melhor.qtdAtual
-                        );
-                      } else {
-                        // Para reais, empate por percentual
-                        gruposComMaiorCrescimento = crescimentosFinais.filter(
-                          c => c.percentual === melhor.percentual
-                        );
-                      }
+                      gruposComMaiorCrescimento = crescimentosFinais.filter(
+                        c => isNovo ? c.qtdAtual === melhor.qtdAtual : c.percentual === melhor.percentual
+                      );
                     }
-
-                    console.log('🔍 DEBUG Crescimento Grupo (pesquisas_satisfacao):', {
-                      mesSelecionado,
-                      anoSelecionado,
-                      mesComparacao,
-                      mesAnterior,
-                      anoAnterior,
-                      pesquisasAtual: pesquisasPeriodoAtual.length,
-                      pesquisasAnterior: pesquisasPeriodoAnterior.length,
-                      contagemAtual,
-                      contagemAnterior,
-                      crescimentosReais,
-                      crescimentosNovos,
-                      gruposComMaiorCrescimento
-                    });
                     
                     if (gruposComMaiorCrescimento.length === 0) {
                       return (
@@ -571,19 +592,15 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       );
                     }
                     
-                    const sinal = '+';
-                    // Extrair apenas a parte ANTES do " - " do grupo (ex: "COMEX - Importação" → "COMEX")
-                    const extrairGrupoNome = (grupo: string): string => {
-                      const partes = grupo.split(' - ');
-                      return partes[0].trim();
-                    };
-                    // Agrupar por nome do grupo (parte antes do "-") e pegar nomes únicos
-                    const nomesGrupos = [...new Set(gruposComMaiorCrescimento.map(g => extrairGrupoNome(g.grupo)))];
-                    const gruposFormatados = nomesGrupos.join(', ');
+                    const gruposFormatados = gruposComMaiorCrescimento.map(g => g.grupo).join(', ');
                     const melhor = gruposComMaiorCrescimento[0];
+                    const nomesMeses = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    const periodoDesc = anoComparacao === anoAnterior 
+                      ? `${nomesMeses[mesAnterior]}→${nomesMeses[mesComparacao]}`
+                      : `${nomesMeses[mesAnterior]}/${anoAnterior}→${nomesMeses[mesComparacao]}/${anoComparacao}`;
                     const descricao = isNovo
-                      ? `Novo (${melhor.qtdAtual} pesquisa${melhor.qtdAtual > 1 ? 's' : ''} no período)`
-                      : `${sinal}${melhor.percentual.toFixed(0)}% vs período anterior`;
+                      ? `Novo (${melhor.qtdAtual} elogio${melhor.qtdAtual > 1 ? 's' : ''} no período)`
+                      : `+${melhor.percentual.toFixed(0)}% (${periodoDesc})`;
                     
                     return (
                       <>
@@ -612,37 +629,60 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     // Função para obter grupo da categoria usando de_para_categoria
                     const obterGrupoDaCategoriaModulo = (categoria: string): string => {
                       if (!categoria) return 'OUTROS';
-                      
                       let encontrado = deParaCategorias.find(dp => dp.categoria === categoria);
-                      
                       if (!encontrado) {
                         encontrado = deParaCategorias.find(
                           dp => categoria.includes(dp.categoria) || dp.categoria.includes(categoria)
                         );
                       }
-                      
                       return encontrado?.grupo || 'OUTROS';
                     };
                     
-                    // Função para extrair módulo do grupo (parte DEPOIS do " - ")
+                    // Extrair parte DEPOIS do " - " (ex: "COMEX - Importação" → "Importação")
                     const extrairModuloDoGrupo = (grupo: string): string => {
                       const partes = grupo.split(' - ');
-                      // Se não tem " - ", retorna o grupo inteiro
                       return partes.length > 1 ? partes.slice(1).join(' - ').trim() : grupo;
                     };
 
-                    // Calcular crescimento por módulo baseado no filtro selecionado
+                    // Elogios válidos do ano selecionado
+                    const elogiosValidosMod = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+                      return dataResposta.getFullYear() === anoSelecionado &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
+
+                    // Calcular períodos de comparação
                     let mesComparacao: number;
                     let anoComparacao: number;
                     let mesAnterior: number;
                     let anoAnterior: number;
 
                     if (mesSelecionado === 'todos') {
-                      const mesVigente = new Date().getMonth() + 1;
-                      mesComparacao = mesVigente;
-                      anoComparacao = anoSelecionado;
-                      mesAnterior = mesVigente;
-                      anoAnterior = anoSelecionado - 1;
+                      // Encontrar o último mês com dados no ano selecionado
+                      const mesesComDadosMod = new Set<number>();
+                      elogiosValidosMod.forEach(e => {
+                        const d = new Date(e.data_resposta + 'T00:00:00');
+                        mesesComDadosMod.add(d.getMonth() + 1);
+                      });
+                      const mesesOrdenadosMod = Array.from(mesesComDadosMod).sort((a, b) => b - a);
+                      
+                      if (mesesOrdenadosMod.length >= 2) {
+                        mesComparacao = mesesOrdenadosMod[0];
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = mesesOrdenadosMod[1];
+                        anoAnterior = anoSelecionado;
+                      } else if (mesesOrdenadosMod.length === 1) {
+                        mesComparacao = mesesOrdenadosMod[0];
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = mesesOrdenadosMod[0];
+                        anoAnterior = anoSelecionado - 1;
+                      } else {
+                        mesComparacao = 0;
+                        anoComparacao = anoSelecionado;
+                        mesAnterior = 0;
+                        anoAnterior = anoSelecionado;
+                      }
                     } else {
                       mesComparacao = mesSelecionado as number;
                       anoComparacao = anoSelecionado;
@@ -650,28 +690,30 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       anoAnterior = mesComparacao === 1 ? anoSelecionado - 1 : anoSelecionado;
                     }
                     
-                    // Pesquisas do período atual (da tabela pesquisas_satisfacao)
-                    const pesquisasPeriodoAtualMod = pesquisasCrescimento.filter(p => {
-                      if (!p.data_resposta) return false;
-                      const dataResposta = new Date(p.data_resposta);
+                    // Elogios do período atual (tabela elogios com join pesquisas_satisfacao)
+                    const elogiosPeriodoAtualMod = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
                       return dataResposta.getMonth() + 1 === mesComparacao && 
-                             dataResposta.getFullYear() === anoComparacao;
-                    });
+                             dataResposta.getFullYear() === anoComparacao &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
                     
-                    // Pesquisas do período anterior
-                    const pesquisasPeriodoAnteriorMod = pesquisasCrescimento.filter(p => {
-                      if (!p.data_resposta) return false;
-                      const dataResposta = new Date(p.data_resposta);
+                    // Elogios do período anterior
+                    const elogiosPeriodoAnteriorMod = elogios?.filter(e => {
+                      if (!e.data_resposta) return false;
+                      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
                       return dataResposta.getMonth() + 1 === mesAnterior && 
-                             dataResposta.getFullYear() === anoAnterior;
-                    });
+                             dataResposta.getFullYear() === anoAnterior &&
+                             (e.status === 'compartilhado' || e.status === 'enviado');
+                    }) || [];
                     
-                    // Contar por módulo (parte depois do " - " do grupo)
+                    // Contar por MÓDULO (parte depois do " - ")
                     const contagemAtualMod: Record<string, number> = {};
                     const contagemAnteriorMod: Record<string, number> = {};
                     
-                    pesquisasPeriodoAtualMod.forEach(pesquisa => {
-                      const categoria = pesquisa.categoria || '';
+                    elogiosPeriodoAtualMod.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
                       const grupo = obterGrupoDaCategoriaModulo(categoria);
                       const modulo = extrairModuloDoGrupo(grupo);
                       if (modulo) {
@@ -679,8 +721,8 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       }
                     });
                     
-                    pesquisasPeriodoAnteriorMod.forEach(pesquisa => {
-                      const categoria = pesquisa.categoria || '';
+                    elogiosPeriodoAnteriorMod.forEach(elogio => {
+                      const categoria = elogio.pesquisa?.categoria || '';
                       const grupo = obterGrupoDaCategoriaModulo(categoria);
                       const modulo = extrairModuloDoGrupo(grupo);
                       if (modulo) {
@@ -688,7 +730,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       }
                     });
                     
-                    // Calcular crescimento por módulo - separar reais vs novos
+                    // Calcular crescimento - separar reais vs novos
                     const crescimentosReaisMod: { modulo: string; percentual: number; qtdAtual: number }[] = [];
                     const crescimentosNovosMod: { modulo: string; percentual: number; qtdAtual: number }[] = [];
                     
@@ -706,7 +748,6 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       }
                     });
                     
-                    // Priorizar crescimentos reais; se não houver, usar novos
                     let crescimentosFinaisMod: { modulo: string; percentual: number; qtdAtual: number }[];
                     let isNovoMod = false;
                     
@@ -719,35 +760,13 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       isNovoMod = true;
                     }
                     
-                    // Pegar o maior e todos que empatam
                     let modulosComMaiorCrescimento: typeof crescimentosFinaisMod = [];
                     if (crescimentosFinaisMod.length > 0) {
                       const melhorMod = crescimentosFinaisMod[0];
-                      if (isNovoMod) {
-                        modulosComMaiorCrescimento = crescimentosFinaisMod.filter(
-                          c => c.qtdAtual === melhorMod.qtdAtual
-                        );
-                      } else {
-                        modulosComMaiorCrescimento = crescimentosFinaisMod.filter(
-                          c => c.percentual === melhorMod.percentual
-                        );
-                      }
+                      modulosComMaiorCrescimento = crescimentosFinaisMod.filter(
+                        c => isNovoMod ? c.qtdAtual === melhorMod.qtdAtual : c.percentual === melhorMod.percentual
+                      );
                     }
-
-                    console.log('🔍 DEBUG Crescimento Módulo (pesquisas_satisfacao):', {
-                      mesSelecionado,
-                      anoSelecionado,
-                      mesComparacao,
-                      mesAnterior,
-                      anoAnterior,
-                      pesquisasAtual: pesquisasPeriodoAtualMod.length,
-                      pesquisasAnterior: pesquisasPeriodoAnteriorMod.length,
-                      contagemAtualMod,
-                      contagemAnteriorMod,
-                      crescimentosReaisMod,
-                      crescimentosNovosMod,
-                      modulosComMaiorCrescimento
-                    });
                     
                     if (modulosComMaiorCrescimento.length === 0) {
                       return (
@@ -764,12 +783,15 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       );
                     }
                     
-                    const sinalMod = '+';
                     const modulosFormatados = modulosComMaiorCrescimento.map(m => m.modulo).join(', ');
                     const melhorMod = modulosComMaiorCrescimento[0];
+                    const nomesMesesMod = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    const periodoDescMod = anoComparacao === anoAnterior 
+                      ? `${nomesMesesMod[mesAnterior]}→${nomesMesesMod[mesComparacao]}`
+                      : `${nomesMesesMod[mesAnterior]}/${anoAnterior}→${nomesMesesMod[mesComparacao]}/${anoComparacao}`;
                     const descricaoMod = isNovoMod
-                      ? `Novo (${melhorMod.qtdAtual} pesquisa${melhorMod.qtdAtual > 1 ? 's' : ''} no período)`
-                      : `${sinalMod}${melhorMod.percentual.toFixed(0)}% vs período anterior`;
+                      ? `Novo (${melhorMod.qtdAtual} elogio${melhorMod.qtdAtual > 1 ? 's' : ''} no período)`
+                      : `+${melhorMod.percentual.toFixed(0)}% (${periodoDescMod})`;
                     
                     return (
                       <>
@@ -967,20 +989,23 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           </CardContent>
         </Card>
 
-        {/* Top Colaborador Anual */}
+        {/* Top Colaborador Anual/Mensal */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Star className="h-4 w-4 text-green-600" />
-                <CardTitle className="text-sm font-semibold text-green-600">TOP COLABORADOR ANUAL</CardTitle>
+                <CardTitle className="text-sm font-semibold text-green-600">
+                  {mesSelecionado === 'todos' ? 'TOP COLABORADOR ANUAL' : 'TOP COLABORADOR MENSAL'}
+                </CardTitle>
               </div>
               {(() => {
                 const elogiosAno = elogios?.filter(e => {
                   if (!e.data_resposta) return false;
-                  const dataResposta = new Date(e.data_resposta);
-                  return dataResposta.getFullYear() === anoSelecionado &&
-                         (e.status === 'compartilhado' || e.status === 'enviado');
+                  const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+                  if (dataResposta.getFullYear() !== anoSelecionado) return false;
+                  if (mesSelecionado !== 'todos' && dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+                  return e.status === 'compartilhado' || e.status === 'enviado';
                 }) || [];
                 const contagemPorPrestador: Record<string, number> = {};
                 elogiosAno.forEach(elogio => {
@@ -1003,12 +1028,13 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           </CardHeader>
           <CardContent>
             {(() => {
-              // Calcular colaboradores com mais elogios no ano selecionado
+              // Calcular colaboradores com mais elogios no período selecionado
               const elogiosAno = elogios?.filter(e => {
                 if (!e.data_resposta) return false;
-                const dataResposta = new Date(e.data_resposta);
-                return dataResposta.getFullYear() === anoSelecionado &&
-                       (e.status === 'compartilhado' || e.status === 'enviado');
+                const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+                if (dataResposta.getFullYear() !== anoSelecionado) return false;
+                if (mesSelecionado !== 'todos' && dataResposta.getMonth() + 1 !== mesSelecionado) return false;
+                return e.status === 'compartilhado' || e.status === 'enviado';
               }) || [];
 
               // Contar elogios por prestador e mapear grupos
@@ -1056,7 +1082,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               if (colaboradoresExibir.length === 0) {
                 return (
                   <div className="flex items-center justify-center h-24 text-gray-500 text-sm">
-                    Nenhum elogio registrado este ano
+                    {mesSelecionado === 'todos' ? 'Nenhum elogio registrado este ano' : 'Nenhum elogio registrado neste mês'}
                   </div>
                 );
               }
@@ -1163,8 +1189,8 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     (e.status === 'compartilhado' || e.status === 'enviado')
                   )
                   .sort((a, b) => {
-                    const dataA = a.data_resposta ? new Date(a.data_resposta).getTime() : 0;
-                    const dataB = b.data_resposta ? new Date(b.data_resposta).getTime() : 0;
+                    const dataA = a.data_resposta ? new Date(a.data_resposta + 'T00:00:00').getTime() : 0;
+                    const dataB = b.data_resposta ? new Date(b.data_resposta + 'T00:00:00').getTime() : 0;
                     return dataB - dataA;
                   }) || [];
 
@@ -1208,7 +1234,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   const prestador = elogio.pesquisa?.prestador || 'Colaborador';
                   const empresa = elogio.pesquisa?.empresa || 'Empresa';
                   const dataFormatada = elogio.data_resposta 
-                    ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR')
+                    ? new Date(elogio.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR')
                     : '';
                   
                   return (
@@ -1542,19 +1568,24 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   elogios?: any[];
 }) => {
   // Estado para controlar expansão das áreas
-  const [areasExpandido, setAreasExpandido] = useState(false);
+  const [areasExpandido, setAreasExpandido] = useState(true);
   
   // Estados para controlar seleção e detalhes (similar à aba Visão Geral)
   const [itemSelecionado, setItemSelecionado] = useState<{
     tipo: 'empresa' | 'colaborador' | 'grupo' | 'volume' | 'grupos-principais' | null;
     dados: any;
-  } | null>({
-    tipo: 'grupos-principais',
-    dados: ['FISCAL', 'COMEX']
-  });
+  } | null>(null);
 
   // Estado para controlar linhas expandidas
   const [linhasExpandidas, setLinhasExpandidas] = useState<Set<string>>(new Set());
+
+  // Paginação para tabela de detalhes
+  const [paginaAtualMap, setPaginaAtualMap] = useState(1);
+  const [itensPorPaginaMap, setItensPorPaginaMap] = useState(10);
+
+  // Modal de visualização
+  const [elogioVisualizandoMap, setElogioVisualizandoMap] = useState<any | null>(null);
+  const [modalVisualizarAbertoMap, setModalVisualizarAbertoMap] = useState(false);
   
   // Hook para buscar de-para de categorias
   const { data: deParaCategorias = [] } = useDeParaCategoria();
@@ -1616,11 +1647,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   // Função para filtrar elogios baseado na seleção
   const obterElogiosFiltrados = () => {
-    if (!itemSelecionado) return [];
-    
     const elogiosFiltrados = elogios?.filter(e => {
       if (!e.data_resposta) return false;
-      const dataResposta = new Date(e.data_resposta);
+      const dataResposta = new Date(e.data_resposta + 'T00:00:00');
       
       // Filtrar por ano
       if (dataResposta.getFullYear() !== anoSelecionado) return false;
@@ -1632,6 +1661,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       
       return e.status === 'compartilhado' || e.status === 'enviado';
     }) || [];
+
+    // Se nenhum item selecionado, retorna todos do período
+    if (!itemSelecionado) return elogiosFiltrados;
 
     switch (itemSelecionado.tipo) {
       case 'empresa':
@@ -1680,6 +1712,19 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   const elogiosDetalhados = obterElogiosFiltrados();
 
+  // Reset paginação quando muda seleção
+  const handleSelecionarItemMap = (item: typeof itemSelecionado) => {
+    setItemSelecionado(item);
+    setPaginaAtualMap(1);
+    setLinhasExpandidas(new Set());
+  };
+
+  // Dados paginados
+  const totalPaginasMap = Math.ceil(elogiosDetalhados.length / itensPorPaginaMap);
+  const indiceInicioMap = (paginaAtualMap - 1) * itensPorPaginaMap;
+  const indiceFimMap = indiceInicioMap + itensPorPaginaMap;
+  const elogiosPaginadosMap = elogiosDetalhados.slice(indiceInicioMap, indiceFimMap);
+
   // Função para alternar expansão de linha
   const toggleLinha = (elogioId: string) => {
     const novasLinhasExpandidas = new Set(linhasExpandidas);
@@ -1691,25 +1736,33 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     setLinhasExpandidas(novasLinhasExpandidas);
   };
 
-  // Filtrar elogios baseado no ano e mês selecionados
+  // Mês vigente para uso nos gráficos
+  const mesVigente = new Date().getMonth() + 1;
+
+  // Filtrar elogios baseado no ano e mês selecionados (para cards principais)
   const elogiosFiltrados = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     
     // Filtrar por ano
     if (dataResposta.getFullYear() !== anoSelecionado) return false;
     
-    // Filtrar por mês
+    // Filtrar por mês apenas se mês específico selecionado
     if (mesSelecionado !== 'todos') {
-      // Se mês específico selecionado, filtrar por esse mês
       if (dataResposta.getMonth() + 1 !== mesSelecionado) return false;
-    } else {
-      // Se "todos" selecionado, filtrar pelo mês vigente (atual)
-      const mesVigente = new Date().getMonth() + 1;
-      if (dataResposta.getMonth() + 1 !== mesVigente) return false;
     }
+    // Se "todos", mostra todos os elogios do ano (sem filtro de mês)
     
     return e.status === 'compartilhado' || e.status === 'enviado';
+  }) || [];
+
+  // Elogios do mês vigente (para o gráfico "Top 5 Grupos - Mês Vigente")
+  const elogiosMesVigente = elogios?.filter(e => {
+    if (!e.data_resposta) return false;
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
+    return dataResposta.getFullYear() === anoSelecionado &&
+           dataResposta.getMonth() + 1 === mesVigente &&
+           (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
 
   // Para comparação mensal (quando mês específico selecionado)
@@ -1718,13 +1771,13 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   
   const elogiosMesAtual = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     return dataResposta.getMonth() + 1 === mesAtual && 
            dataResposta.getFullYear() === anoAtual &&
            (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
 
-  // Top grupos baseado no filtro selecionado
+  // Top grupos baseado no filtro selecionado (para cards principais)
   const contagemPeriodo: Record<string, number> = {};
   elogiosFiltrados.forEach(elogio => {
     const categoria = elogio.pesquisa?.categoria || '';
@@ -1734,6 +1787,16 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
     }
   });
   const topPeriodo = Object.entries(contagemPeriodo).sort((a, b) => b[1] - a[1])[0];
+
+  // Top grupos do mês vigente (para o gráfico "Top 5 Grupos - Mês Vigente")
+  const contagemMesVigente: Record<string, number> = {};
+  elogiosMesVigente.forEach(elogio => {
+    const categoria = elogio.pesquisa?.categoria || '';
+    const grupoMapeado = obterGrupoPorCategoria(categoria);
+    if (grupoMapeado) {
+      contagemMesVigente[grupoMapeado] = (contagemMesVigente[grupoMapeado] || 0) + 1;
+    }
+  });
 
   // Top grupos do mês atual (para comparação quando necessário)
   const contagemMes: Record<string, number> = {};
@@ -1749,7 +1812,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   // Top grupos do ano completo (para comparação quando necessário)
   const elogiosAnoCompleto = elogios?.filter(e => {
     if (!e.data_resposta) return false;
-    const dataResposta = new Date(e.data_resposta);
+    const dataResposta = new Date(e.data_resposta + 'T00:00:00');
     return dataResposta.getFullYear() === anoSelecionado &&
            (e.status === 'compartilhado' || e.status === 'enviado');
   }) || [];
@@ -1851,7 +1914,61 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         </Card>
       </div>
 
-      {/* Gráficos */}
+      {/* Top 5 - Acumulado do Ano (full width, acima dos gráficos mensais) */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-purple-600" />
+              <CardTitle className="text-lg font-semibold">Top 5 Grupos - Acumulado do Ano</CardTitle>
+            </div>
+            <span className="text-xs text-gray-500">Ano {anoSelecionado}</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Object.entries(contagemAno)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([nome, quantidade], index) => {
+                const cores = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500'];
+                const porcentagem = Object.values(contagemAno).reduce((a, b) => a + b, 0) > 0 
+                  ? (quantidade / Object.values(contagemAno).reduce((a, b) => a + b, 0)) * 100 
+                  : 0;
+                
+                return (
+                  <div 
+                    key={nome} 
+                    className="space-y-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                    onClick={() => handleSelecionarItemMap({
+                      tipo: 'grupo',
+                      dados: nome
+                    })}
+                  >
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
+                      <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div 
+                        className={`${cores[index]} h-full rounded-full transition-all duration-500`}
+                        style={{ width: `${porcentagem}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })
+            }
+            {Object.keys(contagemAno).length === 0 && (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                Nenhum grupo com elogios este ano
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gráficos - Mês Vigente + Distribuição por Área */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top 5 - Período Selecionado */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -1873,20 +1990,23 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(contagemPeriodo)
+              {(() => {
+                const contagemGrafico = mesSelecionado === 'todos' ? contagemMesVigente : contagemPeriodo;
+                return Object.entries(contagemGrafico)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
                 .map(([nome, quantidade], index) => {
                   const cores = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500'];
-                  const porcentagem = Object.values(contagemPeriodo).reduce((a, b) => a + b, 0) > 0 
-                    ? (quantidade / Object.values(contagemPeriodo).reduce((a, b) => a + b, 0)) * 100 
+                  const totalGrafico = Object.values(contagemGrafico).reduce((a, b) => a + b, 0);
+                  const porcentagem = totalGrafico > 0 
+                    ? (quantidade / totalGrafico) * 100 
                     : 0;
                   
                   return (
                     <div 
                       key={nome} 
                       className="space-y-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
-                      onClick={() => setItemSelecionado({
+                      onClick={() => handleSelecionarItemMap({
                         tipo: 'grupo',
                         dados: nome
                       })}
@@ -1903,9 +2023,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       </div>
                     </div>
                   );
-                })
-              }
-              {Object.keys(contagemPeriodo).length === 0 && (
+                });
+              })()}
+              {Object.keys(mesSelecionado === 'todos' ? contagemMesVigente : contagemPeriodo).length === 0 && (
                 <div className="text-center py-8 text-gray-500 text-sm">
                   Nenhum grupo com elogios no período selecionado
                 </div>
@@ -1913,211 +2033,6 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             </div>
           </CardContent>
         </Card>
-
-        {/* Top 5 - Acumulado do Ano */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-lg font-semibold">Top 5 Grupos - Acumulado do Ano</CardTitle>
-              </div>
-              <span className="text-xs text-gray-500">Ano {anoSelecionado}</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(contagemAno)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([nome, quantidade], index) => {
-                  const cores = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500'];
-                  const porcentagem = Object.values(contagemAno).reduce((a, b) => a + b, 0) > 0 
-                    ? (quantidade / Object.values(contagemAno).reduce((a, b) => a + b, 0)) * 100 
-                    : 0;
-                  
-                  return (
-                    <div 
-                      key={nome} 
-                      className="space-y-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
-                      onClick={() => setItemSelecionado({
-                        tipo: 'grupo',
-                        dados: nome
-                      })}
-                    >
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{nome}</span>
-                        <span className="text-gray-600 dark:text-gray-400">{quantidade}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className={`${cores[index]} h-full rounded-full transition-all duration-500`}
-                          style={{ width: `${porcentagem}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })
-              }
-              {Object.keys(contagemAno).length === 0 && (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  Nenhum grupo com elogios este ano
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Seção inferior */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Detalhes dos Elogios ou Distribuição por Área */}
-        {itemSelecionado ? (
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold">
-                    Detalhes dos Elogios
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
-                    {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
-                    {itemSelecionado.tipo === 'grupo' && `Grupo: ${itemSelecionado.dados}`}
-                    {itemSelecionado.tipo === 'grupos-principais' && 'Grupos: FISCAL e COMEX'}
-                    {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Período'}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setItemSelecionado(null)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Fechar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Total de elogios encontrados: {elogiosDetalhados.length}
-                </div>
-                
-                {/* Cabeçalho da tabela */}
-                <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-                  <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    <div className="col-span-2">Nº Chamado</div>
-                    <div className="col-span-2">Empresa</div>
-                    <div className="col-span-3">Colaborador</div>
-                    <div className="col-span-2">Data Resposta</div>
-                    <div className="col-span-2">Status</div>
-                    <div className="col-span-1 text-center"></div>
-                  </div>
-                </div>
-                
-                {/* Lista de elogios como linhas expansíveis */}
-                <div className="max-h-96 overflow-y-auto space-y-1">
-                  {elogiosDetalhados.map((elogio, index) => {
-                    const elogioId = elogio.id || `elogio-${index}`;
-                    const isExpanded = linhasExpandidas.has(elogioId);
-                    
-                    return (
-                      <div key={elogioId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                        {/* Linha principal (sempre visível) */}
-                        <div 
-                          className="grid grid-cols-12 gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                          onClick={() => toggleLinha(elogioId)}
-                        >
-                          <div className="col-span-2">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              {elogio.pesquisa?.nro_caso || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
-                            </span>
-                          </div>
-                          <div className="col-span-3">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {elogio.pesquisa?.prestador || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {elogio.data_resposta ? new Date(elogio.data_resposta).toLocaleDateString('pt-BR') : 'N/A'}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              elogio.status === 'enviado' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                            }`}>
-                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
-                            </span>
-                          </div>
-                          <div className="col-span-1 text-center">
-                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${
-                              isExpanded ? 'rotate-180' : ''
-                            }`} />
-                          </div>
-                        </div>
-                        
-                        {/* Conteúdo expandido (comentário) */}
-                        {isExpanded && elogio.pesquisa?.comentario_pesquisa && (
-                          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
-                            <div className="space-y-2">
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                                Comentário:
-                              </span>
-                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {elogio.pesquisa.comentario_pesquisa}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Mensagem quando não há comentário */}
-                        {isExpanded && !elogio.pesquisa?.comentario_pesquisa && (
-                          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                              Nenhum comentário disponível para este elogio.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Mensagem quando não há elogios */}
-                {elogiosDetalhados.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum elogio encontrado para a seleção atual.</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-orange-600" />
-                <CardTitle className="text-sm font-semibold">Clique nos itens para ver detalhes</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Selecione um item nos gráficos ou cards acima para ver os detalhes dos elogios.</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Distribuição por Área */}
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -2147,117 +2062,61 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           <CardContent>
             <div className="space-y-4">
               {(() => {
-                // Contar pesquisas por área (COMEX, FISCAL, QUALIDADE, BPO)
-                const contagemAreas: Record<string, number> = {
-                  'COMEX': 0,
-                  'FISCAL': 0,
-                  'QUALIDADE': 0,
-                  'BPO': 0
-                };
-                
-                // Debug: Log dos grupos para investigação
-                console.log('🔍 Debug Distribuição por Área:');
-                console.log('Total de elogios filtrados:', elogiosFiltrados.length);
-                
-                const gruposUnicos = new Set();
+                // Classificar elogios por área principal (dinâmico)
+                const contagemAreas: Record<string, number> = {};
                 
                 elogiosFiltrados.forEach(elogio => {
                   const categoria = elogio.pesquisa?.categoria || '';
-                  const grupoOriginal = elogio.pesquisa?.grupo || '';
-                  
-                  // Fazer de-para da categoria para obter o grupo correto
                   const grupoMapeado = obterGrupoPorCategoria(categoria);
                   
-                  gruposUnicos.add(`${categoria} → ${grupoMapeado}`);
+                  if (!grupoMapeado) return;
                   
-                  // Classificar baseado no grupo mapeado
+                  // Extrair área principal: parte antes do " - " ou o grupo inteiro
                   const grupoUpper = grupoMapeado.toUpperCase();
+                  let areaPrincipal: string;
                   
-                  console.log('🔄 De-para:', {
-                    categoria,
-                    grupoOriginal,
-                    grupoMapeado,
-                    elogioId: elogio.id
-                  });
-                  
-                  // Lógica de classificação baseada no grupo mapeado
-                  if (
-                    grupoUpper.includes('COMEX') || 
-                    grupoUpper.includes('CÂMBIO') || 
-                    grupoUpper.includes('CAMBIO') ||
-                    grupoUpper.includes('CE+') ||
-                    grupoUpper.includes('EXPORTAÇÃO') ||
-                    grupoUpper.includes('IMPORTAÇÃO')
-                  ) {
-                    contagemAreas['COMEX']++;
-                    console.log('📊 COMEX encontrado:', grupoMapeado);
-                  } else if (
-                    grupoUpper.includes('FISCAL') || 
-                    grupoUpper.includes('TRIBUTÁRIO') || 
-                    grupoUpper.includes('TRIBUTARIO') ||
-                    grupoUpper.includes('TRIBUT') ||
-                    grupoUpper.includes('IMPOSTO') ||
-                    grupoUpper.includes('FISC') ||
-                    grupoUpper.includes('COMPLY') ||
-                    grupoUpper.includes('PW_SATI') ||
-                    grupoUpper.includes('GALLERY') ||
-                    grupoUpper.includes('NF-E') ||
-                    grupoUpper.includes('NFS-E') ||
-                    grupoUpper.includes('SPED') ||
-                    grupoUpper.includes('REINF') ||
-                    grupoUpper.includes('ICMS') ||
-                    grupoUpper.includes('CIAP') ||
-                    grupoUpper.includes('EFD')
-                  ) {
-                    contagemAreas['FISCAL']++;
-                    console.log('📊 FISCAL encontrado:', grupoMapeado);
-                  } else if (grupoUpper.includes('QUALIDADE') || grupoUpper.includes('QUALITY')) {
-                    contagemAreas['QUALIDADE']++;
-                    console.log('📊 QUALIDADE encontrado:', grupoMapeado);
-                  } else if (
-                    grupoUpper.includes('BPO') || 
-                    grupoUpper.includes('BUSINESS PROCESS') ||
-                    grupoUpper.includes('ADMINISTRAÇÃO') ||
-                    grupoUpper.includes('ADMIN')
-                  ) {
-                    contagemAreas['BPO']++;
-                    console.log('📊 BPO encontrado:', grupoMapeado);
+                  if (grupoUpper.startsWith('FISCAL GALLERY')) {
+                    areaPrincipal = 'FISCAL';
+                  } else if (grupoUpper.startsWith('FISCAL')) {
+                    areaPrincipal = 'FISCAL';
+                  } else if (grupoUpper.startsWith('COMEX')) {
+                    areaPrincipal = 'COMEX';
                   } else {
-                    console.log('❌ Grupo não classificado:', {
-                      categoria,
-                      grupoMapeado,
-                      grupoUpper
-                    });
+                    // Para grupos sem " - " (CUSTOMER SUCCESS, INTERNOS, PROJETO, BPO, etc.)
+                    areaPrincipal = grupoMapeado.split(' - ')[0].trim().toUpperCase();
                   }
+                  
+                  contagemAreas[areaPrincipal] = (contagemAreas[areaPrincipal] || 0) + 1;
                 });
                 
-                console.log('Grupos únicos encontrados:', Array.from(gruposUnicos));
-                console.log('Contagem por área:', contagemAreas);
-                console.log('📊 RESUMO FINAL:');
-                console.log('  - Total de elogios processados:', elogiosFiltrados.length);
-                console.log('  - Total classificado nas áreas:', Object.values(contagemAreas).reduce((a, b) => a + b, 0));
-                console.log('  - COMEX:', contagemAreas['COMEX']);
-                console.log('  - FISCAL:', contagemAreas['FISCAL']);
-                console.log('  - QUALIDADE:', contagemAreas['QUALIDADE']);
-                console.log('  - BPO:', contagemAreas['BPO']);
-                
-                const totalPesquisas = Object.values(contagemAreas).reduce((a, b) => a + b, 0);
+                // Cores para cada área
+                const coresAreas: Record<string, string> = {
+                  'FISCAL': '#3b82f6',
+                  'FISCAL GALLERY': '#60a5fa',
+                  'COMEX': '#8b5cf6',
+                  'QUALIDADE': '#10b981',
+                  'QUALIDADE AMS': '#34d399',
+                  'BPO': '#f59e0b',
+                  'CUSTOMER SUCCESS': '#ec4899',
+                  'INTERNOS': '#6366f1',
+                  'PROJETO': '#14b8a6',
+                  'GERENTE': '#f97316',
+                  'T&M': '#a855f7',
+                };
+                const coresFallback = ['#06b6d4', '#84cc16', '#ef4444', '#78716c', '#d946ef', '#0ea5e9'];
+                let corIndex = 0;
                 
                 // Preparar dados para o gráfico de pizza
-                let dadosPizza = [
-                  { nome: 'FISCAL', valor: contagemAreas['FISCAL'], cor: '#3b82f6' },
-                  { nome: 'COMEX', valor: contagemAreas['COMEX'], cor: '#8b5cf6' },
-                  { nome: 'QUALIDADE', valor: contagemAreas['QUALIDADE'], cor: '#10b981' },
-                  { nome: 'BPO', valor: contagemAreas['BPO'], cor: '#f59e0b' }
-                ].filter(item => item.valor > 0); // Só mostra áreas com pesquisas
+                let dadosPizza = Object.entries(contagemAreas)
+                  .filter(([, valor]) => valor > 0)
+                  .map(([nome, valor]) => ({
+                    nome,
+                    valor,
+                    cor: coresAreas[nome] || coresFallback[corIndex++ % coresFallback.length]
+                  }));
                 
-                // Se expandido (modo todas), mostrar todas as áreas
                 // Se não expandido (modo principais), mostrar apenas FISCAL e COMEX
-                if (areasExpandido) {
-                  // Modo "Todas" - mostrar todas as áreas (não filtrar)
-                  // dadosPizza já contém todas as áreas
-                } else {
-                  // Modo "Principais" - mostrar apenas FISCAL e COMEX
+                if (!areasExpandido) {
                   dadosPizza = dadosPizza.filter(item => item.nome === 'FISCAL' || item.nome === 'COMEX');
                 }
                 
@@ -2324,7 +2183,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => {
                                   console.log('🖱️ Clique na célula:', entry.nome);
-                                  setItemSelecionado({
+                                  handleSelecionarItemMap({
                                     tipo: 'grupo',
                                     dados: entry.nome
                                   });
@@ -2375,6 +2234,297 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabela de Detalhes dos Elogios - sempre visível */}
+      <Card className="bg-white dark:bg-gray-800 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Heart className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-lg font-semibold">
+                Detalhes dos Elogios
+              </CardTitle>
+            </div>
+            {itemSelecionado && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelecionarItemMap(null)}
+                className="whitespace-nowrap hover:border-red-300"
+              >
+                <X className="h-4 w-4 mr-2 text-red-600" />
+                Limpar Filtro
+              </Button>
+            )}
+          </div>
+          {itemSelecionado && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'grupo' && `Grupo: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'grupos-principais' && 'Grupos: FISCAL e COMEX'}
+              {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Período'}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {elogiosDetalhados.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>{itemSelecionado ? 'Nenhum elogio encontrado para a seleção atual.' : 'Selecione um item nos gráficos acima para ver os detalhes dos elogios.'}</p>
+            </div>
+          ) : (
+            <>
+              <div className="w-full overflow-x-auto">
+                <Table className="w-full text-xs sm:text-sm">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
+                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Empresa</TableHead>
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Resposta</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Colaborador</TableHead>
+                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Comentário</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Status</TableHead>
+                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {elogiosPaginadosMap.map((elogio, index) => {
+                      const elogioId = elogio.id || `elogio-map-${index}`;
+                      const comentario = elogio.pesquisa?.comentario_pesquisa || '';
+                      const comentarioTruncado = comentario.length > 50
+                        ? comentario.substring(0, 50) + '...'
+                        : comentario;
+
+                      return (
+                        <TableRow key={elogioId} className="hover:bg-gray-50">
+                          <TableCell className="text-center py-3">
+                            {elogio.pesquisa?.nro_caso ? (
+                              <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                                )}
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
+                                  <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600" />
+                                )}
+                                <span>-</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <span className="font-medium text-xs sm:text-sm">
+                              {obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa || 'N/A')}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm text-muted-foreground">
+                            {elogio.data_resposta ? new Date(elogio.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">{elogio.pesquisa?.cliente || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 text-xs sm:text-sm max-w-[150px]">
+                            <span className="truncate block">{elogio.pesquisa?.prestador || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-center py-3 hidden lg:table-cell max-w-[200px]">
+                            <TooltipProvider>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-gray-600 cursor-help line-clamp-2">
+                                    {comentarioTruncado || <span className="italic text-gray-400">Sem comentário</span>}
+                                  </span>
+                                </TooltipTrigger>
+                                {comentario && (
+                                  <TooltipContent className="max-w-md">
+                                    <p className="text-xs whitespace-pre-wrap">{comentario}</p>
+                                  </TooltipContent>
+                                )}
+                              </UITooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <Badge className={`text-xs ${
+                              elogio.status === 'enviado'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setElogioVisualizandoMap(elogio);
+                                  setModalVisualizarAbertoMap(true);
+                                }}
+                                className="h-8 w-8 p-0"
+                                title="Visualizar"
+                              >
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Paginação */}
+              {elogiosDetalhados.length > 0 && (
+                <div className="flex items-center justify-between px-2 py-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                    <Select
+                      value={itensPorPaginaMap.toString()}
+                      onValueChange={(value) => {
+                        setItensPorPaginaMap(Number(value));
+                        setPaginaAtualMap(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {totalPaginasMap > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaginaAtualMap(prev => Math.max(1, prev - 1))}
+                        disabled={paginaAtualMap === 1}
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+                        Página {paginaAtualMap} de {totalPaginasMap}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaginaAtualMap(prev => Math.min(totalPaginasMap, prev + 1))}
+                        disabled={paginaAtualMap === totalPaginasMap}
+                        aria-label="Próxima página"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {indiceInicioMap + 1}-{Math.min(indiceFimMap, elogiosDetalhados.length)} de {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? 'elogio' : 'elogios'}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Visualização de Elogio */}
+      <Dialog open={modalVisualizarAbertoMap} onOpenChange={setModalVisualizarAbertoMap}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-sonda-blue">
+              Detalhes do Elogio
+            </DialogTitle>
+          </DialogHeader>
+          {elogioVisualizandoMap && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Chamado</p>
+                  <div className="flex items-center gap-2">
+                    {elogioVisualizandoMap.pesquisa?.origem === 'sql_server' ? (
+                      <Database className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <FileEdit className="h-4 w-4 text-gray-600" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {elogioVisualizandoMap.pesquisa?.tipo_caso && `${elogioVisualizandoMap.pesquisa.tipo_caso} `}
+                      {elogioVisualizandoMap.pesquisa?.nro_caso || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Status</p>
+                  <Badge className={`text-xs ${
+                    elogioVisualizandoMap.status === 'enviado'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {elogioVisualizandoMap.status === 'enviado' ? 'Enviado' : 'Validado'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Empresa</p>
+                  <p className="text-sm font-medium">{obterNomeAbreviadoEmpresa(elogioVisualizandoMap.pesquisa?.empresa || 'N/A')}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Data Resposta</p>
+                  <p className="text-sm">{elogioVisualizandoMap.data_resposta ? new Date(elogioVisualizandoMap.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Cliente</p>
+                  <p className="text-sm">{elogioVisualizandoMap.pesquisa?.cliente || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Colaborador</p>
+                  <p className="text-sm">{elogioVisualizandoMap.pesquisa?.prestador || '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Categoria</p>
+                  <p className="text-sm">{elogioVisualizandoMap.pesquisa?.categoria || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Grupo</p>
+                  <p className="text-sm">{obterGrupoPorCategoria(elogioVisualizandoMap.pesquisa?.categoria || '')}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-gray-500">Comentário</p>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizandoMap.pesquisa?.comentario_pesquisa || 'Sem comentário'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
