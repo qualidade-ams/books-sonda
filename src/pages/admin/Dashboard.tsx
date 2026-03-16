@@ -3173,7 +3173,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
   // Estados para paginação
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina, setItensPorPagina] = useState(25);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
 
   // Buscar dados reais da tabela planos_acao
   const { data: planosAcaoCompletos = [], isLoading: loadingPlanos } = usePlanosAcao({
@@ -3590,12 +3590,12 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   >
                     <defs>
                       <linearGradient id="colorConcluidos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
                       </linearGradient>
                       <linearGradient id="colorAbertos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#ec4899" stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
                       </linearGradient>
                     </defs>
                     <XAxis 
@@ -3660,7 +3660,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       type="monotone"
                       dataKey="concluidos"
                       stackId="1"
-                      stroke="#10b981"
+                      stroke="#3b82f6"
                       strokeWidth={2}
                       fillOpacity={0.6}
                       fill="url(#colorConcluidos)"
@@ -3669,7 +3669,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       type="monotone"
                       dataKey="abertos"
                       stackId="1"
-                      stroke="#ec4899"
+                      stroke="#ef4444"
                       strokeWidth={2}
                       fillOpacity={0.6}
                       fill="url(#colorAbertos)"
@@ -3683,11 +3683,11 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-center text-sm mt-4 pt-4 border-t">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                   <span className="text-gray-600">Concluídos</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <span className="text-gray-600">Abertos</span>
                 </div>
               </div>
@@ -3984,6 +3984,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
                     <SelectItem value="100">100</SelectItem>
