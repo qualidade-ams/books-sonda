@@ -50,7 +50,7 @@ import {
 } from '@/hooks/usePesquisasSatisfacao';
 import { useCacheManager } from '@/hooks/useCacheManager';
 import { useEmpresas } from '@/hooks/useEmpresas';
-import { useCategorias, useGruposPorCategoria } from '@/hooks/useDeParaCategoria';
+import { useCategorias, useGruposPorCategoria, useGrupoPorCategoria } from '@/hooks/useDeParaCategoria';
 import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especialistas';
 import { useEspecialistasIdsPesquisa, useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
@@ -154,6 +154,9 @@ function VisualizarPesquisas() {
   
   // Observar mudanças na categoria selecionada para buscar grupos
   const { data: grupos = [] } = useGruposPorCategoria(dadosEdicao.categoria);
+
+  // Buscar grupo correspondente à categoria da pesquisa selecionada (para visualização)
+  const { data: grupoDeParaVisualizacao } = useGrupoPorCategoria(pesquisaSelecionada?.categoria);
 
   // Buscar especialistas relacionados à pesquisa (para edição) - RETORNA { ids, isLoading }
   const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
@@ -788,7 +791,7 @@ function VisualizarPesquisas() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
                       <Input
-                        value={pesquisaSelecionada.grupo || ''}
+                        value={grupoDeParaVisualizacao || pesquisaSelecionada.grupo || ''}
                         disabled
                         className="bg-gray-50 text-gray-900"
                       />
