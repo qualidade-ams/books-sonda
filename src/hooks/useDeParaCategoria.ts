@@ -4,52 +4,92 @@ import type { DeParaCategoria, CategoriaOption, GrupoOption } from '@/types/dePa
 
 /**
  * Hook para buscar todos os registros DE-PARA ativos
+ * Usa paginação para buscar TODOS os registros (Supabase limita a 1000 por query)
  */
 export function useDeParaCategoria() {
   return useQuery({
     queryKey: ['de-para-categoria'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('de_para_categoria')
-        .select('*')
-        .eq('status', 'ativa')
-        .order('categoria');
+      const PAGE_SIZE = 1000;
+      let allData: DeParaCategoria[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (error) {
-        console.error('Erro ao buscar DE-PARA categoria:', error);
-        throw error;
+      while (hasMore) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        const { data, error } = await supabase
+          .from('de_para_categoria')
+          .select('*')
+          .eq('status', 'ativa')
+          .order('categoria')
+          .range(from, to);
+
+        if (error) {
+          console.error('Erro ao buscar DE-PARA categoria:', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data as DeParaCategoria[]);
+          hasMore = data.length === PAGE_SIZE;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
 
-      return data as DeParaCategoria[];
+      return allData;
     },
   });
 }
 
 /**
  * Hook para buscar lista única de categorias ativas
+ * Usa paginação para buscar TODOS os registros (Supabase limita a 1000 por query)
  */
 export function useCategorias() {
   return useQuery({
     queryKey: ['categorias'],
     queryFn: async () => {
-      console.log('🔍 [HOOK] Buscando categorias...');
+      console.log('🔍 [HOOK] Buscando categorias (com paginação)...');
       
-      const { data, error } = await supabase
-        .from('de_para_categoria')
-        .select('categoria')
-        .eq('status', 'ativa')
-        .order('categoria');
+      const PAGE_SIZE = 1000;
+      let allData: { categoria: string }[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (error) {
-        console.error('❌ [HOOK] Erro ao buscar categorias:', error);
-        throw error;
+      while (hasMore) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        const { data, error } = await supabase
+          .from('de_para_categoria')
+          .select('categoria')
+          .eq('status', 'ativa')
+          .order('categoria')
+          .range(from, to);
+
+        if (error) {
+          console.error('❌ [HOOK] Erro ao buscar categorias:', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          hasMore = data.length === PAGE_SIZE;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
 
-      console.log('📊 [HOOK] Dados brutos de categorias:', data);
+      console.log('📊 [HOOK] Total de registros buscados:', allData.length);
 
       // Remover duplicatas e criar array de opções
       const categoriasUnicas = Array.from(
-        new Set(data.map((item) => item.categoria))
+        new Set(allData.map((item) => item.categoria))
       );
 
       const categoriasOptions = categoriasUnicas.map((categoria) => ({
@@ -57,7 +97,7 @@ export function useCategorias() {
         label: categoria,
       })) as CategoriaOption[];
 
-      console.log('✅ [HOOK] Categorias únicas processadas:', categoriasOptions);
+      console.log('✅ [HOOK] Categorias únicas processadas:', categoriasOptions.length);
       
       return categoriasOptions;
     },

@@ -139,16 +139,13 @@ function VisualizarPesquisas() {
     return categorias.filter((categoria) => {
       const labelLower = categoria.label.toLowerCase();
       
-      // Buscar por palavras completas ou início de palavras
-      // Divide o label em palavras (separadas por ponto, espaço, etc)
-      const palavras = labelLower.split(/[.\s]+/);
+      // Busca genérica: verifica se o termo aparece em qualquer parte do label
+      if (labelLower.includes(termoBusca)) return true;
       
-      // Verifica se alguma palavra começa com o termo buscado
-      return palavras.some(palavra => palavra.startsWith(termoBusca)) ||
-             // OU se o termo está no início do label completo
-             labelLower.startsWith(termoBusca) ||
-             // OU se o termo aparece após um ponto (início de seção)
-             labelLower.includes('.' + termoBusca);
+      // Buscar por início de palavras individuais
+      const palavras = labelLower.split(/[.\s&]+/);
+      
+      return palavras.some(palavra => palavra.startsWith(termoBusca));
     });
   }, [searchCategoria, categorias]);
   
@@ -159,7 +156,7 @@ function VisualizarPesquisas() {
   const { data: grupoDeParaVisualizacao } = useGrupoPorCategoria(pesquisaSelecionada?.categoria);
 
   // Buscar especialistas relacionados à pesquisa (para edição) - RETORNA { ids, isLoading }
-  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id);
+  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisaEditando?.id) as { ids: string[]; isLoading: boolean };
   
   // Buscar especialistas para visualização
   const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
@@ -172,10 +169,10 @@ function VisualizarPesquisas() {
   );
   
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
-  const especialistasIdsUnicos = [...new Set(
-    especialistasIdsRelacionados.length > 0 
+  const especialistasIdsUnicos = [...new Set<string>(
+    (especialistasIdsRelacionados.length > 0 
       ? especialistasIdsRelacionados 
-      : especialistasIdsCorrelacionados
+      : especialistasIdsCorrelacionados) as string[]
   )];
   
   const especialistasIds = especialistasIdsUnicos;
