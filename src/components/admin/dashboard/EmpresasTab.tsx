@@ -114,9 +114,9 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
   ];
 
   const produtosData = [
-    { name: 'Fiscal', value: stats.empresasComFiscal, color: COLORS.primary },
-    { name: 'Comex', value: stats.empresasComComex, color: COLORS.info },
-    { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: COLORS.purple }
+    { name: 'Fiscal', value: stats.empresasComFiscal, color: '#00FFFF' },
+    { name: 'Comex', value: stats.empresasComComex, color: '#2563eb' },
+    { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: '#7c3aed' }
   ];
 
   const bookData = [
@@ -167,7 +167,31 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
       </div>
 
       {/* Cards de Tipos de Cobrança e AMS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Entraram em {new Date().getFullYear()}</p>
+              <p className="text-2xl font-bold text-green-600">{stats.empresasEntraramAno}</p>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Saíram em {new Date().getFullYear()}</p>
+              <p className="text-2xl font-bold text-red-600">{stats.empresasSairamAno}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+        </Card>
+
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -437,7 +461,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={produtosData} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
+                <BarChart data={produtosData} margin={{ top: 10, right: 30, left: 0, bottom: 40 }} barCategoryGap="30%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis
                     dataKey="name"
@@ -459,7 +483,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
                     }}
                     formatter={(value: any) => [value, 'Empresas']}
                   />
-                  <Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]} maxBarSize={80}>
                     {produtosData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
