@@ -332,7 +332,7 @@ export class FaturamentoService {
                       <table width="100%" cellpadding="8" cellspacing="0" border="0" style="border-collapse:collapse; font-size:14px;">
                         <thead>
                           <tr bgcolor="#f8fafc" style="color:#475569; font-weight:bold;">
-                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Chamado</th>
+                            <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0; white-space:nowrap;">Chamado</th>
                             <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Cliente</th>
                             <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Módulo</th>
                             <th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Linguagem</th>
@@ -341,7 +341,7 @@ export class FaturamentoService {
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Total</th>
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Envio</th>
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Aprov.</th>
-                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? '<th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Valor Total</th>' : ''}
+                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? '<th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0; white-space:nowrap;">Valor Total</th>' : ''}
                             ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? '<th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Observação</th>' : ''}
                           </tr>
                         </thead>
@@ -350,7 +350,7 @@ export class FaturamentoService {
                 .map(
                   (req) => `
                               <tr>
-                                <td style="padding:10px;">
+                                <td style="padding:10px; white-space:nowrap;">
                                   <span style="font-family:'Courier New', monospace; background-color:#f1f5f9; padding:3px 6px; border-radius:4px;">
                                     ${req.chamado}
                                   </span>
@@ -412,7 +412,7 @@ export class FaturamentoService {
                                   })() : '-'}
                                 </td>
                                 ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? `
-                                <td align="center" style="padding:10px; color:#64748b;">
+                                <td align="center" style="padding:10px; color:#64748b; white-space:nowrap;">
                                   ${req.valor_total_geral && req.valor_total_geral > 0
                       ? `R$ ${req.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : '-'}
