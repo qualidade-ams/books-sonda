@@ -2840,10 +2840,28 @@ export default function FaturarRequerimentos() {
                   <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
                     <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
-                        <strong> Requerimentos:</strong> {estatisticasPeriodo.totalRequerimentos} |
-                        <strong> Horas:</strong> {formatarHorasParaExibicao(estatisticasPeriodo.totalHoras, 'completo')} |
-                        <strong> Valor:</strong> R$ {estatisticasPeriodo.valorTotalFaturavel.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {(() => {
+                          // Calcular estatísticas dos requerimentos selecionados
+                          const allReqs = abaAtiva === 'para_faturar'
+                            ? dadosFaturamento?.requerimentos || []
+                            : dadosFaturados || [];
+                          const selReqs = allReqs.filter(req => requerimentosSelecionados.includes(req.id));
+                          const tiposComValor = ['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'];
+                          let totalH = '0:00';
+                          let totalV = 0;
+                          selReqs.forEach(req => {
+                            if (req.horas_total) totalH = somarHoras(totalH, req.horas_total.toString());
+                            if (tiposComValor.includes(req.tipo_cobranca) && req.valor_total_geral) totalV += req.valor_total_geral;
+                          });
+                          return (
+                            <>
+                              <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
+                              <strong> Requerimentos:</strong> {selReqs.length} |
+                              <strong> Horas:</strong> {formatarHorasParaExibicao(totalH, 'completo')} |
+                              <strong> Valor:</strong> R$ {totalV.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div
