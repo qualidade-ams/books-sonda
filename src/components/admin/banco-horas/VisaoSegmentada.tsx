@@ -33,6 +33,8 @@ interface VisaoSegmentadaProps {
   tipoCobranca?: string;
   inicioVigencia?: string;
   calculos?: Array<{ taxa_hora_utilizada?: number; taxa_ticket_utilizada?: number }>; // Adicionar calculos para buscar taxa
+  tipoRepasseEspecial?: string;
+  percentualEntrePeriodos?: number;
 }
 
 /**
@@ -264,6 +266,8 @@ export function VisaoSegmentada({
   tipoCobranca = 'horas',
   inicioVigencia,
   calculos = [],
+  tipoRepasseEspecial,
+  percentualEntrePeriodos,
 }: VisaoSegmentadaProps) {
   
   // Nomes dos meses completos (igual à Visão Consolidada)
@@ -827,7 +831,23 @@ export function VisaoSegmentada({
                   {/* Repasse - Percentual */}
                   <TableRow className="bg-gray-50">
                     <TableCell className="font-medium text-center">
-                      Repasse - {percentualRepasseMensal}%
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Repasse - {percentualRepasseMensal}%</span>
+                        {tipoRepasseEspecial === 'por_periodo' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">i</span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
+                                <p className="text-sm">
+                                  Repasse especial entre períodos: <strong>{percentualEntrePeriodos ?? 0}%</strong>
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
