@@ -5,7 +5,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -39,6 +39,8 @@ import { MultiSelectEspecialistas } from '@/components/ui/multi-select-especiali
 import { useCorrelacaoMultiplosEspecialistas } from '@/hooks/useCorrelacaoEspecialistas';
 import { useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { ContatosList } from './ContatosList';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { MessageSquare, FileText } from 'lucide-react';
 import type { PlanoAcaoFormData, PlanoAcaoCompleto } from '@/types/planoAcao';
 import {
   PRIORIDADE_OPTIONS,
@@ -80,20 +82,20 @@ const formSchema = z.object({
     return;
   }
   
-  // NOVO: Se tipo_acao for "NC", descricao_acao_corretiva é obrigatória
-  if (data.tipo_acao === 'NC' && (!data.descricao_acao_corretiva || data.descricao_acao_corretiva.trim() === '')) {
+  // Se tipo_acao for "NC" e status for "concluido", descricao_acao_corretiva é obrigatória
+  if (data.status_plano === 'concluido' && data.tipo_acao === 'NC' && (!data.descricao_acao_corretiva || data.descricao_acao_corretiva.trim() === '')) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Ação Corretiva é obrigatória para Não Conformidade (NC)',
+      message: 'Ação Corretiva é obrigatória para concluir uma Não Conformidade (NC)',
       path: ['descricao_acao_corretiva'],
     });
   }
   
-  // NOVO: Se tipo_acao for "OM", acao_preventiva é obrigatória
-  if (data.tipo_acao === 'OM' && (!data.acao_preventiva || data.acao_preventiva.trim() === '')) {
+  // Se tipo_acao for "OM" e status for "concluido", acao_preventiva é obrigatória
+  if (data.status_plano === 'concluido' && data.tipo_acao === 'OM' && (!data.acao_preventiva || data.acao_preventiva.trim() === '')) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Ação Preventiva/Melhoria é obrigatória para Oportunidade de Melhoria (OM)',
+      message: 'Ação Preventiva/Melhoria é obrigatória para concluir uma Oportunidade de Melhoria (OM)',
       path: ['acao_preventiva'],
     });
   }
@@ -123,6 +125,7 @@ interface PlanoAcaoFormProps {
   onSubmit: (dados: PlanoAcaoFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  onSubModalChange?: (isOpen: boolean) => void;
 }
 
 export function PlanoAcaoForm({
@@ -131,6 +134,7 @@ export function PlanoAcaoForm({
   onSubmit,
   onCancel,
   isLoading,
+  onSubModalChange,
 }: PlanoAcaoFormProps) {
   // Buscar empresas para o select
   const { empresas = [], isLoading: isLoadingEmpresas } = useEmpresas({});
@@ -160,6 +164,9 @@ export function PlanoAcaoForm({
 
   // Determinar se é um plano manual (novo plano sem pesquisa associada ou sem dados preenchidos automaticamente)
   const isPlanoManual = !plano || !plano.pesquisa || (!plano.pesquisa.comentario_pesquisa && !plano.pesquisa.nro_caso && !plano.pesquisa.empresa);
+
+  // Flag para evitar que o useEffect sobrescreva a seleção do usuário após a montagem inicial
+  const especialistasInitialized = useRef(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -225,23 +232,48 @@ export function PlanoAcaoForm({
     }
   }, [plano, empresas, form]);
 
-  // Atualizar especialistas quando a correlação estiver pronta
+  // Atualizar especialistas apenas na montagem inicial (não sobrescrever seleção do usuário)
   useEffect(() => {
+    if (especialistasInitialized.current) return;
+    
     const idsRelacionados = especialistasIdsRelacionados as string[];
     const idsCorrelacionados = (especialistasIdsCorrelacionados as string[]) || [];
     
     if (idsRelacionados.length > 0) {
-      console.log('� Especialistas relacionados encontrados:', idsRelacionados);
+      console.log('👥 Especialistas relacionados encontrados:', idsRelacionados);
       form.setValue('especialistas_ids', idsRelacionados);
+      especialistasInitialized.current = true;
     } else if (idsCorrelacionados.length > 0) {
       console.log('🔗 Especialistas correlacionados encontrados:', idsCorrelacionados);
       form.setValue('especialistas_ids', idsCorrelacionados);
+      especialistasInitialized.current = true;
     }
   }, [especialistasIdsRelacionados, especialistasIdsCorrelacionados, form]);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <Tabs defaultValue="formulario" className="w-full">
+      <TabsList className="bg-gray-100 p-1 rounded-lg mb-4 w-full">
+        <TabsTrigger
+          value="formulario"
+          className="flex-1 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium flex items-center justify-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Plano de Ação
+        </TabsTrigger>
+        {plano?.id && (
+          <TabsTrigger
+            value="contatos"
+            className="flex-1 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium flex items-center justify-center gap-2"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Contatos com Cliente
+          </TabsTrigger>
+        )}
+      </TabsList>
+
+      <TabsContent value="formulario">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Seção: Informações Básicas */}
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Informações Básicas</h3>
@@ -431,7 +463,7 @@ export function PlanoAcaoForm({
               <FormItem>
                 <FormLabel>
                   Descrição da Ação Corretiva
-                  {form.watch('tipo_acao') === 'NC' && <span className="text-red-500 ml-1">*</span>}
+                  {form.watch('status_plano') === 'concluido' && form.watch('tipo_acao') === 'NC' && <span className="text-red-500 ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Textarea
@@ -456,7 +488,7 @@ export function PlanoAcaoForm({
               <FormItem>
                 <FormLabel>
                   Ação Preventiva/Melhoria
-                  {form.watch('tipo_acao') === 'OM' && <span className="text-red-500 ml-1">*</span>}
+                  {form.watch('status_plano') === 'concluido' && form.watch('tipo_acao') === 'OM' && <span className="text-red-500 ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Textarea
@@ -566,14 +598,6 @@ export function PlanoAcaoForm({
           />
         </div>
 
-        {/* Seção: Histórico de Contatos */}
-        {plano?.id && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Contatos com Cliente</h3>
-            <ContatosList planoAcaoId={plano.id} />
-          </div>
-        )}
-
         {/* Seção: Conclusão */}
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Conclusão</h3>
@@ -669,5 +693,13 @@ export function PlanoAcaoForm({
         </div>
       </form>
     </Form>
+      </TabsContent>
+
+      {plano?.id && (
+        <TabsContent value="contatos">
+          <ContatosList planoAcaoId={plano.id} onSubModalChange={onSubModalChange} />
+        </TabsContent>
+      )}
+    </Tabs>
   );
 }

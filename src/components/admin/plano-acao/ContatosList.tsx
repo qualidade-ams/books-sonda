@@ -47,9 +47,10 @@ import {
 
 interface ContatosListProps {
   planoAcaoId: string;
+  onSubModalChange?: (isOpen: boolean) => void;
 }
 
-export function ContatosList({ planoAcaoId }: ContatosListProps) {
+export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProps) {
   const [expandedContatos, setExpandedContatos] = useState<Set<string>>(new Set());
   const [modalNovoContato, setModalNovoContato] = useState(false);
   const [contatoEditando, setContatoEditando] = useState<PlanoAcaoContato | null>(null);
@@ -60,6 +61,12 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
   const criarContatoMutation = useCriarContato();
   const atualizarContatoMutation = useAtualizarContato();
   const deletarContatoMutation = useDeletarContato();
+
+  // Notificar o pai quando um sub-modal abre/fecha
+  const hasSubModalOpen = modalNovoContato || !!contatoEditando || !!contatoParaDeletar;
+  useEffect(() => {
+    onSubModalChange?.(hasSubModalOpen);
+  }, [hasSubModalOpen, onSubModalChange]);
 
 
 
@@ -211,7 +218,7 @@ export function ContatosList({ planoAcaoId }: ContatosListProps) {
                             <div>
                               <p className="font-medium text-sm">
                                 {getMeioContatoLabel(contato.meio_contato)} - {' '}
-                                {format(new Date(contato.data_contato), 'dd/MM/yyyy', { locale: ptBR })}
+                                {format(new Date(contato.data_contato + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                               </p>
                               <p className="text-xs text-muted-foreground line-clamp-1">
                                 {contato.resumo_comunicacao}
