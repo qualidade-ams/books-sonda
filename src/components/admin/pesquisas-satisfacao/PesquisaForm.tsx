@@ -106,7 +106,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   const { data: grupos = [] } = useGruposPorCategoria(categoriaSelecionada);
 
   // Buscar especialistas relacionados à pesquisa (para edição)
-  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisa?.id);
+  const { ids: especialistasIdsRelacionados, isLoading: loadingRelacionados } = useEspecialistasIdsPesquisa(pesquisa?.id) as { ids: string[]; isLoading: boolean };
   
   console.log('🔍 [PesquisaForm] === DADOS DE ESPECIALISTAS ===');
   console.log('🔍 [PesquisaForm] Pesquisa ID:', pesquisa?.id);
@@ -118,7 +118,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   // Correlação automática baseada no campo prestador
   const { data: especialistasIdsCorrelacionados = [], isLoading: loadingCorrelacao } = useCorrelacaoMultiplosEspecialistas(
     pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisa.prestador : undefined
-  );
+  ) as { data: string[] | undefined; isLoading: boolean };
   
   console.log('🔍 [PesquisaForm] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
   console.log('🔍 [PesquisaForm] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
@@ -129,10 +129,10 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   console.log('🔍 [PesquisaForm] Especialistas Loading (combinado):', especialistasLoading);
   
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
-  const especialistasIdsUnicos = [...new Set(
-    especialistasIdsRelacionados.length > 0 
+  const especialistasIdsUnicos = [...new Set<string>(
+    (especialistasIdsRelacionados.length > 0 
       ? especialistasIdsRelacionados 
-      : especialistasIdsCorrelacionados
+      : especialistasIdsCorrelacionados) as string[]
   )];
   
   console.log('🔍 [PesquisaForm] IDs Únicos (após Set):', especialistasIdsUnicos);
@@ -733,16 +733,13 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                   return categorias.filter((categoria) => {
                     const labelLower = categoria.label.toLowerCase();
                     
-                    // Buscar por palavras completas ou início de palavras
-                    // Divide o label em palavras (separadas por ponto, espaço, etc)
-                    const palavras = labelLower.split(/[.\s]+/);
+                    // Busca genérica: verifica se o termo aparece em qualquer parte do label
+                    if (labelLower.includes(termoBusca)) return true;
                     
-                    // Verifica se alguma palavra começa com o termo buscado
-                    return palavras.some(palavra => palavra.startsWith(termoBusca)) ||
-                           // OU se o termo está no início do label completo
-                           labelLower.startsWith(termoBusca) ||
-                           // OU se o termo aparece após um ponto (início de seção)
-                           labelLower.includes('.' + termoBusca);
+                    // Buscar por início de palavras individuais
+                    const palavras = labelLower.split(/[.\s&]+/);
+                    
+                    return palavras.some(palavra => palavra.startsWith(termoBusca));
                   });
                 }, [searchCategoria, categorias]);
                 
