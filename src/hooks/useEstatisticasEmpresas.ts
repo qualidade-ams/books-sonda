@@ -41,6 +41,10 @@ export interface EstatisticasEmpresas {
   empresasSomenteFiscal: number;
   empresasSomenteGallery: number;
   empresasSomenteComex: number;
+  
+  // Movimentação anual
+  empresasEntraramAno: number;
+  empresasSairamAno: number;
 }
 
 export const useEstatisticasEmpresas = () => {
@@ -151,6 +155,29 @@ export const useEstatisticasEmpresas = () => {
             !e.produtos?.some((p: any) => p.produto === 'FISCAL') &&
             !e.produtos?.some((p: any) => p.produto === 'GALLERY')
           ).length,
+          
+          // Movimentação anual (ano corrente) baseado em vigência do contrato
+          // Apenas datas que já passaram (até hoje)
+          empresasEntraramAno: (() => {
+            const hoje = new Date();
+            hoje.setHours(23, 59, 59, 999);
+            const anoAtual = hoje.getFullYear();
+            return empresas.filter(e => {
+              if (!e.vigencia_inicial) return false;
+              const dataInicio = new Date(e.vigencia_inicial + 'T00:00:00');
+              return dataInicio.getFullYear() === anoAtual && dataInicio <= hoje;
+            }).length;
+          })(),
+          empresasSairamAno: (() => {
+            const hoje = new Date();
+            hoje.setHours(23, 59, 59, 999);
+            const anoAtual = hoje.getFullYear();
+            return empresas.filter(e => {
+              if (!e.vigencia_final) return false;
+              const dataFim = new Date(e.vigencia_final + 'T00:00:00');
+              return dataFim.getFullYear() === anoAtual && dataFim <= hoje;
+            }).length;
+          })(),
         };
 
         // Log simples para debug
