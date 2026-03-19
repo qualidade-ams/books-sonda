@@ -985,7 +985,25 @@ export function VisaoConsolidada({
 
               {/* Repasse - Percentual Dinâmico */}
               <TableRow className="bg-gray-50">
-                <TableCell className="font-medium text-center">{labels.repasse} - {percentualRepasseMensal}%</TableCell>
+                <TableCell className="font-medium text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>{labels.repasse} - {percentualRepasseMensal}%</span>
+                    {empresaAtual?.tipo_repasse_especial === 'por_periodo' && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">i</span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
+                            <p className="text-sm">
+                              Repasse especial entre períodos: <strong>{empresaAtual?.percentual_entre_periodos ?? 0}%</strong>
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
