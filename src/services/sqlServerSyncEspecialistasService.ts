@@ -35,14 +35,26 @@ export function configurarSqlServer(config: ConfigSqlServer): void {
 // ============================================
 
 /**
+ * Converter texto para Mixed Case (Title Case) respeitando preposições em português
+ * Ex: "VICTORIA HELENA DA SILVA ABREU" → "Victoria Helena da Silva Abreu"
+ */
+function toMixedCase(text: string): string {
+  const preposicoes = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'nas', 'nos']);
+  return text.toLowerCase().split(' ').map((palavra, index) => {
+    if (index > 0 && preposicoes.has(palavra)) return palavra;
+    return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+  }).join(' ');
+}
+
+/**
  * Gerar ID único para registro do SQL Server
  */
 function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
   // Combinar campos para criar ID único usando as propriedades corretas da interface
   const partes = [
     'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    registro.user_name,
-    registro.user_email
+    toMixedCase(registro.user_name.trim()),
+    (registro.user_email?.trim() || 'sem_email').toLowerCase()
   ].filter(Boolean);
   
   return partes.join('|');

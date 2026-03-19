@@ -292,6 +292,18 @@ function gerarIdUnico(registro: DadosSqlServer): string {
 }
 
 /**
+ * Converter texto para Mixed Case (Title Case) respeitando preposições em português
+ * Ex: "VICTORIA HELENA DA SILVA ABREU" → "Victoria Helena da Silva Abreu"
+ */
+function toMixedCase(text: string): string {
+  const preposicoes = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'nas', 'nos']);
+  return text.toLowerCase().split(' ').map((palavra, index) => {
+    if (index > 0 && preposicoes.has(palavra)) return palavra;
+    return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+  }).join(' ');
+}
+
+/**
  * Gerar ID único para registro de especialista
  */
 function gerarIdUnicoEspecialista(registro: DadosEspecialistaSqlServer): string {
@@ -303,8 +315,8 @@ function gerarIdUnicoEspecialista(registro: DadosEspecialistaSqlServer): string 
   
   const partes = [
     'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    registro.user_name.trim(),
-    registro.user_email?.trim() || 'sem_email'
+    toMixedCase(registro.user_name.trim()),
+    (registro.user_email?.trim() || 'sem_email').toLowerCase()
   ].filter(Boolean);
   
   return partes.join('|');
@@ -1456,7 +1468,7 @@ async function sincronizarEspecialistas(req: any, res: any) {
           origem: 'sql_server' as const,
           id_externo: idUnico,
           codigo: null, // Não há mais user_id na tabela
-          nome: registro.user_name || '',
+          nome: toMixedCase(registro.user_name || ''),
           email: registro.user_email || null,
           telefone: null,
           cargo: null,
