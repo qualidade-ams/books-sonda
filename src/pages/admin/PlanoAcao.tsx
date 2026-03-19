@@ -34,6 +34,7 @@ import {
   useHistoricoPlano,
 } from '@/hooks/usePlanosAcao';
 import { useCacheManager } from '@/hooks/useCacheManager';
+import { useSalvarEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import type { PlanoAcaoCompleto, PlanoAcaoFormData, FiltrosPlanoAcao } from '@/types/planoAcao';
 import { PRIORIDADE_OPTIONS, STATUS_PLANO_OPTIONS } from '@/types/planoAcao';
 
@@ -60,6 +61,7 @@ export default function PlanoAcao() {
   const [modalDetalhes, setModalDetalhes] = useState(false);
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoAcaoCompleto | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<'ativos' | 'finalizados'>('ativos');
+  const [subModalAberto, setSubModalAberto] = useState(false);
 
   // Nomes dos meses
   const nomesMeses = [
@@ -124,10 +126,19 @@ export default function PlanoAcao() {
   const criarPlano = useCriarPlanoAcao();
   const atualizarPlano = useAtualizarPlanoAcao();
   const deletarPlano = useDeletarPlanoAcao();
+  const salvarEspecialistas = useSalvarEspecialistasPesquisa();
 
   const handleSubmit = async (dados: PlanoAcaoFormData) => {
     if (planoSelecionado) {
       await atualizarPlano.mutateAsync({ id: planoSelecionado.id, dados });
+      
+      // Salvar especialistas na tabela de relacionamento
+      if (dados.especialistas_ids && planoSelecionado.pesquisa_id) {
+        await salvarEspecialistas.mutateAsync({
+          pesquisaId: planoSelecionado.pesquisa_id,
+          especialistasIds: dados.especialistas_ids,
+        });
+      }
       
       // Se o status mudou para concluído/cancelado, mudar para aba finalizados
       if (dados.status_plano === 'concluido' || dados.status_plano === 'cancelado') {
@@ -138,7 +149,15 @@ export default function PlanoAcao() {
         setAbaAtiva('ativos');
       }
     } else {
-      await criarPlano.mutateAsync(dados);
+      const novoPlano = await criarPlano.mutateAsync(dados);
+      
+      // Salvar especialistas para o novo plano
+      if (dados.especialistas_ids && dados.pesquisa_id) {
+        await salvarEspecialistas.mutateAsync({
+          pesquisaId: dados.pesquisa_id,
+          especialistasIds: dados.especialistas_ids,
+        });
+      }
     }
     setModalAberto(false);
     setPlanoSelecionado(null);
@@ -619,7 +638,11 @@ export default function PlanoAcao() {
       </Tabs>
 
       {/* Modal de Formulário */}
-      <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+      <Dialog open={modalAberto} onOpenChange={(open) => {
+        // Não fechar o modal pai se um sub-modal (editar/excluir contato) estiver aberto
+        if (!open && subModalAberto) return;
+        setModalAberto(open);
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -632,6 +655,7 @@ export default function PlanoAcao() {
             onSubmit={handleSubmit}
             onCancel={handleFecharModal}
             isLoading={criarPlano.isPending || atualizarPlano.isPending}
+            onSubModalChange={setSubModalAberto}
           />
         </DialogContent>
       </Dialog>
