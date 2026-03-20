@@ -285,7 +285,7 @@ const FormularioNovoTemplate: React.FC<FormularioNovoTemplateProps> = ({ onSucce
     
     <!-- Conteúdo Principal -->
     <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 40px 48px;">
-        {{ELOGIOS_LOOP}}
+        {{elogio.loop}}
     </div>
     
     <!-- Footer -->

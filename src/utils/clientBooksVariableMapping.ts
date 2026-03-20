@@ -274,9 +274,61 @@ export const obterVariaveisClientBooksDisponiveis = (): { [categoria: string]: s
       'sistema.mesAtual',
       'sistema.mesNomeAtual',
       'sistema.mesNomeAtualEn'
+    ],
+    'Elogios': [
+      'elogio.mesNomeAno',
+      'elogio.primeiro',
+      'elogio.qtd1',
+      'elogio.segundo',
+      'elogio.qtd2',
+      'elogio.terceiro',
+      'elogio.qtd3',
+      'elogio.loop',
+      'elogio.nome',
+      'elogio.mensagem',
+      'elogio.cliente',
+      'elogio.empresa'
     ]
   };
 };
+
+/**
+ * Variáveis processadas por serviços externos (elogiosTemplateService, etc.)
+ * Devem ser ignoradas na validação de templates genéricos
+ */
+const VARIAVEIS_EXTERNAS = new Set([
+  // Variáveis de sistema (elogiosTemplateService)
+  'sistema.mesNomeAtual',
+  'sistema.anoAtual',
+  'sistema.dataAtual',
+  // Variáveis de cabeçalho (elogiosTemplateService)
+  'TITULO_PRINCIPAL',
+  'SUBTITULO',
+  'MES_REFERENCIA',
+  'HEADER_IMAGE_URL',
+  'FOOTER_IMAGE_URL',
+  // Variáveis de conteúdo (elogiosTemplateService)
+  'elogio.loop',
+  'ELOGIOS_LINHA',
+  'PRESTADOR_NOME',
+  'RESPOSTA_SATISFACAO',
+  'COMENTARIO_CLIENTE',
+  'CLIENTE_NOME',
+  'EMPRESA_NOME',
+  // Variáveis de ranking de elogios (elogiosTemplateService)
+  'elogio.mesNomeAno',
+  'elogio.primeiro',
+  'elogio.qtd1',
+  'elogio.segundo',
+  'elogio.qtd2',
+  'elogio.terceiro',
+  'elogio.qtd3',
+  // Variáveis de card individual de elogio (elogiosTemplateService)
+  'elogio.nome',
+  'elogio.mensagem',
+  'elogio.cliente',
+  'elogio.empresa',
+]);
 
 /**
  * Valida se todas as variáveis no template têm valores correspondentes
@@ -292,7 +344,7 @@ export const validarVariaveisClientBooks = (
   while ((match = regex.exec(template)) !== null) {
     const nomeVariavel = match[1];
 
-    if (!(nomeVariavel in variaveis)) {
+    if (!(nomeVariavel in variaveis) && !VARIAVEIS_EXTERNAS.has(nomeVariavel)) {
       variaveisNaoEncontradas.push(nomeVariavel);
     }
   }
