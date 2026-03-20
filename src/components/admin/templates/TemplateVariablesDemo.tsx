@@ -260,7 +260,7 @@ export default function TemplateVariablesDemo({ onClose }: TemplateVariablesDemo
     
     <!-- Container de Elogios -->
     <div style="max-width: 1200px; margin: 0 auto; padding: 40px 48px;">
-        {{ELOGIOS_LOOP}}
+        {{elogio.loop}}
     </div>
     
     <!-- Footer -->
@@ -273,7 +273,7 @@ export default function TemplateVariablesDemo({ onClose }: TemplateVariablesDemo
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <h4 className="font-semibold text-yellow-900 mb-2">⚠️ Importante</h4>
             <ul className="text-yellow-800 text-sm space-y-1">
-              <li>• <strong>{'{{ELOGIOS_LOOP}}'}</strong> é processado automaticamente - você não precisa criar o HTML dos elogios manualmente</li>
+              <li>• <strong>{'{{elogio.loop}}'}</strong> é processado automaticamente - você não precisa criar o HTML dos elogios manualmente</li>
               <li>• As <strong>variáveis de sistema</strong> são atualizadas automaticamente baseadas na data atual</li>
               <li>• As <strong>URLs das imagens</strong> apontam para o servidor de produção</li>
               <li>• O sistema organiza automaticamente os elogios em <strong>linhas de 3 cards</strong> com divisores decorativos</li>

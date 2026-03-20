@@ -1069,14 +1069,26 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 return grupoPrincipal ? grupoPrincipal[0] : '';
               };
 
-              // Pegar todos os colaboradores ordenados
+              // Pegar todos os colaboradores ordenados por quantidade (desc) e nome (asc) em caso de empate
               const todosColaboradores = Object.entries(contagemPorPrestador)
-                .sort((a, b) => b[1] - a[1]);
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
-              // Mostrar top 3 ou todos se expandido
+              // Calcular posições reais considerando empates (dense ranking: 1, 2, 2, 3, 4...)
+              const posicoesReais: number[] = [];
+              todosColaboradores.forEach(([, quantidade], index) => {
+                if (index === 0) {
+                  posicoesReais.push(1);
+                } else if (quantidade === todosColaboradores[index - 1][1]) {
+                  posicoesReais.push(posicoesReais[index - 1]);
+                } else {
+                  posicoesReais.push(posicoesReais[index - 1] + 1);
+                }
+              });
+
+              // Mostrar top 3 posições (incluindo empates) ou todos se expandido
               const colaboradoresExibir = colaboradoresExpandido 
                 ? todosColaboradores 
-                : todosColaboradores.slice(0, 3);
+                : todosColaboradores.filter((_, idx) => posicoesReais[idx] <= 3);
 
               if (colaboradoresExibir.length === 0) {
                 return (
@@ -1096,9 +1108,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               return (
                 <div className={`space-y-3 ${colaboradoresExpandido ? 'max-h-64 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
                   {colaboradoresExibir.map(([nome, quantidade], index) => {
-                    const posicao = index + 1;
-                    const temMedalha = posicao <= 3;
-                    const medalha = temMedalha ? medalhas[index] : null;
+                    const posicaoOriginal = todosColaboradores.findIndex(([n]) => n === nome);
+                    const posicaoReal = posicoesReais[posicaoOriginal];
+                    const temMedalha = posicaoReal <= 3;
+                    const medalha = temMedalha ? medalhas[posicaoReal - 1] : null;
                     
                     return (
                       <div 
@@ -1116,7 +1129,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                             </div>
                           ) : (
                             <div className="flex items-center justify-center w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full">
-                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400">{posicao}º</span>
+                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400">{posicaoReal}º</span>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">

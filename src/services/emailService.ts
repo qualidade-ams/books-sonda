@@ -320,6 +320,7 @@ export const emailService = {
             nome: emailData.subject + ' (sem anexos)',
             email: emailData.to,
             email_cc: emailData.cc || '',
+            email_bcc: emailData.bcc || [],
             mensagem: emailData.html + '<br><br><em>Nota: Os anexos não puderam ser processados e serão enviados separadamente.</em>'
           };
 
@@ -382,6 +383,7 @@ export const emailService = {
         nome: '[TESTE ANEXOS] ' + emailData.subject,
         email: emailData.to,
         email_cc: emailData.cc || '',
+        email_bcc: emailData.bcc || [],
         mensagem: emailData.html,
         // Incluir anexos apenas se habilitado
         ...(emailData.anexos && {
@@ -583,6 +585,7 @@ export const emailService = {
           nome: assuntoFinal, // Usar o assunto processado
           email: Array.isArray(to) ? to : [to], // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
           email_cc: [], // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
+          email_bcc: [], // ✅ CORREÇÃO: Garantir que email_bcc seja sempre array para Power Automate
           mensagem: corpoFinal, // Enviar HTML do template
           // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
           anexos: {

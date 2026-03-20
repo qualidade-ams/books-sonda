@@ -623,13 +623,29 @@ export const obterVariaveisDisponiveis = (): { [categoria: string]: string[] } =
 };
 
 /**
+ * Variáveis processadas por serviços externos (elogiosTemplateService, etc.)
+ * Devem ser ignoradas na validação de templates genéricos
+ */
+const VARIAVEIS_EXTERNAS = new Set([
+  'sistema.mesNomeAtual', 'sistema.anoAtual', 'sistema.dataAtual',
+  'TITULO_PRINCIPAL', 'SUBTITULO', 'MES_REFERENCIA',
+  'HEADER_IMAGE_URL', 'FOOTER_IMAGE_URL',
+  'elogio.loop', 'ELOGIOS_LINHA',
+  'PRESTADOR_NOME', 'RESPOSTA_SATISFACAO', 'COMENTARIO_CLIENTE',
+  'CLIENTE_NOME', 'EMPRESA_NOME',
+  'elogio.mesNomeAno', 'elogio.primeiro', 'elogio.qtd1',
+  'elogio.segundo', 'elogio.qtd2', 'elogio.terceiro', 'elogio.qtd3',
+  'elogio.nome', 'elogio.mensagem', 'elogio.cliente', 'elogio.empresa',
+]);
+
+/**
  * Valida se todas as variáveis no template têm valores correspondentes
  */
 export const validarVariaveisTemplate = (
   template: string,
   variaveis: VariaveisCalculadas
 ): { valido: boolean; variaveisNaoEncontradas: string[] } => {
-  const regex = /{{(\w+)}}/g;
+  const regex = /{{([^}]+)}}/g;
   const variaveisEncontradas = new Set<string>();
   const variaveisNaoEncontradas: string[] = [];
 
@@ -638,7 +654,7 @@ export const validarVariaveisTemplate = (
     const nomeVariavel = match[1];
     variaveisEncontradas.add(nomeVariavel);
 
-    if (!(nomeVariavel in variaveis)) {
+    if (!(nomeVariavel in variaveis) && !VARIAVEIS_EXTERNAS.has(nomeVariavel)) {
       variaveisNaoEncontradas.push(nomeVariavel);
     }
   }
