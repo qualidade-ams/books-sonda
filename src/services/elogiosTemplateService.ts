@@ -577,16 +577,21 @@ export class ElogiosTemplateService {
           const linhas = [linha1];
           if (linha2.length > 0) linhas.push(linha2);
 
+          // Fundo alternativo a partir do 2º bloco (índice 1+)
+          const bgImage = blocoIndex >= 1
+            ? 'https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas-3.png'
+            : 'https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas.png';
+
           // Abrir bloco 1500x1080
           html += `
     <!--[if gte mso 9]>
     <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1500px;height:1080px;">
-    <v:fill type="frame" src="https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas.png" color="#ffffff" />
+    <v:fill type="frame" src="${bgImage}" color="#ffffff" />
     <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">
     <![endif]-->
     <div style="max-width:1500px;margin:0 auto;">
     <table width="1500" cellpadding="0" cellspacing="0" border="0"
-      style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0 auto;background:#ffffff url('https://books-sonda.vercel.app/images/elogios/detalhes-fundo-demais-paginas.png') no-repeat center center;background-size:cover;">
+      style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0 auto;background:#ffffff url('${bgImage}') no-repeat center center;background-size:cover;">
       <!-- HEADER DO BLOCO -->
       <tr>
         <td align="center" style="padding:40px 20px 10px;">
