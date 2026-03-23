@@ -11,6 +11,10 @@
     "api/pdf/generate.ts": {
       "memory": 2048,
       "maxDuration": 10
+    },
+    "api/email/render-image.ts": {
+      "memory": 2048,
+      "maxDuration": 15
     }
   }
 }

@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Database,
   Eye,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ import { useDeParaCategoria } from '@/hooks/useDeParaCategoria';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { emailService } from '@/services/emailService';
 import { elogiosTemplateService } from '@/services/elogiosTemplateService';
+import { supabase } from '@/integrations/supabase/client';
 import * as elogiosService from '@/services/elogiosService';
 import type { ElogioCompleto, FiltrosElogio } from '@/types/elogios';
 import { getBadgeResposta } from '@/utils/badgeUtils';
@@ -100,9 +102,72 @@ export default function EnviarElogios() {
       
       const htmlTemplate = await gerarRelatorioElogios(templateParaUsar);
       setCorpoEmail(htmlTemplate);
+      
+      // Renderizar HTML como imagem via Puppeteer
+      setGerandoImagem(true);
+      setCorpoEmailImagem(null);
+      setCorpoEmailImagemUrl(null);
+      try {
+        const response = await fetch('/api/email/render-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: htmlTemplate, width: 1300 })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.image) {
+            setCorpoEmailImagem(data.image);
+            
+            // Upload da imagem para Supabase Storage e obter URL pública
+            try {
+              const byteCharacters = atob(data.image);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'image/png' });
+              
+              const fileName = `elogios-${Date.now()}.png`;
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('email-images')
+                .upload(fileName, blob, {
+                  contentType: 'image/png',
+                  upsert: false
+                });
+              
+              if (uploadError) {
+                console.warn('⚠️ Erro ao fazer upload da imagem:', uploadError.message);
+              } else {
+                const { data: urlData } = supabase.storage
+                  .from('email-images')
+                  .getPublicUrl(fileName);
+                
+                if (urlData?.publicUrl) {
+                  setCorpoEmailImagemUrl(urlData.publicUrl);
+                  console.log('✅ Imagem salva no Storage, URL pública:', urlData.publicUrl);
+                }
+              }
+            } catch (uploadErr) {
+              console.warn('⚠️ Erro ao salvar imagem no Storage:', uploadErr);
+            }
+            
+            console.log('✅ Imagem do email gerada com sucesso');
+          }
+        } else {
+          console.warn('⚠️ Falha ao gerar imagem, email será enviado como HTML');
+        }
+      } catch (imgError) {
+        console.warn('⚠️ Erro ao gerar imagem do email, será enviado como HTML:', imgError);
+      } finally {
+        setGerandoImagem(false);
+      }
+      
       console.log('✅ Template regenerado com sucesso');
     } catch (error) {
       console.error('❌ Erro ao regenerar template:', error);
+      setGerandoImagem(false);
       toast({
         title: "Erro",
         description: "Erro ao gerar template. Tente novamente.",
@@ -131,7 +196,11 @@ export default function EnviarElogios() {
   const [destinatariosBCC, setDestinatariosBCC] = useState<string[]>([]);
   const [assuntoEmail, setAssuntoEmail] = useState('');
   const [corpoEmail, setCorpoEmail] = useState('');
+  const [corpoEmailImagem, setCorpoEmailImagem] = useState<string | null>(null);
+  const [corpoEmailImagemUrl, setCorpoEmailImagemUrl] = useState<string | null>(null);
+  const [gerandoImagem, setGerandoImagem] = useState(false);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [preparandoEnvio, setPreparandoEnvio] = useState(false);
   const [anexos, setAnexos] = useState<File[]>([]);
 
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
@@ -581,31 +650,39 @@ export default function EnviarElogios() {
       return;
     }
 
-    // Limpar campos e abrir modal
-    setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})`);
-    setCorpoEmail(''); // Será gerado quando template for selecionado
-    setDestinatarios([]);
-    setDestinatariosCC([]);
-    setDestinatariosBCC([]);
-    setDestinatariosTexto('');
-    setDestinatariosCCTexto('');
-    setDestinatariosBCCTexto('');
-    setAnexos([]);
-    
-    // Auto-selecionar primeiro template disponível se nenhum estiver selecionado
-    if (!templateSelecionado && elogiosTemplateOptions.length > 0) {
-      const primeiroTemplate = elogiosTemplateOptions[0];
-      console.log('🎯 Auto-selecionando template:', primeiroTemplate);
-      setTemplateSelecionado(primeiroTemplate.value);
+    setPreparandoEnvio(true);
+
+    try {
+      // Limpar campos e abrir modal
+      setAssuntoEmail(`[ELOGIOS] - Colaboradores de Soluções de Negócios (${nomesMeses[mesSelecionado - 1]})`);
+      setCorpoEmail(''); // Será gerado quando template for selecionado
+      setCorpoEmailImagem(null);
+      setCorpoEmailImagemUrl(null);
+      setDestinatarios([]);
+      setDestinatariosCC([]);
+      setDestinatariosBCC([]);
+      setDestinatariosTexto('');
+      setDestinatariosCCTexto('');
+      setDestinatariosBCCTexto('');
+      setAnexos([]);
       
-      // Gerar template automaticamente
-      await regenerarTemplate(primeiroTemplate.value);
-    } else if (templateSelecionado) {
-      // Gerar template inicial se já houver um selecionado
-      await regenerarTemplate();
+      // Auto-selecionar primeiro template disponível se nenhum estiver selecionado
+      if (!templateSelecionado && elogiosTemplateOptions.length > 0) {
+        const primeiroTemplate = elogiosTemplateOptions[0];
+        console.log('🎯 Auto-selecionando template:', primeiroTemplate);
+        setTemplateSelecionado(primeiroTemplate.value);
+        
+        // Gerar template automaticamente
+        await regenerarTemplate(primeiroTemplate.value);
+      } else if (templateSelecionado) {
+        // Gerar template inicial se já houver um selecionado
+        await regenerarTemplate();
+      }
+      
+      setModalEmailAberto(true);
+    } finally {
+      setPreparandoEnvio(false);
     }
-    
-    setModalEmailAberto(true);
   };
 
   // Função para extrair emails
@@ -810,13 +887,93 @@ export default function EnviarElogios() {
       );
 
       // Enviar email usando o serviço
+      // Se temos URL pública da imagem, usar no email; senão fallback para base64 ou HTML
+      let htmlParaEnvio = corpoEmail;
+      let attachmentsParaEnvio = anexosBase64.length > 0 ? [...anexosBase64] : [];
+
+      if (corpoEmailImagemUrl) {
+        // Usar URL pública do Supabase Storage (solução ideal - payload leve)
+        // Usa tabela com largura fixa + MSO conditional para forçar 1300px no Outlook desktop
+        htmlParaEnvio = `<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--[if gte mso 9]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<style>
+table { border-collapse: collapse; }
+img { -ms-interpolation-mode: bicubic; }
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div style="font-size:2px;line-height:2px;color:#ffffff;max-height:0;overflow:hidden;mso-hide:all;">ELOGIO AOS COLABORADORES DE SOLUÇÕES DE NEGÓCIO</div>
+<!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1300"><tr><td><![endif]-->
+<table cellpadding="0" cellspacing="0" border="0" width="1300" style="width:1300px;min-width:1300px;max-width:1300px;">
+<tr>
+<td style="padding:0;margin:0;line-height:0;font-size:0;">
+<img src="${corpoEmailImagemUrl}" alt="Elogios aos Colaboradores" width="1300" style="display:block;width:1300px;min-width:1300px;max-width:1300px;height:auto;border:0;outline:none;text-decoration:none;" />
+</td>
+</tr>
+</table>
+<!--[if gte mso 9]></td></tr></table><![endif]-->
+</body>
+</html>`;
+        console.log(`📸 Enviando email com imagem via URL pública: ${corpoEmailImagemUrl}`);
+      } else if (corpoEmailImagem) {
+        // Fallback: base64 inline (pode falhar com muitos elogios)
+        const MAX_BASE64_SIZE = 25 * 1024 * 1024; // 25MB
+        if (corpoEmailImagem.length <= MAX_BASE64_SIZE) {
+          htmlParaEnvio = `<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<!--[if gte mso 9]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<style>
+table { border-collapse: collapse; }
+img { -ms-interpolation-mode: bicubic; }
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<!--[if gte mso 9]><table cellpadding="0" cellspacing="0" border="0" width="1300"><tr><td><![endif]-->
+<table cellpadding="0" cellspacing="0" border="0" width="1300" style="width:1300px;min-width:1300px;max-width:1300px;">
+<tr>
+<td style="padding:0;margin:0;line-height:0;font-size:0;">
+<img src="data:image/png;base64,${corpoEmailImagem}" alt="Elogios aos Colaboradores" width="1300" style="display:block;width:1300px;min-width:1300px;max-width:1300px;height:auto;border:0;outline:none;text-decoration:none;" />
+</td>
+</tr>
+</table>
+<!--[if gte mso 9]></td></tr></table><![endif]-->
+</body>
+</html>`;
+          console.log(`📸 Fallback: enviando email com imagem base64 inline (${(corpoEmailImagem.length / 1024).toFixed(0)}KB)`);
+        } else {
+          console.warn(`⚠️ Imagem muito grande (${(corpoEmailImagem.length / 1024 / 1024).toFixed(1)}MB), enviando como HTML`);
+        }
+      } else {
+        console.log('📧 Enviando email como HTML (sem imagem renderizada)');
+      }
+
       const resultado = await emailService.sendEmail({
         to: emailsValidos,
         cc: emailsCCValidos.length > 0 ? emailsCCValidos : undefined,
         bcc: emailsBCCValidos.length > 0 ? emailsBCCValidos : undefined,
         subject: assuntoEmail,
-        html: corpoEmail,
-        attachments: anexosBase64.length > 0 ? anexosBase64 : undefined
+        html: htmlParaEnvio,
+        attachments: attachmentsParaEnvio.length > 0 ? attachmentsParaEnvio : undefined
       });
 
       if (resultado.success) {
@@ -922,12 +1079,16 @@ export default function EnviarElogios() {
             <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
               <Button
                 onClick={handleAbrirModalEmail}
-                disabled={isLoading || getTodosElogiosSelecionados().length === 0}
+                disabled={isLoading || preparandoEnvio || getTodosElogiosSelecionados().length === 0}
                 size="sm"
                 title={getTodosElogiosSelecionados().length === 0 ? 'Selecione elogios para enviar' : `Enviar ${getTodosElogiosSelecionados().length} elogio(s) selecionado(s)`}
               >
-                <Send className="h-4 w-4 mr-2" />
-                Disparar Elogios ({getTodosElogiosSelecionados().length})
+                {preparandoEnvio ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                {preparandoEnvio ? 'Preparando...' : `Disparar Elogios (${getTodosElogiosSelecionados().length})`}
               </Button>
             </ProtectedAction>
           </div>
@@ -1028,21 +1189,7 @@ export default function EnviarElogios() {
               <div className="flex flex-wrap gap-4 items-center">
                 <Badge variant="outline" className="text-xs sm:text-sm">
                   {getTodosElogiosSelecionados().length} selecionado{getTodosElogiosSelecionados().length !== 1 ? 's' : ''}
-                  {elogiosEnviadosSelecionados.length > 0 && (
-                    <span className="ml-1 text-orange-600">
-                      ({elogiosEnviadosSelecionados.length} para reenvio)
-                    </span>
-                  )}
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={limparTodasSelecoes}
-                  className="text-xs"
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  Limpar Seleção
-                </Button>
               </div>
             )}
           </div>
@@ -1726,8 +1873,26 @@ export default function EnviarElogios() {
 
               {/* Preview do Relatório - ocupa espaço restante com scroll */}
               <div className="flex-1 min-h-0 flex flex-col">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 flex-shrink-0">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 flex-shrink-0 flex items-center gap-2">
                   Preview do Relatório
+                  {gerandoImagem && (
+                    <span className="text-xs text-blue-600 flex items-center gap-1">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Gerando imagem...
+                    </span>
+                  )}
+                  {corpoEmailImagem && !gerandoImagem && (
+                    <>
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                        Imagem pronta
+                      </Badge>
+                    </>
+                  )}
+                  {!corpoEmailImagem && !gerandoImagem && corpoEmail && (
+                    <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700">
+                      Modo HTML
+                    </Badge>
+                  )}
                 </h4>
                 <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900 flex flex-col flex-1 min-h-0">
                   <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b flex-shrink-0">
@@ -1743,8 +1908,17 @@ export default function EnviarElogios() {
                       contain: 'style layout',
                       position: 'relative'
                     }}
-                    dangerouslySetInnerHTML={{ __html: corpoEmail }}
-                  />
+                  >
+                    {corpoEmailImagem ? (
+                      <img 
+                        src={corpoEmailImagemUrl || `data:image/png;base64,${corpoEmailImagem}`} 
+                        alt="Preview do email de elogios"
+                        style={{ width: '100%', maxWidth: '1300px', display: 'block' }}
+                      />
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: corpoEmail }} />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

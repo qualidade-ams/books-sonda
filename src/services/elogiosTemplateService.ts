@@ -326,7 +326,7 @@ export class ElogiosTemplateService {
 <body>
     <div class="email-container">
         <!-- Header -->
-        <img src="http://books-sonda.vercel.app/images/header-elogios.png" alt="Header" class="header-image">
+        <img src="https://books-sonda.vercel.app/images/header-elogios.png" alt="Header" class="header-image">
         
         <!-- Título -->
         <div class="title-section">
@@ -341,7 +341,7 @@ export class ElogiosTemplateService {
         </div>
         
         <!-- Footer -->
-        <img src="http://books-sonda.vercel.app/images/rodape-elogios.png" alt="Footer" class="footer-image">
+        <img src="https://books-sonda.vercel.app/images/rodape-elogios.png" alt="Footer" class="footer-image">
     </div>
 </body>
 </html>`;
@@ -472,8 +472,8 @@ export class ElogiosTemplateService {
       'TITULO_PRINCIPAL': 'ELOGIOS AOS COLABORADORES',
       'SUBTITULO': 'DE SOLUÇÕES DE NEGÓCIOS',
       'MES_REFERENCIA': nomesMeses[mesSelecionado - 1],
-      'HEADER_IMAGE_URL': 'http://books-sonda.vercel.app/images/header-elogios.png',
-      'FOOTER_IMAGE_URL': 'http://books-sonda.vercel.app/images/rodape-elogios.png',
+      'HEADER_IMAGE_URL': 'https://books-sonda.vercel.app/images/header-elogios.png',
+      'FOOTER_IMAGE_URL': 'https://books-sonda.vercel.app/images/rodape-elogios.png',
       'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
@@ -706,8 +706,8 @@ export class ElogiosTemplateService {
       'sistema.mesNomeAtual': nomesMeses[mesSelecionado - 1],
       'TITULO_PRINCIPAL': 'ELOGIOS AOS COLABORADORES',
       'SUBTITULO': 'DE SOLUÇÕES DE NEGÓCIOS',
-      'HEADER_IMAGE_URL': 'http://books-sonda.vercel.app/images/header-elogios.png',
-      'FOOTER_IMAGE_URL': 'http://books-sonda.vercel.app/images/rodape-elogios.png',
+      'HEADER_IMAGE_URL': 'https://books-sonda.vercel.app/images/header-elogios.png',
+      'FOOTER_IMAGE_URL': 'https://books-sonda.vercel.app/images/rodape-elogios.png',
       'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
@@ -819,13 +819,13 @@ export class ElogiosTemplateService {
       {
         variavel: '{{HEADER_IMAGE_URL}}',
         descricao: 'URL da imagem do cabeçalho',
-        exemplo: 'http://books-sonda.vercel.app/images/header-elogios.png',
+        exemplo: 'https://books-sonda.vercel.app/images/header-elogios.png',
         categoria: 'Cabeçalho'
       },
       {
         variavel: '{{FOOTER_IMAGE_URL}}',
         descricao: 'URL da imagem do rodapé',
-        exemplo: 'http://books-sonda.vercel.app/images/rodape-elogios.png',
+        exemplo: 'https://books-sonda.vercel.app/images/rodape-elogios.png',
         categoria: 'Cabeçalho'
       },
       
