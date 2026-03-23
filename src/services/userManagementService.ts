@@ -343,7 +343,7 @@ class UserManagementService {
                   <table width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); overflow: hidden;">
                     <tr>
                       <td align="center" bgcolor="#1a4eff" style="padding: 20px;">
-                        <img src="http://books-sonda.vercel.app/images/logo-sonda.png" alt="Logo Sonda" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
+                        <img src="https://books-sonda.vercel.app/images/logo-sonda.png" alt="Logo Sonda" width="150" style="display: block; width: 100%; max-width: 150px; height: auto; border: 0; line-height: 100%; outline: none; text-decoration: none;" />
                       </td>
                     </tr>
                     <tr>
