@@ -585,13 +585,13 @@ export class ElogiosTemplateService {
           // Abrir bloco 1500x1080
           html += `
     <!--[if gte mso 9]>
-    <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1500px;height:1080px;">
-    <v:fill type="frame" src="${bgImage}" color="#ffffff" />
-    <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">
+    <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:1500px;height:1080px;mso-position-horizontal:left;">
+    <v:fill type="tile" src="${bgImage}" />
+    <v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0">
     <![endif]-->
-    <div style="max-width:1500px;margin:0 auto;">
+    <div style="width:1500px;max-width:1500px;margin:0;">
     <table width="1500" cellpadding="0" cellspacing="0" border="0"
-      style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0 auto;background:#ffffff url('${bgImage}') no-repeat center center;background-size:cover;">
+      style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0;background-image:url('${bgImage}');background-repeat:no-repeat;background-position:center center;background-size:cover;">
       <!-- HEADER DO BLOCO -->
       <tr>
         <td align="center" style="padding:40px 20px 10px;">
@@ -614,7 +614,9 @@ export class ElogiosTemplateService {
             <tr>`;
 
             for (const elogio of linha) {
-              const nome = (elogio.pesquisa?.prestador || 'Colaborador').toUpperCase();
+              const nomeRaw = (elogio.pesquisa?.prestador || 'Colaborador').toUpperCase();
+              // Separar nomes por quebra de linha quando há vírgula
+              const nome = nomeRaw.includes(',') ? nomeRaw.split(',').map(n => n.trim()).join('<br>') : nomeRaw;
               const mensagemRaw = elogio.pesquisa?.comentario_pesquisa || elogio.pesquisa?.resposta || '';
               const mensagem = this.capitalizarPrimeiraLetra(mensagemRaw);
               const clienteRaw = elogio.pesquisa?.cliente || 'N/A';
@@ -622,18 +624,22 @@ export class ElogiosTemplateService {
               const nomeEmpresaOriginal = elogio.pesquisa?.empresa || 'N/A';
               const empresaAbreviado = await this.obterNomeAbreviadoEmpresa(nomeEmpresaOriginal);
               const empresa = empresaAbreviado.toUpperCase();
+              const chamado = elogio.pesquisa?.nro_caso || '';
 
               html += `
               <td width="${cardWidth}" valign="top" style="padding:8px;">
-                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#efefef;border-radius:20px;width:${cardWidth}px;height:220px;">
+                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;width:${cardWidth}px;height:220px;mso-border-alt:none;">
                   <tr>
-                    <td valign="top" style="padding:18px;">
-                      <div style="text-align:left;">
-                        <div style="color:#1f5df5;font-weight:700;font-size:11.9px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 6px 0;">${nome}</div>
-                        <div style="color:#000;font-weight:400;font-size:9.9px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 8px 0;line-height:1.4;">${mensagem}</div>
-                        <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${cliente}</div>
-                        <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;"><span style="font-weight:900;">Empresa:</span> ${empresa}</div>
-                      </div>
+                    <td valign="top" style="padding:18px 18px 0 18px;height:190px;">
+                      <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;">${nome}</div>
+                      <div style="color:#000;font-weight:400;font-size:12px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;">${mensagem}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td valign="bottom" style="padding:0 18px 14px 18px;">
+                      <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${cliente}</div>
+                      <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Empresa:</span> ${empresa}</div>
+                      <div style="color:#1f5df5;font-weight:700;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;">${chamado ? `<span style="font-weight:700;">Chamado:</span> ${chamado}` : '&nbsp;'}</div>
                     </td>
                   </tr>
                 </table>
