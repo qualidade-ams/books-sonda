@@ -474,7 +474,7 @@ export class ElogiosTemplateService {
       'MES_REFERENCIA': nomesMeses[mesSelecionado - 1],
       'HEADER_IMAGE_URL': 'http://books-sonda.vercel.app/images/header-elogios.png',
       'FOOTER_IMAGE_URL': 'http://books-sonda.vercel.app/images/rodape-elogios.png',
-      'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`,
+      'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
       'elogio.segundo': ranking.segundo,
@@ -484,7 +484,7 @@ export class ElogiosTemplateService {
     };
 
     // Processar loop de elogios
-    const mesNomeAno = `${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`;
+    const mesNomeAno = `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`;
     const elogiosHtml = await this.gerarHtmlElogios(elogiosSelecionados, mesNomeAno);
     
     // Substituir variáveis no template
@@ -594,7 +594,7 @@ export class ElogiosTemplateService {
       style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0;background-image:url('${bgImage}');background-repeat:no-repeat;background-position:center center;background-size:cover;">
       <!-- HEADER DO BLOCO -->
       <tr>
-        <td align="center" style="padding:40px 20px 10px;">
+        <td align="top" style="padding:0px 20px 10px 20px;vertical-align:top;">
           <p style="font-size:22px;font-weight:900;margin:0;text-align:center;font-family:'Roboto',Arial,sans-serif;">ELOGIOS AOS COLABORADORES DE SOLUÇÕES DE NEGÓCIOS</p>
           <p style="font-size:16px;font-weight:700;color:#1f5df5;margin:10px 0 15px;text-align:center;font-family:'Roboto',Arial,sans-serif;">${labelMesAno}</p>
           <img src="https://books-sonda.vercel.app/images/elogios/balao-elogios-recebidos.png" width="420" style="max-width:90%;display:block;margin:0 auto;">
@@ -602,7 +602,7 @@ export class ElogiosTemplateService {
       </tr>
       <!-- GRID DE ELOGIOS -->
       <tr>
-        <td align="center" valign="middle" style="padding:20px 0;">`;
+        <td align="top" valign="top" style="padding:20px 0;">`;
 
           for (const linha of linhas) {
             const count = linha.length;
@@ -628,18 +628,18 @@ export class ElogiosTemplateService {
 
               html += `
               <td width="${cardWidth}" valign="top" style="padding:8px;">
-                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;width:${cardWidth}px;height:220px;mso-border-alt:none;">
+                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;border-radius:20px;width:${cardWidth}px;height:270px;">
                   <tr>
                     <td valign="top" style="padding:18px 18px 0 18px;height:190px;">
                       <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;">${nome}</div>
-                      <div style="color:#000;font-weight:400;font-size:12px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;">${mensagem}</div>
+                      <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;">${mensagem}</div>
                     </td>
                   </tr>
                   <tr>
                     <td valign="bottom" style="padding:0 18px 14px 18px;">
-                      <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${cliente}</div>
-                      <div style="color:#000;font-weight:900;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Empresa:</span> ${empresa}</div>
-                      <div style="color:#1f5df5;font-weight:700;font-size:10px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;">${chamado ? `<span style="font-weight:700;">Chamado:</span> ${chamado}` : '&nbsp;'}</div>
+                      <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Cliente:</span> ${cliente}</div>
+                      <div style="color:#000;font-weight:900;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0 0 2px 0;"><span style="font-weight:900;">Empresa:</span> ${empresa}</div>
+                      <div style="color:#1f5df5;font-weight:700;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;">${chamado ? `<span style="font-weight:700;">Chamado:</span> ${chamado}` : '&nbsp;'}</div>
                     </td>
                   </tr>
                 </table>
@@ -651,19 +651,18 @@ export class ElogiosTemplateService {
           </table>`;
           }
 
-          // Fechar grid + footer do bloco (apenas no último bloco)
+          // Fechar grid (imagem "como enviar" dentro do mesmo td do grid)
           html += `
+          <!-- COMO ENVIAR -->
+          <div style="padding-top:75px;text-align:center;">
+            <img src="https://books-sonda.vercel.app/images/elogios/balao-como-enviar-elogios.png" width="600" style="max-width:90%;display:block;margin:0 auto;">
+          </div>
         </td>
       </tr>`;
 
+          // Logo SONDA apenas no último bloco
           if (isUltimoBloco) {
             html += `
-      <!-- COMO ENVIAR -->
-      <tr>
-        <td align="center" style="padding:30px 20px;">
-          <img src="https://books-sonda.vercel.app/images/elogios/balao-como-enviar-elogios.png" width="600" style="max-width:90%;display:block;margin:0 auto;">
-        </td>
-      </tr>
       <!-- LOGO -->
       <tr>
         <td align="center" style="padding:20px 0 40px;">
@@ -709,7 +708,7 @@ export class ElogiosTemplateService {
       'SUBTITULO': 'DE SOLUÇÕES DE NEGÓCIOS',
       'HEADER_IMAGE_URL': 'http://books-sonda.vercel.app/images/header-elogios.png',
       'FOOTER_IMAGE_URL': 'http://books-sonda.vercel.app/images/rodape-elogios.png',
-      'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`,
+      'elogio.mesNomeAno': `${nomesMeses[mesSelecionado - 1]} / ${anoSelecionado}`,
       'elogio.primeiro': ranking.primeiro,
       'elogio.qtd1': ranking.qtd1.toString(),
       'elogio.segundo': ranking.segundo,
