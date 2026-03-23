@@ -1539,15 +1539,17 @@ export default function EnviarElogios() {
           open={modalEmailAberto} 
           onOpenChange={setModalEmailAberto}
         >
-          <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Disparar Elogios por Email
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="flex flex-col flex-1 min-h-0 gap-4">
+              {/* Campos do formulário - com scroll próprio */}
+              <div className="flex-shrink-0 max-h-[35vh] overflow-y-auto space-y-4 pr-2">
               {/* Destinatários */}
               <div>
                 <Label className="text-base font-medium">Destinatários</Label>
@@ -1720,36 +1722,34 @@ export default function EnviarElogios() {
                   disabled={isLoading || enviandoEmail}
                 />
               </div>
+              </div>
 
-              {/* Preview do Relatório */}
-              <div>
-                {/* Preview do Relatório */}
-                <div className="mt-2">
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Preview do Relatório
-                  </h4>
-                  <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
-                    <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
-                        <strong> Elogios:</strong> {elogiosSelecionados.length}
-                      </div>
+              {/* Preview do Relatório - ocupa espaço restante com scroll */}
+              <div className="flex-1 min-h-0 flex flex-col">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 flex-shrink-0">
+                  Preview do Relatório
+                </h4>
+                <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900 flex flex-col flex-1 min-h-0">
+                  <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b flex-shrink-0">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado} |
+                      <strong> Elogios:</strong> {getTodosElogiosSelecionados().length}
                     </div>
-                    <div
-                      className="max-h-[600px] overflow-y-auto p-4 email-preview-container"
-                      style={{ 
-                        isolation: 'isolate',
-                        contain: 'style layout',
-                        position: 'relative'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: corpoEmail }}
-                    />
                   </div>
+                  <div
+                    className="flex-1 overflow-auto p-4 email-preview-container"
+                    style={{ 
+                      isolation: 'isolate',
+                      contain: 'style layout',
+                      position: 'relative'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: corpoEmail }}
+                  />
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="flex items-center gap-2">
+            <DialogFooter className="flex-shrink-0 flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
