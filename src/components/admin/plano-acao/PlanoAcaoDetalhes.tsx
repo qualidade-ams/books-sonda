@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContatosList } from './ContatosList';
-import { useEspecialistas } from '@/hooks/useEspecialistas';
+import { useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCoordenador } from '@/hooks/useCoordenadores';
 import type { PlanoAcaoCompleto, PlanoAcaoHistorico } from '@/types/planoAcao';
 import { getCorPrioridade, getCorStatus, TIPO_ACAO_OPTIONS } from '@/types/planoAcao';
@@ -33,59 +33,11 @@ interface PlanoAcaoDetalhesProps {
 }
 
 export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) {
-  // Buscar dados dos especialistas relacionados à pesquisa
-  const { data: especialistasRelacionados = [] } = useEspecialistas({});
+  // Buscar especialistas salvos na tabela de relacionamento (pesquisa_especialistas)
+  const { data: especialistasPesquisa = [] } = useEspecialistasPesquisa(plano.pesquisa_id);
   
   // Buscar dados do coordenador
   const { data: coordenador } = useCoordenador(plano.pesquisa?.coordenador_id);
-  
-  // Buscar especialistas da pesquisa através do prestador
-  const especialistasPlano = (() => {
-    if (!plano.pesquisa?.prestador) return [];
-    
-    // Limpar e normalizar o campo prestador (remover duplicatas)
-    const nomesPrestador = plano.pesquisa.prestador
-      .split(',')
-      .map(n => n.trim())
-      .filter(n => n.length > 0);
-    
-    // Remover duplicatas do campo prestador
-    const nomesUnicos = Array.from(new Set(nomesPrestador));
-    
-    console.log('🔍 Debug Prestador:', {
-      prestadorOriginal: plano.pesquisa.prestador,
-      nomesSeparados: nomesPrestador,
-      nomesUnicos: nomesUnicos,
-      hasDuplicatas: nomesPrestador.length !== nomesUnicos.length
-    });
-    
-    // Buscar especialistas que correspondam aos nomes únicos
-    const especialistasEncontrados = especialistasRelacionados.filter(esp => {
-      const nomeEspecialista = esp.nome.toLowerCase().trim();
-      
-      // Verificar se o nome do especialista corresponde a algum dos nomes únicos
-      return nomesUnicos.some(nomePrestador => {
-        const nomeNormalizado = nomePrestador.toLowerCase().trim();
-        return nomeNormalizado.includes(nomeEspecialista) || nomeEspecialista.includes(nomeNormalizado);
-      });
-    });
-    
-    // Remover duplicatas baseado no ID do especialista
-    const resultado = especialistasEncontrados.reduce((acc, esp) => {
-      if (!acc.find(e => e.id === esp.id)) {
-        acc.push(esp);
-      }
-      return acc;
-    }, [] as typeof especialistasRelacionados);
-    
-    console.log('🔍 Debug Especialistas:', {
-      especialistasEncontrados: especialistasEncontrados.map(e => e.nome),
-      especialistasUnicos: resultado.map(e => e.nome),
-      totalEspecialistas: especialistasRelacionados.length
-    });
-    
-    return resultado;
-  })();
   
   return (
     <Tabs defaultValue="informacoes" className="w-full">
@@ -137,10 +89,12 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Consultor(es)</p>
-              {especialistasPlano.length > 0 ? (
+              {especialistasPesquisa.length > 0 ? (
                 <p className="font-medium">
-                  {especialistasPlano.map(esp => esp.nome).join(', ')}
+                  {especialistasPesquisa.map(esp => esp.nome).join(', ')}
                 </p>
+              ) : plano.pesquisa?.prestador ? (
+                <p className="font-medium">{plano.pesquisa.prestador}</p>
               ) : (
                 <p className="font-medium text-muted-foreground">-</p>
               )}
