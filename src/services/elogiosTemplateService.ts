@@ -60,6 +60,11 @@ export class ElogiosTemplateService {
   
   // Cache para empresas (evita múltiplas consultas)
   private static empresasCache: Array<{ nome_completo: string; nome_abreviado: string }> | null = null;
+
+  /** Limpa cache de empresas. Chamado pelo clearAllAppCache no logout. */
+  static clearEmpresasCache(): void {
+    ElogiosTemplateService.empresasCache = null;
+  }
   
   /**
    * Busca empresas cadastradas para fazer de-para com nome abreviado
@@ -910,3 +915,9 @@ export class ElogiosTemplateService {
 
 // Instância singleton do serviço
 export const elogiosTemplateService = new ElogiosTemplateService();
+
+// Registrar limpeza de cache no logout
+import { registerCacheCleanup } from '@/services/clearAllAppCache';
+registerCacheCleanup(() => {
+  ElogiosTemplateService.clearEmpresasCache();
+});

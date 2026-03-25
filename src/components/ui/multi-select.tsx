@@ -77,12 +77,12 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between text-left font-normal",
+            "w-full justify-between text-left font-normal h-auto min-h-10",
             className
           )}
           disabled={disabled}
         >
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center overflow-hidden max-h-[4.5rem] flex-1 min-w-0">
             {selected.length === 0 && (
               <span className="text-muted-foreground">{placeholder}</span>
             )}
@@ -95,14 +95,14 @@ export function MultiSelect({
                     <Badge
                       variant="secondary"
                       key={item}
-                      className="mr-1 mb-1"
+                      className="mr-1 mb-1 shrink-0 max-w-[200px]"
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                         handleUnselect(item)
                       }}
                     >
-                      {option.label}
+                      <span className="truncate">{option.label}</span>
                       <button
                         className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         onKeyDown={(e) => {
@@ -130,13 +130,13 @@ export function MultiSelect({
             {selected.length > maxCount && (
               <Badge
                 variant="secondary"
-                className="mr-1 mb-1"
+                className="mr-1 mb-1 shrink-0"
               >
                 {selected.length} selecionados
               </Badge>
             )}
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

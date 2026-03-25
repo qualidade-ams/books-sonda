@@ -2474,6 +2474,12 @@ class BooksDataCollectorService {
   private mapeamentoCacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+  /** Limpa cache interno. Chamado pelo clearAllAppCache no logout. */
+  resetInternalCache(): void {
+    this.mapeamentoCache = null;
+    this.mapeamentoCacheTimestamp = 0;
+  }
+
   /**
    * Busca mapeamento de categorias da tabela de_para_categoria
    * Mapeia tanto nome_grupo quanto cod_resolucao para grupo_book
@@ -2536,3 +2542,7 @@ class BooksDataCollectorService {
 }
 
 export const booksDataCollectorService = new BooksDataCollectorService();
+
+// Registrar limpeza de cache no logout
+import { registerCacheCleanup } from '@/services/clearAllAppCache';
+registerCacheCleanup(() => booksDataCollectorService.resetInternalCache());

@@ -395,6 +395,11 @@ export class JobConfigurationService {
     this.cacheExpiry.clear();
   }
 
+  /** Limpa cache interno. Chamado pelo clearAllAppCache no logout. */
+  resetInternalCache(): void {
+    this.clearCache();
+  }
+
   private parseBoolean(value: any, defaultValue: boolean): boolean {
     if (value === null || value === undefined) {
       return defaultValue;
@@ -437,3 +442,7 @@ export class JobConfigurationService {
 
 // Instância singleton do serviço de configuração
 export const jobConfigurationService = new JobConfigurationService();
+
+// Registrar limpeza de cache no logout
+import { registerCacheCleanup } from '@/services/clearAllAppCache';
+registerCacheCleanup(() => jobConfigurationService.resetInternalCache());

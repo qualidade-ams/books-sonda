@@ -839,3 +839,7 @@ export class AnexoAuditService {
 
 // Instância singleton do serviço de auditoria de anexos
 export const anexoAuditService = new AnexoAuditService();
+
+// Registrar limpeza de cache no logout
+import { registerCacheCleanup } from '@/services/clearAllAppCache';
+registerCacheCleanup(() => anexoAuditService.limparCacheMetricas());

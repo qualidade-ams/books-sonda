@@ -2,6 +2,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { clearAllAppCache } from '@/services/clearAllAppCache';
 
 interface AuthContextType {
   user: User | null;
@@ -215,9 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      // Limpar dados locais
-      sessionStorage.clear();
-      localStorage.removeItem('last_activity');
+      // Limpar TODOS os caches da aplicação (isLogout limpa sessionStorage inteiro)
+      clearAllAppCache(undefined, { isLogout: true });
       
       // Forçar limpeza do estado
       setSession(null);
@@ -227,8 +227,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('AuthProvider: Erro no logout:', error);
       
       // Mesmo com erro, limpar dados locais
-      sessionStorage.clear();
-      localStorage.removeItem('last_activity');
+      clearAllAppCache(undefined, { isLogout: true });
       setSession(null);
       setUser(null);
       
