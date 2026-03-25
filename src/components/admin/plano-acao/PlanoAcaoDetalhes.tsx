@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContatosList } from './ContatosList';
 import { useEspecialistasPesquisa } from '@/hooks/useEspecialistasRelacionamentos';
 import { useCoordenador } from '@/hooks/useCoordenadores';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import type { PlanoAcaoCompleto, PlanoAcaoHistorico } from '@/types/planoAcao';
 import { getCorPrioridade, getCorStatus, TIPO_ACAO_OPTIONS } from '@/types/planoAcao';
 import {
@@ -38,6 +40,31 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
   
   // Buscar dados do coordenador
   const { data: coordenador } = useCoordenador(plano.pesquisa?.coordenador_id);
+
+  // Buscar nome abreviado da empresa (por empresa_id ou pelo nome completo da pesquisa)
+  const { data: empresa } = useQuery({
+    queryKey: ['empresa-abreviado', plano.empresa_id, plano.pesquisa?.empresa],
+    queryFn: async () => {
+      if (plano.empresa_id) {
+        const { data } = await supabase
+          .from('empresas_clientes')
+          .select('nome_abreviado')
+          .eq('id', plano.empresa_id)
+          .single();
+        return data;
+      }
+      if (plano.pesquisa?.empresa) {
+        const { data } = await supabase
+          .from('empresas_clientes')
+          .select('nome_abreviado')
+          .eq('nome_completo', plano.pesquisa.empresa)
+          .maybeSingle();
+        return data;
+      }
+      return null;
+    },
+    enabled: !!plano.empresa_id || !!plano.pesquisa?.empresa,
+  });
   
   return (
     <Tabs defaultValue="informacoes" className="w-full">
@@ -71,7 +98,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Empresa</p>
-              <p className="font-medium">{plano.pesquisa?.empresa || '-'}</p>
+              <p className="font-medium">{empresa?.nome_abreviado || plano.pesquisa?.empresa || '-'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Cliente</p>
