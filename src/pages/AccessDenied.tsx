@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowLeft, Home, RefreshCw, Shield } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, Home, LogOut, RefreshCw, Shield } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 interface AccessDeniedProps {
   /**
@@ -29,6 +30,7 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { refreshPermissions, userGroup } = usePermissions();
+  const { signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Extract screen info from location state if available
@@ -118,7 +120,15 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
           </Button>
           
           <Button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              // Se há histórico real (não veio de redirect), voltar
+              // Caso contrário, ir para o dashboard (que pode redirecionar se sem permissão)
+              if (window.history.length > 2) {
+                navigate(-1);
+              } else {
+                navigate('/admin/dashboard', { replace: true });
+              }
+            }}
             variant="outline"
             className="w-full"
           >
@@ -127,14 +137,20 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
           </Button>
           
           <Button
-            asChild
+            onClick={async () => {
+              // Fazer logout e ir para a tela de login
+              try {
+                await signOut();
+              } catch (e) {
+                // Mesmo com erro, redirecionar
+              }
+              window.location.href = '/';
+            }}
             variant="ghost"
             className="w-full"
           >
-            <Link to="/">
-              <Home className="h-4 w-4 mr-2" />
-              Ir para Página Inicial
-            </Link>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair e Ir para Login
           </Button>
         </div>
 

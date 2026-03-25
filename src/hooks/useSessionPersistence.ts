@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
+import { clearAllAppCache } from '@/services/clearAllAppCache';
 
 /**
  * Hook para gerenciar a persistência de sessão
@@ -89,12 +90,11 @@ export const useSessionPersistence = () => {
   const forceLogout = async () => {
     try {
       await signOut();
-      // Limpar todos os dados de sessão
-      sessionStorage.clear();
-      localStorage.removeItem('last_activity');
+      // signOut já chama clearAllAppCache internamente
     } catch (error) {
       console.error('Erro ao forçar logout:', error);
-      // Forçar redirecionamento mesmo com erro
+      // Garantir limpeza mesmo com erro
+      clearAllAppCache(undefined, { isLogout: true });
       window.location.href = '/';
     }
   };

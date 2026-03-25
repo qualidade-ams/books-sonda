@@ -255,7 +255,7 @@ export function MultiSelectEspecialistas({
             )}
             disabled={disabled}
           >
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1 flex-wrap items-center overflow-hidden max-h-[4.5rem] flex-1 min-w-0">
               {internalValue.length === 0 && (
                 <span className="text-muted-foreground">{placeholder}</span>
               )}
@@ -269,7 +269,7 @@ export function MultiSelectEspecialistas({
                         variant="secondary"
                         key={item}
                         className={cn(
-                          "mr-1 mb-1 flex items-center gap-1 hover:bg-destructive/10",
+                          "mr-1 mb-1 flex items-center gap-1 shrink-0 max-w-[200px] hover:bg-destructive/10",
                           item.startsWith('manual_') && "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200"
                         )}
                         title={`${option.label}${item.startsWith('manual_') ? ' (Manual)' : ''}`}
@@ -313,14 +313,14 @@ export function MultiSelectEspecialistas({
               {internalValue.length > maxCount && (
                 <Badge
                   variant="secondary"
-                  className="mr-1 mb-1 flex items-center gap-1"
+                  className="mr-1 mb-1 flex items-center gap-1 shrink-0"
                 >
                   <User className="h-3 w-3" />
                   {internalValue.length} consultores selecionados
                 </Badge>
               )}
             </div>
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
           </Button>
         </PopoverTrigger>
         <PopoverContent

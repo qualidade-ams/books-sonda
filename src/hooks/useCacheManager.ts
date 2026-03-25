@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cacheManager } from '@/services/cacheManager';
+import { clearAllAppCache } from '@/services/clearAllAppCache';
 import { toast } from 'sonner';
 
 /**
@@ -12,38 +13,18 @@ export const useCacheManager = () => {
 
   /**
    * Limpa todo o cache do sistema
+   * Delega para clearAllAppCache que é a fonte única de verdade
    */
   const clearAllCache = useCallback(async () => {
     try {
       console.info('🧹 Limpando todo o cache do sistema...');
       
-      // Limpar React Query cache
-      await queryClient.clear();
+      const success = clearAllAppCache(queryClient);
       
-      // Limpar cache do sistema
-      cacheManager.clear();
-      
-      // Limpar localStorage relacionado ao cache
-      const localStorageKeys = Object.keys(localStorage).filter(key => 
-        key.startsWith('cache_') || 
-        key.startsWith('query_') ||
-        key.includes('_cache') ||
-        key.startsWith('sidebar_')
-      );
-      
-      localStorageKeys.forEach(key => localStorage.removeItem(key));
-      
-      // Limpar sessionStorage relacionado ao cache (exceto cache_initialized)
-      const sessionStorageKeys = Object.keys(sessionStorage).filter(key => 
-        key.startsWith('cache_') || 
-        key.startsWith('query_') ||
-        key.includes('_cache')
-      ).filter(key => key !== 'cache_initialized');
-      
-      sessionStorageKeys.forEach(key => sessionStorage.removeItem(key));
-      
-      console.info('✅ Cache limpo com sucesso');
-      return true;
+      if (success) {
+        console.info('✅ Cache limpo com sucesso');
+      }
+      return success;
     } catch (error) {
       console.error('❌ Erro ao limpar cache:', error);
       return false;
