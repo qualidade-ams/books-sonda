@@ -500,10 +500,26 @@ export async function criarPesquisa(dados: PesquisaFormData): Promise<Pesquisa> 
     
     if (errorRelacionamentos) {
       console.error('❌ [CRIAR] Erro ao salvar relacionamentos:', errorRelacionamentos);
-      // Não falhar a operação inteira, apenas logar o erro
       console.warn('⚠️ [CRIAR] Pesquisa criada mas relacionamentos não foram salvos');
     } else {
       console.log('✅ [CRIAR] Relacionamentos salvos com sucesso');
+
+      // Sincronizar campo prestador com nomes dos especialistas
+      const { data: especialistaData } = await supabase
+        .from('especialistas')
+        .select('nome')
+        .in('id', dados.especialistas_ids);
+
+      if (especialistaData && especialistaData.length > 0) {
+        const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+        if (nomesPrestadores) {
+          await supabase
+            .from('pesquisas_satisfacao')
+            .update({ prestador: nomesPrestadores })
+            .eq('id', data.id);
+          console.log('✅ [CRIAR] Prestador sincronizado:', nomesPrestadores);
+        }
+      }
     }
   }
 
@@ -628,6 +644,23 @@ export async function atualizarPesquisa(id: string, dados: Partial<PesquisaFormD
         console.warn('⚠️ [ATUALIZAR] Pesquisa atualizada mas relacionamentos não foram salvos');
       } else {
         console.log('✅ [ATUALIZAR] Novos relacionamentos salvos com sucesso');
+      }
+
+      // Sincronizar campo prestador com nomes dos especialistas
+      const { data: especialistaData } = await supabase
+        .from('especialistas')
+        .select('nome')
+        .in('id', dados.especialistas_ids);
+
+      if (especialistaData && especialistaData.length > 0) {
+        const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+        if (nomesPrestadores) {
+          await supabase
+            .from('pesquisas_satisfacao')
+            .update({ prestador: nomesPrestadores })
+            .eq('id', id);
+          console.log('✅ [ATUALIZAR] Prestador sincronizado:', nomesPrestadores);
+        }
       }
     } else {
       console.log('ℹ️ [ATUALIZAR] Nenhum relacionamento para salvar (lista vazia)');

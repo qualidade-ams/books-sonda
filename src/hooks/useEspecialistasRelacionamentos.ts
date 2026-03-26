@@ -104,6 +104,34 @@ export function useSalvarEspecialistasPesquisa() {
           console.error('Erro ao inserir novos relacionamentos:', insertError);
           throw insertError;
         }
+
+        // 3. Sincronizar campo prestador na pesquisas_satisfacao com o nome do primeiro especialista
+        const { data: especialistaData } = await supabase
+          .from('especialistas')
+          .select('nome')
+          .in('id', especialistasIds);
+
+        if (especialistaData && especialistaData.length > 0) {
+          const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+          if (nomesPrestadores) {
+            const { error: updateError } = await supabase
+              .from('pesquisas_satisfacao')
+              .update({ prestador: nomesPrestadores })
+              .eq('id', pesquisaId);
+
+            if (updateError) {
+              console.warn('⚠️ Erro ao sincronizar prestador na pesquisa:', updateError);
+            } else {
+              console.log('✅ Prestador sincronizado na pesquisa:', nomesPrestadores);
+            }
+          }
+        }
+      } else {
+        // Se removeu todos os especialistas, limpar o prestador
+        await supabase
+          .from('pesquisas_satisfacao')
+          .update({ prestador: null })
+          .eq('id', pesquisaId);
       }
 
       return { pesquisaId, especialistasIds };
@@ -197,6 +225,50 @@ export function useSalvarEspecialistasElogio() {
         if (insertError) {
           console.error('Erro ao inserir novos relacionamentos:', insertError);
           throw insertError;
+        }
+
+        // 3. Sincronizar campo prestador na pesquisas_satisfacao vinculada ao elogio
+        const { data: elogioData } = await supabase
+          .from('elogios')
+          .select('pesquisa_id')
+          .eq('id', elogioId)
+          .single();
+
+        if (elogioData?.pesquisa_id) {
+          const { data: especialistaData } = await supabase
+            .from('especialistas')
+            .select('nome')
+            .in('id', especialistasIds);
+
+          if (especialistaData && especialistaData.length > 0) {
+            const nomesPrestadores = especialistaData.map(e => e.nome).filter(Boolean).join(', ');
+            if (nomesPrestadores) {
+              const { error: updateError } = await supabase
+                .from('pesquisas_satisfacao')
+                .update({ prestador: nomesPrestadores })
+                .eq('id', elogioData.pesquisa_id);
+
+              if (updateError) {
+                console.warn('⚠️ Erro ao sincronizar prestador na pesquisa (elogio):', updateError);
+              } else {
+                console.log('✅ Prestador sincronizado na pesquisa (via elogio):', nomesPrestadores);
+              }
+            }
+          }
+        }
+      } else {
+        // Se removeu todos os especialistas, limpar o prestador na pesquisa vinculada
+        const { data: elogioData } = await supabase
+          .from('elogios')
+          .select('pesquisa_id')
+          .eq('id', elogioId)
+          .single();
+
+        if (elogioData?.pesquisa_id) {
+          await supabase
+            .from('pesquisas_satisfacao')
+            .update({ prestador: null })
+            .eq('id', elogioData.pesquisa_id);
         }
       }
 
