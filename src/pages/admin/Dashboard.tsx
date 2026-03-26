@@ -3712,7 +3712,21 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       total: dados.total,
       empresaPrincipal: Array.from(dados.empresas)[0] || 'N/A'
     }))
-    .sort((a, b) => b.total - a.total); // Todos os consultores, sem limite
+    .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome)); // Desempate por ordem alfabética
+
+  // Pré-calcular posições com empate (mesma quantidade = mesma posição)
+  const topConsultoresPosicoes = new Map<string, number>();
+  {
+    let posicaoAtual = 1;
+    let totalAnterior: number | null = null;
+    topConsultores.forEach((consultor) => {
+      if (totalAnterior !== null && consultor.total < totalAnterior) {
+        posicaoAtual++;
+      }
+      topConsultoresPosicoes.set(consultor.nome, posicaoAtual);
+      totalAnterior = consultor.total;
+    });
+  }
 
   // Calcular distribuição por grupo (COMEX, Fiscal, T&M, PROJETO, INTERNOS, GERENTE)
   // Mapeia a categoria de cada plano para o grupo correspondente na tabela de_para_categoria
@@ -4480,12 +4494,16 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
             ) : (
               <div className={`space-y-3 ${topConsultoresExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
-                {(topConsultoresExpandido ? topConsultores : topConsultores.slice(0, 5)).map((consultor, index) => {
-                  // Cores de alerta para os 3 primeiros (mais críticos) - indicam problemas
+                {(topConsultoresExpandido ? topConsultores : topConsultores.slice(0, 5)).map((consultor) => {
+                  // Posição pré-calculada com empate
+                  const posicao = topConsultoresPosicoes.get(consultor.nome) || 1;
+                  
+                  // Cores de alerta para as 3 primeiras posições (mais críticos) - indicam problemas
                   const alertColors = ['text-red-600', 'text-orange-600', 'text-amber-600'];
                   const borderLeftColors = ['border-l-red-400', 'border-l-orange-400', 'border-l-amber-400'];
                   const bgSubtleColors = ['bg-red-50/50 dark:bg-red-900/10', 'bg-orange-50/50 dark:bg-orange-900/10', 'bg-amber-50/50 dark:bg-amber-900/10'];
-                  const isTopThree = index < 3;
+                  const isTopThree = posicao <= 3;
+                  const colorIndex = Math.min(posicao - 1, 2);
                   const isFiltered = consultorFiltrado === consultor.nome;
                   
                   return (
@@ -4495,15 +4513,15 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                         isFiltered
                           ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-400 border-l-blue-400'
                           : isTopThree 
-                            ? `${borderLeftColors[index]} ${bgSubtleColors[index]} hover:opacity-80` 
+                            ? `${borderLeftColors[colorIndex]} ${bgSubtleColors[colorIndex]} hover:opacity-80` 
                             : 'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
                       } border-b border-gray-100 dark:border-gray-700 last:border-b-0`}
                       onClick={() => handleFiltrarConsultor(consultor.nome)}
                     >
                       {/* Posição com indicador de alerta - números em vez de medalhas */}
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-                        <span className={`text-xs font-bold ${isTopThree ? alertColors[index] : 'text-gray-500'}`}>
-                          {index + 1}º
+                        <span className={`text-xs font-bold ${isTopThree ? alertColors[colorIndex] : 'text-gray-500'}`}>
+                          {posicao}º
                         </span>
                       </div>
                       
