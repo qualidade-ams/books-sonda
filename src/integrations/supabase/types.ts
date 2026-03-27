@@ -1933,6 +1933,86 @@ export type Database = {
           },
         ]
       }
+      pesquisa_mensal_ams: {
+        Row: {
+          id: string
+          identificador_questionario: string
+          nome_questionario: string
+          mes_referencia: number
+          inicio_real_questionario: string | null
+          nome_respondente: string | null
+          email_respondente: string | null
+          cliente: string | null
+          cliente_foco: boolean | null
+          vertical: string | null
+          unidade_negocio: string | null
+          nota: number | null
+          comentario: string | null
+          inicio_resposta: string | null
+          termino_resposta: string | null
+          situacao_resposta: string | null
+          incompleto: boolean | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          ano_referencia: number | null
+        }
+        Insert: {
+          id?: string
+          identificador_questionario: string
+          nome_questionario: string
+          mes_referencia: number
+          inicio_real_questionario?: string | null
+          nome_respondente?: string | null
+          email_respondente?: string | null
+          cliente?: string | null
+          cliente_foco?: boolean | null
+          vertical?: string | null
+          unidade_negocio?: string | null
+          nota?: number | null
+          comentario?: string | null
+          inicio_resposta?: string | null
+          termino_resposta?: string | null
+          situacao_resposta?: string | null
+          incompleto?: boolean | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          ano_referencia?: number | null
+        }
+        Update: {
+          id?: string
+          identificador_questionario?: string
+          nome_questionario?: string
+          mes_referencia?: number
+          inicio_real_questionario?: string | null
+          nome_respondente?: string | null
+          email_respondente?: string | null
+          cliente?: string | null
+          cliente_foco?: boolean | null
+          vertical?: string | null
+          unidade_negocio?: string | null
+          nota?: number | null
+          comentario?: string | null
+          inicio_resposta?: string | null
+          termino_resposta?: string | null
+          situacao_resposta?: string | null
+          incompleto?: boolean | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          ano_referencia?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesquisa_mensal_ams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pesquisas_satisfacao: {
         Row: {
           ano_abertura: number | null

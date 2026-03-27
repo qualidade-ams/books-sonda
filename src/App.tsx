@@ -34,6 +34,7 @@ import LancarRequerimentos from "./pages/admin/LancarRequerimentos";
 import FaturarRequerimentos from "./pages/admin/FaturarRequerimentos";
 import LancarPesquisas from "./pages/admin/LancarPesquisas";
 import VisualizarPesquisas from "./pages/admin/VisualizarPesquisas";
+import PesquisaMensalAMS from "./pages/admin/PesquisaMensalAMS";
 import LancarElogios from "./pages/admin/LancarElogios";
 import EnviarElogios from "./pages/admin/EnviarElogios";
 import Organograma from "./pages/admin/Organograma";
@@ -90,6 +91,7 @@ const App = () => (
                   <Route path="/admin/faturar-requerimentos" element={<ProtectedRoute screenKey="faturar_requerimentos"><FaturarRequerimentos /></ProtectedRoute>} />
                   <Route path="/admin/lancar-pesquisas" element={<ProtectedRoute screenKey="lancar_pesquisas"><LancarPesquisas /></ProtectedRoute>} />
                   <Route path="/admin/visualizar-pesquisas" element={<ProtectedRoute screenKey="visualizar_pesquisas"><VisualizarPesquisas /></ProtectedRoute>} />
+                  <Route path="/admin/pesquisa-mensal-ams" element={<ProtectedRoute screenKey="pesquisa_mensal_ams"><PesquisaMensalAMS /></ProtectedRoute>} />
                   <Route path="/admin/lancar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><LancarElogios /></ProtectedRoute>} />
                   <Route path="/admin/enviar-elogios" element={<ProtectedRoute screenKey="lancar_elogios"><EnviarElogios /></ProtectedRoute>} />
                   <Route path="/admin/organograma" element={<ProtectedRoute screenKey="organograma"><Organograma /></ProtectedRoute>} />
