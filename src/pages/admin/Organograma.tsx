@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Users, Filter, Search, Loader2, Edit, Trash2, X, ArrowUpDown, Eye } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -194,14 +195,16 @@ export default function Organograma() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                className="bg-sonda-blue hover:bg-sonda-dark-blue"
-                onClick={handleNovaPessoa}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Pessoa
-              </Button>
+              <ProtectedAction screenKey="organograma" requiredLevel="edit">
+                <Button
+                  size="sm"
+                  className="bg-sonda-blue hover:bg-sonda-dark-blue"
+                  onClick={handleNovaPessoa}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Pessoa
+                </Button>
+              </ProtectedAction>
             </div>
           </div>
 
@@ -565,29 +568,33 @@ export default function Organograma() {
                                       >
                                         <Eye className="h-4 w-4 text-blue-600" />
                                       </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => handleEditarPessoa(pessoa)}
-                                        title="Editar"
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                        onClick={() => {
-                                          if (confirm(`Tem certeza que deseja excluir ${pessoa.nome}?`)) {
-                                            // TODO: Implementar exclusão
-                                            console.log('Excluir pessoa:', pessoa.id);
-                                          }
-                                        }}
-                                        title="Excluir"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
+                                      <ProtectedAction screenKey="organograma" requiredLevel="edit">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="h-8 w-8 p-0"
+                                          onClick={() => handleEditarPessoa(pessoa)}
+                                          title="Editar"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      </ProtectedAction>
+                                      <ProtectedAction screenKey="organograma" requiredLevel="edit">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                          onClick={() => {
+                                            if (confirm(`Tem certeza que deseja excluir ${pessoa.nome}?`)) {
+                                              // TODO: Implementar exclusão
+                                              console.log('Excluir pessoa:', pessoa.id);
+                                            }
+                                          }}
+                                          title="Excluir"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </ProtectedAction>
                                     </div>
                                   </TableCell>
                                 </TableRow>

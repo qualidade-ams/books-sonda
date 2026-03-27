@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import AdminLayout from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { Users, Plus, Edit, Trash2, Shield } from 'lucide-react';
 import { permissionsService } from '@/services/permissionsService';
 import type { UserGroup } from '@/types/permissions';
@@ -160,15 +161,17 @@ const GroupManagement = () => {
             <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Grupos</h1>
             <p className="text-gray-600">Gerencie grupos de usuários e suas permissões</p>
           </div>
-          <Button 
-            onClick={handleCreateGroup} 
-            className="flex items-center gap-2 text-sm"
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo Grupo</span>
-            <span className="sm:hidden">Novo</span>
-          </Button>
+          <ProtectedAction screenKey="grupos" requiredLevel="edit">
+            <Button 
+              onClick={handleCreateGroup} 
+              className="flex items-center gap-2 text-sm"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Grupo</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
+          </ProtectedAction>
         </div>
 
         <Card>

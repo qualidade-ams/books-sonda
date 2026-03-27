@@ -33,6 +33,7 @@ import {
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { Pesquisa } from '@/types/pesquisasSatisfacao';
 import { getBadgeResposta } from '@/utils/badgeUtils';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import { isClienteEspecialBRFONSDAGUIRRE, processarNomeClienteEspecial } from '@/utils/clienteEspecialUtils';
 
@@ -284,44 +285,48 @@ export function VisualizarPesquisasTable({
                   </TooltipProvider>
 
                   {/* Botão Editar */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onEditarPesquisa?.(pesquisa)}
-                          disabled={isLoading}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Editar pesquisa</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <ProtectedAction screenKey="visualizar_pesquisas" requiredLevel="edit">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditarPesquisa?.(pesquisa)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Editar pesquisa</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </ProtectedAction>
 
                   {/* Botão Excluir */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onExcluirPesquisa?.(pesquisa)}
-                          disabled={isLoading}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Excluir pesquisa</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <ProtectedAction screenKey="visualizar_pesquisas" requiredLevel="edit">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onExcluirPesquisa?.(pesquisa)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Excluir pesquisa</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </ProtectedAction>
                 </div>
               </TableCell>
             </TableRow>

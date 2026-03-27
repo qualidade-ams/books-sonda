@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Shield, Settings } from 'lucide-react';
 import type { UserGroup } from '@/types/permissions';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 
 interface GroupsTableProps {
   groups: UserGroup[];
@@ -94,25 +95,29 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onEdit(group)}
-                  className="h-8 w-8 p-0"
-                  title="Editar grupo"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onDelete(group)}
-                  disabled={group.is_default_admin}
-                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                  title={group.is_default_admin ? "Grupo administrador não pode ser excluído" : "Excluir grupo"}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <ProtectedAction screenKey="grupos" requiredLevel="edit">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEdit(group)}
+                    className="h-8 w-8 p-0"
+                    title="Editar grupo"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </ProtectedAction>
+                <ProtectedAction screenKey="grupos" requiredLevel="edit">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onDelete(group)}
+                    disabled={group.is_default_admin}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                    title={group.is_default_admin ? "Grupo administrador não pode ser excluído" : "Excluir grupo"}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </ProtectedAction>
               </div>
             </TableCell>
           </TableRow>

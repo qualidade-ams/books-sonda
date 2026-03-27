@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { TaxaForm, TaxaPadraoForm, TaxaPadraoHistorico } from '@/components/admin/taxas';
 import type { TaxaPadraoData } from '@/components/admin/taxas/TaxaPadraoForm';
 import { useTaxas, useCriarTaxa, useAtualizarTaxa, useDeletarTaxa } from '@/hooks/useTaxasClientes';
@@ -990,9 +991,11 @@ function CadastroTaxasClientes() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleAbrirTaxaPadrao} variant="outline" size="sm" className="flex items-center gap-2">
-              Taxa Padrão
-            </Button>
+            <ProtectedAction screenKey="cadastro_taxas_clientes" requiredLevel="edit">
+              <Button onClick={handleAbrirTaxaPadrao} variant="outline" size="sm" className="flex items-center gap-2">
+                Taxa Padrão
+              </Button>
+            </ProtectedAction>
             
             {/* Botão de Exportação */}
             <DropdownMenu>
@@ -1020,10 +1023,12 @@ function CadastroTaxasClientes() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <Button onClick={handleNovaTaxa} className="flex items-center gap-2" size="sm">
-              <Plus className="h-4 w-4" />
-              Nova Taxa
-            </Button>
+            <ProtectedAction screenKey="cadastro_taxas_clientes" requiredLevel="edit">
+              <Button onClick={handleNovaTaxa} className="flex items-center gap-2" size="sm">
+                <Plus className="h-4 w-4" />
+                Nova Taxa
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 
@@ -1348,24 +1353,28 @@ function CadastroTaxasClientes() {
                               >
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleEditarTaxa(taxa)}
-                                title="Editar"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                onClick={() => handleDeletarTaxa(taxa)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <ProtectedAction screenKey="cadastro_taxas_clientes" requiredLevel="edit">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEditarTaxa(taxa)}
+                                  title="Editar"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </ProtectedAction>
+                              <ProtectedAction screenKey="cadastro_taxas_clientes" requiredLevel="edit">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                  onClick={() => handleDeletarTaxa(taxa)}
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </ProtectedAction>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1615,25 +1624,27 @@ function CadastroTaxasClientes() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                                    onClick={() => {
-                                      const dadosIniciais = {
-                                        clienteId: item.empresa.id,
-                                        // CORREÇÃO: Usar 'OUTROS' em vez de 'COMEX, FISCAL' para corresponder ao valor do Select
-                                        tipoProduto: (item.tipoProduto === 'GALLERY' ? 'GALLERY' : 'OUTROS') as 'GALLERY' | 'OUTROS'
-                                      };
-                                      
-                                      setTaxaEditando(null);
-                                      setDadosIniciaisTaxa(dadosIniciais);
-                                      setModalAberto(true);
-                                    }}
-                                    title="Cadastrar Taxa"
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
+                                  <ProtectedAction screenKey="cadastro_taxas_clientes" requiredLevel="edit">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                                      onClick={() => {
+                                        const dadosIniciais = {
+                                          clienteId: item.empresa.id,
+                                          // CORREÇÃO: Usar 'OUTROS' em vez de 'COMEX, FISCAL' para corresponder ao valor do Select
+                                          tipoProduto: (item.tipoProduto === 'GALLERY' ? 'GALLERY' : 'OUTROS') as 'GALLERY' | 'OUTROS'
+                                        };
+                                        
+                                        setTaxaEditando(null);
+                                        setDadosIniciaisTaxa(dadosIniciais);
+                                        setModalAberto(true);
+                                      }}
+                                      title="Cadastrar Taxa"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </ProtectedAction>
                                 </div>
                               </TableCell>
                             </TableRow>
