@@ -40,7 +40,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
       {/* Cards Circulares de Pesquisas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Pesquisas Respondidas */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
               PESQUISAS RESPONDIDAS
@@ -90,7 +90,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         </Card>
 
         {/* Pesquisas Não Respondidas */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
               PESQUISAS NÃO RESPONDIDAS
@@ -140,7 +140,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         </Card>
 
         {/* Pesquisas Enviadas */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
               PESQUISAS ENVIADAS
@@ -193,7 +193,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
       {/* Tabela e Cards Laterais */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tabela: Resumo de Pesquisas */}
-        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <span>Resumo de Pesquisas</span>
@@ -215,7 +215,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                       <TableHead className="font-semibold">Tipo</TableHead>
                       <TableHead className="font-semibold">Solicitante</TableHead>
                       <TableHead className="font-semibold">Grupo</TableHead>
-                      <TableHead className="font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>Resposta</TableHead>
+                      <TableHead className="font-semibold text-white" style={{ backgroundColor: '#666666' }}>Resposta</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -238,7 +238,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         {/* Cards Laterais */}
         <div className="space-y-6">
           {/* Card: % Pesquisa Aderência */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600 text-center">
                 % PESQUISA ADERÊNCIA
@@ -296,7 +296,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
           </Card>
 
           {/* Card: Nível de Satisfação */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600 text-center">
                 NÍVEL DE SATISFAÇÃO

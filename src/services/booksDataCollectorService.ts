@@ -1161,7 +1161,7 @@ class BooksDataCollectorService {
       status = 'no_prazo';
     }
 
-    // Histórico de SLA (últimos 5 meses: mês atual + 4 anteriores)
+    // Histórico de SLA (últimos 6 meses: mês atual + 5 anteriores)
     const historicoSLA = await this.calcularSLAHistorico(
       empresaNomeCompleto,
       mes,
@@ -1402,6 +1402,33 @@ class BooksDataCollectorService {
       });
 
       if (apontamentosHoras && apontamentosHoras.length > 0) {
+        // REGRA: Filtrar registros onde data_atividade e data_sistema estão em meses diferentes
+        // (mesma lógica do bancoHorasIntegracaoService.buscarConsumo)
+        let apontamentosExcluidos = 0;
+        const apontamentosFiltrados = apontamentosHoras.filter(a => {
+          if (a.data_atividade && a.data_sistema) {
+            const dataAtividade = new Date(a.data_atividade);
+            const dataSistema = new Date(a.data_sistema);
+            if (
+              dataAtividade.getMonth() !== dataSistema.getMonth() ||
+              dataAtividade.getFullYear() !== dataSistema.getFullYear()
+            ) {
+              apontamentosExcluidos++;
+              console.log('⚠️ [gerarDadosConsumo] Apontamento excluído (mês diferente):', {
+                data_atividade: a.data_atividade,
+                data_sistema: a.data_sistema,
+                nro_chamado: a.nro_chamado || 'N/A'
+              });
+              return false;
+            }
+          }
+          return true;
+        });
+
+        if (apontamentosExcluidos > 0) {
+          console.log(`⚠️ [gerarDadosConsumo] ${apontamentosExcluidos} apontamentos excluídos por data_atividade/data_sistema em meses diferentes`);
+        }
+
         // Calcular horas baseado em tempo_gasto_horas (formato: "HH:MM:SS" ou "HH:MM")
         // IMPORTANTE: Ignorar segundos, considerar apenas horas e minutos
         // SEPARAR por tipo_chamado: IM = Incidente, RF = Solicitação
@@ -1409,7 +1436,7 @@ class BooksDataCollectorService {
         let horasApontadasIncidente = 0;
         let horasApontadasSolicitacao = 0;
         
-        const horasApontadas = apontamentosHoras.reduce((sum, a) => {
+        const horasApontadas = apontamentosFiltrados.reduce((sum, a) => {
           const tempoStr = a.tempo_gasto_horas;
           
           if (!tempoStr) {
@@ -1462,7 +1489,7 @@ class BooksDataCollectorService {
         horasTotal += horasApontadas;
         horasIncidente += horasApontadasIncidente;
         horasSolicitacao += horasApontadasSolicitacao;
-        totalRegistros += apontamentosHoras.length;
+        totalRegistros += apontamentosFiltrados.length;
 
         console.log('✅ Horas de apontamentos_aranda:', {
           registros: apontamentosHoras.length,
@@ -2094,7 +2121,7 @@ class BooksDataCollectorService {
     metaSLA: number,
     quantidadeMinimaIncidentes: number
   ) {
-    console.log('📊 Calculando histórico de SLA (5 meses)...', {
+    console.log('📊 Calculando histórico de SLA (6 meses)...', {
       empresa: empresaNomeCompleto,
       mesAtual,
       anoAtual,
@@ -2106,8 +2133,8 @@ class BooksDataCollectorService {
 
     const resultado = [];
 
-    // Calcular para os últimos 5 meses (mês atual + 4 anteriores)
-    for (let i = 4; i >= 0; i--) {
+    // Calcular para os últimos 6 meses (mês atual + 5 anteriores)
+    for (let i = 5; i >= 0; i--) {
       let mes = mesAtual - i;
       let ano = anoAtual;
       
@@ -2265,7 +2292,7 @@ class BooksDataCollectorService {
         
         const { data: apontamentosHoras } = await supabase
           .from('apontamentos_aranda')
-          .select('tempo_gasto_minutos')
+          .select('tempo_gasto_horas, data_atividade, data_sistema, nro_chamado')
           .ilike('org_us_final', `%${empresaNomeCompleto}%`)
           .eq('ativi_interna', 'Não')
           .in('tipo_chamado', ['IM', 'RF'])
@@ -2292,14 +2319,36 @@ class BooksDataCollectorService {
           .lt('data_atividade', proximoMesInicio.toISOString());
 
         if (apontamentosHoras) {
-          const horasApontadas = apontamentosHoras.reduce((sum, a) => {
-            const minutos = a.tempo_gasto_minutos || 0;
-            const horas = minutos / 60;
-            return sum + horas;
+          // Filtrar registros onde data_atividade e data_sistema estão em meses diferentes
+          // (mesma lógica do bancoHorasIntegracaoService.buscarConsumo)
+          const apontamentosFiltrados = apontamentosHoras.filter(a => {
+            if (a.data_atividade && a.data_sistema) {
+              const dataAtividade = new Date(a.data_atividade);
+              const dataSistema = new Date(a.data_sistema);
+              if (
+                dataAtividade.getMonth() !== dataSistema.getMonth() ||
+                dataAtividade.getFullYear() !== dataSistema.getFullYear()
+              ) {
+                return false;
+              }
+            }
+            return true;
+          });
+
+          // Usar tempo_gasto_horas (formato HH:MM:SS ou HH:MM) em vez de tempo_gasto_minutos
+          // para consistência com gerarDadosConsumo e bancoHorasIntegracaoService
+          const horasApontadas = apontamentosFiltrados.reduce((sum, a) => {
+            const tempoStr = a.tempo_gasto_horas;
+            if (!tempoStr) return sum;
+            
+            const partes = tempoStr.split(':');
+            const h = parseInt(partes[0]) || 0;
+            const m = parseInt(partes[1]) || 0;
+            return sum + h + (m / 60);
           }, 0);
           horasMes += horasApontadas;
           
-          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosHoras.length} registros, ${horasApontadas.toFixed(2)}h`);
+          console.log(`✅ ${MESES_NOMES[mes - 1]}/${ano}: ${apontamentosFiltrados.length} registros (${apontamentosHoras.length - apontamentosFiltrados.length} excluídos por data_sistema), ${horasApontadas.toFixed(2)}h`);
         }
       }
 
