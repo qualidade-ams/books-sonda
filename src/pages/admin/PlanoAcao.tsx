@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight, X, FileText, FolderOpen, PlayCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

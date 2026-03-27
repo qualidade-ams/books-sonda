@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/command';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { PesquisasExportButtons } from '@/components/admin/pesquisas-satisfacao';
 import { VisualizarPesquisasTable } from '@/components/admin/pesquisas-satisfacao';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';

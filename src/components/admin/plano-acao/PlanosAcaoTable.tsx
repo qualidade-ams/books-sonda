@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import type { PlanoAcaoCompleto } from '@/types/planoAcao';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { getCorPrioridade, getCorStatus } from '@/types/planoAcao';
 import { isClienteEspecialBRFONSDAGUIRRE } from '@/utils/clienteEspecialUtils';
 
@@ -256,27 +257,31 @@ export function PlanosAcaoTable({
                     )}
 
                     {showActions.editar && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEditar?.(plano)}
-                        disabled={isLoading}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <ProtectedAction screenKey="plano_acao" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEditar?.(plano)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
                     )}
 
                     {showActions.excluir && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onExcluir?.(plano.id)}
-                        disabled={isLoading}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <ProtectedAction screenKey="plano_acao" requiredLevel="edit">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onExcluir?.(plano.id)}
+                          disabled={isLoading}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </ProtectedAction>
                     )}
                   </div>
                 </TableCell>

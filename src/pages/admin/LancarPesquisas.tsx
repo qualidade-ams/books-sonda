@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/tooltip';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { 
   PesquisaForm, 
   PesquisasTable, 
@@ -338,10 +339,12 @@ function LancarPesquisas() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button onClick={handleNovoPesquisa}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Pesquisa
-            </Button>
+            <ProtectedAction screenKey="lancar_pesquisas" requiredLevel="edit">
+              <Button onClick={handleNovoPesquisa}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Pesquisa
+              </Button>
+            </ProtectedAction>
           </div>
         </div>
 

@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
+import ProtectedAction from '@/components/auth/ProtectedAction';
 import { useCacheManager } from '@/hooks/useCacheManager';
 import { useElogios, useEstatisticasElogios, useDeletarElogio } from '@/hooks/useElogios';
 import { useCriarElogioComEspecialistas, useAtualizarElogioComEspecialistas } from '@/hooks/useElogiosComEspecialistas';
@@ -479,14 +480,16 @@ function LancarElogios() {
             </Button> */}
             {/* Botão de envio em lote - aparece quando há seleções e está na aba de não enviados */}
             {selecionados.length > 0 && abaAtiva === 'nao-enviados' && (
-              <Button 
-                onClick={handleAbrirConfirmacaoEnvio} 
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700" 
-                size="sm"
-              >
-                <Send className="h-4 w-4" />
-                Enviar {selecionados.length} Elogio{selecionados.length > 1 ? 's' : ''}
-              </Button>
+              <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
+                <Button 
+                  onClick={handleAbrirConfirmacaoEnvio} 
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700" 
+                  size="sm"
+                >
+                  <Send className="h-4 w-4" />
+                  Enviar {selecionados.length} Elogio{selecionados.length > 1 ? 's' : ''}
+                </Button>
+              </ProtectedAction>
             )}
           </div>
         </div>
@@ -819,26 +822,30 @@ function LancarElogios() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeletarElogio(elogio.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            {/* Botão de envio individual - apenas na aba de não enviados */}
-                            {abaAtiva === 'nao-enviados' && (
+                            <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => handleEnviarElogioIndividual(elogio.id)}
-                                title="Enviar para Enviar Elogios"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleDeletarElogio(elogio.id)}
+                                title="Excluir"
                               >
-                                <Send className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
+                            </ProtectedAction>
+                            {/* Botão de envio individual - apenas na aba de não enviados */}
+                            {abaAtiva === 'nao-enviados' && (
+                              <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  onClick={() => handleEnviarElogioIndividual(elogio.id)}
+                                  title="Enviar para Enviar Elogios"
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                              </ProtectedAction>
                             )}
                           </div>
                         </TableCell>
