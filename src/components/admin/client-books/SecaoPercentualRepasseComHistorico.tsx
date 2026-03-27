@@ -493,7 +493,7 @@ export default function SecaoPercentualRepasseComHistorico({
             <Button
               onClick={handleCriarPercentual}
               disabled={
-                !novoPercentual.percentual || 
+                (novoPercentual.percentual === '' || novoPercentual.percentual === undefined) || 
                 !novoPercentual.data_inicio || 
                 !novoPercentual.motivo
               }
@@ -631,7 +631,7 @@ export default function SecaoPercentualRepasseComHistorico({
                 }
               }}
               disabled={
-                !percentualSelecionado?.percentual || 
+                (percentualSelecionado?.percentual === undefined || percentualSelecionado?.percentual === null || isNaN(percentualSelecionado?.percentual)) || 
                 !percentualSelecionado?.data_inicio || 
                 !percentualSelecionado?.motivo
               }
