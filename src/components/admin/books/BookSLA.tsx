@@ -3,7 +3,7 @@
  * Exibe dashboard de monitoramento de nível de serviço
  */
 
-import { CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -113,8 +113,9 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               
               {/* Mensagem de não elegibilidade */}
               {data.sla_elegivel === false && data.mensagem_nao_elegivel && (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg relative z-20">
-                  <p className="text-xs text-yellow-800 text-center">
+                <div className="mt-3 p-3 rounded-lg relative z-20">
+                  <p className="text-xs text-gray-700 font-semibold text-center underline flex items-center justify-center gap-1.5">
+                    <Info className="h-4 w-4 text-gray-500 flex-shrink-0" />
                     {data.mensagem_nao_elegivel}
                   </p>
                 </div>

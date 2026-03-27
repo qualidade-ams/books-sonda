@@ -44,10 +44,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useBooks, useBooksSelection, usePeriodoNavigation } from '@/hooks/useBooks';
 import { useBooksStats } from '@/hooks/useBooksStats';
 import { BOOK_STATUS_LABELS, BOOK_STATUS_COLORS, MESES_LABELS } from '@/types/books';
-import type { BookListItem } from '@/types/books';
+import type { BookListItem, BooksGeracaoLoteResult } from '@/types/books';
 import { BookViewer } from '@/components/admin/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
+import { emailService } from '@/services/emailService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Fallback para MESES_LABELS caso o import falhe
 const MESES_NOMES: Record<number, string> = {
@@ -87,7 +89,7 @@ export default function GeracaoBooks() {
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
   
   // Hook useBooks sempre busca o período de referência atual (não afetado pelo filtro)
-  const { books, isLoading, gerarBooks, atualizarBooks, isGerando, isAtualizando } = useBooks({
+  const { books, isLoading, gerarBooks, atualizarBooks, gerarBooksAsync, atualizarBooksAsync, isGerando, isAtualizando } = useBooks({
     mes: mesReferencia,
     ano: anoReferencia
   });
@@ -110,6 +112,119 @@ export default function GeracaoBooks() {
   const [showAtualizarDialog, setShowAtualizarDialog] = useState(false);
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
+  const [isEnviandoEmail, setIsEnviandoEmail] = useState(false);
+
+  /**
+   * Faz upload do PDF no Supabase Storage (temporário), gera signed URL,
+   * e envia email via webhook com o anexo no formato que o Power Automate processa.
+   * Formato do assunto: BOOK: CLIENTE_ANO_MES. NomeMes
+   */
+  const gerarPDFEEnviarEmail = async (resultados: BooksGeracaoLoteResult) => {
+    const booksSucesso = resultados.resultados.filter(r => r.sucesso && r.book_id);
+    if (booksSucesso.length === 0) return;
+
+    setIsEnviandoEmail(true);
+
+    for (const resultado of booksSucesso) {
+      try {
+        const nomeEmpresa = resultado.empresa_nome;
+        const bookInfo = books.find(b => b.empresa_id === resultado.empresa_id);
+        const nomeAbreviado = bookInfo?.empresa_nome_abreviado || nomeEmpresa;
+        
+        const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
+        const mesFormatado = String(mesReferencia).padStart(2, '0');
+        const mesNomeRef = MESES_NOMES[mesReferencia];
+        
+        // Assunto: BOOK: CLIENTE_ANO_MES. NomeMes
+        const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
+        const nomeArquivo = `Book_${nomeFormatado}_${mesNomeRef}_${anoReferencia}.pdf`;
+
+        toast({
+          title: 'Gerando PDF...',
+          description: `Gerando PDF de ${nomeAbreviado} para envio por email.`,
+        });
+
+        // 1. Gerar PDF via Puppeteer
+        const pdfBlob = await booksPDFServiceV2.gerarPDF(resultado.book_id!);
+
+        // 2. Upload temporário no Supabase Storage
+        const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivo}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('anexos-temporarios')
+          .upload(storagePath, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: true // Sobrescrever se já existir
+          });
+
+        if (uploadError) {
+          throw new Error(`Erro no upload do PDF: ${uploadError.message}`);
+        }
+
+        console.log('📤 PDF uploaded to storage:', uploadData.path);
+
+        // 3. Gerar URL pública (bucket é público)
+        const { data: publicUrlData } = supabase.storage
+          .from('anexos-temporarios')
+          .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Erro ao gerar URL pública do PDF');
+        }
+
+        console.log('🔗 URL pública gerada para o PDF:', publicUrlData.publicUrl);
+
+        // 4. Enviar email com anexo via URL (formato que o Power Automate processa)
+        const emailResult = await emailService.sendEmail({
+          to: ['qualidadeams@sonda.com'],
+          subject: assunto,
+          html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
+          anexos: {
+            totalArquivos: 1,
+            tamanhoTotal: pdfBlob.size,
+            arquivos: [{
+              url: publicUrlData.publicUrl,
+              nome: nomeArquivo,
+              tipo: 'application/pdf',
+              tamanho: pdfBlob.size,
+              token: ''
+            }]
+          }
+        });
+
+        if (emailResult.success) {
+          toast({
+            title: 'Email enviado!',
+            description: `Book de ${nomeAbreviado} enviado para qualidadeams@sonda.com`,
+          });
+
+          // 5. Limpar arquivo temporário após 5 minutos (tempo para Power Automate baixar)
+          setTimeout(() => {
+            supabase.storage
+              .from('anexos-temporarios')
+              .remove([storagePath])
+              .then(() => console.log('🗑️ PDF temporário removido do storage'))
+              .catch(err => console.warn('⚠️ Falha ao remover PDF temporário:', err));
+          }, 5 * 60 * 1000);
+        } else {
+          toast({
+            title: 'Erro ao enviar email',
+            description: `Falha ao enviar book de ${nomeAbreviado}: ${emailResult.error}`,
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error(`Erro ao gerar PDF/enviar email para ${resultado.empresa_nome}:`, error);
+        toast({
+          title: 'Erro no envio',
+          description: `Não foi possível enviar o book de ${resultado.empresa_nome} por email.`,
+          variant: 'destructive',
+        });
+      }
+    }
+
+    setIsEnviandoEmail(false);
+  };
 
   // Funções de navegação de período
   const handleProximoPeriodo = () => {
@@ -163,33 +278,45 @@ export default function GeracaoBooks() {
     return true;
   });
 
-  const handleGerarBooks = () => {
+  const handleGerarBooks = async () => {
     if (!hasSelection) return;
-    
-    gerarBooks({
-      empresa_ids: selectedEmpresaIds,
-      mes: mesReferencia,
-      ano: anoReferencia,
-      gerar_pdf: true
-    });
     
     setShowGerarDialog(false);
-    clearSelection();
+    
+    try {
+      const result = await gerarBooksAsync({
+        empresa_ids: selectedEmpresaIds,
+        mes: mesReferencia,
+        ano: anoReferencia,
+        gerar_pdf: true
+      });
+      
+      // Gerar PDF e enviar email para cada book gerado com sucesso
+      await gerarPDFEEnviarEmail(result);
+    } finally {
+      clearSelection();
+    }
   };
 
-  const handleAtualizarBooks = () => {
+  const handleAtualizarBooks = async () => {
     if (!hasSelection) return;
     
-    atualizarBooks({
-      empresa_ids: selectedEmpresaIds,
-      mes: mesReferencia,
-      ano: anoReferencia,
-      forcar_atualizacao: true,
-      gerar_pdf: true
-    });
-    
     setShowAtualizarDialog(false);
-    clearSelection();
+    
+    try {
+      const result = await atualizarBooksAsync({
+        empresa_ids: selectedEmpresaIds,
+        mes: mesReferencia,
+        ano: anoReferencia,
+        forcar_atualizacao: true,
+        gerar_pdf: true
+      });
+      
+      // Gerar PDF e enviar email para cada book atualizado com sucesso
+      await gerarPDFEEnviarEmail(result);
+    } finally {
+      clearSelection();
+    }
   };
 
   const handleVisualizarBook = (book: BookListItem) => {
@@ -378,7 +505,7 @@ export default function GeracaoBooks() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAtualizarDialog(true)}
-                        disabled={isGerando || isAtualizando}
+                        disabled={isGerando || isAtualizando || isEnviandoEmail}
                       >
                         {isAtualizando ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -392,14 +519,14 @@ export default function GeracaoBooks() {
                         size="sm"
                         className="bg-sonda-blue hover:bg-sonda-dark-blue"
                         onClick={() => setShowGerarDialog(true)}
-                        disabled={isGerando || isAtualizando}
+                        disabled={isGerando || isAtualizando || isEnviandoEmail}
                       >
-                        {isGerando ? (
+                        {isGerando || isEnviandoEmail ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                           <Send className="h-4 w-4 mr-2" />
                         )}
-                        Gerar Book ({selectedCount})
+                        {isEnviandoEmail ? 'Enviando...' : `Gerar Book (${selectedCount})`}
                       </Button>
                     </>
                   )}
