@@ -108,144 +108,81 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         <p className="text-sm text-gray-500">Visão Geral de Chamados e Desempenho Operacional</p>
       </div>
 
-      {/* Linha 1: 3 Cards de Métricas + Card CHAMADOS | GRUPO | MÊS */}
+      {/* Layout principal: Grid 4 colunas - Conteúdo esquerdo (3 cols) + CHAMADOS | GRUPO | MÊS (1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* 3 Cards de métricas empilhados na esquerda */}
-        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Abertos | Mês */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2 whitespace-nowrap">
-                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-gray-600" />
+        {/* Coluna esquerda: Cards de métricas + Gráfico + Tabela (3 colunas) */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* 3 Cards de métricas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Abertos | Mês */}
+            <Card className="border-2 min-h-[180px]" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2 whitespace-nowrap">
+                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-gray-600" />
+                  </div>
+                  ABERTOS | MÊS
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-black">{data.abertos_mes.solicitacao}</span>
+                    <span className="text-xs text-gray-600 uppercase">Solicitação</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-black">{data.abertos_mes.incidente}</span>
+                    <span className="text-xs text-gray-600 uppercase">Incidente</span>
+                  </div>
                 </div>
-                ABERTOS | MÊS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-4xl font-bold text-black">{data.abertos_mes.solicitacao}</span>
-                  <span className="text-ls text-black">SOLICITAÇÃO</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-4xl font-bold text-black">{data.abertos_mes.incidente}</span>
-                  <span className="text-ls text-black">INCIDENTE</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Fechados | Mês */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-black" />
+            {/* Fechados | Mês */}
+            <Card className="border-2 min-h-[180px]" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-black" />
+                  </div>
+                  FECHADOS | MÊS
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-black">{data.fechados_mes.solicitacao}</span>
+                    <span className="text-xs text-gray-600 uppercase">Solicitação</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-black">{data.fechados_mes.incidente}</span>
+                    <span className="text-xs text-gray-600 uppercase">Incidente</span>
+                  </div>
                 </div>
-                FECHADOS | MÊS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-4xl font-bold text-black">{data.fechados_mes.solicitacao}</span>
-                  <span className="text-ls text-black">SOLICITAÇÃO</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-4xl font-bold text-black">{data.fechados_mes.incidente}</span>
-                  <span className="text-ls text-black">INCIDENTE</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Total Backlog */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <AlertCircle className="h-4 w-4 text-gray-600" />
+            {/* Total Backlog */}
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-gray-600" />
+                  </div>
+                  TOTAL BACKLOG
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900">
+                  {data.total_backlog}
                 </div>
-                TOTAL BACKLOG
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {data.total_backlog}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Pendentes de atuação
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Pendentes de atuação
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Card CHAMADOS | GRUPO | MÊS - ocupa a coluna direita (span 2 linhas via row-span) */}
-        <Card className="border-2 lg:row-span-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5">
-            {(() => {
-              const maxGrupos = 8;
-              const gruposExibir = chamadosPorGrupoMapeados.slice(0, maxGrupos);
-              const temMaisGrupos = chamadosPorGrupoMapeados.length > maxGrupos;
-              const gruposRestantes = chamadosPorGrupoMapeados.length - maxGrupos;
-              
-              return (
-                <>
-                  {gruposExibir.map((grupo, index) => {
-                    const maxValue = Math.max(grupo.abertos, grupo.fechados);
-                    const abertosWidth = maxValue > 0 ? (grupo.abertos / maxValue) * 100 : 0;
-                    const fechadosWidth = maxValue > 0 ? (grupo.fechados / maxValue) * 100 : 0;
-                    
-                    return (
-                      <div key={index} className="pb-1.5 border-b last:border-b-0 last:pb-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="font-semibold text-[10px] leading-tight">{grupo.grupo}</div>
-                          <div className="text-[9px] text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <div 
-                            className="bg-[#666666] rounded px-2 py-0.5 flex justify-between items-center gap-2 transition-all duration-300"
-                            style={{ width: `${abertosWidth}%`, minWidth: '80px' }}
-                          >
-                            <span className="text-sm text-white font-bold leading-tight">{grupo.abertos}</span>
-                            <span className="text-[9px] text-white/90 font-semibold leading-tight">ABERTOS</span>
-                          </div>
-                          <div 
-                            className="bg-blue-600 rounded px-2 py-0.5 flex justify-between items-center gap-2 transition-all duration-300"
-                            style={{ width: `${fechadosWidth}%`, minWidth: '80px' }}
-                          >
-                            <span className="text-sm text-white font-bold leading-tight">{grupo.fechados}</span>
-                            <span className="text-[9px] text-white/90 font-semibold leading-tight">FECHADOS</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {temMaisGrupos && (
-                    <div className="pt-2 mt-2 border-t border-gray-200">
-                      <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-600 font-medium">
-                          + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
-                        </p>
-                        <p className="text-[9px] text-gray-500 mt-0.5">
-                          Exibindo os {maxGrupos} primeiros grupos
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </CardContent>
-        </Card>
-
-        {/* Gráfico: Chamados | Semestre - ocupa 3 colunas da esquerda */}
-        <div className="lg:col-span-3">
           {/* Gráfico: Chamados | Semestre */}
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader>
@@ -283,9 +220,9 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     />
                     <Bar 
                       dataKey="abertos" 
-                      stackId="chamados"
                       fill="#666666" 
                       name="ABERTOS"
+                      radius={[4, 4, 0, 0]}
                     >
                       <LabelList 
                         dataKey="abertos" 
@@ -300,7 +237,6 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     </Bar>
                     <Bar 
                       dataKey="fechados" 
-                      stackId="chamados"
                       fill="#2563eb" 
                       name="FECHADOS"
                       radius={[4, 4, 0, 0]}
@@ -328,77 +264,141 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
               )}
             </CardContent>
           </Card>
+
+          {/* Tabela: Chamados X Código de Resolução */}
+          <Card className="border-2 flex flex-col" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '500px' }}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Chamados X Código de Resolução</CardTitle>           
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 flex-1 flex flex-col">
+              <div style={{ borderRadius: '15.5px', overflow: 'hidden' }} className="flex-1 flex flex-col">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="font-semibold">ORIGEM</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
+                      <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const maxOrigens = 8;
+                      let linhasExibir = backlogPorCausaMapeado;
+                      let linhaOutros = null;
+                      
+                      if (backlogPorCausaMapeado.length > maxOrigens) {
+                        linhasExibir = backlogPorCausaMapeado.slice(0, 7);
+                        const outrasOrigens = backlogPorCausaMapeado.slice(7);
+                        const outrosAbertos = outrasOrigens.reduce((sum, item) => sum + (item.abertos || 0), 0);
+                        const outrosFechados = outrasOrigens.reduce((sum, item) => sum + (item.fechados || 0), 0);
+                        linhaOutros = {
+                          origem: 'Outros',
+                          abertos: outrosAbertos,
+                          fechados: outrosFechados
+                        };
+                      }
+                      
+                      // Calcular total de linhas (dados + outros + total)
+                      const totalLinhas = linhasExibir.length + (linhaOutros ? 1 : 0) + 1;
+                      // Se menos de 8 linhas, aumentar padding vertical moderadamente
+                      const rowPadding = totalLinhas < 8 ? `${Math.max(8, Math.floor(120 / totalLinhas))}px` : '8px';
+                      
+                      return (
+                        <>
+                          {linhasExibir.map((item, index) => (
+                            <TableRow key={index} className="hover:bg-gray-50">
+                              <TableCell className="font-medium" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.origem}</TableCell>
+                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.abertos || 0}</TableCell>
+                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.fechados || 0}</TableCell>
+                            </TableRow>
+                          ))}
+                          {linhaOutros && (
+                            <TableRow className="hover:bg-gray-50">
+                              <TableCell className="font-medium italic text-gray-600" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.origem}</TableCell>
+                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.abertos}</TableCell>
+                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.fechados}</TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
+                      <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>TOTAL</TableCell>
+                      <TableCell className="text-center py-2">
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
+                      </TableCell>
+                      <TableCell className="text-center py-2" style={{ borderBottomRightRadius: '15.5px' }}>
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.fechados || 0), 0)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna direita: Card CHAMADOS | GRUPO | MÊS (1 coluna, estica até o final) */}
+        <div className="lg:col-span-1">
+          <Card className="border-2 h-full" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {(() => {
+                const maxGrupos = 20;
+                const gruposExibir = chamadosPorGrupoMapeados.slice(0, maxGrupos);
+                const temMaisGrupos = chamadosPorGrupoMapeados.length > maxGrupos;
+                const gruposRestantes = chamadosPorGrupoMapeados.length - maxGrupos;
+                
+                return (
+                  <>
+                    {gruposExibir.map((grupo, index) => {
+                        return (
+                          <div key={index} className="pb-1.5 border-b last:border-b-0 last:pb-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-[10px] leading-tight">{grupo.grupo}</div>
+                            <div className="text-[9px] text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
+                          </div>
+                          <div className="flex flex-row gap-1">
+                            <div 
+                              className="bg-[#666666] rounded px-2 py-0.5 flex items-center gap-1 transition-all duration-300 flex-1"
+                            >
+                              <span className="text-sm text-white font-bold leading-tight">{grupo.abertos}</span>
+                              <span className="text-[9px] text-white/90 font-semibold leading-tight ml-auto">ABERTOS</span>
+                            </div>
+                            <div 
+                              className="bg-blue-600 rounded px-2 py-0.5 flex items-center gap-1 transition-all duration-300 flex-1"
+                            >
+                              <span className="text-sm text-white font-bold leading-tight">{grupo.fechados}</span>
+                              <span className="text-[9px] text-white/90 font-semibold leading-tight ml-auto">FECHADOS</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {temMaisGrupos && (
+                      <div className="pt-2 mt-2 border-t border-gray-200">
+                        <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                          <p className="text-[10px] text-gray-600 font-medium">
+                            + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
+                          </p>
+                          <p className="text-[9px] text-gray-500 mt-0.5">
+                            Exibindo os {maxGrupos} primeiros grupos
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* Tabela: Chamados X CAUSA - largura total */}
-      <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Chamados X CAUSA</CardTitle>           
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div style={{ borderRadius: '35.5px', overflow: 'hidden' }}>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold">ORIGEM</TableHead>
-                  <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
-                  <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(() => {
-                  const maxOrigens = 6;
-                  let linhasExibir = backlogPorCausaMapeado;
-                  let linhaOutros = null;
-                  
-                  if (backlogPorCausaMapeado.length > maxOrigens) {
-                    linhasExibir = backlogPorCausaMapeado.slice(0, 5);
-                    const outrasOrigens = backlogPorCausaMapeado.slice(5);
-                    const outrosAbertos = outrasOrigens.reduce((sum, item) => sum + (item.abertos || 0), 0);
-                    const outrosFechados = outrasOrigens.reduce((sum, item) => sum + (item.fechados || 0), 0);
-                    linhaOutros = {
-                      origem: 'Outros',
-                      abertos: outrosAbertos,
-                      fechados: outrosFechados
-                    };
-                  }
-                  
-                  return (
-                    <>
-                      {linhasExibir.map((item, index) => (
-                        <TableRow key={index} className="hover:bg-gray-50">
-                          <TableCell className="font-medium py-2">{item.origem}</TableCell>
-                          <TableCell className="text-center py-2" style={{ backgroundColor: '#e3f2fd' }}>{item.abertos || 0}</TableCell>
-                          <TableCell className="text-center bg-blue-50 py-2">{item.fechados || 0}</TableCell>
-                        </TableRow>
-                      ))}
-                      {linhaOutros && (
-                        <TableRow className="hover:bg-gray-50">
-                          <TableCell className="font-medium py-2 italic text-gray-600">{linhaOutros.origem}</TableCell>
-                          <TableCell className="text-center py-2" style={{ backgroundColor: '#e3f2fd' }}>{linhaOutros.abertos}</TableCell>
-                          <TableCell className="text-center bg-blue-50 py-2">{linhaOutros.fechados}</TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  );
-                })()}
-                <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
-                  <TableCell className="py-2">TOTAL</TableCell>
-                  <TableCell className="text-center py-2">
-                    {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
-                  </TableCell>
-                  <TableCell className="text-center py-2">
-                    {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.fechados || 0), 0)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
       </div>
     </div>

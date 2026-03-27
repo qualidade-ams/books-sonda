@@ -62,7 +62,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         {/* Coluna Esquerda: SLA | META DE ATENDIMENTO + Cards de Métricas */}
         <div className="space-y-6">
           {/* Card: SLA | Meta de Atendimento */}
-          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+          <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600">
                 SLA | META DE ATENDIMENTO
@@ -70,50 +70,50 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
             </CardHeader>
             <CardContent className="pt-4 pb-6">
               <div className="flex items-center justify-center">
-                <div className="relative w-80 h-80 flex items-center justify-center mt-4">
+                <div className="relative w-[400px] h-[280px] flex items-center justify-center mt-4">
                   {/* Gauge Chart usando SVG - Aumentado */}
-                  <svg width="320" height="213" viewBox="0 0 320 213" className="absolute top-0">
+                  <svg width="400" height="260" viewBox="0 0 400 260" className="absolute top-0">
                     {/* Arco de fundo (cinza) */}
                     <path
-                      d="M 33 180 A 127 127 0 0 1 287 180"
+                      d="M 40 220 A 160 160 0 0 1 360 220"
                       fill="none"
                       stroke="#E5E7EB"
-                      strokeWidth="33"
+                      strokeWidth="36"
                       strokeLinecap="round"
                     />
                     {/* Arco de progresso (azul/vermelho) */}
                     <path
-                      d="M 33 180 A 127 127 0 0 1 287 180"
+                      d="M 40 220 A 160 160 0 0 1 360 220"
                       fill="none"
                       stroke={data.status === 'vencido' ? '#EF4444' : '#2563eb'}
-                      strokeWidth="33"
+                      strokeWidth="36"
                       strokeLinecap="round"
-                      strokeDasharray={`${(percentage / 100) * 399} 399`}
+                      strokeDasharray={`${(percentage / 100) * 503} 503`}
                     />
                   </svg>
                   
                   {/* Valor Central - Centralizado e Maior */}
-                  <div className="flex flex-col items-center justify-center text-center z-10">
-                    <div className={`text-5xl font-bold ${
+                  <div className="flex flex-col items-center justify-center text-center z-10 mt-12 pt-14">
+                    <div className={`text-6xl font-bold ${
                       data.status === 'vencido' ? 'text-red-500' : 'text-blue-600'
                     }`}>
                       {data.sla_percentual}%
                     </div>
-                    <div className="text-lg text-gray-500 mt-2">
+                    <div className="text-xl text-gray-500 mt-2">
                       {data.sla_elegivel === false ? 'NÃO ELEGÍVEL' : 'CONTRATO'}
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div className="text-center mt-2">
+              <div className="text-center -mt-4 relative z-20">
                 <span className="text-base text-gray-600">Meta: </span>
                 <span className="text-base font-semibold text-blue-600">{data.meta_percentual}%</span>
               </div>
               
               {/* Mensagem de não elegibilidade */}
               {data.sla_elegivel === false && data.mensagem_nao_elegivel && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg relative z-20">
                   <p className="text-xs text-yellow-800 text-center">
                     {data.mensagem_nao_elegivel}
                   </p>
@@ -122,7 +122,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               
               {/* Mensagem de violados não elegíveis */}
               {data.mensagem_violados_nao_elegiveis && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg relative z-20">
                   <p className="text-xs text-blue-800 text-center">
                     ℹ️ {data.mensagem_violados_nao_elegiveis}
                   </p>
@@ -133,7 +133,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
 
           {/* Cards de Métricas - Abaixo do SLA */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -147,7 +147,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               </CardContent>
             </Card>
 
-            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -161,7 +161,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               </CardContent>
             </Card>
 
-            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+            <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
@@ -178,16 +178,17 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         </div>
 
         {/* Coluna Direita: Gráfico SLA Histórico */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader>
             <CardTitle className="text-base font-semibold">SLA HISTÓRICO | MENSAL</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveContainer width="100%" height={450}>
               <BarChart 
                 data={data.sla_historico}
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                margin={{ top: 25, right: 30, left: 80, bottom: 5 }}
+                barSize={45}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
@@ -236,6 +237,14 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   stroke="#9ca3af" 
                   strokeWidth={2} 
                   strokeDasharray="5 5"
+                  label={{
+                    value: `META: ${data.meta_percentual}%`,
+                    position: 'top',
+                    fill: '#000000',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    offset: 8
+                  }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -250,9 +259,6 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                 <div className="w-4 h-4 rounded-full bg-red-500" />
                 <span className="text-sm text-gray-700">Vencido</span>
               </div>
-              <div className="text-sm text-gray-700">
-                META: <span className="font-semibold">{data.meta_percentual}%</span>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -260,13 +266,13 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
 
       {/* Tabela: Chamados Violados */}
       <div className="mb-5">
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '528px' }}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-semibold">CHAMADOS VIOLADOS</CardTitle>
               {data.chamados_violados.length === 0 && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Nenhum chamado violado no período
                 </p>
               )}
@@ -275,7 +281,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         </CardHeader>
         <CardContent>
           {data.chamados_violados.length === 0 ? (
-            <div className="flex items-center justify-center py-28">
+            <div className="flex items-center justify-center py-16">
               <div className="text-center">
                 <CheckCircle2 className="h-20 w-20 text-blue-600 mx-auto mb-6" />
                 <p className="text-lg text-gray-600 font-medium mb-3">
@@ -291,11 +297,11 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>CHAMADO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>TIPO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>ABERTURA</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>SOLUÇÃO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#0d6abf' }}>GRUPO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>CHAMADO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>TIPO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTURA</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>SOLUÇÃO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>GRUPO</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

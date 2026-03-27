@@ -518,7 +518,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
       {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* 1. CONSUMO TOTAL - Primeiro */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
@@ -536,7 +536,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         </Card>
 
         {/* 2. HORAS CONSUMO */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -554,7 +554,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         </Card>
 
         {/* 3. HORAS REQUERIMENTOS - Logo após Horas Consumo */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
@@ -572,7 +572,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         </Card>
 
         {/* 4. BASELINE DE APL */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
@@ -583,19 +583,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.baseline_apl) || '00:00'}</div>
-            <div className="mt-2">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-purple-600 h-2 rounded-full" 
-                  style={{ width: `${data.percentual_consumido || 0}%` }}
-                />
-              </div>
+            <div className="text-xs text-gray-600 mt-2">
+              {data.percentual_consumido || 0}% consumido
             </div>
           </CardContent>
         </Card>
 
         {/* 5. INCIDENTE */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -628,7 +623,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         </Card>
 
         {/* 6. SOLICITAÇÃO */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
@@ -649,7 +644,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico: Histórico de Consumo Mensal */}
-        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">Horas Mês</CardTitle>
             <p className="text-xs text-gray-500">Histórico de consumo mensal em 2025</p>
@@ -820,7 +815,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         </Card>
 
         {/* Card: Requerimentos Descontados */}
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -892,17 +887,17 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
 
       {/* Tabela de Banco de Horas - Cores atualizadas conforme tela de banco de horas */}
       {bancoHorasTrimestre.length > 0 && (
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Banco de Horas - {empresaNome}
+              Banco de Horas
             </CardTitle>
             <p className="text-xs text-gray-500">Controle trimestral de horas contratadas</p>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+              <table className="w-full text-sm" style={{ borderRadius: '15.5px', overflow: 'hidden' }}>
                 <thead>
                   {/* Primeira linha - Azul com meses */}
                   <tr className="bg-blue-600 text-white">
@@ -1076,7 +1071,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
 
       {/* Loading state para banco de horas */}
       {carregandoBancoHoras && (
-        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#0d6abf' }}>
+        <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardContent className="py-12">
             <div className="flex items-center justify-center">
               <div className="text-center">
