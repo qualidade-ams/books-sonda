@@ -273,6 +273,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Visualizar Pesquisas',
           path: '/admin/visualizar-pesquisas',
           screenKey: 'visualizar_pesquisas'
+        },
+        {
+          icon: BarChart3,
+          label: 'Pesquisa Mensal AMS',
+          path: '/admin/pesquisa-mensal-ams',
+          screenKey: 'pesquisa_mensal_ams'
         }
       ]
     },

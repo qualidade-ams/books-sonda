@@ -34,7 +34,8 @@ const Breadcrumb = () => {
     'controle-banco-horas': 'Banco de Horas',
     'geracao-books': 'Geração de Books',
     'inconsistencia-chamados' : 'Inconsistência de Chamados',
-    'organograma' : 'Organograma'
+    'organograma' : 'Organograma',
+    'pesquisa-mensal-ams': 'Pesquisa Mensal AMS'
   };
 
   return (
