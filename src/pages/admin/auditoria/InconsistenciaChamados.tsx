@@ -72,7 +72,6 @@ const MESES = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
 export default function InconsistenciaChamados() {
@@ -98,21 +97,22 @@ export default function InconsistenciaChamados() {
 
   // Atualizar filtros quando mês/ano mudar
   const atualizarFiltrosPorPeriodo = (mes: number, ano: number) => {
-    // Calcular primeiro e último dia do mês
-    const primeiroDia = new Date(ano, mes - 1, 1);
-    const ultimoDia = new Date(ano, mes, 0, 23, 59, 59);
+    // Calcular primeiro e último dia do mês no formato YYYY-MM-DD
+    const primeiroDia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+    const ultimoDia = new Date(ano, mes, 0).getDate();
+    const ultimoDiaStr = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
     
     console.log('📅 Definindo filtros de período:', {
       mes,
       ano,
-      data_inicio: primeiroDia.toISOString(),
-      data_fim: ultimoDia.toISOString()
+      data_inicio: primeiroDia,
+      data_fim: ultimoDiaStr
     });
     
     setFiltros(prev => ({
       ...prev,
-      data_inicio: primeiroDia.toISOString(),
-      data_fim: ultimoDia.toISOString()
+      data_inicio: primeiroDia,
+      data_fim: ultimoDiaStr
     }));
   };
 
@@ -490,6 +490,35 @@ export default function InconsistenciaChamados() {
             </Card>
           </div>
 
+          {/* Navegação por Mês */}
+          <Card>
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={navegarMesAnterior}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {MESES[mesAtual - 1]} {anoAtual}
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={navegarMesProximo}
+                  className="flex items-center gap-1"
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-gray-100 p-1 rounded-lg">
@@ -597,21 +626,20 @@ export default function InconsistenciaChamados() {
                         </div>
 
                         <div>
-                          <div className="text-sm font-medium mb-2">Período</div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Input
-                              type="date"
-                              value={filtros.data_inicio}
-                              onChange={(e) => setFiltros({ ...filtros, data_inicio: e.target.value })}
-                              className="focus:ring-sonda-blue focus:border-sonda-blue"
-                            />
-                            <Input
-                              type="date"
-                              value={filtros.data_fim}
-                              onChange={(e) => setFiltros({ ...filtros, data_fim: e.target.value })}
-                              className="focus:ring-sonda-blue focus:border-sonda-blue"
-                            />
-                          </div>
+                          <div className="text-sm font-medium mb-2">Origem</div>
+                          <Select
+                            value={filtros.origem || 'all'}
+                            onValueChange={(value: any) => setFiltros({ ...filtros, origem: value })}
+                          >
+                            <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas</SelectItem>
+                              <SelectItem value="apontamentos">Apontamentos</SelectItem>
+                              <SelectItem value="tickets">Tickets</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
@@ -740,47 +768,46 @@ export default function InconsistenciaChamados() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-700">Mostrar</span>
                             <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                              <SelectTrigger className="h-9 w-[70px]">
+                              <SelectTrigger className="w-[100px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                                  <SelectItem key={option} value={option.toString()}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
+                                <SelectItem value="25">25</SelectItem>
+                                <SelectItem value="50">50</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="500">500</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
                           {/* Navegação de páginas */}
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
-                              className="h-9 w-9 p-0"
                               disabled={currentPage === 1}
-                              onClick={() => setCurrentPage(currentPage - 1)}
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              aria-label="Página anterior"
                             >
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <span className="text-sm text-gray-700">
+                            <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
                               Página {currentPage} de {totalPages}
                             </span>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
-                              className="h-9 w-9 p-0"
                               disabled={currentPage === totalPages}
-                              onClick={() => setCurrentPage(currentPage + 1)}
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              aria-label="Próxima página"
                             >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </div>
 
-                          {/* Contador de resultados */}
-                          <div className="text-sm text-gray-500">
-                            {startIndex + 1}-{Math.min(endIndex, inconsistencias.length)} de {inconsistencias.length} requerimentos
+                          {/* Contador de registros */}
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {startIndex + 1}-{Math.min(endIndex, inconsistencias.length)} de {inconsistencias.length} inconsistências
                           </div>
                         </div>
                       )}
