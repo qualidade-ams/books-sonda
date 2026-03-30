@@ -53,22 +53,22 @@ export default function BookCapa({ data }: BookCapaProps) {
       <div className="relative bg-white flex flex-col justify-center" style={{ height: '35%' }}>
         {/* Fundo Branco */}
         {/* Área com período e logo alinhados */}
-        <div className="flex items-center justify-between px-24 py-8">
+        <div className="flex items-center px-24 py-8">
           {/* Lado esquerdo: Período */}
           <div className="inline-block">
             <div className="text-5xl font-bold tracking-tight mt-28 text-white bg-[#2563eb] px-8 py-5 rounded-xl shadow-2xl">
               {data.periodo}
             </div>
           </div>
+        </div>
 
-          {/* Lado direito: Logo Sonda - alinhado verticalmente com o texto */}
-          <div className="flex items-center mt-36">
-            <img 
-              src="/images/sonda-logo.png"
-              alt="Logo Sonda"
-              className="w-40 h-auto"
-            />
-          </div>
+        {/* Logo Sonda - posicionado alinhado com o centro do N */}
+        <div className="absolute" style={{ right: '10%', top: '38%' }}>
+          <img 
+            src="/images/sonda-logo.png"
+            alt="Logo Sonda"
+            className="w-40 h-auto"
+          />
         </div>
 
         {/* Rodapé com créditos - posicionado no final */}
