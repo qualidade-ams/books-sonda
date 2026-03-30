@@ -1,7 +1,7 @@
 /**
  * Estilos específicos para impressão e geração de PDF
  * Aplicados na rota /pdf/book/:id
- * DIMENSÕES: 1754x1240px (landscape)
+ * DIMENSÕES: 2657x1328px (landscape, ratio 2:1)
  * 
  * IMPORTANTE: Este CSS NÃO reduz fontes - mantém tamanhos originais
  * para que o PDF fique igual ao modal
@@ -18,17 +18,17 @@
   }
 }
 
-/* Container principal de impressão - CENTRALIZADO */
+/* Container principal de impressão */
 .print-container {
   width: 2657px;
   max-width: 2657px;
   background: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  margin: 0 auto; /* Centralizar horizontalmente */
+  margin: 0;
   padding: 0;
 }
 
-/* Seções de página - dimensões fixas para garantir layout - CENTRALIZADAS */
+/* Seções de página - dimensões fixas para garantir layout */
 .page-section {
   width: 2657px;
   height: 1328px;
@@ -38,23 +38,24 @@
   overflow: hidden;
   background: white;
   box-sizing: border-box;
-  padding: 0;
+  padding: 45px;
   display: block;
-  margin: 0 auto; /* Centralizar horizontalmente */
+  margin: 0;
 }
 
 /* Forçar componentes internos a ocuparem todo o espaço */
 .page-section > * {
-  width: 2657px !important;
-  height: 1328px !important;
-  max-width: 2657px !important;
-  max-height: 1328px !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   display: block !important;
 }
 
-/* Remover padding dos wrappers principais */
+/* Remover padding dos wrappers principais - padding já está no .page-section */
 .page-section > div {
   padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Page breaks entre seções */
@@ -81,12 +82,9 @@
   height: auto;
 }
 
-/* Organogramas - garantir renderização correta */
+/* Organogramas - usar mesmo padding que as demais páginas */
 .print-container [data-section^="organograma"] {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.5rem !important;
+  padding: 32px !important;
 }
 
 .print-container .rd3t-tree-container {
@@ -97,7 +95,7 @@
 
 .print-container [data-section^="organograma"] svg {
   max-width: 100% !important;
-  max-height: 1100px !important;
+  max-height: 1200px !important;
   width: auto !important;
   height: auto !important;
 }
@@ -117,10 +115,10 @@
   overflow: visible !important;
 }
 
-/* Configuração de página - dimensões fixas 1754x1240px */
+/* Configuração de página - dimensões fixas */
 @page {
-  size: 2657px 1328px;
-  margin: 20px 0 0 0; /* 20px no topo, 0 nas outras margens */
+  size: 330mm 165mm;
+  margin: 0;
 }
 
 /* Garantir cores de fundo */
@@ -157,7 +155,7 @@
   break-inside: avoid;
 }
 
-/* Capa - sem padding */
+/* Capa - sem padding extra (usa o padding do .page-section) */
 .print-container [data-section="capa"] {
   padding: 0 !important;
 }
@@ -174,19 +172,17 @@
   overflow: visible !important;
 }
 
-/* Ajustar containers flex para não expandir demais */
+/* Ajustar containers flex para não expandir além do limite */
 .print-container .flex-1 {
-  flex: 0 1 auto !important;
+  flex: 1 1 0% !important;
 }
 
-/* Ajustar containers de conteúdo */
+/* Ajustar containers de conteúdo - apenas max-width */
 .print-container [class*="container"] {
   max-width: 100% !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
 }
 
-/* Garantir que elementos não ultrapassem 1754px de largura */
+/* Garantir que elementos não ultrapassem 2657px de largura */
 .print-container,
 .print-container * {
   max-width: 2657px !important;

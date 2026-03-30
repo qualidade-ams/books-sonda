@@ -70,10 +70,11 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
-    // Configurar viewport para gerar PDF de 2204x1240 pixels (16:9 em 150 DPI)
+    // Configurar viewport para 2657x1328 pixels (2:1)
+    // Alinhado com CSS (.page-section) e dimensões do PDF
     await page.setViewport({
-      width: 2204,
-      height: 1280,
+      width: 2657,
+      height: 1328,
       deviceScaleFactor: 1
     });
 
@@ -191,10 +192,14 @@ export default async function handler(
     
     console.log('📸 Gerando PDF...');
 
-    // Opções de PDF - dimensões 16:9 (2204x1240 pixels)
+    // Opções de PDF - dimensões em mm para controlar tamanho físico
+    // 355.6mm x 177.8mm = 14" x 7" (ratio 2:1)
+    // scale: 0.44 encolhe o conteúdo para caber com folga na página
+    // 330mm x 165mm = ~13" x 6.5" (ratio 2:1, mais compacto)
     const pdfOptions = {
-      width: '2204px',
-      height: '1240px',
+      width: '330mm',
+      height: '165mm',
+      scale: 0.44,
       printBackground: true,
       margin: {
         top: '0mm',
