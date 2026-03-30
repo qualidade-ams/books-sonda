@@ -296,7 +296,7 @@ export class InconsistenciasChamadosService {
     const dtAtividade = new Date(dataAtividade);
     const dtSistema = new Date(dataSistema);
 
-    // Regra 1: Datas em meses diferentes
+    // Regra 1: Data sistema em mês diferente da data atividade (anterior ou posterior)
     if (
       dtAtividade.getMonth() !== dtSistema.getMonth() ||
       dtAtividade.getFullYear() !== dtSistema.getFullYear()
