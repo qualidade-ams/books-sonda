@@ -284,7 +284,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
         <div className="lg:col-span-1">
           <Card className="border-2 h-full" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold">CHAMADOS | GRUPO</CardTitle>
+              <CardTitle className="text-sm font-semibold">CHAMADOS | GRUPO</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
               {distribuicaoPorGrupoMapeada && distribuicaoPorGrupoMapeada.length > 0 ? (
@@ -299,12 +299,12 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                       {gruposExibir.map((grupo, index) => (
                         <div key={index} className="pb-1.5 border-b last:border-b-0 last:pb-0">
                           <div className="flex items-center justify-between mb-1">
-                            <div className="font-semibold text-[10px] leading-tight">{grupo.grupo}</div>
-                            <div className="text-[9px] text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
+                            <div className="font-semibold text-xs leading-tight">{grupo.grupo}</div>
+                            <div className="text-[11px] text-gray-500 whitespace-nowrap">Total: {grupo.total}</div>
                           </div>
                           <div className="bg-blue-600 rounded px-2 py-0.5 flex items-center gap-1 transition-all duration-300">
-                            <span className="text-sm text-white font-bold leading-tight">{grupo.total}</span>
-                            <span className="text-[9px] text-white/90 font-semibold leading-tight ml-auto">{grupo.percentual}%</span>
+                            <span className="text-base text-white font-bold leading-tight">{grupo.total}</span>
+                            <span className="text-[11px] text-white/90 font-semibold leading-tight ml-auto">{grupo.percentual}%</span>
                           </div>
                         </div>
                       ))}
@@ -312,10 +312,10 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                       {temMaisGrupos && (
                         <div className="pt-2 mt-2 border-t border-gray-200">
                           <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                            <p className="text-[10px] text-gray-600 font-medium">
+                            <p className="text-xs text-gray-600 font-medium">
                               + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
                             </p>
-                            <p className="text-[9px] text-gray-500 mt-0.5">
+                            <p className="text-[11px] text-gray-500 mt-0.5">
                               Exibindo os {maxGrupos} primeiros grupos
                             </p>
                           </div>

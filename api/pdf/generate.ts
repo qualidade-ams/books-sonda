@@ -105,13 +105,15 @@ export default async function handler(
 
     const page = await browser.newPage();
 
-    // Configurar viewport para 2:1 ultra-wide (2657x1328 pixels)
+    // Configurar viewport para renderizar conteúdo em alta resolução
+    // O conteúdo é desenhado para 2657x1328px
+    // O PDF usa scale para encolher para 355.6mm x 177.8mm
     await page.setViewport({
       width: 2657,
       height: 1328,
       deviceScaleFactor: 1
     });
-    console.log('✅ Viewport configurado: 2657x1328 (2:1 ultra-wide)');
+    console.log('✅ Viewport configurado: 2657x1328');
 
     await page.emulateMediaType('screen');
 
@@ -153,10 +155,14 @@ export default async function handler(
     
     console.log('📸 Gerando PDF...');
 
-    // Opções de PDF - dimensões 16:9 (2204x1240 pixels)
+    // Opções de PDF - dimensões em mm para controlar tamanho físico
+    // 355.6mm x 177.8mm = 14" x 7" (ratio 2:1)
+    // scale: 0.705 encolhe o conteúdo para caber com folga na página
+    // 330mm x 165mm = ~13" x 6.5" (ratio 2:1, mais compacto)
     const pdfOptions = {
-      width: '2204px',
-      height: '1240px',
+      width: '330mm',
+      height: '165mm',
+      scale: 0.704,
       printBackground: true,
       margin: {
         top: '0mm',
@@ -164,6 +170,7 @@ export default async function handler(
         left: '0mm',
         right: '0mm',
       },
+      align:'center',
       preferCSSPageSize: false,
     };
 
