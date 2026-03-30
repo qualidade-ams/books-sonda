@@ -429,6 +429,9 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
   }
 
   // Definir zoom específico por produto
+  // Detectar se está no contexto de PDF (rota /pdf/book/) para usar zoom diferente
+  const isPdfContext = typeof window !== 'undefined' && window.location.pathname.includes('/pdf/book/');
+  
   const getZoomPorProduto = () => {
     const produtoUpper = produto.toUpperCase();
     
@@ -439,13 +442,13 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
     
     switch (produtoUpper) {
       case 'FISCAL':
-        return 0.75; // Zoom menor para Fiscal (mais pessoas)
+        return isPdfContext ? 0.75 : 0.65; // PDF: 0.75, Viewport: 0.65
       case 'COMEX':
-        return 0.75; // Zoom médio para Comex
+        return isPdfContext ? 0.75 : 0.68; // PDF: 0.75, Viewport: 0.68
       case 'GALLERY':
-        return 0.78; // Zoom maior para Gallery
+        return 0.78;
       default:
-        return 0.78; // Zoom padrão
+        return 0.78;
     }
   };
 

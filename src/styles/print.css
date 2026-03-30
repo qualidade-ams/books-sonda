@@ -18,13 +18,13 @@
   }
 }
 
-/* Container principal de impressão */
+/* Container principal de impressão - centralizado */
 .print-container {
   width: 2200px;
   max-width: 2200px;
   background: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -40,7 +40,7 @@
   box-sizing: border-box;
   padding: 45px;
   display: block;
-  margin: 0;
+  margin: 0 auto;
 }
 
 /* Forçar componentes internos a ocuparem todo o espaço */

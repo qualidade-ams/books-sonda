@@ -267,10 +267,10 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     return (
       <g transform={translateX !== 0 ? `translate(${translateX}, 0)` : undefined}>
         <foreignObject 
-          x={-225 + marginLeft} 
-          y="-120" 
-          width="420" 
-          height="350"
+          x={-255 + marginLeft} 
+          y="-135" 
+          width="480" 
+          height="400"
         > 
           <Card className="w-full h-full border-transparent shadow-none bg-transparent" style={{ overflow: 'visible'}}>
             <CardContent className="p-0" style={{ overflow: 'visible' }}>
@@ -281,8 +281,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                       className="rounded-full"
                       style={{
                         ...getGradientStyle(produtos, produto),
-                        width: 96,
-                        height: 96,
+                        width: 112,
+                        height: 112,
                         border: '4px solid transparent',
                       }}
                     >
@@ -306,12 +306,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                         <img
                           src={pessoa.foto_url}
                           alt={nodeDatum.name}
-                          className={`h-24 w-24 rounded-full object-cover ${getBorderStyle(produtos, produto)}`}
+                          className={`h-28 w-28 rounded-full object-cover ${getBorderStyle(produtos, produto)}`}
                           style={getGradientStyle(produtos, produto)}
                         />
                       ) : (
                         <div 
-                          className={`h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center ${getBorderStyle(produtos, produto)}`}
+                          className={`h-28 w-28 rounded-full bg-gray-200 flex items-center justify-center ${getBorderStyle(produtos, produto)}`}
                           style={getGradientStyle(produtos, produto)}
                         >
                           <User className="h-12 w-12 text-gray-400" />
@@ -324,7 +324,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                 <div className={`text-center w-full px-4 flex flex-col ${viewOnly ? 'min-h-[80px]' : 'min-h-[180px]'}`}>
                   {mostrarNivel && (
                     <div className="text-center">
-                      <span className={`text-sm font-bold tracking-wide ${
+                      <span className={`text-base font-bold tracking-wide ${
                         nivelExibicao >= 2 ? 'text-blue-600' : 'text-gray-800'
                       }`}>
                         {nivelTexto}
@@ -332,7 +332,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                     </div>
                   )}
 
-                  <h3 className={`text-lg font-bold leading-tight min-h-[28px] ${
+                  <h3 className={`text-xl font-bold leading-tight min-h-[28px] ${
                     nivelExibicao >= 2 || !mostrarNivel ? 'text-black' : 'text-blue-600'
                   }`}>
                     {nodeDatum.name}
@@ -348,17 +348,17 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                         opacity: 1,
                       }}
                     />
-                    <p className={`text-sm font-bold ${corTextoDepartamento} relative z-10 px-4 py-1`}>
+                    <p className={`text-base font-bold ${corTextoDepartamento} relative z-10 px-4 py-1`}>
                       {pessoa?.departamento}
                     </p>
                   </div>
 
-                  <div className="text-sm font-bold text-black min-h-[20px]">
+                  <div className="text-base font-bold text-black min-h-[20px]">
                     {pessoa?.email}
                   </div>
 
                   {!viewOnly && (
-                    <div className="text-sm font-bold text-black min-h-[20px]">
+                    <div className="text-base font-bold text-black min-h-[20px]">
                       {pessoa?.telefone || '\u00A0'}
                     </div>
                   )}
@@ -469,7 +469,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           orientation="vertical"
           pathFunc="step"
           translate={translate}
-          nodeSize={{ x: 420, y: 320 }}
+          nodeSize={{ x: 480, y: 370 }}
           separation={{ siblings: 0.9, nonSiblings: 1.1 }}
           renderCustomNodeElement={renderCustomNode}
           pathClassFunc={(link: any) => {
@@ -496,7 +496,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           zoom={initialZoom}
           scaleExtent={{ min: 0.4, max: 2 }}
           enableLegacyTransitions
-          depthFactor={370}
+          depthFactor={340}
         />
       </div>
 
