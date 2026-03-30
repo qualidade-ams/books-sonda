@@ -70,14 +70,14 @@ export default async function handler(
     const page = await browser.newPage();
     console.log('✅ Nova página criada');
 
-    // Configurar viewport para 2657x1328 pixels (2:1)
+    // Configurar viewport para 2200x1328 pixels
     // Alinhado com CSS (.page-section) e dimensões do PDF
     await page.setViewport({
-      width: 2657,
+      width: 2200,
       height: 1328,
       deviceScaleFactor: 1
     });
-    console.log('✅ Viewport configurado: 2657x1328 (2:1, alinhado com CSS)');
+    console.log('✅ Viewport configurado: 2200x1328');
 
     // Forçar media type screen (não print)
     await page.emulateMediaType('screen');
@@ -147,14 +147,10 @@ export default async function handler(
     
     console.log('📸 Gerando PDF...');
 
-    // Opções de PDF - dimensões em mm para controlar tamanho físico
-    // 355.6mm x 177.8mm = 14" x 7" (ratio 2:1)
-    // scale: 0.44 encolhe o conteúdo para caber com folga na página
-    // 330mm x 165mm = ~13" x 6.5" (ratio 2:1, mais compacto)
+    // PDF com mesmas dimensões da viewport para layout pixel-perfect
     const pdfOptions = {
-      width: '330mm',
-      height: '165mm',
-      scale: 0.44,
+      width: '2200px',
+      height: '1328px',
       printBackground: true,
       margin: {
         top: '0mm',
@@ -162,7 +158,7 @@ export default async function handler(
         left: '0mm',
         right: '0mm',
       },
-      preferCSSPageSize: false,  // Usar dimensões explícitas em vez de CSS
+      preferCSSPageSize: false,
     };
 
     // Gerar PDF
