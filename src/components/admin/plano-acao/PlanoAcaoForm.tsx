@@ -151,11 +151,13 @@ export function PlanoAcaoForm({
     : [];
   
   // Correlação automática baseada no campo prestador
-  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+  const correlacaoResult = useCorrelacaoMultiplosEspecialistas(
     plano?.pesquisa?.prestador && especialistasIdsRelacionados.length === 0 
       ? plano.pesquisa.prestador 
       : undefined
   );
+  const especialistasIdsCorrelacionados = correlacaoResult.data ?? [];
+  const loadingCorrelacao = correlacaoResult.isLoading;
 
   // Ordenar empresas por nome abreviado
   const empresasOrdenadas = [...empresas].sort((a, b) => 
@@ -234,7 +236,7 @@ export function PlanoAcaoForm({
 
   // Atualizar especialistas apenas na montagem inicial (não sobrescrever seleção do usuário)
   useEffect(() => {
-    if (especialistasInitialized.current) return;
+    if (especialistasInitialized.current || loadingCorrelacao) return;
     
     const idsRelacionados = especialistasIdsRelacionados as string[];
     const idsCorrelacionados = (especialistasIdsCorrelacionados as string[]) || [];
@@ -248,7 +250,7 @@ export function PlanoAcaoForm({
       form.setValue('especialistas_ids', idsCorrelacionados);
       especialistasInitialized.current = true;
     }
-  }, [especialistasIdsRelacionados, especialistasIdsCorrelacionados, form]);
+  }, [especialistasIdsRelacionados, especialistasIdsCorrelacionados, loadingCorrelacao, form]);
 
   return (
     <Tabs defaultValue="formulario" className="w-full">

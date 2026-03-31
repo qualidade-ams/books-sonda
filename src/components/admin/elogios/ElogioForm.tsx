@@ -103,9 +103,11 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
   const especialistasIdsRelacionados = useEspecialistasIdsElogio(elogio?.id);
   
   // Correlação automática baseada no campo prestador
-  const { data: especialistasIdsCorrelacionados = [] } = useCorrelacaoMultiplosEspecialistas(
+  const correlacaoResult = useCorrelacaoMultiplosEspecialistas(
     elogio?.pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? elogio.pesquisa.prestador : undefined
   );
+  const especialistasIdsCorrelacionados = correlacaoResult.data ?? [];
+  const loadingCorrelacao = correlacaoResult.isLoading;
   
   // Usar relacionamentos salvos ou correlação automática
   const especialistasIds = especialistasIdsRelacionados.length > 0 
@@ -178,7 +180,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
   useEffect(() => {
-    if (especialistasIds.length > 0 && elogio && !form.formState.isDirty) {
+    if (!loadingCorrelacao && especialistasIds.length > 0 && elogio && !form.formState.isDirty) {
       console.log('📋 [ELOGIOS] Preenchendo especialistas (apenas uma vez):', especialistasIds);
       form.setValue('especialistas_ids', especialistasIds, {
         shouldValidate: false,
@@ -186,7 +188,7 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
         shouldTouch: false
       });
     }
-  }, [especialistasIds, elogio]); // Removido 'form' da dependência para evitar loops
+  }, [especialistasIds, elogio, loadingCorrelacao]); // Removido 'form' da dependência para evitar loops
 
   // Preencher grupo automaticamente quando categoria for selecionada
   useEffect(() => {

@@ -116,17 +116,20 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
   console.log('🔍 [PesquisaForm] Loading Relacionados:', loadingRelacionados);
   
   // Correlação automática baseada no campo prestador
-  const { data: especialistasIdsCorrelacionados = [], isLoading: loadingCorrelacao } = useCorrelacaoMultiplosEspecialistas(
+  const correlacaoResult = useCorrelacaoMultiplosEspecialistas(
     pesquisa?.prestador && especialistasIdsRelacionados.length === 0 ? pesquisa.prestador : undefined
-  ) as { data: string[] | undefined; isLoading: boolean };
+  );
+  const especialistasIdsCorrelacionados = correlacaoResult.data ?? [];
+  const loadingCorrelacao = correlacaoResult.isLoading;
+  const loadingEspecialistasBase = correlacaoResult.loadingEspecialistasBase ?? false;
   
   console.log('🔍 [PesquisaForm] IDs Correlacionados (automático):', especialistasIdsCorrelacionados);
   console.log('🔍 [PesquisaForm] Quantidade de IDs Correlacionados:', especialistasIdsCorrelacionados.length);
   console.log('🔍 [PesquisaForm] Loading Correlação:', loadingCorrelacao);
   
-  // Combinar loading states
-  const especialistasLoading = loadingRelacionados || loadingCorrelacao;
-  console.log('🔍 [PesquisaForm] Especialistas Loading (combinado):', especialistasLoading);
+  // Combinar loading states - incluir loading dos especialistas base
+  const especialistasLoading = loadingRelacionados || loadingCorrelacao || loadingEspecialistasBase;
+  console.log('🔍 [PesquisaForm] Especialistas Loading (combinado):', especialistasLoading, { loadingRelacionados, loadingCorrelacao, loadingEspecialistasBase });
   
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
   const especialistasIdsUnicos = [...new Set<string>(
@@ -169,71 +172,64 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
     
     // Aguardar empresas E categorias estarem carregadas
     if (pesquisa && empresas.length > 0 && categorias.length > 0) {
-      // Usar setTimeout para garantir que o DOM esteja pronto
-      const timer = setTimeout(() => {
-        // Tentar encontrar a empresa pelo nome completo ou abreviado
-        const empresaEncontrada = empresas.find(
-          e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
-        );
-        
-        // Usar o nome_completo se encontrou, senão usar o valor original
-        const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
-        
-        const dadosReset = {
-          empresa: empresaValue || '',
-          cliente: pesquisa.cliente,
-          categoria: pesquisa.categoria || '',  // Sempre usar string, nunca undefined
-          grupo: pesquisa.grupo || undefined,
-          email_cliente: pesquisa.email_cliente || '',
-          prestador: pesquisa.prestador || '',
-          solicitante: pesquisa.solicitante || '',
-          nro_caso: pesquisa.nro_caso || '',
-          tipo_caso: pesquisa.tipo_caso || undefined,
-          data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
-          resposta: pesquisa.resposta || undefined,
-          comentario_pesquisa: pesquisa.comentario_pesquisa || '',
-          observacao: pesquisa.observacao || '',
-          empresa_id: pesquisa.empresa_id || undefined,
-          cliente_id: pesquisa.cliente_id || undefined,
-          especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
-        };
-        
-        console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
-        console.log('✅ [PesquisaForm useEffect reset] Categoria no reset:', dadosReset.categoria);
-        
-        // Verificar se a categoria existe na lista de categorias disponíveis
-        const categoriaExiste = categorias.some(cat => cat.value === pesquisa.categoria);
-        console.log('🔍 [PesquisaForm useEffect reset] Categoria existe na lista?', categoriaExiste);
-        
-        // Usar reset sem verificar isDirty - sempre resetar quando pesquisa mudar
-        form.reset(dadosReset, {
-          keepDefaultValues: false, // Não manter valores padrão
-          keepDirty: false,          // Não manter estado dirty
-          keepTouched: false,        // Não manter estado touched
-          keepErrors: false,         // Não manter erros
-          keepIsSubmitted: false,    // Não manter estado submitted
-          keepSubmitCount: false     // Não manter contador de submits
-        });
-        
-        console.log('✅ [PesquisaForm useEffect reset] Reset executado');
-        console.log('✅ [PesquisaForm useEffect reset] Valor da categoria após reset:', form.getValues('categoria'));
-        
-        // Forçar atualização do campo categoria especificamente
-        if (pesquisa.categoria && categoriaExiste) {
-          console.log('🔧 [PesquisaForm useEffect reset] Forçando setValue para categoria:', pesquisa.categoria);
-          form.setValue('categoria', pesquisa.categoria, {
-            shouldValidate: true,
-            shouldDirty: false,
-            shouldTouch: false
-          });
-          console.log('✅ [PesquisaForm useEffect reset] setValue executado, valor atual:', form.getValues('categoria'));
-        } else if (pesquisa.categoria && !categoriaExiste) {
-          console.warn('⚠️ [PesquisaForm useEffect reset] Categoria não encontrada na lista:', pesquisa.categoria);
-          console.warn('⚠️ [PesquisaForm useEffect reset] Categorias disponíveis:', categorias.map(c => c.value));
-        }
-      }, 100); // Aumentar delay para 100ms para garantir que as categorias estejam renderizadas
+      // Tentar encontrar a empresa pelo nome completo ou abreviado
+      const empresaEncontrada = empresas.find(
+        e => e.nome_completo === pesquisa.empresa || e.nome_abreviado === pesquisa.empresa
+      );
       
-      return () => clearTimeout(timer);
+      // Usar o nome_completo se encontrou, senão usar o valor original
+      const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : pesquisa.empresa;
+      
+      const dadosReset = {
+        empresa: empresaValue || '',
+        cliente: pesquisa.cliente,
+        categoria: pesquisa.categoria || '',
+        grupo: pesquisa.grupo || undefined,
+        email_cliente: pesquisa.email_cliente || '',
+        prestador: pesquisa.prestador || '',
+        solicitante: pesquisa.solicitante || '',
+        nro_caso: pesquisa.nro_caso || '',
+        tipo_caso: pesquisa.tipo_caso || undefined,
+        data_resposta: pesquisa.data_resposta ? new Date(pesquisa.data_resposta) : undefined,
+        resposta: pesquisa.resposta || undefined,
+        comentario_pesquisa: pesquisa.comentario_pesquisa || '',
+        observacao: pesquisa.observacao || '',
+        empresa_id: pesquisa.empresa_id || undefined,
+        cliente_id: pesquisa.cliente_id || undefined,
+        especialistas_ids: especialistasIds.length > 0 ? especialistasIds : []
+      };
+      
+      console.log('✅ [PesquisaForm useEffect reset] Dados para reset:', dadosReset);
+      
+      // Verificar se a categoria existe na lista de categorias disponíveis
+      const categoriaExiste = categorias.some(cat => cat.value === pesquisa.categoria);
+      
+      // Resetar formulário
+      form.reset(dadosReset, {
+        keepDefaultValues: false,
+        keepDirty: false,
+        keepTouched: false,
+        keepErrors: false,
+        keepIsSubmitted: false,
+        keepSubmitCount: false
+      });
+      
+      // Resetar flag para permitir que o useEffect de especialistas rode novamente
+      especialistasInicializados.current = false;
+      processamentoEmAndamento.current = false;
+      
+      console.log('✅ [PesquisaForm useEffect reset] Reset executado');
+      
+      // Forçar atualização do campo categoria especificamente
+      if (pesquisa.categoria && categoriaExiste) {
+        form.setValue('categoria', pesquisa.categoria, {
+          shouldValidate: true,
+          shouldDirty: false,
+          shouldTouch: false
+        });
+      } else if (pesquisa.categoria && !categoriaExiste) {
+        console.warn('⚠️ [PesquisaForm useEffect reset] Categoria não encontrada na lista:', pesquisa.categoria);
+      }
     } else {
       console.log('⚠️ [PesquisaForm useEffect reset] Condições não atendidas, pulando reset');
       if (!pesquisa) console.log('  - Sem pesquisa');
@@ -318,7 +314,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               } else if (data) {
                 console.log('✅ [processarEspecialistas] Dados recebidos do banco:', data);
                 data.forEach(esp => {
-                  nomesEspecialistasDb.add(esp.nome);
+                  nomesEspecialistasDb.add(esp.nome.toLowerCase().trim());
                   console.log('  ➕ Nome adicionado ao Set:', esp.nome);
                 });
                 console.log('📋 [processarEspecialistas] Set completo de nomes do banco:', Array.from(nomesEspecialistasDb));
@@ -335,7 +331,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             // Identificar quais nomes NÃO estão na tabela especialistas (são manuais)
             nomesPrestador.forEach((nome, index) => {
               console.log(`🔍 [processarEspecialistas] Verificando nome ${index + 1}/${nomesPrestador.length}: "${nome}"`);
-              const estaNoSet = nomesEspecialistasDb.has(nome);
+              const estaNoSet = nomesEspecialistasDb.has(nome.toLowerCase().trim());
               console.log(`  🔍 Está no Set? ${estaNoSet}`);
               
               if (!estaNoSet) {

@@ -160,6 +160,7 @@ export async function sincronizarDados(
     especialistas?: boolean;
     apontamentos?: boolean;
     tickets?: boolean;
+    dataInicial?: string;
   },
   onLog?: (mensagem: string) => void
 ): Promise<ResultadoSincronizacao & { 
@@ -206,11 +207,17 @@ export async function sincronizarDados(
       onLog?.(`📍 Usando endpoint: ${ENDPOINT_PESQUISAS}`);
       
       // Usar fetch nativo para suportar streaming
+      const bodyPayload = {
+        dataInicial: tabelasParaSincronizar.dataInicial || undefined
+      };
+      console.log('📤 [SYNC] Enviando body para API:', JSON.stringify(bodyPayload));
+      
       const response = await fetch(`${API_URL}${ENDPOINT_PESQUISAS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify(bodyPayload)
       });
 
       if (response.status === 404) {

@@ -48,6 +48,7 @@ export function useSincronizarSqlServer() {
       especialistas?: boolean;
       apontamentos?: boolean;
       tickets?: boolean;
+      dataInicial?: string;
     }) => sqlServerSyncService.sincronizarDados(tabelas),
     onSuccess: (resultado) => {
       // Invalidar todas as queries relacionadas a pesquisas, especialistas, apontamentos E tickets
