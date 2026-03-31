@@ -150,7 +150,8 @@ export class InconsistenciasChamadosService {
         const tipos = this.detectarInconsistencias(
           apontamento.data_atividade,
           apontamento.data_sistema,
-          apontamento.tempo_gasto_horas
+          apontamento.tempo_gasto_horas,
+          apontamento.item_configuracao
         );
 
         // Se há inconsistências detectadas
@@ -173,12 +174,14 @@ export class InconsistenciasChamadosService {
               empresa: apontamento.org_us_final,
               analista: apontamento.analista_tarefa,
               tipo_chamado: apontamento.tipo_chamado,
+              item_configuracao: apontamento.item_configuracao,
               tipo_inconsistencia: tipo,
               descricao_inconsistencia: this.gerarDescricao(
                 tipo,
                 apontamento.data_atividade,
                 apontamento.data_sistema,
-                apontamento.tempo_gasto_horas
+                apontamento.tempo_gasto_horas,
+                apontamento.item_configuracao
               ),
               created_at: apontamento.created_at
             });
@@ -236,7 +239,8 @@ export class InconsistenciasChamadosService {
         const tipos = this.detectarInconsistencias(
           ticket.data_abertura,
           ticket.data_sistema,
-          null // Tickets não têm tempo_gasto_horas
+          null, // Tickets não têm tempo_gasto_horas
+          ticket.item_configuracao
         );
 
         // Se há inconsistências detectadas
@@ -259,12 +263,14 @@ export class InconsistenciasChamadosService {
               empresa: ticket.empresa,
               analista: null,
               tipo_chamado: null,
+              item_configuracao: ticket.item_configuracao,
               tipo_inconsistencia: tipo,
               descricao_inconsistencia: this.gerarDescricao(
                 tipo,
                 ticket.data_abertura,
                 ticket.data_sistema,
-                null
+                null,
+                ticket.item_configuracao
               ),
               created_at: ticket.created_at
             });
@@ -285,7 +291,8 @@ export class InconsistenciasChamadosService {
   private detectarInconsistencias(
     dataAtividade: string | null,
     dataSistema: string | null,
-    tempoGastoHoras: string | null
+    tempoGastoHoras: string | null,
+    itemConfiguracao: string | null
   ): TipoInconsistencia[] {
     const tipos: TipoInconsistencia[] = [];
 
@@ -317,6 +324,11 @@ export class InconsistenciasChamadosService {
       }
     }
 
+    // Regra 4: Item de configuração começa com 999999
+    if (itemConfiguracao && itemConfiguracao.trim().startsWith('999999')) {
+      tipos.push('ic_999999');
+    }
+
     return tipos;
   }
 
@@ -327,7 +339,8 @@ export class InconsistenciasChamadosService {
     tipo: TipoInconsistencia,
     dataAtividade: string,
     dataSistema: string,
-    tempoGastoHoras: string | null
+    tempoGastoHoras: string | null,
+    itemConfiguracao: string | null = null
   ): string {
     const dtAtividade = new Date(dataAtividade);
     const dtSistema = new Date(dataSistema);
@@ -342,6 +355,9 @@ export class InconsistenciasChamadosService {
       
       case 'tempo_excessivo':
         return `Tempo gasto (${tempoGastoHoras}) excede o limite de 10 horas`;
+      
+      case 'ic_999999':
+        return `Item de Configuração inválido: ${itemConfiguracao}`;
       
       default:
         return 'Inconsistência detectada';
@@ -362,7 +378,8 @@ export class InconsistenciasChamadosService {
         por_tipo: {
           mes_diferente: 0,
           data_invertida: 0,
-          tempo_excessivo: 0
+          tempo_excessivo: 0,
+          ic_999999: 0
         },
         por_origem: {
           apontamentos: 0,
@@ -439,13 +456,15 @@ export class InconsistenciasChamadosService {
     const tipoLabels = {
       mes_diferente: 'Mês Diferente',
       data_invertida: 'Data Invertida',
-      tempo_excessivo: 'Tempo Excessivo'
+      tempo_excessivo: 'Tempo Excessivo',
+      ic_999999: 'IC 999999'
     };
 
     const tipoColors = {
       mes_diferente: '#F59E0B',
       data_invertida: '#EF4444',
-      tempo_excessivo: '#F97316'
+      tempo_excessivo: '#F97316',
+      ic_999999: '#9333EA'
     };
 
     let html = `<!DOCTYPE html>

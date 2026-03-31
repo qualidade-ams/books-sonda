@@ -8,7 +8,8 @@ export type OrigemInconsistencia = 'apontamentos' | 'tickets';
 export type TipoInconsistencia = 
   | 'mes_diferente'      // data_atividade e data_sistema em meses diferentes
   | 'data_invertida'     // data_sistema < data_atividade
-  | 'tempo_excessivo';   // tempo_gasto_horas > 10:00
+  | 'tempo_excessivo'    // tempo_gasto_horas > 10:00
+  | 'ic_999999';         // item_configuracao começa com 999999
 
 export interface InconsistenciaChamado {
   // Identificação
@@ -28,6 +29,7 @@ export interface InconsistenciaChamado {
   empresa: string | null;
   analista: string | null;
   tipo_chamado: string | null;
+  item_configuracao: string | null;
   
   // Inconsistência detectada
   tipo_inconsistencia: TipoInconsistencia;
@@ -52,6 +54,7 @@ export interface InconsistenciasChamadosEstatisticas {
     mes_diferente: number;
     data_invertida: number;
     tempo_excessivo: number;
+    ic_999999: number;
   };
   por_origem: {
     apontamentos: number;
@@ -98,7 +101,8 @@ export interface EnviarNotificacaoRequest {
 export const TIPO_INCONSISTENCIA_LABELS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'Mês Diferente',
   data_invertida: 'Data Invertida',
-  tempo_excessivo: 'Tempo Excessivo'
+  tempo_excessivo: 'Tempo Excessivo',
+  ic_999999: 'IC 999999'
 };
 
 export const ORIGEM_LABELS: Record<OrigemInconsistencia, string> = {
@@ -110,7 +114,8 @@ export const ORIGEM_LABELS: Record<OrigemInconsistencia, string> = {
 export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'bg-yellow-100 text-yellow-800',
   data_invertida: 'bg-red-100 text-red-800',
-  tempo_excessivo: 'bg-orange-100 text-orange-800'
+  tempo_excessivo: 'bg-orange-100 text-orange-800',
+  ic_999999: 'bg-purple-100 text-purple-800'
 };
 
 export const ORIGEM_COLORS: Record<OrigemInconsistencia, string> = {
