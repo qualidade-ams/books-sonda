@@ -1,13 +1,14 @@
 /**
- * API Route para geração de PDF usando Puppeteer - VERSÃO DESENVOLVIMENTO
+ * API Route para geração de PDF usando Puppeteer
  * Endpoint: POST /api/pdf/generate
  * 
- * Esta versão usa o Chrome instalado localmente em vez do @sparticuz/chromium
- * Use esta versão para desenvolvimento local
+ * Recebe HTML ou URL e retorna PDF com fidelidade visual total
+ * Compatível com Vercel (usa @sparticuz/chromium) e desenvolvimento local
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { existsSync } from 'fs';
+import chromium from '@sparticuz/chromium';
 
 interface GeneratePDFRequest {
   html?: string;
@@ -26,13 +27,11 @@ interface GeneratePDFRequest {
   };
 }
 
-// Caminhos comuns do Chrome/Edge por sistema operacional
+// Caminhos comuns do Chrome/Edge por sistema operacional (para dev local)
 const BROWSER_PATHS = {
   win32: [
-    // Edge (mais comum no Windows 11)
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    // Chrome
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
   ],
@@ -47,12 +46,12 @@ const BROWSER_PATHS = {
   ],
 };
 
-function findBrowser(): string {
+function findLocalBrowser(): string | null {
   const platform = process.platform as keyof typeof BROWSER_PATHS;
   const paths = BROWSER_PATHS[platform] || [];
-  
+
   console.log(`🔍 Procurando navegador no ${platform}...`);
-  
+
   for (const path of paths) {
     try {
       if (path && existsSync(path)) {
@@ -63,8 +62,8 @@ function findBrowser(): string {
       // Silenciar erros
     }
   }
-  
-  throw new Error('Chrome ou Edge não encontrado. Instale um dos navegadores.');
+
+  return null;
 }
 
 export default async function handler(
@@ -90,24 +89,36 @@ export default async function handler(
       return;
     }
 
-    console.log('🚀 Iniciando geração de PDF (DEV MODE)...');
+    console.log('🚀 Iniciando geração de PDF...');
+    console.log('📦 Tamanho do HTML:', body.html?.length || 0, 'caracteres');
 
-    const browserPath = findBrowser();
-    
     const puppeteer = await import('puppeteer-core');
-    browser = await puppeteer.launch({
-      executablePath: browserPath,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+
+    // Tentar browser local primeiro (dev), senão usar @sparticuz/chromium (produção/Vercel)
+    const localBrowser = findLocalBrowser();
+
+    if (localBrowser) {
+      console.log('🔧 Usando browser local:', localBrowser);
+      browser = await puppeteer.launch({
+        executablePath: localBrowser,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    } else {
+      console.log('🔧 Usando @sparticuz/chromium (Vercel)...');
+      const executablePath = await chromium.executablePath();
+      console.log('📍 Chromium path:', executablePath);
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        executablePath: executablePath,
+        headless: true,
+      });
+    }
 
     console.log('✅ Browser iniciado');
 
     const page = await browser.newPage();
 
-    // Configurar viewport para renderizar conteúdo em alta resolução
-    // O conteúdo é desenhado para 2657x1328px
-    // O PDF usa scale para encolher para 355.6mm x 177.8mm
     await page.setViewport({
       width: 2200,
       height: 1328,
@@ -131,13 +142,13 @@ export default async function handler(
 
     await page.evaluateHandle('document.fonts.ready');
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     await page.evaluate(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     try {
       await page.waitForFunction(
         () => {
@@ -150,12 +161,11 @@ export default async function handler(
     } catch (error) {
       console.log('⚠️ Timeout aguardando prontidão, continuando...');
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     console.log('📸 Gerando PDF...');
 
-    // PDF com mesmas dimensões da viewport para layout pixel-perfect
     const pdfOptions = {
       width: '2200px',
       height: '1328px',
@@ -183,16 +193,18 @@ export default async function handler(
 
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
-    
+    console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'N/A');
+
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ 
+    res.end(JSON.stringify({
       error: 'Erro ao gerar PDF',
       message: error instanceof Error ? error.message : 'Erro desconhecido'
     }));
   } finally {
     if (browser) {
       await browser.close();
+      console.log('🔒 Browser fechado');
     }
   }
 }
