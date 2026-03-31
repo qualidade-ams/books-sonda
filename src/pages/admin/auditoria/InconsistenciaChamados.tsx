@@ -48,8 +48,7 @@ import {
   Mail,
   Paperclip,
   ClipboardList,
-  Ticket,
-  Hash
+  Settings
 } from 'lucide-react';
 import { 
   useInconsistenciasChamados, 
@@ -361,8 +360,11 @@ export default function InconsistenciaChamados() {
   };
 
   // Formatar data com segundos
-  const formatarData = (data: string) => {
-    return new Date(data).toLocaleDateString('pt-BR', {
+  const formatarData = (data: string | null) => {
+    if (!data) return '-';
+    const d = new Date(data);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -494,7 +496,7 @@ export default function InconsistenciaChamados() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4" />
+                    <Settings className="h-4 w-4" />
                     IC 999999
                   </div>
                 </CardTitle>
@@ -696,6 +698,7 @@ export default function InconsistenciaChamados() {
                               />
                             </TableHead>
                             <TableHead className="w-[120px] text-center">Nº Chamado</TableHead>
+                            <TableHead className="w-[100px] text-center">N Tarefa</TableHead>
                             <TableHead className="w-[150px] text-center">Tipo</TableHead>
                             <TableHead className="w-[150px] text-center">Data Atividade</TableHead>
                             <TableHead className="w-[150px] text-center">Data Sistema</TableHead>
@@ -719,14 +722,15 @@ export default function InconsistenciaChamados() {
                               <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                                   {/* Ícone de origem */}
-                                  {inc.origem === 'apontamentos' ? (
-                                    <ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                  ) : (
-                                    <Ticket className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                                  )}
+                                  <ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" />
                                   {/* Número do chamado */}
                                   <span className="font-mono text-foreground text-xs sm:text-sm">{inc.nro_chamado}</span>
                                 </div>
+                              </TableCell>
+                              
+                              {/* Coluna N Tarefa */}
+                              <TableCell className="text-center">
+                                <span className="font-mono text-xs sm:text-sm">{inc.nro_tarefa || '-'}</span>
                               </TableCell>
                               
                               {/* Coluna Tipo */}
@@ -885,11 +889,7 @@ export default function InconsistenciaChamados() {
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                                 {/* Ícone de origem */}
-                                {item.origem === 'apontamentos' ? (
-                                  <ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                ) : (
-                                  <Ticket className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                                )}
+                                <ClipboardList className="h-4 w-4 text-blue-600 flex-shrink-0" />
                                 {/* Número do chamado */}
                                 <span className="font-mono text-foreground text-xs sm:text-sm">{item.nro_chamado}</span>
                               </div>
@@ -953,11 +953,7 @@ export default function InconsistenciaChamados() {
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Nº Chamado</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    {selectedInconsistencia.origem === 'apontamentos' ? (
-                      <ClipboardList className="h-4 w-4 text-blue-600" />
-                    ) : (
-                      <Ticket className="h-4 w-4 text-purple-600" />
-                    )}
+                    <ClipboardList className="h-4 w-4 text-blue-600" />
                     <span className="font-mono text-sm">{selectedInconsistencia.nro_chamado}</span>
                   </div>
                 </div>

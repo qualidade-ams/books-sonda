@@ -16,6 +16,41 @@ import type {
  * não estão definidas nos tipos gerados do Supabase. O código funciona corretamente em runtime.
  */
 export class InconsistenciasChamadosService {
+  private cacheEmpresas: Map<string, string> | null = null;
+
+  /**
+   * Busca empresas cadastradas e retorna mapa nome_completo -> nome_abreviado
+   */
+  private async buscarMapaEmpresas(): Promise<Map<string, string>> {
+    if (this.cacheEmpresas) return this.cacheEmpresas;
+
+    const { data, error } = await supabase
+      .from('empresas_clientes')
+      .select('nome_completo, nome_abreviado');
+
+    if (error || !data) {
+      console.error('❌ Erro ao buscar empresas:', error);
+      return new Map();
+    }
+
+    this.cacheEmpresas = new Map();
+    for (const emp of data) {
+      if (emp.nome_completo && emp.nome_abreviado) {
+        this.cacheEmpresas.set(emp.nome_completo.toUpperCase().trim(), emp.nome_abreviado);
+      }
+    }
+    return this.cacheEmpresas;
+  }
+
+  /**
+   * Retorna nome abreviado da empresa ou o nome original se não encontrar
+   */
+  private obterNomeAbreviado(nomeCompleto: string, mapa: Map<string, string>): string {
+    if (!nomeCompleto) return '-';
+    const abreviado = mapa.get(nomeCompleto.toUpperCase().trim());
+    return abreviado || nomeCompleto;
+  }
+
   /**
    * Busca todas as inconsistências de chamados
    * 
@@ -41,7 +76,15 @@ export class InconsistenciasChamadosService {
       // 3. Filtrar inconsistências já enviadas (que estão no histórico)
       const inconsistenciasNaoEnviadas = await this.filtrarInconsistenciasNaoEnviadas(inconsistencias);
 
-      // 4. Ordenar por data_atividade DESC
+      // 4. Mapear nomes de empresas para nomes abreviados
+      const mapaEmpresas = await this.buscarMapaEmpresas();
+      for (const inc of inconsistenciasNaoEnviadas) {
+        if (inc.empresa) {
+          inc.empresa = this.obterNomeAbreviado(inc.empresa, mapaEmpresas);
+        }
+      }
+
+      // 5. Ordenar por data_atividade DESC
       inconsistenciasNaoEnviadas.sort((a, b) => {
         const dataA = new Date(a.data_atividade);
         const dataB = new Date(b.data_atividade);
@@ -151,7 +194,7 @@ export class InconsistenciasChamadosService {
           apontamento.data_atividade,
           apontamento.data_sistema,
           apontamento.tempo_gasto_horas,
-          apontamento.item_configuracao
+          null // IC 999999 é verificado apenas em apontamentos_tickets_aranda
         );
 
         // Se há inconsistências detectadas
@@ -163,10 +206,13 @@ export class InconsistenciasChamadosService {
 
           // Criar uma inconsistência para cada tipo detectado
           for (const tipo of tiposFiltrados) {
+            const tipoChamado = apontamento.tipo_chamado || '';
+            const nroChamado = apontamento.nro_chamado || 'N/A';
             inconsistencias.push({
               id: `${apontamento.id}-${tipo}`,
               origem: 'apontamentos',
-              nro_chamado: apontamento.nro_chamado || 'N/A',
+              nro_chamado: tipoChamado ? `${tipoChamado} ${nroChamado}` : nroChamado,
+              nro_tarefa: apontamento.nro_tarefa || null,
               data_atividade: apontamento.data_atividade,
               data_sistema: apontamento.data_sistema,
               tempo_gasto_horas: apontamento.tempo_gasto_horas,
@@ -221,6 +267,9 @@ export class InconsistenciasChamadosService {
         query = query.ilike('nro_solicitacao', `%${filtros.busca}%`);
       }
 
+      // Excluir tickets do grupo CA SDM (não são inconsistências reais)
+      query = query.neq('nome_grupo', 'CA SDM');
+
       const { data, error } = await query;
 
       if (error) {
@@ -252,17 +301,26 @@ export class InconsistenciasChamadosService {
 
           // Criar uma inconsistência para cada tipo detectado
           for (const tipo of tiposFiltrados) {
+            // Mapear cod_tipo para prefixo: Solicitação->RF, Incidente->IM, Problema->PM
+            const codTipo = ticket.cod_tipo || '';
+            let prefixo = '';
+            if (codTipo === 'Solicitação') prefixo = 'RF';
+            else if (codTipo === 'Incidente') prefixo = 'IM';
+            else if (codTipo === 'Problema') prefixo = 'PM';
+
+            const nroSolicitacao = ticket.nro_solicitacao || 'N/A';
             inconsistencias.push({
               id: `${ticket.id}-${tipo}`,
               origem: 'tickets',
-              nro_chamado: ticket.nro_solicitacao || 'N/A',
+              nro_chamado: prefixo ? `${prefixo} ${nroSolicitacao}` : nroSolicitacao,
+              nro_tarefa: null,
               data_atividade: ticket.data_abertura,
               data_sistema: ticket.data_sistema,
               tempo_gasto_horas: null,
               tempo_gasto_minutos: null,
               empresa: ticket.empresa,
               analista: null,
-              tipo_chamado: null,
+              tipo_chamado: prefixo || null,
               item_configuracao: ticket.item_configuracao,
               tipo_inconsistencia: tipo,
               descricao_inconsistencia: this.gerarDescricao(
@@ -296,6 +354,12 @@ export class InconsistenciasChamadosService {
   ): TipoInconsistencia[] {
     const tipos: TipoInconsistencia[] = [];
 
+    // Regra 4: Item de configuração começa com 999999 (independe de datas)
+    if (itemConfiguracao && itemConfiguracao.trim().startsWith('999999')) {
+      tipos.push('ic_999999');
+    }
+
+    // Regras que dependem de datas
     if (!dataAtividade || !dataSistema) {
       return tipos;
     }
@@ -322,11 +386,6 @@ export class InconsistenciasChamadosService {
       if (horas > 10) {
         tipos.push('tempo_excessivo');
       }
-    }
-
-    // Regra 4: Item de configuração começa com 999999
-    if (itemConfiguracao && itemConfiguracao.trim().startsWith('999999')) {
-      tipos.push('ic_999999');
     }
 
     return tipos;
