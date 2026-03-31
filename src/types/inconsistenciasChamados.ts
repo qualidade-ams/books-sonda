@@ -16,6 +16,7 @@ export interface InconsistenciaChamado {
   id: string;
   origem: OrigemInconsistencia;
   nro_chamado: string;
+  nro_tarefa: string | null;
   
   // Datas
   data_atividade: string;
