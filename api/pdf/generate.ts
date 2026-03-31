@@ -109,7 +109,20 @@ export default async function handler(
       const executablePath = await chromium.executablePath();
       console.log('📍 Chromium path:', executablePath);
       browser = await puppeteer.launch({
-        args: chromium.args,
+        args: [
+          ...chromium.args,
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process',
+          '--no-zygote',
+          '--disable-extensions',
+          '--disable-background-networking',
+          '--disable-default-apps',
+          '--disable-sync',
+          '--disable-translate',
+          '--metrics-recording-only',
+          '--no-first-run',
+        ],
         executablePath: executablePath,
         headless: true,
       });
