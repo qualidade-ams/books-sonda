@@ -547,6 +547,9 @@ app.post('/api/sync-pesquisas-incremental-test', async (req, res) => {
   // Modificar console.log ANTES de qualquer coisa
   const originalLog = console.log;
   
+  // Ler data inicial customizada do body (se fornecida)
+  const dataInicialCustomizada = req.body?.dataInicial || null;
+  
   try {
     // Configurar headers para Server-Sent Events (SSE)
     res.setHeader('Content-Type', 'text/event-stream');
@@ -573,6 +576,13 @@ app.post('/api/sync-pesquisas-incremental-test', async (req, res) => {
     };
     
     enviarLog('🧪 [TEST] Iniciando sincronização incremental de pesquisas...');
+    enviarLog(`� [TEST] Body recebido: ${JSON.stringify(req.body || {})}`);
+    
+    if (dataInicialCustomizada) {
+      enviarLog(`� [TEST] Data inicial customizada: ${dataInicialCustomizada}`);
+    } else {
+      enviarLog('📅 [TEST] Sem data customizada — usando sincronização incremental automática');
+    }
     
     // Conectar ao SQL Server
     enviarLog('🔌 [TEST] Conectando ao SQL Server...');
@@ -582,7 +592,7 @@ app.post('/api/sync-pesquisas-incremental-test', async (req, res) => {
     // Executar sincronização incremental
     enviarLog('🔄 [TEST] Executando sincronização incremental...');
     
-    const resultado = await sincronizarPesquisasIncremental(pool);
+    const resultado = await sincronizarPesquisasIncremental(pool, dataInicialCustomizada);
     
     enviarLog('✅ [TEST] Sincronização incremental concluída');
     

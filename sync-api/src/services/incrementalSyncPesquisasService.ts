@@ -569,7 +569,8 @@ async function processarRegistro(
  * Função principal de sincronização incremental
  */
 export async function sincronizarPesquisasIncremental(
-  pool: sql.ConnectionPool
+  pool: sql.ConnectionPool,
+  dataInicialCustomizada?: string | null
 ): Promise<{
   sucesso: boolean;
   total_processados: number;
@@ -600,17 +601,29 @@ export async function sincronizarPesquisasIncremental(
 
   try {
     console.log('🚀 [SYNC] Iniciando sincronização incremental de pesquisas...');
+    console.log(`🔍 [SYNC] Parâmetro dataInicialCustomizada recebido: "${dataInicialCustomizada}" (tipo: ${typeof dataInicialCustomizada})`);
     resultado.mensagens.push('Iniciando sincronização incremental baseada em Data_Ultima_Modificacao');
 
-    // 1. Buscar última data sincronizada
-    const ultimaData = await buscarUltimaDataSincronizada();
-    console.log(`📅 [SYNC] Última sincronização: ${ultimaData.toISOString()}`);
-    resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
+    // 1. Determinar data de início
+    let dataInicio: Date;
+    
+    if (dataInicialCustomizada) {
+      // Usar data customizada fornecida pelo usuário
+      dataInicio = new Date(`${dataInicialCustomizada}T00:00:00.000Z`);
+      console.log(`📅 [SYNC] Usando data inicial CUSTOMIZADA: ${dataInicio.toISOString()}`);
+      resultado.mensagens.push(`📅 Data inicial customizada: ${dataInicio.toISOString()}`);
+    } else {
+      // Buscar última data sincronizada (comportamento padrão)
+      const ultimaData = await buscarUltimaDataSincronizada();
+      console.log(`📅 [SYNC] Última sincronização: ${ultimaData.toISOString()}`);
+      resultado.mensagens.push(`✅ Última sincronização: ${ultimaData.toISOString()}`);
 
-    // 2. Calcular data de início com folga de 1 dia
-    const dataInicio = calcularDataInicioComFolga(ultimaData);
-    console.log(`📅 [SYNC] Data de início (com folga de 1 dia): ${dataInicio.toISOString()}`);
-    resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()} (folga de 1 dia)`);
+      // Calcular data de início com folga de 1 dia
+      dataInicio = calcularDataInicioComFolga(ultimaData);
+    }
+    
+    console.log(`📅 [SYNC] Data de início efetiva: ${dataInicio.toISOString()}`);
+    resultado.mensagens.push(`🔍 Buscando desde: ${dataInicio.toISOString()}`);
     resultado.mensagens.push(`🔍 Incluindo pesquisas com e sem resposta modificadas após essa data`);
 
     // 3. Buscar registros modificados do SQL Server

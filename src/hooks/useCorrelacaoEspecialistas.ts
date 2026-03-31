@@ -151,7 +151,7 @@ export function useCorrelacaoEspecialistas(nomePrestador: string | undefined) {
 export function useCorrelacaoMultiplosEspecialistas(prestadores: string | undefined) {
   const { todosEspecialistas, isLoading: loadingEspecialistas } = useEspecialistasComBusca();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['correlacao-multiplos-especialistas', prestadores],
     queryFn: async (): Promise<string[]> => {
       if (!prestadores || !prestadores.trim()) {
@@ -328,4 +328,18 @@ export function useCorrelacaoMultiplosEspecialistas(prestadores: string | undefi
     cacheTime: 0, // DESABILITAR CACHE para debug
     refetchOnWindowFocus: false
   });
+
+  // Retornar query + flag de loading dos especialistas base
+  // isLoading é true quando:
+  // 1. Os especialistas base ainda estão carregando
+  // 2. A query de correlação está carregando ou buscando
+  // 3. A query deveria rodar (prestadores fornecido) mas ainda não tem dados e não está em erro
+  const aguardandoExecucao = !!prestadores && !loadingEspecialistas && todosEspecialistas.length > 0 
+    && !query.data && !query.error && query.fetchStatus !== 'idle';
+  
+  return {
+    ...query,
+    isLoading: query.isLoading || query.isFetching || loadingEspecialistas || aguardandoExecucao,
+    loadingEspecialistasBase: loadingEspecialistas
+  };
 }

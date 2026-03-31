@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Database, CheckSquare, Square } from 'lucide-react';
+import { Database, CheckSquare, Square, CalendarDays } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,12 +15,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export interface TabelasSincronizacao {
   pesquisas: boolean;
   especialistas: boolean;
   apontamentos: boolean;
   tickets: boolean;
+  dataInicial?: string; // formato YYYY-MM-DD
 }
 
 interface SyncSelectionModalProps {
@@ -42,6 +44,7 @@ export function SyncSelectionModal({
     apontamentos: true,
     tickets: true
   });
+  const [dataInicial, setDataInicial] = useState<string>('');
 
   const handleToggleTabela = (tabela: keyof TabelasSincronizacao) => {
     setTabelas(prev => ({
@@ -67,15 +70,21 @@ export function SyncSelectionModal({
       return;
     }
     
-    console.log('✅ [MODAL] Tabelas selecionadas para sincronização:', tabelas);
+    const dadosSincronizacao: TabelasSincronizacao = {
+      ...tabelas,
+      dataInicial: dataInicial || undefined
+    };
+    
+    console.log('✅ [MODAL] Tabelas selecionadas para sincronização:', dadosSincronizacao);
     console.log('📊 [MODAL] Detalhes da seleção:', {
       pesquisas: tabelas.pesquisas ? 'SIM' : 'NÃO',
       especialistas: tabelas.especialistas ? 'SIM' : 'NÃO', 
       apontamentos: tabelas.apontamentos ? 'SIM' : 'NÃO',
-      tickets: tabelas.tickets ? 'SIM' : 'NÃO'
+      tickets: tabelas.tickets ? 'SIM' : 'NÃO',
+      dataInicial: dataInicial || 'automática (incremental)'
     });
     
-    onConfirm(tabelas);
+    onConfirm(dadosSincronizacao);
   };
 
   const todosSelecionados = Object.values(tabelas).every(v => v);
@@ -219,6 +228,30 @@ export function SyncSelectionModal({
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Campo de Data Inicial */}
+          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarDays className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              <Label htmlFor="dataInicial" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Data inicial para sincronização
+              </Label>
+            </div>
+            <Input
+              id="dataInicial"
+              type="date"
+              value={dataInicial}
+              onChange={(e) => setDataInicial(e.target.value)}
+              className="focus:ring-sonda-blue focus:border-sonda-blue"
+              placeholder="dd/mm/aaaa"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+              {dataInicial 
+                ? `Sincronizar registros a partir de ${new Date(dataInicial + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                : 'Deixe vazio para usar a sincronização incremental automática'
+              }
+            </p>
           </div>
 
           {/* Resumo da Seleção */}

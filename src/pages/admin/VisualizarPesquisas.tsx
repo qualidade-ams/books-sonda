@@ -163,11 +163,14 @@ function VisualizarPesquisas() {
   const { data: especialistasVisualizacao = [] } = useEspecialistasPesquisa(pesquisaSelecionada?.id);
   
   // Correlação automática baseada no campo prestador - CORRIGIDO
-  const { data: especialistasIdsCorrelacionados = [], isLoading: loadingCorrelacao } = useCorrelacaoMultiplosEspecialistas(
+  const correlacaoResult = useCorrelacaoMultiplosEspecialistas(
     pesquisaEditando?.prestador && especialistasIdsRelacionados.length === 0 
       ? pesquisaEditando.prestador 
       : undefined
   );
+  const especialistasIdsCorrelacionados = correlacaoResult.data ?? [];
+  const loadingCorrelacao = correlacaoResult.isLoading;
+  const loadingEspecialistasBase = correlacaoResult.loadingEspecialistasBase ?? false;
   
   // Usar relacionamentos salvos ou correlação automática - GARANTIR UNICIDADE
   const especialistasIdsUnicos = [...new Set<string>(
@@ -177,7 +180,7 @@ function VisualizarPesquisas() {
   )];
   
   const especialistasIds = especialistasIdsUnicos;
-  const especialistasLoading = loadingRelacionados || loadingCorrelacao;
+  const especialistasLoading = loadingRelacionados || loadingCorrelacao || loadingEspecialistasBase;
 
   // Queries - usando hook que traz TODAS as pesquisas sem filtros automáticos
   const { data: pesquisas = [], isLoading, refetch } = useTodasPesquisasSatisfacao(filtros);
@@ -226,11 +229,7 @@ function VisualizarPesquisas() {
     
     if (pesquisaEditando && !especialistasLoading) {
       console.log('✅ [VisualizarPesquisas useEffect] Dados carregados! Atualizando especialistas_ids para:', especialistasIds);
-      
-      // Aguardar um pouco para garantir que o DOM está estável
-      setTimeout(() => {
-        setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
-      }, 100);
+      setDadosEdicao(prev => ({ ...prev, especialistas_ids: especialistasIds }));
     }
   }, [pesquisaEditando?.id, especialistasIds.length, especialistasLoading]); // Incluir especialistasLoading nas dependências
 
