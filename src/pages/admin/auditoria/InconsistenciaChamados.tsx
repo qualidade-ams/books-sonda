@@ -48,7 +48,8 @@ import {
   Mail,
   Paperclip,
   ClipboardList,
-  Ticket
+  Ticket,
+  Hash
 } from 'lucide-react';
 import { 
   useInconsistenciasChamados, 
@@ -408,7 +409,7 @@ export default function InconsistenciaChamados() {
           </div>
 
           {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -484,6 +485,26 @@ export default function InconsistenciaChamados() {
                 ) : (
                   <div className="text-xl lg:text-2xl font-bold text-orange-600">
                     {estatisticas?.por_tipo.tempo_excessivo || 0}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    IC 999999
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {isLoadingStats ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-xl lg:text-2xl font-bold text-purple-600">
+                    {estatisticas?.por_tipo.ic_999999 || 0}
                   </div>
                 )}
               </CardContent>
@@ -601,6 +622,7 @@ export default function InconsistenciaChamados() {
                               <SelectItem value="mes_diferente">Mês Diferente</SelectItem>
                               <SelectItem value="data_invertida">Data Invertida</SelectItem>
                               <SelectItem value="tempo_excessivo">Tempo Excessivo</SelectItem>
+                              <SelectItem value="ic_999999">IC 999999</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
