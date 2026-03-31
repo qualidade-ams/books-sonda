@@ -4,17 +4,20 @@
  * 
  * Recebe HTML e retorna screenshot PNG em base64
  * Usado para converter templates de elogios em imagem para email
+ * 
+ * Compatível com Vercel (usa @sparticuz/chromium) e desenvolvimento local
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { existsSync } from 'fs';
+import chromium from '@sparticuz/chromium';
 
 interface RenderImageRequest {
   html: string;
   width?: number;
 }
 
-// Caminhos comuns do Chrome/Edge por sistema operacional
+// Caminhos comuns do Chrome/Edge por sistema operacional (para dev local)
 const BROWSER_PATHS = {
   win32: [
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -33,7 +36,7 @@ const BROWSER_PATHS = {
   ],
 };
 
-function findBrowser(): string {
+function findLocalBrowser(): string | null {
   const platform = process.platform as keyof typeof BROWSER_PATHS;
   const paths = BROWSER_PATHS[platform] || [];
 
@@ -47,7 +50,7 @@ function findBrowser(): string {
     }
   }
 
-  throw new Error('Chrome ou Edge não encontrado.');
+  return null;
 }
 
 export default async function handler(
@@ -77,14 +80,28 @@ export default async function handler(
 
     console.log('🖼️ Iniciando renderização de HTML para imagem...');
 
-    const browserPath = findBrowser();
     const puppeteer = await import('puppeteer-core');
 
-    browser = await puppeteer.launch({
-      executablePath: browserPath,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
-    });
+    // Tentar browser local primeiro (dev), senão usar @sparticuz/chromium (produção/Vercel)
+    const localBrowser = findLocalBrowser();
+
+    if (localBrowser) {
+      console.log('🔧 Usando browser local:', localBrowser);
+      browser = await puppeteer.launch({
+        executablePath: localBrowser,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      });
+    } else {
+      console.log('🔧 Usando @sparticuz/chromium (Vercel)...');
+      const executablePath = await chromium.executablePath();
+      console.log('📍 Chromium path:', executablePath);
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        executablePath: executablePath,
+        headless: true,
+      });
+    }
 
     const page = await browser.newPage();
 
@@ -123,6 +140,7 @@ export default async function handler(
 
   } catch (error) {
     console.error('❌ Erro ao renderizar imagem:', error);
+    console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'N/A');
 
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
