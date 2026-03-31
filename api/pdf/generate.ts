@@ -131,38 +131,37 @@ export default async function handler(
     if (body.html) {
       await page.setContent(body.html, {
         waitUntil: 'networkidle0',
-        timeout: 30000
+        timeout: 45000
       });
     } else if (body.url) {
       await page.goto(body.url, {
         waitUntil: 'networkidle0',
-        timeout: 30000
+        timeout: 45000
       });
     }
 
     await page.evaluateHandle('document.fonts.ready');
-    await new Promise(resolve => setTimeout(resolve, 2000));
 
     await page.evaluate(() => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
+    // Aguardar indicador de prontidão (se existir) ou timeout curto
     try {
       await page.waitForFunction(
         () => {
           const container = document.getElementById('pdf-ready');
           return container && container.getAttribute('data-ready') === 'true';
         },
-        { timeout: 30000, polling: 500 }
+        { timeout: 5000, polling: 300 }
       );
       console.log('✅ Indicador de prontidão confirmado!');
     } catch (error) {
-      console.log('⚠️ Timeout aguardando prontidão, continuando...');
+      console.log('⚠️ Indicador não encontrado, continuando...');
     }
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Pequena pausa para renderização final
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     console.log('📸 Gerando PDF...');
 
