@@ -21,7 +21,8 @@ import {
   Database,
   Eye,
   Search,
-  Loader2
+  Loader2,
+  FileEdit
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
@@ -1368,7 +1369,11 @@ img { -ms-interpolation-mode: bicubic; }
                           <TableCell className="text-center">
                             {elogio.pesquisa?.nro_caso ? (
                               <div className="flex items-center justify-center gap-2 whitespace-nowrap">
-                                <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                                )}
                                 <span className="text-xs text-muted-foreground font-medium">
                                   {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
                                   <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
@@ -1376,7 +1381,11 @@ img { -ms-interpolation-mode: bicubic; }
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-2">
-                                <Database className="h-4 w-4 text-blue-600" />
+                                {elogio.pesquisa?.origem === 'sql_server' ? (
+                                  <Database className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4 text-gray-600" />
+                                )}
                                 <span>-</span>
                               </div>
                             )}
@@ -1601,7 +1610,11 @@ img { -ms-interpolation-mode: bicubic; }
                               <TableCell className="text-center">
                                 {elogio.pesquisa?.nro_caso ? (
                                   <div className="flex items-center justify-center gap-2 whitespace-nowrap">
-                                    <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    {elogio.pesquisa?.origem === 'sql_server' ? (
+                                      <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    ) : (
+                                      <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                                    )}
                                     <span className="text-xs text-muted-foreground font-medium">
                                       {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
                                       <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
@@ -1609,7 +1622,11 @@ img { -ms-interpolation-mode: bicubic; }
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center gap-2">
-                                    <Database className="h-4 w-4 text-blue-600" />
+                                    {elogio.pesquisa?.origem === 'sql_server' ? (
+                                      <Database className="h-4 w-4 text-blue-600" />
+                                    ) : (
+                                      <FileEdit className="h-4 w-4 text-gray-600" />
+                                    )}
                                     <span>-</span>
                                   </div>
                                 )}

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send, Search, X, Clock, TrendingUp, XCircle, FileText } from 'lucide-react';
+import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send, Search, X, Clock, TrendingUp, XCircle, FileText, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -752,7 +752,11 @@ function LancarElogios() {
                         <TableCell className="text-center">
                           {elogio.pesquisa?.nro_caso ? (
                             <div className="flex items-center justify-center gap-2 whitespace-nowrap">
-                              <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              {elogio.pesquisa?.origem === 'sql_server' ? (
+                                <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              ) : (
+                                <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                              )}
                               <span className="text-xs text-muted-foreground font-medium">
                                 {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
                                 <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
@@ -760,7 +764,11 @@ function LancarElogios() {
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-2">
-                              <Database className="h-4 w-4 text-blue-600" />
+                              {elogio.pesquisa?.origem === 'sql_server' ? (
+                                <Database className="h-4 w-4 text-blue-600" />
+                              ) : (
+                                <FileEdit className="h-4 w-4 text-gray-600" />
+                              )}
                               <span>-</span>
                             </div>
                           )}
@@ -1058,7 +1066,11 @@ function LancarElogios() {
                             <TableCell className="text-center">
                               {elogio.pesquisa?.nro_caso ? (
                                 <div className="flex items-center justify-center gap-2 whitespace-nowrap">
-                                  <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  {elogio.pesquisa?.origem === 'sql_server' ? (
+                                    <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  ) : (
+                                    <FileEdit className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                                  )}
                                   <span className="text-xs text-muted-foreground font-medium">
                                     {elogio.pesquisa.tipo_caso && `${elogio.pesquisa.tipo_caso} `}
                                     <span className="font-mono text-foreground">{elogio.pesquisa.nro_caso}</span>
@@ -1066,7 +1078,11 @@ function LancarElogios() {
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center gap-2">
-                                  <Database className="h-4 w-4 text-blue-600" />
+                                  {elogio.pesquisa?.origem === 'sql_server' ? (
+                                    <Database className="h-4 w-4 text-blue-600" />
+                                  ) : (
+                                    <FileEdit className="h-4 w-4 text-gray-600" />
+                                  )}
                                   <span>-</span>
                                 </div>
                               )}
