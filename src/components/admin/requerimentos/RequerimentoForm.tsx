@@ -82,9 +82,11 @@ export function RequerimentoForm({
   
   // Função helper para obter classes de erro para campos obrigatórios
   const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
-    if (!tentouSubmeter || !isRequired) return '';
+    if (!isRequired) return '';
     const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
-    return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+    if (isEmpty && tentouSubmeter) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    if (typeof fieldValue === 'string' && /\s/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    return '';
   };
   
   console.log('📊 Estados iniciais:', {
@@ -932,6 +934,19 @@ export function RequerimentoForm({
     console.log('⏰ Horas análise EF:', data.horas_analise_ef);
     console.log('🏢 Empresa tipo cobrança:', clienteSelecionado?.tipo_cobranca);
     console.log('🎫 Quantidade tickets:', data.quantidade_tickets);
+
+    // Inferir linguagem automaticamente quando só há horas funcionais
+    const horasFuncionalNum = typeof data.horas_funcional === 'string'
+      ? converterParaHorasDecimal(data.horas_funcional)
+      : data.horas_funcional || 0;
+    const horasTecnicoNum = typeof data.horas_tecnico === 'string'
+      ? converterParaHorasDecimal(data.horas_tecnico)
+      : data.horas_tecnico || 0;
+
+    if (horasFuncionalNum > 0 && horasTecnicoNum === 0 && !data.linguagem) {
+      data.linguagem = 'Funcional';
+      console.log('🔧 Linguagem inferida automaticamente: Funcional');
+    }
     
     screenReader.announceLoading('Salvando requerimento...');
     
@@ -969,8 +984,18 @@ export function RequerimentoForm({
       type: 'error' as const
     },
     {
-      test: (value: string) => /^[A-Za-z0-9\-_]+$/.test(value),
-      message: 'Use apenas letras, números, hífen (-) e underscore (_)',
+      test: (value: string) => value.length === 0 || !/\s/.test(value),
+      message: 'Chamado não pode conter espaços',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || !value.includes('_'),
+      message: 'Chamado não pode conter underscore (_)',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
+      message: 'Use apenas letras, números e hífen (-)',
       type: 'error' as const
     },
     {
@@ -1024,7 +1049,7 @@ export function RequerimentoForm({
                     <FormFieldHelp
                       label="Chamado"
                       required
-                      helpText="Código único do chamado técnico. Use apenas letras, números, hífen (-) e underscore (_)."
+                      helpText="Código único do chamado técnico. Use apenas letras, números e hífen (-)."
                       error={form.formState.errors.chamado?.message}
                     >
                       <Input

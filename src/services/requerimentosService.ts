@@ -70,7 +70,7 @@ export class RequerimentosService {
       data_aprovacao: data.data_aprovacao?.trim() || null,
       horas_funcional: horasFuncionalDecimal,
       horas_tecnico: horasTecnicoDecimal,
-      linguagem: data.linguagem?.trim() || null, // ✅ CORRIGIDO: Enviar null se vazio
+      linguagem: data.linguagem?.trim() || (horasFuncionalDecimal > 0 && !horasTecnicoDecimal ? 'Funcional' : null),
       tipo_cobranca: data.tipo_cobranca,
       mes_cobranca: data.mes_cobranca?.trim() || null,
       observacao: data.observacao?.trim() || null,
@@ -125,7 +125,7 @@ export class RequerimentosService {
         data_aprovacao: data.data_aprovacao?.trim() || null,
         horas_funcional: horasAnaliseEFDecimal, // Usar horas de análise EF
         horas_tecnico: 0,
-        linguagem: data.linguagem?.trim() || null, // ✅ CORRIGIDO: Enviar null se vazio
+        linguagem: data.linguagem?.trim() || 'Funcional',
         tipo_cobranca: 'Banco de Horas',
         mes_cobranca: data.mes_cobranca?.trim() || null,
         observacao: 'Horas referentes a análise e elaboração da EF',
@@ -468,7 +468,13 @@ export class RequerimentosService {
         ? converterParaHorasDecimal(data.horas_tecnico)
         : data.horas_tecnico;
     }
-    if (data.linguagem) updateData.linguagem = data.linguagem;
+    if (data.linguagem) {
+      updateData.linguagem = data.linguagem;
+    } else if (data.horas_funcional !== undefined || data.horas_tecnico !== undefined) {
+      const hFunc = typeof data.horas_funcional === 'string' ? converterParaHorasDecimal(data.horas_funcional) : (data.horas_funcional || 0);
+      const hTec = typeof data.horas_tecnico === 'string' ? converterParaHorasDecimal(data.horas_tecnico) : (data.horas_tecnico || 0);
+      if (hFunc > 0 && hTec === 0) updateData.linguagem = 'Funcional';
+    }
     if (data.tipo_cobranca) updateData.tipo_cobranca = data.tipo_cobranca;
     if (data.mes_cobranca !== undefined) updateData.mes_cobranca = data.mes_cobranca?.trim() || null;
     if (data.observacao !== undefined) updateData.observacao = data.observacao?.trim() || null;
