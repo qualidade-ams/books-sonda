@@ -411,7 +411,7 @@ export default function InconsistenciaChamados() {
           </div>
 
           {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -507,6 +507,26 @@ export default function InconsistenciaChamados() {
                 ) : (
                   <div className="text-xl lg:text-2xl font-bold text-purple-600">
                     {estatisticas?.por_tipo.ic_999999 || 0}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-sky-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Sem Atualização 16+ dias
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {isLoadingStats ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-xl lg:text-2xl font-bold text-sky-600">
+                    {estatisticas?.por_tipo.sem_atualizacao || 0}
                   </div>
                 )}
               </CardContent>
@@ -625,6 +645,7 @@ export default function InconsistenciaChamados() {
                               <SelectItem value="data_invertida">Data Invertida</SelectItem>
                               <SelectItem value="tempo_excessivo">Tempo Excessivo</SelectItem>
                               <SelectItem value="ic_999999">IC 999999</SelectItem>
+                              <SelectItem value="sem_atualizacao">Sem Atualização 16+ dias</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -700,6 +721,7 @@ export default function InconsistenciaChamados() {
                             <TableHead className="w-[120px] text-center">Nº Chamado</TableHead>
                             <TableHead className="w-[100px] text-center">N Tarefa</TableHead>
                             <TableHead className="w-[150px] text-center">Tipo</TableHead>
+                            <TableHead className="w-[150px] text-center">Data Abertura</TableHead>
                             <TableHead className="w-[150px] text-center">Data Atividade</TableHead>
                             <TableHead className="w-[150px] text-center">Data Sistema</TableHead>
                             <TableHead className="w-[100px] text-center">Tempo</TableHead>
@@ -738,6 +760,11 @@ export default function InconsistenciaChamados() {
                                 <Badge className={TIPO_INCONSISTENCIA_COLORS[inc.tipo_inconsistencia]}>
                                   {TIPO_INCONSISTENCIA_LABELS[inc.tipo_inconsistencia]}
                                 </Badge>
+                              </TableCell>
+                              
+                              {/* Coluna Data Abertura */}
+                              <TableCell className="text-center">
+                                <span className="text-xs sm:text-sm">{formatarData(inc.data_abertura)}</span>
                               </TableCell>
                               
                               {/* Coluna Data Atividade */}

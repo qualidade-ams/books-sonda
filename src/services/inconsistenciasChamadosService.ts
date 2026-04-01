@@ -213,6 +213,7 @@ export class InconsistenciasChamadosService {
               origem: 'apontamentos',
               nro_chamado: tipoChamado ? `${tipoChamado} ${nroChamado}` : nroChamado,
               nro_tarefa: apontamento.nro_tarefa || null,
+              data_abertura: apontamento.data_abertura || null,
               data_atividade: apontamento.data_atividade,
               data_sistema: apontamento.data_sistema,
               tempo_gasto_horas: apontamento.tempo_gasto_horas,
@@ -270,6 +271,11 @@ export class InconsistenciasChamadosService {
       // Excluir tickets do grupo CA SDM (não são inconsistências reais)
       query = query.neq('nome_grupo', 'CA SDM');
 
+      // Se filtrando apenas por sem_atualizacao, buscar apenas tickets com status relevantes
+      if (filtros?.tipo_inconsistencia === 'sem_atualizacao') {
+        query = query.in('status', ['Open', 'Hold', 'In Progress', 'Acknowledged']);
+      }
+
       const { data, error } = await query;
 
       if (error) {
@@ -292,6 +298,22 @@ export class InconsistenciasChamadosService {
           ticket.item_configuracao
         );
 
+        // Regra 5: Sem atualização há 16+ dias (específica de tickets)
+        const statusRelevantes = ['Open', 'Hold', 'In Progress', 'Acknowledged'];
+        if (
+          ticket.status && 
+          statusRelevantes.includes(ticket.status) && 
+          ticket.data_ultimo_comentario
+        ) {
+          const dataUltimoComentario = new Date(ticket.data_ultimo_comentario);
+          const hoje = new Date();
+          const diffMs = hoje.getTime() - dataUltimoComentario.getTime();
+          const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDias >= 16) {
+            tipos.push('sem_atualizacao');
+          }
+        }
+
         // Se há inconsistências detectadas
         if (tipos.length > 0) {
           // Filtrar por tipo se especificado
@@ -309,17 +331,19 @@ export class InconsistenciasChamadosService {
             else if (codTipo === 'Problema') prefixo = 'PM';
 
             const nroSolicitacao = ticket.nro_solicitacao || 'N/A';
+            const isIc999999 = tipo === 'ic_999999';
             inconsistencias.push({
               id: `${ticket.id}-${tipo}`,
               origem: 'tickets',
               nro_chamado: prefixo ? `${prefixo} ${nroSolicitacao}` : nroSolicitacao,
               nro_tarefa: null,
-              data_atividade: ticket.data_abertura,
-              data_sistema: ticket.data_sistema,
+              data_abertura: ticket.data_abertura || null,
+              data_atividade: isIc999999 ? null : ticket.data_abertura,
+              data_sistema: isIc999999 ? null : ticket.data_sistema,
               tempo_gasto_horas: null,
               tempo_gasto_minutos: null,
-              empresa: ticket.empresa,
-              analista: null,
+              empresa: ticket.organizacao,
+              analista: ticket.nome_responsavel || null,
               tipo_chamado: prefixo || null,
               item_configuracao: ticket.item_configuracao,
               tipo_inconsistencia: tipo,
@@ -328,7 +352,9 @@ export class InconsistenciasChamadosService {
                 ticket.data_abertura,
                 ticket.data_sistema,
                 null,
-                ticket.item_configuracao
+                ticket.item_configuracao,
+                ticket.data_ultimo_comentario,
+                ticket.status
               ),
               created_at: ticket.created_at
             });
@@ -399,7 +425,9 @@ export class InconsistenciasChamadosService {
     dataAtividade: string,
     dataSistema: string,
     tempoGastoHoras: string | null,
-    itemConfiguracao: string | null = null
+    itemConfiguracao: string | null = null,
+    dataUltimoComentario: string | null = null,
+    status: string | null = null
   ): string {
     const dtAtividade = new Date(dataAtividade);
     const dtSistema = new Date(dataSistema);
@@ -417,6 +445,14 @@ export class InconsistenciasChamadosService {
       
       case 'ic_999999':
         return `Item de Configuração inválido: ${itemConfiguracao}`;
+      
+      case 'sem_atualizacao': {
+        const dtComentario = dataUltimoComentario ? new Date(dataUltimoComentario) : null;
+        const hoje = new Date();
+        const dias = dtComentario ? Math.floor((hoje.getTime() - dtComentario.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        const dataFormatada = dtComentario ? dtComentario.toLocaleDateString('pt-BR') : '-';
+        return `Chamado com status "${status || '-'}" sem atualização há ${dias} dia(s). Último comentário: ${dataFormatada}`;
+      }
       
       default:
         return 'Inconsistência detectada';
@@ -438,7 +474,8 @@ export class InconsistenciasChamadosService {
           mes_diferente: 0,
           data_invertida: 0,
           tempo_excessivo: 0,
-          ic_999999: 0
+          ic_999999: 0,
+          sem_atualizacao: 0
         },
         por_origem: {
           apontamentos: 0,
@@ -509,21 +546,24 @@ export class InconsistenciasChamadosService {
     const porTipo = {
       mes_diferente: inconsistencias.filter(i => i.tipo_inconsistencia === 'mes_diferente'),
       data_invertida: inconsistencias.filter(i => i.tipo_inconsistencia === 'data_invertida'),
-      tempo_excessivo: inconsistencias.filter(i => i.tipo_inconsistencia === 'tempo_excessivo')
+      tempo_excessivo: inconsistencias.filter(i => i.tipo_inconsistencia === 'tempo_excessivo'),
+      sem_atualizacao: inconsistencias.filter(i => i.tipo_inconsistencia === 'sem_atualizacao')
     };
 
     const tipoLabels = {
       mes_diferente: 'Mês Diferente',
       data_invertida: 'Data Invertida',
       tempo_excessivo: 'Tempo Excessivo',
-      ic_999999: 'IC 999999'
+      ic_999999: 'IC 999999',
+      sem_atualizacao: 'Sem Atualização 16+ dias'
     };
 
     const tipoColors = {
       mes_diferente: '#F59E0B',
       data_invertida: '#EF4444',
       tempo_excessivo: '#F97316',
-      ic_999999: '#9333EA'
+      ic_999999: '#9333EA',
+      sem_atualizacao: '#0EA5E9'
     };
 
     let html = `<!DOCTYPE html>

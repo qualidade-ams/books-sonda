@@ -282,8 +282,11 @@ export default function EnviarElogios() {
     status: ['enviado']
   });
   
-  // Estatísticas gerais (para os cards)
-  const { data: estatisticas } = useEstatisticasElogios(filtros);
+  // Estatísticas gerais (para os cards) - sem filtro de status para mostrar todos
+  const { data: estatisticas } = useEstatisticasElogios({
+    ...filtros,
+    status: undefined
+  });
   const { empresas } = useEmpresas();
 
   // Função para obter nome abreviado da empresa e verificar se existe no cadastro
@@ -1097,7 +1100,7 @@ img { -ms-interpolation-mode: bicubic; }
 
         {/* Cards de Estatísticas */}
         {estatisticas && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -1111,10 +1114,10 @@ img { -ms-interpolation-mode: bicubic; }
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-gray-500" />
-                  <p className="text-xs font-medium text-gray-500">Registrados</p>
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  <p className="text-xs font-medium text-orange-500">Pendentes de Envio</p>
                 </div>
-                <p className="text-3xl font-bold text-gray-600">{estatisticas.registrados}</p>
+                <p className="text-3xl font-bold text-orange-600">{estatisticas.compartilhados || 0}</p>
               </CardContent>
             </Card>
 
@@ -1122,19 +1125,9 @@ img { -ms-interpolation-mode: bicubic; }
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <TrendingUp className="h-4 w-4 text-blue-500" />
-                  <p className="text-xs font-medium text-blue-500">Compartilhados</p>
+                  <p className="text-xs font-medium text-blue-500">Enviados por Email</p>
                 </div>
-                <p className="text-3xl font-bold text-blue-600">{estatisticas.compartilhados}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Calendar className="h-4 w-4 text-orange-500" />
-                  <p className="text-xs font-medium text-orange-500">Arquivados</p>
-                </div>
-                <p className="text-3xl font-bold text-orange-600">{estatisticas.arquivados}</p>
+                <p className="text-3xl font-bold text-blue-600">{estatisticas.enviados || 0}</p>
               </CardContent>
             </Card>
           </div>
@@ -1430,15 +1423,17 @@ img { -ms-interpolation-mode: bicubic; }
                             )}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleVisualizarElogio(elogio)}
-                              className="h-8 w-8 p-0"
-                              title="Visualizar detalhes do elogio"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleVisualizarElogio(elogio)}
+                                className="h-8 w-8 p-0"
+                                title="Visualizar detalhes do elogio"
+                              >
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -1670,20 +1665,22 @@ img { -ms-interpolation-mode: bicubic; }
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
-                                <Badge variant="secondary" className="text-xs px-2 py-1 bg-green-100 text-green-800">
-                                  Enviado por Email
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs py-0.5 px-2">
+                                  ✓
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-center">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleVisualizarElogio(elogio)}
-                                  className="h-8 w-8 p-0"
-                                  title="Visualizar detalhes do elogio"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleVisualizarElogio(elogio)}
+                                    className="h-8 w-8 p-0"
+                                    title="Visualizar detalhes do elogio"
+                                  >
+                                    <Eye className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );

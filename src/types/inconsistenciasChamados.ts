@@ -9,7 +9,8 @@ export type TipoInconsistencia =
   | 'mes_diferente'      // data_atividade e data_sistema em meses diferentes
   | 'data_invertida'     // data_sistema < data_atividade
   | 'tempo_excessivo'    // tempo_gasto_horas > 10:00
-  | 'ic_999999';         // item_configuracao começa com 999999
+  | 'ic_999999'          // item_configuracao começa com 999999
+  | 'sem_atualizacao';   // chamado sem atualização há 16+ dias (status Open/Hold/In Progress/Acknowledged)
 
 export interface InconsistenciaChamado {
   // Identificação
@@ -19,8 +20,9 @@ export interface InconsistenciaChamado {
   nro_tarefa: string | null;
   
   // Datas
-  data_atividade: string;
-  data_sistema: string;
+  data_abertura: string | null;
+  data_atividade: string | null;
+  data_sistema: string | null;
   
   // Tempo
   tempo_gasto_horas: string | null;
@@ -56,6 +58,7 @@ export interface InconsistenciasChamadosEstatisticas {
     data_invertida: number;
     tempo_excessivo: number;
     ic_999999: number;
+    sem_atualizacao: number;
   };
   por_origem: {
     apontamentos: number;
@@ -103,7 +106,8 @@ export const TIPO_INCONSISTENCIA_LABELS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'Mês Diferente',
   data_invertida: 'Data Invertida',
   tempo_excessivo: 'Tempo Excessivo',
-  ic_999999: 'IC 999999'
+  ic_999999: 'IC 999999',
+  sem_atualizacao: 'Sem Atualização 16+ dias'
 };
 
 export const ORIGEM_LABELS: Record<OrigemInconsistencia, string> = {
@@ -116,7 +120,8 @@ export const TIPO_INCONSISTENCIA_COLORS: Record<TipoInconsistencia, string> = {
   mes_diferente: 'bg-yellow-100 text-yellow-800',
   data_invertida: 'bg-red-100 text-red-800',
   tempo_excessivo: 'bg-orange-100 text-orange-800',
-  ic_999999: 'bg-purple-100 text-purple-800'
+  ic_999999: 'bg-purple-100 text-purple-800',
+  sem_atualizacao: 'bg-sky-100 text-sky-800'
 };
 
 export const ORIGEM_COLORS: Record<OrigemInconsistencia, string> = {
