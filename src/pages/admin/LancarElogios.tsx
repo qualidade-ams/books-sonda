@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send, Search, X, Clock, TrendingUp, XCircle, FileText, FileEdit } from 'lucide-react';
+import { Database, ChevronLeft, ChevronRight, Filter, Edit, Trash2, Send, Search, X, Clock, TrendingUp, XCircle, FileText, FileEdit, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -107,7 +107,9 @@ function LancarElogios() {
   const filtrosComAba = useMemo(() => {
     return {
       ...filtros,
-      status: abaAtiva === 'nao-enviados' ? ['registrado' as const] : ['compartilhado' as const]
+      status: abaAtiva === 'nao-enviados' 
+        ? ['registrado' as const] 
+        : ['compartilhado' as const, 'enviado' as const]
     };
   }, [filtros, abaAtiva]);
 
@@ -212,11 +214,14 @@ function LancarElogios() {
   });
   const { data: estatisticasEnviados } = useEstatisticasElogios({
     ...filtros,
-    status: ['compartilhado' as const]
+    status: ['compartilhado' as const, 'enviado' as const]
   });
   
-  // Estatísticas gerais (para os cards)
-  const { data: estatisticas } = useEstatisticasElogios(filtros);
+  // Estatísticas gerais (para os cards) - sem filtro de status para mostrar todos
+  const { data: estatisticas } = useEstatisticasElogios({
+    ...filtros,
+    status: undefined
+  });
 
   const handleVisualizar = (elogio: ElogioCompleto) => {
     setElogioVisualizando(elogio);
@@ -248,30 +253,32 @@ function LancarElogios() {
   };
 
   const handleDeletarElogio = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este elogio?')) {
+    if (window.confirm('Tem certeza que deseja arquivar este elogio? Ele não será mais exibido nas listagens.')) {
       try {
-        console.log('🗑️ Iniciando exclusão do elogio:', id);
+        console.log('📦 Iniciando arquivamento do elogio:', id);
         
-        await deletarElogio.mutateAsync(id);
+        await atualizarElogio.mutateAsync({
+          id,
+          dados: { status: 'arquivado' as const }
+        });
         
-        console.log('✅ Exclusão concluída, limpando cache...');
+        console.log('✅ Arquivamento concluído, limpando cache...');
         clearFeatureCache('pesquisas');
         
         console.log('🔄 Recarregando dados...');
         const resultado = await refetch();
         console.log('📊 Dados recarregados:', resultado.data?.length, 'elogios');
         
-        toast.success('Elogio excluído com sucesso!');
+        toast.success('Elogio arquivado com sucesso!');
       } catch (error: any) {
-        console.error('❌ Erro ao deletar elogio:', error);
+        console.error('❌ Erro ao arquivar elogio:', error);
         
-        // Mensagem de erro mais específica
         const mensagemErro = error?.message || 'Erro desconhecido';
         
         if (mensagemErro.includes('Permissão negada')) {
-          toast.error('Você não tem permissão para excluir este elogio. Contate o administrador.');
+          toast.error('Você não tem permissão para arquivar este elogio. Contate o administrador.');
         } else {
-          toast.error('Erro ao excluir elogio: ' + mensagemErro);
+          toast.error('Erro ao arquivar elogio: ' + mensagemErro);
         }
       }
     }
@@ -523,7 +530,7 @@ function LancarElogios() {
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                   <p className="text-xs font-medium text-blue-500">Compartilhados</p>
                 </div>
-                <p className="text-3xl font-bold text-blue-600">{estatisticas.compartilhados}</p>
+                <p className="text-3xl font-bold text-blue-600">{(estatisticas.compartilhados || 0) + (estatisticas.enviados || 0)}</p>
               </CardContent>
             </Card>
 
@@ -822,9 +829,9 @@ function LancarElogios() {
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={() => handleVisualizar(elogio)}
                               title="Editar"
                             >
@@ -832,22 +839,22 @@ function LancarElogios() {
                             </Button>
                             <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800"
                                 onClick={() => handleDeletarElogio(elogio.id)}
-                                title="Excluir"
+                                title="Arquivar"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Archive className="h-4 w-4" />
                               </Button>
                             </ProtectedAction>
                             {/* Botão de envio individual - apenas na aba de não enviados */}
                             {abaAtiva === 'nao-enviados' && (
                               <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
                                   onClick={() => handleEnviarElogioIndividual(elogio.id)}
                                   title="Enviar para Enviar Elogios"
                                 >
@@ -1135,16 +1142,16 @@ function LancarElogios() {
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
                                   onClick={() => handleVisualizar(elogio)}
                                   title="Visualizar"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                <Badge variant="secondary" className="text-xs px-2 py-1">
-                                  Enviado
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs py-0.5 px-2">
+                                  ✓
                                 </Badge>
                               </div>
                             </TableCell>
