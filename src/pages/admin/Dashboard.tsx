@@ -321,7 +321,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Validados</p>
               <div className="flex items-center gap-2">
-                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.compartilhados || 0}</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.validados || 0}</p>
               </div>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -869,7 +869,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                   formatter={(value: any, name: string) => {
-                    if (name === 'compartilhados') return [value, 'Validados'];
+                    if (name === 'validados') return [value, 'Validados'];
                     if (name === 'enviados') return [value, 'Enviados'];
                     return [value, name];
                   }}
@@ -877,21 +877,19 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 />
                 <Area
                   type="monotone"
-                  dataKey="compartilhados"
-                  stackId="1"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorValidados)"
-                />
-                <Area
-                  type="monotone"
                   dataKey="enviados"
-                  stackId="1"
                   stroke="#10b981"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorEnviados)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="validados"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorValidados)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -5057,6 +5055,7 @@ const Dashboard = () => {
     const compartilhados = dados.filter(e => e.status === 'compartilhado').length;
     const enviados = dados.filter(e => e.status === 'enviado').length;
     const arquivados = dados.filter(e => e.status === 'arquivado').length;
+    const validados = compartilhados + enviados + arquivados;
 
     // Debug será movido para depois da definição de porMesOrdenado
 
@@ -5132,7 +5131,8 @@ const Dashboard = () => {
         mes: chaveMs,
         mesNome: new Date(2000, mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
         mesNumero: mes,
-        ...dadosDoMes
+        ...dadosDoMes,
+        validados: dadosDoMes.compartilhados + dadosDoMes.enviados + dadosDoMes.arquivados
       });
     }
     
@@ -5184,6 +5184,7 @@ const Dashboard = () => {
       compartilhados,
       enviados,
       arquivados,
+      validados,
       satisfacaoMedia,
       porEmpresa,
       porMes: porMesOrdenado

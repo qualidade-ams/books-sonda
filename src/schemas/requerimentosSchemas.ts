@@ -5,7 +5,7 @@ const chamadoSchema = z
   .string()
   .min(1, 'Chamado é obrigatório')
   .max(50, 'Chamado deve ter no máximo 50 caracteres')
-  .regex(/^[A-Za-z0-9\-_]+$/, 'Chamado deve conter apenas letras, números, hífen (-) e underscore (_) (ex: RF-6017993, HORA_EXTRA)');
+  .regex(/^[A-Za-z0-9\-]+$/, 'Chamado deve conter apenas letras, números e hífen (-) (ex: RF-6017993)');
 
 // Schema para validação de módulo
 const moduloSchema = z
@@ -16,7 +16,7 @@ const moduloSchema = z
 // Schema para validação de linguagem (opcional - apenas quando há horas técnicas)
 const linguagemSchema = z
   .union([
-    z.enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico'] as const, {
+    z.enum(['ABAP', 'DBA', 'PL/SQL', 'Técnico', 'Funcional'] as const, {
       errorMap: () => ({ message: 'Selecione uma linguagem técnica válida' })
     }),
     z.literal(''),
