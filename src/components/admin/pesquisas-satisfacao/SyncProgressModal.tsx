@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SyncProgressModalProps {
   open: boolean;
@@ -193,10 +192,18 @@ export function SyncProgressModal({
     }
   }, [isLoading, resultado, tabelasSelecionadas]);
 
+  // Helper para renderizar linha de stats de forma consistente
+  const StatItem = ({ value, label, color }: { value: number | string; label: string; color: string }) => (
+    <div className="flex flex-col items-center min-w-0">
+      <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
+      <p className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">{label}</p>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" />
             Sincronização SQL Server
@@ -206,7 +213,7 @@ export function SyncProgressModal({
           </p>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
           {/* Barra de Progresso */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -231,15 +238,13 @@ export function SyncProgressModal({
             </div>
           )}
 
-
-
           {/* Resultado */}
           {!isLoading && resultado && (
             <div className="space-y-3">
               {/* Status */}
               <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                resultado.sucesso 
-                  ? 'bg-green-50 dark:bg-green-950' 
+                resultado.sucesso
+                  ? 'bg-green-50 dark:bg-green-950'
                   : 'bg-red-50 dark:bg-red-950'
               }`}>
                 {resultado.sucesso ? (
@@ -259,33 +264,21 @@ export function SyncProgressModal({
                 )}
               </div>
 
-              {/* Resumo das Pesquisas - só mostra se foi selecionado */}
+              {/* Pesquisas */}
               {(!tabelasSelecionadas || tabelasSelecionadas.pesquisas) && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-900 rounded-lg border-l-4 border-blue-600">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
                     📊 Pesquisas (AMSpesquisa)
                   </p>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-blue-600">
-                        {resultado.totais_reais_banco?.pesquisas || resultado.total_processados}
-                      </p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-green-600">{resultado.novos}</p>
-                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-orange-600">{resultado.atualizados}</p>
-                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-red-600">{resultado.erros}</p>
-                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
-                    </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <StatItem
+                      value={resultado.totais_reais_banco?.pesquisas ?? resultado.total_processados}
+                      label={resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      color="text-blue-600"
+                    />
+                    <StatItem value={resultado.novos} label="Novos" color="text-green-600" />
+                    <StatItem value={resultado.atualizados} label="Atualizados" color="text-orange-600" />
+                    <StatItem value={resultado.erros} label="Erros" color="text-red-600" />
                   </div>
                   {resultado.totais_reais_banco && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 text-center">
@@ -295,37 +288,22 @@ export function SyncProgressModal({
                 </div>
               )}
 
-              {/* Resumo dos Especialistas - só mostra se foi selecionado */}
+              {/* Especialistas */}
               {resultado.especialistas && (!tabelasSelecionadas || tabelasSelecionadas.especialistas) && (
                 <div className="p-3 bg-purple-50 dark:bg-purple-900 rounded-lg border-l-4 border-purple-600">
-                  <p className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1">
+                  <p className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">
                     👥 Especialistas (AMSespecialistas)
                   </p>
-                  <div className="grid grid-cols-5 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-purple-600">
-                        {resultado.totais_reais_banco?.especialistas || resultado.especialistas.total_processados}
-                      </p>
-                      <p className="text-xs text-purple-700 dark:text-purple-300">
-                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-green-600">{resultado.especialistas.novos}</p>
-                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-orange-600">{resultado.especialistas.atualizados}</p>
-                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-gray-600">{resultado.especialistas.removidos}</p>
-                      <p className="text-xs text-gray-700 dark:text-gray-300">Removidos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-red-600">{resultado.especialistas.erros}</p>
-                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
-                    </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <StatItem
+                      value={resultado.totais_reais_banco?.especialistas ?? resultado.especialistas.total_processados}
+                      label={resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      color="text-purple-600"
+                    />
+                    <StatItem value={resultado.especialistas.novos} label="Novos" color="text-green-600" />
+                    <StatItem value={resultado.especialistas.atualizados} label="Atualizados" color="text-orange-600" />
+                    <StatItem value={resultado.especialistas.removidos} label="Removidos" color="text-gray-600" />
+                    <StatItem value={resultado.especialistas.erros} label="Erros" color="text-red-600" />
                   </div>
                   {resultado.totais_reais_banco && (
                     <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 text-center">
@@ -335,99 +313,67 @@ export function SyncProgressModal({
                 </div>
               )}
 
-              {/* Resumo dos Apontamentos - só mostra se foi selecionado */}
+              {/* Apontamentos */}
               {resultado.apontamentos && (!tabelasSelecionadas || tabelasSelecionadas.apontamentos) && (
                 <div className="p-3 bg-teal-50 dark:bg-teal-900 rounded-lg border-l-4 border-teal-600">
-                  <p className="text-sm font-medium text-teal-900 dark:text-teal-100 mb-1">
+                  <p className="text-sm font-medium text-teal-900 dark:text-teal-100 mb-2">
                     📝 Apontamentos (AMSapontamento)
                   </p>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-teal-600">
-                        {resultado.totais_reais_banco?.apontamentos || resultado.apontamentos.total_processados || 0}
-                      </p>
-                      <p className="text-xs text-teal-700 dark:text-teal-300">
-                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-green-600">
-                        {resultado.apontamentos.novos || 0}
-                      </p>
-                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-orange-600">
-                        {resultado.apontamentos.atualizados || 0}
-                      </p>
-                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-red-600">
-                        {resultado.apontamentos.erros || 0}
-                      </p>
-                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
-                    </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <StatItem
+                      value={resultado.totais_reais_banco?.apontamentos ?? resultado.apontamentos.total_processados ?? 0}
+                      label={resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      color="text-teal-600"
+                    />
+                    <StatItem value={resultado.apontamentos.novos ?? 0} label="Novos" color="text-green-600" />
+                    <StatItem value={resultado.apontamentos.atualizados ?? 0} label="Atualizados" color="text-orange-600" />
+                    <StatItem value={resultado.apontamentos.erros ?? 0} label="Erros" color="text-red-600" />
                   </div>
                   {resultado.totais_reais_banco && (
                     <p className="text-xs text-teal-600 dark:text-teal-400 mt-2 text-center">
-                      Processados nesta sincronização: {resultado.apontamentos.total_processados || 0}
+                      Processados nesta sincronização: {resultado.apontamentos.total_processados ?? 0}
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Resumo dos Tickets - só mostra se foi selecionado */}
+              {/* Tickets */}
               {resultado.tickets && (!tabelasSelecionadas || tabelasSelecionadas.tickets) && (
                 <div className="p-3 bg-indigo-50 dark:bg-indigo-900 rounded-lg border-l-4 border-indigo-600">
-                  <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100 mb-1">
+                  <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100 mb-2">
                     🎫 Tickets (AMSticketsabertos)
                   </p>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-indigo-600">
-                        {resultado.totais_reais_banco?.tickets || resultado.tickets.total_processados || 0}
-                      </p>
-                      <p className="text-xs text-indigo-700 dark:text-indigo-300">
-                        {resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-green-600">
-                        {resultado.tickets.novos || 0}
-                      </p>
-                      <p className="text-xs text-green-700 dark:text-green-300">Novos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-orange-600">
-                        {resultado.tickets.atualizados || 0}
-                      </p>
-                      <p className="text-xs text-orange-700 dark:text-orange-300">Atualizados</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-red-600">
-                        {resultado.tickets.erros || 0}
-                      </p>
-                      <p className="text-xs text-red-700 dark:text-red-300">Erros</p>
-                    </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <StatItem
+                      value={resultado.totais_reais_banco?.tickets ?? resultado.tickets.total_processados ?? 0}
+                      label={resultado.totais_reais_banco ? 'Total no Banco' : 'Total'}
+                      color="text-indigo-600"
+                    />
+                    <StatItem value={resultado.tickets.novos ?? 0} label="Novos" color="text-green-600" />
+                    <StatItem value={resultado.tickets.atualizados ?? 0} label="Atualizados" color="text-orange-600" />
+                    <StatItem value={resultado.tickets.erros ?? 0} label="Erros" color="text-red-600" />
                   </div>
                   {resultado.totais_reais_banco && (
                     <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2 text-center">
-                      Processados nesta sincronização: {resultado.tickets.total_processados || 0}
+                      Processados nesta sincronização: {resultado.tickets.total_processados ?? 0}
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Mensagens */}
+              {/* Detalhes de erro */}
               {resultado.mensagens && resultado.mensagens.length > 0 && (
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  <p className="text-xs font-medium text-muted-foreground">Detalhes:</p>
-                  {resultado.mensagens.map((msg, index) => (
-                    <p key={index} className="text-xs text-muted-foreground pl-2">
-                      • {msg}
-                    </p>
-                  ))}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <p className="text-xs font-medium text-muted-foreground">Detalhes</p>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto p-3 space-y-1">
+                    {resultado.mensagens.map((msg, index) => (
+                      <p key={index} className="text-xs text-muted-foreground break-words">
+                        • {msg}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
