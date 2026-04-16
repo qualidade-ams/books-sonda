@@ -36,14 +36,14 @@ export const SESSION_CONFIGS = {
   // Produção - timeout padrão
   production: {
     ...SESSION_CONFIG,
-    TIMEOUT_MINUTES: 10, // 15 minutos (mais restritivo)
+    TIMEOUT_MINUTES: 30, // 15 minutos (mais restritivo)
     WARNING_MINUTES: 2,  // 2 minutos de aviso
   },
   
   // Ambiente de alta segurança - timeout mais curto
   secure: {
     ...SESSION_CONFIG,
-    TIMEOUT_MINUTES: 10, // 10 minutos
+    TIMEOUT_MINUTES: 30, // 10 minutos
     WARNING_MINUTES: 1,  // 1 minuto de aviso
   }
 } as const;
