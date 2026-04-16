@@ -82,10 +82,15 @@ export function RequerimentoForm({
   
   // Função helper para obter classes de erro para campos obrigatórios
   const getErrorClasses = (fieldValue: any, isRequired: boolean = true) => {
-    if (!isRequired) return '';
+    if (!tentouSubmeter || !isRequired) return '';
     const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
-    if (isEmpty && tentouSubmeter) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
-    if (typeof fieldValue === 'string' && /\s/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+  };
+
+  // Função helper específica para o campo Chamado (valida espaços e underscore em tempo real)
+  const getChamadoErrorClasses = (fieldValue: string) => {
+    if (!fieldValue) return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
     return '';
   };
   
@@ -1055,7 +1060,7 @@ export function RequerimentoForm({
                       <Input
                         {...field}
                         placeholder="Ex: RF-6017993, Projeto, Treinamento, entre outros"
-                        className={cn("uppercase", getErrorClasses(field.value))}
+                        className={cn("uppercase", getChamadoErrorClasses(field.value))}
                         aria-describedby="chamado-help"
                         disabled={isLoading}
                       />
