@@ -125,15 +125,8 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-black">{data.abertos_mes.solicitacao}</span>
-                    <span className="text-xs text-gray-600 uppercase">Solicitação</span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-black">{data.abertos_mes.incidente}</span>
-                    <span className="text-xs text-gray-600 uppercase">Incidente</span>
-                  </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-black">{data.abertos_mes.solicitacao + data.abertos_mes.incidente}</span>
                 </div>
               </CardContent>
             </Card>
@@ -149,15 +142,8 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-black">{data.fechados_mes.solicitacao}</span>
-                    <span className="text-xs text-gray-600 uppercase">Solicitação</span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-black">{data.fechados_mes.incidente}</span>
-                    <span className="text-xs text-gray-600 uppercase">Incidente</span>
-                  </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-black">{data.fechados_mes.solicitacao + data.fechados_mes.incidente}</span>
                 </div>
               </CardContent>
             </Card>
@@ -176,12 +162,83 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 <div className="text-3xl font-bold text-gray-900">
                   {data.total_backlog}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Pendentes de atuação
-                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Tabela: Chamados X Código de Resolução */}
+          <Card className="border-2 flex flex-col" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '500px' }}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Chamados X Código de Resolução</CardTitle>           
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 flex-1 flex flex-col">
+              <div style={{ borderRadius: '15.5px', overflow: 'hidden' }} className="flex-1 flex flex-col">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="font-semibold">ORIGEM</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
+                      <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const maxOrigens = 8;
+                      let linhasExibir = backlogPorCausaMapeado;
+                      let linhaOutros = null;
+                      
+                      if (backlogPorCausaMapeado.length > maxOrigens) {
+                        linhasExibir = backlogPorCausaMapeado.slice(0, 7);
+                        const outrasOrigens = backlogPorCausaMapeado.slice(7);
+                        const outrosAbertos = outrasOrigens.reduce((sum, item) => sum + (item.abertos || 0), 0);
+                        const outrosFechados = outrasOrigens.reduce((sum, item) => sum + (item.fechados || 0), 0);
+                        linhaOutros = {
+                          origem: 'Outros',
+                          abertos: outrosAbertos,
+                          fechados: outrosFechados
+                        };
+                      }
+                      
+                      // Calcular total de linhas (dados + outros + total)
+                      const totalLinhas = linhasExibir.length + (linhaOutros ? 1 : 0) + 1;
+                      // Se menos de 8 linhas, aumentar padding vertical moderadamente
+                      const rowPadding = totalLinhas < 8 ? `${Math.max(8, Math.floor(120 / totalLinhas))}px` : '8px';
+                      
+                      return (
+                        <>
+                          {linhasExibir.map((item, index) => (
+                            <TableRow key={index} className="hover:bg-gray-50">
+                              <TableCell className="font-medium" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.origem}</TableCell>
+                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.abertos || 0}</TableCell>
+                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.fechados || 0}</TableCell>
+                            </TableRow>
+                          ))}
+                          {linhaOutros && (
+                            <TableRow className="hover:bg-gray-50">
+                              <TableCell className="font-medium italic text-gray-600" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.origem}</TableCell>
+                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.abertos}</TableCell>
+                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.fechados}</TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
+                      <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>TOTAL</TableCell>
+                      <TableCell className="text-center py-2">
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
+                      </TableCell>
+                      <TableCell className="text-center py-2" style={{ borderBottomRightRadius: '15.5px' }}>
+                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.fechados || 0), 0)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Gráfico: Chamados | Semestre */}
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
@@ -262,80 +319,6 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Tabela: Chamados X Código de Resolução */}
-          <Card className="border-2 flex flex-col" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '500px' }}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Chamados X Código de Resolução</CardTitle>           
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 flex-1 flex flex-col">
-              <div style={{ borderRadius: '15.5px', overflow: 'hidden' }} className="flex-1 flex flex-col">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">ORIGEM</TableHead>
-                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
-                      <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(() => {
-                      const maxOrigens = 8;
-                      let linhasExibir = backlogPorCausaMapeado;
-                      let linhaOutros = null;
-                      
-                      if (backlogPorCausaMapeado.length > maxOrigens) {
-                        linhasExibir = backlogPorCausaMapeado.slice(0, 7);
-                        const outrasOrigens = backlogPorCausaMapeado.slice(7);
-                        const outrosAbertos = outrasOrigens.reduce((sum, item) => sum + (item.abertos || 0), 0);
-                        const outrosFechados = outrasOrigens.reduce((sum, item) => sum + (item.fechados || 0), 0);
-                        linhaOutros = {
-                          origem: 'Outros',
-                          abertos: outrosAbertos,
-                          fechados: outrosFechados
-                        };
-                      }
-                      
-                      // Calcular total de linhas (dados + outros + total)
-                      const totalLinhas = linhasExibir.length + (linhaOutros ? 1 : 0) + 1;
-                      // Se menos de 8 linhas, aumentar padding vertical moderadamente
-                      const rowPadding = totalLinhas < 8 ? `${Math.max(8, Math.floor(120 / totalLinhas))}px` : '8px';
-                      
-                      return (
-                        <>
-                          {linhasExibir.map((item, index) => (
-                            <TableRow key={index} className="hover:bg-gray-50">
-                              <TableCell className="font-medium" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.origem}</TableCell>
-                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.abertos || 0}</TableCell>
-                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.fechados || 0}</TableCell>
-                            </TableRow>
-                          ))}
-                          {linhaOutros && (
-                            <TableRow className="hover:bg-gray-50">
-                              <TableCell className="font-medium italic text-gray-600" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.origem}</TableCell>
-                              <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.abertos}</TableCell>
-                              <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{linhaOutros.fechados}</TableCell>
-                            </TableRow>
-                          )}
-                        </>
-                      );
-                    })()}
-                    <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
-                      <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>TOTAL</TableCell>
-                      <TableCell className="text-center py-2">
-                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
-                      </TableCell>
-                      <TableCell className="text-center py-2" style={{ borderBottomRightRadius: '15.5px' }}>
-                        {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.fechados || 0), 0)}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
             </CardContent>
           </Card>
         </div>

@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useBookData } from '@/hooks/useBooks';
 import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 import { useQueryClient } from '@tanstack/react-query';
-import type { BookListItem, BookTab } from '@/types/books';
+import type { BookListItem, BookTab, BookData } from '@/types/books';
 import { BOOK_TABS_LABELS } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
@@ -51,15 +51,19 @@ interface BookViewerProps {
   book: BookListItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  bookDataOverride?: BookData | null;
 }
 
-export default function BookViewer({ book, open, onOpenChange }: BookViewerProps) {
+export default function BookViewer({ book, open, onOpenChange, bookDataOverride }: BookViewerProps) {
   const [activeTab, setActiveTab] = useState<BookTab>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
-  const { bookData, isLoading, refetch } = useBookData(book?.id || null);
+  const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Usar override se fornecido, senão usar dados buscados
+  const bookData = bookDataOverride || bookDataFetched;
 
   // Limpar cache e recarregar dados quando o modal for aberto
   useEffect(() => {

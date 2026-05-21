@@ -1669,6 +1669,12 @@ class BooksDataCollectorService {
       ano
     );
 
+    // Buscar dados de banco de horas do ciclo para snapshot
+    const bancoHorasTrimestre = await this.buscarBancoHorasCiclo(empresaId, mes, ano);
+
+    // Buscar taxa de hora excedente para snapshot
+    const taxaHoraExcedente = await this.buscarTaxaHoraExcedente(empresaId, mes, ano);
+
     return {
       horas_consumo: this.formatarHoras(horasTotal),
       baseline_apl: this.formatarHoras(baselineHoras),
@@ -1682,8 +1688,183 @@ class BooksDataCollectorService {
         { causa: 'SEM DADOS', quantidade: 0, percentual: 0 }
       ],
       requerimentos_descontados: requerimentosDescontados,
-      total_geral: totalRegistros
+      total_geral: totalRegistros,
+      banco_horas_trimestre: bancoHorasTrimestre,
+      taxa_hora_excedente: taxaHoraExcedente
     };
+  }
+
+  /**
+   * Busca dados de banco de horas do ciclo para incluir no snapshot do book.
+   * Replica a lógica do componente BookConsumo.buscarBancoHorasTrimestre()
+   * para que o PDF tenha os dados sem precisar buscar em tempo real.
+   */
+  private async buscarBancoHorasCiclo(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<any[]> {
+    try {
+      // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
+      const { data: empresa, error: empresaError } = await supabase
+        .from('empresas_clientes')
+        .select('periodo_apuracao, inicio_vigencia')
+        .eq('id', empresaId)
+        .single();
+
+      if (empresaError || !empresa) {
+        console.error('❌ [buscarBancoHorasCiclo] Erro ao buscar empresa:', empresaError);
+        return [];
+      }
+
+      const periodoApuracao = empresa.periodo_apuracao || 3;
+      const inicioVigencia = empresa.inicio_vigencia;
+
+      // 2. Calcular os meses do ciclo
+      let mesesCiclo: { mes: number; ano: number }[] = [];
+
+      if (inicioVigencia) {
+        const [anoVigencia, mesVigencia] = inicioVigencia.split('-').map(Number);
+        const mesesDesdeInicio = (ano - anoVigencia) * 12 + (mes - mesVigencia);
+        const cicloAtual = Math.floor(mesesDesdeInicio / periodoApuracao);
+        const mesesAteInicioCiclo = cicloAtual * periodoApuracao;
+        let mesInicioCiclo = mesVigencia + mesesAteInicioCiclo;
+        let anoInicioCiclo = anoVigencia;
+
+        while (mesInicioCiclo > 12) {
+          mesInicioCiclo -= 12;
+          anoInicioCiclo += 1;
+        }
+
+        for (let i = 0; i < periodoApuracao; i++) {
+          let mesCalc = mesInicioCiclo + i;
+          let anoCalc = anoInicioCiclo;
+          while (mesCalc > 12) {
+            mesCalc -= 12;
+            anoCalc += 1;
+          }
+          mesesCiclo.push({ mes: mesCalc, ano: anoCalc });
+        }
+      } else {
+        // Fallback: trimestral padrão
+        const primeiroMes = Math.floor((mes - 1) / 3) * 3 + 1;
+        for (let i = 0; i < 3; i++) {
+          const mesCalc = primeiroMes + i;
+          if (mesCalc <= 12) {
+            mesesCiclo.push({ mes: mesCalc, ano });
+          } else {
+            mesesCiclo.push({ mes: mesCalc - 12, ano: ano + 1 });
+          }
+        }
+      }
+
+      console.log('📊 [buscarBancoHorasCiclo] Meses do ciclo:', mesesCiclo);
+
+      // 3. Buscar dados de cada mês
+      const resultados = await Promise.all(
+        mesesCiclo.map(async ({ mes: m, ano: a }) => {
+          const { data, error } = await supabase
+            .from('banco_horas_calculos')
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .eq('mes', m)
+            .eq('ano', a)
+            .maybeSingle();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error(`❌ [buscarBancoHorasCiclo] Erro ${m}/${a}:`, error);
+          }
+
+          return {
+            mes: m,
+            ano: a,
+            dados: data || null
+          };
+        })
+      );
+
+      console.log('✅ [buscarBancoHorasCiclo] Dados carregados:', resultados.map(r => ({
+        mes: r.mes,
+        ano: r.ano,
+        temDados: !!r.dados
+      })));
+
+      return resultados;
+    } catch (error) {
+      console.error('❌ [buscarBancoHorasCiclo] Erro:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca a taxa de hora excedente para incluir no snapshot do book.
+   * Replica a lógica do componente BookConsumo.buscarTaxaExcedente()
+   */
+  private async buscarTaxaHoraExcedente(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<number> {
+    try {
+      const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+
+      // Buscar taxas vigentes ou vencidas (mais recente primeiro)
+      const { data: taxas, error } = await supabase
+        .from('taxas_clientes')
+        .select('id, vigencia_inicio, vigencia_fim, tipo_produto, tipo_calculo_adicional')
+        .eq('cliente_id', empresaId)
+        .lte('vigencia_inicio', dataReferencia)
+        .order('vigencia_inicio', { ascending: false });
+
+      if (error || !taxas || taxas.length === 0) {
+        console.log('⚠️ [buscarTaxaHoraExcedente] Nenhuma taxa encontrada');
+        return 0;
+      }
+
+      const taxaMaisRecente = taxas[0];
+
+      // Buscar valores da função Funcional (remota)
+      const { data: valores, error: valoresError } = await supabase
+        .from('valores_taxas_funcoes')
+        .select('valor_base, valor_adicional, funcao')
+        .eq('taxa_id', taxaMaisRecente.id)
+        .eq('tipo_hora', 'remota');
+
+      if (valoresError || !valores || valores.length === 0) {
+        console.log('⚠️ [buscarTaxaHoraExcedente] Nenhum valor encontrado');
+        return 0;
+      }
+
+      const valorFuncional = valores.find((v: any) => v.funcao === 'Funcional');
+      if (!valorFuncional) {
+        console.log('⚠️ [buscarTaxaHoraExcedente] Função Funcional não encontrada');
+        return 0;
+      }
+
+      // Prioridade: valor_adicional cadastrado > cálculo
+      let taxaHoraAdicional: number;
+
+      if (valorFuncional.valor_adicional && valorFuncional.valor_adicional > 0) {
+        taxaHoraAdicional = valorFuncional.valor_adicional;
+      } else if (taxaMaisRecente.tipo_calculo_adicional === 'normal') {
+        taxaHoraAdicional = valorFuncional.valor_base * 1.15;
+      } else {
+        // Média das funções principais
+        const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
+        const valoresPrincipais = valores
+          .filter((v: any) => funcoesPrincipais.includes(v.funcao))
+          .map((v: any) => (v.valor_adicional && v.valor_adicional > 0) ? v.valor_adicional : v.valor_base * 1.15);
+
+        if (valoresPrincipais.length === 0) return 0;
+        taxaHoraAdicional = valoresPrincipais.reduce((a: number, b: number) => a + b, 0) / valoresPrincipais.length;
+      }
+
+      console.log('✅ [buscarTaxaHoraExcedente] Taxa calculada:', taxaHoraAdicional);
+      return taxaHoraAdicional;
+    } catch (error) {
+      console.error('❌ [buscarTaxaHoraExcedente] Erro:', error);
+      return 0;
+    }
   }
 
   /**
