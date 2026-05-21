@@ -21,7 +21,10 @@ import {
   Filter,
   X,
   Search,
-  Users
+  Users,
+  Lock,
+  History,
+  ShieldCheck
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,12 +47,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useBooks, useBooksSelection, usePeriodoNavigation } from '@/hooks/useBooks';
 import { useBooksStats } from '@/hooks/useBooksStats';
 import { BOOK_STATUS_LABELS, BOOK_STATUS_COLORS, MESES_LABELS } from '@/types/books';
-import type { BookListItem, BooksGeracaoLoteResult } from '@/types/books';
-import { BookViewer } from '@/components/admin/books';
+import type { BookListItem, BooksGeracaoLoteResult, BookData } from '@/types/books';
+import { BookViewer, BookVersoesHistorico } from '@/components/admin/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
 import { emailService } from '@/services/emailService';
+import { booksVersioningService } from '@/services/booksVersioningService';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 // Fallback para MESES_LABELS caso o import falhe
 const MESES_NOMES: Record<number, string> = {
@@ -75,7 +82,7 @@ export default function GeracaoBooks() {
   const [showFilters, setShowFilters] = useState(false);
   const [filtros, setFiltros] = useState({
     busca: '',
-    status: 'all' as 'all' | 'gerado' | 'pendente' | 'erro',
+    status: 'all' as 'all' | 'gerado' | 'pendente' | 'enviado' | 'desatualizado' | 'erro',
     periodo: '' // Período no formato MM/YYYY
   });
 
@@ -89,7 +96,7 @@ export default function GeracaoBooks() {
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
   
   // Hook useBooks sempre busca o período de referência atual (não afetado pelo filtro)
-  const { books, isLoading, gerarBooks, atualizarBooks, gerarBooksAsync, atualizarBooksAsync, isGerando, isAtualizando } = useBooks({
+  const { books, isLoading, gerarBooks, atualizarBooks, gerarBooksAsync, atualizarBooksAsync, isGerando, isAtualizando, refetch } = useBooks({
     mes: mesReferencia,
     ano: anoReferencia
   });
@@ -113,6 +120,18 @@ export default function GeracaoBooks() {
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
   const [isEnviandoEmail, setIsEnviandoEmail] = useState(false);
+  
+  // Estados para retificação
+  const [showRetificacaoDialog, setShowRetificacaoDialog] = useState(false);
+  const [bookRetificando, setBookRetificando] = useState<BookListItem | null>(null);
+  const [motivoRetificacao, setMotivoRetificacao] = useState('');
+  const [isRetificando, setIsRetificando] = useState(false);
+  
+  // Estados para histórico de versões
+  const [showHistoricoDialog, setShowHistoricoDialog] = useState(false);
+  const [bookHistorico, setBookHistorico] = useState<BookListItem | null>(null);
+  const [bookDataVersao, setBookDataVersao] = useState<any>(null);
+  const [showVersaoViewer, setShowVersaoViewer] = useState(false);
 
   /**
    * Faz upload do PDF no Supabase Storage (temporário), gera signed URL,
@@ -176,7 +195,7 @@ export default function GeracaoBooks() {
 
         // 4. Enviar email com anexo via URL (formato que o Power Automate processa)
         const emailResult = await emailService.sendEmail({
-          to: ['qualidadeams@sonda.com'],
+          to: ['willian.faria@sonda.com'],
           subject: assunto,
           html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
           anexos: {
@@ -198,7 +217,24 @@ export default function GeracaoBooks() {
             description: `Book de ${nomeAbreviado} enviado para qualidadeams@sonda.com`,
           });
 
-          // 5. Limpar arquivo temporário após 5 minutos (tempo para Power Automate baixar)
+          // 5. Registrar envio no sistema de versionamento (cria snapshot imutável)
+          const registroResult = await booksVersioningService.registrarEnvio(
+            resultado.book_id!,
+            ['willian.faria@sonda.com']
+          );
+
+          if (registroResult.success) {
+            console.log('✅ Envio registrado no sistema de versionamento:', registroResult.versaoId);
+          } else {
+            console.error('❌ Falha ao registrar envio no versionamento:', registroResult.error);
+            toast({
+              title: 'Aviso: Envio não registrado',
+              description: `O email foi enviado mas o registro de versão falhou: ${registroResult.error}`,
+              variant: 'destructive',
+            });
+          }
+
+          // 6. Limpar arquivo temporário após 5 minutos (tempo para Power Automate baixar)
           setTimeout(() => {
             supabase.storage
               .from('anexos-temporarios')
@@ -224,6 +260,9 @@ export default function GeracaoBooks() {
     }
 
     setIsEnviandoEmail(false);
+    
+    // Recarregar lista para refletir novos status (enviado)
+    await refetch();
   };
 
   // Funções de navegação de período
@@ -284,11 +323,18 @@ export default function GeracaoBooks() {
     setShowGerarDialog(false);
     
     try {
+      // Verificar se algum book selecionado está "desatualizado" (retificado)
+      // Se sim, forçar atualização para regenerar os dados
+      const temDesatualizado = books.some(b => 
+        selectedIds.includes(b.id) && b.status === 'desatualizado'
+      );
+
       const result = await gerarBooksAsync({
         empresa_ids: selectedEmpresaIds,
         mes: mesReferencia,
         ano: anoReferencia,
-        gerar_pdf: true
+        gerar_pdf: true,
+        forcar_atualizacao: temDesatualizado ? true : undefined
       });
       
       // Gerar PDF e enviar email para cada book gerado com sucesso
@@ -300,6 +346,20 @@ export default function GeracaoBooks() {
 
   const handleAtualizarBooks = async () => {
     if (!hasSelection) return;
+    
+    // Verificar se algum book selecionado está enviado (imutável)
+    const booksEnviados = books.filter(b => 
+      selectedIds.includes(b.id) && b.status === 'enviado'
+    );
+    
+    if (booksEnviados.length > 0) {
+      toast({
+        title: 'Ação bloqueada',
+        description: `${booksEnviados.length} book(s) selecionado(s) já foram enviados e estão imutáveis. Use "Retificar" para desbloqueá-los.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setShowAtualizarDialog(false);
     
@@ -320,7 +380,7 @@ export default function GeracaoBooks() {
   };
 
   const handleVisualizarBook = (book: BookListItem) => {
-    if (book.status === 'gerado') {
+    if (book.status === 'gerado' || book.status === 'enviado' || book.status === 'desatualizado') {
       setBookVisualizando(book);
     }
   };
@@ -378,6 +438,50 @@ export default function GeracaoBooks() {
     anoReferencia,
     stats
   });
+
+  // Handler para iniciar retificação
+  const handleIniciarRetificacao = (book: BookListItem) => {
+    setBookRetificando(book);
+    setMotivoRetificacao('');
+    setShowRetificacaoDialog(true);
+  };
+
+  // Handler para confirmar retificação
+  const handleConfirmarRetificacao = async () => {
+    if (!bookRetificando) return;
+
+    setIsRetificando(true);
+    try {
+      const result = await booksVersioningService.iniciarRetificacao(
+        bookRetificando.id,
+        motivoRetificacao
+      );
+
+      if (result.success) {
+        toast({
+          title: 'Retificação iniciada',
+          description: `Book de ${bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome} desbloqueado para edição (versão ${result.novaVersao}).`,
+        });
+        setShowRetificacaoDialog(false);
+        // Forçar refresh da lista
+        window.location.reload();
+      } else {
+        toast({
+          title: 'Erro ao retificar',
+          description: result.error || 'Não foi possível iniciar a retificação.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro inesperado',
+        description: 'Ocorreu um erro ao processar a retificação.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRetificando(false);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -502,20 +606,6 @@ export default function GeracaoBooks() {
                   {hasSelection && (
                     <>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAtualizarDialog(true)}
-                        disabled={isGerando || isAtualizando || isEnviandoEmail}
-                      >
-                        {isAtualizando ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                        )}
-                        Atualizar ({selectedCount})
-                      </Button>
-                      
-                      <Button
                         size="sm"
                         className="bg-sonda-blue hover:bg-sonda-dark-blue"
                         onClick={() => setShowGerarDialog(true)}
@@ -588,6 +678,8 @@ export default function GeracaoBooks() {
                           <SelectItem value="all">Todos os status</SelectItem>
                           <SelectItem value="gerado">Gerado</SelectItem>
                           <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="enviado">Enviado</SelectItem>
+                          <SelectItem value="desatualizado">Aguardando nova geração</SelectItem>
                           <SelectItem value="erro">Erro</SelectItem>
                         </SelectContent>
                       </Select>
@@ -659,17 +751,87 @@ export default function GeracaoBooks() {
                                 Gerado em {new Date(book.data_geracao).toLocaleDateString('pt-BR')}
                               </div>
                             )}
+                            {book.status === 'desatualizado' && (
+                              <div className="text-xs text-orange-600 mt-0.5 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Retificado (v{book.versao_atual}) — Selecione e clique "Gerar Book" para reenviar
+                              </div>
+                            )}
+                            {book.status === 'enviado' && book.enviado_em && (
+                              <div className="text-xs text-purple-600 mt-0.5 flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" />
+                                Enviado em {new Date(book.enviado_em).toLocaleDateString('pt-BR')} — Imutável
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         {/* Status Badge */}
                         <div className="flex items-center gap-3">
+                          {/* Badge de versão (se > 1) */}
+                          {book.versao_atual && book.versao_atual > 1 && (
+                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
+                              v{book.versao_atual}
+                            </Badge>
+                          )}
+
                           <Badge className={BOOK_STATUS_COLORS[book.status]}>
+                            {book.status === 'enviado' && <Lock className="h-3 w-3 mr-1" />}
                             {BOOK_STATUS_LABELS[book.status]}
                           </Badge>
 
                           {/* Botões de Ação */}
                           <div className="flex gap-1">
+                            {/* Books ENVIADOS: Visualizar, Download, Histórico, Retificar */}
+                            {book.status === 'enviado' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleVisualizarBook(book)}
+                                  title="Visualizar"
+                                >
+                                  <Eye className="h-4 w-4 text-blue-600" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleDownloadPDF(book)}
+                                  disabled={downloadingBookId === book.id}
+                                  title="Baixar PDF"
+                                >
+                                  {downloadingBookId === book.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-purple-600 hover:text-purple-800"
+                                  onClick={() => {
+                                    setBookHistorico(book);
+                                    setShowHistoricoDialog(true);
+                                  }}
+                                  title="Ver histórico de versões"
+                                >
+                                  <History className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800"
+                                  onClick={() => handleIniciarRetificacao(book)}
+                                  title="Retificar"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {/* Books GERADOS: Visualizar, Download, e Histórico se v2+ */}
                             {book.status === 'gerado' && (
                               <>
                                 <Button
@@ -694,6 +856,61 @@ export default function GeracaoBooks() {
                                   ) : (
                                     <Download className="h-4 w-4" />
                                   )}
+                                </Button>
+                                {/* Botão Histórico - aparece se tem versões anteriores */}
+                                {book.versao_atual && book.versao_atual > 1 && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-purple-600 hover:text-purple-800"
+                                    onClick={() => {
+                                      setBookHistorico(book);
+                                      setShowHistoricoDialog(true);
+                                    }}
+                                    title="Ver histórico de versões"
+                                  >
+                                    <History className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            {/* Books DESATUALIZADOS (retificados): Visualizar, Download, Histórico */}
+                            {book.status === 'desatualizado' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleVisualizarBook(book)}
+                                  title="Visualizar"
+                                >
+                                  <Eye className="h-4 w-4 text-blue-600" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleDownloadPDF(book)}
+                                  disabled={downloadingBookId === book.id}
+                                  title="Baixar PDF"
+                                >
+                                  {downloadingBookId === book.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-purple-600 hover:text-purple-800"
+                                  onClick={() => {
+                                    setBookHistorico(book);
+                                    setShowHistoricoDialog(true);
+                                  }}
+                                  title="Ver histórico de versões"
+                                >
+                                  <History className="h-4 w-4" />
                                 </Button>
                               </>
                             )}
@@ -778,6 +995,106 @@ export default function GeracaoBooks() {
         book={bookVisualizando}
         open={!!bookVisualizando}
         onOpenChange={(open) => !open && setBookVisualizando(null)}
+      />
+
+      {/* Modal de Retificação */}
+      <Dialog open={showRetificacaoDialog} onOpenChange={setShowRetificacaoDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Retificar Book
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              {bookRetificando && (
+                <>
+                  Você está solicitando a retificação do book de{' '}
+                  <strong>{bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome}</strong>
+                  {bookRetificando.versao_atual && (
+                    <> (versão atual: {bookRetificando.versao_atual})</>
+                  )}.
+                  <br /><br />
+                  Isso irá desbloquear o book para edição e criar uma nova versão quando for reenviado.
+                  A versão anterior permanecerá armazenada como histórico imutável.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="motivo-retificacao" className="text-sm font-medium text-gray-700">
+                Motivo da Retificação <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="motivo-retificacao"
+                placeholder="Descreva o motivo da retificação (mínimo 10 caracteres)..."
+                value={motivoRetificacao}
+                onChange={(e) => setMotivoRetificacao(e.target.value)}
+                className={`focus:ring-sonda-blue focus:border-sonda-blue ${
+                  motivoRetificacao.length > 0 && motivoRetificacao.length < 10
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : ''
+                }`}
+                rows={4}
+              />
+              {motivoRetificacao.length > 0 && motivoRetificacao.length < 10 && (
+                <p className="text-sm text-red-500">
+                  Mínimo de 10 caracteres ({motivoRetificacao.length}/10)
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                O motivo ficará registrado no histórico de versões para auditoria.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRetificacaoDialog(false)}
+              disabled={isRetificando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700"
+              onClick={handleConfirmarRetificacao}
+              disabled={isRetificando || motivoRetificacao.trim().length < 10}
+            >
+              {isRetificando ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <History className="h-4 w-4 mr-2" />
+              )}
+              Confirmar Retificação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Histórico de Versões */}
+      <BookVersoesHistorico
+        bookId={bookHistorico?.id || null}
+        empresaNome={bookHistorico?.empresa_nome_abreviado || bookHistorico?.empresa_nome || ''}
+        open={showHistoricoDialog}
+        onOpenChange={setShowHistoricoDialog}
+        onVisualizarVersao={(bookData) => {
+          setBookDataVersao(bookData);
+          setShowHistoricoDialog(false);
+          setShowVersaoViewer(true);
+        }}
+      />
+
+      {/* BookViewer para versão antiga */}
+      <BookViewer
+        book={bookHistorico}
+        open={showVersaoViewer}
+        onOpenChange={(open) => {
+          setShowVersaoViewer(open);
+          if (!open) setBookDataVersao(null);
+        }}
+        bookDataOverride={bookDataVersao}
       />
     </AdminLayout>
   );

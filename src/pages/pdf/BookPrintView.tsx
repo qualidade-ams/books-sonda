@@ -46,6 +46,7 @@ export default function BookPrintView() {
   const { bookData, isLoading, error, refetch } = useBookData(id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(bookData?.empresa_id || null);
   const [isReady, setIsReady] = useState(false);
+  const [consumoDataLoaded, setConsumoDataLoaded] = useState(false);
 
   // CRÍTICO: Limpar cache e forçar refetch ao montar o componente
   useEffect(() => {
@@ -78,8 +79,8 @@ export default function BookPrintView() {
   }, [id, isLoading, isLoadingProdutos, bookData, produtos, error]);
 
   useEffect(() => {
-    if (!isLoading && !isLoadingProdutos && bookData) {
-      console.log('✅ Dados carregados, aguardando fontes...');
+    if (!isLoading && !isLoadingProdutos && bookData && consumoDataLoaded) {
+      console.log('✅ Dados carregados (incluindo banco de horas), aguardando fontes...');
       
       // Aguardar carregamento de fontes
       document.fonts.ready.then(() => {
@@ -92,7 +93,7 @@ export default function BookPrintView() {
         }, 8000); // Aumentado de 5s para 8s para dar tempo dos organogramas renderizarem
       });
     }
-  }, [isLoading, isLoadingProdutos, bookData]);
+  }, [isLoading, isLoadingProdutos, bookData, consumoDataLoaded]);
 
   // Loading state
   if (isLoading || isLoadingProdutos) {
@@ -227,6 +228,9 @@ export default function BookPrintView() {
           data={bookData.consumo}
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
           empresaId={bookData.empresa_id}
+          mes={bookData.mes}
+          ano={bookData.ano}
+          onDataLoaded={() => setConsumoDataLoaded(true)}
         />
       </div>
 

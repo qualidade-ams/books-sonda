@@ -50,7 +50,7 @@ class BooksService {
       // PASSO 2: Buscar books existentes para o período
       const { data: booksExistentes, error: booksError } = await (supabase as any)
         .from('books')
-        .select('id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url')
+        .select('id, empresa_id, mes, ano, status, created_at, updated_at, pdf_url, versao_atual, enviado_em, enviado_por, destinatarios_envio')
         .eq('mes', filtros.mes)
         .eq('ano', filtros.ano);
 
@@ -80,7 +80,11 @@ class BooksService {
           data_geracao: book?.created_at,
           data_atualizacao: book?.updated_at,
           pdf_url: book?.pdf_url,
-          tem_dados: book?.status === 'gerado'
+          tem_dados: book?.status === 'gerado' || book?.status === 'enviado' || book?.status === 'desatualizado',
+          versao_atual: book?.versao_atual || 1,
+          enviado_em: book?.enviado_em,
+          enviado_por: book?.enviado_por,
+          destinatarios_envio: book?.destinatarios_envio
         };
       });
 

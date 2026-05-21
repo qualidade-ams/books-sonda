@@ -26,6 +26,7 @@ interface BookConsumoProps {
   empresaId?: string; // ID da empresa para buscar requerimentos
   mes?: number; // Mês do book
   ano?: number; // Ano do book
+  onDataLoaded?: () => void; // Callback quando dados assíncronos terminam de carregar
 }
 
 /**
@@ -42,7 +43,7 @@ function formatarHorasSemSegundos(horasCompletas: string): string {
   return `${partes[0]}:${partes[1]}`;
 }
 
-export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: BookConsumoProps) {
+export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, onDataLoaded }: BookConsumoProps) {
   const [modalRequerimentosAberto, setModalRequerimentosAberto] = useState(false);
   const [mesSelecionado, setMesSelecionado] = useState<string>('');
   const [requerimentosMes, setRequerimentosMes] = useState<RequerimentoDescontadoData[]>([]);
@@ -64,7 +65,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
   });
 
   // ✅ NOVO: Buscar taxa usando a MESMA LÓGICA do serviço de excedentes do banco de horas
+  // Se já tem no snapshot, usar direto (PDF e versões antigas)
   useEffect(() => {
+    if (data.taxa_hora_excedente && data.taxa_hora_excedente > 0) {
+      console.log('✅ Usando taxa_hora_excedente do snapshot:', data.taxa_hora_excedente);
+      setTaxaPadraoEmpresa(data.taxa_hora_excedente);
+      return;
+    }
+
     const buscarTaxaExcedente = async () => {
       if (!empresaId || !mes || !ano) {
         console.log('⚠️ [buscarTaxaExcedente] Parâmetros faltando:', { empresaId, mes, ano });
@@ -243,13 +251,24 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
     };
     
     buscarTaxaExcedente();
-  }, [empresaId, mes, ano]);
+  }, [empresaId, mes, ano, data.taxa_hora_excedente]);
 
   // Buscar dados de banco de horas do trimestre ao montar o componente
+  // Se os dados já estão no snapshot (data.banco_horas_trimestre), usar direto
   useEffect(() => {
+    // Se já tem dados no snapshot, usar direto (PDF e versões antigas)
+    if (data.banco_horas_trimestre && data.banco_horas_trimestre.length > 0) {
+      console.log('✅ Usando banco_horas_trimestre do snapshot:', data.banco_horas_trimestre.length, 'meses');
+      setBancoHorasTrimestre(data.banco_horas_trimestre);
+      setCarregandoBancoHoras(false);
+      onDataLoaded?.();
+      return;
+    }
+
     const buscarBancoHorasTrimestre = async () => {
       if (!empresaId || !mes || !ano) {
         console.log('⚠️ Faltam parâmetros:', { empresaId, mes, ano });
+        onDataLoaded?.();
         return;
       }
       
@@ -368,11 +387,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
         console.error('❌ Erro ao buscar banco de horas do ciclo:', error);
       } finally {
         setCarregandoBancoHoras(false);
+        // Sinalizar que dados assíncronos terminaram de carregar
+        onDataLoaded?.();
       }
     };
 
     buscarBancoHorasTrimestre();
-  }, [empresaId, mes, ano]);
+  }, [empresaId, mes, ano, data.banco_horas_trimestre]);
 
   // Função para buscar requerimentos de um mês específico
   const buscarRequerimentosMes = async (mes: string, ano: string) => {
@@ -886,7 +907,6 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
       </div>
 
       {/* Tabela de Banco de Horas - Cores atualizadas conforme tela de banco de horas */}
-      {/*
       {bancoHorasTrimestre.length > 0 && (
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-3">
@@ -900,7 +920,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ borderRadius: '15.5px', overflow: 'hidden' }}>
                 <thead>
-                  {/* Primeira linha - Azul com meses *
+                  {/* Primeira linha - Azul com meses */}
                   <tr className="bg-blue-600 text-white">
                     <th className="px-4 py-3 text-left font-semibold">
                       Período - 1º Trimestre
@@ -913,7 +933,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {/* Banco Contratado *
+                  {/* Banco Contratado */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
                     <td className="px-4 py-2 font-semibold">Banco Contratado</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -923,7 +943,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Repasse mês anterior *
+                  {/* Repasse mês anterior */}
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2">Repasse mês anterior</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -933,7 +953,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Saldo a utilizar *
+                  {/* Saldo a utilizar */}
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 font-semibold">Saldo a utilizar</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -943,7 +963,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Consumo Chamados *
+                  {/* Consumo Chamados */}
                   <tr className="bg-white">
                     <td className="px-4 py-2">Consumo Chamados</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -953,7 +973,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Requerimentos *
+                  {/* Requerimentos */}
                   <tr className="bg-white">
                     <td className="px-4 py-2">Requerimentos</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -963,7 +983,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Reajuste *
+                  {/* Reajuste */}
                   <tr className="bg-white">
                     <td className="px-4 py-2">Reajuste</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -973,7 +993,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Consumo Total *
+                  {/* Consumo Total */}
                   <tr className="bg-white">
                     <td className="px-4 py-2 font-semibold">Consumo Total</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -983,7 +1003,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Saldo *
+                  {/* Saldo */}
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2 font-semibold">Saldo</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -993,7 +1013,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Repasse - 50% *
+                  {/* Repasse - 50% */}
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2">Repasse - 50%</td>
                     {bancoHorasTrimestre.map((item, index) => (
@@ -1003,7 +1023,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
                     ))}
                   </tr>
 
-                  {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA *
+                  {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
                     <td className="px-4 py-2 font-semibold">Taxa/hora Excedente</td>
                     {bancoHorasTrimestre.map((item, index) => {
@@ -1068,7 +1088,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano }: 
             </div>
           </CardContent>
         </Card>
-      )}*/}
+      )}
 
       {/* Loading state para banco de horas */}
       {carregandoBancoHoras && (

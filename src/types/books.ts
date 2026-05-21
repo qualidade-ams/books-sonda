@@ -4,7 +4,7 @@
  */
 
 // Status de geração do book
-export type BookStatus = 'pendente' | 'gerando' | 'gerado' | 'erro' | 'desatualizado';
+export type BookStatus = 'pendente' | 'gerando' | 'gerado' | 'erro' | 'desatualizado' | 'enviado';
 
 // Tipos de abas do book
 export type BookTab = 'capa' | 'volumetria' | 'sla' | 'backlog' | 'consumo' | 'pesquisa';
@@ -213,6 +213,31 @@ export interface BookConsumoData {
   
   // Total geral
   total_geral: number;
+
+  // Dados de banco de horas do ciclo (snapshot para PDF)
+  banco_horas_trimestre?: BancoHorasTrimestreItem[];
+
+  // Taxa de hora excedente (snapshot para PDF)
+  taxa_hora_excedente?: number;
+}
+
+export interface BancoHorasTrimestreItem {
+  mes: number;
+  ano: number;
+  dados: {
+    baseline_horas: string | null;
+    repasses_mes_anterior_horas: string | null;
+    saldo_a_utilizar_horas: string | null;
+    consumo_horas: string | null;
+    requerimentos_horas: string | null;
+    reajustes_horas: string | null;
+    consumo_total_horas: string | null;
+    saldo_horas: string | null;
+    repasse_horas: string | null;
+    excedentes_horas: string | null;
+    valor_excedentes_horas: number | null;
+    taxa_hora_utilizada: number | null;
+  } | null;
 }
 
 export interface RequerimentoDescontadoData {
@@ -306,6 +331,10 @@ export interface BookListItem {
   data_atualizacao?: string;
   pdf_url?: string;
   tem_dados: boolean;
+  versao_atual?: number;
+  enviado_em?: string;
+  enviado_por?: string;
+  destinatarios_envio?: string[];
 }
 
 /**
@@ -408,7 +437,8 @@ export const BOOK_STATUS_LABELS: Record<BookStatus, string> = {
   gerando: 'Gerando...',
   gerado: 'Gerado',
   erro: 'Erro',
-  desatualizado: 'Desatualizado'
+  desatualizado: 'Aguardando nova geração',
+  enviado: 'Enviado'
 };
 
 export const BOOK_STATUS_COLORS: Record<BookStatus, string> = {
@@ -416,7 +446,8 @@ export const BOOK_STATUS_COLORS: Record<BookStatus, string> = {
   gerando: 'bg-blue-100 text-blue-800',
   gerado: 'bg-green-100 text-green-800',
   erro: 'bg-red-100 text-red-800',
-  desatualizado: 'bg-yellow-100 text-yellow-800'
+  desatualizado: 'bg-yellow-100 text-yellow-800',
+  enviado: 'bg-purple-100 text-purple-800'
 };
 
 export const BOOK_TABS_LABELS: Record<BookTab, string> = {
