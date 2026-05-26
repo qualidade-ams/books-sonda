@@ -35,7 +35,8 @@ const Breadcrumb = () => {
     'geracao-books': 'Geração de Books',
     'inconsistencia-chamados' : 'Inconsistência de Chamados',
     'organograma' : 'Organograma',
-    'pesquisa-mensal-ams': 'Pesquisa Mensal AMS'
+    'pesquisa-mensal-ams': 'Pesquisa Mensal AMS',
+    'ajustes-retroativos': 'Ajustes Retroativos'
   };
 
   return (

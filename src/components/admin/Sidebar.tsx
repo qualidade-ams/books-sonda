@@ -76,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
       return 'comunicacao';
     }
     if (path.includes('/empresas-clientes') || path.includes('/clientes')) {
@@ -204,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (path.includes('/requerimentos')) {
       return 'requerimentos';
     }
-    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas')) {
+    if (path.includes('/controle-disparos') || path.includes('/historico-books') || path.includes('/geracao-books') || path.includes('/controle-banco-horas') || path.includes('/ajustes-retroativos')) {
       return 'comunicacao';
     }
     if (path.includes('/auditoria')) {
@@ -333,6 +333,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           label: 'Banco de Horas',
           path: '/admin/controle-banco-horas',
           screenKey: 'controle_banco_horas'
+        },
+        {
+          icon: AlertTriangle,
+          label: 'Ajustes Retroativos',
+          path: '/admin/ajustes-retroativos',
+          screenKey: 'banco_horas_ajustes_retroativos'
         }
       ]
     },

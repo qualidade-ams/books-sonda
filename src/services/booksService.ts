@@ -15,6 +15,7 @@ import type {
 import { supabase } from '@/integrations/supabase/client';
 import { MESES_LABELS } from '@/types/books';
 import { booksDataCollectorService } from './booksDataCollectorService';
+import { bancoHorasQuarentenaService } from './bancoHorasQuarentenaService';
 
 class BooksService {
   /**
@@ -503,6 +504,21 @@ class BooksService {
             empresa_id: empresaId,
             empresa_nome: empresa.nome_completo
           });
+
+          // Fechar período do banco de horas (snapshot para proteção contra extemporâneos)
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await bancoHorasQuarentenaService.fecharPeriodo(
+              empresaId,
+              config.mes,
+              config.ano,
+              user?.id
+            );
+            console.log(`🔒 Período ${config.mes}/${config.ano} fechado para empresa ${empresaId}`);
+          } catch (fechamentoError) {
+            // Não falhar a geração do book se o fechamento falhar
+            console.warn('⚠️ Erro ao fechar período do banco de horas (não crítico):', fechamentoError);
+          }
 
         } catch (error: any) {
           console.error(`Erro ao gerar book para empresa ${empresaId}:`, error);
