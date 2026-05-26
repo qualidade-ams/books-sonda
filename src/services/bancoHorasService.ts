@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { bancoHorasIntegracaoService } from './bancoHorasIntegracaoService';
 import { repasseService } from './bancoHorasRepasseService';
 import { excedentesService } from './bancoHorasExcedentesService';
+import { bancoHorasQuarentenaService } from './bancoHorasQuarentenaService';
 import { 
   converterHorasParaMinutos, 
   converterMinutosParaHoras,
@@ -215,19 +216,48 @@ export class BancoHorasService {
       // IMPORTANTE: Para tipo_contrato = "ambos", ignorar consumo de HORAS na aba de horas
       // O consumo de horas será controlado apenas por ajustes manuais
       // O consumo de TICKETS continua sendo considerado normalmente
-      const consumo = await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
       
-      let consumoHoras = consumo.horas;
-      let consumoTickets = consumo.tickets;
+      // ✅ PROTEÇÃO: Se período está fechado, usar snapshot em vez de dados em tempo real
+      const fechamento = await bancoHorasQuarentenaService.buscarFechamento(empresaId, mes, ano);
+      
+      let consumoHoras: string;
+      let consumoTickets: number;
+      let requerimentosHoras: string;
+      let requerimentosTickets: number;
+      
+      if (fechamento) {
+        // Período FECHADO: usar valores do snapshot (protege contra extemporâneos)
+        consumoHoras = fechamento.snapshot_consumo_horas || '0:00';
+        consumoTickets = fechamento.snapshot_consumo_tickets || 0;
+        requerimentosHoras = fechamento.snapshot_requerimentos_horas || '0:00';
+        requerimentosTickets = fechamento.snapshot_requerimentos_tickets || 0;
+        
+        console.log('🔒 Período FECHADO - usando snapshot do fechamento:', {
+          consumoHoras,
+          consumoTickets,
+          requerimentosHoras,
+          requerimentosTickets,
+          fechadoEm: fechamento.fechado_em,
+          observacao: 'Dados protegidos contra atualizações retroativas'
+        });
+      } else {
+        // Período ABERTO: buscar dados em tempo real (comportamento normal)
+        const consumo = await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
+        consumoHoras = consumo.horas;
+        consumoTickets = consumo.tickets;
+        
+        const requerimentosResult = await bancoHorasIntegracaoService.buscarRequerimentos(empresaId, mes, ano);
+        requerimentosHoras = requerimentosResult.horas;
+        requerimentosTickets = requerimentosResult.tickets;
+        
+        console.log('🔓 Período ABERTO - usando dados em tempo real');
+      }
       
       // Se tipo_contrato = "ambos", zerar apenas o consumo de HORAS
       if (parametros.tipo_contrato === 'ambos') {
         consumoHoras = '0:00';
         console.log('⚠️ tipo_contrato = "ambos": Consumo de HORAS ignorado (será controlado por ajustes). Consumo de TICKETS mantido.');
       }
-      
-      const { horas: requerimentosHoras, tickets: requerimentosTickets } = 
-        await bancoHorasIntegracaoService.buscarRequerimentos(empresaId, mes, ano);
 
       console.log('📊 Consumo e requerimentos:', {
         consumo: { horas: consumoHoras, tickets: consumoTickets },

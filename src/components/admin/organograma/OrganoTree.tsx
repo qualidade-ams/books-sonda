@@ -270,11 +270,11 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           x={-255 + marginLeft} 
           y="-135" 
           width="480" 
-          height="400"
+          height="450"
         > 
           <Card className="w-full h-full border-transparent shadow-none bg-transparent" style={{ overflow: 'visible'}}>
             <CardContent className="p-0" style={{ overflow: 'visible' }}>
-              <div className="flex flex-col items-center space-y-3 bg-white rounded-lg" style={{ overflow: 'visible' }}>
+              <div className="flex flex-col items-center space-y-2 bg-white rounded-lg" style={{ overflow: 'visible' }}>
                 <div className={`relative ${isCentralPriorizacao ? 'p-6' : ''}`} style={isCentralPriorizacao ? { overflow: 'visible' } : undefined}>
                   {usaGradiente ? (
                     <div
@@ -343,8 +343,9 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                       className="absolute inset-0"
                       style={{
                         backgroundImage: `url(${fundoImagem})`,
-                        backgroundSize: 'cover',
+                        backgroundSize: '100% 100%',
                         backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
                         opacity: 1,
                       }}
                     />
@@ -470,7 +471,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
           pathFunc="step"
           translate={translate}
           nodeSize={{ x: 480, y: 370 }}
-          separation={{ siblings: 0.9, nonSiblings: 1.1 }}
+          separation={{ siblings: 1, nonSiblings: 1.1 }}
           renderCustomNodeElement={renderCustomNode}
           pathClassFunc={(link: any) => {
             const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 

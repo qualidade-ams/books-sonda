@@ -442,13 +442,13 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
     
     switch (produtoUpper) {
       case 'FISCAL':
-        return isPdfContext ? 0.75 : 0.65; // PDF: 0.75, Viewport: 0.65
+        return isPdfContext ? 0.75 : 0.59; // PDF: 0.75, Viewport: 0.52
       case 'COMEX':
-        return isPdfContext ? 0.75 : 0.68; // PDF: 0.75, Viewport: 0.68
+        return isPdfContext ? 0.75 : 0.68; // PDF: 0.75, Viewport: 0.53
       case 'GALLERY':
-        return 0.78;
+        return 0.68;
       default:
-        return 0.78;
+        return 0.68;
     }
   };
 
