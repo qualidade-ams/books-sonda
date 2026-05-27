@@ -40,21 +40,37 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
   AND data_atividade < '2026-02-01'  -- SUBSTITUIR pela data fim
   AND cod_resolucao NOT IN (
     'Alocação - T&M',
+    'Alocação T&M (Banco=S| SLA=N)',
     'AMS SAP',
+    'AMS SAP (Banco=S| SLA=S)',
     'Aplicação de Nota / Licença - Contratados',
+    'Aplicação de Nota / Licença (Banco=S |SLA=N)',
     'Consultoria',
+    'Consultoria (Banco=S| SLA=S)',
     'Consultoria - Banco de Dados',
+    'Consultoria - Banco de Dados (Banco=S| SLA=S)',
     'Consultoria - Nota Publicada',
+    'Consultoria - Nota Publicada (Banco=S| SLA=S)',
     'Consultoria - Solução Paliativa',
+    'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
     'Dúvida',
+    'Dúvida (Banco=S |SLA=N)',
     'Erro de classificação na abertura',
+    'Erro de classificação de abertura (Banco=S| SLA=N)',
     'Erro de programa específico (SEM SLA)',
+    'Erro de programa especifico (Banco=S| SLA=N)',
     'Levantamento de Versão / Orçamento',
+    'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
     'Monitoramento DBA',
+    'Monitoramento DBA (Banco=S |SLA=N)',
     'Nota Publicada',
+    'Nota Publicada (Banco=S |SLA=N)',
     'Parametrização / Cadastro',
+    'Parametrização / Cadastro (Banco=S |SLA=N)',
     'Parametrização / Funcionalidade',
-    'Validação de Arquivo'
+    'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+    'Validação de Arquivo',
+    'Validação de Arquivo (Banco=S| SLA=N)'
   )
 ORDER BY data_atividade DESC;
 
@@ -74,21 +90,37 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
   AND data_atividade < '2026-02-01'  -- SUBSTITUIR pela data fim
   AND cod_resolucao IN (
     'Alocação - T&M',
+    'Alocação - T&M (Banco=S |SLA=N)',
     'AMS SAP',
+    'AMS SAP (Banco=S |SLA=S)',
     'Aplicação de Nota / Licença - Contratados',
+    'Aplicação de Nota / Licença (Banco=S |SLA=N)',
     'Consultoria',
+    'Consultoria (Banco=S |SLA=S)',
     'Consultoria - Banco de Dados',
+    'Consultoria - Banco de Dados (Banco=S |SLA=S)',
     'Consultoria - Nota Publicada',
+    'Consultoria - Nota Publicada (Banco=S |SLA=S)',
     'Consultoria - Solução Paliativa',
+    'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
     'Dúvida',
+    'Dúvida (Banco=S |SLA=S)',
     'Erro de classificação na abertura',
+    'Erro de classificação na abertura (Banco=S |SLA=N)',
     'Erro de programa específico (SEM SLA)',
+    'Erro de programa específico (SEM SLA) (Banco=S |SLA=N)',
     'Levantamento de Versão / Orçamento',
+    'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
     'Monitoramento DBA',
+    'Monitoramento DBA (Banco=S |SLA=S)',
     'Nota Publicada',
+    'Nota Publicada (Banco=S |SLA=S)',
     'Parametrização / Cadastro',
+    'Parametrização / Cadastro (Banco=S |SLA=S)',
     'Parametrização / Funcionalidade',
-    'Validação de Arquivo'
+    'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+    'Validação de Arquivo',
+    'Validação de Arquivo (Banco=S |SLA=N)',
   );
 
 -- 4. Calcular total de horas SEM filtro de cod_resolucao (deveria ser 20:55)
