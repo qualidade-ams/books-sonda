@@ -58,6 +58,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
+/**
+ * Remove acentos e caracteres especiais de uma string para uso em nomes de arquivo/storage.
+ * O Supabase Storage não aceita caracteres fora do ASCII básico nas keys.
+ */
+function sanitizarNomeArquivo(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos (acentos)
+    .replace(/[^a-zA-Z0-9_\-./]/g, '_'); // Substitui caracteres especiais por underscore
+}
+
 // Fallback para MESES_LABELS caso o import falhe
 const MESES_NOMES: Record<number, string> = {
   1: 'Janeiro',
@@ -120,6 +131,7 @@ export default function GeracaoBooks() {
   const [bookVisualizando, setBookVisualizando] = useState<BookListItem | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
   const [isEnviandoEmail, setIsEnviandoEmail] = useState(false);
+  const [progressoEnvio, setProgressoEnvio] = useState({ atual: 0, total: 0, empresa: '' });
   
   // Estados para retificação
   const [showRetificacaoDialog, setShowRetificacaoDialog] = useState(false);
@@ -137,19 +149,31 @@ export default function GeracaoBooks() {
    * Faz upload do PDF no Supabase Storage (temporário), gera signed URL,
    * e envia email via webhook com o anexo no formato que o Power Automate processa.
    * Formato do assunto: BOOK: CLIENTE_ANO_MES. NomeMes
+   * 
+   * Processa um book por vez com delay entre envios para evitar rate limiting (429).
    */
   const gerarPDFEEnviarEmail = async (resultados: BooksGeracaoLoteResult) => {
     const booksSucesso = resultados.resultados.filter(r => r.sucesso && r.book_id);
     if (booksSucesso.length === 0) return;
 
     setIsEnviandoEmail(true);
+    setProgressoEnvio({ atual: 0, total: booksSucesso.length, empresa: '' });
 
-    for (const resultado of booksSucesso) {
+    const DELAY_ENTRE_ENVIOS_MS = 3000; // 3 segundos entre cada envio
+    let enviados = 0;
+    let erros = 0;
+
+    for (let i = 0; i < booksSucesso.length; i++) {
+      const resultado = booksSucesso[i];
+      
       try {
         const nomeEmpresa = resultado.empresa_nome;
         const bookInfo = books.find(b => b.empresa_id === resultado.empresa_id);
         const nomeAbreviado = bookInfo?.empresa_nome_abreviado || nomeEmpresa;
         
+        // Atualizar progresso
+        setProgressoEnvio({ atual: i + 1, total: booksSucesso.length, empresa: nomeAbreviado });
+
         const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
         const mesFormatado = String(mesReferencia).padStart(2, '0');
         const mesNomeRef = MESES_NOMES[mesReferencia];
@@ -158,16 +182,16 @@ export default function GeracaoBooks() {
         const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
         const nomeArquivo = `Book_${nomeFormatado}_${mesNomeRef}_${anoReferencia}.pdf`;
 
-        toast({
-          title: 'Gerando PDF...',
-          description: `Gerando PDF de ${nomeAbreviado} para envio por email.`,
-        });
+        // Nome sanitizado (sem acentos) para o Storage
+        const nomeArquivoStorage = sanitizarNomeArquivo(nomeArquivo);
+
+        console.log(`📧 [${i + 1}/${booksSucesso.length}] Processando: ${nomeAbreviado}`);
 
         // 1. Gerar PDF via Puppeteer
         const pdfBlob = await booksPDFServiceV2.gerarPDF(resultado.book_id!);
 
         // 2. Upload temporário no Supabase Storage
-        const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivo}`;
+        const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivoStorage}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('anexos-temporarios')
@@ -212,10 +236,8 @@ export default function GeracaoBooks() {
         });
 
         if (emailResult.success) {
-          toast({
-            title: 'Email enviado!',
-            description: `Book de ${nomeAbreviado} enviado para qualidadeams@sonda.com`,
-          });
+          enviados++;
+          console.log(`✅ [${i + 1}/${booksSucesso.length}] Email enviado: ${nomeAbreviado}`);
 
           // 5. Registrar envio no sistema de versionamento (cria snapshot imutável)
           const registroResult = await booksVersioningService.registrarEnvio(
@@ -227,22 +249,10 @@ export default function GeracaoBooks() {
             console.log('✅ Envio registrado no sistema de versionamento:', registroResult.versaoId);
           } else {
             console.error('❌ Falha ao registrar envio no versionamento:', registroResult.error);
-            toast({
-              title: 'Aviso: Envio não registrado',
-              description: `O email foi enviado mas o registro de versão falhou: ${registroResult.error}`,
-              variant: 'destructive',
-            });
           }
-
-          // 6. Limpar arquivo temporário após 5 minutos (tempo para Power Automate baixar)
-          setTimeout(() => {
-            supabase.storage
-              .from('anexos-temporarios')
-              .remove([storagePath])
-              .then(() => console.log('🗑️ PDF temporário removido do storage'))
-              .catch(err => console.warn('⚠️ Falha ao remover PDF temporário:', err));
-          }, 5 * 60 * 1000);
         } else {
+          erros++;
+          console.error(`❌ [${i + 1}/${booksSucesso.length}] Falha no envio: ${nomeAbreviado}`, emailResult.error);
           toast({
             title: 'Erro ao enviar email',
             description: `Falha ao enviar book de ${nomeAbreviado}: ${emailResult.error}`,
@@ -250,16 +260,31 @@ export default function GeracaoBooks() {
           });
         }
       } catch (error) {
-        console.error(`Erro ao gerar PDF/enviar email para ${resultado.empresa_nome}:`, error);
+        erros++;
+        console.error(`❌ [${i + 1}/${booksSucesso.length}] Erro ao gerar PDF/enviar email para ${resultado.empresa_nome}:`, error);
         toast({
           title: 'Erro no envio',
           description: `Não foi possível enviar o book de ${resultado.empresa_nome} por email.`,
           variant: 'destructive',
         });
       }
+
+      // Delay entre envios para evitar rate limiting (429) - não aplica no último
+      if (i < booksSucesso.length - 1) {
+        console.log(`⏳ Aguardando ${DELAY_ENTRE_ENVIOS_MS / 1000}s antes do próximo envio...`);
+        await new Promise(resolve => setTimeout(resolve, DELAY_ENTRE_ENVIOS_MS));
+      }
     }
 
     setIsEnviandoEmail(false);
+    setProgressoEnvio({ atual: 0, total: 0, empresa: '' });
+
+    // Toast final com resumo
+    toast({
+      title: 'Envio em lote concluído',
+      description: `${enviados} enviado(s) com sucesso${erros > 0 ? `, ${erros} com erro` : ''}.`,
+      variant: erros > 0 ? 'destructive' : 'default',
+    });
     
     // Recarregar lista para refletir novos status (enviado)
     await refetch();
@@ -304,7 +329,8 @@ export default function GeracaoBooks() {
     // Filtro de busca
     if (filtros.busca) {
       const busca = filtros.busca.toLowerCase();
-      if (!book.empresa_nome.toLowerCase().includes(busca)) {
+      if (!book.empresa_nome.toLowerCase().includes(busca) &&
+          !(book.empresa_nome_abreviado && book.empresa_nome_abreviado.toLowerCase().includes(busca))) {
         return false;
       }
     }
@@ -321,26 +347,145 @@ export default function GeracaoBooks() {
     if (!hasSelection) return;
     
     setShowGerarDialog(false);
-    
-    try {
-      // Verificar se algum book selecionado está "desatualizado" (retificado)
-      // Se sim, forçar atualização para regenerar os dados
-      const temDesatualizado = books.some(b => 
-        selectedIds.includes(b.id) && b.status === 'desatualizado'
-      );
+    setIsEnviandoEmail(true);
 
-      const result = await gerarBooksAsync({
-        empresa_ids: selectedEmpresaIds,
-        mes: mesReferencia,
-        ano: anoReferencia,
-        gerar_pdf: true,
-        forcar_atualizacao: temDesatualizado ? true : undefined
-      });
-      
-      // Gerar PDF e enviar email para cada book gerado com sucesso
-      await gerarPDFEEnviarEmail(result);
+    const empresaIds = [...selectedEmpresaIds];
+    const total = empresaIds.length;
+    let enviados = 0;
+    let erros = 0;
+
+    const DELAY_ENTRE_ENVIOS_MS = 3000; // 3 segundos entre cada ciclo completo
+
+    try {
+      for (let i = 0; i < empresaIds.length; i++) {
+        const empresaId = empresaIds[i];
+        const bookInfo = books.find(b => b.empresa_id === empresaId);
+        const nomeAbreviado = bookInfo?.empresa_nome_abreviado || bookInfo?.empresa_nome || empresaId;
+
+        // Atualizar progresso
+        setProgressoEnvio({ atual: i + 1, total, empresa: nomeAbreviado });
+        console.log(`📧 [${i + 1}/${total}] Iniciando ciclo completo: ${nomeAbreviado}`);
+
+        try {
+          // 1. Gerar book no banco (uma empresa por vez)
+          const temDesatualizado = bookInfo?.status === 'desatualizado';
+
+          const result = await booksService.gerarBooksLote({
+            empresa_ids: [empresaId],
+            mes: mesReferencia,
+            ano: anoReferencia,
+            gerar_pdf: true,
+            forcar_atualizacao: temDesatualizado ? true : undefined
+          });
+
+          const bookGerado = result.resultados.find(r => r.sucesso && r.book_id);
+          if (!bookGerado) {
+            const erro = result.resultados[0]?.erro || 'Erro desconhecido na geração';
+            throw new Error(`Falha ao gerar book: ${erro}`);
+          }
+
+          // 2. Gerar PDF
+          const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
+          const mesFormatado = String(mesReferencia).padStart(2, '0');
+          const mesNomeRef = MESES_NOMES[mesReferencia];
+          const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
+          const nomeArquivo = `Book_${nomeFormatado}_${mesNomeRef}_${anoReferencia}.pdf`;
+          const nomeArquivoStorage = sanitizarNomeArquivo(nomeArquivo);
+
+          const pdfBlob = await booksPDFServiceV2.gerarPDF(bookGerado.book_id!);
+
+          // 3. Upload temporário no Supabase Storage
+          const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivoStorage}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('anexos-temporarios')
+            .upload(storagePath, pdfBlob, {
+              contentType: 'application/pdf',
+              upsert: true
+            });
+
+          if (uploadError) {
+            throw new Error(`Erro no upload do PDF: ${uploadError.message}`);
+          }
+
+          console.log('📤 PDF uploaded:', uploadData.path);
+
+          // 4. Gerar URL pública
+          const { data: publicUrlData } = supabase.storage
+            .from('anexos-temporarios')
+            .getPublicUrl(storagePath);
+
+          if (!publicUrlData?.publicUrl) {
+            throw new Error('Erro ao gerar URL pública do PDF');
+          }
+
+          // 5. Enviar email
+          const emailResult = await emailService.sendEmail({
+            to: ['willian.faria@sonda.com'],
+            subject: assunto,
+            html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
+            anexos: {
+              totalArquivos: 1,
+              tamanhoTotal: pdfBlob.size,
+              arquivos: [{
+                url: publicUrlData.publicUrl,
+                nome: nomeArquivo,
+                tipo: 'application/pdf',
+                tamanho: pdfBlob.size,
+                token: ''
+              }]
+            }
+          });
+
+          if (emailResult.success) {
+            enviados++;
+            console.log(`✅ [${i + 1}/${total}] Ciclo completo OK: ${nomeAbreviado}`);
+
+            // 6. Registrar envio no versionamento
+            await booksVersioningService.registrarEnvio(
+              bookGerado.book_id!,
+              ['willian.faria@sonda.com']
+            );
+
+          } else {
+            erros++;
+            console.error(`❌ [${i + 1}/${total}] Falha no envio: ${nomeAbreviado}`, emailResult.error);
+            toast({
+              title: 'Erro ao enviar email',
+              description: `Falha ao enviar book de ${nomeAbreviado}: ${emailResult.error}`,
+              variant: 'destructive',
+            });
+          }
+        } catch (error) {
+          erros++;
+          console.error(`❌ [${i + 1}/${total}] Erro no ciclo de ${nomeAbreviado}:`, error);
+          toast({
+            title: 'Erro no processamento',
+            description: `Falha em ${nomeAbreviado}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+            variant: 'destructive',
+          });
+        }
+
+        // Delay entre ciclos para evitar rate limiting (429) - não aplica no último
+        if (i < empresaIds.length - 1) {
+          console.log(`⏳ Aguardando ${DELAY_ENTRE_ENVIOS_MS / 1000}s antes do próximo...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_ENTRE_ENVIOS_MS));
+        }
+      }
     } finally {
+      setIsEnviandoEmail(false);
+      setProgressoEnvio({ atual: 0, total: 0, empresa: '' });
       clearSelection();
+
+      // Toast final com resumo
+      toast({
+        title: 'Processamento concluído',
+        description: `${enviados} enviado(s) com sucesso${erros > 0 ? `, ${erros} com erro` : ''} de ${total} total.`,
+        variant: erros > 0 ? 'destructive' : 'default',
+      });
+
+      // Recarregar lista
+      await refetch();
     }
   };
 
@@ -616,7 +761,7 @@ export default function GeracaoBooks() {
                         ) : (
                           <Send className="h-4 w-4 mr-2" />
                         )}
-                        {isEnviandoEmail ? 'Enviando...' : `Gerar Book (${selectedCount})`}
+                        {isEnviandoEmail ? `Enviando ${progressoEnvio.atual}/${progressoEnvio.total}...` : `Gerar Book (${selectedCount})`}
                       </Button>
                     </>
                   )}
@@ -690,6 +835,29 @@ export default function GeracaoBooks() {
             </CardHeader>
             
             <CardContent>
+              {/* Banner de progresso de envio */}
+              {isEnviandoEmail && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-sonda-blue flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-900">
+                        Enviando {progressoEnvio.atual} de {progressoEnvio.total} books...
+                      </p>
+                      <p className="text-xs text-blue-700 truncate">
+                        Processando: {progressoEnvio.empresa}
+                      </p>
+                      <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                        <div
+                          className="bg-sonda-blue h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${progressoEnvio.total > 0 ? (progressoEnvio.atual / progressoEnvio.total) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
@@ -739,7 +907,7 @@ export default function GeracaoBooks() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-gray-900 truncate">
-                              {book.empresa_nome}
+                              {book.empresa_nome_abreviado || book.empresa_nome}
                             </div>
                             {book.status === 'pendente' && (
                               <div className="text-xs text-gray-500 mt-0.5">

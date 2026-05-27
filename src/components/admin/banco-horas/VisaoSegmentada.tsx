@@ -371,14 +371,14 @@ export function VisaoSegmentada({
           const chave = `${mesAno.mes}-${mesAno.ano}`;
           
           // Buscar reajustes desta empresa segmentada neste mês
-          const { data: reajustes, error } = await supabase
-            .from('banco_horas_reajustes')
+          const { data: reajustes, error } = await (supabase
+            .from('banco_horas_reajustes' as any)
             .select('valor_reajuste_horas, tipo_reajuste')
             .eq('empresa_id', empresaId)
             .eq('mes', mesAno.mes)
             .eq('ano', mesAno.ano)
             .eq('empresa_segmentada', empresa.nome)
-            .eq('ativo', true);
+            .eq('ativo', true) as any);
           
           if (error) {
             console.error(`❌ Erro ao buscar reajustes de ${empresa.nome} em ${chave}:`, error);

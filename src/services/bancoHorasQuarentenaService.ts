@@ -14,6 +14,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { converterHorasParaMinutos, converterMinutosParaHoras } from '@/utils/horasUtils';
 
+/**
+ * Helper para queries em tabelas não tipadas no schema gerado do Supabase.
+ * Evita erros "Type instantiation is excessively deep" ao encadear métodos.
+ */
+const db = supabase as any;
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -119,8 +125,8 @@ export class BancoHorasQuarentenaService {
       console.log('🔒 BancoHorasQuarentenaService.fecharPeriodo:', { empresaId, mes, ano });
 
       // Verificar se já existe fechamento para este período
-      const { data: existente } = await supabase
-        .from('banco_horas_fechamentos' as any)
+      const { data: existente } = await db
+        .from('banco_horas_fechamentos')
         .select('*')
         .eq('empresa_id', empresaId)
         .eq('mes', mes)
@@ -129,7 +135,7 @@ export class BancoHorasQuarentenaService {
 
       if (existente) {
         console.log('ℹ️ Período já fechado, retornando fechamento existente:', existente.id);
-        return existente as unknown as FechamentoPeriodo;
+        return existente as FechamentoPeriodo;
       }
 
       // Buscar cálculo atual do banco de horas
@@ -146,8 +152,8 @@ export class BancoHorasQuarentenaService {
       const ticketsIds = await this.buscarIdsTickets(empresaId, mes, ano);
 
       // Criar registro de fechamento
-      const { data: fechamento, error } = await supabase
-        .from('banco_horas_fechamentos' as any)
+      const { data: fechamento, error } = await db
+        .from('banco_horas_fechamentos')
         .insert({
           empresa_id: empresaId,
           mes,
@@ -191,8 +197,8 @@ export class BancoHorasQuarentenaService {
     mes: number,
     ano: number
   ): Promise<boolean> {
-    const { data } = await supabase
-      .from('banco_horas_fechamentos' as any)
+    const { data } = await db
+      .from('banco_horas_fechamentos')
       .select('id')
       .eq('empresa_id', empresaId)
       .eq('mes', mes)
@@ -210,15 +216,15 @@ export class BancoHorasQuarentenaService {
     mes: number,
     ano: number
   ): Promise<FechamentoPeriodo | null> {
-    const { data } = await supabase
-      .from('banco_horas_fechamentos' as any)
+    const { data } = await db
+      .from('banco_horas_fechamentos')
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('mes', mes)
       .eq('ano', ano)
       .maybeSingle();
 
-    return data as unknown as FechamentoPeriodo | null;
+    return data as FechamentoPeriodo | null;
   }
 
   // ==========================================================================
@@ -271,8 +277,8 @@ export class BancoHorasQuarentenaService {
       // Buscar detalhes dos novos apontamentos
       let novosApontamentos: any[] = [];
       if (novosIds.length > 0) {
-        const { data } = await supabase
-          .from('apontamentos_aranda' as any)
+        const { data } = await db
+          .from('apontamentos_aranda')
           .select('id_externo, nro_chamado, data_atividade, tempo_gasto_minutos, synced_at')
           .in('id_externo', novosIds);
         novosApontamentos = data || [];
@@ -281,8 +287,8 @@ export class BancoHorasQuarentenaService {
       // Buscar detalhes dos removidos
       let apontamentosRemovidos: any[] = [];
       if (removidosIds.length > 0) {
-        const { data } = await supabase
-          .from('apontamentos_aranda' as any)
+        const { data } = await db
+          .from('apontamentos_aranda')
           .select('id_externo, nro_chamado')
           .in('id_externo', removidosIds);
         apontamentosRemovidos = data || [];
@@ -295,8 +301,8 @@ export class BancoHorasQuarentenaService {
       // Para removidos, precisamos buscar o tempo que tinham
       let minutosRemovidos = 0;
       if (removidosIds.length > 0) {
-        const { data: removidos } = await supabase
-          .from('apontamentos_aranda' as any)
+        const { data: removidos } = await db
+          .from('apontamentos_aranda')
           .select('tempo_gasto_minutos')
           .in('id_externo', removidosIds);
         minutosRemovidos = (removidos || []).reduce(
@@ -448,8 +454,8 @@ export class BancoHorasQuarentenaService {
   ): Promise<AjusteRetroativo | null> {
     try {
       // Verificar se já existe ajuste pendente para este período/tipo
-      const { data: existente } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: existente } = await db
+        .from('banco_horas_ajustes_retroativos')
         .select('id')
         .eq('empresa_id', empresaId)
         .eq('mes_referencia', mes)
@@ -460,8 +466,8 @@ export class BancoHorasQuarentenaService {
 
       if (existente) {
         // Atualizar o existente com novos valores
-        const { data: atualizado, error } = await supabase
-          .from('banco_horas_ajustes_retroativos' as any)
+        const { data: atualizado, error } = await db
+          .from('banco_horas_ajustes_retroativos')
           .update({
             valor_anterior: deteccao.valorAnterior,
             valor_novo: deteccao.valorNovo,
@@ -486,8 +492,8 @@ export class BancoHorasQuarentenaService {
       }
 
       // Criar novo ajuste
-      const { data: novoAjuste, error } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: novoAjuste, error } = await db
+        .from('banco_horas_ajustes_retroativos')
         .insert({
           empresa_id: empresaId,
           fechamento_id: fechamentoId,
@@ -534,8 +540,8 @@ export class BancoHorasQuarentenaService {
       console.log('✅ Aprovando ajuste retroativo:', input);
 
       // Buscar o ajuste
-      const { data: ajuste, error: ajusteError } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: ajuste, error: ajusteError } = await db
+        .from('banco_horas_ajustes_retroativos')
         .select('*')
         .eq('id', input.ajusteId)
         .single();
@@ -568,8 +574,8 @@ export class BancoHorasQuarentenaService {
       }
 
       // 3. Atualizar status do ajuste
-      const { data: ajusteAtualizado, error: updateError } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: ajusteAtualizado, error: updateError } = await db
+        .from('banco_horas_ajustes_retroativos')
         .update({
           status: 'aprovado',
           analisado_por: user?.id || null,
@@ -603,8 +609,8 @@ export class BancoHorasQuarentenaService {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data: ajusteAtualizado, error } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: ajusteAtualizado, error } = await db
+        .from('banco_horas_ajustes_retroativos')
         .update({
           status: 'descartado',
           analisado_por: user?.id || null,
@@ -620,8 +626,8 @@ export class BancoHorasQuarentenaService {
       }
 
       // Atualizar snapshot para incluir os apontamentos descartados (evita re-detecção)
-      const { data: ajusteCompleto } = await supabase
-        .from('banco_horas_ajustes_retroativos' as any)
+      const { data: ajusteCompleto } = await db
+        .from('banco_horas_ajustes_retroativos')
         .select('*')
         .eq('id', input.ajusteId)
         .single();
@@ -646,8 +652,8 @@ export class BancoHorasQuarentenaService {
    * Lista ajustes retroativos pendentes (para a tela de aprovação)
    */
   async listarPendentes(empresaId?: string): Promise<AjusteRetroativo[]> {
-    let query = supabase
-      .from('banco_horas_ajustes_retroativos' as any)
+    let query = db
+      .from('banco_horas_ajustes_retroativos')
       .select('*')
       .eq('status', 'pendente')
       .order('created_at', { ascending: false });
@@ -675,8 +681,8 @@ export class BancoHorasQuarentenaService {
     mesReferencia?: number;
     anoReferencia?: number;
   }): Promise<AjusteRetroativo[]> {
-    let query = supabase
-      .from('banco_horas_ajustes_retroativos' as any)
+    let query = db
+      .from('banco_horas_ajustes_retroativos')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -707,8 +713,8 @@ export class BancoHorasQuarentenaService {
    * Conta ajustes pendentes (para badge de notificação)
    */
   async contarPendentes(): Promise<number> {
-    const { count, error } = await supabase
-      .from('banco_horas_ajustes_retroativos' as any)
+    const { count, error } = await db
+      .from('banco_horas_ajustes_retroativos')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pendente');
 
@@ -726,8 +732,8 @@ export class BancoHorasQuarentenaService {
    */
   private async atualizarSnapshotAposAprovacao(ajuste: any): Promise<void> {
     try {
-      const { data: fechamento } = await supabase
-        .from('banco_horas_fechamentos' as any)
+      const { data: fechamento } = await db
+        .from('banco_horas_fechamentos')
         .select('*')
         .eq('id', ajuste.fechamento_id)
         .single();
@@ -756,8 +762,8 @@ export class BancoHorasQuarentenaService {
       }
 
       // Atualizar o fechamento com os novos IDs (sem alterar consumo)
-      await supabase
-        .from('banco_horas_fechamentos' as any)
+      await db
+        .from('banco_horas_fechamentos')
         .update({
           apontamentos_ids: apontamentosIds,
           tickets_ids: ticketsIds
@@ -776,8 +782,8 @@ export class BancoHorasQuarentenaService {
    */
   private async incorporarApontamentosNoSnapshot(ajuste: any): Promise<void> {
     try {
-      const { data: fechamento } = await supabase
-        .from('banco_horas_fechamentos' as any)
+      const { data: fechamento } = await db
+        .from('banco_horas_fechamentos')
         .select('*')
         .eq('id', ajuste.fechamento_id)
         .single();
@@ -811,8 +817,8 @@ export class BancoHorasQuarentenaService {
       }
 
       // Atualizar fechamento com IDs E novo valor de consumo
-      await supabase
-        .from('banco_horas_fechamentos' as any)
+      await db
+        .from('banco_horas_fechamentos')
         .update({
           apontamentos_ids: apontamentosIds,
           tickets_ids: ticketsIds,
@@ -864,8 +870,8 @@ export class BancoHorasQuarentenaService {
         'Parametrização / Funcionalidade', 'Validação de Arquivo'
       ];
 
-      const { data: apontamentos } = await supabase
-        .from('apontamentos_aranda' as any)
+      const { data: apontamentos } = await db
+        .from('apontamentos_aranda')
         .select('id_externo, data_atividade, data_sistema')
         .eq('ativi_interna', 'Não')
         .neq('item_configuracao', '000000 - PROJETOS APL')
@@ -874,7 +880,7 @@ export class BancoHorasQuarentenaService {
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
         .ilike('org_us_final', `%${empresa.nome_completo}%`)
-        .limit(10000) as any;
+        .limit(10000);
 
       if (!apontamentos) return [];
 
@@ -917,14 +923,14 @@ export class BancoHorasQuarentenaService {
       const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
       const nomeParaBusca = empresa.nome_abreviado || empresa.nome_completo;
 
-      const { data: tickets } = await supabase
-        .from('apontamentos_tickets_aranda' as any)
+      const { data: tickets } = await db
+        .from('apontamentos_tickets_aranda')
         .select('nro_solicitacao')
         .gte('data_fechamento', dataInicio.toISOString())
         .lte('data_fechamento', dataFim.toISOString())
         .eq('status', 'Closed')
         .ilike('organizacao', `%${nomeParaBusca}%`)
-        .limit(5000) as any;
+        .limit(5000);
 
       if (!tickets) return [];
 
@@ -945,8 +951,8 @@ export class BancoHorasQuarentenaService {
       console.log('🔍 Executando detecção para todos os fechamentos...');
 
       // Buscar todos os fechamentos existentes
-      const { data: fechamentos, error } = await supabase
-        .from('banco_horas_fechamentos' as any)
+      const { data: fechamentos, error } = await db
+        .from('banco_horas_fechamentos')
         .select('empresa_id, mes, ano')
         .order('created_at', { ascending: false });
 

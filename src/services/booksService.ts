@@ -97,7 +97,8 @@ class BooksService {
       if (filtros.busca) {
         const busca = filtros.busca.toLowerCase();
         books = books.filter(b => 
-          b.empresa_nome.toLowerCase().includes(busca)
+          b.empresa_nome.toLowerCase().includes(busca) ||
+          (b.empresa_nome_abreviado && b.empresa_nome_abreviado.toLowerCase().includes(busca))
         );
       }
 
@@ -437,7 +438,9 @@ class BooksService {
             .eq('empresa_id', empresaId)
             .eq('mes', config.mes)
             .eq('ano', config.ano)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
           let bookId: string;
 
