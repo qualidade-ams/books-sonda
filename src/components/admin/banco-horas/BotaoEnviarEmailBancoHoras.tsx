@@ -78,6 +78,13 @@ const MESES_PT = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+/** Assinatura padrão do email - imagem única */
+const ASSINATURA_HTML = `
+<div style="margin-top:24px;">
+  <img src="https://books-sonda.vercel.app/images/qualidade/assinatura.png" alt="Sonda - Qualidade - Soluções de Negócio" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+</div>
+`;
+
 /** Retorna saudação baseada no horário */
 function getSaudacao(): string {
   const hora = new Date().getHours();
@@ -418,6 +425,8 @@ function gerarHtmlSaldoParcial(
       <p style="font-size:12pt;margin-top:8px;">
         Atenciosamente
       </p>
+
+      ${ASSINATURA_HTML}
     </div>
   `;
 }
@@ -476,6 +485,8 @@ function gerarHtmlSaldoMes(
       <p style="font-size:12pt;margin-top:8px;">
         Atenciosamente,
       </p>
+
+      ${ASSINATURA_HTML}
     </div>
   `;
 }
@@ -659,11 +670,13 @@ export function BotaoEnviarEmailBancoHoras({
           <strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.
         </p>
         <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+        ${ASSINATURA_HTML}
       `;
     } else {
       encerramento = `
         <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
         <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+        ${ASSINATURA_HTML}
       `;
     }
 
@@ -713,8 +726,10 @@ export function BotaoEnviarEmailBancoHoras({
     }
     
     if (tipo === 'saldo_parcial') {
-      const dia = String(hoje.getDate()).padStart(2, '0');
-      const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+      const dia = String(ontem.getDate()).padStart(2, '0');
+      const mesAtual = String(ontem.getMonth() + 1).padStart(2, '0');
       setAssuntoEmail(`${empresaNome} - Saldo Parcial ${dia}.${mesAtual}`);
       const texto = getTextoPadraoParcial();
       setTextoIntrodutorio(texto);
@@ -898,11 +913,13 @@ export function BotaoEnviarEmailBancoHoras({
               <strong>Atenção:</strong> O prazo para validação do Banco é 20 dias corridos a partir do recebimento deste e-mail.
             </p>
             <p style="font-size:12pt;margin-top:12px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+            ${ASSINATURA_HTML}
           `;
         } else {
           encerramento = `
             <p style="font-size:12pt;margin-top:24px;font-family:Calibri,sans-serif;color:#1F497D;">Ficamos à disposição em caso de dúvidas.</p>
             <p style="font-size:12pt;margin-top:8px;font-family:Calibri,sans-serif;color:#1F497D;">Atenciosamente</p>
+            ${ASSINATURA_HTML}
           `;
         }
         
