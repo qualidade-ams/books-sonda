@@ -51,7 +51,7 @@ import type { BookListItem, BooksGeracaoLoteResult, BookData } from '@/types/boo
 import { BookViewer, BookVersoesHistorico } from '@/components/admin/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
-import { emailService } from '@/services/emailService';
+import { emailService, RATE_LIMIT_CONFIG } from '@/services/emailService';
 import { booksVersioningService } from '@/services/booksVersioningService';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -354,7 +354,9 @@ export default function GeracaoBooks() {
     let enviados = 0;
     let erros = 0;
 
-    const DELAY_ENTRE_ENVIOS_MS = 3000; // 3 segundos entre cada ciclo completo
+    // ✅ Rate limiting adaptativo
+    let delayAtual = RATE_LIMIT_CONFIG.DELAY_ENTRE_ENVIOS_MS;
+    const MAX_RETRIES_POR_EMPRESA = 3; // Tentativas extras no nível do loop (além do retry interno)
 
     try {
       for (let i = 0; i < empresaIds.length; i++) {
@@ -419,40 +421,67 @@ export default function GeracaoBooks() {
             throw new Error('Erro ao gerar URL pública do PDF');
           }
 
-          // 5. Enviar email
-          const emailResult = await emailService.sendEmail({
-            to: ['willian.faria@sonda.com'],
-            subject: assunto,
-            html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
-            anexos: {
-              totalArquivos: 1,
-              tamanhoTotal: pdfBlob.size,
-              arquivos: [{
-                url: publicUrlData.publicUrl,
-                nome: nomeArquivo,
-                tipo: 'application/pdf',
-                tamanho: pdfBlob.size,
-                token: ''
-              }]
+          // 5. Enviar email com retry no nível do loop para 429
+          let emailEnviado = false;
+          let tentativaLoop = 0;
+
+          while (!emailEnviado && tentativaLoop < MAX_RETRIES_POR_EMPRESA) {
+            const emailResult = await emailService.sendEmail({
+              to: ['willian.faria@sonda.com'],
+              subject: assunto,
+              html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
+              anexos: {
+                totalArquivos: 1,
+                tamanhoTotal: pdfBlob.size,
+                arquivos: [{
+                  url: publicUrlData.publicUrl,
+                  nome: nomeArquivo,
+                  tipo: 'application/pdf',
+                  tamanho: pdfBlob.size,
+                  token: ''
+                }]
+              }
+            });
+
+            if (emailResult.success) {
+              emailEnviado = true;
+              enviados++;
+              // Reduzir delay gradualmente se estiver funcionando bem
+              if (delayAtual > RATE_LIMIT_CONFIG.DELAY_ENTRE_ENVIOS_MS) {
+                delayAtual = Math.max(RATE_LIMIT_CONFIG.DELAY_ENTRE_ENVIOS_MS, delayAtual * 0.7);
+              }
+              console.log(`✅ [${i + 1}/${total}] Ciclo completo OK: ${nomeAbreviado}`);
+
+              // 6. Registrar envio no versionamento
+              await booksVersioningService.registrarEnvio(
+                bookGerado.book_id!,
+                ['willian.faria@sonda.com']
+              );
+            } else if (emailResult.retryAfter) {
+              // ✅ Rate limit: pausa longa para a fila do Power Automate esvaziar
+              tentativaLoop++;
+              const pausaLonga = RATE_LIMIT_CONFIG.DELAY_APOS_429_MS * tentativaLoop;
+              console.warn(
+                `⚠️ [${i + 1}/${total}] Rate limit (429) para ${nomeAbreviado}. ` +
+                `Tentativa ${tentativaLoop}/${MAX_RETRIES_POR_EMPRESA}. ` +
+                `Pausando ${(pausaLonga / 1000).toFixed(0)}s para fila esvaziar...`
+              );
+              setProgressoEnvio({ atual: i + 1, total, empresa: `${nomeAbreviado} (aguardando fila - ${(pausaLonga / 1000).toFixed(0)}s)` });
+              await new Promise(resolve => setTimeout(resolve, pausaLonga));
+              // Aumentar delay entre próximos envios
+              delayAtual = Math.min(delayAtual * 1.5, RATE_LIMIT_CONFIG.BACKOFF_MAX_MS);
+            } else {
+              // Erro não-429, não tentar novamente
+              break;
             }
-          });
+          }
 
-          if (emailResult.success) {
-            enviados++;
-            console.log(`✅ [${i + 1}/${total}] Ciclo completo OK: ${nomeAbreviado}`);
-
-            // 6. Registrar envio no versionamento
-            await booksVersioningService.registrarEnvio(
-              bookGerado.book_id!,
-              ['willian.faria@sonda.com']
-            );
-
-          } else {
+          if (!emailEnviado) {
             erros++;
-            console.error(`❌ [${i + 1}/${total}] Falha no envio: ${nomeAbreviado}`, emailResult.error);
+            console.error(`❌ [${i + 1}/${total}] Falha definitiva no envio: ${nomeAbreviado}`);
             toast({
               title: 'Erro ao enviar email',
-              description: `Falha ao enviar book de ${nomeAbreviado}: ${emailResult.error}`,
+              description: `Falha ao enviar book de ${nomeAbreviado} após ${tentativaLoop} tentativas.`,
               variant: 'destructive',
             });
           }
@@ -466,10 +495,10 @@ export default function GeracaoBooks() {
           });
         }
 
-        // Delay entre ciclos para evitar rate limiting (429) - não aplica no último
+        // ✅ Delay adaptativo entre ciclos para evitar rate limiting (429)
         if (i < empresaIds.length - 1) {
-          console.log(`⏳ Aguardando ${DELAY_ENTRE_ENVIOS_MS / 1000}s antes do próximo...`);
-          await new Promise(resolve => setTimeout(resolve, DELAY_ENTRE_ENVIOS_MS));
+          console.log(`⏳ Aguardando ${(delayAtual / 1000).toFixed(1)}s antes do próximo...`);
+          await new Promise(resolve => setTimeout(resolve, delayAtual));
         }
       }
     } finally {

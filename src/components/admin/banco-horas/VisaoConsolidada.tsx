@@ -60,8 +60,10 @@ import { getCobrancaIcon, getBadgeClasses } from '@/utils/requerimentosColors';
 import RequerimentoViewModal from '@/components/admin/requerimentos/RequerimentoViewModal';
 import { BotaoReajusteHoras } from './BotaoReajusteHoras';
 import { BotaoForcarRecalculo } from './BotaoForcarRecalculo';
+import { BotaoEnviarEmailBancoHoras } from './BotaoEnviarEmailBancoHoras';
 import { SecaoObservacoes } from './SecaoObservacoes';
 import { useBancoHorasReajustes } from '@/hooks/useBancoHorasReajustes';
+import { useBancoHorasObservacoes } from '@/hooks/useBancoHorasObservacoes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -302,6 +304,45 @@ export function VisaoConsolidada({
     taxasEspecificas
   });
   
+  // Calcular total de horas/tickets dos requerimentos do período
+  const totalRequerimentosPeriodo = useMemo(() => {
+    let totalHorasDecimal = 0;
+    let totalTickets = 0;
+    
+    requerimentos.forEach(req => {
+      // Somar horas funcional
+      if (req.horas_funcional) {
+        const horas = typeof req.horas_funcional === 'string' 
+          ? converterParaHorasDecimal(req.horas_funcional)
+          : req.horas_funcional;
+        totalHorasDecimal += horas;
+      }
+      
+      // Somar horas técnico
+      if (req.horas_tecnico) {
+        const horas = typeof req.horas_tecnico === 'string'
+          ? converterParaHorasDecimal(req.horas_tecnico)
+          : req.horas_tecnico;
+        totalHorasDecimal += horas;
+      }
+      
+      // Somar tickets
+      if (req.quantidade_tickets) {
+        totalTickets += req.quantidade_tickets;
+      }
+    });
+    
+    // Converter total de horas decimais para HH:MM
+    const horas = Math.floor(totalHorasDecimal);
+    const minutos = Math.round((totalHorasDecimal % 1) * 60);
+    const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+    
+    return {
+      horas: horasFormatadas,
+      tickets: totalTickets
+    };
+  }, [requerimentos]);
+
   // Calcular total de horas/tickets dos requerimentos em desenvolvimento
   const totalRequerimentosEmDesenvolvimento = useMemo(() => {
     let totalHorasDecimal = 0;
@@ -349,6 +390,9 @@ export function VisaoConsolidada({
   
   // Hook de reajustes
   const { criarReajuste, isCreating } = useBancoHorasReajustes();
+  
+  // Hook de observações (para email)
+  const { observacoesUnificadas } = useBancoHorasObservacoes(calculoPrincipal?.empresa_id);
   
   // Query client para invalidar cache
   const queryClient = useQueryClient();
@@ -689,6 +733,31 @@ export function VisaoConsolidada({
               />
             )}
             
+            {/* Botão Enviar Email Banco de Horas */}
+            <BotaoEnviarEmailBancoHoras
+              calculos={calculos}
+              empresaId={calculoPrincipal?.empresa_id}
+              empresaNome={empresaAtual?.nome_abreviado || empresaAtual?.nome_completo || 'Cliente'}
+              tipoCobranca={tipoCobranca}
+              periodoApuracao={periodoApuracao}
+              mesAno={mesAno}
+              percentualRepasse={percentualRepasseMensal}
+              nomePeriodo={nomePeriodoAtual}
+              taxaHoraExcedente={taxaHoraExibir || 0}
+              horasExcedentes={
+                calculoPrincipal?.excedentes_horas && calculoPrincipal.excedentes_horas !== '00:00' && calculoPrincipal.excedentes_horas !== '00:00:00'
+                  ? calculoPrincipal.excedentes_horas
+                  : calculoFimPeriodo?.saldo_horas && calculoFimPeriodo.saldo_horas.startsWith('-')
+                    ? calculoFimPeriodo.saldo_horas.replace('-', '')
+                    : '00:00'
+              }
+              valorExcedentes={calculoFimPeriodo?.valor_a_faturar || 0}
+              requerimentos={requerimentos}
+              requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento}
+              observacoes={observacoesUnificadas.map(obs => ({ texto: obs.observacao, tipo: obs.tipo, tipo_ajuste: obs.tipo_ajuste, valor_horas: obs.valor_horas, valor_tickets: obs.valor_tickets, mes: obs.mes, ano: obs.ano, usuario_nome: obs.usuario_nome, created_at: obs.created_at }))}
+              disabled={disabled}
+            />
+
             <Button
               variant="outline"
               size="sm"
@@ -932,7 +1001,14 @@ export function VisaoConsolidada({
 
               {/* Requerimentos */}
               <TableRow>
-                <TableCell className="font-medium text-center">{labels.requerimentos}</TableCell>
+                <TableCell className="font-medium text-center">
+                  <span className="inline-flex items-center gap-0.5">
+                    {labels.requerimentos}
+                    {requerimentos && requerimentos.length > 0 && (
+                      <span className="text-blue-600 text-xs">*</span>
+                    )}
+                  </span>
+                </TableCell>
                 {calculos.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.requerimentos_horas, calculo.requerimentos_tickets, tipoCobranca)}
@@ -1158,9 +1234,27 @@ export function VisaoConsolidada({
           <div className="mt-6">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5" />
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-1">
                 {isEnglish ? 'Period Requirements' : 'Requerimentos do Período'}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-blue-600 text-sm cursor-help">*</span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm bg-blue-50 border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        Os valores abaixo estão sendo considerados na linha <strong>Requerimentos</strong> da tabela acima, em seus respectivos meses.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </h4>
+              <Badge className="bg-blue-100 text-blue-800 text-xs font-semibold">
+                {tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets'
+                  ? `${totalRequerimentosPeriodo.tickets} tickets`
+                  : totalRequerimentosPeriodo.horas
+                }
+              </Badge>
             </div>
 
             <div className="w-full overflow-x-auto">
@@ -1250,11 +1344,11 @@ export function VisaoConsolidada({
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR') : '-'}
+                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR') : '-'}
+                          {req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                         </TableCell>
                         
                         <TableCell className="text-center py-3">
@@ -1301,14 +1395,14 @@ export function VisaoConsolidada({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white cursor-help flex items-center gap-2">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white cursor-help inline-flex items-center gap-1.5">
                       {isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento'}
-                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full border-2 border-orange-500 text-orange-500 text-[10px] font-bold leading-none">!</span>
                     </h4>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm bg-orange-50 border-orange-200">
                     <p className="text-sm text-orange-800">
-                      <strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para faturamento. 
+                      <strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para solicitação de faturamento. 
                       As horas/tickets abaixo ainda serão descontadas do banco quando os requerimentos forem enviados e aprovados.
                     </p>
                   </TooltipContent>
@@ -1354,11 +1448,11 @@ export function VisaoConsolidada({
                         <TableRow key={req.id} className="bg-orange-50/30">
                           <TableCell className="font-medium py-2 text-center">
                             <div className="flex flex-col items-center gap-1 sm:gap-2">
-                              <div className="flex items-center gap-1 sm:gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
                                 <span className="text-sm sm:text-base lg:text-lg flex-shrink-0">
                                   {getCobrancaIcon(req.tipo_cobranca || 'Banco de Horas')}
                                 </span>
-                                <span className="truncate text-xs sm:text-sm lg:text-base font-medium">
+                                <span className="text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap">
                                   {req.chamado}
                                 </span>
                               </div>
@@ -1409,9 +1503,15 @@ export function VisaoConsolidada({
                           </TableCell>
                           
                           <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
-                            <Badge className="bg-gray-100 text-gray-600 text-xs">
-                              Não enviado
-                            </Badge>
+                            {req.data_envio && req.data_envio.trim() !== '' ? (
+                              <span className="text-gray-500">
+                                {new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                              </span>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                Não enviado
+                              </Badge>
+                            )}
                           </TableCell>
                           
                           <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">
@@ -1559,7 +1659,7 @@ export function VisaoConsolidada({
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm text-gray-500 py-3">
-                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR') : '-'}
+                          {req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                         </TableCell>
                         
                         <TableCell className="text-center text-[10px] sm:text-xs lg:text-sm py-3">

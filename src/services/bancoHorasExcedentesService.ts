@@ -479,7 +479,9 @@ export async function buscarTaxaMes(
         return taxaHoraAdicional;
       } else if (tipoCalculoAdicional === 'normal') {
         // Fallback: calcular se não tiver valor cadastrado
-        taxaHoraAdicional = valorFuncional.valor_base * 1.15; // +15%
+        // CORREÇÃO: Usar soma em vez de multiplicação direta para evitar imprecisão de ponto flutuante
+        // Ex: 194.50 * 1.15 = 223.67499999999998 (errado), mas 194.50 + (194.50 * 0.15) = 223.675 (correto)
+        taxaHoraAdicional = Math.round((valorFuncional.valor_base + (valorFuncional.valor_base * 0.15)) * 100) / 100;
         console.log('⚠️ [buscarTaxaMes] Taxa de Hora Adicional calculada (fallback - normal):', {
           valorBase: valorFuncional.valor_base,
           percentual: '15%',
@@ -492,13 +494,14 @@ export async function buscarTaxaMes(
         // IMPORTANTE: Usar nomes EXATOS do banco de dados
         const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
         
-        // Para cada função, usar valor_adicional se existir e > 0, senão calcular valor_base * 1.15
+        // Para cada função, usar valor_adicional se existir e > 0, senão calcular valor_base + 15%
+        // CORREÇÃO: Usar soma para evitar imprecisão de ponto flutuante
         const valoresPrincipais = valores
           .filter(v => funcoesPrincipais.includes(v.funcao))
           .map(v => {
             const taxaExcedente = (v.valor_adicional && v.valor_adicional > 0) 
               ? v.valor_adicional 
-              : v.valor_base * 1.15;
+              : Math.round((v.valor_base + (v.valor_base * 0.15)) * 100) / 100;
             
             return {
               funcao: v.funcao,
