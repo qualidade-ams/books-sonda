@@ -152,7 +152,7 @@ async function calcularConsumoSegmentadoPorMes(
       'Nota Publicada',
       'Nota Publicada (Banco=S |SLA=S)',
       'Parametrização / Cadastro',
-      'Parametrização / Cadastro (Banco=S |SLA=S)',
+      'Parametrização / Cadastro (Banco=S |SLA=N)',
       'Parametrização / Funcionalidade',
       'Parametrização / Funcionalidade (Banco=S |SLA=S)',
       'Validação de Arquivo',
