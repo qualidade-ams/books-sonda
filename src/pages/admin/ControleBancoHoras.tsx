@@ -351,36 +351,49 @@ export default function ControleBancoHoras() {
   
   // ✅ NOVO: Filtrar requerimentos EM DESENVOLVIMENTO (não enviados para faturamento)
   // Estes requerimentos ainda estão sendo trabalhados
-  // REGRA: status = 'lancado' E data_envio >= primeiro dia do primeiro mês do trimestre
+  // REGRA: status = 'lancado' E data_envio dentro do período
   const requerimentosEmDesenvolvimento = useMemo(() => {
     if (!requerimentosTodos || mesesDoPeriodo.length === 0) return [];
     
-    // Calcular primeiro dia do primeiro mês do trimestre
+    // Calcular meses do período como strings para comparação simples
     const primeiroMes = mesesDoPeriodo[0];
-    const dataInicioPeriodo = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
+    const ultimoMes = mesesDoPeriodo[mesesDoPeriodo.length - 1];
+
+    // Debug: mostrar todos os requerimentos com status lancado
+    const todosLancados = requerimentosTodos.filter(req => req.status === 'lancado');
+    console.log('🔍 [DEBUG] TODOS os requerimentos com status lancado:', {
+      total: todosLancados.length,
+      detalhes: todosLancados.map(r => ({
+        chamado: r.chamado,
+        status: r.status,
+        tipo_cobranca: r.tipo_cobranca,
+        data_envio: r.data_envio,
+        enviado_faturamento: r.enviado_faturamento,
+        mes_cobranca: r.mes_cobranca
+      }))
+    });
     
     const emDesenvolvimento = requerimentosTodos.filter(req => {
-      // Filtro básico: status lancado e tipo Banco de Horas
-      if (req.status !== 'lancado' || req.tipo_cobranca !== 'Banco de Horas') {
+      // Filtro básico: status lancado e não enviado para faturamento
+      if (req.status !== 'lancado' || req.enviado_faturamento === true) {
         return false;
       }
       
-      // ✅ CRÍTICO: Filtrar por data_envio >= início do período
-      // Requerimento só aparece a partir do mês da data_envio
+      // Filtrar por data_envio dentro do período (comparação por mês/ano para evitar problemas de timezone)
       if (req.data_envio) {
-        const dataEnvio = new Date(req.data_envio);
-        // Requerimento deve ter data_envio <= último dia do último mês do trimestre
-        // E data_envio >= primeiro dia do primeiro mês do trimestre
-        const ultimoMes = mesesDoPeriodo[mesesDoPeriodo.length - 1];
-        const dataFimPeriodo = new Date(ultimoMes.ano, ultimoMes.mes, 0, 23, 59, 59, 999);
+        // Extrair mês e ano da data_envio sem criar objeto Date (evita timezone)
+        const partes = req.data_envio.split('T')[0].split('-');
+        const anoEnvio = parseInt(partes[0]);
+        const mesEnvio = parseInt(partes[1]);
         
-        // Se data_envio está DEPOIS do período, não mostrar
-        if (dataEnvio > dataFimPeriodo) {
-          return false;
-        }
+        // Verificar se o mês/ano do envio está dentro do período
+        const dentroInicio = (anoEnvio > primeiroMes.ano) || 
+          (anoEnvio === primeiroMes.ano && mesEnvio >= primeiroMes.mes);
+        const dentroFim = (anoEnvio < ultimoMes.ano) || 
+          (anoEnvio === ultimoMes.ano && mesEnvio <= ultimoMes.mes);
         
-        // Se data_envio está ANTES do período, não mostrar
-        if (dataEnvio < dataInicioPeriodo) {
+        if (!dentroInicio || !dentroFim) {
+          console.log(`⚠️ Requerimento ${req.chamado} EXCLUÍDO por data: data_envio=${req.data_envio}, mesEnvio=${mesEnvio}/${anoEnvio}, período=${primeiroMes.mes}/${primeiroMes.ano} a ${ultimoMes.mes}/${ultimoMes.ano}`);
           return false;
         }
       }
@@ -392,7 +405,8 @@ export default function ControleBancoHoras() {
       total: requerimentosTodos.length,
       emDesenvolvimento: emDesenvolvimento.length,
       periodo: {
-        inicio: dataInicioPeriodo.toISOString().split('T')[0],
+        inicio: `${primeiroMes.mes}/${primeiroMes.ano}`,
+        fim: `${ultimoMes.mes}/${ultimoMes.ano}`,
         meses: mesesDoPeriodo.map(m => `${m.mes}/${m.ano}`)
       },
       detalhes: emDesenvolvimento.map(r => ({
