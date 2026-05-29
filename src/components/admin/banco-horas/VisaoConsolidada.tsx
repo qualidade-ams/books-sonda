@@ -754,7 +754,12 @@ export function VisaoConsolidada({
               valorExcedentes={calculoFimPeriodo?.valor_a_faturar || 0}
               requerimentos={requerimentos}
               requerimentosEmDesenvolvimento={requerimentosEmDesenvolvimento}
-              observacoes={observacoesUnificadas.map(obs => ({ texto: obs.observacao, tipo: obs.tipo, tipo_ajuste: obs.tipo_ajuste, valor_horas: obs.valor_horas, valor_tickets: obs.valor_tickets, mes: obs.mes, ano: obs.ano, usuario_nome: obs.usuario_nome, created_at: obs.created_at }))}
+              observacoes={observacoesUnificadas
+                .filter(obs => {
+                  if (!mesesDoPeriodo || mesesDoPeriodo.length === 0) return true;
+                  return mesesDoPeriodo.some(m => m.mes === obs.mes && m.ano === obs.ano);
+                })
+                .map(obs => ({ texto: obs.observacao, tipo: obs.tipo, tipo_ajuste: obs.tipo_ajuste, valor_horas: obs.valor_horas, valor_tickets: obs.valor_tickets, mes: obs.mes, ano: obs.ano, usuario_nome: obs.usuario_nome, created_at: obs.created_at }))}
               disabled={disabled}
             />
 
