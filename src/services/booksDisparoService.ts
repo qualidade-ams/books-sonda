@@ -21,11 +21,16 @@ import type {
   AnexosSummaryWebhook,
   DisparoComAnexos
 } from '@/types/clientBooks';
-import { emailService } from './emailService';
+import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
 
 class BooksDisparoService {
+  /** Utilitário de sleep para rate limiting */
+  private sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   /**
    * Dispara books mensais para todas as empresas ativas
    */

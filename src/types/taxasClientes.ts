@@ -233,11 +233,11 @@ export const calcularValores = (
   return {
     funcao,
     valor_base: valorBaseAjustado, // Retorna valor base sem alteração (10% já aplicado nos valores locais)
-    valor_17h30_19h30,
-    valor_apos_19h30,
-    valor_fim_semana,
-    valor_adicional,
-    valor_standby
+    valor_17h30_19h30: Math.round(valor_17h30_19h30 * 100) / 100,
+    valor_apos_19h30: Math.round(valor_apos_19h30 * 100) / 100,
+    valor_fim_semana: Math.round(valor_fim_semana * 100) / 100,
+    valor_adicional: Math.round(valor_adicional * 100) / 100,
+    valor_standby: Math.round(valor_standby * 100) / 100
   };
 };
 

@@ -120,21 +120,28 @@ async function calcularConsumoSegmentadoPorMes(
     const codigosResolucaoValidos = [
       'Alocação - T&M',
       'Alocação - T&M (Banco=S |SLA=N)',
+      'Alocação - T&M (Banco=S| SLA=N)',
       'AMS SAP',
       'AMS SAP (Banco=S |SLA=S)',
+      'AMS SAP (Banco=S| SLA=S)',
       'Aplicação de Nota / Licença - Contratados',
       'Aplicação de Nota / Licença (Banco=S |SLA=N)',
       'Consultoria',
       'Consultoria (Banco=S |SLA=S)',
+      'Consultoria (Banco=S| SLA=S)',
       'Consultoria - Banco de Dados',
       'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+      'Consultoria - Banco de Dados (Banco=S| SLA=S)',
       'Consultoria - Nota Publicada',
       'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+      'Consultoria - Nota Publicada (Banco=S| SLA=S)',
       'Consultoria - Solução Paliativa',
       'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+      'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
       'Dúvida',
-      'Dúvida (Banco=S |SLA=S)',
+      'Dúvida (Banco=S |SLA=N)',
       'Erro de classificação na abertura',
+      'Erro de classificação na abertura (Banco=S| SLA=N)',
       'Erro de classificação na abertura (Banco=S |SLA=N)',
       'Erro de programa especifico (SEM SLA)',
       'Erro de programa especifico (SEM SLA) (Banco=S |SLA=N)',
@@ -150,6 +157,7 @@ async function calcularConsumoSegmentadoPorMes(
       'Parametrização / Funcionalidade (Banco=S |SLA=S)',
       'Validação de Arquivo',
       'Validação de Arquivo (Banco=S |SLA=N)',
+      'Validação de Arquivo (Banco=S| SLA=N)'
     ];
     
     console.log('📅 Período de busca:', {

@@ -197,7 +197,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           });
         } else if (taxaMaisRecente.tipo_calculo_adicional === 'normal') {
           // Fallback: calcular +15%
-          taxaHoraAdicional = valorFuncional.valor_base * 1.15;
+          // CORREÇÃO: Usar soma para evitar imprecisão de ponto flutuante
+          taxaHoraAdicional = Math.round((valorFuncional.valor_base + (valorFuncional.valor_base * 0.15)) * 100) / 100;
           console.log('⚠️ [buscarTaxaExcedente] Taxa calculada (fallback - normal):', {
             valorBase: valorFuncional.valor_base,
             percentual: '15%',
@@ -212,7 +213,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             .map(v => {
               const taxaExcedente = (v.valor_adicional && v.valor_adicional > 0) 
                 ? v.valor_adicional 
-                : v.valor_base * 1.15;
+                : Math.round((v.valor_base + (v.valor_base * 0.15)) * 100) / 100;
               
               return {
                 funcao: v.funcao,

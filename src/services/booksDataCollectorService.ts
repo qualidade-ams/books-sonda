@@ -1038,6 +1038,7 @@ class BooksDataCollectorService {
     const codResolucaoElegiveis = [
       'Consultoria',
       'Consultoria (Banco=S |SLA=S)',
+      'Consultoria (Banco=S| SLA=S)',
       'Consultoria – Solução Paliativa',
       'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
       'Consultoria – Banco de Dados',
@@ -1365,6 +1366,7 @@ class BooksDataCollectorService {
           'Aplicação de Nota / Licença (Banco=S |SLA=N)',
           'Consultoria',
           'Consultoria (Banco=S |SLA=S)',
+          'Consultoria (Banco=S| SLA=S)',
           'Consultoria - Banco de Dados',
           'Consultoria - Banco de Dados (Banco=S |SLA=S)',
           'Consultoria - Nota Publicada',
@@ -1372,11 +1374,12 @@ class BooksDataCollectorService {
           'Consultoria - Solução Paliativa',
           'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
           'Dúvida',
-          'Dúvida (Banco=S |SLA=S)',
+          'Dúvida (Banco=S |SLA=N)',
           'Erro de classificação na abertura',
           'Erro de classificação na abertura (Banco=S |SLA=N)',
-          'Erro de programa específico (SEM SLA)',
-          'Erro de programa específico (SEM SLA) (Banco=S |SLA=N)',
+          'Erro de classificação na abertura (Banco=S| SLA=N)',
+          'Erro de programa especifico (SEM SLA)',
+          'Erro de programa especifico (SEM SLA) (Banco=S |SLA=N)',
           'Levantamento de Versão / Orçamento',
           'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
           'Monitoramento DBA',
@@ -1867,13 +1870,14 @@ class BooksDataCollectorService {
       if (valorFuncional.valor_adicional && valorFuncional.valor_adicional > 0) {
         taxaHoraAdicional = valorFuncional.valor_adicional;
       } else if (taxaMaisRecente.tipo_calculo_adicional === 'normal') {
-        taxaHoraAdicional = valorFuncional.valor_base * 1.15;
+        // CORREÇÃO: Usar soma para evitar imprecisão de ponto flutuante
+        taxaHoraAdicional = Math.round((valorFuncional.valor_base + (valorFuncional.valor_base * 0.15)) * 100) / 100;
       } else {
         // Média das funções principais
         const funcoesPrincipais = ['Funcional', 'Técnico (Instalação / Atualização)', 'ABAP - PL/SQL'];
         const valoresPrincipais = valores
           .filter((v: any) => funcoesPrincipais.includes(v.funcao))
-          .map((v: any) => (v.valor_adicional && v.valor_adicional > 0) ? v.valor_adicional : v.valor_base * 1.15);
+          .map((v: any) => (v.valor_adicional && v.valor_adicional > 0) ? v.valor_adicional : Math.round((v.valor_base + (v.valor_base * 0.15)) * 100) / 100);
 
         if (valoresPrincipais.length === 0) return 0;
         taxaHoraAdicional = valoresPrincipais.reduce((a: number, b: number) => a + b, 0) / valoresPrincipais.length;
@@ -2367,6 +2371,7 @@ class BooksDataCollectorService {
       const codResolucaoElegiveis = [
         'Consultoria',
         'Consultoria (Banco=S |SLA=S)',
+        'Consultoria (Banco=S| SLA=S)',
         'Consultoria – Solução Paliativa',
         'Consultoria – Solução Paliativa (Banco=S |SLA=S)',
         'Consultoria – Banco de Dados',
@@ -2505,24 +2510,31 @@ class BooksDataCollectorService {
           .in('cod_resolucao', [
             'Alocação - T&M',
             'Alocação - T&M (Banco=S |SLA=N)',
+            'Alocação - T&M (Banco=S| SLA=N)',
             'AMS SAP',
             'AMS SAP (Banco=S |SLA=S)',
+            'AMS SAP (Banco=S| SLA=S)',
             'Aplicação de Nota / Licença - Contratados',
             'Aplicação de Nota / Licença (Banco=S |SLA=N)',
             'Consultoria',
             'Consultoria (Banco=S |SLA=S)',
+            'Consultoria (Banco=S| SLA=S)',
             'Consultoria - Banco de Dados',
             'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+            'Consultoria - Banco de Dados (Banco=S| SLA=S)',
             'Consultoria - Nota Publicada',
             'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+            'Consultoria - Nota Publicada (Banco=S| SLA=S)',
             'Consultoria - Solução Paliativa',
             'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+            'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
             'Dúvida',
-            'Dúvida (Banco=S |SLA=S)',
+            'Dúvida (Banco=S |SLA=N)',            
             'Erro de classificação na abertura',
             'Erro de classificação na abertura (Banco=S |SLA=N)',
-            'Erro de programa específico (SEM SLA)',
-            'Erro de programa específico (SEM SLA) (Banco=S |SLA=N)',
+            'Erro de classificação na abertura (Banco=S| SLA=N)',
+            'Erro de programa especifico (SEM SLA)',
+            'Erro de programa especifico (SEM SLA) (Banco=S |SLA=N)',
             'Levantamento de Versão / Orçamento',
             'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
             'Monitoramento DBA',
@@ -2535,6 +2547,7 @@ class BooksDataCollectorService {
             'Parametrização / Funcionalidade (Banco=S |SLA=S)',
             'Validação de Arquivo',
             'Validação de Arquivo (Banco=S |SLA=N)',
+            'Validação de Arquivo (Banco=S| SLA=N)'
           ])
           .gte('data_atividade', dataInicio.toISOString())
           .lt('data_atividade', proximoMesInicio.toISOString());

@@ -28,7 +28,24 @@ export interface EmailResponse {
   success: boolean;
   message?: string;
   error?: string;
+  retryAfter?: number; // Tempo em ms para aguardar antes de tentar novamente (429)
 }
+
+// ✅ Configuração de Rate Limiting para Power Automate
+export const RATE_LIMIT_CONFIG = {
+  /** Delay base entre envios em ms (30 segundos - respeita limite de 11 runs simultâneas do Power Automate) */
+  DELAY_ENTRE_ENVIOS_MS: 30000,
+  /** Máximo de retries por email */
+  MAX_RETRIES: 5,
+  /** Delay inicial para backoff exponencial em ms (60 segundos) */
+  BACKOFF_INICIAL_MS: 60000,
+  /** Multiplicador do backoff exponencial */
+  BACKOFF_MULTIPLIER: 2,
+  /** Delay máximo de backoff em ms (5 minutos) */
+  BACKOFF_MAX_MS: 300000,
+  /** Delay extra após erro 429 em ms (90 segundos) */
+  DELAY_APOS_429_MS: 90000,
+};
 
 import { supabase } from '@/integrations/supabase/client';
 import type { EmailTemplate } from '@/types/approval';
@@ -85,6 +102,124 @@ const logEmail = async (destinatario: string, assunto: string, status: 'enviado'
       }]);
   } catch (error) {
     console.error('Erro ao registrar log de e-mail:', error);
+  }
+};
+
+/**
+ * Utilitário de sleep (aguardar)
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Verifica se o erro é um 429 (Too Many Requests) do Power Automate
+ */
+const is429Error = (error: unknown): boolean => {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+};
+
+/**
+ * Calcula o delay de backoff exponencial
+ */
+const calcularBackoff = (tentativa: number): number => {
+  const delay = RATE_LIMIT_CONFIG.BACKOFF_INICIAL_MS * Math.pow(RATE_LIMIT_CONFIG.BACKOFF_MULTIPLIER, tentativa);
+  // Adicionar jitter (variação aleatória de ±20%) para evitar thundering herd
+  const jitter = delay * 0.2 * (Math.random() * 2 - 1);
+  return Math.min(delay + jitter, RATE_LIMIT_CONFIG.BACKOFF_MAX_MS);
+};
+
+/**
+ * Envia email com retry automático e backoff exponencial para erros 429
+ * @param emailData - Dados do email
+ * @param tentativa - Número da tentativa atual (0-indexed)
+ * @returns Resultado do envio
+ */
+const sendEmailComRetry = async (
+  emailData: EmailData,
+  tentativa: number = 0
+): Promise<EmailResponse> => {
+  try {
+    const result = await emailServiceInternal.sendEmailSingle(emailData);
+    return result;
+  } catch (error) {
+    if (is429Error(error) && tentativa < RATE_LIMIT_CONFIG.MAX_RETRIES) {
+      const backoffDelay = calcularBackoff(tentativa);
+      console.warn(
+        `⚠️ Rate limit (429) - Tentativa ${tentativa + 1}/${RATE_LIMIT_CONFIG.MAX_RETRIES}. ` +
+        `Aguardando ${(backoffDelay / 1000).toFixed(1)}s antes de tentar novamente...`
+      );
+      await sleep(backoffDelay);
+      return sendEmailComRetry(emailData, tentativa + 1);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Serviço interno com a lógica de envio sem retry (usado pelo wrapper com retry)
+ */
+const emailServiceInternal = {
+  async sendEmailSingle(emailData: EmailData): Promise<EmailResponse> {
+    // Buscar URL do webhook configurado
+    const webhookUrl = await getWebhookUrl();
+
+    // Construir payload
+    const payload: any = {
+      nome: emailData.subject,
+      email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
+      email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
+      email_bcc: emailData.bcc ? (Array.isArray(emailData.bcc) ? emailData.bcc : [emailData.bcc]) : [],
+      mensagem: emailData.html
+    };
+
+    if (emailData.attachments && emailData.attachments.length > 0) {
+      payload.attachments = emailData.attachments;
+    }
+
+    if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
+      payload.anexos = {
+        totalArquivos: emailData.anexos.totalArquivos,
+        tamanhoTotal: emailData.anexos.tamanhoTotal,
+        arquivos: emailData.anexos.arquivos.map(arquivo => ({
+          url: arquivo.url,
+          nome: arquivo.nome,
+          tipo: arquivo.tipo,
+          tamanho: arquivo.tamanho,
+          token: arquivo.token
+        }))
+      };
+    } else {
+      payload.anexos = {
+        totalArquivos: 0,
+        tamanhoTotal: 0,
+        arquivos: []
+      };
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      let errorDetails = `${response.status} - ${response.statusText}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          errorDetails += ` | Detalhes: ${errorBody}`;
+        }
+      } catch (parseError) {
+        // Ignorar erro ao ler body
+      }
+      throw new Error(`Erro HTTP: ${errorDetails}`);
+    }
+
+    return { success: true, message: 'E-mail enviado com sucesso via Power Automate' };
   }
 };
 
@@ -204,110 +339,21 @@ export const emailService = {
         anexos: emailData.anexos ? `${emailData.anexos.totalArquivos} arquivo(s)` : 'nenhum'
       });
 
-      // Buscar URL do webhook configurado
-      const webhookUrl = await getWebhookUrl();
+      // ✅ Usar envio com retry automático para erros 429
+      const result = await sendEmailComRetry(emailData);
 
-      // ✅ CONSTRUIR PAYLOAD COMPLETO incluindo anexos
-      const payload: any = {
-        nome: emailData.subject,
-        // ✅ CORREÇÃO: Garantir que email seja sempre array para Power Automate
-        email: Array.isArray(emailData.to) ? emailData.to : [emailData.to],
-        // ✅ CORREÇÃO: Garantir que email_cc seja sempre array (ou array vazio)
-        email_cc: emailData.cc ? (Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc]) : [],
-        // ✅ NOVO: Garantir que email_bcc seja sempre array (ou array vazio)
-        email_bcc: emailData.bcc ? (Array.isArray(emailData.bcc) ? emailData.bcc : [emailData.bcc]) : [],
-        mensagem: emailData.html // Enviar HTML completo
-      };
-
-      // ✅ SUPORTE PARA ANEXOS EM BASE64 (attachments)
-      if (emailData.attachments && emailData.attachments.length > 0) {
-        payload.attachments = emailData.attachments;
-        console.log(`📎 Incluindo ${emailData.attachments.length} anexo(s) em base64`);
-      }
-
-      // ✅ SEMPRE INCLUIR CAMPO ANEXOS (mesmo que vazio) para compatibilidade com Power Automate
-      if (emailData.anexos && emailData.anexos.totalArquivos > 0) {
-        // Anexos disponíveis - incluir dados completos
-        payload.anexos = {
-          totalArquivos: emailData.anexos.totalArquivos,
-          tamanhoTotal: emailData.anexos.tamanhoTotal,
-          arquivos: emailData.anexos.arquivos.map(arquivo => ({
-            url: arquivo.url,
-            nome: arquivo.nome,
-            tipo: arquivo.tipo,
-            tamanho: arquivo.tamanho,
-            token: arquivo.token
-          }))
-        };
-
-        console.log(`📎 Incluindo ${emailData.anexos.totalArquivos} anexo(s) no payload (${(emailData.anexos.tamanhoTotal / 1024 / 1024).toFixed(2)} MB)`);
-        console.log('📋 Payload com anexos:', JSON.stringify(payload, null, 2));
-      } else {
-        // ✅ CORREÇÃO: Sempre enviar estrutura de anexos (vazia) para Power Automate
-        payload.anexos = {
-          totalArquivos: 0,
-          tamanhoTotal: 0,
-          arquivos: []
-        };
-
-        console.log('📧 Enviando e-mail sem anexos (estrutura vazia incluída)');
-        console.log('📋 Payload sem anexos:', JSON.stringify(payload, null, 2));
-      }
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload) // ✅ ENVIAR PAYLOAD COMPLETO
-      });
-
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        // ✅ MELHOR TRATAMENTO DE ERRO: Capturar detalhes da resposta
-        let errorDetails = `${response.status} - ${response.statusText}`;
-
-        try {
-          const errorBody = await response.text();
-          if (errorBody) {
-            console.error('📋 Detalhes do erro do Power Automate:', errorBody);
-            errorDetails += ` | Detalhes: ${errorBody}`;
-          }
-        } catch (parseError) {
-          console.error('Erro ao ler resposta de erro:', parseError);
-        }
-
-        // Log específico para erro 400 com anexos
-        if (response.status === 400 && emailData.anexos) {
-          console.error('❌ Erro 400 com anexos - possível problema no formato do payload');
-          console.error('📊 Estatísticas dos anexos:', {
-            totalArquivos: emailData.anexos.totalArquivos,
-            tamanhoTotal: emailData.anexos.tamanhoTotal,
-            arquivos: emailData.anexos.arquivos.map(a => ({
-              nome: a.nome,
-              tipo: a.tipo,
-              tamanho: a.tamanho,
-              tokenLength: a.token.length
-            }))
-          });
-        }
-
-        throw new Error(`Erro HTTP: ${errorDetails}`);
-      }
       // Registrar log de sucesso
       await logEmail(
         Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
         emailData.subject,
         'enviado'
       );
-      return {
-        success: true,
-        message: 'E-mail enviado com sucesso via Power Automate'
-      };
+
+      return result;
     } catch (error) {
       console.error('Erro ao enviar e-mail via Power Automate:', error);
 
-      // ✅ FALLBACK: Se erro 400 com anexos, tentar enviar sem anexos
+      // FALLBACK: Se erro 400 com anexos, tentar enviar sem anexos
       if (error instanceof Error &&
         error.message.includes('400') &&
         emailData.anexos &&
@@ -316,32 +362,23 @@ export const emailService = {
         console.warn('🔄 Tentando reenvio sem anexos devido ao erro 400...');
 
         try {
-          const payloadSemAnexos = {
-            nome: emailData.subject + ' (sem anexos)',
-            email: emailData.to,
-            email_cc: emailData.cc || '',
-            email_bcc: emailData.bcc || [],
-            mensagem: emailData.html + '<br><br><em>Nota: Os anexos não puderam ser processados e serão enviados separadamente.</em>'
+          const emailSemAnexos: EmailData = {
+            to: emailData.to,
+            cc: emailData.cc,
+            bcc: emailData.bcc,
+            subject: emailData.subject + ' (sem anexos)',
+            html: emailData.html + '<br><br><em>Nota: Os anexos não puderam ser processados e serão enviados separadamente.</em>'
           };
 
-          const webhookUrl = await getWebhookUrl();
-          const responseFallback = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payloadSemAnexos)
-          });
+          const resultFallback = await sendEmailComRetry(emailSemAnexos);
 
-          if (responseFallback.ok) {
+          if (resultFallback.success) {
             console.log('✅ E-mail enviado sem anexos como fallback');
-
             await logEmail(
               Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
               emailData.subject + ' (sem anexos)',
               'enviado'
             );
-
             return {
               success: true,
               message: 'E-mail enviado sem anexos (fallback devido a erro no processamento dos anexos)'
@@ -350,6 +387,21 @@ export const emailService = {
         } catch (fallbackError) {
           console.error('❌ Fallback também falhou:', fallbackError);
         }
+      }
+
+      // Se for erro 429 que esgotou retries, retornar com indicação de retry
+      if (is429Error(error)) {
+        await logEmail(
+          Array.isArray(emailData.to) ? emailData.to.join(', ') : emailData.to,
+          emailData.subject,
+          'erro',
+          'Rate limit excedido (429) - todas as tentativas esgotadas'
+        );
+        return {
+          success: false,
+          error: 'Rate limit excedido no Power Automate. Aguarde alguns minutos e tente novamente.',
+          retryAfter: RATE_LIMIT_CONFIG.DELAY_APOS_429_MS
+        };
       }
 
       // Registrar log de erro

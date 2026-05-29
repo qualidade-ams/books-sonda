@@ -110,7 +110,7 @@ export class BancoHorasReajustesService {
       }
 
       // 3. Calcular novo valor de reajuste (soma ou subtrai do atual)
-      const reajusteAtualMinutos = converterHorasParaMinutos(calculoAtual.reajustes_horas || '00:00');
+      const reajusteAtualMinutos = converterHorasParaMinutos((calculoAtual.reajustes_horas as string) || '00:00');
       const novoValorMinutos = converterHorasParaMinutos(dados.valor_horas);
       
       let reajusteFinalMinutos: number;
