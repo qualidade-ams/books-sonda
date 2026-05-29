@@ -1114,8 +1114,8 @@ export default function ControleBancoHoras() {
                   tipoCobranca={empresaAtual?.tipo_contrato?.toLowerCase()}
                   inicioVigencia={empresaAtual?.inicio_vigencia}
                   calculos={calculos}
-                  tipoRepasseEspecial={empresaAtual?.tipo_repasse_especial}
-                  percentualEntrePeriodos={empresaAtual?.percentual_entre_periodos}
+                  tipoRepasseEspecial={(empresaAtual as any)?.tipo_repasse_especial}
+                  percentualEntrePeriodos={(empresaAtual as any)?.percentual_entre_periodos}
                 />
               </TabsContent>
             </Tabs>
