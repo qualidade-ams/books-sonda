@@ -119,6 +119,7 @@ WHERE org_us_final ILIKE '%RAINBOW%' -- SUBSTITUIR pelo nome da empresa
     'Erro de programa especifico (SEM SLA) (Banco=S |SLA=N)',
     'Levantamento de Versão / Orçamento',
     'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+    'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
     'Monitoramento DBA',
     'Monitoramento DBA (Banco=S |SLA=S)',
     'Nota Publicada',
