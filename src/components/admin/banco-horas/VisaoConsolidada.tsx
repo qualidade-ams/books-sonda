@@ -1302,9 +1302,9 @@ export function VisaoConsolidada({
                                 {req.chamado}
                               </span>
                             </div>
-                            <Badge className="bg-blue-500 text-white text-xs px-2 py-0.5">
+                            <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
                               {req.tipo_cobranca || 'Banco de Horas'}
-                            </Badge>
+                            </span>
                           </div>
                         </TableCell>
                         
@@ -1461,9 +1461,9 @@ export function VisaoConsolidada({
                                   {req.chamado}
                                 </span>
                               </div>
-                              <Badge className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
+                              <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
                                 {req.tipo_cobranca || 'Banco de Horas'}
-                              </Badge>
+                              </span>
                             </div>
                           </TableCell>
                           
@@ -1617,9 +1617,9 @@ export function VisaoConsolidada({
                                 {req.chamado}
                               </span>
                             </div>
-                            <Badge className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
+                            <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
                               {req.tipo_cobranca || 'Banco de Horas'}
-                            </Badge>
+                            </span>
                           </div>
                         </TableCell>
                         
