@@ -13,6 +13,7 @@ import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
 import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { LoadingSpinner } from './LoadingStates';
+import { ValidationFeedback } from './HelpSystem';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,42 @@ export function RequerimentoMultiploForm({
     const isEmpty = !fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '');
     return isEmpty ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
   };
+
+  // Função helper específica para o campo Chamado (valida espaços e underscore em tempo real)
+  const getChamadoErrorClasses = (fieldValue: string) => {
+    if (!fieldValue) return tentouSubmeter ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : '';
+    if (/[\s_]/.test(fieldValue) || !/^[A-Za-z0-9\-]+$/.test(fieldValue)) return 'border-red-500 focus:ring-red-500 focus:border-red-500';
+    return '';
+  };
+
+  // Validações em tempo real para o campo Chamado
+  const chamadoValidation = useMemo(() => [
+    {
+      test: (value: string) => value.length > 0,
+      message: 'Chamado é obrigatório',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || !/\s/.test(value),
+      message: 'Chamado não pode conter espaços',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || !value.includes('_'),
+      message: 'Chamado não pode conter underscore (_)',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
+      message: 'Use apenas letras, números e hífen (-)',
+      type: 'error' as const
+    },
+    {
+      test: (value: string) => value.length === 0 || value.length >= 3,
+      message: 'Mínimo 3 caracteres',
+      type: 'warning' as const
+    }
+  ], []);
 
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
@@ -237,6 +274,9 @@ export function RequerimentoMultiploForm({
 
     // Validar campos compartilhados
     if (!chamado.trim()) erros.push('Chamado é obrigatório');
+    if (chamado.trim() && /\s/.test(chamado)) erros.push('Chamado não pode conter espaços');
+    if (chamado.trim() && chamado.includes('_')) erros.push('Chamado não pode conter underscore (_)');
+    if (chamado.trim() && !/^[A-Za-z0-9\-]+$/.test(chamado.trim())) erros.push('Chamado: use apenas letras, números e hífen (-)');
     if (!clienteId) erros.push('Cliente é obrigatório');
     if (mostrarCampoEmpresaSegmentacao && !empresaSegmentacaoNome) {
       erros.push('Empresa (Baseline) é obrigatória para este cliente');
@@ -397,8 +437,13 @@ export function RequerimentoMultiploForm({
                 value={chamado}
                 onChange={(e) => setChamado(e.target.value)}
                 placeholder="Ex: RF-6017993"
-                className={cn("uppercase", getErrorClasses(chamado))}
+                className={cn("uppercase", getChamadoErrorClasses(chamado))}
                 disabled={isLoading}
+              />
+              <ValidationFeedback
+                value={chamado}
+                rules={chamadoValidation}
+                showOnlyErrors
               />
             </div>
 
