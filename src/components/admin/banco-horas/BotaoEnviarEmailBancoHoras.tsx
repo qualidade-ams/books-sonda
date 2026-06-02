@@ -262,8 +262,8 @@ function gerarTabelaRequerimentos(
           <div style="font-weight:500;font-size:13px;color:#111827;white-space:nowrap;">🏛️ ${req.chamado || '-'}</div>
           <div style="margin-top:5px;"><span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;display:inline-block;white-space:nowrap;">${tipoCobranca}</span></div>
         </td>
-        <td style="${tdStyle};font-weight:600;">${req.cliente_nome || '-'}</td>
-        <td style="${tdStyle}"><span style="border:1px solid ${isDesenvolvimento ? '#fdba74' : '#93c5fd'};color:${isDesenvolvimento ? '#ea580c' : '#2563eb'};padding:2px 8px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;">${req.modulo || '-'}</span></td>
+        <td style="${tdStyle};font-weight:600;white-space:nowrap;">${req.cliente_nome || '-'}</td>
+        <td style="${tdStyle};white-space:nowrap;"><span style="border:1px solid ${isDesenvolvimento ? '#fdba74' : '#93c5fd'};color:${isDesenvolvimento ? '#ea580c' : '#2563eb'};padding:2px 8px;border-radius:10px;font-size:11px;font-family:Inter,sans-serif;white-space:nowrap;">${req.modulo || '-'}</span></td>
         <td style="${tdStyle}">${formatarHorasDecimal(hFunc)}</td>
         <td style="${tdStyle}">${formatarHorasDecimal(hTec)}</td>
         <td style="${isDesenvolvimento ? 'padding:14px 10px;text-align:center;font-size:13px;font-family:Inter,sans-serif;color:#ea580c;font-weight:700;border-bottom:1px solid #e5e7eb;' : tdBold}">${formatarHorasDecimal(total)}</td>
@@ -404,11 +404,6 @@ function gerarHtmlSaldoParcial(
       <p style="font-size:12pt;margin-bottom:8px;">
         Informamos que este demonstrativo contempla:
       </p>
-      <ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;">
-        <li style="margin-bottom:4px;">Apontamentos automáticos;</li>
-        <li style="margin-bottom:4px;">Requerimentos do período já contabilizados no quadro de consumo;</li>
-        <li style="margin-bottom:4px;">Requerimentos em desenvolvimento, ainda não contabilizados no quadro de consumo;</li>
-      </ul>
       
       <p style="font-size:12pt;margin-bottom:24px;">
         Dessa forma, os valores e quantidades apresentados poderão sofrer alterações até o fechamento oficial do mês.
@@ -538,10 +533,23 @@ export function BotaoEnviarEmailBancoHoras({
     
     try {
       // Envolver as tabelas em um container com fundo branco para renderização limpa
+      // padding-bottom:1px evita colapso de margem que gera espaço em branco extra no final
       const htmlParaRenderizar = `
-        <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px;background:#ffffff;color:#1F497D;font-size:12pt;">
-          ${htmlTabelas}
-        </div>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            * { box-sizing: border-box; }
+            html, body { margin: 0; padding: 0; background: #ffffff; }
+          </style>
+        </head>
+        <body>
+          <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px 20px 1px 20px;background:#ffffff;color:#1F497D;font-size:12pt;">
+            ${htmlTabelas}
+          </div>
+        </body>
+        </html>
       `;
       
       const response = await fetch('/api/email/render-image', {
@@ -637,7 +645,7 @@ export function BotaoEnviarEmailBancoHoras({
     // Converter quebras de linha em parágrafos HTML
     const paragrafos = texto.split('\n').filter(l => l.trim()).map(linha => {
       if (linha.startsWith('•')) {
-        return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha}</li>`;
+        return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
       }
       // Linhas de excedente ficam em negrito
       const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:');
@@ -647,7 +655,7 @@ export function BotaoEnviarEmailBancoHoras({
 
     // Verificar se tem itens de lista e envolver em <ul>
     const htmlTexto = paragrafos.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
-      return `<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style:none;">\n${match}</ul>`;
+      return `<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">\n${match}</ul>`;
     });
 
     // Encerramento diferenciado por tipo
@@ -810,7 +818,11 @@ export function BotaoEnviarEmailBancoHoras({
     for (const file of files) {
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
-      const nomeArquivo = `banco-horas/${timestamp}_${random}_${file.name}`;
+      // Sanitizar nome: remover acentos, substituir espaços e caracteres especiais por underscore
+      const nomeSanitizado = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .replace(/[^a-zA-Z0-9._-]/g, '_');               // substitui espaços e especiais por _
+      const nomeArquivo = `banco-horas/${timestamp}_${random}_${nomeSanitizado}`;
 
       const { error } = await supabase.storage
         .from('anexos-temporarios')
@@ -883,7 +895,7 @@ export function BotaoEnviarEmailBancoHoras({
         // Converter texto em parágrafos HTML
         const paragrafos = texto.split('\n').filter(l => l.trim()).map(linha => {
           if (linha.startsWith('•')) {
-            return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha}</li>`;
+            return `<li style="margin-bottom:4px;font-size:12pt;font-family:Calibri,sans-serif;color:#1F497D;">${linha.substring(1).trim()}</li>`;
           }
           const isExcedente = linha.startsWith('Horas Excedentes:') || linha.startsWith('Valor Hora Excedentes:') || linha.startsWith('Valor total dos Excedentes:');
           const isBold = linha === getSaudacao() || isExcedente;
@@ -891,7 +903,7 @@ export function BotaoEnviarEmailBancoHoras({
         }).join('\n');
         
         const htmlTexto = paragrafos.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
-          return `<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style:none;">\n${match}</ul>`;
+          return `<ul style="font-size:12pt;margin-bottom:16px;padding-left:24px;color:#1F497D;list-style-type:disc;">\n${match}</ul>`;
         });
         
         // Encerramento

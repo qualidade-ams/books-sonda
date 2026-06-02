@@ -108,7 +108,7 @@ export default async function handler(
     await page.setViewport({
       width: viewportWidth,
       height: 800,
-      deviceScaleFactor: 1
+      deviceScaleFactor: 2
     });
 
     // Carregar HTML com espera para fontes e imagens
@@ -121,9 +121,34 @@ export default async function handler(
     await page.evaluateHandle('document.fonts.ready');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Screenshot full page (captura todo o conteúdo, não apenas viewport)
+    // Medir a altura real do conteúdo para evitar espaço em branco extra no final
+    const contentHeight = await page.evaluate(() => {
+      const body = document.body;
+      const html = document.documentElement;
+      return Math.max(
+        body.scrollHeight,
+        body.offsetHeight,
+        html.clientHeight,
+        html.scrollHeight,
+        html.offsetHeight
+      );
+    });
+
+    // Redimensionar viewport para a altura exata do conteúdo
+    await page.setViewport({
+      width: viewportWidth,
+      height: Math.max(contentHeight, 100),
+      deviceScaleFactor: 2
+    });
+
+    // Screenshot com clip exato do conteúdo (sem espaço em branco extra)
     const screenshot = await page.screenshot({
-      fullPage: true,
+      clip: {
+        x: 0,
+        y: 0,
+        width: viewportWidth,
+        height: contentHeight
+      },
       type: 'png',
       encoding: 'base64'
     });

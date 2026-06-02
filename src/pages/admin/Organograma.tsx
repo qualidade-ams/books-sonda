@@ -15,20 +15,34 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FormPessoa } from '@/components/admin/organograma/FormPessoa';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { GerenciadorOrdemSimples } from '@/components/admin/organograma/GerenciadorOrdemSimples';
 import { useOrganograma } from '@/hooks/useOrganograma';
+import { useToast } from '@/hooks/use-toast';
 import type { PessoaOrganograma } from '@/types/organograma';
 
 export default function Organograma() {
-  const { pessoas, loading, construirArvoreHierarquica, fetchPessoas, setProdutoSelecionado: setHookProdutoSelecionado } = useOrganograma();
+  const { pessoas, loading, construirArvoreHierarquica, fetchPessoas, deletarPessoa, setProdutoSelecionado: setHookProdutoSelecionado } = useOrganograma();
+  const { toast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState(false);
   const [pessoaEditando, setPessoaEditando] = useState<PessoaOrganograma | undefined>();
   const [mostrarGerenciadorOrdem, setMostrarGerenciadorOrdem] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('arvore');
   const [showFilters, setShowFilters] = useState(false);
+  const [pessoaParaExcluir, setPessoaParaExcluir] = useState<PessoaOrganograma | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL'>('TODOS');
   const [filtros, setFiltros] = useState({
     busca: '',
@@ -86,6 +100,28 @@ export default function Organograma() {
 
   const handleSuccess = () => {
     fetchPessoas();
+  };
+
+  const handleConfirmarExclusao = async () => {
+    if (!pessoaParaExcluir) return;
+    setExcluindo(true);
+    try {
+      await deletarPessoa(pessoaParaExcluir.id);
+      toast({
+        title: 'Pessoa excluída',
+        description: `${pessoaParaExcluir.nome} foi removido(a) do organograma.`,
+      });
+      fetchPessoas();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao excluir',
+        description: error?.message || 'Não foi possível excluir a pessoa.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExcluindo(false);
+      setPessoaParaExcluir(null);
+    }
   };
 
   // Construir árvore hierárquica ou lista de cargos independentes
@@ -584,12 +620,7 @@ export default function Organograma() {
                                           variant="outline" 
                                           size="sm" 
                                           className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                          onClick={() => {
-                                            if (confirm(`Tem certeza que deseja excluir ${pessoa.nome}?`)) {
-                                              // TODO: Implementar exclusão
-                                              console.log('Excluir pessoa:', pessoa.id);
-                                            }
-                                          }}
+                                          onClick={() => setPessoaParaExcluir(pessoa)}
                                           title="Excluir"
                                         >
                                           <Trash2 className="h-4 w-4" />
@@ -626,6 +657,43 @@ export default function Organograma() {
         pessoas={arvoreHierarquica}
         onSave={handleSuccess}
       />
+
+      {/* Modal de confirmação de exclusão */}
+      <AlertDialog
+        open={!!pessoaParaExcluir}
+        onOpenChange={(open) => { if (!open) setPessoaParaExcluir(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-semibold text-red-600">
+              Excluir pessoa
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-500">
+              Tem certeza que deseja excluir{' '}
+              <span className="font-semibold text-gray-800">{pessoaParaExcluir?.nome}</span>?
+              <br />
+              Esta ação não pode ser desfeita. Pessoas com subordinados não podem ser excluídas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarExclusao}
+              disabled={excluindo}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {excluindo ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
