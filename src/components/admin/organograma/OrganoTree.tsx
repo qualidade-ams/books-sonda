@@ -303,12 +303,32 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
                   ) : (
                     <>
                       {pessoa?.foto_url ? (
-                        <img
-                          src={pessoa.foto_url}
-                          alt={nodeDatum.name}
-                          className={`h-28 w-28 rounded-full object-cover ${getBorderStyle(produtos, produto)}`}
-                          style={getGradientStyle(produtos, produto)}
-                        />
+                        // Container relativo: a imagem fica dentro com overflow:hidden para o clip circular,
+                        // e um div absoluto sobrepõe a borda por cima — garante que o Puppeteer
+                        // renderize a borda corretamente no PDF sem depender de border em <img>.
+                        <div
+                          className="relative h-28 w-28 rounded-full"
+                          style={{ flexShrink: 0 }}
+                        >
+                          {/* Foto com clip circular */}
+                          <div className="h-full w-full rounded-full overflow-hidden">
+                            <img
+                              src={pessoa.foto_url}
+                              alt={nodeDatum.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          {/* Borda circular sobreposta (z-index alto para ficar sobre a foto) */}
+                          <div
+                            className="absolute inset-0 rounded-full pointer-events-none"
+                            style={{
+                              borderWidth: '4px',
+                              borderStyle: 'solid',
+                              ...getGradientStyle(produtos, produto),
+                              zIndex: 10,
+                            }}
+                          />
+                        </div>
                       ) : (
                         <div 
                           className={`h-28 w-28 rounded-full bg-gray-200 flex items-center justify-center ${getBorderStyle(produtos, produto)}`}

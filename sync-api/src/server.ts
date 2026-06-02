@@ -340,8 +340,7 @@ function gerarIdUnicoApontamento(registro: DadosApontamentoSqlServer): string {
   const partes = [
     'AMSapontamento', // Prefixo para diferenciar de outras tabelas
     registro.Nro_Chamado.trim(),
-    registro.Nro_Tarefa.trim(),
-    registro.Data_Atividade?.toISOString() || 'sem_data'
+    registro.Nro_Tarefa.trim()
   ].filter(Boolean);
   
   return partes.join('|');

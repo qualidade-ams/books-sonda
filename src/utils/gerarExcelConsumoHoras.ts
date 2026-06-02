@@ -52,7 +52,7 @@ function formatarData(dataISO: string | null): string {
     const dia = String(data.getDate()).padStart(2, '0');
     const mes = String(data.getMonth() + 1).padStart(2, '0');
     const ano = data.getFullYear();
-    return `${mes}/${dia}/${ano}`;
+    return `${dia}/${mes}/${ano}`;
   } catch {
     return '';
   }
@@ -104,9 +104,13 @@ async function buscarApontamentosDetalhados(
     return [];
   }
 
-  // Calcular período
-  const dataInicio = new Date(ano, mes - 1, 1);
-  const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+  // Calcular período (usar strings de data para evitar problemas de timezone)
+  const mesStr = String(mes).padStart(2, '0');
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const dataInicioStr = `${ano}-${mesStr}-01T00:00:00.000Z`;
+  const dataFimStr = `${ano}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999Z`;
+  const dataInicio = new Date(dataInicioStr);
+  const dataFim = new Date(dataFimStr);
 
   // Códigos de resolução válidos (mesmos do bancoHorasIntegracaoService)
   const codigosResolucaoValidos = [
@@ -136,24 +140,26 @@ async function buscarApontamentosDetalhados(
     'Erro de classificação na abertura (Banco=S |SLA=N)',
     'Erro de classificação na abertura (Banco=S| SLA=N)',
     'Erro de programa especifico (SEM SLA)',
-    'Erro de programa especifico (SEM SLA) (Banco=S |SLA=N)',
+    'Erro de programa especifico (Banco=S |SLA=N)',
+    'Erro de programa especifico (Banco=S| SLA=N)',
     'Levantamento de Versão / Orçamento',
     'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
     'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
     'Monitoramento DBA',
     'Monitoramento DBA (Banco=S |SLA=S)',
     'Nota Publicada',
-    'Nota Publicada (Banco=S |SLA=S)',
+    'Nota Publicada (Banco=S |SLA=N)',
     'Parametrização / Cadastro',
     'Parametrização / Cadastro (Banco=S |SLA=N)',
     'Parametrização / Funcionalidade',
-    'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+    'Parametrização / Funcionalidade (Banco=S |SLA=N)',
     'Validação de Arquivo',
     'Validação de Arquivo (Banco=S |SLA=N)',
     'Validação de Arquivo (Banco=S| SLA=N)'
   ];
 
   // Buscar apontamentos com todos os campos necessários
+  // Nota: filtramos cod_resolucao em JS após a query para evitar limite do .in() com muitos itens
   const { data: apontamentos, error } = await supabase
     .from('apontamentos_aranda' as any)
     .select('nro_chamado, cod_resolucao, org_us_final, item_configuracao, categoria, caso_estado, nro_tarefa, tipo_chamado, data_sistema, data_atividade, data_abertura, data_fechamento, analista_tarefa, analista_caso, solicitante, tempo_gasto_horas, tempo_gasto_minutos, ativi_interna, grupo_tarefa, descricao_tarefa')
@@ -162,7 +168,6 @@ async function buscarApontamentosDetalhados(
     .in('tipo_chamado', ['IM', 'RF', 'PM'])
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
-    .in('cod_resolucao', codigosResolucaoValidos)
     .ilike('org_us_final', `%${nomeCompleto}%`)
     .order('data_atividade', { ascending: true })
     .limit(10000);
@@ -172,8 +177,14 @@ async function buscarApontamentosDetalhados(
     return [];
   }
 
+  // Filtrar por códigos de resolução válidos em JS (evita limite do .in() no Supabase)
+  const apontamentosComCodigo = (apontamentos || []).filter((apt: any) => {
+    if (!apt.cod_resolucao) return false;
+    return codigosResolucaoValidos.includes(apt.cod_resolucao);
+  });
+
   // Filtrar: data_atividade e data_sistema devem estar no mesmo mês
-  const apontamentosFiltrados = (apontamentos || []).filter((apt: any) => {
+  const apontamentosFiltrados = apontamentosComCodigo.filter((apt: any) => {
     if (apt.data_atividade && apt.data_sistema) {
       const dataAtividade = new Date(apt.data_atividade);
       const dataSistema = new Date(apt.data_sistema);
@@ -184,6 +195,8 @@ async function buscarApontamentosDetalhados(
     }
     return true;
   });
+
+  console.log(`📊 Apontamentos após filtros: total=${(apontamentos||[]).length}, com código válido=${apontamentosComCodigo.length}, mesmo mês=${apontamentosFiltrados.length}`);
 
   return apontamentosFiltrados as unknown as ApontamentoExcel[];
 }
@@ -451,11 +464,10 @@ export async function gerarExcelConsumoHoras(
     const apontamentos = await buscarApontamentosDetalhados(empresaId, mes, ano);
 
     if (apontamentos.length === 0) {
-      console.warn('⚠️ Nenhum apontamento encontrado para gerar Excel');
-      return null;
+      console.warn('⚠️ Nenhum apontamento encontrado para o período — gerando Excel com planilha vazia');
+    } else {
+      console.log(`✅ ${apontamentos.length} apontamentos encontrados para o Excel`);
     }
-
-    console.log(`✅ ${apontamentos.length} apontamentos encontrados para o Excel`);
 
     // Gerar workbook
     const workbook = gerarWorkbook(apontamentos, empresaNome, mes, ano, requerimentos, observacoes);

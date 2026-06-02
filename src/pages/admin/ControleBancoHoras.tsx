@@ -351,64 +351,40 @@ export default function ControleBancoHoras() {
   
   // ✅ NOVO: Filtrar requerimentos EM DESENVOLVIMENTO (não enviados para faturamento)
   // Estes requerimentos ainda estão sendo trabalhados
-  // REGRA: status = 'lancado' E data_envio dentro do período
+  // REGRA: status = 'lancado' E enviado_faturamento = false
+  // ✅ CORRIGIDO: Requerimentos em desenvolvimento aparecem apenas no trimestre
+  // que contém sua data de envio, ou em trimestres posteriores.
+  // Regra: data_envio <= fim do período atual (último dia do último mês do trimestre)
   const requerimentosEmDesenvolvimento = useMemo(() => {
-    if (!requerimentosTodos || mesesDoPeriodo.length === 0) return [];
-    
-    // Calcular meses do período como strings para comparação simples
-    const primeiroMes = mesesDoPeriodo[0];
-    const ultimoMes = mesesDoPeriodo[mesesDoPeriodo.length - 1];
+    if (!requerimentosTodos || !mesesDoPeriodo || mesesDoPeriodo.length === 0) return [];
 
-    // Debug: mostrar todos os requerimentos com status lancado
-    const todosLancados = requerimentosTodos.filter(req => req.status === 'lancado');
-    console.log('🔍 [DEBUG] TODOS os requerimentos com status lancado:', {
-      total: todosLancados.length,
-      detalhes: todosLancados.map(r => ({
-        chamado: r.chamado,
-        status: r.status,
-        tipo_cobranca: r.tipo_cobranca,
-        data_envio: r.data_envio,
-        enviado_faturamento: r.enviado_faturamento,
-        mes_cobranca: r.mes_cobranca
-      }))
-    });
-    
+    // Calcular o último dia do período atual (ex: 31/12/2025 para o 4º Trimestre 2025)
+    const ultimoMesDoPeriodo = mesesDoPeriodo[mesesDoPeriodo.length - 1];
+    const fimPeriodo = new Date(ultimoMesDoPeriodo.ano, ultimoMesDoPeriodo.mes, 0); // dia 0 do mês seguinte = último dia do mês atual
+    fimPeriodo.setHours(23, 59, 59, 999);
+
     const emDesenvolvimento = requerimentosTodos.filter(req => {
-      // Filtro básico: status lancado e não enviado para faturamento
+      // Filtro base: status lancado e não enviado para faturamento
       if (req.status !== 'lancado' || req.enviado_faturamento === true) {
         return false;
       }
-      
-      // Filtrar por data_envio dentro do período (comparação por mês/ano para evitar problemas de timezone)
+
+      // ✅ Filtro de data: só exibir se data_envio está dentro ou antes deste período
+      // Requerimentos sem data_envio aparecem em todos os períodos
       if (req.data_envio) {
-        // Extrair mês e ano da data_envio sem criar objeto Date (evita timezone)
-        const partes = req.data_envio.split('T')[0].split('-');
-        const anoEnvio = parseInt(partes[0]);
-        const mesEnvio = parseInt(partes[1]);
-        
-        // Verificar se o mês/ano do envio está dentro do período
-        const dentroInicio = (anoEnvio > primeiroMes.ano) || 
-          (anoEnvio === primeiroMes.ano && mesEnvio >= primeiroMes.mes);
-        const dentroFim = (anoEnvio < ultimoMes.ano) || 
-          (anoEnvio === ultimoMes.ano && mesEnvio <= ultimoMes.mes);
-        
-        if (!dentroInicio || !dentroFim) {
-          console.log(`⚠️ Requerimento ${req.chamado} EXCLUÍDO por data: data_envio=${req.data_envio}, mesEnvio=${mesEnvio}/${anoEnvio}, período=${primeiroMes.mes}/${primeiroMes.ano} a ${ultimoMes.mes}/${ultimoMes.ano}`);
-          return false;
+        const dataEnvio = new Date(req.data_envio);
+        if (dataEnvio > fimPeriodo) {
+          return false; // data_envio está além deste período — não mostrar
         }
       }
-      
+
       return true;
     });
-    
+
     console.log('🔍 [DEBUG] Requerimentos Em Desenvolvimento:', {
       total: requerimentosTodos.length,
+      fimPeriodo: fimPeriodo.toISOString(),
       emDesenvolvimento: emDesenvolvimento.length,
-      periodo: {
-        inicio: `${primeiroMes.mes}/${primeiroMes.ano}`,
-        fim: `${ultimoMes.mes}/${ultimoMes.ano}`,
-        meses: mesesDoPeriodo.map(m => `${m.mes}/${m.ano}`)
-      },
       detalhes: emDesenvolvimento.map(r => ({
         chamado: r.chamado,
         data_envio: r.data_envio,
@@ -418,7 +394,7 @@ export default function ControleBancoHoras() {
         tipo_cobranca: r.tipo_cobranca
       }))
     });
-    
+
     return emDesenvolvimento;
   }, [requerimentosTodos, mesesDoPeriodo]);
   // ✅ REMOVIDO: Não selecionar empresa automaticamente

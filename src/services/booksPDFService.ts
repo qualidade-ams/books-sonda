@@ -240,7 +240,8 @@ class BooksPDFService {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
+          // JPEG 85%: ~3-5x menor que PNG, sem perda visual perceptível
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
         } else {
           reject(new Error('Não foi possível criar contexto do canvas'));
         }
