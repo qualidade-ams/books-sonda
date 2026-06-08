@@ -111,24 +111,24 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                 <span className="text-base font-semibold text-blue-600">{data.meta_percentual}%</span>
               </div>
               
-              {/* Mensagem de não elegibilidade */}
-              {data.sla_elegivel === false && data.mensagem_nao_elegivel && (
+              {/* Mensagem de não elegibilidade - ocultada temporariamente */}
+              {/* {data.sla_elegivel === false && data.mensagem_nao_elegivel && (
                 <div className="mt-3 p-3 rounded-lg relative z-20">
                   <p className="text-xs text-gray-700 font-semibold text-center underline flex items-center justify-center gap-1.5">
                     <Info className="h-4 w-4 text-gray-500 flex-shrink-0" />
                     {data.mensagem_nao_elegivel}
                   </p>
                 </div>
-              )}
+              )} */}
               
-              {/* Mensagem de violados não elegíveis */}
-              {data.mensagem_violados_nao_elegiveis && (
+              {/* Mensagem de violados não elegíveis - ocultada temporariamente */}
+              {/* {data.mensagem_violados_nao_elegiveis && (
                 <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg relative z-20">
                   <p className="text-xs text-blue-800 text-center">
                     ℹ️ {data.mensagem_violados_nao_elegiveis}
                   </p>
                 </div>
-              )}
+              )} */}
             </CardContent>
           </Card>
 

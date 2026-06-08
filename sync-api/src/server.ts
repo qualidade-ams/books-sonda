@@ -1556,9 +1556,133 @@ async function sincronizarEspecialistas(req: any, res: any) {
 
     console.log('✅ [ESPECIALISTAS] Processamento concluído');
 
+    // ============================================================
+    // MANUTENÇÃO: Inativar especialistas que não existem mais no SQL Server
+    // ============================================================
+    console.log('🧹 [ESPECIALISTAS] Verificando especialistas obsoletos para inativação...');
+    resultado.mensagens.push('Verificando especialistas obsoletos...');
+
+    // Buscar todos os especialistas ativos de origem sql_server no Supabase
+    const { data: especialistasAtivos, error: erroAtivos } = await supabase
+      .from('especialistas')
+      .select('id, id_externo, nome, email')
+      .eq('origem', 'sql_server')
+      .eq('status', 'ativo');
+
+    if (erroAtivos) {
+      console.error('❌ [ESPECIALISTAS] Erro ao buscar especialistas ativos:', erroAtivos);
+      resultado.mensagens.push(`Erro ao verificar obsoletos: ${erroAtivos.message}`);
+    } else if (especialistasAtivos && especialistasAtivos.length > 0) {
+      // Encontrar especialistas que não foram processados (não existem mais no SQL Server)
+      const especialistasObsoletos = especialistasAtivos.filter(
+        esp => esp.id_externo && !idsProcessados.has(esp.id_externo)
+      );
+
+      if (especialistasObsoletos.length > 0) {
+        console.log(`⚠️ [ESPECIALISTAS] ${especialistasObsoletos.length} especialista(s) não encontrado(s) no SQL Server - inativando...`);
+        resultado.mensagens.push(`${especialistasObsoletos.length} especialista(s) obsoleto(s) encontrado(s)`);
+
+        for (const espObsoleto of especialistasObsoletos) {
+          try {
+            console.log(`🔄 [ESPECIALISTAS] Inativando: ${espObsoleto.nome} (${espObsoleto.email})`);
+
+            // Verificar se existe outro especialista ativo com o mesmo nome para transferir relacionamentos
+            const { data: especialistasComMesmoNome } = await supabase
+              .from('especialistas')
+              .select('id, nome, email, status')
+              .eq('nome', espObsoleto.nome)
+              .eq('status', 'ativo')
+              .neq('id', espObsoleto.id);
+
+            if (especialistasComMesmoNome && especialistasComMesmoNome.length > 0) {
+              const substituto = especialistasComMesmoNome[0];
+              console.log(`🔀 [ESPECIALISTAS] Encontrado substituto com mesmo nome: ${substituto.nome} (${substituto.email}) - transferindo relacionamentos...`);
+
+              // Transferir relacionamentos de pesquisa_especialistas
+              const { data: relPesquisas } = await supabase
+                .from('pesquisa_especialistas')
+                .select('id, pesquisa_id')
+                .eq('especialista_id', espObsoleto.id);
+
+              if (relPesquisas && relPesquisas.length > 0) {
+                for (const rel of relPesquisas) {
+                  // Verificar se o substituto já tem relacionamento com essa pesquisa
+                  const { data: jaExisteRel } = await supabase
+                    .from('pesquisa_especialistas')
+                    .select('id')
+                    .eq('pesquisa_id', rel.pesquisa_id)
+                    .eq('especialista_id', substituto.id)
+                    .maybeSingle();
+
+                  if (jaExisteRel) {
+                    // Já existe, apenas remover o antigo
+                    await supabase.from('pesquisa_especialistas').delete().eq('id', rel.id);
+                  } else {
+                    // Transferir para o substituto
+                    await supabase.from('pesquisa_especialistas').update({ especialista_id: substituto.id }).eq('id', rel.id);
+                  }
+                }
+                console.log(`  ✅ ${relPesquisas.length} relacionamento(s) de pesquisa transferido(s)`);
+              }
+
+              // Transferir relacionamentos de elogio_especialistas
+              const { data: relElogios } = await supabase
+                .from('elogio_especialistas')
+                .select('id, elogio_id')
+                .eq('especialista_id', espObsoleto.id);
+
+              if (relElogios && relElogios.length > 0) {
+                for (const rel of relElogios) {
+                  // Verificar se o substituto já tem relacionamento com esse elogio
+                  const { data: jaExisteRel } = await supabase
+                    .from('elogio_especialistas')
+                    .select('id')
+                    .eq('elogio_id', rel.elogio_id)
+                    .eq('especialista_id', substituto.id)
+                    .maybeSingle();
+
+                  if (jaExisteRel) {
+                    // Já existe, apenas remover o antigo
+                    await supabase.from('elogio_especialistas').delete().eq('id', rel.id);
+                  } else {
+                    // Transferir para o substituto
+                    await supabase.from('elogio_especialistas').update({ especialista_id: substituto.id }).eq('id', rel.id);
+                  }
+                }
+                console.log(`  ✅ ${relElogios.length} relacionamento(s) de elogio transferido(s)`);
+              }
+
+              resultado.mensagens.push(`Relacionamentos de "${espObsoleto.nome}" transferidos para registro ativo (${substituto.email})`);
+            }
+
+            // Inativar o especialista obsoleto
+            const { error: erroInativar } = await supabase
+              .from('especialistas')
+              .update({ status: 'inativo' })
+              .eq('id', espObsoleto.id);
+
+            if (erroInativar) {
+              console.error(`❌ [ESPECIALISTAS] Erro ao inativar ${espObsoleto.nome}:`, erroInativar);
+              resultado.erros++;
+            } else {
+              resultado.removidos++;
+              console.log(`✅ [ESPECIALISTAS] Inativado: ${espObsoleto.nome} (${espObsoleto.email})`);
+              resultado.mensagens.push(`Inativado: ${espObsoleto.nome} (${espObsoleto.email})`);
+            }
+          } catch (erroInativacao) {
+            console.error(`❌ [ESPECIALISTAS] Erro ao processar inativação de ${espObsoleto.nome}:`, erroInativacao);
+            resultado.erros++;
+          }
+        }
+      } else {
+        console.log('✅ [ESPECIALISTAS] Nenhum especialista obsoleto encontrado');
+        resultado.mensagens.push('Nenhum especialista obsoleto encontrado');
+      }
+    }
+
     resultado.sucesso = resultado.erros === 0;
     resultado.mensagens.push(
-      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.removidos} removidos, ${resultado.erros} erros`
+      `Sincronização concluída: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.removidos} inativados, ${resultado.erros} erros`
     );
 
     console.log('📊 [ESPECIALISTAS] Sincronização de especialistas concluída:', resultado);

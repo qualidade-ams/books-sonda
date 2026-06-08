@@ -1242,9 +1242,16 @@ class BooksDataCollectorService {
     mes: number,
     ano: number
   ): Promise<BookBacklogData> {
-    console.log('📊 Buscando backlog (chamados em aberto):', {
+    // Calcular último dia do mês para filtrar backlog do período
+    const ultimoDiaMes = new Date(ano, mes, 0); // Dia 0 do próximo mês = último dia do mês atual
+    const dataLimite = ultimoDiaMes.toISOString();
+
+    console.log('📊 Buscando backlog (chamados em aberto até o período):', {
       empresa: empresaNomeCompleto,
+      periodo: `${mes.toString().padStart(2, '0')}/${ano}`,
+      dataLimite,
       filtros: {
+        data_abertura: `<= ${dataLimite}`,
         status: 'NOT IN (Closed, Resolved, Canceled)',
         cod_tipo: '!= Problema',
         item_configuracao: 'IS NULL OR != 000000 - PROJETOS APL',
@@ -1253,12 +1260,14 @@ class BooksDataCollectorService {
       }
     });
 
-    // Buscar tickets de backlog (chamados em aberto)
+    // Buscar tickets de backlog (chamados em aberto ATÉ o período selecionado)
     // FILTRO CORRETO: item_configuracao IS NULL OU != '000000 - PROJETOS APL'
+    // FILTRO DE DATA: Apenas chamados abertos até o último dia do mês/ano do book
     const { data: ticketsBacklog, error } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('*')
       .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .lte('data_abertura', dataLimite)
       .not('status', 'in', '("Closed","Resolved","Canceled")')
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
