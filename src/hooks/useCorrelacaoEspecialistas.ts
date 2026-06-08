@@ -37,58 +37,40 @@ export function useCorrelacaoEspecialistas(nomePrestador: string | undefined) {
         const partesNomePrestador = nomeNormalizado.split(' ').filter(p => p.length > 2);
         const partesNomeEspecialista = nomeEspecialista.split(' ').filter(p => p.length > 2);
         
-        // Se tem poucas partes, ser mais rigoroso
-        if (partesNomePrestador.length <= 2 && partesNomeEspecialista.length <= 2) {
-          // Para nomes curtos, exigir match de pelo menos 2 partes ou nome completo
-          let exactMatches = 0;
-          for (const partePrestador of partesNomePrestador) {
-            for (const parteEspecialista of partesNomeEspecialista) {
-              if (partePrestador === parteEspecialista) {
-                exactMatches++;
-                break;
-              }
-            }
-          }
-          
-          if (exactMatches >= Math.min(2, partesNomePrestador.length)) {
-            console.log('✅ [Correlação] Match de nome curto:', especialista.nome, `(${exactMatches} partes exatas)`);
-            return true;
-          }
+        // Lista de palavras comuns que devem ser ignoradas
+        const palavrasComuns = ['dos', 'das', 'de', 'da', 'do'];
+        
+        // Filtrar palavras comuns
+        const partesRelevantesPrestador = partesNomePrestador.filter(p => !palavrasComuns.includes(p));
+        const partesRelevantesEspecialista = partesNomeEspecialista.filter(p => !palavrasComuns.includes(p));
+        
+        // Se não há partes relevantes suficientes, não é match
+        if (partesRelevantesPrestador.length === 0 || partesRelevantesEspecialista.length === 0) {
           return false;
         }
         
-        // Para nomes longos, usar algoritmo mais flexível
-        let matchCount = 0;
-        const partesMatched = new Set();
+        // REGRA CRÍTICA: O primeiro nome DEVE fazer match
+        if (partesRelevantesPrestador[0] !== partesRelevantesEspecialista[0]) {
+          return false;
+        }
         
-        for (const partePrestador of partesNomePrestador) {
-          for (const parteEspecialista of partesNomeEspecialista) {
-            // Match exato
+        // Contar matches exatos entre partes relevantes
+        let exactMatches = 0;
+        for (const partePrestador of partesRelevantesPrestador) {
+          for (const parteEspecialista of partesRelevantesEspecialista) {
             if (partePrestador === parteEspecialista) {
-              if (!partesMatched.has(parteEspecialista)) {
-                matchCount++;
-                partesMatched.add(parteEspecialista);
-              }
+              exactMatches++;
               break;
-            }
-            // Match por inclusão (apenas para nomes longos)
-            else if (partePrestador.length >= 5 && parteEspecialista.length >= 5) {
-              if (partePrestador.includes(parteEspecialista) || parteEspecialista.includes(partePrestador)) {
-                if (!partesMatched.has(parteEspecialista)) {
-                  matchCount += 0.3; // Peso muito menor para matches parciais
-                  partesMatched.add(parteEspecialista);
-                }
-                break;
-              }
             }
           }
         }
         
-        // Critérios mais rigorosos para nomes longos
-        const isMatch = matchCount >= Math.max(2, Math.floor(partesNomePrestador.length * 0.6));
+        // REGRA RIGOROSA: Exigir que TODAS as partes relevantes do prestador 
+        // estejam presentes no especialista
+        const isMatch = exactMatches >= partesRelevantesPrestador.length;
         
         if (isMatch) {
-          console.log('✅ [Correlação] Match de nome longo:', especialista.nome, `(score: ${matchCount})`);
+          console.log('✅ [Correlação] Match completo:', especialista.nome, `(${exactMatches}/${partesRelevantesPrestador.length} partes exatas)`);
           return true;
         }
         
@@ -213,54 +195,22 @@ export function useCorrelacaoMultiplosEspecialistas(prestadores: string | undefi
             return false;
           }
           
-          // Se tem poucas partes, ser mais rigoroso
-          if (partesRelevantesPrestador.length <= 2 && partesRelevantesEspecialista.length <= 2) {
-            let exactMatches = 0;
-            for (const partePrestador of partesRelevantesPrestador) {
-              for (const parteEspecialista of partesRelevantesEspecialista) {
-                if (partePrestador === parteEspecialista) {
-                  exactMatches++;
-                  break;
-                }
-              }
-            }
-            
-            const isMatch = exactMatches >= Math.min(2, partesRelevantesPrestador.length);
-            if (isMatch) {
-              console.log(`  ✅ Match de nome CURTO: "${especialista.nome}" (${exactMatches} partes exatas)`);
-            }
-            return isMatch;
-          }
-          
-          // Para nomes longos, usar algoritmo mais flexível
-          let matchCount = 0;
-          const partesMatched = new Set();
-          
+          // Contar matches exatos entre partes relevantes
+          let exactMatches = 0;
           for (const partePrestador of partesRelevantesPrestador) {
             for (const parteEspecialista of partesRelevantesEspecialista) {
               if (partePrestador === parteEspecialista) {
-                if (!partesMatched.has(parteEspecialista)) {
-                  matchCount++;
-                  partesMatched.add(parteEspecialista);
-                }
+                exactMatches++;
                 break;
-              }
-              else if (partePrestador.length >= 5 && parteEspecialista.length >= 5) {
-                if (partePrestador.includes(parteEspecialista) || parteEspecialista.includes(partePrestador)) {
-                  if (!partesMatched.has(parteEspecialista)) {
-                    matchCount += 0.3;
-                    partesMatched.add(parteEspecialista);
-                  }
-                  break;
-                }
               }
             }
           }
           
-          // Exigir pelo menos 60% de match das partes relevantes
-          const isMatch = matchCount >= Math.max(2, Math.floor(partesRelevantesPrestador.length * 0.6));
+          // REGRA RIGOROSA: Exigir que TODAS as partes relevantes do prestador 
+          // estejam presentes no especialista (match exato de todas as partes)
+          const isMatch = exactMatches >= partesRelevantesPrestador.length;
           if (isMatch) {
-            console.log(`  ✅ Match de nome LONGO: "${especialista.nome}" (score: ${matchCount})`);
+            console.log(`  ✅ Match COMPLETO: "${especialista.nome}" (${exactMatches}/${partesRelevantesPrestador.length} partes exatas)`);
           }
           
           return isMatch;
