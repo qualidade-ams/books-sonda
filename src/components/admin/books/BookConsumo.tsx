@@ -35,12 +35,12 @@ interface BookConsumoProps {
 function formatarHorasSemSegundos(horasCompletas: string): string {
   if (!horasCompletas || horasCompletas === '--') return horasCompletas;
   
-  // Se já está no formato HH:MM, retorna direto
-  if (horasCompletas.split(':').length === 2) return horasCompletas;
-  
-  // Remove os segundos (pega apenas HH:MM)
+  // Remove os segundos (pega apenas HH:MM) e garante zero à esquerda nos minutos
   const partes = horasCompletas.split(':');
-  return `${partes[0]}:${partes[1]}`;
+  if (partes.length >= 2) {
+    return `${partes[0]}:${partes[1].padStart(2, '0')}`;
+  }
+  return horasCompletas;
 }
 
 export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, onDataLoaded }: BookConsumoProps) {

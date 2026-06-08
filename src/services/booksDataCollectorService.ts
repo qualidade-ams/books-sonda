@@ -2751,8 +2751,14 @@ class BooksDataCollectorService {
    * IMPORTANTE: Não calcula segundos pois estamos ignorando-os na entrada
    */
   private formatarHoras(horasDecimal: number): string {
-    const horas = Math.floor(horasDecimal);
-    const minutos = Math.round((horasDecimal - horas) * 60); // Arredondar minutos
+    let horas = Math.floor(horasDecimal);
+    let minutos = Math.round((horasDecimal - horas) * 60); // Arredondar minutos
+
+    // Normalizar: Math.round pode retornar 60 por imprecisão de ponto flutuante
+    if (minutos === 60) {
+      minutos = 0;
+      horas += 1;
+    }
     
     return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
   }

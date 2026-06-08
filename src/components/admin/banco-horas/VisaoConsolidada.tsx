@@ -140,10 +140,11 @@ const formatarHoras = (horas?: string): string => {
   // Remover sinal de menos se existir
   const horasSemSinal = horas.startsWith('-') ? horas.substring(1) : horas;
   
-  // Garantir formato HH:MM (remover segundos se existir)
+  // Garantir formato HH:MM (remover segundos se existir e garantir zero à esquerda nos minutos)
   const parts = horasSemSinal.split(':');
   if (parts.length >= 2) {
-    return `${parts[0]}:${parts[1]}`;
+    const minutosFormatados = parts[1].padStart(2, '0');
+    return `${parts[0]}:${minutosFormatados}`;
   }
   return horasSemSinal;
 };

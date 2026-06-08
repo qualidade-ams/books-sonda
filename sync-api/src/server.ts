@@ -2506,12 +2506,11 @@ async function sincronizarTickets(req: any, res: any, sincronizacaoCompleta: boo
         
         const idUnico = gerarIdUnicoTicket(registro);
 
-        // Verificar se já existe
+        // Verificar se já existe (APENAS por nro_solicitacao - constraint unique corrigida)
         const { data: existente, error: erroConsulta } = await supabase
           .from('apontamentos_tickets_aranda')
           .select('id')
           .eq('nro_solicitacao', registro.Nro_Solicitacao)
-          .eq('data_abertura', formatarDataSemTimezone(registro.Data_Abertura))
           .maybeSingle();
         
         if (erroConsulta) {

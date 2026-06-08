@@ -342,12 +342,12 @@ async function buscarRegistroExistente(nroSolicitacao: string, dataAbertura: Dat
   existe: boolean;
   dataModificacao: Date | null;
 }> {
-  // Buscar por nro_solicitacao e data_abertura (constraint unique)
+  // Buscar APENAS por nro_solicitacao (constraint unique corrigida)
+  // CORREÇÃO: Não usar data_abertura na busca pois timezone pode variar entre importações
   const { data, error } = await supabase
     .from('apontamentos_tickets_aranda')
     .select('source_updated_at')
     .eq('nro_solicitacao', nroSolicitacao)
-    .eq('data_abertura', formatarDataSemTimezone(dataAbertura))
     .maybeSingle();
 
   if (error) {
@@ -470,11 +470,11 @@ async function inserirRegistro(dados: any): Promise<void> {
  * Atualiza registro existente no Supabase
  */
 async function atualizarRegistro(nroSolicitacao: string, dataAbertura: Date | null, dados: any): Promise<void> {
+  // CORREÇÃO: Atualizar APENAS por nro_solicitacao (constraint unique corrigida)
   const { error } = await supabase
     .from('apontamentos_tickets_aranda')
     .update(dados)
-    .eq('nro_solicitacao', nroSolicitacao)
-    .eq('data_abertura', formatarDataSemTimezone(dataAbertura));
+    .eq('nro_solicitacao', nroSolicitacao);
 
   if (error) {
     console.error('❌ [SYNC-TICKETS] Erro ao atualizar registro:', error);
