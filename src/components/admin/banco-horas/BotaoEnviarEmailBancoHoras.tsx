@@ -115,10 +115,14 @@ function gerarTabelaBancoHoras(
       const val = tickets || 0;
       return removerNegativo ? `${Math.abs(val)}` : `${val}`;
     }
-    // Remover segundos se formato HH:MM:SS
+    // Remover segundos se formato HH:MM:SS e garantir zero à esquerda nos minutos
     let h = horas || '00:00';
     const partes = h.split(':');
-    if (partes.length >= 3) h = `${partes[0]}:${partes[1]}`;
+    if (partes.length >= 2) {
+      // Garante que os minutos sempre tenham 2 dígitos (ex: "101:3" → "101:30" não, mas "101:3" → "101:03")
+      // IMPORTANTE: padStart garante o zero à esquerda quando há apenas 1 dígito
+      h = `${partes[0]}:${partes[1].padStart(2, '0')}`;
+    }
     // Remover sinal negativo se solicitado
     if (removerNegativo) h = h.replace('-', '');
     return h;
@@ -442,9 +446,13 @@ function gerarHtmlSaldoMes(
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
   const calculoRef = calculos[calculos.length - 1];
   
-  const saldoFinal = isTicket 
-    ? `${calculoRef?.saldo_tickets || 0} tickets` 
-    : (calculoRef?.saldo_horas || '00:00');
+  const saldoFinal = (() => {
+    if (isTicket) return `${calculoRef?.saldo_tickets || 0} tickets`;
+    const h = calculoRef?.saldo_horas || '00:00';
+    const partes = h.split(':');
+    if (partes.length >= 2) return `${partes[0]}:${partes[1].padStart(2, '0')}`;
+    return h;
+  })();
   
   const saldoColor = (() => {
     if (isTicket) return (calculoRef?.saldo_tickets || 0) >= 0 ? '#10b981' : '#ef4444';
