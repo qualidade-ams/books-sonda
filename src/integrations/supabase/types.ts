@@ -1389,6 +1389,8 @@ export type Database = {
           created_at: string | null
           data_status: string | null
           descricao_status: string | null
+          dia_inicio_apuracao: number | null
+          dia_fim_apuracao: number | null
           em_projeto: boolean | null
           email_gestor: string | null
           id: string
@@ -1427,6 +1429,8 @@ export type Database = {
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
+          dia_inicio_apuracao?: number | null
+          dia_fim_apuracao?: number | null
           em_projeto?: boolean | null
           email_gestor?: string | null
           id?: string
@@ -1465,6 +1469,8 @@ export type Database = {
           created_at?: string | null
           data_status?: string | null
           descricao_status?: string | null
+          dia_inicio_apuracao?: number | null
+          dia_fim_apuracao?: number | null
           em_projeto?: boolean | null
           email_gestor?: string | null
           id?: string

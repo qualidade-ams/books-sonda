@@ -37,6 +37,9 @@ const empresaExcelSchema = z.object({
   // Campos de Meta SLA
   'Meta SLA (%)': z.union([z.string(), z.number()]).optional(), // Percentual 0-100
   'Qtd Mínima Chamados SLA': z.union([z.string(), z.number()]).optional(), // Número inteiro >= 0
+  // Periodicidade de Apuração
+  'Dia Início Apuração': z.union([z.string(), z.number()]).optional(), // 1-28
+  'Dia Fim Apuração': z.union([z.string(), z.number()]).optional(), // 0-28
 }).refine((data) => {
   // Validação condicional para Tipo Book
   const temAms = data['Tem AMS']?.toLowerCase() === 'sim';
@@ -565,6 +568,10 @@ class ExcelImportService {
     const meta_sla_percentual = row['Meta SLA (%)'] ? parseFloat(row['Meta SLA (%)']) : null;
     const quantidade_minima_chamados_sla = row['Qtd Mínima Chamados SLA'] ? parseInt(row['Qtd Mínima Chamados SLA']) : null;
 
+    // Processar campos de Periodicidade de Apuração
+    const dia_inicio_apuracao = row['Dia Início Apuração'] ? parseInt(row['Dia Início Apuração']) : 1;
+    const dia_fim_apuracao = row['Dia Fim Apuração'] != null && row['Dia Fim Apuração'] !== '' ? parseInt(row['Dia Fim Apuração']) : 0;
+
     return {
       nomeCompleto: row['Nome Completo'],
       nomeAbreviado: row['Nome Abreviado'],
@@ -596,7 +603,10 @@ class ExcelImportService {
       percentual_repasse_especial,
       // Campos de Meta SLA (usando snake_case para compatibilidade com o serviço)
       meta_sla_percentual,
-      quantidade_minima_chamados_sla
+      quantidade_minima_chamados_sla,
+      // Periodicidade de Apuração
+      dia_inicio_apuracao,
+      dia_fim_apuracao
     };
   }
 
@@ -636,7 +646,10 @@ class ExcelImportService {
         '% Repasse Especial',
         // Campos de Meta SLA
         'Meta SLA (%)',
-        'Qtd Mínima Chamados SLA'
+        'Qtd Mínima Chamados SLA',
+        // Periodicidade de Apuração
+        'Dia Início Apuração',
+        'Dia Fim Apuração'
       ],
       [
         'EXEMPLO EMPRESA LTDA',
@@ -669,7 +682,10 @@ class ExcelImportService {
         '',
         // Exemplo de campos de Meta SLA
         '95.00',
-        '10'
+        '10',
+        // Exemplo de campos de Periodicidade de Apuração
+        '1',
+        '0'
       ],
       [],
       ['INSTRUÇÕES (ordem das colunas):'],
@@ -706,6 +722,10 @@ class ExcelImportService {
       ['CAMPOS DE META SLA (opcional):'],
       ['• Meta SLA (%): Porcentagem mínima de SLA para não contar como estouro (0-100, ex: 95.00) (opcional)'],
       ['• Qtd Mínima Chamados SLA: Quantidade mínima de chamados abertos para considerar estouro (número inteiro >= 0, ex: 10) (opcional)'],
+      [],
+      ['PERIODICIDADE DE APURAÇÃO (opcional):'],
+      ['• Dia Início Apuração: Dia do mês que inicia a apuração (1-28, padrão: 1). Ex: 15 para Samarco'],
+      ['• Dia Fim Apuração: Dia do mês que encerra a apuração (0-28, padrão: 0 = último dia do mês). Ex: 14 para Samarco (período 15 a 14)'],
       [],
       ['REGRAS CONDICIONAIS:'],
       ['• Tipo Book: Obrigatório apenas quando "Tem AMS" = "sim"'],
@@ -749,7 +769,10 @@ class ExcelImportService {
       { wch: 20 },  // % Repasse Especial
       // Campos de Meta SLA
       { wch: 15 }, // Meta SLA (%)
-      { wch: 25 }  // Qtd Mínima Chamados SLA
+      { wch: 25 }, // Qtd Mínima Chamados SLA
+      // Periodicidade de Apuração
+      { wch: 20 }, // Dia Início Apuração
+      { wch: 18 }  // Dia Fim Apuração
     ];
 
     worksheet['!cols'] = colWidths;

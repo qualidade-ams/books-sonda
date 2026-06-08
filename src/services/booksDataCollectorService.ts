@@ -38,7 +38,7 @@ class BooksDataCollectorService {
       // Buscar informações da empresa
       const { data: empresa, error: empresaError } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal')
+        .select('nome_completo, nome_abreviado, meta_sla_percentual, tipo_contrato, quantidade_minima_chamados_sla, baseline_horas_mensal, dia_inicio_apuracao, dia_fim_apuracao')
         .eq('id', empresaId)
         .single();
 
@@ -101,6 +101,10 @@ class BooksDataCollectorService {
         ? empresa.tipo_contrato as 'horas' | 'tickets' | 'ambos'
         : null;
 
+      // Periodicidade customizada (ex: Samarco 15 a 14)
+      const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
+      const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
+
       const { 
         apontamentosHoras, 
         apontamentosTickets,
@@ -111,7 +115,9 @@ class BooksDataCollectorService {
         empresa.nome_abreviado,
         mes,
         ano,
-        tipoContratoValido
+        tipoContratoValido,
+        diaInicioApuracao,
+        diaFimApuracao
       );
 
       // Gerar dados de cada seção
@@ -204,16 +210,47 @@ class BooksDataCollectorService {
     empresaNomeAbreviado: string,
     mes: number,
     ano: number,
-    tipoContrato: 'horas' | 'tickets' | 'ambos' | null
+    tipoContrato: 'horas' | 'tickets' | 'ambos' | null,
+    diaInicioApuracao: number = 1,
+    diaFimApuracao: number = 0
   ): Promise<{
     apontamentosHoras: any[];
     apontamentosTickets: any[];
     ticketsAbertos: any[];
     ticketsFechados: any[];
   }> {
-    const dataInicio = new Date(ano, mes - 1, 1);
-    const dataFim = new Date(ano, mes, 0, 23, 59, 59);
-    const proximoMesInicio = new Date(ano, mes, 1); // Para data_solucao
+    // Calcular datas de início e fim baseado na periodicidade
+    let dataInicio: Date;
+    let dataFim: Date;
+    let proximoMesInicio: Date;
+
+    if (diaInicioApuracao > 1) {
+      // Periodicidade customizada (ex: dia 15 do mês anterior até dia 14 do mês atual)
+      // Para o book de referência mes/ano, o período é:
+      // Início: dia X do mês anterior ao mes de referência
+      // Fim: dia (X-1) do mes de referência
+      const mesAnterior = mes === 1 ? 12 : mes - 1;
+      const anoAnterior = mes === 1 ? ano - 1 : ano;
+      
+      dataInicio = new Date(anoAnterior, mesAnterior - 1, diaInicioApuracao);
+      // Fim: dia_fim do mês de referência (ou dia_inicio - 1 se dia_fim não especificado)
+      const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+      dataFim = new Date(ano, mes - 1, diaFimReal, 23, 59, 59);
+      proximoMesInicio = new Date(ano, mes - 1, diaFimReal + 1);
+      
+      console.log('📅 Periodicidade CUSTOMIZADA:', {
+        empresa: empresaNomeAbreviado,
+        diaInicioApuracao,
+        diaFimApuracao: diaFimReal,
+        dataInicio: dataInicio.toISOString(),
+        dataFim: dataFim.toISOString()
+      });
+    } else {
+      // Periodicidade padrão (dia 1 ao último dia do mês)
+      dataInicio = new Date(ano, mes - 1, 1);
+      dataFim = new Date(ano, mes, 0, 23, 59, 59);
+      proximoMesInicio = new Date(ano, mes, 1);
+    }
 
     console.log('🔍 Buscando apontamentos:', {
       empresaCompleto: empresaNomeCompleto,
@@ -221,6 +258,7 @@ class BooksDataCollectorService {
       mes,
       ano,
       tipoContrato,
+      periodicidade: diaInicioApuracao > 1 ? 'customizada' : 'padrão',
       dataInicio: dataInicio.toISOString(),
       dataFim: dataFim.toISOString()
     });
@@ -513,28 +551,14 @@ class BooksDataCollectorService {
         .gte('data_solucao', dataInicio.toISOString())
         .lt('data_solucao', proximoMesInicio.toISOString())
         .eq('cod_tipo', 'Incidente')
-        .neq('cod_tipo', 'Problema')
         .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
       const totalIncidentes = (ticketsFechados || []).length;
 
-      // Buscar violados do mês
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59);
-      const { data: ticketsViolados } = await supabase
-        .from('apontamentos_tickets_aranda')
-        .select('nro_solicitacao')
-        .ilike('organizacao', `%${empresaNomeCompleto}%`)
-        .eq('tds_cumprido', 'TDS Vencido')
-        .gte('data_abertura', dataInicio.toISOString())
-        .lte('data_abertura', dataFim.toISOString())
-        .neq('cod_tipo', 'Problema')
-        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
-        .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
-
-      const totalViolados = (ticketsViolados || []).length;
+      // Contar violados a partir dos incidentes fechados (mesma base de dados)
+      const totalViolados = (ticketsFechados || []).filter(t => t.tds_cumprido === 'TDS Vencido').length;
 
       // Calcular SLA do mês
       const slaMes = totalIncidentes > 0
@@ -1066,27 +1090,13 @@ class BooksDataCollectorService {
         }))
     });
 
-    // VIOLADOS: Chamados onde tds_cumprido = 'TDS Vencido'
-    const { data: ticketsViolados, error: errorViolados } = await supabase
-      .from('apontamentos_tickets_aranda')
-      .select('*')
-      .ilike('organizacao', `%${empresaNomeCompleto}%`)
-      .eq('tds_cumprido', 'TDS Vencido')
-      .gte('data_abertura', dataInicio.toISOString())
-      .lte('data_abertura', dataFim.toISOString())
-      .neq('cod_tipo', 'Problema')
-      .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
-      .eq('caso_pai', 'SIM')
-      .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
-
-    if (errorViolados) {
-      console.error('❌ Erro ao buscar tickets violados:', errorViolados);
-    }
-
-    const violados = (ticketsViolados || []).length;
+    // VIOLADOS: Incidentes fechados no mês que têm tds_cumprido = 'TDS Vencido' (mesma base de dados)
+    const incidentesFechadosArray = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');
+    const violados = incidentesFechadosArray.filter(t => t.tds_cumprido === 'TDS Vencido').length;
     
     // Verificar se os violados têm cod_resolucao elegível
-    const violadosElegiveis = (ticketsViolados || []).filter(t => 
+    const violadosElegiveis = incidentesFechadosArray.filter(t => 
+      t.tds_cumprido === 'TDS Vencido' &&
       codResolucaoElegiveis.includes(t.cod_resolucao)
     ).length;
     
@@ -1096,7 +1106,8 @@ class BooksDataCollectorService {
       totalViolados: violados,
       violadosElegiveis,
       violadosNaoElegiveis,
-      amostra: (ticketsViolados || [])
+      amostra: incidentesFechadosArray
+        .filter(t => t.tds_cumprido === 'TDS Vencido')
         .slice(0, 5)
         .map(t => ({
           nro: t.nro_solicitacao,
@@ -1176,7 +1187,10 @@ class BooksDataCollectorService {
     );
 
     // Detalhes dos chamados violados (top 10)
-    const chamadosViolados = (ticketsViolados || []).slice(0, 10).map(t => ({
+    const chamadosViolados = incidentesFechadosArray
+      .filter(t => t.tds_cumprido === 'TDS Vencido')
+      .slice(0, 10)
+      .map(t => ({
       id_chamado: t.nro_solicitacao,
       tipo: (t.cod_tipo === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
       data_abertura: new Date(t.data_abertura).toLocaleDateString('pt-BR'),
@@ -1388,6 +1402,7 @@ class BooksDataCollectorService {
           'Monitoramento DBA (Banco=S |SLA=S)',
           'Nota Publicada',
           'Nota Publicada (Banco=S |SLA=N)',
+          'Nota Publicada (Banco=S| SLA=N)',
           'Parametrização / Cadastro',
           'Parametrização / Cadastro (Banco=S |SLA=N)',
           'Parametrização / Funcionalidade',
@@ -2351,7 +2366,6 @@ class BooksDataCollectorService {
       }
 
       const dataInicio = new Date(ano, mes - 1, 1);
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59);
       const proximoMesInicio = new Date(ano, mes, 1);
 
       // Buscar tickets fechados do mês
@@ -2366,8 +2380,9 @@ class BooksDataCollectorService {
         .eq('caso_pai', 'SIM')
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
-      // Contar incidentes fechados
-      const totalIncidentes = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente').length;
+      // Contar incidentes fechados no mês (base para cálculo)
+      const incidentesFechados = (ticketsFechados || []).filter(t => t.cod_tipo === 'Incidente');
+      const totalIncidentes = incidentesFechados.length;
 
       // Contar incidentes elegíveis (com cod_resolucao específicos)
       const codResolucaoElegiveis = [
@@ -2382,25 +2397,13 @@ class BooksDataCollectorService {
         'Consultoria – Nota Publicada (Banco=S |SLA=S)',
       ];
       
-      const incidentesElegiveis = (ticketsFechados || []).filter(t => 
-        t.cod_tipo === 'Incidente' && 
+      const incidentesElegiveis = incidentesFechados.filter(t => 
         codResolucaoElegiveis.includes(t.cod_resolucao)
       ).length;
 
-      // Buscar tickets violados do mês
-      const { data: ticketsViolados } = await supabase
-        .from('apontamentos_tickets_aranda')
-        .select('nro_solicitacao')
-        .ilike('organizacao', `%${empresaNomeCompleto}%`)
-        .eq('tds_cumprido', 'TDS Vencido')
-        .gte('data_abertura', dataInicio.toISOString())
-        .lte('data_abertura', dataFim.toISOString())
-        .neq('cod_tipo', 'Problema')
-        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
-        .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
-
-      const totalViolados = (ticketsViolados || []).length;
+      // Contar violados a partir dos incidentes fechados no mês (mesma base de dados)
+      // Isso garante que violados nunca exceda o total de incidentes
+      const totalViolados = incidentesFechados.filter(t => t.tds_cumprido === 'TDS Vencido').length;
 
       // Calcular percentual de SLA: (Incidentes - Violados) / Incidentes * 100
       let percentual = 0;

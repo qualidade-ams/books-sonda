@@ -110,6 +110,52 @@ export class BancoHorasQuarentenaService {
   // ==========================================================================
 
   /**
+   * Reabre o período do banco de horas, deletando o fechamento existente.
+   * Chamado durante retificação/regeneração para permitir coleta de dados atualizados.
+   * 
+   * O snapshot da versão anterior já está preservado em books_versoes,
+   * então é seguro deletar o fechamento para criar um novo com dados frescos.
+   */
+  async reabrirPeriodo(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<boolean> {
+    try {
+      console.log('🔓 BancoHorasQuarentenaService.reabrirPeriodo:', { empresaId, mes, ano });
+
+      const { data: existente } = await db
+        .from('banco_horas_fechamentos')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .maybeSingle();
+
+      if (!existente) {
+        console.log('ℹ️ Período já está aberto, nada a fazer');
+        return true;
+      }
+
+      const { error } = await db
+        .from('banco_horas_fechamentos')
+        .delete()
+        .eq('id', existente.id);
+
+      if (error) {
+        console.error('❌ Erro ao reabrir período:', error);
+        return false;
+      }
+
+      console.log('✅ Período reaberto com sucesso. Fechamento removido:', existente.id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro em reabrirPeriodo:', error);
+      return false;
+    }
+  }
+
+  /**
    * Fecha o período do banco de horas para uma empresa/mês/ano.
    * Chamado automaticamente quando o book é gerado.
    * 
