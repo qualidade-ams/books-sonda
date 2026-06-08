@@ -103,6 +103,9 @@ export class EmpresasClientesService {
       // NOVO: Campos de Meta SLA
       meta_sla_percentual: data.meta_sla_percentual || null,
       quantidade_minima_chamados_sla: data.quantidade_minima_chamados_sla || null,
+      // Periodicidade de apuração
+      dia_inicio_apuracao: data.dia_inicio_apuracao || 1,
+      dia_fim_apuracao: data.dia_fim_apuracao ?? 0,
       // NOVO: Campos de Segmentação de Baseline
       baseline_segmentado: data.baselineSegmentado || false,
       segmentacao_config: (data.segmentacaoConfig as any) || null
@@ -548,6 +551,10 @@ export class EmpresasClientesService {
       // NOVO: Incluir campos de Meta SLA
       if (data.meta_sla_percentual !== undefined) updateData.meta_sla_percentual = data.meta_sla_percentual || null;
       if (data.quantidade_minima_chamados_sla !== undefined) updateData.quantidade_minima_chamados_sla = data.quantidade_minima_chamados_sla || null;
+
+      // Periodicidade de apuração
+      if (data.dia_inicio_apuracao !== undefined) updateData.dia_inicio_apuracao = data.dia_inicio_apuracao || 1;
+      if (data.dia_fim_apuracao !== undefined) updateData.dia_fim_apuracao = data.dia_fim_apuracao ?? 0;
 
       // NOVO: Incluir campos de Segmentação de Baseline
       if (data.baselineSegmentado !== undefined) updateData.baseline_segmentado = data.baselineSegmentado;

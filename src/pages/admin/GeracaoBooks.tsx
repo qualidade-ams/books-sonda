@@ -105,6 +105,37 @@ export default function GeracaoBooks() {
   // Calcular mês de referência (mês anterior ao período selecionado)
   const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
+
+  /**
+   * Verifica se uma empresa com periodicidade customizada está liberada para geração.
+   * Empresas com dia_inicio_apuracao > 1 só podem ser geradas a partir daquele dia do mês.
+   * Ex: Samarco (dia_inicio=15) só pode ser gerada a partir do dia 15.
+   */
+  const isEmpresaLiberada = (book: BookListItem): boolean => {
+    const diaInicio = book.dia_inicio_apuracao ?? 1;
+    // Periodicidade padrão (dia 1) = sempre liberada
+    if (diaInicio === 1) return true;
+    // Periodicidade customizada: só libera a partir do dia configurado
+    return hoje.getDate() >= diaInicio;
+  };
+
+  /**
+   * Retorna o label do período de apuração customizado.
+   * Ex: "15/11 a 14/12" para Samarco no período de referência Dezembro/2025
+   */
+  const getPeriodoApuracaoLabel = (book: BookListItem): string | null => {
+    const diaInicio = book.dia_inicio_apuracao ?? 1;
+    const diaFim = book.dia_fim_apuracao ?? 0;
+    if (diaInicio === 1 && diaFim === 0) return null; // Período padrão
+    
+    // Calcular mês anterior ao mês de referência
+    const mesAnterior = mesReferencia === 1 ? 12 : mesReferencia - 1;
+    const mesAnteriorFormatado = String(mesAnterior).padStart(2, '0');
+    const mesRefFormatado = String(mesReferencia).padStart(2, '0');
+    const diaFimReal = diaFim > 0 ? diaFim : 'último';
+    
+    return `${diaInicio}/${mesAnteriorFormatado} a ${diaFimReal}/${mesRefFormatado}`;
+  };
   
   // Hook useBooks sempre busca o período de referência atual (não afetado pelo filtro)
   const { books, isLoading, gerarBooks, atualizarBooks, gerarBooksAsync, atualizarBooksAsync, isGerando, isAtualizando, refetch } = useBooks({
@@ -613,6 +644,112 @@ export default function GeracaoBooks() {
     stats
   });
 
+  // Estado para geração unitária
+  const [gerandoUnitarioId, setGerandoUnitarioId] = useState<string | null>(null);
+
+  // Handler para gerar/regenerar e enviar um único book (ciclo completo)
+  const handleGerarUnitario = async (book: BookListItem) => {
+    setGerandoUnitarioId(book.id);
+    const nomeAbreviado = book.empresa_nome_abreviado || book.empresa_nome;
+
+    try {
+      // 1. Gerar book no banco
+      const result = await booksService.gerarBooksLote({
+        empresa_ids: [book.empresa_id],
+        mes: mesReferencia,
+        ano: anoReferencia,
+        gerar_pdf: true,
+        forcar_atualizacao: true
+      });
+
+      const bookGerado = result.resultados.find(r => r.sucesso && r.book_id);
+      if (!bookGerado) {
+        const erro = result.resultados[0]?.erro || 'Erro desconhecido na geração';
+        throw new Error(`Falha ao gerar book: ${erro}`);
+      }
+
+      // 2. Gerar PDF
+      const nomeFormatado = nomeAbreviado.replace(/\s+/g, '_').toUpperCase();
+      const mesFormatado = String(mesReferencia).padStart(2, '0');
+      const mesNomeRef = MESES_NOMES[mesReferencia];
+      const assunto = `BOOK: ${nomeFormatado}_${anoReferencia}_${mesFormatado}. ${mesNomeRef}`;
+      const nomeArquivo = `Book_${nomeFormatado}_${mesNomeRef}_${anoReferencia}.pdf`;
+      const nomeArquivoStorage = sanitizarNomeArquivo(nomeArquivo);
+
+      const pdfBlob = await booksPDFServiceV2.gerarPDF(bookGerado.book_id!);
+
+      // 3. Upload temporário no Supabase Storage
+      const storagePath = `books-temp/${anoReferencia}/${mesFormatado}/${nomeArquivoStorage}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('anexos-temporarios')
+        .upload(storagePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw new Error(`Erro no upload do PDF: ${uploadError.message}`);
+      }
+
+      // 4. Gerar URL pública
+      const { data: publicUrlData } = supabase.storage
+        .from('anexos-temporarios')
+        .getPublicUrl(storagePath);
+
+      if (!publicUrlData?.publicUrl) {
+        throw new Error('Erro ao gerar URL pública do PDF');
+      }
+
+      // 5. Enviar email
+      const emailResult = await emailService.sendEmail({
+        to: ['willian.faria@sonda.com'],
+        subject: assunto,
+        html: `<p>Segue em anexo o Book de <strong>${nomeAbreviado}</strong> referente a <strong>${mesNomeRef}/${anoReferencia}</strong>.</p>`,
+        anexos: {
+          totalArquivos: 1,
+          tamanhoTotal: pdfBlob.size,
+          arquivos: [{
+            url: publicUrlData.publicUrl,
+            nome: nomeArquivo,
+            tipo: 'application/pdf',
+            tamanho: pdfBlob.size,
+            token: ''
+          }]
+        }
+      });
+
+      if (emailResult.success) {
+        // 6. Registrar envio no versionamento
+        await booksVersioningService.registrarEnvio(
+          bookGerado.book_id!,
+          ['willian.faria@sonda.com']
+        );
+
+        toast({
+          title: 'Book gerado e enviado',
+          description: `Book de ${nomeAbreviado} regenerado e enviado com sucesso.`,
+        });
+      } else {
+        toast({
+          title: 'Book gerado, mas envio falhou',
+          description: `O book de ${nomeAbreviado} foi regenerado mas houve erro no envio do email.`,
+          variant: 'destructive',
+        });
+      }
+
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Erro no processamento',
+        description: error instanceof Error ? error.message : 'Não foi possível gerar/enviar o book.',
+        variant: 'destructive',
+      });
+    } finally {
+      setGerandoUnitarioId(null);
+    }
+  };
+
   // Handler para iniciar retificação
   const handleIniciarRetificacao = (book: BookListItem) => {
     setBookRetificando(book);
@@ -905,18 +1042,33 @@ export default function GeracaoBooks() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Checkbox Selecionar Todos */}
+                  {/* Checkbox Selecionar Todos (somente os liberados) */}
                   <div className="flex items-center space-x-2 pb-3 border-b">
                     <Checkbox
-                      checked={isAllSelected}
-                      onCheckedChange={toggleAll}
+                      checked={(() => {
+                        const liberados = booksFiltrados.filter(b => isEmpresaLiberada(b));
+                        return liberados.length > 0 && liberados.every(b => isSelected(b.id));
+                      })()}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Selecionar apenas os liberados
+                          const idsLiberados = booksFiltrados
+                            .filter(b => isEmpresaLiberada(b))
+                            .map(b => b.id);
+                          idsLiberados.forEach(id => {
+                            if (!isSelected(id)) toggleSelection(id);
+                          });
+                        } else {
+                          clearSelection();
+                        }
+                      }}
                       id="select-all"
                     />
                     <label
                       htmlFor="select-all"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
-                      Selecionar todos ({booksFiltrados.length})
+                      Selecionar todos ({booksFiltrados.filter(b => isEmpresaLiberada(b)).length} liberados)
                     </label>
                   </div>
 
@@ -925,7 +1077,9 @@ export default function GeracaoBooks() {
                     {booksFiltrados.map((book) => (
                       <div
                         key={book.id}
-                        className="flex items-center justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        className={`flex items-center justify-between gap-4 p-4 border rounded-lg transition-colors ${
+                          isEmpresaLiberada(book) ? 'hover:bg-gray-50' : 'bg-gray-50/50 opacity-75'
+                        }`}
                       >
                         {/* Checkbox + Nome da Empresa */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -933,12 +1087,27 @@ export default function GeracaoBooks() {
                             checked={isSelected(book.id)}
                             onCheckedChange={() => toggleSelection(book.id)}
                             id={`book-${book.id}`}
+                            disabled={!isEmpresaLiberada(book)}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-gray-900 truncate">
                               {book.empresa_nome_abreviado || book.empresa_nome}
                             </div>
-                            {book.status === 'pendente' && (
+                            {/* Indicador de periodicidade customizada bloqueada */}
+                            {!isEmpresaLiberada(book) && (
+                              <div className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+                                <Lock className="h-3 w-3" />
+                                Liberado a partir do dia {book.dia_inicio_apuracao} — Período: {getPeriodoApuracaoLabel(book)}
+                              </div>
+                            )}
+                            {/* Indicador de periodicidade customizada liberada */}
+                            {isEmpresaLiberada(book) && getPeriodoApuracaoLabel(book) && (
+                              <div className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Período: {getPeriodoApuracaoLabel(book)}
+                              </div>
+                            )}
+                            {book.status === 'pendente' && isEmpresaLiberada(book) && !getPeriodoApuracaoLabel(book) && (
                               <div className="text-xs text-gray-500 mt-0.5">
                                 Aguardando geração
                               </div>
@@ -1071,9 +1240,23 @@ export default function GeracaoBooks() {
                                 )}
                               </>
                             )}
-                            {/* Books DESATUALIZADOS (retificados): Visualizar, Download, Histórico */}
+                            {/* Books DESATUALIZADOS (retificados): Regenerar, Visualizar, Download, Histórico */}
                             {book.status === 'desatualizado' && (
                               <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-800"
+                                  onClick={() => handleGerarUnitario(book)}
+                                  disabled={gerandoUnitarioId === book.id}
+                                  title="Regenerar Book"
+                                >
+                                  {gerandoUnitarioId === book.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"

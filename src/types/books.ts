@@ -335,6 +335,9 @@ export interface BookListItem {
   enviado_em?: string;
   enviado_por?: string;
   destinatarios_envio?: string[];
+  // Periodicidade customizada de apuração
+  dia_inicio_apuracao?: number; // Default 1 = período padrão
+  dia_fim_apuracao?: number;    // Default 0 = último dia do mês
 }
 
 /**

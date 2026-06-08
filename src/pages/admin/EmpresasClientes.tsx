@@ -394,6 +394,9 @@ const EmpresasClientes = () => {
       // NOVO: Campos de Segmentação de Baseline
       baselineSegmentado: empresa.baseline_segmentado || false,
       segmentacaoConfig: empresa.segmentacao_config as any || undefined,
+      // Periodicidade de apuração
+      dia_inicio_apuracao: (empresa as any).dia_inicio_apuracao ?? 1,
+      dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0,
     };
 
     // Debug: Log dos dados de repasse por período

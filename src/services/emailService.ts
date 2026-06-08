@@ -33,8 +33,8 @@ export interface EmailResponse {
 
 // ✅ Configuração de Rate Limiting para Power Automate
 export const RATE_LIMIT_CONFIG = {
-  /** Delay base entre envios em ms (30 segundos - respeita limite de 11 runs simultâneas do Power Automate) */
-  DELAY_ENTRE_ENVIOS_MS: 30000,
+  /** Delay base entre envios em ms (10 segundos - respeita limite de 11 runs simultâneas do Power Automate) */
+  DELAY_ENTRE_ENVIOS_MS: 10000,
   /** Máximo de retries por email */
   MAX_RETRIES: 5,
   /** Delay inicial para backoff exponencial em ms (60 segundos) */

@@ -80,11 +80,8 @@ export const InputHoras = forwardRef<HTMLInputElement, InputHorasProps>(
           }
         }
         
-        // Adiciona ':' automaticamente após 2 ou mais dígitos se não tiver ':'
-        if (!novoValor.includes(':') && novoValor.length >= 2) {
-          const horas = novoValor.substring(0, novoValor.length);
-          novoValor = horas + ':';
-        }
+        // NÃO adicionar ':' automaticamente — permite digitar horas com 3+ dígitos (ex: 100, 150)
+        // O ':' é inserido pelo usuário ou normalizado no blur
       }
       
       setInputValue(novoValor);

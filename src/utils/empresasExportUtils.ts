@@ -184,7 +184,10 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
       'Períodos até Zerar': empresa.periodos_ate_zerar || '',
       // Campos de Meta SLA
       'Meta SLA (%)': empresa.meta_sla_percentual || '',
-      'Qtd Mínima Chamados SLA': empresa.quantidade_minima_chamados_sla || ''
+      'Qtd Mínima Chamados SLA': empresa.quantidade_minima_chamados_sla || '',
+      // Periodicidade de Apuração
+      'Dia Início Apuração': (empresa as any).dia_inicio_apuracao ?? 1,
+      'Dia Fim Apuração': (empresa as any).dia_fim_apuracao ?? 0
     };
     })
   );
@@ -233,7 +236,10 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 20 }, // Períodos até Zerar
     // Campos de Meta SLA
     { wch: 15 }, // Meta SLA (%)
-    { wch: 25 }  // Qtd Mínima Chamados SLA
+    { wch: 25 }, // Qtd Mínima Chamados SLA
+    // Periodicidade de Apuração
+    { wch: 20 }, // Dia Início Apuração
+    { wch: 18 }  // Dia Fim Apuração
   ];
 
   ws['!cols'] = colWidths;
@@ -615,6 +621,40 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
           doc.text(empresa.periodos_ate_zerar.toString(), rightColumnX + 38, contentY);
         }
       }
+    }
+
+    // Seção de Periodicidade de Apuração (se customizada)
+    const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
+    const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
+    if (diaInicioApuracao > 1 || diaFimApuracao > 0) {
+      contentY += 3;
+      
+      // Linha separadora
+      doc.setDrawColor(...colors.light);
+      doc.setLineWidth(0.2);
+      doc.line(contentX, contentY, cardMargin + cardWidth - 10, contentY);
+      
+      contentY += 5;
+      
+      // Título da seção
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.primary);
+      doc.text('PERIODICIDADE DE APURAÇÃO', contentX, contentY);
+      
+      contentY += 5;
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.dark);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dia Início:', contentX, contentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(diaInicioApuracao.toString(), contentX + 22, contentY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dia Fim:', rightColumnX, contentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(diaFimApuracao === 0 ? 'Último dia do mês' : diaFimApuracao.toString(), rightColumnX + 18, contentY);
     }
 
     // Seção de Metas de SLA (se configurado)

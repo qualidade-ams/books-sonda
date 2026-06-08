@@ -108,6 +108,9 @@ const empresaSchema = z.object({
   percentual_dentro_periodo: z.number().int().min(0).max(100).optional(),
   percentual_entre_periodos: z.number().int().min(0).max(100).optional(),
   periodos_ate_zerar: z.number().int().min(1).max(12).optional(),
+  // Periodicidade de apuração (ex: Samarco 15 a 14)
+  dia_inicio_apuracao: z.number().int().min(1).max(28).optional(),
+  dia_fim_apuracao: z.number().int().min(0).max(28).optional(),
   
   // NOVO: Campos de Meta SLA
   meta_sla_percentual: z.number().min(0).max(100).optional(),
@@ -331,6 +334,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       percentual_dentro_periodo: 100,
       percentual_entre_periodos: 70,
       periodos_ate_zerar: 2,
+      // Periodicidade de apuração
+      dia_inicio_apuracao: 1,
+      dia_fim_apuracao: 0,
       // NOVO: Campos de Meta SLA - valores padrão
       meta_sla_percentual: undefined,
       quantidade_minima_chamados_sla: undefined,
@@ -383,6 +389,9 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         percentual_dentro_periodo: 100,
         percentual_entre_periodos: 70,
         periodos_ate_zerar: 2,
+        // Periodicidade de apuração
+        dia_inicio_apuracao: 1,
+        dia_fim_apuracao: 0,
         // NOVO: Campos de Meta SLA - valores padrão
         meta_sla_percentual: undefined,
         quantidade_minima_chamados_sla: undefined,
@@ -1104,6 +1113,111 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
 
           {/* Tab: Parâmetros Book */}
           <TabsContent value="parametros" className="mt-4 space-y-6">
+            {/* Periodicidade de Apuração */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dia_inicio_apuracao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2">
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          Dia Início da Apuração
+                        </FormLabel>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              <p className="text-sm">
+                                Dia do mês que inicia a apuração dos dados do book. Padrão: 1 (início do mês).
+                                Ex: 15 para Samarco. O book só será liberado para geração a partir deste dia.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="1 (padrão)"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(1);
+                              return;
+                            }
+                            const numValue = parseInt(value);
+                            if (numValue >= 1 && numValue <= 28) {
+                              field.onChange(numValue);
+                            }
+                          }}
+                          value={field.value || 1}
+                          disabled={isFieldDisabled}
+                          min={1}
+                          max={28}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dia_fim_apuracao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2">
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          Dia Fim da Apuração
+                        </FormLabel>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              <p className="text-sm">
+                                Dia do mês que encerra a apuração. 0 = último dia do mês (padrão).
+                                Ex: 14 para Samarco (período 15 a 14).
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0 (último dia do mês)"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              field.onChange(0);
+                              return;
+                            }
+                            const numValue = parseInt(value);
+                            if (numValue >= 0 && numValue <= 28) {
+                              field.onChange(numValue);
+                            }
+                          }}
+                          value={field.value || 0}
+                          disabled={isFieldDisabled}
+                          min={0}
+                          max={28}
+                          className="focus:ring-sonda-blue focus:border-sonda-blue"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
             {/* Tipo de Contrato */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

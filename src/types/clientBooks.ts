@@ -102,6 +102,9 @@ export interface EmpresaFormData {
   // NOVO: Campos de Meta SLA
   meta_sla_percentual?: number;
   quantidade_minima_chamados_sla?: number;
+  // Periodicidade de apuração (ex: Samarco 15 a 14)
+  dia_inicio_apuracao?: number;
+  dia_fim_apuracao?: number;
 }
 
 export interface ClienteFormData {

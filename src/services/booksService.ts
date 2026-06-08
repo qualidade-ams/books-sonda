@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MESES_LABELS } from '@/types/books';
 import { booksDataCollectorService } from './booksDataCollectorService';
 import { bancoHorasQuarentenaService } from './bancoHorasQuarentenaService';
+import { bancoHorasService } from './bancoHorasService';
 
 class BooksService {
   /**
@@ -30,7 +31,7 @@ class BooksService {
       // PASSO 1: Buscar empresas que atendem aos critérios
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select('id, nome_completo, nome_abreviado, tem_ams, tipo_book')
+        .select('id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao')
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
@@ -85,7 +86,9 @@ class BooksService {
           versao_atual: book?.versao_atual || 1,
           enviado_em: book?.enviado_em,
           enviado_por: book?.enviado_por,
-          destinatarios_envio: book?.destinatarios_envio
+          destinatarios_envio: book?.destinatarios_envio,
+          dia_inicio_apuracao: (empresa as any).dia_inicio_apuracao ?? 1,
+          dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0
         };
       });
 
@@ -455,11 +458,46 @@ class BooksService {
             continue;
           }
 
+          // Se forçando atualização (retificação), reabrir período do banco de horas
+          // para que a coleta de dados use valores em tempo real (não o snapshot antigo)
+          if (config.forcar_atualizacao) {
+            try {
+              // 1. Reabrir período (deleta o fechamento/snapshot antigo)
+              await bancoHorasQuarentenaService.reabrirPeriodo(
+                empresaId,
+                config.mes,
+                config.ano
+              );
+              console.log(`🔓 Período ${config.mes}/${config.ano} reaberto para empresa ${empresaId} (retificação)`);
+
+              // 2. Recalcular banco de horas para atualizar banco_horas_calculos com dados frescos
+              // Isso garante que o próximo fecharPeriodo() salve um snapshot correto
+              await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
+              console.log(`🔄 Banco de horas recalculado para empresa ${empresaId} - ${config.mes}/${config.ano}`);
+            } catch (reabrirError) {
+              console.warn('⚠️ Erro ao reabrir/recalcular período (não crítico):', reabrirError);
+            }
+          }
+
           // Gerar dados do book (snapshot)
           const dadosBook = await this.coletarDadosBook(empresaId, config.mes, config.ano);
 
           if (bookExistente) {
-            // Atualizar book existente
+            // Se forçando atualização e o book está enviado, primeiro desbloquear
+            // O trigger bloquear_atualizacao_book_enviado impede alterações de dados
+            // em books com status 'enviado'. Precisamos mudar o status primeiro.
+            if (config.forcar_atualizacao) {
+              const { error: statusError } = await (supabase as any)
+                .from('books')
+                .update({ status: 'desatualizado', updated_at: new Date().toISOString() })
+                .eq('id', bookExistente.id);
+              
+              if (statusError) {
+                console.warn('⚠️ Erro ao desbloquear book para atualização:', statusError.message);
+              }
+            }
+
+            // Atualizar book existente (agora com status desbloqueado)
             const { data: bookAtualizado, error } = await (supabase as any)
               .from('books')
               .update({
