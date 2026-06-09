@@ -1,14 +1,16 @@
 // Tipos para o sistema de organograma
 
 export type Cargo = 'Diretor' | 'Gerente' | 'Coordenador' | 'Central Escalação' | 'Customer Success' | 'Comercial';
-export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY';
+export type Produto = 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL';
 
-export const PRODUTOS: Produto[] = ['COMEX', 'FISCAL', 'GALLERY'];
+export const PRODUTOS: Produto[] = ['COMEX', 'FISCAL', 'GALLERY', 'CUSTOMER_SUCCESS', 'COMERCIAL'];
 
 export const PRODUTO_LABELS: Record<Produto, string> = {
   'COMEX': 'Comex',
   'FISCAL': 'Fiscal',
-  'GALLERY': 'Gallery'
+  'GALLERY': 'Gallery',
+  'CUSTOMER_SUCCESS': 'Customer Success',
+  'COMERCIAL': 'Comercial'
 };
 
 export interface PessoaOrganograma {

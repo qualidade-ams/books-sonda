@@ -202,6 +202,9 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
+        if (produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL') {
+          return '/images/fundo_organograma.png';
+        }
         if (produtoUnico === 'FISCAL') {
           return '/images/fundo_organograma_coordenador_fiscal.png';
         }
@@ -236,7 +239,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
-        if (produtoUnico === 'COMEX' || produtoUnico === 'GALLERY') {
+        if (produtoUnico === 'COMEX' || produtoUnico === 'GALLERY' || produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL') {
           return 'text-white';
         }
       }

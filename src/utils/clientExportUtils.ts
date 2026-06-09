@@ -11,6 +11,7 @@ export const exportEmpresasToExcel = (empresas: EmpresaClienteCompleta[]) => {
     'Status': empresa.status,
     'Descrição Status': empresa.descricao_status || '',
     'E-mail Gestor': empresa.email_gestor || '',
+    'E-mail Comercial': (empresa as any).email_comercial || '',
     'Link SharePoint': empresa.link_sharepoint || '',
     'Template Padrão': empresa.template_padrao,
     'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',

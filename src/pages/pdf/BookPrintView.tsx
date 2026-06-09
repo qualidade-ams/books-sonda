@@ -25,6 +25,7 @@ import BookBacklog from '@/components/admin/books/BookBacklog';
 import BookConsumo from '@/components/admin/books/BookConsumo';
 import BookPesquisa from '@/components/admin/books/BookPesquisa';
 import BookOrganograma from '@/components/admin/books/BookOrganograma';
+import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganogramaComercialCS';
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
@@ -195,6 +196,14 @@ export default function BookPrintView() {
           })()}
         </>
       )}
+
+      {/* Organograma Comercial/CS */}
+      <div className="page-section page-break" data-section="organograma-comercial-cs">
+        <BookOrganogramaComercialCS
+          empresaId={bookData.empresa_id}
+          empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+        />
+      </div>
 
       {/* Volumetria */}
       <div className="page-section page-break" data-section="volumetria">

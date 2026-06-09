@@ -54,8 +54,7 @@ export default function Organograma() {
   const handleProdutoChange = (value: 'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL') => {
     setProdutoSelecionado(value);
     
-    // Mapear para o formato do hook (ou 'all' para Customer Success e Comercial)
-    if (value === 'CUSTOMER_SUCCESS' || value === 'COMERCIAL' || value === 'TODOS') {
+    if (value === 'TODOS') {
       setHookProdutoSelecionado('all');
     } else {
       setHookProdutoSelecionado(value);
@@ -127,56 +126,10 @@ export default function Organograma() {
   // Construir árvore hierárquica ou lista de cargos independentes
   let arvoreHierarquica;
   
-  if (produtoSelecionado === 'CUSTOMER_SUCCESS') {
-    // Criar uma raiz virtual para agrupar todos os Customer Success
-    const pessoasCS = pessoas
-      .filter(p => p.cargo === 'Customer Success')
-      .map(p => ({ ...p, subordinados: [] }));
-    
-    // Se houver pessoas, criar estrutura com raiz virtual
-    if (pessoasCS.length > 0) {
-      arvoreHierarquica = [{
-        id: 'root-cs',
-        nome: 'Customer Success',
-        cargo: 'Customer Success' as any,
-        departamento: 'Nível Superior',
-        email: '',
-        created_at: '',
-        updated_at: '',
-        produto: 'COMEX' as any,
-        subordinados: pessoasCS
-      }];
-    } else {
-      arvoreHierarquica = [];
-    }
-  } else if (produtoSelecionado === 'COMERCIAL') {
-    // Criar uma raiz virtual para agrupar todos os Comercial
-    const pessoasComercial = pessoas
-      .filter(p => p.cargo === 'Comercial')
-      .map(p => ({ ...p, subordinados: [] }));
-    
-    // Se houver pessoas, criar estrutura com raiz virtual
-    if (pessoasComercial.length > 0) {
-      arvoreHierarquica = [{
-        id: 'root-comercial',
-        nome: 'Comercial',
-        cargo: 'Comercial' as any,
-        departamento: 'Nível Superior',
-        email: '',
-        created_at: '',
-        updated_at: '',
-        produto: 'COMEX' as any,
-        subordinados: pessoasComercial
-      }];
-    } else {
-      arvoreHierarquica = [];
-    }
-  } else {
-    // Construir hierarquia normal
-    arvoreHierarquica = construirArvoreHierarquica(
-      produtoSelecionado === 'TODOS' ? undefined : produtoSelecionado
-    );
-  }
+  // Construir hierarquia normal para todos os produtos (incluindo Customer Success e Comercial)
+  arvoreHierarquica = construirArvoreHierarquica(
+    produtoSelecionado === 'TODOS' ? undefined : produtoSelecionado
+  );
 
   // Filtrar e ordenar pessoas por nome (A-Z) e produto selecionado
   const pessoasFiltradas = pessoas
@@ -187,13 +140,9 @@ export default function Organograma() {
       const matchDepartamento = filtros.departamento === 'all' || pessoa.departamento === filtros.departamento;
       const matchCargo = filtros.cargo === 'all' || pessoa.cargo === filtros.cargo;
       
-      // Filtro de produto/cargo especial
+      // Filtro de produto
       let matchProduto = true;
-      if (produtoSelecionado === 'CUSTOMER_SUCCESS') {
-        matchProduto = pessoa.cargo === 'Customer Success';
-      } else if (produtoSelecionado === 'COMERCIAL') {
-        matchProduto = pessoa.cargo === 'Comercial';
-      } else if (produtoSelecionado !== 'TODOS') {
+      if (produtoSelecionado !== 'TODOS') {
         matchProduto = pessoa.produto === produtoSelecionado || 
                        pessoa.produtos?.includes(produtoSelecionado);
       }
