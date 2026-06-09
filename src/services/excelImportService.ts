@@ -13,6 +13,7 @@ const empresaExcelSchema = z.object({
   'Status': z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
   'Descrição Status': z.string().optional(),
   'Email Gestor': z.string().email('Email inválido').min(1, 'Email do customer success é obrigatório'),
+  'Email Comercial': z.string().email('Email inválido').optional().or(z.literal('')),
   'Produtos': z.string().min(1, 'Pelo menos um produto é obrigatório'), // String separada por vírgulas
   'Grupos': z.string().optional(), // String separada por vírgulas
   'Tem AMS': z.string().optional(), // 'sim' ou 'não'
@@ -580,6 +581,7 @@ class ExcelImportService {
       status: row['Status'] || 'ativo',
       descricaoStatus: row['Descrição Status'] || '',
       emailGestor: row['Email Gestor'] || '',
+      emailComercial: row['Email Comercial'] || '',
       produtos,
       grupos: grupoIds, // Agora são IDs, não nomes
       temAms,
@@ -622,6 +624,7 @@ class ExcelImportService {
         'Descrição Status',
         'Em Projeto',
         'Email Gestor',
+        'Email Comercial',
         'Produtos',
         'Grupos',
         'Tem AMS',
@@ -658,6 +661,7 @@ class ExcelImportService {
         '',
         'não',
         'gestor@sonda.com',
+        'comercial@sonda.com',
         'COMEX,FISCAL',
         'Comex,Outros',
         'sim',

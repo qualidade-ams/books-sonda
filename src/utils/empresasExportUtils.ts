@@ -148,6 +148,7 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
       'Descrição Status': empresa.descricao_status || '',
       'Em Projeto': empresa.em_projeto ? 'Sim' : 'Não',
       'Email Gestor': empresa.email_gestor || '',
+      'Email Comercial': (empresa as any).email_comercial || '',
       'Produtos': empresa.produtos?.map(p => p.produto).join(', ') || '',
       'Grupos': empresa.grupos?.map(g => g.grupos_responsaveis?.nome).filter(Boolean).join(', ') || '',
       'Tem AMS': empresa.tem_ams ? 'Sim' : 'Não',
@@ -206,6 +207,7 @@ export const exportEmpresasToExcel = async (empresas: EmpresaClienteCompleta[]) 
     { wch: 25 }, // Descrição Status
     { wch: 12 }, // Em Projeto
     { wch: 25 }, // Email Gestor
+    { wch: 25 }, // Email Comercial
     { wch: 20 }, // Produtos
     { wch: 25 }, // Grupos
     { wch: 10 }, // Tem AMS
@@ -446,13 +448,23 @@ export const exportEmpresasToPDF = async (empresas: EmpresaClienteCompleta[]) =>
       doc.text(empresa.email_gestor, contentX + 30, contentY);
     }
 
+    // E-mail Comercial
+    if ((empresa as any).email_comercial) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('E-mail Comercial:', rightColumnX, contentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text((empresa as any).email_comercial, rightColumnX + 33, contentY);
+    }
+
+    contentY += 5;
+
     // Produtos (se houver)
     if (empresa.produtos && empresa.produtos.length > 0) {
       const produtos = empresa.produtos.map(p => p.produto).join(', ');
       doc.setFont('helvetica', 'bold');
-      doc.text('Produtos:', rightColumnX, contentY);
+      doc.text('Produtos:', contentX, contentY);
       doc.setFont('helvetica', 'normal');
-      doc.text(produtos, rightColumnX + 25, contentY);
+      doc.text(produtos, contentX + 25, contentY);
     }
 
     contentY += 5;

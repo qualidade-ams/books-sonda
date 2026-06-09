@@ -73,7 +73,9 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
   const [superioresPorProduto, setSuperioresPorProduto] = useState<Record<Produto, string | undefined>>({
     'COMEX': undefined,
     'FISCAL': undefined,
-    'GALLERY': undefined
+    'GALLERY': undefined,
+    'CUSTOMER_SUCCESS': undefined,
+    'COMERCIAL': undefined
   });
 
   const form = useForm<FormValues>({
@@ -113,7 +115,9 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
           const superiores: Record<Produto, string | undefined> = {
             'COMEX': undefined,
             'FISCAL': undefined,
-            'GALLERY': undefined
+            'GALLERY': undefined,
+            'CUSTOMER_SUCCESS': undefined,
+            'COMERCIAL': undefined
           };
           
           produtosPessoa.forEach(p => {
@@ -140,7 +144,9 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
         setSuperioresPorProduto({
           'COMEX': undefined,
           'FISCAL': undefined,
-          'GALLERY': undefined
+          'GALLERY': undefined,
+          'CUSTOMER_SUCCESS': undefined,
+          'COMERCIAL': undefined
         });
       }
     };
@@ -265,7 +271,9 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
       setSuperioresPorProduto({
         'COMEX': undefined,
         'FISCAL': undefined,
-        'GALLERY': undefined
+        'GALLERY': undefined,
+        'CUSTOMER_SUCCESS': undefined,
+        'COMERCIAL': undefined
       });
       onSuccess?.();
     } catch (error) {
@@ -517,7 +525,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
               </div>
 
               {/* Superiores por Produto */}
-              {cargoSelecionado !== 'Diretor' && cargoSelecionado !== 'Customer Success' && cargoSelecionado !== 'Comercial' && produtosSelecionados.length > 0 && (
+              {cargoSelecionado !== 'Diretor' && produtosSelecionados.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-gray-300">
                   {cargoSelecionado === 'Central Escalação' ? (
                     // Central Escalação: Mostrar aviso que será vinculado a todos os coordenadores

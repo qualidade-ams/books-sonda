@@ -185,11 +185,15 @@ export function useOrganograma() {
 
   const getSuperioresDisponiveis = useCallback((cargo: Cargo, produto?: Produto): PessoaComProduto[] => {
     if (cargo === 'Diretor') return [];
-    if (cargo === 'Customer Success') return [];
-    if (cargo === 'Comercial') return [];
     if (cargo === 'Gerente') return getPessoasPorCargo('Diretor', produto);
-    if (cargo === 'Coordenador') return getPessoasPorCargo('Gerente', produto);
+    if (cargo === 'Coordenador') {
+      // No produto Customer Success, Coordenador reporta direto ao Diretor (não tem Gerente)
+      if (produto === 'CUSTOMER_SUCCESS') return getPessoasPorCargo('Diretor', produto);
+      return getPessoasPorCargo('Gerente', produto);
+    }
     if (cargo === 'Central Escalação') return getPessoasPorCargo('Coordenador', produto);
+    if (cargo === 'Customer Success') return getPessoasPorCargo('Coordenador', produto);
+    if (cargo === 'Comercial') return getPessoasPorCargo('Gerente', produto);
     return [];
   }, [getPessoasPorCargo]);
 

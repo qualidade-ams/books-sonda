@@ -236,34 +236,12 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
           console.log(`🔍 [BookOrganograma] Removidos ${pessoasComProduto.length - pessoasFiltradas.length} Customer Success genéricos`);
         }
 
-        // Adicionar Customer Success às pessoas (se houver e for produto hierárquico)
+        // Customer Success agora é exibido na aba separada "Organograma Comercial/CS"
         let customerSuccessParaAdicionar: any[] = [];
-        if (isProdutoHierarquico && customerSuccessData.length > 0) {
-          console.log(`➕ [BookOrganograma] Preparando Customer Success específico para adicionar ao organograma do produto ${produtoUpper}`);
-          
-          customerSuccessParaAdicionar = customerSuccessData.map((pessoa: any) => ({
-            id: pessoa.id,
-            nome: pessoa.nome,
-            cargo: pessoa.cargo as Cargo,
-            departamento: pessoa.departamento,
-            email: pessoa.email,
-            telefone: pessoa.telefone,
-            foto_url: pessoa.foto_url,
-            ordem_exibicao: 999, // Colocar no final da ordem
-            created_at: pessoa.created_at,
-            updated_at: pessoa.updated_at,
-            produto: produtoUpper as Produto,
-            superior_id: null, // Será definido na construção da árvore
-            subordinados: [],
-            isCustomerSuccess: true // Flag para identificar
-          }));
-          
-          console.log(`✅ [BookOrganograma] Customer Success preparado: ${customerSuccessParaAdicionar[0].nome}`);
-        }
 
         console.log(`📊 [BookOrganograma] Pessoas processadas:`, pessoasFiltradas.map((p: any) => ({ nome: p.nome, cargo: p.cargo, produto: p.produto })));
 
-        // Construir árvore hierárquica (passando Customer Success separadamente)
+        // Construir árvore hierárquica (sem Customer Success)
         const arvore = construirArvore(pessoasFiltradas, customerSuccessParaAdicionar);
         console.log(`🌳 [BookOrganograma] Árvore construída com ${arvore.length} raízes`);
         setPessoas(arvore);

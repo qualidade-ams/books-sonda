@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useBookData } from '@/hooks/useBooks';
 import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 import { useQueryClient } from '@tanstack/react-query';
-import type { BookListItem, BookTab, BookData } from '@/types/books';
+import type { BookListItem, BookData } from '@/types/books';
 import { BOOK_TABS_LABELS } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
@@ -30,6 +30,7 @@ import BookBacklog from './BookBacklog';
 import BookConsumo from './BookConsumo';
 import BookPesquisa from './BookPesquisa';
 import BookOrganograma from './BookOrganograma';
+import BookOrganogramaComercialCS from './BookOrganogramaComercialCS';
 
 // Mapeamento de meses para nomes
 const MESES_NOMES: Record<number, string> = {
@@ -55,7 +56,7 @@ interface BookViewerProps {
 }
 
 export default function BookViewer({ book, open, onOpenChange, bookDataOverride }: BookViewerProps) {
-  const [activeTab, setActiveTab] = useState<BookTab>('capa');
+  const [activeTab, setActiveTab] = useState<string>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
   const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
@@ -193,7 +194,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
         ) : bookData ? (
           <Tabs 
             value={activeTab} 
-            onValueChange={(value) => setActiveTab(value as BookTab)}
+            onValueChange={(value) => setActiveTab(value)}
             className="flex-1 flex flex-col overflow-hidden"
           >
             <TabsList className="bg-gray-100 p-1 rounded-lg flex-shrink-0 mx-6">
@@ -219,6 +220,14 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                   </TabsTrigger>
                 );
               })}
+
+              {/* Aba fixa: Organograma Comercial/Customer Success */}
+              <TabsTrigger
+                value="org-comercial-cs"
+                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+              >
+                Organograma Comercial/Customer Success
+              </TabsTrigger>
               
               <TabsTrigger
                 value="volumetria"
@@ -317,6 +326,14 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                     />
                   </TabsContent>
                 ))}
+
+                {/* Aba fixa: Organograma Comercial/CS */}
+                <TabsContent value="org-comercial-cs" className="mt-0 h-full">
+                  <BookOrganogramaComercialCS
+                    empresaId={bookData.empresa_id}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  />
+                </TabsContent>
               </div>
             </div>
           </Tabs>
