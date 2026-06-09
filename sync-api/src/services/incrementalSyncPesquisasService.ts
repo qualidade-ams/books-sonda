@@ -359,14 +359,52 @@ async function buscarRegistrosModificados(
 }
 
 /**
- * Verifica se registro existe no Supabase e retorna data de modificação e status
+ * Verifica se registro existe no Supabase e retorna data de modificação e status.
+ * 
+ * Estratégia de busca (previne duplicatas por mudança de nome de cliente):
+ * 1. Busca por empresa + nro_caso (chave real de unicidade)
+ * 2. Fallback: busca por id_externo (compatibilidade com registros antigos)
  */
-async function buscarRegistroExistente(idExterno: string): Promise<{
+async function buscarRegistroExistente(idExterno: string, empresa?: string, nroCaso?: string): Promise<{
   existe: boolean;
   dataModificacao: Date | null;
   id: string | null;
   status: string | null;
 }> {
+  // 1. Busca primária: empresa + nro_caso (previne duplicatas por mudança de nome)
+  if (empresa && nroCaso && nroCaso !== 'sem_caso' && nroCaso.trim() !== '') {
+    const { data, error } = await supabase
+      .from('pesquisas_satisfacao')
+      .select('id, data_ultima_modificacao, status, id_externo')
+      .eq('empresa', empresa)
+      .eq('nro_caso', nroCaso)
+      .eq('origem', 'sql_server')
+      .maybeSingle();
+
+    if (error && !error.message.includes('multiple')) {
+      console.error('❌ [SYNC] Erro ao buscar por empresa+nro_caso:', error);
+      throw error;
+    }
+
+    if (data) {
+      const dataModificacao = data.data_ultima_modificacao 
+        ? new Date(data.data_ultima_modificacao)
+        : null;
+
+      // Se o id_externo mudou (nome do cliente mudou), atualizar silenciosamente
+      if (data.id_externo !== idExterno) {
+        console.log(`🔄 [SYNC] id_externo atualizado para nro_caso ${nroCaso}: "${data.id_externo}" → "${idExterno}"`);
+        await supabase
+          .from('pesquisas_satisfacao')
+          .update({ id_externo: idExterno })
+          .eq('id', data.id);
+      }
+
+      return { existe: true, dataModificacao, id: data.id, status: data.status };
+    }
+  }
+
+  // 2. Fallback: busca por id_externo (registros sem nro_caso ou compatibilidade)
   const { data, error } = await supabase
     .from('pesquisas_satisfacao')
     .select('id, data_ultima_modificacao, status')
@@ -374,7 +412,7 @@ async function buscarRegistroExistente(idExterno: string): Promise<{
     .maybeSingle();
 
   if (error) {
-    console.error('❌ [SYNC] Erro ao buscar registro existente:', error);
+    console.error('❌ [SYNC] Erro ao buscar registro existente por id_externo:', error);
     throw error;
   }
 
@@ -508,8 +546,12 @@ async function processarRegistro(
       dados.nro_caso?.trim() || 'sem_caso'
     ].filter(Boolean).join('|');
 
-    // Verificar se registro existe
-    const { existe, dataModificacao, id, status } = await buscarRegistroExistente(idExterno);
+    // Verificar se registro existe (busca por empresa+nro_caso primeiro, fallback por id_externo)
+    const { existe, dataModificacao, id, status } = await buscarRegistroExistente(
+      idExterno, 
+      dados.empresa?.trim(), 
+      dados.nro_caso?.trim()
+    );
 
     if (!existe) {
       // ✅ INSERT: Registro não existe

@@ -1154,16 +1154,52 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
 
         const idUnico = gerarIdUnico(registro);
 
-        // Verificar se já existe
-        const { data: existente, error: erroConsulta } = await supabase
-          .from('pesquisas_satisfacao')
-          .select('id, status')
-          .eq('id_externo', idUnico)
-          .maybeSingle();
+        // Verificar se já existe - BUSCA PRIMÁRIA: empresa + nro_caso (previne duplicatas por mudança de nome)
+        // Nota: usa aplicarTransformacaoAMS para obter o nome da empresa transformado (consistente com o que será salvo)
+        let existente: { id: string; status: string } | null = null;
         
-        if (erroConsulta) {
-          console.error('Erro ao consultar registro existente:', erroConsulta);
-          throw erroConsulta;
+        const nroCasoTrimmed = (registro.Nro_Caso || '').trim();
+        const empresaParaBusca = aplicarTransformacaoAMS({
+          empresa: registro.Empresa || '',
+          cliente: registro.Cliente || '',
+          solicitante: registro.Solicitante || null
+        }).empresa;
+        
+        if (nroCasoTrimmed && nroCasoTrimmed !== '') {
+          const { data: existentePorCaso, error: erroCaso } = await supabase
+            .from('pesquisas_satisfacao')
+            .select('id, status, id_externo')
+            .eq('empresa', empresaParaBusca)
+            .eq('nro_caso', nroCasoTrimmed)
+            .eq('origem', 'sql_server')
+            .maybeSingle();
+          
+          if (!erroCaso && existentePorCaso) {
+            existente = existentePorCaso;
+            // Atualizar id_externo se mudou
+            if (existentePorCaso.id_externo !== idUnico) {
+              console.log(`🔄 [SYNC] id_externo atualizado para caso ${nroCasoTrimmed}: "${existentePorCaso.id_externo}" → "${idUnico}"`);
+              await supabase
+                .from('pesquisas_satisfacao')
+                .update({ id_externo: idUnico })
+                .eq('id', existentePorCaso.id);
+            }
+          }
+        }
+        
+        // FALLBACK: busca por id_externo (se não encontrou por empresa+nro_caso)
+        if (!existente) {
+          const { data: existentePorId, error: erroConsulta } = await supabase
+            .from('pesquisas_satisfacao')
+            .select('id, status')
+            .eq('id_externo', idUnico)
+            .maybeSingle();
+          
+          if (erroConsulta) {
+            console.error('Erro ao consultar registro existente:', erroConsulta);
+            throw erroConsulta;
+          }
+          existente = existentePorId;
         }
 
         // Log dos tamanhos dos campos para debug

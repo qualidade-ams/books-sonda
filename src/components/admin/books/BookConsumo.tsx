@@ -43,6 +43,26 @@ function formatarHorasSemSegundos(horasCompletas: string): string {
   return horasCompletas;
 }
 
+/**
+ * Converte string de horas (HH:MM:SS ou HH:MM) para minutos totais
+ */
+function parseHorasParaMinutos(horas: string): number {
+  if (!horas || horas === '--') return 0;
+  const partes = horas.split(':');
+  const h = parseInt(partes[0] || '0', 10);
+  const m = parseInt(partes[1] || '0', 10);
+  return h * 60 + m;
+}
+
+/**
+ * Converte minutos totais para string HH:MM:SS
+ */
+function minutosParaHoras(minutos: number): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+}
+
 export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, onDataLoaded }: BookConsumoProps) {
   const [modalRequerimentosAberto, setModalRequerimentosAberto] = useState(false);
   const [mesSelecionado, setMesSelecionado] = useState<string>('');
@@ -260,7 +280,59 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     // Se já tem dados no snapshot, usar direto (PDF e versões antigas)
     if (data.banco_horas_trimestre && data.banco_horas_trimestre.length > 0) {
       console.log('✅ Usando banco_horas_trimestre do snapshot:', data.banco_horas_trimestre.length, 'meses');
-      setBancoHorasTrimestre(data.banco_horas_trimestre);
+      
+      // Aplicar mesma lógica de zerar consumo para meses futuros
+      const mesReferencia = mes;
+      const anoReferencia = ano;
+      
+      if (mesReferencia && anoReferencia) {
+        const mesComDados = data.banco_horas_trimestre.find(r => r.dados?.baseline_horas);
+        const baselineHoras = mesComDados?.dados?.baseline_horas || null;
+        
+        const resultadosProcessados: typeof data.banco_horas_trimestre = [];
+        
+        for (let idx = 0; idx < data.banco_horas_trimestre.length; idx++) {
+          const resultado = data.banco_horas_trimestre[idx];
+          const eFuturo = (resultado.ano > anoReferencia) || 
+                          (resultado.ano === anoReferencia && resultado.mes > mesReferencia);
+          
+          if (eFuturo) {
+            const dadosMesAnterior = idx > 0 ? resultadosProcessados[idx - 1]?.dados : null;
+            const repasseMesAnterior = dadosMesAnterior?.repasse_horas || '00:00:00';
+            const baselineMes = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
+            
+            const baselineMinutos = parseHorasParaMinutos(baselineMes);
+            const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
+            const saldoUtilizar = baselineMinutos + repasseMinutos;
+            const repasse = Math.floor(saldoUtilizar / 2);
+            
+            resultadosProcessados.push({
+              ...resultado,
+              dados: {
+                baseline_horas: baselineMes,
+                repasses_mes_anterior_horas: repasseMesAnterior,
+                saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
+                consumo_horas: '00:00:00',
+                requerimentos_horas: '00:00:00',
+                reajustes_horas: '00:00:00',
+                consumo_total_horas: '00:00:00',
+                saldo_horas: minutosParaHoras(saldoUtilizar),
+                repasse_horas: minutosParaHoras(repasse),
+                excedentes_horas: '00:00:00',
+                valor_excedentes_horas: 0,
+                taxa_hora_utilizada: null
+              }
+            });
+          } else {
+            resultadosProcessados.push(resultado);
+          }
+        }
+        
+        setBancoHorasTrimestre(resultadosProcessados);
+      } else {
+        setBancoHorasTrimestre(data.banco_horas_trimestre);
+      }
+      
       setCarregandoBancoHoras(false);
       onDataLoaded?.();
       return;
@@ -382,8 +454,71 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         });
         
         const resultados = await Promise.all(promessas);
-        setBancoHorasTrimestre(resultados);
-        console.log('📊 Banco de horas do ciclo carregado:', resultados);
+        
+        // 4. Para meses futuros, zerar consumo e recalcular saldo
+        const mesReferencia = mes;
+        const anoReferencia = ano;
+        
+        // Encontrar o baseline a partir de qualquer mês que tenha dados
+        const mesComDados = resultados.find(r => r.dados?.baseline_horas);
+        const baselineHoras = mesComDados?.dados?.baseline_horas || null;
+        
+        // Para cada mês futuro, zerar consumo e recalcular saldo (loop imperativo para encadear repasses)
+        const resultadosProcessados: typeof resultados = [];
+        
+        for (let idx = 0; idx < resultados.length; idx++) {
+          const resultado = resultados[idx];
+          const eFuturo = (resultado.ano > anoReferencia) || 
+                          (resultado.ano === anoReferencia && resultado.mes > mesReferencia);
+          
+          if (eFuturo) {
+            // Pegar repasse do mês anterior já processado
+            const dadosMesAnterior = idx > 0 ? resultadosProcessados[idx - 1]?.dados : null;
+            const repasseMesAnterior = dadosMesAnterior?.repasse_horas || '00:00:00';
+            
+            // Usar baseline do mês atual se existir, senão usar o baseline encontrado
+            const baselineMes = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
+            
+            // Saldo a utilizar = baseline + repasse mês anterior
+            const baselineMinutos = parseHorasParaMinutos(baselineMes);
+            const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
+            const saldoUtilizar = baselineMinutos + repasseMinutos;
+            
+            // Com consumo zero: saldo = saldo a utilizar, repasse = 50% do saldo
+            const repasse = Math.floor(saldoUtilizar / 2);
+            
+            console.log(`📅 Mês futuro ${resultado.mes}/${resultado.ano}: preenchendo com consumo zerado`, {
+              baseline: baselineMes,
+              repasseMesAnterior,
+              saldoUtilizar: minutosParaHoras(saldoUtilizar),
+              saldo: minutosParaHoras(saldoUtilizar),
+              repasse: minutosParaHoras(repasse)
+            });
+            
+            resultadosProcessados.push({
+              ...resultado,
+              dados: {
+                baseline_horas: baselineMes,
+                repasses_mes_anterior_horas: repasseMesAnterior,
+                saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
+                consumo_horas: '00:00:00',
+                requerimentos_horas: '00:00:00',
+                reajustes_horas: '00:00:00',
+                consumo_total_horas: '00:00:00',
+                saldo_horas: minutosParaHoras(saldoUtilizar),
+                repasse_horas: minutosParaHoras(repasse),
+                excedentes_horas: '00:00:00',
+                valor_excedentes_horas: 0,
+                taxa_hora_utilizada: null
+              }
+            });
+          } else {
+            resultadosProcessados.push(resultado);
+          }
+        }
+        
+        setBancoHorasTrimestre(resultadosProcessados);
+        console.log('📊 Banco de horas do ciclo carregado:', resultadosProcessados);
       } catch (error) {
         console.error('❌ Erro ao buscar banco de horas do ciclo:', error);
       } finally {
@@ -1049,16 +1184,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                           </td>
                         );
                       } else {
-                        // ✅ NOVA LÓGICA: Exibir taxa usando MESMA LÓGICA do banco de horas
-                        // A taxa já foi buscada corretamente no useEffect acima seguindo:
-                        // 1. Busca taxa mais recente (vigente ou vencida)
-                        // 2. Busca valor_adicional da função Funcional (Hora Adicional - Excedente do Banco)
-                        // 3. Se valor_adicional > 0: usa valor cadastrado
-                        // 4. Se não: calcula baseado em tipo_calculo_adicional ('normal' = +15%, 'media' = média das 3 funções)
-                        
-                        // Prioridade de exibição:
-                        // 1. Taxa específica do cliente (ticket_excedente_simples) - casos especiais
-                        // 2. Taxa padrão calculada (taxaPadraoEmpresa) - valor correto do banco de horas
+                        // ✅ Exibir taxa usando MESMA LÓGICA do banco de horas
                         const taxaEspecifica = taxasEspecificas?.ticket_excedente_simples;
                         const taxa = (taxaEspecifica && taxaEspecifica > 0) 
                           ? taxaEspecifica 

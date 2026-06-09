@@ -140,11 +140,14 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-blue-600" />
                   </div>
-                  FECHADOS
+                  {data.fechados >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-black">{data.fechados}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-black">{data.fechados}</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">FECHADOS</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -154,11 +157,14 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
-                  INCIDENTES
+                  {data.incidentes >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-black">{data.incidentes}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-black">{data.incidentes}</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">CONSULTORIAS FECHADAS</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -168,11 +174,14 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
                     <XCircle className="h-4 w-4 text-red-600" />
                   </div>
-                  VIOLADOS
+                  {data.violados >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-black">{data.violados}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-black">{data.violados}</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">CONSULTORIAS VIOLADAS</span>
+                </div>
               </CardContent>
             </Card>
           </div>
