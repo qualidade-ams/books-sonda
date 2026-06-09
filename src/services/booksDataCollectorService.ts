@@ -452,13 +452,15 @@ class BooksDataCollectorService {
       }
     });
 
-    // Backlog = TODOS os chamados em aberto da empresa (mesmo critério da aba Backlog)
-    // IMPORTANTE: Usa status em aberto (NOT IN Closed, Resolved, Canceled) em vez de data_solucao
-    console.log('📊 Buscando backlog total (todos os chamados em aberto)...');
+    // Backlog = Chamados em aberto da empresa ATÉ o período do book (mesmo critério da aba Backlog)
+    // IMPORTANTE: Filtra por data_abertura <= último dia do mês para alinhar com aba Backlog
+    const ultimoDiaMes = new Date(ano, mes, 0).toISOString();
+    console.log('📊 Buscando backlog total (chamados em aberto até o período)...', { dataLimite: ultimoDiaMes });
     const { data: ticketsBacklogTotal, error: errorBacklog } = await supabase
       .from('apontamentos_tickets_aranda')
       .select('nro_solicitacao')
       .ilike('organizacao', `%${empresaNomeCompleto}%`)
+      .lte('data_abertura', ultimoDiaMes)
       .not('status', 'in', '("Closed","Resolved","Canceled")')
       .neq('cod_tipo', 'Problema')
       .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
@@ -473,7 +475,8 @@ class BooksDataCollectorService {
     
     console.log('✅ Backlog total calculado:', {
       total: totalBacklog,
-      criterio: 'status NOT IN (Closed, Resolved, Canceled)',
+      criterio: 'status NOT IN (Closed, Resolved, Canceled) AND data_abertura <= último dia do mês',
+      dataLimite: ultimoDiaMes,
       alinhado_com: 'aba Backlog'
     });
 

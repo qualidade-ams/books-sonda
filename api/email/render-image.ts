@@ -107,7 +107,7 @@ export default async function handler(
 
     await page.setViewport({
       width: viewportWidth,
-      height: 800,
+      height: 100,
       deviceScaleFactor: 2
     });
 
@@ -121,17 +121,17 @@ export default async function handler(
     await page.evaluateHandle('document.fonts.ready');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Medir a altura real do conteúdo para evitar espaço em branco extra no final
+    // Medir a altura real do conteúdo usando o bounding box do container principal
+    // Isso evita incluir espaço em branco extra do viewport
     const contentHeight = await page.evaluate(() => {
-      const body = document.body;
-      const html = document.documentElement;
-      return Math.max(
-        body.scrollHeight,
-        body.offsetHeight,
-        html.clientHeight,
-        html.scrollHeight,
-        html.offsetHeight
-      );
+      // Tentar pegar a altura do primeiro filho do body (o container div)
+      const container = document.body.firstElementChild;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        return Math.ceil(rect.height);
+      }
+      // Fallback: usar offsetHeight do body
+      return document.body.offsetHeight;
     });
 
     // Redimensionar viewport para a altura exata do conteúdo

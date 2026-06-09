@@ -771,11 +771,14 @@ export default function GeracaoBooks() {
       if (result.success) {
         toast({
           title: 'Retificação iniciada',
-          description: `Book de ${bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome} desbloqueado para edição (versão ${result.novaVersao}).`,
+          description: `Book de ${bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome} desbloqueado. Iniciando geração e envio...`,
         });
         setShowRetificacaoDialog(false);
-        // Forçar refresh da lista
-        window.location.reload();
+        
+        // Iniciar automaticamente a geração e envio do book retificado
+        const bookParaGerar = bookRetificando;
+        setIsRetificando(false);
+        await handleGerarUnitario(bookParaGerar);
       } else {
         toast({
           title: 'Erro ao retificar',

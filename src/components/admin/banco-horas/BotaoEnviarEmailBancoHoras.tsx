@@ -195,7 +195,7 @@ function gerarTabelaBancoHoras(
   `;
 
   return `
-    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-family:Calibri,sans-serif;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-family:Calibri,sans-serif;overflow:hidden;">
       <thead>
         <tr>
           <th style="${headerDark}">Período</th>
@@ -541,7 +541,7 @@ export function BotaoEnviarEmailBancoHoras({
     
     try {
       // Envolver as tabelas em um container com fundo branco para renderização limpa
-      // padding-bottom:1px evita colapso de margem que gera espaço em branco extra no final
+      // overflow:hidden no container contém margens dos filhos e evita espaço em branco extra
       const htmlParaRenderizar = `
         <!DOCTYPE html>
         <html>
@@ -553,7 +553,7 @@ export function BotaoEnviarEmailBancoHoras({
           </style>
         </head>
         <body>
-          <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px 20px 1px 20px;background:#ffffff;color:#1F497D;font-size:12pt;">
+          <div style="font-family:Calibri,sans-serif;max-width:1100px;margin:0;padding:20px;overflow:hidden;background:#ffffff;color:#1F497D;font-size:12pt;">
             ${htmlTabelas}
           </div>
         </body>
