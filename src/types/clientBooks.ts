@@ -73,6 +73,7 @@ export interface EmpresaFormData {
   emProjeto?: boolean; // NOVO: Campo para indicar se empresa está em projeto
   emailGestor?: string;
   emailComercial?: string;
+  emailTm?: string;
   produtos: Produto[];
   grupos: string[];
   temAms?: boolean;

@@ -72,6 +72,7 @@ export class EmpresasClientesService {
       em_projeto: data.emProjeto || false, // NOVO: Campo Em Projeto
       email_gestor: data.emailGestor || null,
       email_comercial: data.emailComercial || null,
+      email_tm: data.emailTm || null,
       tem_ams: data.temAms || false,
       tipo_book: data.tipoBook || 'nao_tem_book',
       tipo_cobranca: data.tipoCobranca || 'banco_horas',
@@ -500,6 +501,7 @@ export class EmpresasClientesService {
       if (data.templatePadrao) updateData.template_padrao = data.templatePadrao;
       if (data.emailGestor !== undefined) updateData.email_gestor = data.emailGestor || null;
       if (data.emailComercial !== undefined) updateData.email_comercial = data.emailComercial || null;
+      if (data.emailTm !== undefined) updateData.email_tm = data.emailTm || null;
       if (data.emProjeto !== undefined) updateData.em_projeto = data.emProjeto; // NOVO: Campo Em Projeto
       if (data.temAms !== undefined) updateData.tem_ams = data.temAms;
       if (data.tipoBook !== undefined) updateData.tipo_book = data.tipoBook;

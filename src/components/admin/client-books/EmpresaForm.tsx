@@ -84,6 +84,11 @@ const empresaSchema = z.object({
     .email('E-mail deve ser válido')
     .optional()
     .or(z.literal('')),
+  emailTm: z
+    .string()
+    .email('E-mail deve ser válido')
+    .optional()
+    .or(z.literal('')),
   produtos: z
     .array(z.enum(['COMEX', 'FISCAL', 'GALLERY']))
     .min(1, 'Selecione pelo menos um produto'),
@@ -314,6 +319,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
       emProjeto: false, // NOVO: Campo Em Projeto - padrão false
       emailGestor: '',
       emailComercial: '',
+      emailTm: '',
       produtos: [],
       grupos: [],
       temAms: false,
@@ -370,6 +376,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         emProjeto: false, // NOVO: Campo Em Projeto - padrão false
         emailGestor: '',
         emailComercial: '',
+        emailTm: '',
         produtos: [],
         grupos: [],
         temAms: false,
@@ -451,6 +458,7 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
         templatePadrao: data.temAms && data.tipoBook !== 'nao_tem_book' ? (data.templatePadrao || 'portugues') : '',
         emailGestor: data.emailGestor?.toLowerCase().trim() || '',
         emailComercial: data.emailComercial?.toLowerCase().trim() || '',
+        emailTm: data.emailTm?.toLowerCase().trim() || '',
         descricaoStatus: data.descricaoStatus?.trim() || '',
         emProjeto: data.emProjeto || false, // NOVO: Campo Em Projeto
         produtos: data.produtos.map(p => p.toUpperCase() as Produto), // Normalizar produtos para uppercase
@@ -768,6 +776,27 @@ const EmpresaForm: React.FC<EmpresaFormProps> = ({
                   {...field}
                   disabled={isFieldDisabled}
                   className={form.formState.errors.emailComercial ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* E-mail do T&M */}
+        <FormField
+          control={form.control}
+          name="emailTm"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-700">E-mail do T&M</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="tm@sonda.com"
+                  {...field}
+                  disabled={isFieldDisabled}
+                  className={form.formState.errors.emailTm ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'focus:ring-sonda-blue focus:border-sonda-blue'}
                 />
               </FormControl>
               <FormMessage />

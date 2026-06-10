@@ -159,8 +159,8 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     // Ajustar nível para compensar a raiz virtual
     const nivelAjustado = pessoas.length > 1 ? Math.max(0, nivel - 1) : nivel;
     
-    // Customer Success e Comercial quando aparecem sozinhos (nivel 0) não mostram nível
-    const isCustomerSuccessOuComercial = pessoa?.cargo === 'Customer Success' || pessoa?.cargo === 'Comercial';
+    // Customer Success, Comercial e T&M quando aparecem sozinhos (nivel 0) não mostram nível
+    const isCustomerSuccessOuComercial = pessoa?.cargo === 'Customer Success' || pessoa?.cargo === 'Comercial' || pessoa?.cargo === 'T&M';
     const mostrarNivel = !(isCustomerSuccessOuComercial && nivelAjustado === 0);
     const nivelExibicao = isCustomerSuccessOuComercial && nivelAjustado > 0 ? 3 : nivelAjustado;
     
@@ -192,7 +192,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         return '/images/fundo_organograma_gerente.png';
       }
       
-      if (cargo === 'Customer Success' || cargo === 'Comercial') {
+      if (cargo === 'Customer Success' || cargo === 'Comercial' || cargo === 'T&M') {
         return '/images/fundo_organograma.png';
       }
       
@@ -202,7 +202,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
-        if (produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL') {
+        if (produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL' || produtoUnico === 'T_M') {
           return '/images/fundo_organograma.png';
         }
         if (produtoUnico === 'FISCAL') {
@@ -229,7 +229,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
         return 'text-white';
       }
       
-      if (cargo === 'Customer Success' || cargo === 'Comercial') {
+      if (cargo === 'Customer Success' || cargo === 'Comercial' || cargo === 'T&M') {
         return 'text-white';
       }
       
@@ -239,7 +239,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
       
       if (cargo === 'Coordenador' && produtosArray.length === 1) {
         const produtoUnico = produtosArray[0];
-        if (produtoUnico === 'COMEX' || produtoUnico === 'GALLERY' || produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL') {
+        if (produtoUnico === 'COMEX' || produtoUnico === 'GALLERY' || produtoUnico === 'CUSTOMER_SUCCESS' || produtoUnico === 'COMERCIAL' || produtoUnico === 'T_M') {
           return 'text-white';
         }
       }
@@ -255,16 +255,24 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     if (pessoa?.cargo === 'Customer Success' && isFiltered) {
       const produtoUpper = produto?.toUpperCase();
       
-      // Ajuste horizontal para alinhar com o último coordenador
+      // Ajuste horizontal para centralizar abaixo do coordenador
       if (produtoUpper === 'COMEX') {
-        translateX = -210; // Espaçamento de um card completo para a direita
+        translateX = -210;
       } else if (produtoUpper === 'FISCAL') {
-        translateX = -210; // Mesmo espaçamento para Fiscal
-      } 
+        translateX = -210;
+      } else {
+        // Para CUSTOMER_SUCCESS/COMERCIAL: mover para a direita para centralizar abaixo do coordenador
+        translateX = 0;
+      }
       
       if (translateX !== 0) {
         console.log(`🎨 [Customer Success] Ajustando posição horizontal: translateX(${translateX}) para produto ${produtoUpper}`);
       }
+    }
+
+    // Ajuste de posição para T&M (recuar para a direita, isolado)
+    if (pessoa?.cargo === 'T&M' && isFiltered) {
+      translateX = 200; // Empurrar bem para a direita
     }
     
     return (
@@ -500,10 +508,18 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
             const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 
                                    link.target?.depth === 3;
             
-            // Ocultar linha para Customer Success (tornar branca/invisível)
+            // Ocultar linha para Customer Success APENAS quando é filho direto da raiz virtual
+            // (depth 1 = filho direto da raiz). Se estiver em nível mais profundo (subordinado
+            // a um coordenador), a linha deve aparecer normalmente.
             const isLinkToCustomerSuccess = link.target?.data?.attributes?.cargo === 'Customer Success';
-            if (isLinkToCustomerSuccess) {
+            if (isLinkToCustomerSuccess && link.target?.depth <= 1) {
               return 'customer-success-link-hidden'; // Classe especial para ocultar
+            }
+
+            // Ocultar linha para T&M (sempre isolado, sem conexão)
+            const isLinkToTM = link.target?.data?.attributes?.cargo === 'T&M';
+            if (isLinkToTM) {
+              return 'customer-success-link-hidden'; // Reutilizar classe que oculta
             }
             
             if (isFiltered && isLinkToCentral) {

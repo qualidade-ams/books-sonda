@@ -194,6 +194,7 @@ export function useOrganograma() {
     if (cargo === 'Central Escalação') return getPessoasPorCargo('Coordenador', produto);
     if (cargo === 'Customer Success') return getPessoasPorCargo('Coordenador', produto);
     if (cargo === 'Comercial') return getPessoasPorCargo('Gerente', produto);
+    if (cargo === 'T&M') return []; // T&M não tem superior
     return [];
   }, [getPessoasPorCargo]);
 
@@ -221,12 +222,13 @@ export function useOrganograma() {
     // Separar cargos especiais que não aparecem na árvore hierárquica
     const centraisEscalacao = pessoasFiltradas.filter(p => p.cargo === 'Central Escalação');
     const cargosIndependentes = pessoasFiltradas.filter(p => 
-      p.cargo === 'Customer Success' || p.cargo === 'Comercial'
+      p.cargo === 'Customer Success' || p.cargo === 'Comercial' || p.cargo === 'T&M'
     );
     const outrasPessoas = pessoasFiltradas.filter(p => 
       p.cargo !== 'Central Escalação' && 
       p.cargo !== 'Customer Success' && 
-      p.cargo !== 'Comercial'
+      p.cargo !== 'Comercial' &&
+      p.cargo !== 'T&M'
     );
     
     console.log('📊 Distribuição:', {

@@ -37,14 +37,14 @@ import { PRODUTOS, PRODUTO_LABELS } from '@/types/organograma';
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  cargo: z.enum(['Diretor', 'Gerente', 'Coordenador', 'Central Escalação', 'Customer Success', 'Comercial']),
+  cargo: z.enum(['Diretor', 'Gerente', 'Coordenador', 'Central Escalação', 'Customer Success', 'Comercial', 'T&M']),
   departamento: z.string().min(2, 'Departamento é obrigatório'),
   email: z.string().email('Email inválido'),
   telefone: z.string().optional(),
   produtos: z.array(z.string()).min(1, 'Selecione pelo menos um produto'),
 }).refine((data) => {
-  // Diretor, Customer Success e Comercial não podem ter superior
-  if (data.cargo === 'Diretor' || data.cargo === 'Customer Success' || data.cargo === 'Comercial') {
+  // Diretor, Customer Success, Comercial e T&M não podem ter superior
+  if (data.cargo === 'Diretor' || data.cargo === 'Customer Success' || data.cargo === 'Comercial' || data.cargo === 'T&M') {
     return true;
   }
   return true;
@@ -75,7 +75,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
     'FISCAL': undefined,
     'GALLERY': undefined,
     'CUSTOMER_SUCCESS': undefined,
-    'COMERCIAL': undefined
+    'COMERCIAL': undefined,
+    'T_M': undefined
   });
 
   const form = useForm<FormValues>({
@@ -117,7 +118,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
             'FISCAL': undefined,
             'GALLERY': undefined,
             'CUSTOMER_SUCCESS': undefined,
-            'COMERCIAL': undefined
+            'COMERCIAL': undefined,
+            'T_M': undefined
           };
           
           produtosPessoa.forEach(p => {
@@ -146,7 +148,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
           'FISCAL': undefined,
           'GALLERY': undefined,
           'CUSTOMER_SUCCESS': undefined,
-          'COMERCIAL': undefined
+          'COMERCIAL': undefined,
+          'T_M': undefined
         });
       }
     };
@@ -273,7 +276,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
         'FISCAL': undefined,
         'GALLERY': undefined,
         'CUSTOMER_SUCCESS': undefined,
-        'COMERCIAL': undefined
+        'COMERCIAL': undefined,
+        'T_M': undefined
       });
       onSuccess?.();
     } catch (error) {
@@ -411,6 +415,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                         <SelectItem value="Central Escalação">Central Escalação</SelectItem>
                         <SelectItem value="Customer Success">Customer Success</SelectItem>
                         <SelectItem value="Comercial">Comercial</SelectItem>
+                        <SelectItem value="T&M">T&M</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
