@@ -413,8 +413,8 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
   const getZoomPorProduto = () => {
     const produtoUpper = produto.toUpperCase();
     
-    // Customer Success e Comercial não têm hierarquia, usar zoom maior
-    if (produtoUpper === 'CUSTOMER SUCCESS' || produtoUpper === 'CUSTOMER_SUCCESS' || produtoUpper === 'COMERCIAL') {
+    // Customer Success, Comercial e T&M não têm hierarquia, usar zoom maior
+    if (produtoUpper === 'CUSTOMER SUCCESS' || produtoUpper === 'CUSTOMER_SUCCESS' || produtoUpper === 'COMERCIAL' || produtoUpper === 'T_M' || produtoUpper === 'T&M') {
       return 0.85;
     }
     
@@ -436,8 +436,8 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
   const getCenterOffsetPorProduto = () => {
     const produtoUpper = produto.toUpperCase();
     
-    // Customer Success e Comercial não precisam de ajuste
-    if (produtoUpper === 'CUSTOMER SUCCESS' || produtoUpper === 'CUSTOMER_SUCCESS' || produtoUpper === 'COMERCIAL') {
+    // Customer Success, Comercial e T&M não precisam de ajuste
+    if (produtoUpper === 'CUSTOMER SUCCESS' || produtoUpper === 'CUSTOMER_SUCCESS' || produtoUpper === 'COMERCIAL' || produtoUpper === 'T_M' || produtoUpper === 'T&M') {
       return 0;
     }
     

@@ -43,7 +43,7 @@ export default function Organograma() {
   const [showFilters, setShowFilters] = useState(false);
   const [pessoaParaExcluir, setPessoaParaExcluir] = useState<PessoaOrganograma | null>(null);
   const [excluindo, setExcluindo] = useState(false);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL'>('TODOS');
+  const [produtoSelecionado, setProdutoSelecionado] = useState<'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL' | 'T_M'>('TODOS');
   const [filtros, setFiltros] = useState({
     busca: '',
     departamento: 'all',
@@ -51,7 +51,7 @@ export default function Organograma() {
   });
 
   // Sincronizar filtro de produto com o hook
-  const handleProdutoChange = (value: 'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL') => {
+  const handleProdutoChange = (value: 'TODOS' | 'COMEX' | 'FISCAL' | 'GALLERY' | 'CUSTOMER_SUCCESS' | 'COMERCIAL' | 'T_M') => {
     setProdutoSelecionado(value);
     
     if (value === 'TODOS') {
@@ -163,6 +163,7 @@ export default function Organograma() {
     centralEscalacao: pessoasFiltradas.filter(p => p.cargo === 'Central Escalação').length,
     customerSuccess: pessoasFiltradas.filter(p => p.cargo === 'Customer Success').length,
     comercial: pessoasFiltradas.filter(p => p.cargo === 'Comercial').length,
+    tm: pessoasFiltradas.filter(p => p.cargo === 'T&M').length,
   };
 
   return (
@@ -373,6 +374,12 @@ export default function Organograma() {
                               <span>Comercial</span>
                             </div>
                           </SelectItem>
+                          <SelectItem value="T_M">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-violet-600"></div>
+                              <span>T&M</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -416,6 +423,7 @@ export default function Organograma() {
                           <SelectItem value="Central Escalação">Central Escalação</SelectItem>
                           <SelectItem value="Customer Success">Customer Success</SelectItem>
                           <SelectItem value="Comercial">Comercial</SelectItem>
+                          <SelectItem value="T&M">T&M</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -530,6 +538,8 @@ export default function Organograma() {
                                           ? 'bg-emerald-100 text-emerald-800 text-xs'
                                           : pessoa.cargo === 'Comercial'
                                           ? 'bg-amber-100 text-amber-800 text-xs'
+                                          : pessoa.cargo === 'T&M'
+                                          ? 'bg-violet-100 text-violet-800 text-xs'
                                           : 'bg-orange-100 text-orange-800 text-xs'
                                       }
                                     >

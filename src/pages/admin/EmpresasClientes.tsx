@@ -363,6 +363,7 @@ const EmpresasClientes = () => {
       emProjeto: empresa.em_projeto || false, // NOVO: Campo Em Projeto
       emailGestor: empresa.email_gestor || '',
       emailComercial: (empresa as any).email_comercial || '',
+      emailTm: (empresa as any).email_tm || '',
       produtos: empresa.produtos?.map(p => p.produto as Produto) || [],
       grupos: empresa.grupos?.map(g => g.grupo_id) || [],
       temAms: empresa.tem_ams || false,

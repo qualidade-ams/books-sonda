@@ -6,10 +6,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
+import { BooksProcessingProvider } from "@/contexts/BooksProcessingContext";
 import GlobalErrorBoundary from "@/components/errors/GlobalErrorBoundary";
 import PermissionErrorBoundary from "@/components/errors/PermissionErrorBoundary";
 import { AutoSchedulerInitializer } from "@/components/admin/AutoSchedulerInitializer";
 import { CacheInitializer } from "@/components/admin/CacheInitializer";
+import { BooksProcessingIndicator } from "@/components/admin/BooksProcessingIndicator";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import EmailConfig from "./pages/admin/EmailConfig";
@@ -60,8 +62,10 @@ const App = () => (
         <PermissionsProvider>
           <PermissionErrorBoundary>
             <TooltipProvider>
+              <BooksProcessingProvider>
               <CacheInitializer />
               <AutoSchedulerInitializer />
+              <BooksProcessingIndicator />
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -119,6 +123,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </BooksProcessingProvider>
             </TooltipProvider>
           </PermissionErrorBoundary>
         </PermissionsProvider>

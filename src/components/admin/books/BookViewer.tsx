@@ -221,12 +221,12 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 );
               })}
 
-              {/* Aba fixa: Organograma Comercial/Customer Success */}
+              {/* Aba fixa: Organograma Comercial/CS/T&M */}
               <TabsTrigger
                 value="org-comercial-cs"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                Organograma Comercial/Customer Success
+                Organograma Comercial/CS/T&M
               </TabsTrigger>
               
               <TabsTrigger
