@@ -17,6 +17,14 @@ declare module 'jspdf' {
 }
 
 /**
+ * Interface mínima para mapeamento de empresa (nome completo → abreviado)
+ */
+interface EmpresaMapping {
+  nome_completo: string;
+  nome_abreviado: string;
+}
+
+/**
  * Função para fazer de-para da categoria para grupo
  */
 const obterGrupoPorCategoria = (categoria: string, deParaCategorias: DeParaCategoria[]): string => {
@@ -38,12 +46,26 @@ const obterGrupoPorCategoria = (categoria: string, deParaCategorias: DeParaCateg
 };
 
 /**
+ * Função para obter nome abreviado da empresa
+ */
+const obterNomeAbreviadoEmpresa = (nomeCompleto: string | undefined, empresas: EmpresaMapping[]): string => {
+  if (!nomeCompleto) return '-';
+  
+  const empresaEncontrada = empresas.find(
+    e => e.nome_completo === nomeCompleto || e.nome_abreviado === nomeCompleto
+  );
+  
+  return empresaEncontrada ? empresaEncontrada.nome_abreviado : nomeCompleto;
+};
+
+/**
  * Exporta elogios para Excel
  */
 export const exportarElogiosExcel = (
   elogios: ElogioCompleto[],
   periodo: string,
-  deParaCategorias: DeParaCategoria[] = []
+  deParaCategorias: DeParaCategoria[] = [],
+  empresas: EmpresaMapping[] = []
 ) => {
   try {
     // Preparar dados para exportação
@@ -56,7 +78,7 @@ export const exportarElogiosExcel = (
         'Chamado': elogio.pesquisa?.nro_caso || '-',
         'Tipo Caso': elogio.pesquisa?.tipo_caso || '-',
         'Cliente': elogio.pesquisa?.cliente || '-',
-        'Empresa': elogio.pesquisa?.empresa || '-',
+        'Empresa': obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa, empresas),
         'Prestador': elogio.pesquisa?.prestador || '-',
         'Categoria': categoria || '-',
         'Grupo': elogio.pesquisa?.grupo || '-',
@@ -119,7 +141,8 @@ export const exportarElogiosExcel = (
 export const exportarElogiosPDF = (
   elogios: ElogioCompleto[],
   periodo: string,
-  deParaCategorias: DeParaCategoria[] = []
+  deParaCategorias: DeParaCategoria[] = [],
+  empresas: EmpresaMapping[] = []
 ) => {
   try {
     const doc = new jsPDF('l', 'mm', 'a4'); // Landscape para mais espaço
@@ -168,7 +191,7 @@ export const exportarElogiosPDF = (
         (index + 1).toString(),
         elogio.pesquisa?.nro_caso || '-',
         elogio.pesquisa?.cliente || '-',
-        elogio.pesquisa?.empresa || '-',
+        obterNomeAbreviadoEmpresa(elogio.pesquisa?.empresa, empresas),
         elogio.pesquisa?.prestador || '-',
         grupoMapeado,
         elogio.pesquisa?.resposta || '-',

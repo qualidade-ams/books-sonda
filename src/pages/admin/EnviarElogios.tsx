@@ -1078,6 +1078,7 @@ img { -ms-interpolation-mode: bicubic; }
               elogios={elogios}
               periodo={`${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`}
               deParaCategorias={deParaCategorias}
+              empresas={empresas}
               disabled={isLoading}
             />
             <ProtectedAction screenKey="lancar_elogios" requiredLevel="edit">
@@ -1393,6 +1394,7 @@ img { -ms-interpolation-mode: bicubic; }
                                   <ClienteNomeDisplay
                                     nomeEmpresa={elogio.pesquisa?.empresa}
                                     nomeCliente={elogio.pesquisa?.cliente}
+                                    nomeAbreviado={nomeEmpresa}
                                     className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
                                   />
                                 </span>
@@ -1635,6 +1637,7 @@ img { -ms-interpolation-mode: bicubic; }
                                       <ClienteNomeDisplay
                                         nomeEmpresa={elogio.pesquisa?.empresa}
                                         nomeCliente={elogio.pesquisa?.cliente}
+                                        nomeAbreviado={nomeEmpresa}
                                         className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
                                       />
                                     </span>
@@ -2063,6 +2066,7 @@ img { -ms-interpolation-mode: bicubic; }
                           <ClienteNomeDisplay
                             nomeEmpresa={elogioParaVisualizar.pesquisa?.empresa || '-'}
                             nomeCliente={elogioParaVisualizar.pesquisa?.cliente || '-'}
+                            nomeAbreviado={obterDadosEmpresa(elogioParaVisualizar.pesquisa?.empresa).nome}
                             className="inline"
                           />
                         </p>

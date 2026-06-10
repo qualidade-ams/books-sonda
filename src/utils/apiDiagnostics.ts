@@ -12,14 +12,17 @@ export interface DiagnosticoApi {
   testConnection: boolean;
   syncPesquisas: boolean;
   syncEspecialistas: boolean;
+  validateSync: boolean;
   tempos: {
     healthCheck?: number;
     testConnection?: number;
     syncPesquisas?: number;
     syncEspecialistas?: number;
+    validateSync?: number;
   };
   erros: string[];
   configInfo: ReturnType<typeof getApiConfigInfo>;
+  validacao?: any;
 }
 
 /**
@@ -32,6 +35,7 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
     testConnection: false,
     syncPesquisas: false,
     syncEspecialistas: false,
+    validateSync: false,
     tempos: {},
     erros: [],
     configInfo: getApiConfigInfo()
@@ -136,12 +140,37 @@ export async function diagnosticarApi(): Promise<DiagnosticoApi> {
     console.error('❌ Endpoint sync-especialistas falhou:', error);
   }
 
+  // 5. Teste de Validação (compara contagens SQL Server vs Supabase)
+  try {
+    const inicio = Date.now();
+    const response = await safeFetch(`${API_BASE_URL}/api/validate-sync`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(30000) // 30s pois faz queries nos dois bancos
+    });
+    diagnostico.tempos.validateSync = Date.now() - inicio;
+    
+    if (response.ok) {
+      const data = await response.json();
+      diagnostico.validateSync = true;
+      diagnostico.validacao = data;
+      console.log('✅ Validação de sync concluída:', data.resumo);
+    } else {
+      diagnostico.validateSync = false;
+      diagnostico.erros.push(`Validação falhou: HTTP ${response.status}`);
+    }
+  } catch (error) {
+    diagnostico.validateSync = false;
+    diagnostico.erros.push(`Validação erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    console.error('❌ Validação falhou:', error);
+  }
+
   // Resumo do diagnóstico
   const sucessos = [
     diagnostico.healthCheck,
     diagnostico.testConnection,
     diagnostico.syncPesquisas,
-    diagnostico.syncEspecialistas
+    diagnostico.syncEspecialistas,
+    diagnostico.validateSync
   ].filter(Boolean).length;
 
   console.log(`📊 Diagnóstico concluído: ${sucessos}/4 testes passaram`);
@@ -211,8 +240,22 @@ export function gerarRelatorio(diagnostico: DiagnosticoApi): string {
     `Conexão SQL Server: ${diagnostico.testConnection ? '✅ OK' : '❌ FALHOU'} (${formatarTempo(diagnostico.tempos.testConnection)})`,
     `Endpoint Pesquisas: ${diagnostico.syncPesquisas ? '✅ OK' : '❌ FALHOU'} (${formatarTempo(diagnostico.tempos.syncPesquisas)})`,
     `Endpoint Especialistas: ${diagnostico.syncEspecialistas ? '✅ OK' : '❌ FALHOU'} (${formatarTempo(diagnostico.tempos.syncEspecialistas)})`,
+    `Validação Sync: ${diagnostico.validateSync ? '✅ OK' : '❌ FALHOU'} (${formatarTempo(diagnostico.tempos.validateSync)})`,
     ''
   ];
+
+  // Adicionar resultado da validação se disponível
+  if (diagnostico.validacao?.tabelas) {
+    linhas.push('--- VALIDAÇÃO SQL SERVER vs SUPABASE ---');
+    for (const [tabela, dados] of Object.entries(diagnostico.validacao.tabelas) as [string, any][]) {
+      if (dados.sql_server !== undefined) {
+        linhas.push(`${tabela}: SQL Server=${dados.sql_server} | Supabase=${dados.supabase} | Diferença=${dados.diferenca} ${dados.status}`);
+      } else {
+        linhas.push(`${tabela}: ${dados.status} - ${dados.erro || ''}`);
+      }
+    }
+    linhas.push('');
+  }
 
   if (diagnostico.erros.length > 0) {
     linhas.push('--- ERROS ---');
@@ -224,12 +267,13 @@ export function gerarRelatorio(diagnostico: DiagnosticoApi): string {
     diagnostico.healthCheck,
     diagnostico.testConnection,
     diagnostico.syncPesquisas,
-    diagnostico.syncEspecialistas
+    diagnostico.syncEspecialistas,
+    diagnostico.validateSync
   ].filter(Boolean).length;
 
   linhas.push(`--- RESUMO ---`);
-  linhas.push(`Testes aprovados: ${sucessos}/4`);
-  linhas.push(`Status geral: ${sucessos === 4 ? '✅ TUDO OK' : sucessos > 0 ? '⚠️ PARCIAL' : '❌ OFFLINE'}`);
+  linhas.push(`Testes aprovados: ${sucessos}/5`);
+  linhas.push(`Status geral: ${sucessos === 5 ? '✅ TUDO OK' : sucessos > 0 ? '⚠️ PARCIAL' : '❌ OFFLINE'}`);
 
   return linhas.join('\n');
 }

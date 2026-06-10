@@ -37,10 +37,11 @@ export function DiagnosticoApi() {
         resultado.healthCheck,
         resultado.testConnection,
         resultado.syncPesquisas,
-        resultado.syncEspecialistas
+        resultado.syncEspecialistas,
+        resultado.validateSync
       ].filter(Boolean).length;
 
-      if (sucessos === 4) {
+      if (sucessos === 5) {
         toast({
           title: "Diagnóstico Concluído",
           description: "Todos os testes passaram! API funcionando corretamente.",
@@ -48,7 +49,7 @@ export function DiagnosticoApi() {
       } else if (sucessos > 0) {
         toast({
           title: "Diagnóstico Concluído",
-          description: `${sucessos}/4 testes passaram. Verifique os detalhes.`,
+          description: `${sucessos}/5 testes passaram. Verifique os detalhes.`,
         });
       } else {
         toast({
@@ -103,10 +104,11 @@ export function DiagnosticoApi() {
       diagnostico.healthCheck,
       diagnostico.testConnection,
       diagnostico.syncPesquisas,
-      diagnostico.syncEspecialistas
+      diagnostico.syncEspecialistas,
+      diagnostico.validateSync
     ].filter(Boolean).length;
 
-    if (sucessos === 4) {
+    if (sucessos === 5) {
       return { icon: CheckCircle, text: 'TUDO OK', variant: 'default' as const, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-l-green-500' };
     } else if (sucessos > 0) {
       return { icon: AlertTriangle, text: 'PARCIAL', variant: 'default' as const, color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-l-yellow-500' };
@@ -229,7 +231,67 @@ export function DiagnosticoApi() {
                 </div>
                 {getStatusBadge(diagnostico.syncEspecialistas, diagnostico.tempos.syncEspecialistas)}
               </div>
+
+              {/* Validação SQL Server vs Supabase */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(diagnostico.validateSync)}
+                  <Database className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">Validação Sync (SQL vs Supabase)</span>
+                </div>
+                {getStatusBadge(diagnostico.validateSync, diagnostico.tempos.validateSync)}
+              </div>
             </div>
+
+            {/* Resultado da Validação detalhado */}
+            {diagnostico.validacao?.tabelas && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-700 mb-2">Comparação SQL Server vs Supabase:</h4>
+                  <div className="space-y-2">
+                    {Object.entries(diagnostico.validacao.tabelas).map(([tabela, dados]: [string, any]) => (
+                      <div key={tabela} className={`p-3 rounded-lg border ${
+                        dados.diferenca === 0 ? 'bg-green-50 border-green-200' : 
+                        dados.diferenca > 0 ? 'bg-yellow-50 border-yellow-200' : 
+                        'bg-blue-50 border-blue-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium capitalize">{tabela}</span>
+                          <span className="text-xs">{dados.status}</span>
+                        </div>
+                        {dados.sql_server !== undefined && (
+                          <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-gray-600">
+                            <div>
+                              <span className="block text-gray-400">SQL Server</span>
+                              <span className="font-semibold text-gray-800">{dados.sql_server?.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="block text-gray-400">Supabase</span>
+                              <span className="font-semibold text-gray-800">{dados.supabase?.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="block text-gray-400">Diferença</span>
+                              <span className={`font-semibold ${dados.diferenca === 0 ? 'text-green-600' : 'text-yellow-600'}`}>
+                                {dados.diferenca > 0 ? `+${dados.diferenca}` : dados.diferenca}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {dados.nota && (
+                          <div className="text-xs text-yellow-700 mt-2 bg-yellow-100 p-1.5 rounded">
+                            {dados.nota}
+                          </div>
+                        )}
+                        {dados.erro && (
+                          <div className="text-xs text-red-600 mt-1">{dados.erro}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Erros */}
             {diagnostico.erros.length > 0 && (

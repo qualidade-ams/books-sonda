@@ -188,12 +188,6 @@ export async function sincronizarDados(
     console.log('Iniciando sincronização seletiva:', tabelasParaSincronizar);
     onLog?.('Iniciando sincronização seletiva...');
     
-    // Buscar totais reais do banco ANTES da sincronização
-    console.log('📊 Buscando totais reais do banco...');
-    onLog?.('📊 Buscando totais reais do banco...');
-    const totaisReaisBanco = await buscarTotaisReaisBanco();
-    console.log('📊 Totais reais do banco:', totaisReaisBanco);
-    
     let resultadoPesquisas: ResultadoSincronizacao | null = null;
     let resultadoEspecialistas = null;
     let resultadoApontamentos = null;
@@ -448,7 +442,13 @@ export async function sincronizarDados(
       };
     }
 
-    // 5. Combinar resultados - INCLUIR APENAS MENSAGENS DAS TABELAS SELECIONADAS
+    // 5. Buscar totais reais do banco APÓS a sincronização (para exibir valores atualizados)
+    console.log('📊 Buscando totais reais do banco APÓS sincronização...');
+    onLog?.('📊 Buscando totais reais do banco APÓS sincronização...');
+    const totaisReaisBancoApos = await buscarTotaisReaisBanco();
+    console.log('📊 Totais reais do banco APÓS:', totaisReaisBancoApos);
+
+    // 6. Combinar resultados - INCLUIR APENAS MENSAGENS DAS TABELAS SELECIONADAS
     const mensagensCombinadas: string[] = [];
     
     // Adicionar mensagens de pesquisas (se selecionado)
@@ -480,7 +480,7 @@ export async function sincronizarDados(
       especialistas: resultadoEspecialistas,
       apontamentos: resultadoApontamentos,
       tickets: resultadoTickets,
-      totais_reais_banco: totaisReaisBanco,
+      totais_reais_banco: totaisReaisBancoApos,
       mensagens: mensagensCombinadas
     };
 

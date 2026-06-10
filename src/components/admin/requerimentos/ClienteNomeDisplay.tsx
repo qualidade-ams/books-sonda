@@ -13,6 +13,7 @@ import {
 interface ClienteNomeDisplayProps {
   nomeEmpresa: string | undefined;
   nomeCliente?: string | undefined;
+  nomeAbreviado?: string | undefined;
   className?: string;
   title?: string;
 }
@@ -20,6 +21,7 @@ interface ClienteNomeDisplayProps {
 export const ClienteNomeDisplay: React.FC<ClienteNomeDisplayProps> = ({
   nomeEmpresa,
   nomeCliente,
+  nomeAbreviado,
   className = '',
   title
 }) => {
@@ -45,11 +47,14 @@ export const ClienteNomeDisplay: React.FC<ClienteNomeDisplayProps> = ({
   });
 
   // Processar o nome da empresa baseado na verificação do cliente
-  const { nomeExibicao, isEspecial, corEspecial } = processarNomeClienteEspecial(
+  const { nomeExibicao: nomeProcessado, isEspecial, corEspecial } = processarNomeClienteEspecial(
     nomeEmpresa,
     nomeCliente,
     isEspecialista
   );
+
+  // Para empresas não-especiais, usar nome abreviado se fornecido
+  const nomeExibicao = isEspecial ? nomeProcessado : (nomeAbreviado || nomeProcessado);
 
   // Log do processamento final
   console.log('🎯 [ClienteNomeDisplay] Resultado final:', {
