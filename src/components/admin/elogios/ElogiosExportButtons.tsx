@@ -21,6 +21,7 @@ interface ElogiosExportButtonsProps {
   elogios: ElogioCompleto[];
   periodo: string;
   deParaCategorias?: DeParaCategoria[];
+  empresas?: Array<{ nome_completo: string; nome_abreviado: string }>;
   disabled?: boolean;
 }
 
@@ -28,6 +29,7 @@ export default function ElogiosExportButtons({
   elogios, 
   periodo, 
   deParaCategorias = [],
+  empresas = [],
   disabled = false 
 }: ElogiosExportButtonsProps) {
   const [isExporting, setIsExporting] = useState(false);
@@ -52,7 +54,7 @@ export default function ElogiosExportButtons({
 
     setIsExporting(true);
     try {
-      const resultado = exportarElogiosExcel(elogios, periodo, deParaCategorias);
+      const resultado = exportarElogiosExcel(elogios, periodo, deParaCategorias, empresas);
       
       if (resultado.success) {
         toast({
@@ -90,7 +92,7 @@ export default function ElogiosExportButtons({
 
     setIsExporting(true);
     try {
-      const resultado = exportarElogiosPDF(elogios, periodo, deParaCategorias);
+      const resultado = exportarElogiosPDF(elogios, periodo, deParaCategorias, empresas);
       
       if (resultado.success) {
         toast({

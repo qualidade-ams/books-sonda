@@ -458,6 +458,242 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * Endpoint de validação da sincronização
+ * Compara contagem de registros no SQL Server vs Supabase
+ * Retorna diferenças e possíveis registros faltantes
+ */
+app.get('/api/validate-sync', async (req, res) => {
+  const resultado = {
+    timestamp: new Date().toISOString(),
+    tabelas: {} as Record<string, any>,
+    resumo: {
+      total_tabelas: 0,
+      tabelas_ok: 0,
+      tabelas_com_diferenca: 0,
+      tabelas_com_erro: 0
+    }
+  };
+
+  let pool: sql.ConnectionPool | null = null;
+
+  try {
+    console.log('🔍 [VALIDATE] Iniciando validação de sincronização...');
+    
+    // Conectar ao SQL Server
+    pool = await sql.connect(sqlConfig);
+    console.log('✅ [VALIDATE] Conectado ao SQL Server');
+
+    // ==========================================
+    // 1. VALIDAR PESQUISAS (AMSpesquisa)
+    // ==========================================
+    try {
+      console.log('📊 [VALIDATE] Validando pesquisas...');
+      
+      // Contar no SQL Server (com os mesmos filtros do sync)
+      const querySqlPesquisas = `
+        SELECT COUNT(*) as total
+        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+        WHERE (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+          AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+          AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
+      `;
+      const resultSqlPesquisas = await pool.request().query(querySqlPesquisas);
+      const totalSqlPesquisas = resultSqlPesquisas.recordset[0].total;
+
+      // Contar registros sem Data_Ultima_Modificacao (possíveis perdidos)
+      const querySemModificacao = `
+        SELECT COUNT(*) as total
+        FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+        WHERE [Data_Ultima_Modificacao (Year)] IS NULL
+          AND (Grupo NOT LIKE 'AMS SAP%' OR Grupo IS NULL)
+          AND [Data_Fechamento (Date-Hour-Minute-Second)] >= '2026-01-01 00:00:00'
+          AND LOWER(LTRIM(RTRIM(Cliente))) != 'user - ams - teste'
+      `;
+      const resultSemModificacao = await pool.request().query(querySemModificacao);
+      const totalSemModificacao = resultSemModificacao.recordset[0].total;
+
+      // Contar no Supabase
+      const { count: totalSupabasePesquisas, error: errPesquisas } = await supabase
+        .from('pesquisas_satisfacao')
+        .select('*', { count: 'exact', head: true })
+        .eq('origem', 'sql_server');
+      
+      if (errPesquisas) throw errPesquisas;
+
+      const diferenca = totalSqlPesquisas - (totalSupabasePesquisas || 0);
+      
+      resultado.tabelas['pesquisas'] = {
+        sql_server: totalSqlPesquisas,
+        supabase: totalSupabasePesquisas || 0,
+        diferenca: diferenca,
+        sem_data_modificacao: totalSemModificacao,
+        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`,
+        nota: totalSemModificacao > 0 
+          ? `⚠️ ${totalSemModificacao} registros no SQL Server sem Data_Ultima_Modificacao (não são capturados pelo sync incremental)` 
+          : null
+      };
+      
+      resultado.resumo.total_tabelas++;
+      if (diferenca === 0) resultado.resumo.tabelas_ok++;
+      else resultado.resumo.tabelas_com_diferenca++;
+      
+    } catch (error) {
+      console.error('❌ [VALIDATE] Erro ao validar pesquisas:', error);
+      resultado.tabelas['pesquisas'] = { 
+        status: '❌ ERRO', 
+        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+      resultado.resumo.total_tabelas++;
+      resultado.resumo.tabelas_com_erro++;
+    }
+
+    // ==========================================
+    // 2. VALIDAR ESPECIALISTAS (AMSespecialistas)
+    // ==========================================
+    try {
+      console.log('📊 [VALIDATE] Validando especialistas...');
+      
+      const resultSqlEsp = await pool.request().query('SELECT COUNT(*) as total FROM AMSespecialistas');
+      const totalSqlEsp = resultSqlEsp.recordset[0].total;
+
+      // Contar ativos no SQL
+      const resultSqlEspAtivos = await pool.request().query("SELECT COUNT(*) as total FROM AMSespecialistas WHERE user_active = 1");
+      const totalSqlEspAtivos = resultSqlEspAtivos.recordset[0].total;
+
+      const { count: totalSupabaseEsp, error: errEsp } = await supabase
+        .from('especialistas')
+        .select('*', { count: 'exact', head: true })
+        .eq('origem', 'sql_server');
+      
+      if (errEsp) throw errEsp;
+
+      // Especialistas sincroniza TODOS (ativos + inativos) mas marca inativos
+      const diferenca = totalSqlEsp - (totalSupabaseEsp || 0);
+      
+      resultado.tabelas['especialistas'] = {
+        sql_server_total: totalSqlEsp,
+        sql_server_ativos: totalSqlEspAtivos,
+        supabase: totalSupabaseEsp || 0,
+        diferenca: diferenca,
+        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+      };
+      
+      resultado.resumo.total_tabelas++;
+      if (diferenca === 0) resultado.resumo.tabelas_ok++;
+      else resultado.resumo.tabelas_com_diferenca++;
+      
+    } catch (error) {
+      console.error('❌ [VALIDATE] Erro ao validar especialistas:', error);
+      resultado.tabelas['especialistas'] = { 
+        status: '❌ ERRO', 
+        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+      resultado.resumo.total_tabelas++;
+      resultado.resumo.tabelas_com_erro++;
+    }
+
+    // ==========================================
+    // 3. VALIDAR APONTAMENTOS (AMSapontamento)
+    // ==========================================
+    try {
+      console.log('📊 [VALIDATE] Validando apontamentos...');
+      
+      const querySqlAp = `
+        SELECT COUNT(*) as total
+        FROM AMSapontamento
+        WHERE Data_Ult_Modificacao_Geral IS NOT NULL
+          AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
+      `;
+      const resultSqlAp = await pool.request().query(querySqlAp);
+      const totalSqlAp = resultSqlAp.recordset[0].total;
+
+      const { count: totalSupabaseAp, error: errAp } = await supabase
+        .from('apontamentos_aranda')
+        .select('*', { count: 'exact', head: true })
+        .eq('origem', 'sql_server');
+      
+      if (errAp) throw errAp;
+
+      const diferenca = totalSqlAp - (totalSupabaseAp || 0);
+      
+      resultado.tabelas['apontamentos'] = {
+        sql_server: totalSqlAp,
+        supabase: totalSupabaseAp || 0,
+        diferenca: diferenca,
+        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+      };
+      
+      resultado.resumo.total_tabelas++;
+      if (diferenca === 0) resultado.resumo.tabelas_ok++;
+      else resultado.resumo.tabelas_com_diferenca++;
+      
+    } catch (error) {
+      console.error('❌ [VALIDATE] Erro ao validar apontamentos:', error);
+      resultado.tabelas['apontamentos'] = { 
+        status: '❌ ERRO', 
+        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+      resultado.resumo.total_tabelas++;
+      resultado.resumo.tabelas_com_erro++;
+    }
+
+    // ==========================================
+    // 4. VALIDAR TICKETS (AMSticketsabertos)
+    // ==========================================
+    try {
+      console.log('📊 [VALIDATE] Validando tickets...');
+      
+      const resultSqlTickets = await pool.request().query('SELECT COUNT(*) as total FROM AMSticketsabertos');
+      const totalSqlTickets = resultSqlTickets.recordset[0].total;
+
+      const { count: totalSupabaseTickets, error: errTickets } = await supabase
+        .from('apontamentos_tickets_aranda')
+        .select('*', { count: 'exact', head: true });
+      
+      if (errTickets) throw errTickets;
+
+      const diferenca = totalSqlTickets - (totalSupabaseTickets || 0);
+      
+      resultado.tabelas['tickets'] = {
+        sql_server: totalSqlTickets,
+        supabase: totalSupabaseTickets || 0,
+        diferenca: diferenca,
+        status: diferenca === 0 ? '✅ OK' : diferenca > 0 ? `⚠️ Faltam ${diferenca} registros` : `🔄 Supabase tem ${Math.abs(diferenca)} a mais`
+      };
+      
+      resultado.resumo.total_tabelas++;
+      if (diferenca === 0) resultado.resumo.tabelas_ok++;
+      else resultado.resumo.tabelas_com_diferenca++;
+      
+    } catch (error) {
+      console.error('❌ [VALIDATE] Erro ao validar tickets:', error);
+      resultado.tabelas['tickets'] = { 
+        status: '❌ ERRO', 
+        erro: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+      resultado.resumo.total_tabelas++;
+      resultado.resumo.tabelas_com_erro++;
+    }
+
+    // Fechar conexão
+    await pool.close();
+
+    console.log('✅ [VALIDATE] Validação concluída:', resultado.resumo);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('❌ [VALIDATE] Erro fatal na validação:', error);
+    if (pool) {
+      try { await pool.close(); } catch (e) { /* ignore */ }
+    }
+    res.status(500).json({
+      ...resultado,
+      erro: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+});
+
+/**
  * Testar conexão SQL Server
  */
 app.get('/api/test-connection', async (req, res) => {

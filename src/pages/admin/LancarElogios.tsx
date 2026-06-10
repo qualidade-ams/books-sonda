@@ -479,6 +479,7 @@ function LancarElogios() {
               elogios={elogios}
               periodo={`${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`}
               deParaCategorias={deParaCategorias}
+              empresas={empresas}
               disabled={isLoading}
             />
             {/*<Button onClick={() => setModalCriarAberto(true)} className="flex items-center gap-2" size="sm">
@@ -791,6 +792,7 @@ function LancarElogios() {
                                 <ClienteNomeDisplay
                                   nomeEmpresa={elogio.pesquisa?.empresa}
                                   nomeCliente={elogio.pesquisa?.cliente}
+                                  nomeAbreviado={nome}
                                   className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
                                 />
                               </span>
@@ -1104,6 +1106,7 @@ function LancarElogios() {
                                     <ClienteNomeDisplay
                                       nomeEmpresa={elogio.pesquisa?.empresa}
                                       nomeCliente={elogio.pesquisa?.cliente}
+                                      nomeAbreviado={nome}
                                       className={`inline ${deveExibirVermelho ? 'text-red-600' : ''}`}
                                     />
                                   </span>
