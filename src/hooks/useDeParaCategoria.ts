@@ -87,9 +87,9 @@ export function useCategorias() {
 
       console.log('📊 [HOOK] Total de registros buscados:', allData.length);
 
-      // Remover duplicatas e criar array de opções
+      // Remover duplicatas, trim de espaços e criar array de opções
       const categoriasUnicas = Array.from(
-        new Set(allData.map((item) => item.categoria))
+        new Set(allData.map((item) => item.categoria.trim()))
       );
 
       const categoriasOptions = categoriasUnicas.map((categoria) => ({
@@ -132,9 +132,9 @@ export function useGruposPorCategoria(categoria?: string) {
 
       console.log('📊 [HOOK] Dados brutos retornados:', data);
 
-      // Remover duplicatas e criar array de opções
+      // Remover duplicatas, trim de espaços e criar array de opções
       const gruposUnicos = Array.from(
-        new Set(data.map((item) => item.grupo))
+        new Set(data.map((item) => item.grupo.trim()))
       );
 
       const gruposOptions = gruposUnicos.map((grupo) => ({

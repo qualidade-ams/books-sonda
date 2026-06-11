@@ -2,7 +2,7 @@
  * Formulário de cadastro/edição de elogios
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
@@ -67,6 +67,16 @@ interface ElogioFormProps {
 
 export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioFormProps) {
   const { empresas } = useEmpresas();
+  
+  // Flag para controlar se o formulário já foi preenchido com os dados do elogio
+  const formPopulatedRef = useRef(false);
+  const especialistasPopulatedRef = useRef(false);
+  
+  // Reset da flag quando o elogio muda (ex: abrir outro elogio)
+  useEffect(() => {
+    formPopulatedRef.current = false;
+    especialistasPopulatedRef.current = false;
+  }, [elogio?.id]);
   
   // Buscar categorias e grupos da tabela DE-PARA
   const { data: categorias = [] } = useCategorias();
@@ -141,9 +151,10 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
     console.log('🔄 [ELOGIOS] Elogio:', !!elogio);
     console.log('🔄 [ELOGIOS] Empresas carregadas:', empresas.length);
     console.log('🔄 [ELOGIOS] Categorias carregadas:', categorias.length);
+    console.log('🔄 [ELOGIOS] Formulário já preenchido:', formPopulatedRef.current);
     
     // Aguardar carregamento de empresas E categorias antes de preencher
-    if (elogio && empresas.length > 0 && categorias.length > 0 && !form.formState.isDirty) {
+    if (elogio && empresas.length > 0 && categorias.length > 0 && !formPopulatedRef.current) {
       console.log('✅ [ELOGIOS] Todas as dependências carregadas, preenchendo formulário');
       
       const empresaEncontrada = empresas.find(
@@ -152,26 +163,36 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
       
       const empresaValue = empresaEncontrada ? empresaEncontrada.nome_completo : elogio.pesquisa?.empresa || '';
       
+      // Trim nos valores de categoria e grupo para garantir correspondência
+      const categoriaValue = elogio.pesquisa?.categoria?.trim() || undefined;
+      const grupoValue = elogio.pesquisa?.grupo?.trim() || undefined;
+      
       console.log('📋 [ELOGIOS] Dados do elogio a serem preenchidos:');
-      console.log('  - Categoria:', elogio.pesquisa?.categoria);
-      console.log('  - Grupo:', elogio.pesquisa?.grupo);
+      console.log('  - Categoria:', categoriaValue);
+      console.log('  - Grupo:', grupoValue);
       
       form.reset({
         empresa: empresaValue,
         cliente: elogio.pesquisa?.cliente || '',
         email_cliente: elogio.pesquisa?.email_cliente || '',
         prestador: elogio.pesquisa?.prestador || '',
-        categoria: elogio.pesquisa?.categoria || undefined,
-        grupo: elogio.pesquisa?.grupo || undefined,
+        categoria: categoriaValue,
+        grupo: grupoValue,
         tipo_caso: elogio.pesquisa?.tipo_caso || undefined,
         nro_caso: elogio.pesquisa?.nro_caso || elogio.chamado || '',
         data_resposta: elogio.data_resposta ? new Date(elogio.data_resposta) : undefined,
         resposta: elogio.pesquisa?.resposta || 'Muito Satisfeito',
         comentario_pesquisa: elogio.pesquisa?.comentario_pesquisa || '',
         observacao: elogio.observacao || '',
-        especialistas_ids: [] // Iniciar vazio, será preenchido pelo próximo useEffect
+        especialistas_ids: especialistasIds.length > 0 ? especialistasIds : []
       });
       
+      // Se já temos especialistas, marcar como populado para não sobrescrever
+      if (especialistasIds.length > 0) {
+        especialistasPopulatedRef.current = true;
+      }
+      
+      formPopulatedRef.current = true;
       console.log('✅ [ELOGIOS] Formulário preenchido com sucesso');
     } else {
       console.log('⏳ [ELOGIOS] Aguardando carregamento das dependências...');
@@ -180,13 +201,14 @@ export function ElogioForm({ elogio, onSubmit, onCancel, isLoading }: ElogioForm
 
   // Preencher especialistas separadamente - APENAS uma vez quando carregados
   useEffect(() => {
-    if (!loadingCorrelacao && especialistasIds.length > 0 && elogio && !form.formState.isDirty) {
+    if (!loadingCorrelacao && especialistasIds.length > 0 && elogio && !especialistasPopulatedRef.current) {
       console.log('📋 [ELOGIOS] Preenchendo especialistas (apenas uma vez):', especialistasIds);
       form.setValue('especialistas_ids', especialistasIds, {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false
       });
+      especialistasPopulatedRef.current = true;
     }
   }, [especialistasIds, elogio, loadingCorrelacao]); // Removido 'form' da dependência para evitar loops
 
