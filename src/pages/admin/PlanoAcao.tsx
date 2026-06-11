@@ -299,7 +299,7 @@ export default function PlanoAcao() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="h-4 w-4 text-red-500" />
-                <p className="text-xs font-medium text-red-500">Cancelados</p>
+                <p className="text-xs font-medium text-red-500">Sem retorno</p>
               </div>
               <p className="text-2xl font-bold text-red-600">{estatisticas.cancelados}</p>
             </CardContent>

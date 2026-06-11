@@ -305,21 +305,26 @@ function toMixedCase(text: string): string {
 
 /**
  * Gerar ID único para registro de especialista
+ * 
+ * FORMATO: "AMSespecialistas|email_em_lowercase"
+ * 
+ * Usa EMAIL como chave principal para evitar duplicatas quando o nome 
+ * muda no SQL Server (ex: casamento, correção de grafia).
+ * Para registros sem email, usa nome + "sem_email" como fallback.
  */
 function gerarIdUnicoEspecialista(registro: DadosEspecialistaSqlServer): string {
-  // Validar se os campos obrigatórios existem
-  if (!registro.user_name || registro.user_name.trim() === '') {
-    console.error('Erro: user_name é obrigatório para gerar ID único', registro);
-    throw new Error(`user_name é obrigatório para gerar ID único. Registro: ${JSON.stringify(registro)}`);
+  // Se tem email, usar como chave principal (case-insensitive)
+  if (registro.user_email && registro.user_email.trim() !== '') {
+    return `AMSespecialistas|${registro.user_email.trim().toLowerCase()}`;
   }
   
-  const partes = [
-    'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    toMixedCase(registro.user_name.trim()),
-    (registro.user_email?.trim() || 'sem_email').toLowerCase()
-  ].filter(Boolean);
+  // Fallback para registros sem email: usar nome
+  if (!registro.user_name || registro.user_name.trim() === '') {
+    console.error('Erro: user_name e user_email são ambos vazios', registro);
+    throw new Error(`user_name e user_email são ambos vazios. Registro: ${JSON.stringify(registro)}`);
+  }
   
-  return partes.join('|');
+  return `AMSespecialistas|${toMixedCase(registro.user_name.trim()).toLowerCase()}|sem_email`;
 }
 
 /**
@@ -771,6 +776,236 @@ app.post('/api/sync-pesquisas', async (req, res) => {
  */
 app.post('/api/sync-pesquisas-full', async (req, res) => {
   await sincronizarPesquisas(req, res, true);
+});
+
+/**
+ * Sincronizar pesquisas por lista de números de chamado (Nro_Caso)
+ * Útil para trazer registros específicos que não foram capturados pelo sync incremental
+ * 
+ * Body: { chamados: ["8783877", "8784377", ...] }
+ */
+app.post('/api/sync-pesquisas-por-chamados', async (req, res) => {
+  const { chamados } = req.body;
+  
+  if (!chamados || !Array.isArray(chamados) || chamados.length === 0) {
+    return res.status(400).json({ 
+      sucesso: false, 
+      mensagem: 'Body deve conter "chamados" como array de strings. Ex: { "chamados": ["8783877", "8784377"] }' 
+    });
+  }
+
+  const resultado = {
+    sucesso: false,
+    total_processados: 0,
+    novos: 0,
+    atualizados: 0,
+    erros: 0,
+    ignorados: 0,
+    mensagens: [] as string[],
+    detalhes_erros: [] as any[]
+  };
+
+  try {
+    console.log(`🔄 [SYNC-CHAMADOS] Sincronizando ${chamados.length} chamados específicos...`);
+    resultado.mensagens.push(`Buscando ${chamados.length} chamados específicos no SQL Server...`);
+
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [SYNC-CHAMADOS] Conectado ao SQL Server');
+
+    // Construir lista de chamados para a query IN
+    const chamadosLista = chamados.map((c: string) => `'${c.trim()}'`).join(',');
+
+    const query = `
+      SELECT
+        Empresa,
+        Categoria,
+        Grupo,
+        Cliente,
+        Email_Cliente,
+        Prestador,
+        Solicitante,
+        Nro_Caso,
+        Tipo_Caso,
+        Ano_Abertura,
+        Mes_abertura,
+        [Data_Resposta (Date-Hour-Minute-Second)] as Data_Resposta,
+        Resposta,
+        Comentario_Pesquisa,
+        Servico,
+        Nome_Pesquisa,
+        [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+        [Data_Ultima_Modificacao (Year)] as Data_Ultima_Modificacao,
+        Autor_Notificacao,
+        Estado,
+        Descricao,
+        Pesquisa_Recebida,
+        Pergunta,
+        SequenciaPregunta,
+        LOG
+      FROM ${process.env.SQL_TABLE || 'AMSpesquisa'}
+      WHERE Nro_Caso IN (${chamadosLista})
+      ORDER BY Nro_Caso ASC
+    `;
+
+    const result = await pool.request().query(query);
+    const registros = result.recordset as DadosSqlServer[];
+    
+    resultado.total_processados = registros.length;
+    console.log(`📊 [SYNC-CHAMADOS] ${registros.length} registros encontrados no SQL Server`);
+    resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server (de ${chamados.length} solicitados)`);
+
+    await pool.close();
+
+    if (registros.length === 0) {
+      resultado.sucesso = true;
+      resultado.mensagens.push('Nenhum registro encontrado com os chamados informados');
+      return res.json(resultado);
+    }
+
+    // Chamados encontrados vs solicitados
+    const chamadosEncontrados = new Set(registros.map(r => r.Nro_Caso?.trim()));
+    const chamadosNaoEncontrados = chamados.filter((c: string) => !chamadosEncontrados.has(c.trim()));
+    if (chamadosNaoEncontrados.length > 0) {
+      resultado.mensagens.push(`⚠️ ${chamadosNaoEncontrados.length} chamados não encontrados no SQL Server: ${chamadosNaoEncontrados.slice(0, 10).join(', ')}${chamadosNaoEncontrados.length > 10 ? '...' : ''}`);
+    }
+
+    // Processar cada registro (mesma lógica do sync normal)
+    for (let i = 0; i < registros.length; i++) {
+      const registro = registros[i];
+      
+      try {
+        const idUnico = gerarIdUnico(registro);
+        
+        // Verificar se já existe
+        let existente: { id: string; status: string } | null = null;
+        
+        const nroCasoTrimmed = (registro.Nro_Caso || '').trim();
+        const empresaParaBusca = aplicarTransformacaoAMS({
+          empresa: registro.Empresa || '',
+          cliente: registro.Cliente || '',
+          solicitante: registro.Solicitante || null
+        }).empresa;
+        
+        if (nroCasoTrimmed) {
+          const { data: existentePorCaso } = await supabase
+            .from('pesquisas_satisfacao')
+            .select('id, status, id_externo')
+            .eq('empresa', empresaParaBusca)
+            .eq('nro_caso', nroCasoTrimmed)
+            .eq('origem', 'sql_server')
+            .maybeSingle();
+          
+          if (existentePorCaso) {
+            existente = existentePorCaso;
+            if (existentePorCaso.id_externo !== idUnico) {
+              await supabase
+                .from('pesquisas_satisfacao')
+                .update({ id_externo: idUnico })
+                .eq('id', existentePorCaso.id);
+            }
+          }
+        }
+        
+        if (!existente) {
+          const { data: existentePorId } = await supabase
+            .from('pesquisas_satisfacao')
+            .select('id, status')
+            .eq('id_externo', idUnico)
+            .maybeSingle();
+          existente = existentePorId;
+        }
+
+        // Transformação AMS
+        const transformacao = aplicarTransformacaoAMS({
+          empresa: registro.Empresa || '',
+          cliente: registro.Cliente || '',
+          solicitante: registro.Solicitante || null
+        });
+
+        const dadosPesquisa = {
+          origem: 'sql_server' as const,
+          id_externo: idUnico,
+          empresa: transformacao.empresa,
+          categoria: registro.Categoria || null,
+          grupo: registro.Grupo || null,
+          cliente: transformacao.cliente,
+          email_cliente: registro.Email_Cliente || null,
+          prestador: registro.Prestador || null,
+          solicitante: transformacao.solicitante || null,
+          nro_caso: registro.Nro_Caso || null,
+          tipo_caso: registro.Tipo_Caso || null,
+          ano_abertura: registro.Ano_Abertura ? parseInt(registro.Ano_Abertura) : null,
+          mes_abertura: registro.Mes_abertura ? parseInt(registro.Mes_abertura) : null,
+          data_resposta: formatarDataSemTimezone(registro.Data_Resposta),
+          resposta: registro.Resposta || null,
+          comentario_pesquisa: registro.Comentario_Pesquisa || null,
+          status: 'pendente' as const,
+          servico: registro.Servico || null,
+          nome_pesquisa: registro.Nome_Pesquisa || null,
+          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
+          data_ultima_modificacao: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          autor_notificacao: registro.Autor_Notificacao || null,
+          estado: registro.Estado || null,
+          descricao: registro.Descricao || null,
+          pesquisa_recebida: registro.Pesquisa_Recebida || null,
+          pergunta: registro.Pergunta || null,
+          sequencia_pergunta: registro.SequenciaPregunta || null,
+          log: formatarDataSemTimezone(registro.LOG)
+        };
+
+        if (existente) {
+          if (existente.status !== 'pendente') {
+            console.log(`🔒 [SYNC-CHAMADOS] Chamado ${nroCasoTrimmed} BLOQUEADO - status '${existente.status}'`);
+            resultado.ignorados++;
+            continue;
+          }
+          
+          const { error } = await supabase
+            .from('pesquisas_satisfacao')
+            .update({
+              ...dadosPesquisa,
+              autor_nome: 'SQL Server Sync (por chamado)'
+            })
+            .eq('id', existente.id);
+
+          if (error) throw error;
+          resultado.atualizados++;
+          console.log(`✅ [SYNC-CHAMADOS] Chamado ${nroCasoTrimmed} atualizado`);
+        } else {
+          const { error } = await supabase
+            .from('pesquisas_satisfacao')
+            .insert({
+              ...dadosPesquisa,
+              autor_id: null,
+              autor_nome: 'SQL Server Sync (por chamado)'
+            });
+
+          if (error) throw error;
+          resultado.novos++;
+          console.log(`✅ [SYNC-CHAMADOS] Chamado ${nroCasoTrimmed} inserido`);
+        }
+      } catch (erro) {
+        resultado.erros++;
+        resultado.detalhes_erros.push({
+          chamado: registro.Nro_Caso,
+          erro: erro instanceof Error ? erro.message : 'Erro desconhecido'
+        });
+        console.error(`❌ [SYNC-CHAMADOS] Erro no chamado ${registro.Nro_Caso}:`, erro);
+      }
+    }
+
+    resultado.sucesso = resultado.erros === 0;
+    resultado.mensagens.push(`Concluído: ${resultado.novos} novos, ${resultado.atualizados} atualizados, ${resultado.ignorados} ignorados, ${resultado.erros} erros`);
+    
+    console.log(`📊 [SYNC-CHAMADOS] Resultado:`, resultado);
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error('💥 [SYNC-CHAMADOS] Erro fatal:', erro);
+    resultado.mensagens.push(`Erro: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
+    resultado.erros++;
+    return res.status(500).json(resultado);
+  }
 });
 
 /**
@@ -1675,14 +1910,15 @@ async function sincronizarEspecialistas(req: any, res: any) {
       FROM AMSespecialistas
       WHERE user_name IS NOT NULL
         AND user_name != ''
+        AND user_name NOT LIKE 'Zz%'
+        AND user_name != 'Application Administrator'
       ORDER BY user_name ASC
     `;
 
     const result = await pool.request().query(query);
     const registros = result.recordset as DadosEspecialistaSqlServer[];
     
-    console.log(`📊 [ESPECIALISTAS] ${registros.length} registros encontrados`);
-    resultado.total_processados = registros.length;
+    console.log(`📊 [ESPECIALISTAS] ${registros.length} registros encontrados no SQL Server (antes da deduplicação)`);
     resultado.mensagens.push(`${registros.length} registros encontrados no SQL Server`);
 
     await pool.close();
@@ -1712,29 +1948,55 @@ async function sincronizarEspecialistas(req: any, res: any) {
     const idsProcessados = new Set<string>();
 
     // Processar cada registro
+    // DEDUPLICAÇÃO: Agrupar por email, priorizando user_active = true
+    console.log('🔄 [ESPECIALISTAS] Deduplicando registros por email...');
+    const registrosPorEmail = new Map<string, DadosEspecialistaSqlServer>();
+    let registrosSemEmail = 0;
+    
+    for (const registro of registros) {
+      const emailKey = registro.user_email?.trim().toLowerCase() || '';
+      
+      if (!emailKey) {
+        registrosSemEmail++;
+        continue; // Ignorar registros sem email (não há como identificá-los de forma única)
+      }
+      
+      const existente = registrosPorEmail.get(emailKey);
+      if (!existente) {
+        registrosPorEmail.set(emailKey, registro);
+      } else {
+        // Se o novo registro está ativo e o existente não, substituir
+        if (registro.user_active && !existente.user_active) {
+          registrosPorEmail.set(emailKey, registro);
+        }
+        // Se ambos têm mesmo status, preferir o nome mais completo (mais longo)
+        else if (registro.user_active === existente.user_active && 
+                 registro.user_name.length > existente.user_name.length) {
+          registrosPorEmail.set(emailKey, registro);
+        }
+      }
+    }
+    
+    const registrosDeduplicados = Array.from(registrosPorEmail.values());
+    console.log(`📊 [ESPECIALISTAS] ${registrosDeduplicados.length} registros únicos por email (${registrosSemEmail} sem email ignorados, ${registros.length - registrosDeduplicados.length - registrosSemEmail} duplicatas removidas)`);
+    resultado.total_processados = registrosDeduplicados.length;
+    resultado.mensagens.push(`${registrosDeduplicados.length} registros únicos (${registros.length - registrosDeduplicados.length - registrosSemEmail} duplicatas por email removidas)`);
+    
     console.log('🔄 [ESPECIALISTAS] Iniciando processamento de registros...');
     resultado.mensagens.push('Iniciando processamento de registros...');
     
-    for (let i = 0; i < registros.length; i++) {
-      const registro = registros[i];
+    for (let i = 0; i < registrosDeduplicados.length; i++) {
+      const registro = registrosDeduplicados[i];
       
       if (i % 10 === 0) {
-        console.log(`📝 [ESPECIALISTAS] Processando registro ${i + 1}/${registros.length}...`);
+        console.log(`📝 [ESPECIALISTAS] Processando registro ${i + 1}/${registrosDeduplicados.length}...`);
       }
       
       try {
         // Validar dados do registro antes de processar
-        if (!registro.user_name || registro.user_name.trim() === '') {
-          console.error(`❌ [ESPECIALISTAS] Registro ${i + 1} tem user_name inválido:`, registro);
-          resultado.erros++;
-          resultado.detalhes_erros.push({
-            registro: {
-              user_name: registro.user_name,
-              user_email: registro.user_email
-            },
-            erro: 'user_name é obrigatório mas está vazio/nulo'
-          });
-          continue; // Pular este registro
+        if (!registro.user_email || registro.user_email.trim() === '') {
+          console.warn(`⚠️ [ESPECIALISTAS] Registro ${i + 1} sem email, pulando: ${registro.user_name}`);
+          continue; // Já filtramos registros sem email na deduplicação
         }
         
         console.log(`🔍 [ESPECIALISTAS] Gerando ID único para registro ${i + 1}...`);

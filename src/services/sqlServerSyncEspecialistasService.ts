@@ -48,16 +48,24 @@ function toMixedCase(text: string): string {
 
 /**
  * Gerar ID único para registro do SQL Server
+ * 
+ * FORMATO: "AMSespecialistas|email_em_lowercase"
+ * 
+ * Usa EMAIL como chave principal para evitar duplicatas quando o nome 
+ * muda no SQL Server (ex: casamento, correção de grafia).
  */
 function gerarIdUnico(registro: DadosEspecialistaSqlServer): string {
-  // Combinar campos para criar ID único usando as propriedades corretas da interface
-  const partes = [
-    'AMSespecialistas', // Prefixo para diferenciar de outras tabelas
-    toMixedCase(registro.user_name.trim()),
-    (registro.user_email?.trim() || 'sem_email').toLowerCase()
-  ].filter(Boolean);
+  // Se tem email, usar como chave principal (case-insensitive)
+  if (registro.user_email && registro.user_email.trim() !== '') {
+    return `AMSespecialistas|${registro.user_email.trim().toLowerCase()}`;
+  }
   
-  return partes.join('|');
+  // Fallback para registros sem email: usar nome
+  if (!registro.user_name || registro.user_name.trim() === '') {
+    throw new Error('user_name e user_email são ambos vazios');
+  }
+  
+  return `AMSespecialistas|${toMixedCase(registro.user_name.trim()).toLowerCase()}|sem_email`;
 }
 
 /**

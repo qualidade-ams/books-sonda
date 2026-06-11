@@ -144,7 +144,7 @@ export const STATUS_PLANO_OPTIONS: { value: StatusPlano; label: string }[] = [
   { value: 'em_andamento', label: 'Em Andamento' },
   { value: 'aguardando_retorno', label: 'Aguardando Retorno' },
   { value: 'concluido', label: 'Concluído' },
-  { value: 'cancelado', label: 'Cancelado' },
+  { value: 'cancelado', label: 'Sem retorno/informações do cliente' },
 ];
 
 export const MEIO_CONTATO_OPTIONS: { value: MeioContato; label: string }[] = [
