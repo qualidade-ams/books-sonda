@@ -361,9 +361,11 @@ async function buscarRegistrosModificados(
 /**
  * Verifica se registro existe no Supabase e retorna data de modificação e status.
  * 
- * Estratégia de busca (previne duplicatas por mudança de nome de cliente):
- * 1. Busca por empresa + nro_caso (chave real de unicidade)
+ * Estratégia de busca:
+ * 1. Busca por nro_caso (chave natural única no sistema Aranda)
  * 2. Fallback: busca por id_externo (compatibilidade com registros antigos)
+ * 
+ * IMPORTANTE: Não altera id_externo para evitar duplicatas quando empresa muda
  */
 async function buscarRegistroExistente(idExterno: string, empresa?: string, nroCaso?: string): Promise<{
   existe: boolean;
@@ -371,18 +373,17 @@ async function buscarRegistroExistente(idExterno: string, empresa?: string, nroC
   id: string | null;
   status: string | null;
 }> {
-  // 1. Busca primária: empresa + nro_caso (previne duplicatas por mudança de nome)
-  if (empresa && nroCaso && nroCaso !== 'sem_caso' && nroCaso.trim() !== '') {
+  // 1. Busca primária: nro_caso (sem filtrar empresa - o nro_caso é único no Aranda)
+  if (nroCaso && nroCaso !== 'sem_caso' && nroCaso.trim() !== '') {
     const { data, error } = await supabase
       .from('pesquisas_satisfacao')
       .select('id, data_ultima_modificacao, status, id_externo')
-      .eq('empresa', empresa)
       .eq('nro_caso', nroCaso)
       .eq('origem', 'sql_server')
       .maybeSingle();
 
     if (error && !error.message.includes('multiple')) {
-      console.error('❌ [SYNC] Erro ao buscar por empresa+nro_caso:', error);
+      console.error('❌ [SYNC] Erro ao buscar por nro_caso:', error);
       throw error;
     }
 
@@ -391,15 +392,7 @@ async function buscarRegistroExistente(idExterno: string, empresa?: string, nroC
         ? new Date(data.data_ultima_modificacao)
         : null;
 
-      // Se o id_externo mudou (nome do cliente mudou), atualizar silenciosamente
-      if (data.id_externo !== idExterno) {
-        console.log(`🔄 [SYNC] id_externo atualizado para nro_caso ${nroCaso}: "${data.id_externo}" → "${idExterno}"`);
-        await supabase
-          .from('pesquisas_satisfacao')
-          .update({ id_externo: idExterno })
-          .eq('id', data.id);
-      }
-
+      // NÃO alterar id_externo - manter o original para evitar duplicatas
       return { existe: true, dataModificacao, id: data.id, status: data.status };
     }
   }

@@ -880,29 +880,17 @@ app.post('/api/sync-pesquisas-por-chamados', async (req, res) => {
         let existente: { id: string; status: string } | null = null;
         
         const nroCasoTrimmed = (registro.Nro_Caso || '').trim();
-        const empresaParaBusca = aplicarTransformacaoAMS({
-          empresa: registro.Empresa || '',
-          cliente: registro.Cliente || '',
-          solicitante: registro.Solicitante || null
-        }).empresa;
         
         if (nroCasoTrimmed) {
           const { data: existentePorCaso } = await supabase
             .from('pesquisas_satisfacao')
             .select('id, status, id_externo')
-            .eq('empresa', empresaParaBusca)
             .eq('nro_caso', nroCasoTrimmed)
             .eq('origem', 'sql_server')
             .maybeSingle();
           
           if (existentePorCaso) {
             existente = existentePorCaso;
-            if (existentePorCaso.id_externo !== idUnico) {
-              await supabase
-                .from('pesquisas_satisfacao')
-                .update({ id_externo: idUnico })
-                .eq('id', existentePorCaso.id);
-            }
           }
         }
         
@@ -1625,40 +1613,27 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
 
         const idUnico = gerarIdUnico(registro);
 
-        // Verificar se já existe - BUSCA PRIMÁRIA: empresa + nro_caso (previne duplicatas por mudança de nome)
-        // Nota: usa aplicarTransformacaoAMS para obter o nome da empresa transformado (consistente com o que será salvo)
+        // Verificar se já existe - BUSCA POR nro_caso (chave natural no sistema Aranda)
+        // O Nro_Caso é único no sistema de chamados, não precisa filtrar por empresa
         let existente: { id: string; status: string } | null = null;
         
         const nroCasoTrimmed = (registro.Nro_Caso || '').trim();
-        const empresaParaBusca = aplicarTransformacaoAMS({
-          empresa: registro.Empresa || '',
-          cliente: registro.Cliente || '',
-          solicitante: registro.Solicitante || null
-        }).empresa;
         
         if (nroCasoTrimmed && nroCasoTrimmed !== '') {
           const { data: existentePorCaso, error: erroCaso } = await supabase
             .from('pesquisas_satisfacao')
             .select('id, status, id_externo')
-            .eq('empresa', empresaParaBusca)
             .eq('nro_caso', nroCasoTrimmed)
             .eq('origem', 'sql_server')
             .maybeSingle();
           
           if (!erroCaso && existentePorCaso) {
             existente = existentePorCaso;
-            // Atualizar id_externo se mudou
-            if (existentePorCaso.id_externo !== idUnico) {
-              console.log(`🔄 [SYNC] id_externo atualizado para caso ${nroCasoTrimmed}: "${existentePorCaso.id_externo}" → "${idUnico}"`);
-              await supabase
-                .from('pesquisas_satisfacao')
-                .update({ id_externo: idUnico })
-                .eq('id', existentePorCaso.id);
-            }
+            // NÃO alterar id_externo - manter o original para evitar duplicatas
           }
         }
         
-        // FALLBACK: busca por id_externo (se não encontrou por empresa+nro_caso)
+        // FALLBACK: busca por id_externo (se não encontrou por nro_caso)
         if (!existente) {
           const { data: existentePorId, error: erroConsulta } = await supabase
             .from('pesquisas_satisfacao')
@@ -1761,12 +1736,14 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
           }
           
           // ✅ Registro já existe e status = 'pendente' - ATUALIZAR apenas os novos campos
-          console.log(`🔄 [PESQUISAS] Registro ${i + 1} já existe - atualizando novos campos (ID: ${idUnico})`);
+          console.log(`🔄 [PESQUISAS] Registro ${i + 1} já existe - atualizando novos campos (ID: ${existente.id})`);
           
-          // Atualizar APENAS os 11 novos campos, preservando os outros
+          // Atualizar APENAS os 11 novos campos + id_externo (corrigir para valor original do SQL Server)
           const { error } = await supabase
             .from('pesquisas_satisfacao')
             .update({
+              id_externo: idUnico,
+              empresa: transformacao.empresa,
               servico: dadosPesquisa.servico,
               nome_pesquisa: dadosPesquisa.nome_pesquisa,
               data_fechamento: dadosPesquisa.data_fechamento,
@@ -1779,7 +1756,7 @@ async function sincronizarPesquisas(req: any, res: any, sincronizacaoCompleta: b
               sequencia_pergunta: dadosPesquisa.sequencia_pergunta,
               log: dadosPesquisa.log
             })
-            .eq('id_externo', idUnico);
+            .eq('id', existente.id);
 
           if (error) {
             console.error('Erro ao atualizar:', error);
