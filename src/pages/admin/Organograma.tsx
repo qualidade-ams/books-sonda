@@ -195,13 +195,13 @@ export default function Organograma() {
           </div>
 
           {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 lg:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Total de Pessoas
+                    Total
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -272,6 +272,38 @@ export default function Organograma() {
               <CardContent className="pt-0">
                 <div className="text-xl lg:text-2xl font-bold text-orange-600">
                   {stats.centralEscalacao}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-emerald-600">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Customer Success
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-emerald-600">
+                  {stats.customerSuccess}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs lg:text-sm font-medium text-amber-600">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Comercial
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xl lg:text-2xl font-bold text-amber-600">
+                  {stats.comercial}
                 </div>
               </CardContent>
             </Card>

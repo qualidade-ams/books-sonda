@@ -3,7 +3,7 @@
 // =====================================================
 
 export type PrioridadePlano = 'baixa' | 'media' | 'alta' | 'critica';
-export type StatusPlano = 'aberto' | 'em_andamento' | 'aguardando_retorno' | 'concluido' | 'cancelado';
+export type StatusPlano = 'aberto' | 'em_andamento' | 'aguardando_retorno' | 'concluido' | 'cancelado' | 'sem_retorno';
 export type MeioContato = 'whatsapp' | 'email' | 'ligacao';
 export type RetornoCliente = 'aguardando' | 'respondeu' | 'solicitou_mais_informacoes';
 export type StatusFinal = 'resolvido' | 'nao_resolvido' | 'resolvido_parcialmente';
@@ -112,6 +112,7 @@ export interface EstatisticasPlanoAcao {
   aguardando_retorno: number;
   concluidos: number;
   cancelados: number;
+  sem_retorno: number;
   tempo_medio_resolucao: number; // em dias
   por_prioridade: {
     baixa: number;
@@ -127,6 +128,7 @@ export interface EstatisticasPlanoAcao {
     aguardando_retorno: number;
     concluidos: number;
     cancelados: number;
+    sem_retorno: number;
     total: number;
   }>;
 }
@@ -144,7 +146,8 @@ export const STATUS_PLANO_OPTIONS: { value: StatusPlano; label: string }[] = [
   { value: 'em_andamento', label: 'Em Andamento' },
   { value: 'aguardando_retorno', label: 'Aguardando Retorno' },
   { value: 'concluido', label: 'Concluído' },
-  { value: 'cancelado', label: 'Sem retorno/informações do cliente' },
+  { value: 'cancelado', label: 'Cancelado' },
+  { value: 'sem_retorno', label: 'Sem retorno/informações do cliente' },
 ];
 
 export const MEIO_CONTATO_OPTIONS: { value: MeioContato; label: string }[] = [
@@ -189,6 +192,7 @@ export function getCorStatus(status: StatusPlano): string {
     aguardando_retorno: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
     concluido: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
     cancelado: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+    sem_retorno: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
   };
   return cores[status];
 }

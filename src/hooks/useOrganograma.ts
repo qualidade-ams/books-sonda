@@ -327,6 +327,86 @@ export function useOrganograma() {
       });
     }
 
+    // Adicionar Customer Success, Comercial e T&M à árvore
+    if (cargosIndependentes.length > 0) {
+      cargosIndependentes.forEach(pessoa => {
+        const pessoaComSub: PessoaComSubordinados = {
+          ...pessoa,
+          subordinados: []
+        };
+
+        if (pessoa.cargo === 'Customer Success') {
+          // CS reporta ao Coordenador - tentar vincular pelo superior_id ou buscar coordenador
+          if (pessoa.superior_id) {
+            const superior = pessoasMap.get(pessoa.superior_id);
+            if (superior) {
+              superior.subordinados = superior.subordinados || [];
+              superior.subordinados.push(pessoaComSub);
+              console.log(`✅ Customer Success "${pessoa.nome}" adicionado ao superior "${superior.nome}"`);
+            } else {
+              // Superior não está na lista filtrada, adicionar como raiz
+              raizes.push(pessoaComSub);
+              console.log(`⚠️ Customer Success "${pessoa.nome}" sem superior na árvore, adicionado como raiz`);
+            }
+          } else {
+            // Sem superior_id, tentar encontrar coordenador do mesmo produto
+            const coordenadores = outrasPessoas.filter(p => 
+              p.cargo === 'Coordenador' && 
+              (p.produto === 'CUSTOMER_SUCCESS' || p.produtos?.includes('CUSTOMER_SUCCESS'))
+            );
+            if (coordenadores.length > 0) {
+              const coordNode = pessoasMap.get(coordenadores[0].id);
+              if (coordNode) {
+                coordNode.subordinados = coordNode.subordinados || [];
+                coordNode.subordinados.push(pessoaComSub);
+                console.log(`✅ Customer Success "${pessoa.nome}" vinculado ao coordenador "${coordNode.nome}"`);
+              } else {
+                raizes.push(pessoaComSub);
+              }
+            } else {
+              raizes.push(pessoaComSub);
+              console.log(`⚠️ Customer Success "${pessoa.nome}" sem coordenador, adicionado como raiz`);
+            }
+          }
+        } else if (pessoa.cargo === 'Comercial') {
+          // Comercial reporta ao Gerente - tentar vincular pelo superior_id ou buscar gerente
+          if (pessoa.superior_id) {
+            const superior = pessoasMap.get(pessoa.superior_id);
+            if (superior) {
+              superior.subordinados = superior.subordinados || [];
+              superior.subordinados.push(pessoaComSub);
+              console.log(`✅ Comercial "${pessoa.nome}" adicionado ao superior "${superior.nome}"`);
+            } else {
+              raizes.push(pessoaComSub);
+              console.log(`⚠️ Comercial "${pessoa.nome}" sem superior na árvore, adicionado como raiz`);
+            }
+          } else {
+            // Sem superior_id, tentar encontrar gerente do mesmo produto
+            const gerentes = outrasPessoas.filter(p => 
+              p.cargo === 'Gerente' && 
+              (p.produto === 'COMERCIAL' || p.produtos?.includes('COMERCIAL'))
+            );
+            if (gerentes.length > 0) {
+              const gerenteNode = pessoasMap.get(gerentes[0].id);
+              if (gerenteNode) {
+                gerenteNode.subordinados = gerenteNode.subordinados || [];
+                gerenteNode.subordinados.push(pessoaComSub);
+                console.log(`✅ Comercial "${pessoa.nome}" vinculado ao gerente "${gerenteNode.nome}"`);
+              } else {
+                raizes.push(pessoaComSub);
+              }
+            } else {
+              raizes.push(pessoaComSub);
+              console.log(`⚠️ Comercial "${pessoa.nome}" sem gerente, adicionado como raiz`);
+            }
+          }
+        } else if (pessoa.cargo === 'T&M') {
+          // T&M não é exibido no organograma principal (apenas no book por empresa)
+          console.log(`⏭️ T&M "${pessoa.nome}" ignorado no organograma principal`);
+        }
+      });
+    }
+
     console.log('🌲 Raízes encontradas:', raizes.length, raizes.map(r => ({ nome: r.nome, cargo: r.cargo, produto: r.produto })));
 
     return raizes;

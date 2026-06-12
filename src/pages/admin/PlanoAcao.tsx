@@ -3,7 +3,7 @@
 // =====================================================
 
 import { useState, useEffect } from 'react';
-import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight, X, FileText, FolderOpen, PlayCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Filter, Download, Search, ChevronLeft, ChevronRight, X, FileText, FolderOpen, PlayCircle, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import LayoutAdmin from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
 import { Button } from '@/components/ui/button';
@@ -116,11 +116,11 @@ export default function PlanoAcao() {
 
   // Separar planos por status
   const planosAtivos = planos.filter(p => 
-    p.status_plano !== 'concluido' && p.status_plano !== 'cancelado'
+    p.status_plano !== 'concluido' && p.status_plano !== 'cancelado' && p.status_plano !== 'sem_retorno'
   );
   
   const planosFinalizados = planos.filter(p => 
-    p.status_plano === 'concluido' || p.status_plano === 'cancelado'
+    p.status_plano === 'concluido' || p.status_plano === 'cancelado' || p.status_plano === 'sem_retorno'
   );
 
   // Mutations
@@ -141,12 +141,12 @@ export default function PlanoAcao() {
         });
       }
       
-      // Se o status mudou para concluído/cancelado, mudar para aba finalizados
-      if (dados.status_plano === 'concluido' || dados.status_plano === 'cancelado') {
+      // Se o status mudou para concluído/cancelado/sem_retorno, mudar para aba finalizados
+      if (dados.status_plano === 'concluido' || dados.status_plano === 'cancelado' || dados.status_plano === 'sem_retorno') {
         setAbaAtiva('finalizados');
       }
-      // Se o status mudou de concluído/cancelado para outro, mudar para aba ativos
-      else if (planoSelecionado.status_plano === 'concluido' || planoSelecionado.status_plano === 'cancelado') {
+      // Se o status mudou de concluído/cancelado/sem_retorno para outro, mudar para aba ativos
+      else if (planoSelecionado.status_plano === 'concluido' || planoSelecionado.status_plano === 'cancelado' || planoSelecionado.status_plano === 'sem_retorno') {
         setAbaAtiva('ativos');
       }
     } else {
@@ -244,7 +244,7 @@ export default function PlanoAcao() {
 
       {/* Cards de Estatísticas */}
       {estatisticas && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -299,9 +299,19 @@ export default function PlanoAcao() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="h-4 w-4 text-red-500" />
-                <p className="text-xs font-medium text-red-500">Sem retorno</p>
+                <p className="text-xs font-medium text-red-500">Cancelado</p>
               </div>
               <p className="text-2xl font-bold text-red-600">{estatisticas.cancelados}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+                <p className="text-xs font-medium text-orange-500">Sem retorno</p>
+              </div>
+              <p className="text-2xl font-bold text-orange-600">{estatisticas.sem_retorno}</p>
             </CardContent>
           </Card>
         </div>
