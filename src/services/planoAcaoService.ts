@@ -485,6 +485,7 @@ export async function obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<Est
       aguardando_retorno: planosMes.filter(p => p.status_plano === 'aguardando_retorno').length,
       concluidos: planosMes.filter(p => p.status_plano === 'concluido').length,
       cancelados: planosMes.filter(p => p.status_plano === 'cancelado').length,
+      sem_retorno: planosMes.filter(p => p.status_plano === 'sem_retorno').length,
       total: planosMes.length
     };
   });
@@ -513,6 +514,7 @@ export async function obterEstatisticas(filtros?: FiltrosPlanoAcao): Promise<Est
     aguardando_retorno: planosCompletos.filter(p => p.status_plano === 'aguardando_retorno').length,
     concluidos: planosCompletos.filter(p => p.status_plano === 'concluido').length,
     cancelados: planosCompletos.filter(p => p.status_plano === 'cancelado').length,
+    sem_retorno: planosCompletos.filter(p => p.status_plano === 'sem_retorno').length,
     tempo_medio_resolucao: tempoMedioResolucao,
     por_prioridade: {
       baixa: planosCompletos.filter(p => p.prioridade === 'baixa').length,

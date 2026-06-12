@@ -508,6 +508,12 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
             const isLinkToCentral = link.target?.data?.attributes?.cargo === 'Central Escalação' || 
                                    link.target?.depth === 3;
             
+            // Ocultar linha que sai da raiz virtual (nó "Organograma" invisível)
+            const isLinkFromRoot = link.source?.data?.attributes?.id === 'root-virtual';
+            if (isLinkFromRoot) {
+              return 'customer-success-link-hidden'; // Ocultar linhas da raiz virtual
+            }
+
             // Ocultar linha para Customer Success APENAS quando é filho direto da raiz virtual
             // (depth 1 = filho direto da raiz). Se estiver em nível mais profundo (subordinado
             // a um coordenador), a linha deve aparecer normalmente.
