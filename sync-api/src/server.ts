@@ -1887,8 +1887,6 @@ async function sincronizarEspecialistas(req: any, res: any) {
       FROM AMSespecialistas
       WHERE user_name IS NOT NULL
         AND user_name != ''
-        AND user_name NOT LIKE 'Zz%'
-        AND user_name != 'Application Administrator'
       ORDER BY user_name ASC
     `;
 
@@ -1925,141 +1923,214 @@ async function sincronizarEspecialistas(req: any, res: any) {
     const idsProcessados = new Set<string>();
 
     // Processar cada registro
-    // DEDUPLICAÇÃO: Agrupar por email, priorizando user_active = true
-    console.log('🔄 [ESPECIALISTAS] Deduplicando registros por email...');
-    const registrosPorEmail = new Map<string, DadosEspecialistaSqlServer>();
+    // DEDUPLICAÇÃO: Agrupar por email (ou nome se sem email), priorizando user_active = true
+    console.log('🔄 [ESPECIALISTAS] Deduplicando registros...');
+    const registrosPorChave = new Map<string, DadosEspecialistaSqlServer>();
     let registrosSemEmail = 0;
     
     for (const registro of registros) {
       const emailKey = registro.user_email?.trim().toLowerCase() || '';
       
-      if (!emailKey) {
+      // Usar email como chave; se não tiver email, usar nome como chave
+      let chave: string;
+      if (emailKey) {
+        chave = `email:${emailKey}`;
+      } else {
         registrosSemEmail++;
-        continue; // Ignorar registros sem email (não há como identificá-los de forma única)
+        chave = `nome:${registro.user_name.trim().toLowerCase()}`;
       }
       
-      const existente = registrosPorEmail.get(emailKey);
+      const existente = registrosPorChave.get(chave);
       if (!existente) {
-        registrosPorEmail.set(emailKey, registro);
+        registrosPorChave.set(chave, registro);
       } else {
         // Se o novo registro está ativo e o existente não, substituir
         if (registro.user_active && !existente.user_active) {
-          registrosPorEmail.set(emailKey, registro);
+          registrosPorChave.set(chave, registro);
         }
-        // Se ambos têm mesmo status, preferir o nome mais completo (mais longo)
-        else if (registro.user_active === existente.user_active && 
-                 registro.user_name.length > existente.user_name.length) {
-          registrosPorEmail.set(emailKey, registro);
+        // Se ambos têm mesmo status, manter o último retornado pelo SQL Server (sobrescreve)
+        else if (registro.user_active === existente.user_active) {
+          registrosPorChave.set(chave, registro);
         }
       }
     }
     
-    const registrosDeduplicados = Array.from(registrosPorEmail.values());
-    console.log(`📊 [ESPECIALISTAS] ${registrosDeduplicados.length} registros únicos por email (${registrosSemEmail} sem email ignorados, ${registros.length - registrosDeduplicados.length - registrosSemEmail} duplicatas removidas)`);
+    const registrosDeduplicados = Array.from(registrosPorChave.values());
+    console.log(`📊 [ESPECIALISTAS] ${registrosDeduplicados.length} registros únicos (${registrosSemEmail} sem email usaram nome como chave, ${registros.length - registrosDeduplicados.length} duplicatas removidas)`);
     resultado.total_processados = registrosDeduplicados.length;
-    resultado.mensagens.push(`${registrosDeduplicados.length} registros únicos (${registros.length - registrosDeduplicados.length - registrosSemEmail} duplicatas por email removidas)`);
+    resultado.mensagens.push(`${registrosDeduplicados.length} registros únicos (${registros.length - registrosDeduplicados.length} duplicatas removidas, ${registrosSemEmail} identificados por nome)`);
     
     console.log('🔄 [ESPECIALISTAS] Iniciando processamento de registros...');
     resultado.mensagens.push('Iniciando processamento de registros...');
-    
-    for (let i = 0; i < registrosDeduplicados.length; i++) {
-      const registro = registrosDeduplicados[i];
+
+    // Configuração de batch e threshold dinâmico
+    const BATCH_SIZE = 200; // Registros por lote de upsert
+    const PARALLEL_CHUNKS = 5; // Lotes processados em paralelo
+    const ERROR_THRESHOLD_PERCENT = 5; // Parar se >5% dos registros derem erro
+    const maxErrosPermitidos = Math.max(10, Math.ceil(registrosDeduplicados.length * ERROR_THRESHOLD_PERCENT / 100));
+    console.log(`📊 [ESPECIALISTAS] Threshold de erros: ${maxErrosPermitidos} (${ERROR_THRESHOLD_PERCENT}% de ${registrosDeduplicados.length} registros)`);
+
+    // Preparar todos os dados para upsert
+    console.log('📋 [ESPECIALISTAS] Preparando dados para batch upsert...');
+    const registrosParaUpsert: any[] = [];
+    const registrosParaInsert: any[] = [];
+    const registrosParaUpdate: any[] = [];
+
+    for (const registro of registrosDeduplicados) {
+      const idUnico = gerarIdUnicoEspecialista(registro);
+      idsProcessados.add(idUnico);
+
+      const dadosEspecialista = {
+        origem: 'sql_server' as const,
+        id_externo: idUnico,
+        codigo: null,
+        nome: toMixedCase(registro.user_name || ''),
+        email: registro.user_email || null,
+        telefone: null,
+        cargo: null,
+        departamento: null,
+        empresa: null,
+        especialidade: null,
+        nivel: null,
+        observacoes: null,
+        status: (registro.user_active ? 'ativo' : 'inativo') as 'ativo' | 'inativo',
+        autor_id: null,
+        autor_nome: 'SQL Server Sync'
+      };
+
+      if (idsExistentes.has(idUnico)) {
+        registrosParaUpdate.push(dadosEspecialista);
+      } else {
+        registrosParaInsert.push(dadosEspecialista);
+      }
+    }
+
+    console.log(`📊 [ESPECIALISTAS] ${registrosParaInsert.length} para inserir, ${registrosParaUpdate.length} para atualizar`);
+
+    // Função para processar um lote de inserts via upsert
+    async function processarBatchInsert(batch: any[]): Promise<{ novos: number; erros: number; detalhes: any[] }> {
+      const result = { novos: 0, erros: 0, detalhes: [] as any[] };
       
-      if (i % 10 === 0) {
-        console.log(`📝 [ESPECIALISTAS] Processando registro ${i + 1}/${registrosDeduplicados.length}...`);
+      const { error } = await supabase
+        .from('especialistas')
+        .upsert(batch, { onConflict: 'id_externo' });
+
+      if (error) {
+        console.error(`❌ [ESPECIALISTAS] Erro no batch insert (${batch.length} registros):`, error);
+        // Fallback: tentar um por um para identificar registros problemáticos
+        for (const registro of batch) {
+          const { error: errIndividual } = await supabase
+            .from('especialistas')
+            .upsert(registro, { onConflict: 'id_externo' });
+
+          if (errIndividual) {
+            result.erros++;
+            result.detalhes.push({
+              registro: { id_externo: registro.id_externo, nome: registro.nome, email: registro.email },
+              erro: errIndividual.message
+            });
+          } else {
+            result.novos++;
+          }
+        }
+      } else {
+        result.novos = batch.length;
       }
       
-      try {
-        // Validar dados do registro antes de processar
-        if (!registro.user_email || registro.user_email.trim() === '') {
-          console.warn(`⚠️ [ESPECIALISTAS] Registro ${i + 1} sem email, pulando: ${registro.user_name}`);
-          continue; // Já filtramos registros sem email na deduplicação
-        }
-        
-        console.log(`🔍 [ESPECIALISTAS] Gerando ID único para registro ${i + 1}...`);
-        const idUnico = gerarIdUnicoEspecialista(registro);
-        idsProcessados.add(idUnico);
+      return result;
+    }
 
-        // Verificar se já existe
-        const jaExiste = idsExistentes.has(idUnico);
-        console.log(`🔍 [ESPECIALISTAS] Registro ${i + 1} - ID: ${idUnico}, Existe: ${jaExiste}`);
+    // Função para processar um lote de updates via upsert
+    async function processarBatchUpdate(batch: any[]): Promise<{ atualizados: number; erros: number; detalhes: any[] }> {
+      const result = { atualizados: 0, erros: 0, detalhes: [] as any[] };
+      
+      const { error } = await supabase
+        .from('especialistas')
+        .upsert(batch, { onConflict: 'id_externo' });
 
-        const dadosEspecialista = {
-          origem: 'sql_server' as const,
-          id_externo: idUnico,
-          codigo: null, // Não há mais user_id na tabela
-          nome: toMixedCase(registro.user_name || ''),
-          email: registro.user_email || null,
-          telefone: null,
-          cargo: null,
-          departamento: null,
-          empresa: null,
-          especialidade: null,
-          nivel: null,
-          observacoes: null,
-          status: (registro.user_active ? 'ativo' : 'inativo') as 'ativo' | 'inativo',
-          autor_id: null,
-          autor_nome: 'SQL Server Sync'
-        };
-
-        console.log(`💾 [ESPECIALISTAS] Preparando dados para registro ${i + 1}:`, {
-          id_externo: dadosEspecialista.id_externo,
-          nome: dadosEspecialista.nome,
-          email: dadosEspecialista.email,
-          status: dadosEspecialista.status
-        });
-
-        if (jaExiste) {
-          // Atualizar registro existente
-          console.log(`🔄 [ESPECIALISTAS] Atualizando registro ${i + 1}...`);
-          const { error } = await supabase
+      if (error) {
+        console.error(`❌ [ESPECIALISTAS] Erro no batch update (${batch.length} registros):`, error);
+        // Fallback: tentar um por um
+        for (const registro of batch) {
+          const { error: errIndividual } = await supabase
             .from('especialistas')
-            .update(dadosEspecialista)
-            .eq('id_externo', idUnico);
+            .upsert(registro, { onConflict: 'id_externo' });
 
-          if (error) {
-            console.error(`❌ [ESPECIALISTAS] Erro ao atualizar registro ${i + 1}:`, error);
-            throw new Error(`Erro ao atualizar: ${error.message}`);
+          if (errIndividual) {
+            result.erros++;
+            result.detalhes.push({
+              registro: { id_externo: registro.id_externo, nome: registro.nome, email: registro.email },
+              erro: errIndividual.message
+            });
+          } else {
+            result.atualizados++;
           }
-          resultado.atualizados++;
-          console.log(`✅ [ESPECIALISTAS] Registro ${i + 1} atualizado com sucesso`);
-        } else {
-          // Inserir novo registro
-          console.log(`➕ [ESPECIALISTAS] Inserindo novo registro ${i + 1}...`);
-          const { error } = await supabase
-            .from('especialistas')
-            .insert(dadosEspecialista);
-
-          if (error) {
-            console.error(`❌ [ESPECIALISTAS] Erro ao inserir registro ${i + 1}:`, error);
-            throw new Error(`Erro ao inserir: ${error.message}`);
-          }
-          resultado.novos++;
-          console.log(`✅ [ESPECIALISTAS] Registro ${i + 1} inserido com sucesso`);
         }
-      } catch (erro) {
-        console.error(`💥 [ESPECIALISTAS] Erro no registro ${i + 1}:`, erro);
-        resultado.erros++;
-        const erroMsg = erro instanceof Error ? erro.message : 'Erro desconhecido';
-        resultado.detalhes_erros.push({
-          registro: {
-            user_name: registro.user_name,
-            user_email: registro.user_email
-          },
-          erro: erroMsg
-        });
+      } else {
+        result.atualizados = batch.length;
+      }
+      
+      return result;
+    }
+
+    // Dividir em batches
+    function dividirEmBatches<T>(array: T[], tamanho: number): T[][] {
+      const batches: T[][] = [];
+      for (let i = 0; i < array.length; i += tamanho) {
+        batches.push(array.slice(i, i + tamanho));
+      }
+      return batches;
+    }
+
+    // Processar INSERTS em paralelo por chunks
+    if (registrosParaInsert.length > 0) {
+      console.log(`➕ [ESPECIALISTAS] Processando ${registrosParaInsert.length} inserts em batches de ${BATCH_SIZE}...`);
+      const batchesInsert = dividirEmBatches(registrosParaInsert, BATCH_SIZE);
+      
+      for (let i = 0; i < batchesInsert.length; i += PARALLEL_CHUNKS) {
+        const chunksParalelos = batchesInsert.slice(i, i + PARALLEL_CHUNKS);
+        const resultados = await Promise.all(chunksParalelos.map(batch => processarBatchInsert(batch)));
         
-        // Log detalhado do erro
-        console.error(`🔍 [ESPECIALISTAS] Erro detalhado no registro ${i + 1}:`, {
-          registro: registro,
-          erro: erro,
-          stack: erro instanceof Error ? erro.stack : 'N/A'
-        });
+        for (const res of resultados) {
+          resultado.novos += res.novos;
+          resultado.erros += res.erros;
+          resultado.detalhes_erros.push(...res.detalhes);
+        }
+
+        const processados = Math.min((i + PARALLEL_CHUNKS) * BATCH_SIZE, registrosParaInsert.length);
+        console.log(`📝 [ESPECIALISTAS] Inserts: ${processados}/${registrosParaInsert.length} processados`);
+
+        // Verificar threshold dinâmico
+        if (resultado.erros >= maxErrosPermitidos) {
+          console.log(`🛑 [ESPECIALISTAS] Threshold de erros atingido (${resultado.erros}/${maxErrosPermitidos}), parando inserts...`);
+          resultado.mensagens.push(`Inserts interrompidos: ${resultado.erros} erros (threshold: ${maxErrosPermitidos})`);
+          break;
+        }
+      }
+    }
+
+    // Processar UPDATES em paralelo por chunks (se não atingiu threshold)
+    if (registrosParaUpdate.length > 0 && resultado.erros < maxErrosPermitidos) {
+      console.log(`🔄 [ESPECIALISTAS] Processando ${registrosParaUpdate.length} updates em batches de ${BATCH_SIZE}...`);
+      const batchesUpdate = dividirEmBatches(registrosParaUpdate, BATCH_SIZE);
+      
+      for (let i = 0; i < batchesUpdate.length; i += PARALLEL_CHUNKS) {
+        const chunksParalelos = batchesUpdate.slice(i, i + PARALLEL_CHUNKS);
+        const resultados = await Promise.all(chunksParalelos.map(batch => processarBatchUpdate(batch)));
         
-        // Se houver muitos erros, parar
-        if (resultado.erros >= 10) {
-          console.log('🛑 [ESPECIALISTAS] Muitos erros detectados, parando sincronização...');
-          resultado.mensagens.push('Sincronização interrompida devido a múltiplos erros');
+        for (const res of resultados) {
+          resultado.atualizados += res.atualizados;
+          resultado.erros += res.erros;
+          resultado.detalhes_erros.push(...res.detalhes);
+        }
+
+        const processados = Math.min((i + PARALLEL_CHUNKS) * BATCH_SIZE, registrosParaUpdate.length);
+        console.log(`📝 [ESPECIALISTAS] Updates: ${processados}/${registrosParaUpdate.length} processados`);
+
+        // Verificar threshold dinâmico
+        if (resultado.erros >= maxErrosPermitidos) {
+          console.log(`🛑 [ESPECIALISTAS] Threshold de erros atingido (${resultado.erros}/${maxErrosPermitidos}), parando updates...`);
+          resultado.mensagens.push(`Updates interrompidos: ${resultado.erros} erros (threshold: ${maxErrosPermitidos})`);
           break;
         }
       }
@@ -2542,6 +2613,7 @@ app.post('/api/sync-apontamentos', async (req, res) => {
       novos: resultado.inseridos,
       atualizados: resultado.atualizados,
       ignorados: resultado.ignorados,
+      deletados: resultado.deletados,
       erros: resultado.erros,
       mensagens: resultado.mensagens
     });
@@ -2584,6 +2656,7 @@ app.post('/api/sync-apontamentos-full', async (req, res) => {
       novos: resultado.inseridos,
       atualizados: resultado.atualizados,
       ignorados: resultado.ignorados,
+      deletados: resultado.deletados,
       erros: resultado.erros,
       mensagens: [
         '⚠️ Este endpoint está obsoleto. Use /api/sync-apontamentos-incremental',
@@ -2634,6 +2707,7 @@ app.post('/api/sync-apontamentos-incremental', async (req, res) => {
       novos: resultado.inseridos,
       atualizados: resultado.atualizados,
       ignorados: resultado.ignorados,
+      deletados: resultado.deletados,
       erros: resultado.erros,
       mensagens: resultado.mensagens
     });
@@ -2644,6 +2718,199 @@ app.post('/api/sync-apontamentos-incremental', async (req, res) => {
       sucesso: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : 'N/A'
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT DE TESTE: RECONCILIAÇÃO POR CHAMADOS ESPECÍFICOS
+// ============================================
+
+/**
+ * Teste de reconciliação de deleções para chamados específicos
+ * 
+ * POST /api/test-reconciliacao
+ * Body: { chamados: ["6226725", "6461312", ...] }
+ * 
+ * Para cada chamado informado:
+ * 1. Busca todas as tarefas no SQL Server
+ * 2. Busca todas as tarefas no Supabase
+ * 3. Identifica tarefas que existem APENAS no Supabase (foram deletadas na origem)
+ * 4. Remove (hard-delete) essas tarefas do Supabase
+ */
+app.post('/api/test-reconciliacao', async (req, res) => {
+  const { chamados, dryRun = false } = req.body;
+  
+  if (!chamados || !Array.isArray(chamados) || chamados.length === 0) {
+    return res.status(400).json({
+      sucesso: false,
+      mensagem: 'Body deve conter "chamados" como array de strings. Ex: { "chamados": ["6226725", "6461312"] }. Opcional: "dryRun": true para apenas listar sem deletar.'
+    });
+  }
+
+  const resultado = {
+    sucesso: false,
+    dryRun,
+    total_chamados: chamados.length,
+    total_chamados_verificados: 0,
+    total_tarefas_sql_server: 0,
+    total_tarefas_supabase: 0,
+    total_orfaos_encontrados: 0,
+    total_deletados: 0,
+    erros: 0,
+    detalhes_por_chamado: [] as any[],
+    mensagens: [] as string[]
+  };
+
+  let pool: sql.ConnectionPool | null = null;
+
+  try {
+    console.log(`🔍 [TEST-RECONCILIAÇÃO] Iniciando teste para ${chamados.length} chamados (dryRun: ${dryRun})...`);
+    resultado.mensagens.push(`Testando reconciliação para ${chamados.length} chamados`);
+    if (dryRun) {
+      resultado.mensagens.push('⚠️ MODO DRY-RUN: Nenhum registro será deletado');
+    }
+
+    // Conectar ao SQL Server
+    pool = await sql.connect(sqlConfig);
+    console.log('✅ [TEST-RECONCILIAÇÃO] Conectado ao SQL Server');
+
+    // Processar em lotes de 50
+    const BATCH_SIZE = 50;
+    
+    for (let batchStart = 0; batchStart < chamados.length; batchStart += BATCH_SIZE) {
+      const batch = chamados.slice(batchStart, batchStart + BATCH_SIZE).map((c: string) => c.trim());
+
+      try {
+        // 1. Buscar todas as tarefas desses chamados no SQL Server
+        const chamadosLista = batch.map((c: string) => `'${c.replace(/'/g, "''")}'`).join(',');
+        
+        const querySql = `
+          SELECT Nro_Chamado, Nro_Tarefa
+          FROM AMSapontamento
+          WHERE Nro_Chamado IN (${chamadosLista})
+            AND (Caso_Grupo NOT LIKE 'AMS SAP%' OR Caso_Grupo IS NULL)
+        `;
+        
+        const resultSql = await pool.request().query(querySql);
+        
+        // Criar mapa: chamado → set de tarefas no SQL Server
+        const tarefasPorChamadoSql = new Map<string, Set<string>>();
+        for (const row of resultSql.recordset) {
+          if (row.Nro_Chamado && row.Nro_Tarefa) {
+            const chamado = row.Nro_Chamado.trim();
+            if (!tarefasPorChamadoSql.has(chamado)) {
+              tarefasPorChamadoSql.set(chamado, new Set());
+            }
+            tarefasPorChamadoSql.get(chamado)!.add(row.Nro_Tarefa.trim());
+          }
+        }
+
+        resultado.total_tarefas_sql_server += resultSql.recordset.length;
+
+        // 2. Buscar todas as tarefas desses chamados no Supabase
+        const { data: registrosSupabase, error: errSupabase } = await supabase
+          .from('apontamentos_aranda')
+          .select('id, id_externo, nro_chamado, nro_tarefa')
+          .in('nro_chamado', batch)
+          .eq('origem', 'sql_server');
+
+        if (errSupabase) {
+          console.error('❌ [TEST-RECONCILIAÇÃO] Erro ao buscar Supabase:', errSupabase);
+          resultado.erros++;
+          resultado.mensagens.push(`Erro Supabase: ${errSupabase.message}`);
+          continue;
+        }
+
+        resultado.total_tarefas_supabase += (registrosSupabase || []).length;
+
+        // 3. Para cada chamado do batch, comparar
+        for (const chamado of batch) {
+          const tarefasSql = tarefasPorChamadoSql.get(chamado) || new Set();
+          const registrosChamadoSupabase = (registrosSupabase || []).filter(r => r.nro_chamado === chamado);
+          
+          // Identificar órfãos
+          const orfaos: any[] = [];
+          for (const reg of registrosChamadoSupabase) {
+            const nroTarefa = reg.nro_tarefa?.trim();
+            if (nroTarefa && !tarefasSql.has(nroTarefa)) {
+              orfaos.push({
+                id: reg.id,
+                id_externo: reg.id_externo,
+                nro_tarefa: reg.nro_tarefa
+              });
+            }
+          }
+
+          if (orfaos.length > 0 || registrosChamadoSupabase.length > 0) {
+            resultado.detalhes_por_chamado.push({
+              chamado,
+              tarefas_sql_server: tarefasSql.size,
+              tarefas_supabase: registrosChamadoSupabase.length,
+              orfaos_encontrados: orfaos.length,
+              orfaos: orfaos.map(o => ({
+                nro_tarefa: o.nro_tarefa,
+                id_externo: o.id_externo
+              }))
+            });
+          }
+
+          resultado.total_orfaos_encontrados += orfaos.length;
+
+          // 4. Deletar órfãos (se não for dry run)
+          if (orfaos.length > 0 && !dryRun) {
+            const idsParaDeletar = orfaos.map(o => o.id);
+            
+            const { error: errDelete } = await supabase
+              .from('apontamentos_aranda')
+              .delete()
+              .in('id', idsParaDeletar);
+
+            if (errDelete) {
+              console.error(`❌ [TEST-RECONCILIAÇÃO] Erro ao deletar tarefas do chamado ${chamado}:`, errDelete);
+              resultado.erros++;
+              resultado.mensagens.push(`Erro ao deletar chamado ${chamado}: ${errDelete.message}`);
+            } else {
+              resultado.total_deletados += idsParaDeletar.length;
+              console.log(`🗑️ [TEST-RECONCILIAÇÃO] Chamado ${chamado}: ${idsParaDeletar.length} tarefas removidas`);
+            }
+          }
+
+          resultado.total_chamados_verificados++;
+        }
+
+      } catch (erro) {
+        console.error(`❌ [TEST-RECONCILIAÇÃO] Erro no batch ${batchStart}:`, erro);
+        resultado.erros++;
+        resultado.mensagens.push(`Erro no batch: ${erro instanceof Error ? erro.message : 'Erro desconhecido'}`);
+      }
+    }
+
+    // Fechar conexão
+    await pool.close();
+
+    // Resultado final
+    resultado.sucesso = resultado.erros === 0;
+    resultado.mensagens.push(
+      `✅ Concluído: ${resultado.total_chamados_verificados} chamados verificados, ` +
+      `${resultado.total_tarefas_sql_server} tarefas no SQL Server, ` +
+      `${resultado.total_tarefas_supabase} tarefas no Supabase, ` +
+      `${resultado.total_orfaos_encontrados} órfãos encontrados` +
+      (dryRun ? ' (nenhum deletado - dry run)' : `, ${resultado.total_deletados} deletados`)
+    );
+
+    console.log(`✅ [TEST-RECONCILIAÇÃO] ${resultado.mensagens[resultado.mensagens.length - 1]}`);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('💥 [TEST-RECONCILIAÇÃO] Erro fatal:', error);
+    if (pool) {
+      try { await pool.close(); } catch (e) { /* ignore */ }
+    }
+    res.status(500).json({
+      ...resultado,
+      sucesso: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }
 });
@@ -2706,6 +2973,246 @@ app.post('/api/fix-null-fields-apontamentos', async (req, res) => {
       error: error instanceof Error ? error.message : 'Erro desconhecido',
       stack: error instanceof Error ? error.stack : 'N/A'
     });
+  }
+});
+
+// ============================================
+// ENDPOINT PARA SINCRONIZAR APONTAMENTOS POR CHAMADOS ESPECÍFICOS
+// ============================================
+
+/**
+ * Sincronizar apontamentos de chamados específicos do SQL Server
+ * 
+ * POST /api/sync-apontamentos-por-chamados
+ * Body: { chamados: ["2839891", "2852621", "2859886"] }
+ * 
+ * Busca TODOS os registros (tarefas) desses chamados no SQL Server,
+ * independente da Data_Ult_Modificacao_Geral, e insere/atualiza no Supabase.
+ */
+app.post('/api/sync-apontamentos-por-chamados', async (req, res) => {
+  const { chamados } = req.body;
+  
+  if (!chamados || !Array.isArray(chamados) || chamados.length === 0) {
+    return res.status(400).json({ 
+      sucesso: false, 
+      erro: 'Body deve conter um array "chamados" com pelo menos 1 número de chamado' 
+    });
+  }
+
+  const resultado = {
+    sucesso: false,
+    total_sql_server: 0,
+    novos: 0,
+    atualizados: 0,
+    erros: 0,
+    detalhes: [] as any[],
+    mensagens: [] as string[]
+  };
+
+  let pool: sql.ConnectionPool | null = null;
+
+  try {
+    console.log(`🔍 [SYNC-POR-CHAMADO] Buscando ${chamados.length} chamados: ${chamados.join(', ')}`);
+    resultado.mensagens.push(`Buscando chamados: ${chamados.join(', ')}`);
+
+    // Conectar ao SQL Server
+    pool = await sql.connect(sqlConfig);
+    console.log('✅ [SYNC-POR-CHAMADO] Conectado ao SQL Server');
+
+    // Buscar TODOS os registros desses chamados (sem filtro de data ou grupo)
+    const placeholders = chamados.map((_: string, i: number) => `@chamado${i}`).join(', ');
+    const query = `
+      SELECT
+        Nro_Chamado,
+        Tipo_Chamado,
+        Org_Us_Final,
+        categoria,
+        Causa_Raiz,
+        Solicitante,
+        Us_Final_Afetado,
+        [Data_Abertura (Date-Hour-Minute-Second)] as Data_Abertura,
+        [Data_Sistema (Date-Hour-Minute-Second)] as Data_Sistema,
+        [Data_Atividade (Date-Hour-Minute-Second)] as Data_Atividade,
+        [Data_Fechamento (Date-Hour-Minute-Second)] as Data_Fechamento,
+        [Data_Ult_Modificacao (Date-Hour-Minute-Second)] as Data_Ult_Modificacao,
+        Data_Ult_Modificacao_Geral,
+        [Data_Ult_Modificacao_tarefa (Date-Hour-Minute-Second)] as Data_Ult_Modificacao_tarefa,
+        Ativi_Interna,
+        Caso_Estado,
+        Caso_Grupo,
+        Nro_Tarefa,
+        Descricao_Tarefa,
+        Tempo_Gasto_Segundos,
+        Tempo_Gasto_Minutos,
+        Tempo_Gasto_Horas,
+        Item_Configuracao,
+        Analista_Tarefa,
+        Analista_Caso,
+        Estado_Tarefa,
+        Resumo_Tarefa,
+        Grupo_Tarefa,
+        Problema,
+        Cod_Resolucao,
+        LOG
+      FROM AMSapontamento
+      WHERE Nro_Chamado IN (${placeholders})
+      ORDER BY Nro_Chamado, Nro_Tarefa
+    `;
+
+    const request = pool.request();
+    chamados.forEach((chamado: string, i: number) => {
+      request.input(`chamado${i}`, sql.VarChar, chamado.trim());
+    });
+
+    const sqlResult = await request.query(query);
+    const registros = sqlResult.recordset;
+    resultado.total_sql_server = registros.length;
+
+    console.log(`📊 [SYNC-POR-CHAMADO] ${registros.length} registros encontrados no SQL Server`);
+    resultado.mensagens.push(`${registros.length} registros (tarefas) encontrados no SQL Server`);
+
+    if (registros.length === 0) {
+      resultado.mensagens.push('⚠️ Nenhum registro encontrado para esses chamados no SQL Server');
+      resultado.sucesso = true;
+      await pool.close();
+      return res.json(resultado);
+    }
+
+    // Log dos chamados encontrados
+    const chamadosEncontrados = [...new Set(registros.map((r: any) => r.Nro_Chamado))];
+    const chamadosNaoEncontrados = chamados.filter((c: string) => !chamadosEncontrados.includes(c));
+    
+    if (chamadosNaoEncontrados.length > 0) {
+      resultado.mensagens.push(`⚠️ Chamados NÃO encontrados no SQL Server: ${chamadosNaoEncontrados.join(', ')}`);
+    }
+
+    // Processar cada registro
+    for (const registro of registros) {
+      try {
+        const nroChamado = (registro.Nro_Chamado || '').trim();
+        const nroTarefa = (registro.Nro_Tarefa || '').trim();
+        
+        if (!nroChamado || !nroTarefa) {
+          console.warn(`⚠️ [SYNC-POR-CHAMADO] Registro sem Nro_Chamado ou Nro_Tarefa, pulando...`);
+          resultado.erros++;
+          continue;
+        }
+
+        const idExterno = `AMSapontamento|${nroChamado}|${nroTarefa}`;
+
+        // Formatar datas
+        const formatDate = (d: any) => {
+          if (!d) return null;
+          try {
+            const dataObj = d instanceof Date ? d : new Date(d);
+            if (isNaN(dataObj.getTime())) return null;
+            const year = dataObj.getFullYear();
+            const month = String(dataObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dataObj.getDate()).padStart(2, '0');
+            const hours = String(dataObj.getHours()).padStart(2, '0');
+            const minutes = String(dataObj.getMinutes()).padStart(2, '0');
+            const seconds = String(dataObj.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+          } catch { return null; }
+        };
+
+        const dados = {
+          origem: 'sql_server',
+          id_externo: idExterno,
+          nro_chamado: nroChamado,
+          tipo_chamado: registro.Tipo_Chamado || null,
+          org_us_final: registro.Org_Us_Final || null,
+          categoria: registro.categoria || null,
+          causa_raiz: registro.Causa_Raiz || null,
+          solicitante: registro.Solicitante || null,
+          us_final_afetado: registro.Us_Final_Afetado || null,
+          data_abertura: formatDate(registro.Data_Abertura),
+          data_sistema: formatDate(registro.Data_Sistema),
+          data_atividade: formatDate(registro.Data_Atividade),
+          data_fechamento: formatDate(registro.Data_Fechamento),
+          data_ult_modificacao: formatDate(registro.Data_Ult_Modificacao),
+          data_ult_modificacao_geral: formatDate(registro.Data_Ult_Modificacao_Geral),
+          data_ult_modificacao_tarefa: formatDate(registro.Data_Ult_Modificacao_tarefa),
+          ativi_interna: registro.Ativi_Interna || null,
+          caso_estado: registro.Caso_Estado || null,
+          caso_grupo: registro.Caso_Grupo || null,
+          nro_tarefa: nroTarefa,
+          descricao_tarefa: registro.Descricao_Tarefa || null,
+          tempo_gasto_segundos: registro.Tempo_Gasto_Segundos || null,
+          tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
+          tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
+          item_configuracao: registro.Item_Configuracao || null,
+          analista_tarefa: registro.Analista_Tarefa || null,
+          analista_caso: registro.Analista_Caso || null,
+          estado_tarefa: registro.Estado_Tarefa || null,
+          resumo_tarefa: registro.Resumo_Tarefa || null,
+          grupo_tarefa: registro.Grupo_Tarefa || null,
+          problema: registro.Problema || null,
+          cod_resolucao: registro.Cod_Resolucao || null,
+          log: formatDate(registro.LOG),
+          autor_id: null,
+          autor_nome: 'Sync Manual (por chamado)',
+          source_updated_at: formatDate(registro.Data_Ult_Modificacao_Geral),
+          synced_at: new Date().toISOString()
+        };
+
+        // Verificar se já existe no Supabase
+        const { data: existente } = await supabase
+          .from('apontamentos_aranda')
+          .select('id')
+          .eq('id_externo', idExterno)
+          .maybeSingle();
+
+        if (existente) {
+          // Atualizar
+          const { error } = await supabase
+            .from('apontamentos_aranda')
+            .update(dados)
+            .eq('id_externo', idExterno);
+
+          if (error) throw error;
+          resultado.atualizados++;
+          resultado.detalhes.push({ chamado: nroChamado, tarefa: nroTarefa, acao: 'atualizado' });
+        } else {
+          // Inserir
+          const { error } = await supabase
+            .from('apontamentos_aranda')
+            .insert(dados);
+
+          if (error) throw error;
+          resultado.novos++;
+          resultado.detalhes.push({ chamado: nroChamado, tarefa: nroTarefa, acao: 'inserido' });
+        }
+
+        console.log(`✅ [SYNC-POR-CHAMADO] ${nroChamado}/${nroTarefa} - ${existente ? 'atualizado' : 'inserido'}`);
+
+      } catch (erro) {
+        console.error(`❌ [SYNC-POR-CHAMADO] Erro:`, erro);
+        resultado.erros++;
+        resultado.detalhes.push({ 
+          chamado: registro.Nro_Chamado, 
+          tarefa: registro.Nro_Tarefa, 
+          acao: 'erro', 
+          erro: erro instanceof Error ? erro.message : 'Erro desconhecido' 
+        });
+      }
+    }
+
+    await pool.close();
+
+    resultado.sucesso = resultado.erros === 0;
+    resultado.mensagens.push(
+      `Concluído: ${resultado.novos} inseridos, ${resultado.atualizados} atualizados, ${resultado.erros} erros`
+    );
+
+    console.log(`🏁 [SYNC-POR-CHAMADO] Resultado:`, resultado);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('💥 [SYNC-POR-CHAMADO] Erro fatal:', error);
+    if (pool) { try { await pool.close(); } catch (e) { /* ignore */ } }
+    resultado.mensagens.push(`Erro fatal: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    res.status(500).json(resultado);
   }
 });
 
@@ -2893,6 +3400,243 @@ app.post('/api/sync-tickets-incremental', async (req, res) => {
       atualizados: 0,
       ignorados: 0,
       erros: 1,
+      mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
+    });
+  }
+});
+
+/**
+ * Sincronizar tickets específicos por número de solicitação
+ * 
+ * POST /api/sync-tickets-by-ids
+ * Body: { "nro_solicitacoes": ["2834622", "2836343", "2839891"] }
+ * 
+ * Busca os chamados específicos no SQL Server e insere/atualiza no Supabase.
+ */
+app.post('/api/sync-tickets-by-ids', async (req, res) => {
+  try {
+    const { nro_solicitacoes } = req.body;
+
+    if (!nro_solicitacoes || !Array.isArray(nro_solicitacoes) || nro_solicitacoes.length === 0) {
+      return res.status(400).json({
+        sucesso: false,
+        mensagens: ['Body deve conter "nro_solicitacoes" como array de strings não vazio']
+      });
+    }
+
+    console.log(`🎯 [TICKETS-BY-IDS] Sincronizando ${nro_solicitacoes.length} tickets específicos:`, nro_solicitacoes);
+
+    // Conectar ao SQL Server
+    const pool = await sql.connect(sqlConfig);
+    console.log('✅ [TICKETS-BY-IDS] Conectado ao SQL Server');
+
+    // Montar a lista de IDs para a query IN
+    const idsFormatados = nro_solicitacoes.map((id: string) => `'${id.replace(/'/g, "''")}'`).join(', ');
+
+    const query = `
+      SELECT
+        Nro_Solicitacao,
+        Cod_Tipo,
+        Ticket_Externo,
+        Numero_Pai,
+        Caso_Pai,
+        Organizacao,
+        Empresa,
+        cliente as Cliente,
+        [Usuario Final] as Usuario_Final,
+        Resumo,
+        Descricao,
+        autor as Autor,
+        Solicitante,
+        Nome_grupo as Nome_Grupo,
+        Nome_responsavel as Nome_Responsavel,
+        Categoria,
+        Item_Configuracao,
+        Data_Abertura,
+        Data_Solucao,
+        Data_Fechamento,
+        Data_Ultima_Modificacao,
+        Ultima_Modificacao,
+        [Data Prevista Entrega] as Data_Prevista_Entrega,
+        [Data da aprovação (somente se aprovado)] as Data_Aprovacao,
+        [Data Real da Entrega] as Data_Real_Entrega,
+        [data_ultima_nota (Date-Hour-Minute-Second)] as Data_Ultima_Nota,
+        [data_ultimo_comentario (Date-Hour-Minute-Second)] as Data_Ultimo_Comentario,
+        Status,
+        Prioridade,
+        Urgencia,
+        Impacto,
+        Chamado_reaberto as Chamado_Reaberto,
+        Criado_Via,
+        Relatado,
+        Solucao,
+        Causa_Raiz,
+        desc_ultima_nota as Desc_Ultima_Nota,
+        desc_ultimo_comentario as Desc_Ultimo_Comentario,
+        LOG,
+        Tempo_Gasto_Dias,
+        Tempo_Gasto_Horas,
+        Tempo_Gasto_Minutos,
+        Cod_Resolucao,
+        Violacao_Sla as Violacao_SLA,
+        Tda_Cumprido as TDA_Cumprido,
+        Tds_Cumprido as TDS_Cumprido,
+        [data_prevista_tda (Date-Hour-Minute-Second)] as Data_Prevista_TDA,
+        [data_prevista_tds (Date-Hour-Minute-Second)] as Data_Prevista_TDS,
+        Tempo_Restante_Tda as Tempo_Restante_TDA,
+        Tempo_Restante_Tds as Tempo_Restante_TDS,
+        [tempo_restante_tds_em_minutos (Sum)] as Tempo_Restante_TDS_em_Minutos,
+        tempo_real_tda as Tempo_Real_TDA,
+        [Total Orçamento (em decimais)] as Total_Orcamento
+      FROM AMSticketsabertos
+      WHERE Nro_Solicitacao IN (${idsFormatados})
+    `;
+
+    const result = await pool.request().query(query);
+    const registros = result.recordset;
+
+    await pool.close();
+    console.log(`📊 [TICKETS-BY-IDS] ${registros.length} registros encontrados no SQL Server`);
+
+    if (registros.length === 0) {
+      return res.json({
+        sucesso: true,
+        total_processados: 0,
+        inseridos: 0,
+        atualizados: 0,
+        ignorados: 0,
+        erros: 0,
+        nao_encontrados: nro_solicitacoes,
+        mensagens: ['Nenhum dos chamados informados foi encontrado no SQL Server']
+      });
+    }
+
+    // Processar cada registro
+    let inseridos = 0;
+    let atualizados = 0;
+    let erros = 0;
+    const detalhes: any[] = [];
+
+    for (const registro of registros) {
+      try {
+        const dadosTicket = {
+          nro_solicitacao: registro.Nro_Solicitacao || null,
+          cod_tipo: registro.Cod_Tipo || null,
+          ticket_externo: registro.Ticket_Externo || null,
+          numero_pai: registro.Numero_Pai || null,
+          caso_pai: registro.Caso_Pai || null,
+          organizacao: registro.Organizacao || null,
+          empresa: registro.Empresa || null,
+          cliente: registro.Cliente || null,
+          usuario_final: registro.Usuario_Final || null,
+          resumo: registro.Resumo || null,
+          descricao: registro.Descricao || null,
+          autor: registro.Autor || null,
+          solicitante: registro.Solicitante || null,
+          nome_grupo: registro.Nome_Grupo || null,
+          nome_responsavel: registro.Nome_Responsavel || null,
+          categoria: registro.Categoria || null,
+          item_configuracao: registro.Item_Configuracao || null,
+          data_abertura: formatarDataSemTimezone(registro.Data_Abertura),
+          data_solucao: formatarDataSemTimezone(registro.Data_Solucao),
+          data_fechamento: formatarDataSemTimezone(registro.Data_Fechamento),
+          data_ultima_modificacao: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          ultima_modificacao: registro.Ultima_Modificacao || null,
+          data_prevista_entrega: formatarDataSemTimezone(registro.Data_Prevista_Entrega),
+          data_aprovacao: formatarDataSemTimezone(registro.Data_Aprovacao),
+          data_real_entrega: formatarDataSemTimezone(registro.Data_Real_Entrega),
+          data_ultima_nota: formatarDataSemTimezone(registro.Data_Ultima_Nota),
+          data_ultimo_comentario: formatarDataSemTimezone(registro.Data_Ultimo_Comentario),
+          status: registro.Status || null,
+          prioridade: registro.Prioridade || null,
+          urgencia: registro.Urgencia || null,
+          impacto: registro.Impacto || null,
+          chamado_reaberto: registro.Chamado_Reaberto || null,
+          criado_via: registro.Criado_Via || null,
+          relatado: registro.Relatado || null,
+          solucao: registro.Solucao || null,
+          causa_raiz: registro.Causa_Raiz || null,
+          desc_ultima_nota: registro.Desc_Ultima_Nota || null,
+          desc_ultimo_comentario: registro.Desc_Ultimo_Comentario || null,
+          log: formatarDataSemTimezone(registro.LOG),
+          tempo_gasto_dias: registro.Tempo_Gasto_Dias || null,
+          tempo_gasto_horas: registro.Tempo_Gasto_Horas || null,
+          tempo_gasto_minutos: registro.Tempo_Gasto_Minutos || null,
+          cod_resolucao: registro.Cod_Resolucao || null,
+          violacao_sla: registro.Violacao_SLA || null,
+          tda_cumprido: registro.TDA_Cumprido || null,
+          tds_cumprido: registro.TDS_Cumprido || null,
+          data_prevista_tda: formatarDataSemTimezone(registro.Data_Prevista_TDA),
+          data_prevista_tds: formatarDataSemTimezone(registro.Data_Prevista_TDS),
+          tempo_restante_tda: registro.Tempo_Restante_TDA || null,
+          tempo_restante_tds: registro.Tempo_Restante_TDS || null,
+          tempo_restante_tds_em_minutos: registro.Tempo_Restante_TDS_em_Minutos || null,
+          tempo_real_tda: registro.Tempo_Real_TDA || null,
+          total_orcamento: registro.Total_Orcamento || null,
+          source_updated_at: formatarDataSemTimezone(registro.Data_Ultima_Modificacao),
+          synced_at: new Date().toISOString()
+        };
+
+        // Verificar se já existe
+        const { data: existente } = await supabase
+          .from('apontamentos_tickets_aranda')
+          .select('id')
+          .eq('nro_solicitacao', registro.Nro_Solicitacao)
+          .maybeSingle();
+
+        if (existente) {
+          // Atualizar
+          const { error } = await supabase
+            .from('apontamentos_tickets_aranda')
+            .update(dadosTicket)
+            .eq('nro_solicitacao', registro.Nro_Solicitacao);
+
+          if (error) throw error;
+          atualizados++;
+          detalhes.push({ nro: registro.Nro_Solicitacao, acao: 'atualizado' });
+          console.log(`🔄 [TICKETS-BY-IDS] ${registro.Nro_Solicitacao} - ATUALIZADO`);
+        } else {
+          // Inserir
+          const { error } = await supabase
+            .from('apontamentos_tickets_aranda')
+            .insert(dadosTicket);
+
+          if (error) throw error;
+          inseridos++;
+          detalhes.push({ nro: registro.Nro_Solicitacao, acao: 'inserido' });
+          console.log(`✅ [TICKETS-BY-IDS] ${registro.Nro_Solicitacao} - INSERIDO`);
+        }
+      } catch (erro) {
+        erros++;
+        detalhes.push({ nro: registro.Nro_Solicitacao, acao: 'erro', erro: erro instanceof Error ? erro.message : 'Erro desconhecido' });
+        console.error(`❌ [TICKETS-BY-IDS] ${registro.Nro_Solicitacao} - ERRO:`, erro);
+      }
+    }
+
+    // Identificar quais não foram encontrados no SQL Server
+    const encontrados = registros.map((r: any) => r.Nro_Solicitacao);
+    const naoEncontrados = nro_solicitacoes.filter((id: string) => !encontrados.includes(id));
+
+    res.json({
+      sucesso: erros === 0,
+      total_processados: registros.length,
+      inseridos,
+      atualizados,
+      ignorados: 0,
+      erros,
+      nao_encontrados: naoEncontrados,
+      detalhes,
+      mensagens: [
+        `${registros.length} de ${nro_solicitacoes.length} chamados encontrados no SQL Server`,
+        `${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros`,
+        ...(naoEncontrados.length > 0 ? [`Não encontrados: ${naoEncontrados.join(', ')}`] : [])
+      ]
+    });
+
+  } catch (error) {
+    console.error('❌ [TICKETS-BY-IDS] Erro:', error);
+    res.status(500).json({
+      sucesso: false,
       mensagens: [`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`]
     });
   }

@@ -29,14 +29,21 @@ class PermissionsService implements PermissionsServiceMethods {
         .from('user_group_assignments')
         .select('group_id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (assignmentError) {
-        if (assignmentError.code === 'PGRST116') {
+        // Handle 406 (Not Acceptable) which can occur with publishable keys
+        // when session is not yet ready or token is being refreshed
+        if (assignmentError.code === 'PGRST116' || assignmentError.message?.includes('406')) {
           // No assignment found - return empty permissions
           return {};
         }
         throw PermissionErrors.userNotAssigned(userId);
+      }
+
+      if (!assignment) {
+        // No assignment found (maybeSingle returns null) - return empty permissions
+        return {};
       }
 
       // Get all screen permissions for the user's group
@@ -78,14 +85,18 @@ class PermissionsService implements PermissionsServiceMethods {
           )
         `)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (assignmentError) {
-        if (assignmentError.code === 'PGRST116') {
-          // No assignment found
+        if (assignmentError.code === 'PGRST116' || assignmentError.message?.includes('406')) {
+          // No assignment found or session issue
           return null;
         }
         throw new Error(`Failed to get user group: ${assignmentError.message}`);
+      }
+
+      if (!assignment) {
+        return null;
       }
 
       return assignment.user_groups as UserGroup;

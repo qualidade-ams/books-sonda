@@ -35,7 +35,6 @@ import {
   PesquisaForm, 
   PesquisasTable, 
   PesquisasExportButtons, 
-  SyncProgressModal,
   SyncSelectionModal,
   type TabelasSincronizacao
 } from '@/components/admin/pesquisas-satisfacao';
@@ -50,7 +49,8 @@ import {
   useCriarPesquisaComEspecialistas, 
   useAtualizarPesquisaComEspecialistas 
 } from '@/hooks/usePesquisasComEspecialistas';
-import { useSincronizarSqlServer, useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
+import { useUltimaSincronizacao } from '@/hooks/usePesquisasSqlServer';
+import { useSyncProcessing } from '@/contexts/SyncProcessingContext';
 import { useApiStatus } from '@/hooks/useApiStatus';
 import { useCacheManager } from '@/hooks/useCacheManager';
 
@@ -77,8 +77,9 @@ function LancarPesquisas() {
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [modalSelectionAberto, setModalSelectionAberto] = useState(false);
-  const [modalSyncAberto, setModalSyncAberto] = useState(false);
-  const [tabelasSelecionadas, setTabelasSelecionadas] = useState<TabelasSincronizacao | null>(null);
+
+  // Context global de sincronização
+  const { startSync, isSyncing } = useSyncProcessing();
 
   // Queries
   const { data: pesquisas = [], isLoading, refetch } = usePesquisasSatisfacao(filtros);
@@ -90,7 +91,6 @@ function LancarPesquisas() {
   const criarPesquisa = useCriarPesquisaComEspecialistas();
   const atualizarPesquisa = useAtualizarPesquisaComEspecialistas();
   const excluirPesquisa = useExcluirPesquisa();
-  const sincronizarSqlServer = useSincronizarSqlServer();
   const enviarParaPlanoAcao = useEnviarParaPlanoAcao();
   const enviarParaElogios = useEnviarParaElogios();
 
@@ -208,21 +208,12 @@ function LancarPesquisas() {
   };
 
   const handleConfirmarSincronizacao = async (tabelas: TabelasSincronizacao) => {
-    // Armazenar tabelas selecionadas para o modal de progresso
-    setTabelasSelecionadas(tabelas);
-    
     // Fechar modal de seleção
     setModalSelectionAberto(false);
     
-    // Abrir modal de progresso
-    setModalSyncAberto(true);
-    
-    // Passar as tabelas selecionadas para o serviço de sincronização
-    console.log('🔄 Iniciando sincronização com tabelas selecionadas:', tabelas);
-    await sincronizarSqlServer.mutateAsync(tabelas);
-    
-    // Limpar cache e atualizar dados após sincronização
-    await refetch();
+    // Iniciar sincronização via contexto global (roda em background)
+    console.log('🔄 Iniciando sincronização global com tabelas selecionadas:', tabelas);
+    startSync(tabelas);
   };
 
   const handleAtualizarFiltro = (campo: keyof FiltrosPesquisas, valor: any) => {
@@ -310,7 +301,7 @@ function LancarPesquisas() {
                   <Button
                     variant="outline"
                     onClick={handleSincronizar}
-                    disabled={sincronizarSqlServer.isPending || !apiOnline}
+                    disabled={isSyncing || !apiOnline}
                     className="relative"
                   >
                     <div className="flex items-center gap-2">
@@ -325,7 +316,7 @@ function LancarPesquisas() {
                         />
                       </div>
                       <span>
-                        {sincronizarSqlServer.isPending ? 'Sincronizando...' : 'Sincronizar SQL Server'}
+                        {isSyncing ? 'Sincronizando...' : 'Sincronizar SQL Server'}
                       </span>
                     </div>
                   </Button>
@@ -584,16 +575,7 @@ function LancarPesquisas() {
         open={modalSelectionAberto}
         onOpenChange={setModalSelectionAberto}
         onConfirm={handleConfirmarSincronizacao}
-        isLoading={sincronizarSqlServer.isPending}
-      />
-
-      {/* Modal de Progresso de Sincronização */}
-      <SyncProgressModal
-        open={modalSyncAberto}
-        onOpenChange={setModalSyncAberto}
-        isLoading={sincronizarSqlServer.isPending}
-        tabelasSelecionadas={tabelasSelecionadas || undefined}
-        resultado={sincronizarSqlServer.data}
+        isLoading={isSyncing}
       />
 
       </div>

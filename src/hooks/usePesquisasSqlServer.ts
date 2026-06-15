@@ -11,7 +11,8 @@ import * as sqlServerSyncService from '@/services/sqlServerSyncPesquisasService'
 // ============================================
 
 const QUERY_KEYS = {
-  ultimaSincronizacao: ['sql-server-ultima-sincronizacao']
+  ultimaSincronizacao: ['sql-server-ultima-sincronizacao'],
+  ultimasSincronizacoesPorTabela: ['sql-server-ultimas-sincronizacoes-por-tabela']
 };
 
 // ============================================
@@ -25,6 +26,18 @@ export function useUltimaSincronizacao() {
   return useQuery({
     queryKey: QUERY_KEYS.ultimaSincronizacao,
     queryFn: () => sqlServerSyncService.verificarUltimaSincronizacao(),
+    staleTime: 60000, // 1 minuto
+    refetchInterval: 300000 // 5 minutos
+  });
+}
+
+/**
+ * Hook para verificar última sincronização de cada tabela individualmente
+ */
+export function useUltimasSincronizacoesPorTabela() {
+  return useQuery({
+    queryKey: QUERY_KEYS.ultimasSincronizacoesPorTabela,
+    queryFn: () => sqlServerSyncService.verificarUltimasSincronizacoesPorTabela(),
     staleTime: 60000, // 1 minuto
     refetchInterval: 300000 // 5 minutos
   });

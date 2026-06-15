@@ -121,8 +121,11 @@ async function testarConexaoSqlServer(pool: sql.ConnectionPool): Promise<boolean
     logResult('Total Apontamentos (com filtros)', countAp.recordset[0].total);
 
     // 1.6 - Contar tickets
-    const countTickets = await pool.request().query('SELECT COUNT(*) as total FROM AMSticketsabertos');
-    logResult('Total Tickets', countTickets.recordset[0].total);
+    const countTickets = await pool.request().query(`
+      SELECT COUNT(*) as total FROM AMSticketsabertos
+      WHERE (Nome_grupo NOT LIKE 'AMS SAP%' OR Nome_grupo IS NULL)
+    `);
+    logResult('Total Tickets (com filtros)', countTickets.recordset[0].total);
 
     // 1.7 - Último registro modificado (pesquisas)
     const ultimoModificado = await pool.request().query(`
@@ -440,7 +443,10 @@ async function compararContagens(pool: sql.ConnectionPool): Promise<void> {
     },
     {
       nome: 'Tickets',
-      querySql: 'SELECT COUNT(*) as total FROM AMSticketsabertos',
+      querySql: `
+        SELECT COUNT(*) as total FROM AMSticketsabertos
+        WHERE (Nome_grupo NOT LIKE 'AMS SAP%' OR Nome_grupo IS NULL)
+      `,
       tabelaSupabase: 'apontamentos_tickets_aranda',
       filtroOrigem: false
     }

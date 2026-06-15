@@ -569,6 +569,85 @@ export async function verificarUltimaSincronizacao(): Promise<{
 // ============================================
 
 /**
+ * Buscar última data de sincronização de cada tabela
+ * Usa a tabela sync_metadata que registra quando cada sincronização foi executada
+ */
+export async function verificarUltimasSincronizacoesPorTabela(): Promise<{
+  pesquisas: string | null;
+  especialistas: string | null;
+  apontamentos: string | null;
+  tickets: string | null;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('sync_metadata' as any)
+      .select('tabela, ultima_execucao')
+      .in('tabela', ['pesquisas', 'especialistas', 'apontamentos', 'tickets']);
+
+    if (error) {
+      console.error('Erro ao buscar sync_metadata:', error);
+      return { pesquisas: null, especialistas: null, apontamentos: null, tickets: null };
+    }
+
+    const resultado = {
+      pesquisas: null as string | null,
+      especialistas: null as string | null,
+      apontamentos: null as string | null,
+      tickets: null as string | null,
+    };
+
+    if (data) {
+      for (const row of data as any[]) {
+        if (row.tabela === 'pesquisas') resultado.pesquisas = row.ultima_execucao;
+        if (row.tabela === 'especialistas') resultado.especialistas = row.ultima_execucao;
+        if (row.tabela === 'apontamentos') resultado.apontamentos = row.ultima_execucao;
+        if (row.tabela === 'tickets') resultado.tickets = row.ultima_execucao;
+      }
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error('Erro ao verificar últimas sincronizações por tabela:', error);
+    return { pesquisas: null, especialistas: null, apontamentos: null, tickets: null };
+  }
+}
+
+/**
+ * Atualizar metadata de sincronização após execução
+ */
+export async function atualizarSyncMetadata(
+  tabela: 'pesquisas' | 'especialistas' | 'apontamentos' | 'tickets',
+  resultado: {
+    sucesso: boolean;
+    processados?: number;
+    novos?: number;
+    atualizados?: number;
+    erros?: number;
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('sync_metadata' as any)
+      .upsert({
+        tabela,
+        ultima_execucao: new Date().toISOString(),
+        resultado: resultado.sucesso ? 'sucesso' : 'erro',
+        registros_processados: resultado.processados || 0,
+        registros_novos: resultado.novos || 0,
+        registros_atualizados: resultado.atualizados || 0,
+        registros_erros: resultado.erros || 0,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'tabela' });
+
+    if (error) {
+      console.error(`Erro ao atualizar sync_metadata para ${tabela}:`, error);
+    }
+  } catch (error) {
+    console.error(`Erro ao atualizar sync_metadata para ${tabela}:`, error);
+  }
+}
+
+/**
  * Testar conexão com SQL Server via API
  */
 export async function testarConexao(): Promise<boolean> {
