@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Send,
   Mail,
@@ -105,6 +106,7 @@ interface EstatisticasPeriodo {
 }
 
 export default function FaturarRequerimentos() {
+  const { t } = useTranslation();
   // Estados
   const hoje = new Date();
   const [mesAtual] = useState(hoje.getMonth() + 1);
@@ -703,15 +705,23 @@ export default function FaturarRequerimentos() {
 
   // Funções
   const nomesMeses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    t('monthPicker.months.january'), t('monthPicker.months.february'), t('monthPicker.months.march'),
+    t('monthPicker.months.april'), t('monthPicker.months.may'), t('monthPicker.months.june'),
+    t('monthPicker.months.july'), t('monthPicker.months.august'), t('monthPicker.months.september'),
+    t('monthPicker.months.october'), t('monthPicker.months.november'), t('monthPicker.months.december')
   ];
 
-  // Opções para o MultiSelect de tipos de cobrança
-  const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS.map(option => ({
-    value: option.value,
-    label: option.label
-  }));
+  // Opções para o MultiSelect de tipos de cobrança (traduzidas)
+  const tipoCobrancaOptions: Option[] = [
+    { value: 'Banco de Horas', label: t('options.billingType.bancoHoras') },
+    { value: 'Cobro Interno', label: t('options.billingType.cobroInterno') },
+    { value: 'Contrato', label: t('options.billingType.contrato') },
+    { value: 'Faturado', label: t('options.billingType.faturado') },
+    { value: 'Hora Extra', label: t('options.billingType.horaExtra') },
+    { value: 'Sobreaviso', label: t('options.billingType.sobreaviso') },
+    { value: 'Reprovado', label: t('options.billingType.reprovado') },
+    { value: 'Bolsão Enel', label: t('options.billingType.bolsaoEnel') },
+  ];
 
   // Opções para o MultiSelect de módulos
   const moduloOptions: Option[] = MODULO_OPTIONS.map(option => ({
@@ -721,7 +731,7 @@ export default function FaturarRequerimentos() {
 
   const handleAbrirModalEmail = async () => {
     if (requerimentosSelecionados.length === 0) {
-      toast.error('Selecione pelo menos um requerimento para faturamento');
+      toast.error(t('billing.selectAtLeastOne'));
       return;
     }
 
@@ -742,7 +752,7 @@ export default function FaturarRequerimentos() {
       }
 
       if (requerimentosSelecionadosData.length === 0) {
-        toast.error('Nenhum requerimento selecionado encontrado');
+        toast.error(t('billing.noSelectedFound'));
         return;
       }
 
@@ -755,7 +765,7 @@ export default function FaturarRequerimentos() {
       const htmlTemplate = faturamentoService.criarTemplateEmailFaturamento(relatorio);
 
       // Configurar dados padrão do email
-      setAssuntoEmail(`Relatório de Faturamento - ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}`);
+      setAssuntoEmail(t('billing.subjectDefault', { month: nomesMeses[mesSelecionado - 1], year: anoSelecionado }));
       setCorpoEmail(htmlTemplate);
       setDestinatarios([]);
       setDestinatariosCC([]);
@@ -767,7 +777,7 @@ export default function FaturarRequerimentos() {
       setModalEmailAberto(true);
     } catch (error) {
       console.error('Erro ao preparar email:', error);
-      toast.error('Erro ao preparar relatório de faturamento');
+      toast.error(t('billing.errorPreparing'));
     }
   };
 
@@ -882,7 +892,7 @@ export default function FaturarRequerimentos() {
         // Atualizar array para validação
         setDestinatariosBCC(todosEmails);
       }
-      toast.success(`${emailsUnicos.length} email(s) adicionado(s) com sucesso!`);
+      toast.success(t('billing.emailsAddedSuccess', { count: emailsUnicos.length }));
     }
   };
 
@@ -936,18 +946,18 @@ export default function FaturarRequerimentos() {
       const limiteBytes = 25 * 1024 * 1024; // 25MB
       
       if (tamanhoTotal > limiteBytes) {
-        toast.error('O tamanho total dos anexos não pode exceder 25MB');
+        toast.error(t('billing.fileSizeExceeded'));
         return;
       }
       
       setAnexos(prev => [...prev, ...novosAnexos]);
-      toast.success(`${novosAnexos.length} arquivo(s) adicionado(s)`);
+      toast.success(t('billing.filesAddedSuccess', { count: novosAnexos.length }));
     }
   };
 
   const handleRemoverAnexo = (index: number) => {
     setAnexos(prev => prev.filter((_, i) => i !== index));
-    toast.success('Anexo removido');
+    toast.success(t('billing.attachmentRemoved'));
   };
 
   const formatarTamanhoArquivo = (bytes: number): string => {
@@ -1110,7 +1120,7 @@ export default function FaturarRequerimentos() {
     const emailsValidos = destinatarios.filter(email => email.trim() !== '');
 
     if (emailsValidos.length === 0) {
-      toast.error('É necessário informar pelo menos um destinatário');
+      toast.error(t('billing.needRecipient'));
       return false;
     }
 
@@ -1127,12 +1137,12 @@ export default function FaturarRequerimentos() {
 
     if (emailsInvalidos.length > 0 || emailsCCInvalidos.length > 0 || emailsBCCInvalidos.length > 0) {
       const todosInvalidos = [...emailsInvalidos, ...emailsCCInvalidos, ...emailsBCCInvalidos];
-      toast.error(`E-mails inválidos: ${todosInvalidos.join(', ')}`);
+      toast.error(t('billing.invalidEmails', { emails: todosInvalidos.join(', ') }));
       return false;
     }
 
     if (!assuntoEmail.trim()) {
-      toast.error('É necessário informar o assunto do email');
+      toast.error(t('billing.needSubject'));
       return false;
     }
 
@@ -1165,7 +1175,7 @@ export default function FaturarRequerimentos() {
       }
 
       if (requerimentosSelecionadosData.length === 0) {
-        toast.error('Nenhum requerimento selecionado encontrado');
+        toast.error(t('billing.noSelectedFound'));
         setEnviandoEmail(false);
         return;
       }
@@ -1186,7 +1196,7 @@ export default function FaturarRequerimentos() {
           console.log('✅ Anexos enviados para storage:', dadosAnexos);
         } catch (error) {
           console.error('❌ Erro ao fazer upload dos anexos:', error);
-          toast.error('Erro ao fazer upload dos anexos');
+          toast.error(t('billing.uploadError'));
           setEnviandoEmail(false);
           return;
         }
@@ -1210,11 +1220,11 @@ export default function FaturarRequerimentos() {
           await marcarComoFaturados.mutateAsync(requerimentosSelecionados);
         }
         
-        const mensagemAnexos = anexos.length > 0 ? ` com ${anexos.length} anexo(s)` : '';
+        const mensagemAnexos = anexos.length > 0 ? t('billing.withAttachments', { count: anexos.length }) : '';
         const mensagemFaturados = abaAtiva === 'para_faturar' 
-          ? ` e ${requerimentosSelecionados.length} requerimento(s) marcado(s) como faturado(s)`
+          ? t('billing.markedAsBilled', { count: requerimentosSelecionados.length })
           : '';
-        toast.success(`Faturamento disparado${mensagemAnexos}${mensagemFaturados}!`);
+        toast.success(`${t('billing.dispatchSuccess')}${mensagemAnexos}${mensagemFaturados}!`);
         
         // Limpar estados
         setModalEmailAberto(false);
@@ -1229,11 +1239,11 @@ export default function FaturarRequerimentos() {
         setAssuntoEmail('');
         setAnexos([]);
       } else {
-        toast.error(resultado.error || 'Erro ao disparar faturamento');
+        toast.error(resultado.error || t('billing.dispatchError'));
       }
     } catch (error) {
       console.error('Erro ao disparar faturamento:', error);
-      toast.error('Erro inesperado ao disparar faturamento');
+      toast.error(t('billing.unexpectedError'));
     } finally {
       setEnviandoEmail(false);
     }
@@ -1294,11 +1304,11 @@ export default function FaturarRequerimentos() {
   const handleArquivarRequerimento = async (requerimento: Requerimento) => {
     try {
       await marcarComoFaturados.mutateAsync([requerimento.id]);
-      toast.success('Requerimento arquivado com sucesso!');
-      refetch(); // Atualizar a lista
+      toast.success(t('billing.archivedSuccess'));
+      refetch();
     } catch (error) {
       console.error('Erro ao arquivar requerimento:', error);
-      toast.error('Erro ao arquivar requerimento');
+      toast.error(t('billing.archiveError'));
     }
   };
 
@@ -1351,10 +1361,10 @@ export default function FaturarRequerimentos() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Enviar Requerimentos
+              {t('billing.title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Visualize e processe requerimentos enviados para faturamento
+              {t('billing.subtitle')}
             </p>
           </div>
 
@@ -1417,10 +1427,10 @@ export default function FaturarRequerimentos() {
                 onClick={handleAbrirModalEmail}
                 disabled={(abaAtiva === 'para_faturar' ? isLoading : isLoadingFaturados) || requerimentosSelecionados.length === 0}
                 size="sm"
-                title={requerimentosSelecionados.length === 0 ? 'Selecione requerimentos para disparar faturamento' : `Disparar faturamento de ${requerimentosSelecionados.length} requerimento(s) selecionado(s)`}
+                title={requerimentosSelecionados.length === 0 ? t('billing.selectToDispatch') : t('billing.dispatchSelected', { count: requerimentosSelecionados.length })}
               >
                 <Send className="h-4 w-4 mr-2" />
-                Disparar Faturamento ({requerimentosSelecionados.length})
+                {t('billing.dispatchBilling')} ({requerimentosSelecionados.length})
               </Button>
             </ProtectedAction>
           </div>
@@ -1435,11 +1445,11 @@ export default function FaturarRequerimentos() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                     <FileText className="h-4 w-4" />
-                    Total
+                    {t('billing.total')}
                   </CardTitle>
                   <CardTitle className="text-xs lg:text-sm font-medium text-purple-600 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Tipos Ativos
+                    {t('billing.activeTypes')}
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -1460,7 +1470,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Total Horas
+                  {t('billing.totalHours')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1475,7 +1485,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-indigo-600 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Banco de Horas
+                  {t('billing.bankHours')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1484,7 +1494,7 @@ export default function FaturarRequerimentos() {
                 </div>
                 {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < (dadosFaturamento?.requerimentos?.length || 0) && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Selecionados
+                    {t('billing.selected')}
                   </div>
                 )}
               </CardContent>
@@ -1495,7 +1505,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Período
+                  {t('billing.period')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1510,7 +1520,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
                   <Calculator className="h-4 w-4" />
-                  Valor Faturável
+                  {t('billing.billableValue')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1522,7 +1532,7 @@ export default function FaturarRequerimentos() {
                 </div>
                 {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < (dadosFaturamento?.requerimentos?.length || 0) && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Selecionados
+                    {t('billing.selected')}
                   </div>
                 )}
               </CardContent>
@@ -1538,7 +1548,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Total
+                  {t('billing.total')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1546,7 +1556,7 @@ export default function FaturarRequerimentos() {
                   {estatisticasHistorico.total}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? 'Selecionados' : 'Excluindo reprovados'}
+                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? t('billing.selected') : t('billing.excludingRejected')}
                 </div>
               </CardContent>
             </Card>
@@ -1556,7 +1566,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Total Horas
+                  {t('billing.totalHours')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1564,7 +1574,7 @@ export default function FaturarRequerimentos() {
                   {formatarHoras(estatisticasHistorico.totalHoras)}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? 'Selecionados' : 'Excluindo reprovados'}
+                  {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? t('billing.selected') : t('billing.excludingRejected')}
                 </div>
               </CardContent>
             </Card>
@@ -1574,7 +1584,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-indigo-600 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Banco de Horas
+                  {t('billing.bankHours')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1583,7 +1593,7 @@ export default function FaturarRequerimentos() {
                 </div>
                 {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Selecionados
+                    {t('billing.selected')}
                   </div>
                 )}
               </CardContent>
@@ -1594,7 +1604,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-red-600 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
-                  Horas Reprovadas
+                  {t('billing.rejectedHours')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1602,7 +1612,7 @@ export default function FaturarRequerimentos() {
                   {formatarHoras(estatisticasHistorico.horasReprovadas)}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {estatisticasHistorico.totalReprovados} reprovado{estatisticasHistorico.totalReprovados !== 1 ? 's' : ''}
+                  {estatisticasHistorico.totalReprovados} {estatisticasHistorico.totalReprovados !== 1 ? t('billing.rejectedPlural') : t('billing.rejected')}
                 </div>
               </CardContent>
             </Card>
@@ -1612,7 +1622,7 @@ export default function FaturarRequerimentos() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
                   <Calculator className="h-4 w-4" />
-                  Valor Faturável
+                  {t('billing.billableValue')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1621,11 +1631,11 @@ export default function FaturarRequerimentos() {
                 </div>
                 {requerimentosSelecionados.length > 0 && requerimentosSelecionados.length < dadosFaturados.length ? (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Selecionados
+                    {t('billing.selected')}
                   </div>
                 ) : (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Faturado + Hora Extra + Sobreaviso + Bolsão Enel
+                    {t('billing.billableTypes')}
                   </div>
                 )}
               </CardContent>
@@ -1644,7 +1654,7 @@ export default function FaturarRequerimentos() {
                 className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
               >
                 <ChevronLeft className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                <span className="hidden sm:inline">Anterior</span>
+                <span className="hidden sm:inline">{t('billing.previousMonth')}</span>
               </Button>
 
               <div className="text-center flex-1 min-w-0">
@@ -1659,7 +1669,7 @@ export default function FaturarRequerimentos() {
                 onClick={navegarMesProximo}
                 className="flex items-center gap-1 xl:gap-2 px-2 xl:px-3 text-xs xl:text-sm"
               >
-                <span className="hidden sm:inline">Próximo</span>
+                <span className="hidden sm:inline">{t('billing.nextMonth')}</span>
                 <ChevronRight className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
               </Button>
             </div>
@@ -1672,7 +1682,7 @@ export default function FaturarRequerimentos() {
             <CardContent className="p-8">
               <div className="flex items-center justify-center">
                 <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                <span>Carregando requerimentos...</span>
+                <span>{t('billing.loadingRequirements')}</span>
               </div>
             </CardContent>
           </Card>
@@ -1680,9 +1690,9 @@ export default function FaturarRequerimentos() {
           <Card>
             <CardContent className="p-8">
               <div className="text-center text-red-600">
-                <p>Erro ao carregar requerimentos: {error.message}</p>
+                <p>{t('billing.errorLoadingBilled')}: {error.message}</p>
                 <Button onClick={() => refetch()} className="mt-4">
-                  Tentar novamente
+                  {t('billing.tryAgain')}
                 </Button>
               </div>
             </CardContent>
@@ -1692,10 +1702,10 @@ export default function FaturarRequerimentos() {
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
               <TabsList className="w-full sm:w-auto">
                 <TabsTrigger value="para_faturar" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                  Enviar para Faturamento ({dadosFaturamento?.requerimentos?.length || 0})
+                  {t('billing.sendToBilling')} ({dadosFaturamento?.requerimentos?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger value="faturados" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                  Históricos de Enviados ({dadosFaturados?.length || 0})
+                  {t('billing.sentHistory')} ({dadosFaturados?.length || 0})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1707,7 +1717,7 @@ export default function FaturarRequerimentos() {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                         <FileText className="h-5 w-5" />
-                        Requerimentos para Faturamento
+                        {t('billing.requirementsForBilling')}
                       </CardTitle>
 
                       <div className="flex gap-2">
@@ -1720,7 +1730,7 @@ export default function FaturarRequerimentos() {
                           aria-controls="filters-section"
                         >
                           <Filter className="h-4 w-4" />
-                          <span>Filtros</span>
+                          <span>{t('common.filter')}</span>
                         </Button>
                         {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
                         {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
@@ -1729,10 +1739,10 @@ export default function FaturarRequerimentos() {
                             size="sm"
                             onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
-                            aria-label="Limpar todos os filtros aplicados"
+                            aria-label={t('common.clearFilter')}
                           >
                             <X className="h-4 w-4 mr-2 text-red-600" />
-                            Limpar Filtro
+                            {t('common.clearFilter')}
                           </Button>
                         )}
                       </div>
@@ -1744,50 +1754,50 @@ export default function FaturarRequerimentos() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           {/* Busca */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.searchLabel')}</div>
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
-                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                placeholder={t('billing.searchPlaceholder')}
                                 value={busca}
                                 onChange={(e) => setBusca(e.target.value)}
                                 className="pl-10"
-                                aria-label="Campo de busca"
+                                aria-label={t('billing.searchLabel')}
                               />
                             </div>
                           </div>
 
                           {/* Módulo */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.moduleLabel')}</div>
                             <MultiSelect
                               options={moduloOptions}
                               selected={filtroModuloSelect}
                               onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
-                              placeholder="Todos os módulos"
+                              placeholder={t('billing.allModules')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Tipo de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingTypeLabel')}</div>
                             <MultiSelect
                               options={tipoCobrancaOptions}
                               selected={filtroTipoSelect}
                               onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
-                              placeholder="Todos os tipos"
+                              placeholder={t('billing.allTypes')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Período de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingPeriodLabel')}</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
                               onChange={handleFiltroPeriodoChange}
-                              placeholder="Todos os períodos"
+                              placeholder={t('billing.allPeriods')}
                             />
                           </div>
                         </div>
@@ -1798,12 +1808,12 @@ export default function FaturarRequerimentos() {
                     <div className="text-center text-gray-500">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <h3 className="text-lg font-medium mb-2">
-                        Nenhum requerimento encontrado
+                        {t('billing.noRequirementFound')}
                       </h3>
                       <p>
                         {busca || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo
-                          ? 'Tente ajustar os filtros para encontrar requerimentos.'
-                          : `Não há requerimentos enviados para faturamento no período de ${nomesMeses[mesSelecionado - 1]} ${anoSelecionado}.`}
+                          ? t('billing.adjustFilters')
+                          : t('billing.noRequirementsForPeriod', { month: nomesMeses[mesSelecionado - 1], year: anoSelecionado })}
                       </p>
                     </div>
                   </CardContent>
@@ -1816,7 +1826,7 @@ export default function FaturarRequerimentos() {
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                           <FileText className="h-5 w-5" />
-                          Requerimentos para Faturamento
+                          {t('billing.requirementsForBilling')}
                         </CardTitle>
 
                         <div className="flex gap-2">
@@ -1829,7 +1839,7 @@ export default function FaturarRequerimentos() {
                             aria-controls="filters-section"
                           >
                             <Filter className="h-4 w-4" />
-                            <span>Filtros</span>
+                            <span>{t('common.filter')}</span>
                           </Button>
                         </div>
                       </div>
@@ -1840,50 +1850,50 @@ export default function FaturarRequerimentos() {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Busca */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Buscar</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.searchLabel')}</div>
                               <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                  placeholder="Buscar por chamado, cliente ou descrição..."
+                                  placeholder={t('billing.searchPlaceholder')}
                                   value={busca}
                                   onChange={(e) => setBusca(e.target.value)}
                                   className="pl-10"
-                                  aria-label="Campo de busca"
+                                  aria-label={t('billing.searchLabel')}
                                 />
                               </div>
                             </div>
 
                             {/* Módulo */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Módulo</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.moduleLabel')}</div>
                               <MultiSelect
                                 options={moduloOptions}
                                 selected={filtroModuloSelect}
                                 onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
-                                placeholder="Todos os módulos"
+                                placeholder={t('billing.allModules')}
                                 maxCount={2}
                               />
                             </div>
 
                             {/* Tipo de Cobrança */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.billingTypeLabel')}</div>
                               <MultiSelect
                                 options={tipoCobrancaOptions}
                                 selected={filtroTipoSelect}
                                 onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
-                                placeholder="Todos os tipos"
+                                placeholder={t('billing.allTypes')}
                                 maxCount={2}
                               />
                             </div>
 
                             {/* Período de Cobrança */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.billingPeriodLabel')}</div>
                               <MonthYearPicker
                                 value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
                                 onChange={handleFiltroPeriodoChange}
-                                placeholder="Todos os períodos"
+                                placeholder={t('billing.allPeriods')}
                               />
                             </div>
                           </div>
@@ -1907,11 +1917,11 @@ export default function FaturarRequerimentos() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl flex items-center gap-2">
                         <span className="text-2xl">{icon}</span>
-                        {grupo.tipo}
+                        {t(`billing.typeName.${grupo.tipo}`, grupo.tipo)}
                       </CardTitle>
                       <div className="flex items-center gap-2 text-sm flex-wrap">
                         <Badge variant="secondary" className="bg-white/90 text-gray-800 border border-white/50 font-medium">
-                          {grupo.quantidade} requerimento{grupo.quantidade !== 1 ? 's' : ''}
+                          {grupo.quantidade === 1 ? t('billing.requirementCount', { count: grupo.quantidade }) : t('billing.requirementCountPlural', { count: grupo.quantidade })}
                         </Badge>
                         <Badge variant="secondary" className="bg-white/90 text-gray-800 border border-white/50 font-medium">
                           {formatarHorasParaExibicao(grupo.totalHoras, 'completo')}
@@ -1936,22 +1946,22 @@ export default function FaturarRequerimentos() {
                               <Checkbox
                                 checked={grupo.requerimentos.length > 0 && grupo.requerimentos.every(req => requerimentosSelecionados.includes(req.id))}
                                 onCheckedChange={(checked) => handleSelecionarTodos(grupo.requerimentos, checked as boolean)}
-                                aria-label="Selecionar todos os requerimentos deste grupo"
+                                aria-label={t('billing.selectAll')}
                               />
                             </TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Chamado</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Cliente</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Módulo</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Horas</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Datas</TableHead>
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Período</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.ticket')}</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.client')}</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.module')}</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.hours')}</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.dates')}</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.periodCol')}</TableHead>
                             {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(grupo.tipo) && (
-                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">Valor Total</TableHead>
+                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.totalValue')}</TableHead>
                             )}
                             {['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(grupo.tipo) && (
-                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">Observação</TableHead>
+                              <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.observation')}</TableHead>
                             )}
-                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">Ações</TableHead>
+                            <TableHead className="text-center text-sm xl:text-base py-2 px-3">{t('billing.actions')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1962,7 +1972,7 @@ export default function FaturarRequerimentos() {
                                   <Checkbox
                                     checked={requerimentosSelecionados.includes(req.id)}
                                     onCheckedChange={(checked) => handleSelecionarRequerimento(req.id, checked as boolean)}
-                                    aria-label={`Selecionar requerimento ${req.chamado}`}
+                                    aria-label={t('billing.selectRequirement', { ticket: req.chamado })}
                                   />
                                 </TableCell>
                                 
@@ -2007,21 +2017,21 @@ export default function FaturarRequerimentos() {
                                   <div className="flex flex-col items-center gap-1 min-w-[80px]">
                                     <span 
                                       className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap cursor-help" 
-                                      title="Total de Horas"
+                                      title={t('billing.totalHoursTitle')}
                                     >
                                       {formatarHoras(req.horas_total)}
                                     </span>
                                     <div className="text-xs text-gray-500 flex items-center gap-1">
                                       <span 
                                         className="text-blue-600 cursor-help" 
-                                        title="Horas Funcionais"
+                                        title={t('billing.functionalHoursTitle')}
                                       >
                                         {formatarHoras(req.horas_funcional)}
                                       </span>
                                       <span>/</span>
                                       <span 
                                         className="text-green-600 cursor-help" 
-                                        title="Horas Técnicas"
+                                        title={t('billing.technicalHoursTitle')}
                                       >
                                         {formatarHoras(req.horas_tecnico)}
                                       </span>
@@ -2042,12 +2052,12 @@ export default function FaturarRequerimentos() {
                                 <TableCell className="text-center py-3 px-3">
                                   <div className="flex flex-col gap-1 text-xs text-gray-500 min-w-[100px]">
                                     <div className="flex items-center justify-center gap-1">
-                                      <span className="text-[10px] text-gray-400">Envio:</span>
+                                      <span className="text-[10px] text-gray-400">{t('billing.sendLabel')}</span>
                                       <span>{formatarData(req.data_envio)}</span>
                                     </div>
                                     {req.data_aprovacao && (
                                       <div className="flex items-center justify-center gap-1">
-                                        <span className="text-[10px] text-gray-400">Aprov:</span>
+                                        <span className="text-[10px] text-gray-400">{t('billing.approvalLabel')}</span>
                                         <span>{formatarData(req.data_aprovacao)}</span>
                                       </div>
                                     )}
@@ -2094,7 +2104,7 @@ export default function FaturarRequerimentos() {
                                       size="sm"
                                       onClick={() => handleVisualizarRequerimento(req)}
                                       className="h-8 w-8 p-0"
-                                      title="Visualizar detalhes do requerimento"
+                                      title={t('billing.viewDetails')}
                                     >
                                       <Eye className="h-4 w-4 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" />
                                     </Button>
@@ -2106,7 +2116,7 @@ export default function FaturarRequerimentos() {
                                         onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                         disabled={rejeitarRequerimento.isPending}
                                         className="h-8 w-8 p-0"
-                                        title="Rejeitar requerimento"
+                                        title={t('billing.rejectRequirement')}
                                       >
                                         <X className="h-4 w-4 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" />
                                       </Button>
@@ -2120,7 +2130,7 @@ export default function FaturarRequerimentos() {
                                           onClick={() => handleArquivarRequerimento(req)}
                                           disabled={marcarComoFaturados.isPending}
                                           className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
-                                          title="Arquivar requerimento"
+                                          title={t('billing.archiveRequirement')}
                                         >
                                           <Check className="h-4 w-4" />
                                         </Button>
@@ -2147,7 +2157,7 @@ export default function FaturarRequerimentos() {
                   <CardContent className="p-8">
                     <div className="text-center">
                       <RefreshCw className="h-8 w-8 mx-auto mb-4 animate-spin text-blue-500" />
-                      <p>Carregando requerimentos faturados...</p>
+                      <p>{t('billing.loadingBilledRequirements')}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -2156,9 +2166,9 @@ export default function FaturarRequerimentos() {
                   <CardContent className="p-8">
                     <div className="text-center text-red-500">
                       <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
-                      <p>Erro ao carregar requerimentos faturados</p>
+                      <p>{t('billing.errorLoadingBilled')}</p>
                       <Button onClick={() => window.location.reload()} className="mt-4">
-                        Tentar novamente
+                        {t('billing.tryAgain')}
                       </Button>
                     </div>
                   </CardContent>
@@ -2169,7 +2179,7 @@ export default function FaturarRequerimentos() {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                         <Check className="h-5 w-5" />
-                        Histórico - Requerimentos Enviados
+                        {t('billing.historySentRequirements')}
                       </CardTitle>
 
                       <div className="flex gap-2">
@@ -2182,7 +2192,7 @@ export default function FaturarRequerimentos() {
                           aria-controls="filters-section"
                         >
                           <Filter className="h-4 w-4" />
-                          <span>Filtros</span>
+                          <span>{t('common.filter')}</span>
                         </Button>
                         {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
                         {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
@@ -2191,10 +2201,10 @@ export default function FaturarRequerimentos() {
                             size="sm"
                             onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
-                            aria-label="Limpar todos os filtros aplicados"
+                            aria-label={t('common.clearFilter')}
                           >
                             <X className="h-4 w-4 mr-2 text-red-600" />
-                            Limpar Filtro
+                            {t('common.clearFilter')}
                           </Button>
                         )}
                       </div>
@@ -2206,50 +2216,50 @@ export default function FaturarRequerimentos() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           {/* Busca */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.searchLabel')}</div>
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
-                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                placeholder={t('billing.searchPlaceholder')}
                                 value={busca}
                                 onChange={(e) => setBusca(e.target.value)}
                                 className="pl-10"
-                                aria-label="Campo de busca"
+                                aria-label={t('billing.searchLabel')}
                               />
                             </div>
                           </div>
 
                           {/* Módulo */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.moduleLabel')}</div>
                             <MultiSelect
                               options={moduloOptions}
                               selected={filtroModuloSelect}
                               onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
-                              placeholder="Todos os módulos"
+                              placeholder={t('billing.allModules')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Tipo de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingTypeLabel')}</div>
                             <MultiSelect
                               options={tipoCobrancaOptions}
                               selected={filtroTipoSelect}
                               onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
-                              placeholder="Todos os tipos"
+                              placeholder={t('billing.allTypes')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Período de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingPeriodLabel')}</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
                               onChange={handleFiltroPeriodoChange}
-                              placeholder="Todos os períodos"
+                              placeholder={t('billing.allPeriods')}
                             />
                           </div>
                         </div>
@@ -2261,10 +2271,10 @@ export default function FaturarRequerimentos() {
                     <div className="text-center text-gray-500">
                       <Check className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <h3 className="text-lg font-medium mb-2">
-                        Nenhum requerimento faturado
+                        {t('billing.noBilledRequirements')}
                       </h3>
                       <p>
-                        Não há requerimentos faturados no período de{' '}
+                        {t('billing.noBilledForPeriod')}{' '}
                         <strong>{nomesMeses[mesSelecionado - 1]} {anoSelecionado}</strong>.
                       </p>
                     </div>
@@ -2276,7 +2286,7 @@ export default function FaturarRequerimentos() {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                         <Check className="h-5 w-5" />
-                        Histórico - Requerimentos Enviados
+                        {t('billing.historySentRequirements')}
                       </CardTitle>
 
                       <div className="flex gap-2">
@@ -2289,7 +2299,7 @@ export default function FaturarRequerimentos() {
                           aria-controls="filters-section"
                         >
                           <Filter className="h-4 w-4" />
-                          <span>Filtros</span>
+                          <span>{t('common.filter')}</span>
                         </Button>
                         {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
                         {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
@@ -2298,10 +2308,10 @@ export default function FaturarRequerimentos() {
                             size="sm"
                             onClick={limparFiltros}
                             className="whitespace-nowrap hover:border-red-300"
-                            aria-label="Limpar todos os filtros aplicados"
+                            aria-label={t('common.clearFilter')}
                           >
                             <X className="h-4 w-4 mr-2 text-red-600" />
-                            Limpar Filtro
+                            {t('common.clearFilter')}
                           </Button>
                         )}
                       </div>
@@ -2313,50 +2323,50 @@ export default function FaturarRequerimentos() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           {/* Busca */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Buscar</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.searchLabel')}</div>
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
-                                placeholder="Buscar por chamado, cliente ou descrição..."
+                                placeholder={t('billing.searchPlaceholder')}
                                 value={busca}
                                 onChange={(e) => setBusca(e.target.value)}
                                 className="pl-10"
-                                aria-label="Campo de busca"
+                                aria-label={t('billing.searchLabel')}
                               />
                             </div>
                           </div>
 
                           {/* Módulo */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Módulo</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.moduleLabel')}</div>
                             <MultiSelect
                               options={moduloOptions}
                               selected={filtroModuloSelect}
                               onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
-                              placeholder="Todos os módulos"
+                              placeholder={t('billing.allModules')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Tipo de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingTypeLabel')}</div>
                             <MultiSelect
                               options={tipoCobrancaOptions}
                               selected={filtroTipoSelect}
                               onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
-                              placeholder="Todos os tipos"
+                              placeholder={t('billing.allTypes')}
                               maxCount={2}
                             />
                           </div>
 
                           {/* Período de Cobrança */}
                           <div>
-                            <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                            <div className="text-sm font-medium mb-2">{t('billing.billingPeriodLabel')}</div>
                             <MonthYearPicker
                               value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
                               onChange={handleFiltroPeriodoChange}
-                              placeholder="Todos os períodos"
+                              placeholder={t('billing.allPeriods')}
                             />
                           </div>
                         </div>
@@ -2368,12 +2378,12 @@ export default function FaturarRequerimentos() {
                     <div className="text-center text-gray-500">
                       <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <h3 className="text-lg font-medium mb-2">
-                        Nenhum requerimento encontrado
+                        {t('billing.noRequirementFound')}
                       </h3>
                       <p>
                         {busca || filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || filtroPeriodo
-                          ? 'Tente ajustar os filtros para encontrar requerimentos.'
-                          : 'Não há requerimentos que correspondam aos filtros selecionados.'}
+                          ? t('billing.adjustFilters')
+                          : t('billing.noMatchingFilters')}
                       </p>
                     </div>
                   </CardContent>
@@ -2384,7 +2394,7 @@ export default function FaturarRequerimentos() {
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <CardTitle className="text-lg lg:text-xl flex items-center gap-2">
                           <Check className="h-5 w-5" />
-                          Histórico - Requerimentos Enviados
+                          {t('billing.historySentRequirements')}
                         </CardTitle>
 
                         <div className="flex gap-2">
@@ -2397,7 +2407,7 @@ export default function FaturarRequerimentos() {
                             aria-controls="filters-section"
                           >
                             <Filter className="h-4 w-4" />
-                            <span>Filtros</span>
+                            <span>{t('common.filter')}</span>
                           </Button>
                           {/* Mostrar botão "Limpar Filtro" se houver filtros ativos */}
                           {(filtroTipoSelect.length > 0 || filtroModuloSelect.length > 0 || busca.trim() !== '' || filtroPeriodo !== 'all') && (
@@ -2406,10 +2416,10 @@ export default function FaturarRequerimentos() {
                               size="sm"
                               onClick={limparFiltros}
                               className="whitespace-nowrap hover:border-red-300"
-                              aria-label="Limpar todos os filtros aplicados"
+                              aria-label={t('common.clearFilter')}
                             >
                               <X className="h-4 w-4 mr-2 text-red-600" />
-                              Limpar Filtro
+                              {t('common.clearFilter')}
                             </Button>
                           )}
                         </div>
@@ -2421,50 +2431,50 @@ export default function FaturarRequerimentos() {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Busca */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Buscar</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.searchLabel')}</div>
                               <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                  placeholder="Buscar por chamado, cliente ou descrição..."
+                                  placeholder={t('billing.searchPlaceholder')}
                                   value={busca}
                                   onChange={(e) => setBusca(e.target.value)}
                                   className="pl-10"
-                                  aria-label="Campo de busca"
+                                  aria-label={t('billing.searchLabel')}
                                 />
                               </div>
                             </div>
 
                             {/* Módulo */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Módulo</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.moduleLabel')}</div>
                               <MultiSelect
                                 options={moduloOptions}
                                 selected={filtroModuloSelect}
                                 onChange={(values) => setFiltroModuloSelect(values as ModuloType[])}
-                                placeholder="Todos os módulos"
+                                placeholder={t('billing.allModules')}
                                 maxCount={2}
                               />
                             </div>
 
                             {/* Tipo de Cobrança */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.billingTypeLabel')}</div>
                               <MultiSelect
                                 options={tipoCobrancaOptions}
                                 selected={filtroTipoSelect}
                                 onChange={(values) => setFiltroTipoSelect(values as TipoCobrancaType[])}
-                                placeholder="Todos os tipos"
+                                placeholder={t('billing.allTypes')}
                                 maxCount={2}
                               />
                             </div>
 
                             {/* Período de Cobrança */}
                             <div>
-                              <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                              <div className="text-sm font-medium mb-2">{t('billing.billingPeriodLabel')}</div>
                               <MonthYearPicker
                                 value={filtroPeriodo === 'all' ? '' : filtroPeriodo}
                                 onChange={handleFiltroPeriodoChange}
-                                placeholder="Todos os períodos"
+                                placeholder={t('billing.allPeriods')}
                               />
                             </div>
                           </div>
@@ -2481,18 +2491,18 @@ export default function FaturarRequerimentos() {
                               <Checkbox
                                 checked={dadosFaturadosFiltrados.length > 0 && dadosFaturadosFiltrados.every(req => requerimentosSelecionados.includes(req.id))}
                                 onCheckedChange={(checked) => handleSelecionarTodos(dadosFaturadosFiltrados, checked as boolean)}
-                                aria-label="Selecionar todos os requerimentos faturados"
+                                aria-label={t('billing.selectAllBilled')}
                               />
                             </TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Chamado</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Cliente</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Módulo</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Horas</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Data Faturamento</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Período</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Valor Total</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Observação</TableHead>
-                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">Ações</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.ticket')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.client')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.module')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.hours')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.billingDate')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.periodCol')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.totalValue')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.observation')}</TableHead>
+                            <TableHead className="text-sm xl:text-base py-2 px-3 text-center">{t('billing.actions')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -2502,7 +2512,7 @@ export default function FaturarRequerimentos() {
                                 <Checkbox
                                   checked={requerimentosSelecionados.includes(req.id)}
                                   onCheckedChange={(checked) => handleSelecionarRequerimento(req.id, checked as boolean)}
-                                  aria-label={`Selecionar requerimento ${req.chamado}`}
+                                  aria-label={t('billing.selectRequirement', { ticket: req.chamado })}
                                 />
                               </TableCell>
                               
@@ -2547,21 +2557,21 @@ export default function FaturarRequerimentos() {
                                 <div className="flex flex-col items-center gap-1 min-w-[80px]">
                                   <span 
                                     className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap cursor-help" 
-                                    title="Total de Horas"
+                                    title={t('billing.totalHoursTitle')}
                                   >
                                     {formatarHoras(req.horas_total || somarHoras(req.horas_funcional?.toString() || '0', req.horas_tecnico?.toString() || '0'))}
                                   </span>
                                   <div className="text-xs text-gray-500 flex items-center gap-1">
                                     <span 
                                       className="text-blue-600 cursor-help" 
-                                      title="Horas Funcionais"
+                                      title={t('billing.functionalHoursTitle')}
                                     >
                                       {formatarHoras(req.horas_funcional)}
                                     </span>
                                     <span>/</span>
                                     <span 
                                       className="text-green-600 cursor-help" 
-                                      title="Horas Técnicas"
+                                      title={t('billing.technicalHoursTitle')}
                                     >
                                       {formatarHoras(req.horas_tecnico)}
                                     </span>
@@ -2618,7 +2628,7 @@ export default function FaturarRequerimentos() {
                                     size="sm"
                                     onClick={() => handleVisualizarRequerimento(req)}
                                     className="h-8 w-8 p-0"
-                                    title="Visualizar detalhes do requerimento"
+                                    title={t('billing.viewDetails')}
                                   >
                                     <Eye className="h-4 w-4 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" />
                                   </Button>
@@ -2630,7 +2640,7 @@ export default function FaturarRequerimentos() {
                                       onClick={() => handleAbrirConfirmacaoRejeicao(req)}
                                       disabled={rejeitarRequerimento.isPending}
                                       className="h-8 w-8 p-0"
-                                      title="Rejeitar requerimento"
+                                      title={t('billing.rejectRequirement')}
                                     >
                                       <X className="h-4 w-4 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" />
                                     </Button>
@@ -2666,14 +2676,14 @@ export default function FaturarRequerimentos() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
-                Disparar Faturamento por Email
+                {t('billing.emailModalTitle')}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-6">
               {/* Destinatários */}
               <div>
-                <Label className="text-base font-medium">Destinatários</Label>
+                <Label className="text-base font-medium">{t('billing.recipients')}</Label>
                 
                 {/* Campo único para emails separados por ponto e vírgula */}
                 <div className="mt-2">
@@ -2698,7 +2708,7 @@ export default function FaturarRequerimentos() {
 
               {/* Campo CC */}
               <div>
-                <Label className="text-base font-medium">Destinatários em Cópia (CC) - Opcional</Label>
+                <Label className="text-base font-medium">{t('billing.ccRecipients')}</Label>
                 
                 {/* Campo único para emails CC separados por ponto e vírgula */}
                 <div className="mt-2">
@@ -2723,7 +2733,7 @@ export default function FaturarRequerimentos() {
 
               {/* Campo BCC */}
               <div>
-                <Label className="text-base font-medium">Destinatários em Cópia Oculta (BCC) - Opcional</Label>
+                <Label className="text-base font-medium">{t('billing.bccRecipients')}</Label>
                 
                 {/* Campo único para emails BCC separados por ponto e vírgula */}
                 <div className="mt-2">
@@ -2749,20 +2759,20 @@ export default function FaturarRequerimentos() {
               {/* Assunto */}
               <div>
                 <Label htmlFor="assunto" className="text-base font-medium">
-                  Assunto
+                  {t('billing.subject')}
                 </Label>
                 <Input
                   id="assunto"
                   value={assuntoEmail}
                   onChange={(e) => setAssuntoEmail(e.target.value)}
-                  placeholder="Assunto do email"
+                  placeholder={t('billing.subjectPlaceholder')}
                   className="mt-2"
                 />
               </div>
 
               {/* Anexos */}
               <div>
-                <Label className="text-base font-medium">Anexos</Label>
+                <Label className="text-base font-medium">{t('billing.attachments')}</Label>
                 <div className="mt-2">
                   {/* Botão para adicionar anexos */}
                   <div className="flex items-center gap-2">
@@ -2774,7 +2784,7 @@ export default function FaturarRequerimentos() {
                       className="flex items-center gap-2"
                     >
                       <FileText className="h-4 w-4" />
-                      Adicionar Arquivos
+                      {t('billing.addFiles')}
                     </Button>
                     <input
                       id="file-input"
@@ -2785,7 +2795,7 @@ export default function FaturarRequerimentos() {
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
                     />
                     <span className="text-xs text-gray-500">
-                      Limite: 25MB total
+                      {t('billing.fileSizeLimit')}
                     </span>
                   </div>
 
@@ -2793,7 +2803,7 @@ export default function FaturarRequerimentos() {
                   {anexos.length > 0 && (
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
-                        <span>{anexos.length} arquivo(s) anexado(s)</span>
+                        <span>{t('billing.filesAttached', { count: anexos.length })}</span>
                         <span className="text-xs text-gray-500">
                           Total: {formatarTamanhoArquivo(anexos.reduce((acc, file) => acc + file.size, 0))}
                         </span>
@@ -2831,11 +2841,11 @@ export default function FaturarRequerimentos() {
 
               {/* Preview do Relatório */}
               <div>
-                <Label className="text-base font-medium">Preview do Relatório</Label>
+                <Label className="text-base font-medium">{t('billing.reportPreview')}</Label>
                 {/* Preview do Relatório */}
                 <div className="mt-2">
                   <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Preview do Relatório
+                    {t('billing.reportPreview')}
                   </h4>
                   <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
                     <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
@@ -2879,14 +2889,14 @@ export default function FaturarRequerimentos() {
                 variant="outline"
                 onClick={() => setModalEmailAberto(false)}
               >
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={() => setConfirmacaoAberta(true)}
                 disabled={!isFormularioValido()}
               >
                 <Send className="h-4 w-4 mr-2" />
-                Enviar
+                {t('common.send')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2898,20 +2908,20 @@ export default function FaturarRequerimentos() {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5 text-blue-600" />
-                Confirmar Disparo de Faturamento
+                {t('billing.confirmDispatchTitle')}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja disparar o faturamento para{' '}
-                <strong>{destinatarios.filter(e => e.trim()).length} destinatário(s)</strong>?
+                {t('billing.confirmDispatchDesc')}{' '}
+                <strong>{t('billing.recipientCount', { count: destinatarios.filter(e => e.trim()).length })}</strong>?
                 <br /><br />
-                <strong>Período:</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
+                <strong>{t('billing.periodLabel')}</strong> {nomesMeses[mesSelecionado - 1]} {anoSelecionado}
                 <br />
-                <strong>Requerimentos selecionados:</strong> {requerimentosSelecionados.length}
+                <strong>{t('billing.selectedRequirements')}</strong> {requerimentosSelecionados.length}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={enviandoEmail}>
-                Cancelar
+                {t('common.cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDispararFaturamento}
@@ -2921,12 +2931,12 @@ export default function FaturarRequerimentos() {
                 {enviandoEmail ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Processando...
+                    {t('billing.processing')}
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Confirmar Disparo
+                    {t('billing.confirmDispatch')}
                   </>
                 )}
               </AlertDialogAction>
@@ -2940,25 +2950,25 @@ export default function FaturarRequerimentos() {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
-                Confirmar Rejeição de Requerimento
+                {t('billing.confirmRejectionTitle')}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja rejeitar este requerimento?
+                {t('billing.confirmRejectionDesc')}
                 <br /><br />
-                <strong>Chamado:</strong> {requerimentoParaRejeitar?.chamado}
+                <strong>{t('billing.ticketLabel')}</strong> {requerimentoParaRejeitar?.chamado}
                 <br />
-                <strong>Cliente:</strong> <ClienteNomeDisplay nomeEmpresa={requerimentoParaRejeitar?.cliente_nome} className="inline" />
+                <strong>{t('billing.clientLabel')}</strong> <ClienteNomeDisplay nomeEmpresa={requerimentoParaRejeitar?.cliente_nome} className="inline" />
                 <br />
-                <strong>Horas Total:</strong> {requerimentoParaRejeitar ? formatarHorasParaExibicao(requerimentoParaRejeitar.horas_total?.toString() || '0', 'completo') : '0:00'}
+                <strong>{t('billing.totalHoursLabel')}</strong> {requerimentoParaRejeitar ? formatarHorasParaExibicao(requerimentoParaRejeitar.horas_total?.toString() || '0', 'completo') : '0:00'}
                 <br /><br />
                 <span className="text-amber-600">
-                  ⚠️ O requerimento voltará para a tela "Lançar Requerimentos" e precisará ser enviado novamente para faturamento.
+                  {t('billing.rejectionWarning')}
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={rejeitarRequerimento.isPending}>
-                Cancelar
+                {t('common.cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmarRejeicao}
@@ -2968,12 +2978,12 @@ export default function FaturarRequerimentos() {
                 {rejeitarRequerimento.isPending ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Rejeitando...
+                    {t('billing.rejecting')}
                   </>
                 ) : (
                   <>
                     <X className="h-4 w-4 mr-2" />
-                    Confirmar Rejeição
+                    {t('billing.confirmRejection')}
                   </>
                 )}
               </AlertDialogAction>

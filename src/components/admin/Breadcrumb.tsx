@@ -1,42 +1,45 @@
 import { useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Home } from 'lucide-react';
 
 const Breadcrumb = () => {
   const location = useLocation();
+  const { t } = useTranslation();
   const pathnames = location.pathname.split('/').filter((x) => x);
 
-  const breadcrumbMap: Record<string, string> = {
-    admin: 'Administração',
-    'cadastro-usuarios': 'Cadastro de Usuários',
-    dashboard: 'Dashboard',
-    'email-config': 'Configuração de E-mail',
-    'user-config': 'Configurações de Usuário',
-    'grupos': 'Grupos de Usuários',
-    'usuarios-grupos': 'Atribuir Usuários',
-    'audit-logs': 'Logs de Auditoria',
-    'empresas-clientes': 'Empresas Clientes',
-    'clientes': 'Cadastro E-mails Clientes',
-    'grupos-responsaveis': 'Grupos Responsáveis',
-    'controle-disparos': 'Controle de Disparos',
-    'historico-books': 'Histórico de Books',
-    'configurar-permissoes-client-books': 'Configurar Permissões - Client Books',
-    'disparos-personalizados': 'Disparos Personalizados',
-    'monitoramento-vigencias': 'Monitoramento de Vigências',
-    'lancar-requerimentos': 'Lançar Requerimentos',
-    'faturar-requerimentos': 'Enviar Requerimentos',
-    'lancar-pesquisas': 'Lançar Pesquisas',
-    'visualizar-pesquisas': 'Visualizar Pesquisas',
-    'plano-acao': 'Plano de Ação',
-    'lancar-elogios': 'Validar Elogios',
-    'enviar-elogios': 'Enviar Elogios',
-    'cadastro-taxas-clientes': 'Cadastro de Taxas dos Clientes',
-    'design-system': 'Design System',
-    'controle-banco-horas': 'Banco de Horas',
-    'geracao-books': 'Geração de Books',
-    'inconsistencia-chamados' : 'Inconsistência de Chamados',
-    'organograma' : 'Organograma',
-    'pesquisa-mensal-ams': 'Pesquisa Mensal AMS',
-    'ajustes-retroativos': 'Ajustes Retroativos'
+  // Mapeamento de rotas para chaves de tradução
+  const breadcrumbKeyMap: Record<string, string> = {
+    admin: 'nav.administration',
+    'cadastro-usuarios': 'nav.userManagement',
+    dashboard: 'nav.dashboard',
+    'email-config': 'nav.emailConfig',
+    'user-config': 'nav.userConfig',
+    'grupos': 'nav.groups',
+    'usuarios-grupos': 'nav.userGroups',
+    'audit-logs': 'nav.auditLogs',
+    'empresas-clientes': 'nav.companies',
+    'clientes': 'nav.clients',
+    'grupos-responsaveis': 'nav.responsibleGroups',
+    'controle-disparos': 'nav.controlShoots',
+    'historico-books': 'nav.historyBooks',
+    'disparos-personalizados': 'nav.customShoots',
+    'monitoramento-vigencias': 'nav.monitoringTerms',
+    'lancar-requerimentos': 'nav.registerRequirements',
+    'faturar-requerimentos': 'nav.billingRequirements',
+    'lancar-pesquisas': 'nav.registerSurveys',
+    'visualizar-pesquisas': 'nav.viewSurveys',
+    'plano-acao': 'nav.actionPlan',
+    'lancar-elogios': 'nav.registerCompliments',
+    'enviar-elogios': 'nav.sendCompliments',
+    'cadastro-taxas-clientes': 'nav.clientRates',
+    'design-system': 'nav.designSystem',
+    'controle-banco-horas': 'nav.controlBankHours',
+    'geracao-books': 'nav.generateBooks',
+    'inconsistencia-chamados': 'nav.inconsistencies',
+    'organograma': 'nav.orgChart',
+    'pesquisa-mensal-ams': 'nav.monthlySurveyAMS',
+    'ajustes-retroativos': 'nav.retroactiveAdjustments',
+    'auditoria': 'nav.auditLogs',
   };
 
   return (
@@ -51,7 +54,8 @@ const Breadcrumb = () => {
       {pathnames.map((name, index) => {
         const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`;
         const isLast = index === pathnames.length - 1;
-        const displayName = breadcrumbMap[name] || name;
+        const translationKey = breadcrumbKeyMap[name];
+        const displayName = translationKey ? t(translationKey) : name;
 
         return (
           <span key={name} className="flex items-center">

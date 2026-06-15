@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Check, ChevronDown, X } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,7 @@ export function MultiSelect({
   asChild = false,
   side = "bottom",
 }: MultiSelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 
@@ -146,13 +148,13 @@ export function MultiSelect({
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Buscar..."
+            placeholder={t('common.search') + '...'}
             value={search}
             onValueChange={setSearch}
             onKeyDown={handleKeyDown}
           />
           <CommandList>
-            <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+            <CommandEmpty>{t('table.noResults')}</CommandEmpty>
             <CommandGroup className="max-h-64 overflow-auto">
               {/* Opção "Todos" */}
               <CommandItem
@@ -175,7 +177,7 @@ export function MultiSelect({
                       : "opacity-0"
                   )}
                 />
-                Todos os {placeholder.toLowerCase().includes('status') ? 'status' : 'produtos'}
+                {t('multiSelect.selectAll')}
               </CommandItem>
               
               {/* Separador visual */}

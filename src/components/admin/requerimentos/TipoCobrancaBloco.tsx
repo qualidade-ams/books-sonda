@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,6 +53,7 @@ export function TipoCobrancaBloco({
   clienteId,
   tentouSubmeter = false
 }: TipoCobrancaBlocoProps) {
+  const { t } = useTranslation();
   console.log('🎨🎨🎨 TipoCobrancaBloco RENDERIZADO 🎨🎨🎨', { 
     index, 
     clienteId, 
@@ -506,7 +508,7 @@ export function TipoCobrancaBloco({
       {canRemove && (
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-700">
-            📋 Tipo de Cobrança {index + 1}
+            📋 {t('reqForm.billingType')} {index + 1}
           </h4>
           <Button
             type="button"
@@ -523,12 +525,12 @@ export function TipoCobrancaBloco({
       {/* Controle de Horas */}
       <div>
         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          📊 Controle de Horas
+          📊 {t('reqForm.hoursControl')}
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>
-              Horas Funcionais <span className="text-red-500">*</span>
+              {t('reqForm.functionalHours')} <span className="text-red-500">*</span>
             </Label>
             <InputHoras
               value={bloco.horas_funcional}
@@ -539,7 +541,7 @@ export function TipoCobrancaBloco({
 
           <div className="space-y-2">
             <Label>
-              Horas Técnicas <span className="text-red-500">*</span>
+              {t('reqForm.technicalHours')} <span className="text-red-500">*</span>
             </Label>
             <InputHoras
               value={bloco.horas_tecnico}
@@ -549,24 +551,24 @@ export function TipoCobrancaBloco({
           </div>
 
           <div className="space-y-2">
-            <Label>Horas Total</Label>
+            <Label>{t('reqForm.totalHours')}</Label>
             <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
               <span className="font-semibold">
                 {formatarHorasParaExibicao(horasTotalStr, 'completo')}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">Calculado automaticamente</p>
+            <p className="text-xs text-muted-foreground">{t('reqForm.calculatedAuto')}</p>
           </div>
         </div>
       </div>
 
       {/* Informações de Cobrança */}
       <div>
-        <h4 className="text-sm font-semibold mb-3">Informações de Cobrança</h4>
+        <h4 className="text-sm font-semibold mb-3">{t('reqForm.billingInfo')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>
-              Tipo de Cobrança <span className="text-red-500">*</span>
+              {t('reqForm.billingType')} <span className="text-red-500">*</span>
             </Label>
             <Select
               value={bloco.tipo_cobranca}
@@ -599,7 +601,7 @@ export function TipoCobrancaBloco({
                   htmlFor={`atendimento-presencial-${bloco.id}`}
                   className="text-sm font-normal cursor-pointer"
                 >
-                  Atendimento presencial
+                  {t('reqForm.onSiteService')}
                 </Label>
               </div>
             </div>
@@ -609,11 +611,11 @@ export function TipoCobrancaBloco({
           
 
           <div className="space-y-2">
-            <Label>Mês/Ano de Cobrança</Label>
+            <Label>{t('reqForm.billingMonthYear')}</Label>
             <MonthYearPicker
               value={bloco.mes_cobranca || ''}
               onChange={(valor) => onUpdate(bloco.id, 'mes_cobranca', valor)}
-              placeholder="Selecione mês e ano (opcional)"
+              placeholder={t('reqForm.billingMonthYearPlaceholder')}
               format="MM/YYYY"
               allowFuture={true}
             />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft,
   ChevronRight,
@@ -59,6 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { signOut } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Referência para preservar scroll
   const navRef = useRef<HTMLElement>(null);
@@ -122,8 +124,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       await signOut();
 
       toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
+        title: t('toast.successTitle'),
+        description: t('auth.logout'),
       });
 
       // Aguardar um pouco para garantir que o estado seja atualizado
@@ -136,8 +138,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     } catch (error) {
       console.error('Sidebar: Erro no logout:', error);
       toast({
-        title: "Erro no logout",
-        description: "Ocorreu um erro ao fazer logout.",
+        title: t('toast.errorTitle'),
+        description: t('toast.operationError'),
         variant: "destructive",
       });
     }
@@ -225,28 +227,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const menuStructure: MenuItem[] = [
     {
       icon: Home,
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       path: '/admin/dashboard',
       screenKey: 'dashboard'
     },
     {
       icon: Award,
-      label: 'Qualidade',
+      label: t('nav.surveys'),
       children: []
     },
     {
       icon: FileText,
-      label: 'Requerimentos',
+      label: t('nav.requirements'),
       children: [
         {
           icon: FileText,
-          label: 'Lançar Requerimentos',
+          label: t('nav.registerRequirements'),
           path: '/admin/lancar-requerimentos',
           screenKey: 'lancar_requerimentos'
         },
         {
           icon: DollarSign,
-          label: 'Enviar Requerimentos',
+          label: t('nav.billingRequirements'),
           path: '/admin/faturar-requerimentos',
           screenKey: 'faturar_requerimentos'
         }
@@ -254,29 +256,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: MessageSquare,
-      label: 'Pesquisas de Satisfação',
+      label: t('nav.surveys'),
       children: [
         {
           icon: FileText,
-          label: 'Lançar Pesquisas',
+          label: t('nav.registerSurveys'),
           path: '/admin/lancar-pesquisas',
           screenKey: 'lancar_pesquisas'
         },
         {
           icon: ClipboardCheck,
-          label: 'Plano de Ação',
+          label: t('nav.actionPlan'),
           path: '/admin/plano-acao',
           screenKey: 'plano_acao'
         },
         {
           icon: Eye,
-          label: 'Visualizar Pesquisas',
+          label: t('nav.viewSurveys'),
           path: '/admin/visualizar-pesquisas',
           screenKey: 'visualizar_pesquisas'
         },
         {
           icon: BarChart3,
-          label: 'Pesquisa Mensal AMS',
+          label: t('nav.monthlySurveyAMS'),
           path: '/admin/pesquisa-mensal-ams',
           screenKey: 'pesquisa_mensal_ams'
         }
@@ -284,17 +286,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: ThumbsUp,
-      label: 'Elogios',
+      label: t('nav.compliments'),
       children: [
         {
           icon: Heart,
-          label: 'Validar Elogios',
+          label: t('nav.registerCompliments'),
           path: '/admin/lancar-elogios',
           screenKey: 'lancar_elogios'
         },
         {
           icon: Send,
-          label: 'Enviar Elogios',
+          label: t('nav.sendCompliments'),
           path: '/admin/enviar-elogios',
           screenKey: 'lancar_elogios'
         }
@@ -302,41 +304,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Speech,
-      label: 'Comunicação',
+      label: t('nav.books'),
       children: [
         {
           icon: Send,
-          label: 'Disparos',
+          label: t('nav.controlShoots'),
           path: '/admin/controle-disparos',
           screenKey: 'controle_disparos'
         },
         {
           icon: Send,
-          label: 'Disparos Personalizados',
+          label: t('nav.customShoots'),
           path: '/admin/disparos-personalizados',
           screenKey: 'controle_disparos'
         },
         {
           icon: BarChart3,
-          label: 'Histórico de Books',
+          label: t('nav.historyBooks'),
           path: '/admin/historico-books',
           screenKey: 'historico_books'
         },
         {
           icon: FileText,
-          label: 'Geração de Books',
+          label: t('nav.generateBooks'),
           path: '/admin/geracao-books',
           screenKey: 'geracao_books'
         },
         {
           icon: Clock,
-          label: 'Banco de Horas',
+          label: t('nav.bankHours'),
           path: '/admin/controle-banco-horas',
           screenKey: 'controle_banco_horas'
         },
         {
           icon: AlertTriangle,
-          label: 'Ajustes Retroativos',
+          label: t('nav.retroactiveAdjustments'),
           path: '/admin/ajustes-retroativos',
           screenKey: 'banco_horas_ajustes_retroativos'
         }
@@ -344,11 +346,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: AlertTriangle,
-      label: 'Auditoria',
+      label: t('nav.auditLogs'),
       children: [
         {
           icon: AlertTriangle,
-          label: 'Inconsistência de Chamados',
+          label: t('nav.inconsistencies'),
           path: '/admin/auditoria/inconsistencia-chamados',
           screenKey: 'inconsistencia_chamados'
         }
@@ -356,23 +358,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Building2,
-      label: 'Clientes',
+      label: t('nav.clients'),
       children: [
         {
           icon: Building2,
-          label: 'Cadastro de Empresas',
+          label: t('nav.companies'),
           path: '/admin/empresas-clientes',
           screenKey: 'empresas_clientes'
         },
         {
           icon: Contact,
-          label: 'Cadastro E-mails Clientes',
+          label: t('nav.clients'),
           path: '/admin/clientes',
           screenKey: 'clientes'
         },
         {
           icon: DollarSign,
-          label: 'Cadastro Taxas Clientes',
+          label: t('nav.clientRates'),
           path: '/admin/cadastro-taxas-clientes',
           screenKey: 'cadastro_taxas_clientes'
         }
@@ -380,17 +382,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Settings,
-      label: 'Configurações Gerais',
+      label: t('nav.emailConfig'),
       children: [
         {
           icon: UsersRound,
-          label: 'Grupos Responsáveis',
+          label: t('nav.responsibleGroups'),
           path: '/admin/grupos-responsaveis',
           screenKey: 'grupos_responsaveis'
         },
         {
           icon: Mail,
-          label: 'Template E-mails',
+          label: t('nav.emailConfig'),
           path: '/admin/email-config',
           screenKey: 'email-config'
         }
@@ -398,41 +400,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     },
     {
       icon: Shield,
-      label: 'Administração',
+      label: t('nav.administration'),
       children: [
         {
           icon: Users,
-          label: 'Grupos de Usuários',
+          label: t('nav.groups'),
           path: '/admin/grupos',
           screenKey: 'grupos'
         },
         {
           icon: UserPlus,
-          label: 'Gerenciar Usuários',
+          label: t('nav.userManagement'),
           path: '/admin/cadastro-usuarios',
           screenKey: 'cadastro-usuarios'
         },
         {
           icon: UserCheck,
-          label: 'Atribuir Usuários',
+          label: t('nav.userGroups'),
           path: '/admin/usuarios-grupos',
           screenKey: 'usuarios-grupos'
         },
         {
           icon: History,
-          label: 'Logs de Auditoria',
+          label: t('nav.auditLogs'),
           path: '/admin/audit-logs',
           screenKey: 'audit-logs'
         },
         {
           icon: BarChart3,
-          label: 'Monitoramento Vigências',
+          label: t('nav.monitoringTerms'),
           path: '/admin/monitoramento-vigencias',
           screenKey: 'monitoramento_vigencias'
         },
         {
           icon: Palette,
-          label: 'Design System',
+          label: t('nav.designSystem'),
           path: '/admin/design-system',
           screenKey: 'design_system'
         }
@@ -733,7 +735,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p>Configurações</p>
+                  <p>{t('nav.userConfig')}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -749,7 +751,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p>Sair</p>
+                <p>{t('auth.logout')}</p>
               </TooltipContent>
             </Tooltip>
           </>
@@ -762,7 +764,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 onClick={() => handleNavigation('/admin/user-config')}
               >
                 <User className="h-4 w-4 mr-3 flex-shrink-0" />
-                <span className="truncate">Configurações</span>
+                <span className="truncate">{t('nav.userConfig')}</span>
               </Button>
             )}
 
@@ -772,7 +774,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-3 flex-shrink-0" />
-              <span className="truncate">Sair</span>
+              <span className="truncate">{t('auth.logout')}</span>
             </Button>
           </>
         )}

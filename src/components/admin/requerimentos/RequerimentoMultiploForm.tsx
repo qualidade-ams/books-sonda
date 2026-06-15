@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Calculator } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { TipoCobrancaBloco, TipoCobrancaBlocoData } from './TipoCobrancaBloco';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
+import { useTranslatedTipoCobranca } from '@/hooks/useTranslatedOptions';
 import { MODULO_OPTIONS, TIPO_COBRANCA_OPTIONS } from '@/types/requerimentos';
 import { formatarHorasParaExibicao, converterParaHorasDecimal } from '@/utils/horasUtils';
 import { LoadingSpinner } from './LoadingStates';
@@ -28,7 +30,9 @@ export function RequerimentoMultiploForm({
   onCancel,
   isLoading = false
 }: RequerimentoMultiploFormProps) {
+  const { t } = useTranslation();
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
+  const translatedTipoCobranca = useTranslatedTipoCobranca();
 
   // Estado para controlar se houve tentativa de submissão (para mostrar erros visuais)
   const [tentouSubmeter, setTentouSubmeter] = useState(false);
@@ -51,30 +55,30 @@ export function RequerimentoMultiploForm({
   const chamadoValidation = useMemo(() => [
     {
       test: (value: string) => value.length > 0,
-      message: 'Chamado é obrigatório',
+      message: t('reqForm.validation.ticketRequired'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || !/\s/.test(value),
-      message: 'Chamado não pode conter espaços',
+      message: t('reqForm.validation.ticketNoSpaces'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || !value.includes('_'),
-      message: 'Chamado não pode conter underscore (_)',
+      message: t('reqForm.validation.ticketNoUnderscore'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
-      message: 'Use apenas letras, números e hífen (-)',
+      message: t('reqForm.validation.ticketOnlyAlphanumeric'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || value.length >= 3,
-      message: 'Mínimo 3 caracteres',
+      message: t('reqForm.validation.ticketMinLength'),
       type: 'warning' as const
     }
-  ], []);
+  ], [t]);
 
   // Estados para dados compartilhados
   const [chamado, setChamado] = useState('');
@@ -134,21 +138,21 @@ export function RequerimentoMultiploForm({
   // Filtrar opções de tipo de cobrança baseado no tipo de cobrança da empresa
   const tipoCobrancaOptionsFiltradas = useMemo(() => {
     if (!clienteSelecionado) {
-      return TIPO_COBRANCA_OPTIONS;
+      return translatedTipoCobranca;
     }
 
     // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
     if (clienteSelecionado.tipo_cobranca === 'outros') {
-      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
     }
 
     // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
     if (clienteSelecionado.tem_ams === false) {
-      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
     }
 
-    return TIPO_COBRANCA_OPTIONS;
-  }, [clienteSelecionado]);
+    return translatedTipoCobranca;
+  }, [clienteSelecionado, translatedTipoCobranca]);
 
   // Atualizar tipo de cobrança padrão do primeiro bloco quando cliente mudar
   useEffect(() => {
@@ -424,14 +428,14 @@ export function RequerimentoMultiploForm({
       {/* Card Principal */}
       <Card>
         <CardHeader>
-          <CardTitle>Informações Básicas</CardTitle>
+          <CardTitle>{t('reqForm.basicInfo')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Chamado e Cliente */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
-                Chamado <span className="text-red-500">*</span>
+                {t('requirements.ticket')} <span className="text-red-500">*</span>
               </Label>
               <Input
                 value={chamado}
@@ -449,7 +453,7 @@ export function RequerimentoMultiploForm({
 
             <div className="space-y-2">
               <Label>
-                Cliente <span className="text-red-500">*</span>
+                {t('requirements.client')} <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={clienteId}
@@ -457,16 +461,16 @@ export function RequerimentoMultiploForm({
                 disabled={isLoading || isLoadingClientes}
               >
                 <SelectTrigger className={cn(getErrorClasses(clienteId))}>
-                  <SelectValue placeholder="Selecione um cliente" />
+                  <SelectValue placeholder={t('reqForm.selectClient')} />
                 </SelectTrigger>
                 <SelectContent>
                   {isLoadingClientes ? (
                     <SelectItem value="__loading__" disabled>
-                      <LoadingSpinner size="sm" text="Carregando..." />
+                      <LoadingSpinner size="sm" text={t('common.loading')} />
                     </SelectItem>
                   ) : clientes.length === 0 ? (
                     <SelectItem value="__no_clients__" disabled>
-                      Nenhum cliente encontrado
+                      {t('common.noData')}
                     </SelectItem>
                   ) : (
                     clientes.map((cliente) => (
@@ -520,11 +524,11 @@ export function RequerimentoMultiploForm({
 
             <div className="space-y-2">
               <Label>
-                Módulo <span className="text-red-500">*</span>
+                {t('requirements.module')} <span className="text-red-500">*</span>
               </Label>
               <Select value={modulo} onValueChange={setModulo} disabled={isLoading}>
                 <SelectTrigger className={cn(getErrorClasses(modulo))}>
-                  <SelectValue placeholder="Selecione um módulo" />
+                  <SelectValue placeholder={t('reqForm.selectModule')} />
                 </SelectTrigger>
                 <SelectContent>
                   {MODULO_OPTIONS.map((mod) => (
@@ -540,27 +544,27 @@ export function RequerimentoMultiploForm({
           {/* Descrição */}
           <div className="space-y-2">
             <Label>
-              Descrição <span className="text-red-500">*</span>
+              {t('requirements.description')} <span className="text-red-500">*</span>
             </Label>
             <Textarea
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Descreva o requerimento..."
+              placeholder={t('reqForm.descriptionPlaceholder')}
               className={cn("min-h-[100px]", getErrorClasses(descricao))}
               disabled={isLoading}
             />
             <p className="text-sm text-muted-foreground">
-              Máximo 500 caracteres ({descricao.length}/500)
+              {t('reqForm.maxChars', { count: 500 })} ({descricao.length}/500)
             </p>
           </div>
 
           {/* Datas */}
           <div>
-            <h4 className="text-sm font-semibold mb-3">Datas</h4>
+            <h4 className="text-sm font-semibold mb-3">{t('reqForm.dates')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
-                  Data de Envio do Orçamento <span className="text-red-500">*</span>
+                  {t('reqForm.sendDate')} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="date"
@@ -572,7 +576,7 @@ export function RequerimentoMultiploForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Data de Aprovação do Orçamento</Label>
+                <Label>{t('reqForm.approvalDate')}</Label>
                 <Input
                   type="date"
                   value={dataAprovacao}
@@ -581,7 +585,7 @@ export function RequerimentoMultiploForm({
                   disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Campo opcional. Deve ser igual ou posterior à data de envio.
+                  {t('reqForm.approvalDateHelp')}
                 </p>
               </div>
             </div>
@@ -591,7 +595,7 @@ export function RequerimentoMultiploForm({
           <Separator className="my-6" />
           
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Tipos de Cobrança</h3>
+            <h3 className="text-lg font-semibold">{t('reqForm.billingTypes')}</h3>
             
             {blocos.map((bloco, index) => (
               <React.Fragment key={bloco.id}>
@@ -618,7 +622,7 @@ export function RequerimentoMultiploForm({
               disabled={isLoading}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Tipo de Cobrança
+              {t('reqForm.addBillingType')}
             </Button>
           </div>
 
@@ -626,18 +630,18 @@ export function RequerimentoMultiploForm({
           <Separator className="my-6" />
           
           <div>
-            <h4 className="text-sm font-semibold mb-3">Observações</h4>
+            <h4 className="text-sm font-semibold mb-3">{t('requirements.observation')}</h4>
             <div className="space-y-2">
               
               <Textarea
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
-                placeholder="Observações adicionais (opcional)..."
+                placeholder={t('reqForm.observationPlaceholder')}
                 className="min-h-[80px]"
                 disabled={isLoading}
               />
               <p className="text-sm text-muted-foreground">
-                Máximo 1000 caracteres ({observacao.length}/1000)
+                {t('reqForm.maxChars', { count: 1000 })} ({observacao.length}/1000)
               </p>
             </div>
           </div>
@@ -651,19 +655,19 @@ export function RequerimentoMultiploForm({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Calculator className="h-4 w-4" />
-            Totalizador Geral
+            {t('reqForm.generalTotal')}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Total de Horas</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('requirements.totalHours')}</p>
               <p className="text-lg font-semibold">
                 {formatarHorasParaExibicao(totalizadores.totalHoras, 'completo')}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Total de Valores</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('reqForm.totalValues')}</p>
               <p className="text-lg font-semibold text-green-600">
                 R$ {totalizadores.totalValor.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
@@ -672,7 +676,7 @@ export function RequerimentoMultiploForm({
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Requerimentos a Criar</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('reqForm.requirementsToCreate')}</p>
               <p className="text-lg font-semibold">
                 {blocos.length}
               </p>
@@ -689,7 +693,7 @@ export function RequerimentoMultiploForm({
           onClick={onCancel}
           disabled={isLoading}
         >
-          Cancelar
+          {t('common.cancel')}
         </Button>
         <Button
           type="submit"
@@ -697,9 +701,9 @@ export function RequerimentoMultiploForm({
           className="min-w-[200px] bg-blue-600 hover:bg-blue-700"
         >
           {isLoading ? (
-            <LoadingSpinner size="sm" text="Criando..." />
+            <LoadingSpinner size="sm" text={t('common.loading')} />
           ) : (
-            `Criar ${blocos.length} Requerimento${blocos.length > 1 ? 's' : ''}`
+            `${t('reqForm.create')} ${blocos.length} ${blocos.length > 1 ? t('reqForm.requirementsPlural') : t('reqForm.requirementSingular')}`
           )}
         </Button>
       </div>

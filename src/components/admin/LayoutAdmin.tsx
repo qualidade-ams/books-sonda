@@ -5,6 +5,7 @@ import { useSidebar } from '@/hooks/useSidebar';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
 import Breadcrumb from './Breadcrumb';
 import ThemeToggle from './ThemeToggle';
@@ -20,6 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { isCollapsed, toggle } = useSidebar();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   // Sistema de timeout de sessão (configuração automática baseada no ambiente)
   const { showWarning, formatTime, extendSession, handleLogout } = useSessionTimeout();
@@ -38,8 +40,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <header className="bg-white dark:bg-sonda-gray1 border-b border-gray-200 dark:border-sonda-gray2 px-6 py-4 transition-colors">
           <div className={`flex justify-between items-center ${isCollapsed ? 'h-6' : 'h-12'} transition-all duration-300`}>
             <div className="flex flex-col justify-center">
-              <h1 className={`font-bold text-blue-600 dark:text-blue-400 leading-tight ${isCollapsed ? 'text-lg' : 'text-xl'}`}>Painel Administrativo</h1>
-              {!isCollapsed && <p className="text-sm text-gray-600 dark:text-sonda-gray3 leading-tight">Gerencie sua aplicação</p>}
+              <h1 className={`font-bold text-blue-600 dark:text-blue-400 leading-tight ${isCollapsed ? 'text-lg' : 'text-xl'}`}>{t('layout.adminPanel')}</h1>
+              {!isCollapsed && <p className="text-sm text-gray-600 dark:text-sonda-gray3 leading-tight">{t('layout.manageApp')}</p>}
             </div>
 
             {/* User Info */}

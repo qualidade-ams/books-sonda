@@ -23,6 +23,8 @@ import {
   AlertCircle,
   Eye
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedTipoCobranca } from '@/hooks/useTranslatedOptions';
 import { ClienteNomeDisplay } from '@/components/admin/requerimentos/ClienteNomeDisplay';
 import {
   AlertDialog,
@@ -86,6 +88,8 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   const { screenReader } = useAccessibility();
   const { user } = useAuth();
   const { userGroup } = usePermissions();
+  const { t } = useTranslation();
+  const translatedTipoCobranca = useTranslatedTipoCobranca();
 
   // Função para verificar se o usuário pode editar um requerimento
   const podeEditarRequerimento = (requerimento: Requerimento): boolean => {
@@ -210,7 +214,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-gray-500">Carregando requerimentos...</div>
+        <div className="text-gray-500">{t('common.loading')}</div>
       </div>
     );
   }
@@ -218,7 +222,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
   if (requerimentos.length === 0) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-gray-500">Nenhum requerimento encontrado</div>
+        <div className="text-gray-500">{t('table.noResults')}</div>
       </div>
     );
   }
@@ -245,22 +249,22 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                 className="h-4 w-4"
               />
             </TableHead>
-            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
-            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
-            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
-            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
+            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
+            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
+            <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
             {showDataFaturamento && (
-              <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Faturamento</TableHead>
+              <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('requirements.billingDate')}</TableHead>
             )}
-            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
-            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
             {showActions && (
               <TableHead className="w-40 text-xs sm:text-sm py-2">
-                Ações
+                {t('common.actions')}
               </TableHead>
             )}
           </TableRow>
@@ -300,12 +304,12 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                         <TooltipTrigger asChild>
                           <span className="inline-block">
                             <Badge className={`${getBadgeClasses(requerimento.tipo_cobranca)} text-[7px] sm:text-[9px] lg:text-[10px] px-1 sm:px-1.5 py-0.5 leading-tight w-fit max-w-full cursor-help`}>
-                              <span className="truncate">{requerimento.tipo_cobranca}</span>
+                              <span className="truncate">{translatedTipoCobranca.find(o => o.value === requerimento.tipo_cobranca)?.label || requerimento.tipo_cobranca}</span>
                             </Badge>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{requerimento.tipo_cobranca}</p>
+                          <p>{translatedTipoCobranca.find(o => o.value === requerimento.tipo_cobranca)?.label || requerimento.tipo_cobranca}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -413,7 +417,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                           size="sm"
                           onClick={() => onView(requerimento)}
                           className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-blue-600 hover:text-blue-800"
-                          title="Visualizar"
+                          title={t('common.view')}
                         >
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                         </Button>
@@ -426,7 +430,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             size="sm"
                             onClick={() => onEdit(requerimento)}
                             className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0"
-                            title="Editar"
+                            title={t('common.edit')}
                           >
                             <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                           </Button>
@@ -440,7 +444,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             size="sm"
                             onClick={() => onDelete(requerimento)}
                             className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-red-600 hover:text-red-800"
-                            title="Excluir"
+                            title={t('common.delete')}
                           >
                             <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
                           </Button>
@@ -458,7 +462,7 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                               size="sm"
                               disabled={enviarParaFaturamento.isPending}
                               className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 p-0 text-blue-600 hover:text-blue-800"
-                              title="Enviar para Faturamento"
+                              title={t('requirements.sendToFaturamento')}
                             >
                               {enviarParaFaturamento.isPending ? (
                                 <div className="animate-spin rounded-full h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 border-b-2 border-blue-600" />
@@ -471,17 +475,15 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                             <AlertDialogHeader>
                               <AlertDialogTitle className="flex items-center gap-2">
                                 <AlertCircle className="h-5 w-5 text-amber-500" />
-                                Confirmar Envio para Faturamento
+                                {t('requirements.confirmSendTitle')}
                               </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja enviar o requerimento <strong>{requerimento.chamado}</strong> para faturamento?
-                                <br /><br />
-                                Esta ação não pode ser desfeita e o requerimento será movido para a tela de faturamento.
+                                {t('requirements.confirmSendDesc', { chamado: requerimento.chamado })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel disabled={enviarParaFaturamento.isPending}>
-                                Cancelar
+                                {t('common.cancel')}
                               </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => handleEnviarFaturamento(requerimento)}
@@ -491,10 +493,10 @@ const RequerimentosTable: React.FC<RequerimentosTableProps> = ({
                                 {enviarParaFaturamento.isPending ? (
                                   <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                    Enviando...
+                                    {t('common.loading')}
                                   </>
                                 ) : (
-                                  'Confirmar Envio'
+                                  t('requirements.confirmSendBtn')
                                 )}
                               </AlertDialogAction>
                             </AlertDialogFooter>

@@ -5,17 +5,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useLanguage } from '@/hooks/useLanguage';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
-import { User, Lock, Save, RefreshCw } from 'lucide-react';
+import { User, Lock, Save, RefreshCw, Globe } from 'lucide-react';
 
 const UserConfig = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const { currentLanguage, changeLanguage, isLoading: isLanguageLoading } = useLanguage();
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   
   // Hook personalizado para configurações do usuário
@@ -167,23 +173,44 @@ const UserConfig = () => {
 
 
 
+  // Handler para mudança de idioma
+  const handleLanguageChange = async (language: string) => {
+    const success = await changeLanguage(language as any);
+    if (success) {
+      toast({
+        title: t('userConfig.languageUpdated'),
+        description: t('userConfig.languageUpdatedDesc'),
+      });
+    } else {
+      toast({
+        title: t('userConfig.languageUpdateError'),
+        description: t('userConfig.languageUpdateErrorDesc'),
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Configurações de Usuário</h1>
-          <p className="text-gray-600">Gerencie suas informações pessoais e configurações de segurança</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('userConfig.title')}</h1>
+          <p className="text-gray-600">{t('userConfig.subtitle')}</p>
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center space-x-2">
               <User className="h-4 w-4" />
-              <span>Informações do Perfil</span>
+              <span>{t('userConfig.profileTab')}</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center space-x-2">
               <Lock className="h-4 w-4" />
-              <span>Segurança</span>
+              <span>{t('userConfig.securityTab')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="preferences" className="flex items-center space-x-2">
+              <Globe className="h-4 w-4" />
+              <span>{t('userConfig.preferencesTab')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -193,16 +220,16 @@ const UserConfig = () => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <User className="h-5 w-5" />
-                  <span>Informações do Perfil</span>
+                  <span>{t('userConfig.profileTitle')}</span>
                 </CardTitle>
                 <CardDescription>
-                  Atualize suas informações pessoais
+                  {t('userConfig.profileDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome do Usuário</Label>
+                    <Label htmlFor="name">{t('userConfig.userName')}</Label>
                     <Input
                       id="name"
                       type="text"
@@ -211,12 +238,12 @@ const UserConfig = () => {
                         ...prev,
                         name: e.target.value
                       }))}
-                      placeholder="Digite seu nome completo"
+                      placeholder={t('userConfig.userNamePlaceholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t('userConfig.emailLabel')}</Label>
                     <Input
                       id="email"
                       type="email"
@@ -225,7 +252,7 @@ const UserConfig = () => {
                       className="bg-gray-50"
                     />
                     <p className="text-xs text-gray-500">
-                      O email não pode ser alterado por questões de segurança
+                      {t('userConfig.emailNote')}
                     </p>
                   </div>
 
@@ -236,7 +263,7 @@ const UserConfig = () => {
                       ) : (
                         <Save className="h-4 w-4 mr-2" />
                       )}
-                      Salvar Alterações
+                      {t('userConfig.saveChanges')}
                     </Button>
                   </ProtectedAction>
                 </form>
@@ -250,18 +277,18 @@ const UserConfig = () => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Lock className="h-5 w-5" />
-                  <span>Segurança</span>
+                  <span>{t('userConfig.securityTitle')}</span>
                 </CardTitle>
                 <CardDescription>
-                  Gerencie sua senha e configurações de segurança
+                  {t('userConfig.securityDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div>
-                  <h4 className="font-medium mb-3">Alterar Senha</h4>
+                  <h4 className="font-medium mb-3">{t('userConfig.changePassword')}</h4>
                   <form onSubmit={handlePasswordChange} className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Senha Atual</Label>
+                      <Label htmlFor="currentPassword">{t('auth.currentPassword')}</Label>
                       <Input
                         id="currentPassword"
                         type="password"
@@ -270,12 +297,12 @@ const UserConfig = () => {
                           ...prev,
                           currentPassword: e.target.value
                         }))}
-                        placeholder="Digite sua senha atual"
+                        placeholder={t('userConfig.currentPasswordPlaceholder')}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">Nova Senha</Label>
+                      <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
                       <Input
                         id="newPassword"
                         type="password"
@@ -284,12 +311,12 @@ const UserConfig = () => {
                           ...prev,
                           newPassword: e.target.value
                         }))}
-                        placeholder="Digite a nova senha"
+                        placeholder={t('userConfig.newPasswordPlaceholder')}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                      <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
                       <Input
                         id="confirmPassword"
                         type="password"
@@ -298,7 +325,7 @@ const UserConfig = () => {
                           ...prev,
                           confirmPassword: e.target.value
                         }))}
-                        placeholder="Confirme a nova senha"
+                        placeholder={t('userConfig.confirmPasswordPlaceholder')}
                       />
                     </div>
 
@@ -309,10 +336,56 @@ const UserConfig = () => {
                         ) : (
                           <Lock className="h-4 w-4 mr-2" />
                         )}
-                        Alterar Senha
+                        {t('userConfig.changePassword')}
                       </Button>
                     </ProtectedAction>
                   </form>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Preferências */}
+          <TabsContent value="preferences" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Globe className="h-5 w-5" />
+                  <span>{t('userConfig.preferencesTitle')}</span>
+                </CardTitle>
+                <CardDescription>
+                  {t('userConfig.preferencesDescription')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-gray-700">
+                      {t('userConfig.languageLabel')}
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      {t('userConfig.languageDescription')}
+                    </p>
+                    <Select
+                      value={currentLanguage}
+                      onValueChange={handleLanguageChange}
+                      disabled={isLanguageLoading}
+                    >
+                      <SelectTrigger className="w-full max-w-xs focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder={t('common.select')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            <div className="flex items-center gap-2">
+                              <span>{lang.flag}</span>
+                              <span>{lang.label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
             </Card>

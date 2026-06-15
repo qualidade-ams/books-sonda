@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Clock } from 'lucide-react';
 import '../styles/login.css';
 
@@ -18,6 +19,7 @@ const Login = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { signIn, user, isReady } = useAuth();
+  const { t } = useTranslation();
 
 
 
@@ -26,7 +28,7 @@ const Login = () => {
     const state = location.state as { message?: string };
     if (state?.message) {
       toast({
-        title: "Sessão Expirada",
+        title: t('auth.sessionExpired'),
         description: state.message,
         variant: "destructive",
         duration: 5000,
@@ -34,7 +36,7 @@ const Login = () => {
       // Limpar o state para não mostrar novamente
       navigate('/', { replace: true });
     }
-  }, [location.state, toast, navigate]);
+  }, [location.state, toast, navigate, t]);
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
@@ -48,8 +50,8 @@ const Login = () => {
 
     if (!email || !password) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos.",
+        title: t('form.required'),
+        description: t('login.fillAllFields'),
         variant: "destructive",
       });
       return;
@@ -63,32 +65,32 @@ const Login = () => {
       if (error) {
         console.error('Login: Erro no login:', error);
 
-        let errorMessage = "Erro ao fazer login. Tente novamente.";
+        let errorMessage = t('login.genericError');
 
         if (error.message && error.message.includes('Invalid login credentials')) {
-          errorMessage = "E-mail ou senha incorretos.";
+          errorMessage = t('login.invalidCredentials');
         } else if (error.message && error.message.includes('Email not confirmed')) {
-          errorMessage = "Por favor, confirme seu e-mail antes de fazer login.";
+          errorMessage = t('login.emailNotConfirmed');
         } else if (error.message) {
           errorMessage = error.message;
         }
 
         toast({
-          title: "Erro no login",
+          title: t('login.loginError'),
           description: errorMessage,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando para o dashboard...",
+          title: t('login.loginSuccess'),
+          description: t('login.redirecting'),
         });
       }
     } catch (error) {
       console.error('Login: Erro inesperado no login:', error);
       toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        title: t('toast.errorTitle'),
+        description: t('login.unexpectedError'),
         variant: "destructive",
       });
     } finally {
@@ -102,7 +104,7 @@ const Login = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-4">
         <div className="text-center text-white">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Inicializando autenticação...</p>
+          <p>{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -137,22 +139,22 @@ const Login = () => {
               <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Bem-vindo
+                    {t('login.welcome')}
                   </h1>
                   <p className="text-gray-600">
-                    Faça login para acessar sua conta
+                    {t('login.subtitle')}
                   </p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                      E-mail
+                      {t('common.email')}
                     </Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder={t('login.emailPlaceholder')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="h-12 px-4 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -162,12 +164,12 @@ const Login = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                      Senha
+                      {t('auth.password')}
                     </Label>
                     <Input
                       id="password"
                       type="password"
-                      placeholder="Sua senha"
+                      placeholder={t('login.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-12 px-4 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -183,10 +185,10 @@ const Login = () => {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
+                        {t('login.signingIn')}
                       </>
                     ) : (
-                      'Entrar'
+                      t('auth.login')
                     )}
                   </Button>
                 </form>                

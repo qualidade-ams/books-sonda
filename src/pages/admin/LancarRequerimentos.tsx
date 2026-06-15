@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, Search, Filter, RefreshCw, FileText, Send, Calendar, Clock, HelpCircle, ChevronLeft, ChevronRight, DollarSign, Target, Tags, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +78,9 @@ const getDefaultMesCobranca = () => {
 };
 
 const LancarRequerimentos = () => {
+    // i18n
+    const { t } = useTranslation();
+
     // Estados para modais
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -547,10 +551,10 @@ const LancarRequerimentos = () => {
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
                     <div>
                         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-                            Lançar Requerimentos
+                            {t('requirements.title')}
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400 mt-1">
-                            Gerencie especificações funcionais de chamados técnicos
+                            {t('requirements.subtitle')}
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -567,8 +571,8 @@ const LancarRequerimentos = () => {
                                 size="sm"
                             >
                                 <Plus className="h-4 w-4" />
-                                <span className="hidden sm:inline">Novo Requerimento</span>
-                                <span className="sm:hidden">Novo</span>
+                                <span className="hidden sm:inline">{t('requirements.newRequirement')}</span>
+                                <span className="sm:hidden">{t('common.add')}</span>
                             </Button>
                         </ProtectedAction>
                     </div>
@@ -588,11 +592,11 @@ const LancarRequerimentos = () => {
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                                             <FileText className="h-4 w-4" />
-                                            Total
+                                            {t('common.total')}
                                         </CardTitle>
                                         <CardTitle className="text-xs lg:text-sm font-medium text-purple-600 flex items-center gap-2">
                                             <Tags className="h-4 w-4" />
-                                            Tipos de Cobrança
+                                            {t('requirements.billingType')}
                                         </CardTitle>
                                     </div>
                                 </CardHeader>
@@ -613,7 +617,7 @@ const LancarRequerimentos = () => {
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-blue-600 flex items-center gap-2">
                                         <Clock className="h-4 w-4" />
-                                        Total Horas
+                                        {t('requirements.totalHours')}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -635,7 +639,7 @@ const LancarRequerimentos = () => {
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-green-600 flex items-center gap-2">
                                         <DollarSign className="h-4 w-4" />
-                                        Valor Total
+                                        {t('requirements.totalValue')}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -653,7 +657,7 @@ const LancarRequerimentos = () => {
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs lg:text-sm font-medium text-orange-600 flex items-center gap-2">
                                         <Target className="h-4 w-4" />
-                                        Valores Selecionados
+                                        {t('requirements.selectedValues')}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -702,7 +706,7 @@ const LancarRequerimentos = () => {
                                     aria-label="Mês anterior"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
-                                    Anterior
+                                    {t('common.previous')}
                                 </Button>
 
                                 <div className="text-center">
@@ -713,15 +717,17 @@ const LancarRequerimentos = () => {
                                             const anoNum = parseInt(ano) || new Date().getFullYear();
 
                                             const mesesNomes = [
-                                                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                                                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                                                t('monthPicker.months.january'), t('monthPicker.months.february'), t('monthPicker.months.march'),
+                                                t('monthPicker.months.april'), t('monthPicker.months.may'), t('monthPicker.months.june'),
+                                                t('monthPicker.months.july'), t('monthPicker.months.august'), t('monthPicker.months.september'),
+                                                t('monthPicker.months.october'), t('monthPicker.months.november'), t('monthPicker.months.december')
                                             ];
 
                                             return `${mesesNomes[mesNum - 1]} ${anoNum}`;
                                         })()}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        {requerimentosFiltrados.length} requerimento{requerimentosFiltrados.length !== 1 ? 's' : ''}
+                                        {requerimentosFiltrados.length} {t('common.results')}
                                     </div>
                                 </div>
 
@@ -747,7 +753,7 @@ const LancarRequerimentos = () => {
                                     className="flex items-center gap-2"
                                     aria-label="Próximo mês"
                                 >
-                                    Próximo
+                                    {t('common.next')}
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -760,10 +766,10 @@ const LancarRequerimentos = () => {
                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                         <TabsList>
                             <TabsTrigger value="nao-enviados">
-                                Requerimentos Não Enviados ({requerimentos.length})
+                                {t('requirements.notSent')} ({requerimentos.length})
                             </TabsTrigger>
                             <TabsTrigger value="enviados">
-                                Histórico de Enviados ({requerimentosEnviados.length})
+                                {t('requirements.sent')} ({requerimentosEnviados.length})
                             </TabsTrigger>
                         </TabsList>
 
@@ -775,10 +781,10 @@ const LancarRequerimentos = () => {
                                         onClick={handleEnviarSelecionados}
                                         disabled={enviarMultiplos.isPending || selectedRequerimentos.length === 0}
                                         className="flex items-center gap-2"
-                                        title={selectedRequerimentos.length === 0 ? 'Nenhum requerimento selecionado' : undefined}
+                                        title={selectedRequerimentos.length === 0 ? t('requirements.noRequirementSelected') : undefined}
                                     >
                                         <Send className="h-4 w-4" />
-                                        {enviarMultiplos.isPending ? 'Enviando...' : `Enviar para Faturamento (${selectedRequerimentos.length})`}
+                                        {enviarMultiplos.isPending ? t('common.loading') : `${t('requirements.sendToFaturamento')} (${selectedRequerimentos.length})`}
                                     </Button>
                                 </ProtectedAction>
                             </div>
@@ -791,7 +797,7 @@ const LancarRequerimentos = () => {
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                                     <CardTitle className="text-lg flex items-center gap-2">
                                         <FileText className="h-5 w-5" />
-                                        Requerimentos Não Enviados
+                                        {t('requirements.notSent')}
                                     </CardTitle>
 
                                     <div className="flex gap-2">
@@ -802,7 +808,7 @@ const LancarRequerimentos = () => {
                                             className="flex items-center justify-center space-x-2"
                                         >
                                             <Filter className="h-4 w-4" />
-                                            <span>Filtros</span>
+                                            <span>{t('common.filter')}</span>
                                         </Button>
                                         
                                         {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -814,7 +820,7 @@ const LancarRequerimentos = () => {
                                                 className="whitespace-nowrap hover:border-red-300"
                                             >
                                                 <X className="h-4 w-4 mr-2 text-red-600" />
-                                                Limpar Filtro
+                                                {t('common.clearFilter')}
                                             </Button>
                                         )}
                                     </div>
@@ -826,11 +832,11 @@ const LancarRequerimentos = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             {/* Campo de busca com ícone */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Buscar</div>
+                                                <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                                     <Input
-                                                        placeholder="Buscar por chamado, cliente..."
+                                                        placeholder={t('requirements.searchPlaceholder')}
                                                         defaultValue={filtros.busca || ''}
                                                         onChange={(e) => handleFiltroChange('busca', e.target.value)}
                                                         className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -840,35 +846,35 @@ const LancarRequerimentos = () => {
 
                                             {/* Filtro Módulo */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Módulo</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.module')}</div>
                                                 <MultiSelect
                                                     options={moduloOptions}
                                                     selected={Array.isArray(filtros.modulo) ? filtros.modulo : filtros.modulo ? [filtros.modulo] : []}
                                                     onChange={(values) => handleFiltroChange('modulo', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os módulos"
+                                                    placeholder={t('requirements.allModules')}
                                                     maxCount={2}
                                                 />
                                             </div>
 
                                             {/* Filtro Tipo de Cobrança */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.billingType')}</div>
                                                 <MultiSelect
                                                     options={tipoCobrancaOptions}
                                                     selected={Array.isArray(filtros.tipo_cobranca) ? filtros.tipo_cobranca : filtros.tipo_cobranca ? [filtros.tipo_cobranca] : []}
                                                     onChange={(values) => handleFiltroChange('tipo_cobranca', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os tipos"
+                                                    placeholder={t('requirements.allTypes')}
                                                     maxCount={2}
                                                 />
                                             </div>
 
                                             {/* Filtro Período */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.billingMonth')}</div>
                                                 <MonthYearPicker
                                                     value={filtros.mes_cobranca || ''}
                                                     onChange={(value) => handleFiltroChange('mes_cobranca', value)}
-                                                    placeholder="Todos os períodos"
+                                                    placeholder={t('requirements.allMonths')}
                                                 />
                                             </div>
                                         </div>
@@ -915,7 +921,7 @@ const LancarRequerimentos = () => {
                                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                                             {/* Select de itens por página */}
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('table.show')}</span>
                                                 <Select
                                                     value={itemsPerPage.toString()}
                                                     onValueChange={(value) => {
@@ -932,7 +938,7 @@ const LancarRequerimentos = () => {
                                                         <SelectItem value="50">50</SelectItem>
                                                         <SelectItem value="100">100</SelectItem>
                                                         <SelectItem value="500">500</SelectItem>
-                                                        <SelectItem value="todos">Todos</SelectItem>
+                                                        <SelectItem value="todos">{t('common.all')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -945,19 +951,19 @@ const LancarRequerimentos = () => {
                                                         size="sm"
                                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                                         disabled={!paginatedData.hasPrevPage}
-                                                        aria-label="Página anterior"
+                                                        aria-label={t('common.previous')}
                                                     >
                                                         <ChevronLeft className="h-4 w-4" />
                                                     </Button>
                                                     <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                        Página {currentPage} de {paginatedData.totalPages}
+                                                        {t('common.page')} {currentPage} {t('common.of')} {paginatedData.totalPages}
                                                     </span>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
                                                         disabled={!paginatedData.hasNextPage}
-                                                        aria-label="Próxima página"
+                                                        aria-label={t('common.next')}
                                                     >
                                                         <ChevronRight className="h-4 w-4" />
                                                     </Button>
@@ -966,7 +972,7 @@ const LancarRequerimentos = () => {
 
                                             {/* Contador de registros */}
                                             <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
+                                                {paginatedData.startIndex}-{paginatedData.endIndex} {t('common.of')} {paginatedData.totalItems} {t('common.results')}
                                             </div>
                                         </div>
                                     </>
@@ -981,7 +987,7 @@ const LancarRequerimentos = () => {
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                                     <CardTitle className="text-lg flex items-center gap-2">
                                         <Send className="h-5 w-5" />
-                                        Histórico - Requerimentos Enviados
+                                        {t('requirements.sentHistory')}
                                     </CardTitle>
 
                                     <div className="flex gap-2">
@@ -992,7 +998,7 @@ const LancarRequerimentos = () => {
                                             className="flex items-center justify-center space-x-2"
                                         >
                                             <Filter className="h-4 w-4" />
-                                            <span>Filtros</span>
+                                            <span>{t('common.filter')}</span>
                                         </Button>
                                         
                                         {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -1009,7 +1015,7 @@ const LancarRequerimentos = () => {
                                                 className="whitespace-nowrap hover:border-red-300"
                                             >
                                                 <X className="h-4 w-4 mr-2 text-red-600" />
-                                                Limpar Filtro
+                                                {t('common.clearFilter')}
                                             </Button>
                                         )}
                                     </div>
@@ -1021,11 +1027,11 @@ const LancarRequerimentos = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             {/* Campo de busca com ícone */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Buscar</div>
+                                                <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                                     <Input
-                                                        placeholder="Buscar por chamado, cliente..."
+                                                        placeholder={t('requirements.searchPlaceholder')}
                                                         defaultValue={filtrosEnviados.busca || ''}
                                                         onChange={(e) => handleFiltroEnviadosChange('busca', e.target.value)}
                                                         className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -1035,35 +1041,35 @@ const LancarRequerimentos = () => {
 
                                             {/* Filtro Módulo */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Módulo</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.module')}</div>
                                                 <MultiSelect
                                                     options={moduloOptions}
                                                     selected={Array.isArray(filtrosEnviados.modulo) ? filtrosEnviados.modulo : filtrosEnviados.modulo ? [filtrosEnviados.modulo] : []}
                                                     onChange={(values) => handleFiltroEnviadosChange('modulo', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os módulos"
+                                                    placeholder={t('requirements.allModules')}
                                                     maxCount={2}
                                                 />
                                             </div>
 
                                             {/* Filtro Tipo de Cobrança */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Tipo de Cobrança</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.billingType')}</div>
                                                 <MultiSelect
                                                     options={tipoCobrancaOptions}
                                                     selected={Array.isArray(filtrosEnviados.tipo_cobranca) ? filtrosEnviados.tipo_cobranca : filtrosEnviados.tipo_cobranca ? [filtrosEnviados.tipo_cobranca] : []}
                                                     onChange={(values) => handleFiltroEnviadosChange('tipo_cobranca', values.length > 0 ? values : undefined)}
-                                                    placeholder="Todos os tipos"
+                                                    placeholder={t('requirements.allTypes')}
                                                     maxCount={2}
                                                 />
                                             </div>
 
                                             {/* Filtro Período */}
                                             <div>
-                                                <div className="text-sm font-medium mb-2">Período de Cobrança</div>
+                                                <div className="text-sm font-medium mb-2">{t('requirements.billingMonth')}</div>
                                                 <MonthYearPicker
                                                     value={filtrosEnviados.mes_cobranca || ''}
                                                     onChange={(value) => handleFiltroEnviadosChange('mes_cobranca', value)}
-                                                    placeholder="Todos os períodos"
+                                                    placeholder={t('requirements.allMonths')}
                                                 />
                                             </div>
                                         </div>
@@ -1109,7 +1115,7 @@ const LancarRequerimentos = () => {
                                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                                             {/* Select de itens por página */}
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('table.show')}</span>
                                                 <Select
                                                     value={itemsPerPage.toString()}
                                                     onValueChange={(value) => {
@@ -1126,7 +1132,7 @@ const LancarRequerimentos = () => {
                                                         <SelectItem value="50">50</SelectItem>
                                                         <SelectItem value="100">100</SelectItem>
                                                         <SelectItem value="500">500</SelectItem>
-                                                        <SelectItem value="todos">Todos</SelectItem>
+                                                        <SelectItem value="todos">{t('common.all')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -1139,19 +1145,19 @@ const LancarRequerimentos = () => {
                                                         size="sm"
                                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                                         disabled={!paginatedData.hasPrevPage}
-                                                        aria-label="Página anterior"
+                                                        aria-label={t('common.previous')}
                                                     >
                                                         <ChevronLeft className="h-4 w-4" />
                                                     </Button>
                                                     <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                                                        Página {currentPage} de {paginatedData.totalPages}
+                                                        {t('common.page')} {currentPage} {t('common.of')} {paginatedData.totalPages}
                                                     </span>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => setCurrentPage(prev => Math.min(paginatedData.totalPages, prev + 1))}
                                                         disabled={!paginatedData.hasNextPage}
-                                                        aria-label="Próxima página"
+                                                        aria-label={t('common.next')}
                                                     >
                                                         <ChevronRight className="h-4 w-4" />
                                                     </Button>
@@ -1160,7 +1166,7 @@ const LancarRequerimentos = () => {
 
                                             {/* Contador de registros */}
                                             <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                {paginatedData.startIndex}-{paginatedData.endIndex} de {paginatedData.totalItems} requerimentos
+                                                {paginatedData.startIndex}-{paginatedData.endIndex} {t('common.of')} {paginatedData.totalItems} {t('common.results')}
                                             </div>
                                         </div>
                                     </>
@@ -1174,7 +1180,7 @@ const LancarRequerimentos = () => {
                 <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                     <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Novo Requerimento</DialogTitle>
+                            <DialogTitle>{t('reqForm.newTitle')}</DialogTitle>
                         </DialogHeader>
                         <RequerimentoMultiploForm
                             onSubmit={handleCreateMultiplo}
@@ -1188,7 +1194,7 @@ const LancarRequerimentos = () => {
                 <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Editar Requerimento</DialogTitle>
+                            <DialogTitle>{t('reqForm.editTitle')}</DialogTitle>
                         </DialogHeader>
                         {selectedRequerimento && (
                             <RequerimentoForm
@@ -1218,20 +1224,19 @@ const LancarRequerimentos = () => {
                 <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                            <AlertDialogTitle>{t('requirements.deleteConfirm')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Tem certeza que deseja excluir o requerimento "{selectedRequerimento?.chamado}"?
-                                Esta ação não pode ser desfeita.
+                                {t('requirements.deleteConfirmDesc')}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={confirmDelete}
                                 disabled={deleteRequerimento.isPending}
                                 className="bg-red-600 hover:bg-red-700"
                             >
-                                {deleteRequerimento.isPending ? 'Excluindo...' : 'Excluir'}
+                                {deleteRequerimento.isPending ? t('common.loading') : t('common.delete')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>

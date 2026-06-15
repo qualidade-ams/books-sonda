@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 
 interface AccessDeniedProps {
@@ -31,6 +32,7 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
   const location = useLocation();
   const { refreshPermissions, userGroup } = usePermissions();
   const { signOut } = useAuth();
+  const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Extract screen info from location state if available
@@ -72,7 +74,7 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
           </div>
           
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Acesso Negado
+            {t('permissions.accessDenied')}
           </h1>
           
           <p className="text-gray-600 dark:text-gray-400 mb-6">
