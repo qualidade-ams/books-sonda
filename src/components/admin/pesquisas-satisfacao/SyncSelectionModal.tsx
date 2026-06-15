@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Database, CheckSquare, Square, CalendarDays } from 'lucide-react';
+import { Database, CheckSquare, Square, CalendarDays, Clock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useUltimasSincronizacoesPorTabela } from '@/hooks/usePesquisasSqlServer';
 
 export interface TabelasSincronizacao {
   pesquisas: boolean;
@@ -45,6 +46,21 @@ export function SyncSelectionModal({
     tickets: true
   });
   const [dataInicial, setDataInicial] = useState<string>('');
+
+  // Buscar última sincronização de cada tabela
+  const { data: ultimasSincronizacoes } = useUltimasSincronizacoesPorTabela();
+
+  const formatarDataSync = (isoDate: string | null | undefined) => {
+    if (!isoDate) return null;
+    const date = new Date(isoDate);
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   const handleToggleTabela = (tabela: keyof TabelasSincronizacao) => {
     setTabelas(prev => ({
@@ -164,6 +180,12 @@ export function SyncSelectionModal({
                   Pesquisas de satisfação dos clientes
                 </p>
               </div>
+              {ultimasSincronizacoes?.pesquisas && (
+                <div className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatarDataSync(ultimasSincronizacoes.pesquisas)}</span>
+                </div>
+              )}
             </div>
 
             {/* AMSespecialistas */}
@@ -185,6 +207,12 @@ export function SyncSelectionModal({
                   Cadastro de especialistas e consultores
                 </p>
               </div>
+              {ultimasSincronizacoes?.especialistas && (
+                <div className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatarDataSync(ultimasSincronizacoes.especialistas)}</span>
+                </div>
+              )}
             </div>
 
             {/* AMSapontamento */}
@@ -206,6 +234,12 @@ export function SyncSelectionModal({
                   Apontamentos de horas e atividades
                 </p>
               </div>
+              {ultimasSincronizacoes?.apontamentos && (
+                <div className="flex items-center gap-1 text-[10px] text-teal-600 dark:text-teal-400 whitespace-nowrap">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatarDataSync(ultimasSincronizacoes.apontamentos)}</span>
+                </div>
+              )}
             </div>
 
             {/* AMSticketsabertos */}
@@ -227,6 +261,12 @@ export function SyncSelectionModal({
                   Tickets e chamados abertos
                 </p>
               </div>
+              {ultimasSincronizacoes?.tickets && (
+                <div className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatarDataSync(ultimasSincronizacoes.tickets)}</span>
+                </div>
+              )}
             </div>
           </div>
 
