@@ -1,8 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 const NotFound = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     console.error(
@@ -19,10 +21,10 @@ const NotFound = () => {
           404
         </h1>
         <p className="mt-4 text-xl font-medium text-white">
-          Oops! Página não encontrada
+          {t('notFound.title')}
         </p>
         <p className="mt-2 text-sm text-white">
-          O caminho <span className="font-bold text-blue-600">{location.pathname}</span> não existe.
+          {t('notFound.pathNotExist')} <span className="font-bold text-blue-600">{location.pathname}</span>
         </p>
 
         <div className="mt-6">
@@ -30,7 +32,7 @@ const NotFound = () => {
             href="/"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300"
           >
-            Voltar para o Início
+            {t('notFound.backToHome')}
           </a>
         </div>
       </div>

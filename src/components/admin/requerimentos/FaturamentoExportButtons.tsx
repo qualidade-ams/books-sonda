@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,11 +43,12 @@ export function FaturamentoExportButtons({
   ano,
   disabled = false
 }: FaturamentoExportButtonsProps) {
+  const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportExcel = async () => {
     if (disabled || estatisticas.totalRequerimentos === 0) {
-      toast.error('Não há dados para exportar no período selecionado');
+      toast.error(t('billing.noDataToExport'));
       return;
     }
 
@@ -57,11 +59,11 @@ export function FaturamentoExportButtons({
       if (resultado.success) {
         toast.success(resultado.message);
       } else {
-        toast.error(resultado.error || 'Erro ao exportar para Excel');
+        toast.error(resultado.error || t('billing.exportExcelError'));
       }
     } catch (error) {
       console.error('Erro na exportação Excel:', error);
-      toast.error('Erro inesperado ao exportar para Excel');
+      toast.error(t('billing.exportExcelError'));
     } finally {
       setIsExporting(false);
     }
@@ -69,7 +71,7 @@ export function FaturamentoExportButtons({
 
   const handleExportPDF = async () => {
     if (disabled || estatisticas.totalRequerimentos === 0) {
-      toast.error('Não há dados para exportar no período selecionado');
+      toast.error(t('billing.noDataToExport'));
       return;
     }
 
@@ -80,11 +82,11 @@ export function FaturamentoExportButtons({
       if (resultado.success) {
         toast.success(resultado.message);
       } else {
-        toast.error(resultado.error || 'Erro ao exportar para PDF');
+        toast.error(resultado.error || t('billing.exportPdfError'));
       }
     } catch (error) {
       console.error('Erro na exportação PDF:', error);
-      toast.error('Erro inesperado ao exportar para PDF');
+      toast.error(t('billing.exportPdfError'));
     } finally {
       setIsExporting(false);
     }
@@ -99,7 +101,7 @@ export function FaturamentoExportButtons({
           disabled={disabled || isExporting || estatisticas.totalRequerimentos === 0}
         >
           <Download className="h-4 w-4 mr-2" />
-          {isExporting ? 'Exportando...' : 'Exportar'}
+          {isExporting ? t('billing.exporting') : t('common.export')}
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </DropdownMenuTrigger>
@@ -109,14 +111,14 @@ export function FaturamentoExportButtons({
           disabled={isExporting}
         >
           <FileSpreadsheet className="mr-2 h-4 w-4" />
-          Exportar para Excel
+          {t('common.exportExcel')}
         </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={handleExportPDF}
           disabled={isExporting}
         >
           <FileText className="mr-2 h-4 w-4" />
-          Exportar para PDF
+          {t('common.exportPdf')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,13 +23,16 @@ interface MonthYearPickerProps {
 export function MonthYearPicker({
   value,
   onChange,
-  placeholder = "Selecione mês/ano",
+  placeholder,
   className,
   disabled = false,
 }: MonthYearPickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
+
+  const defaultPlaceholder = placeholder || t('monthPicker.selectMonthYear');
 
   // Inicializar valores se value estiver definido
   React.useEffect(() => {
@@ -43,18 +47,18 @@ export function MonthYearPicker({
   }, [value]);
 
   const meses = [
-    { value: '01', label: 'Janeiro' },
-    { value: '02', label: 'Fevereiro' },
-    { value: '03', label: 'Março' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Maio' },
-    { value: '06', label: 'Junho' },
-    { value: '07', label: 'Julho' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Setembro' },
-    { value: '10', label: 'Outubro' },
-    { value: '11', label: 'Novembro' },
-    { value: '12', label: 'Dezembro' },
+    { value: '01', label: t('monthPicker.months.january') },
+    { value: '02', label: t('monthPicker.months.february') },
+    { value: '03', label: t('monthPicker.months.march') },
+    { value: '04', label: t('monthPicker.months.april') },
+    { value: '05', label: t('monthPicker.months.may') },
+    { value: '06', label: t('monthPicker.months.june') },
+    { value: '07', label: t('monthPicker.months.july') },
+    { value: '08', label: t('monthPicker.months.august') },
+    { value: '09', label: t('monthPicker.months.september') },
+    { value: '10', label: t('monthPicker.months.october') },
+    { value: '11', label: t('monthPicker.months.november') },
+    { value: '12', label: t('monthPicker.months.december') },
   ];
 
   // Gerar anos (a partir de 2024 até 5 anos à frente do ano atual)
@@ -92,7 +96,7 @@ export function MonthYearPicker({
         const mesObj = meses.find(m => m.value === month);
         return mesObj ? `${mesObj.label} ${year}` : value;
       })()
-    : placeholder;
+    : defaultPlaceholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -112,14 +116,14 @@ export function MonthYearPicker({
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" align="start">
         <div className="space-y-4">
-          <div className="text-sm font-medium">Selecionar Mês/Ano</div>
+          <div className="text-sm font-medium">{t('monthPicker.title')}</div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-600">Mês</label>
+              <label className="text-xs font-medium text-gray-600">{t('monthPicker.month')}</label>
               <Select value={selectedMonth} onValueChange={handleMonthChange}>
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Mês" />
+                  <SelectValue placeholder={t('monthPicker.month')} />
                 </SelectTrigger>
                 <SelectContent>
                   {meses.map((mes) => (
@@ -132,10 +136,10 @@ export function MonthYearPicker({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-600">Ano</label>
+              <label className="text-xs font-medium text-gray-600">{t('monthPicker.year')}</label>
               <Select value={selectedYear} onValueChange={handleYearChange}>
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Ano" />
+                  <SelectValue placeholder={t('monthPicker.year')} />
                 </SelectTrigger>
                 <SelectContent>
                   {anos.map((ano) => (

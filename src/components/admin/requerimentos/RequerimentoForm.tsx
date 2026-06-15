@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Calculator, HelpCircle, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,7 @@ import {
 } from '@/types/requerimentos';
 import { useClientesRequerimentos } from '@/hooks/useRequerimentos';
 import { useEmpresasSegmentacao } from '@/hooks/useEmpresasSegmentacao';
+import { useTranslatedTipoCobranca, useTranslatedTipoHoraExtra } from '@/hooks/useTranslatedOptions';
 import { cn } from '@/lib/utils';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAccessibility } from '@/hooks/useAccessibility';
@@ -57,7 +59,10 @@ export function RequerimentoForm({
 }: RequerimentoFormProps) {
   console.log('🎨🎨🎨 RequerimentoForm RENDERIZADO 🎨🎨🎨', { requerimento: !!requerimento });
   
+  const { t } = useTranslation();
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientesRequerimentos();
+  const translatedTipoCobranca = useTranslatedTipoCobranca();
+  const translatedTipoHoraExtra = useTranslatedTipoHoraExtra();
   const { form: responsiveForm, modal: responsiveModal } = useResponsive();
   const { screenReader, focusManagement } = useAccessibility();
   
@@ -192,22 +197,22 @@ export function RequerimentoForm({
   const tipoCobrancaOptionsFiltradas = useMemo(() => {
     // Se não há cliente selecionado, mostrar todas as opções
     if (!clienteSelecionado) {
-      return TIPO_COBRANCA_OPTIONS;
+      return translatedTipoCobranca;
     }
 
     // Se a empresa tem tipo de cobrança "outros", remover "Banco de Horas"
     if (clienteSelecionado.tipo_cobranca === 'outros') {
-      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
     }
 
     // Se a empresa tem "Tem AMS" = false, remover "Banco de Horas"
     if (clienteSelecionado.tem_ams === false) {
-      return TIPO_COBRANCA_OPTIONS.filter(option => option.value !== 'Banco de Horas');
+      return translatedTipoCobranca.filter(option => option.value !== 'Banco de Horas');
     }
 
     // Para outros casos, mostrar todas as opções
-    return TIPO_COBRANCA_OPTIONS;
-  }, [clienteSelecionado]);
+    return translatedTipoCobranca;
+  }, [clienteSelecionado, translatedTipoCobranca]);
 
   // Verificar se deve mostrar campo de tickets automaticamente
   const mostrarCampoTickets = useMemo(() => {
@@ -985,27 +990,27 @@ export function RequerimentoForm({
   const chamadoValidation = useMemo(() => [
     {
       test: (value: string) => value.length > 0,
-      message: 'Chamado é obrigatório',
+      message: t('reqForm.validation.ticketRequired'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || !/\s/.test(value),
-      message: 'Chamado não pode conter espaços',
+      message: t('reqForm.validation.ticketNoSpaces'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || !value.includes('_'),
-      message: 'Chamado não pode conter underscore (_)',
+      message: t('reqForm.validation.ticketNoUnderscore'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length === 0 || /^[A-Za-z0-9\-]+$/.test(value),
-      message: 'Use apenas letras, números e hífen (-)',
+      message: t('reqForm.validation.ticketOnlyAlphanumeric'),
       type: 'error' as const
     },
     {
       test: (value: string) => value.length >= 3,
-      message: 'Mínimo 3 caracteres',
+      message: t('reqForm.validation.ticketMinLength'),
       type: 'warning' as const
     }
   ], []);
@@ -1014,13 +1019,13 @@ export function RequerimentoForm({
     <Card className={cn("w-full mx-auto", responsiveModal.maxWidth)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          {requerimento ? 'Editar Requerimento' : 'Novo Requerimento'}
+          {requerimento ? t('reqForm.editTitle') : t('reqForm.newTitle')}
           {tipoCobranca && (
             <Badge className={cn('ml-2', getCorBadgeTipoCobranca(tipoCobranca))}>
-              {tipoCobranca}
+              {translatedTipoCobranca.find(opt => opt.value === tipoCobranca)?.label || tipoCobranca}
             </Badge>
           )}
-          <OptimizedTooltip content="Preencha todos os campos obrigatórios para criar o requerimento">
+          <OptimizedTooltip content={t('reqForm.fillRequiredFields')}>
             <HelpCircle className="h-4 w-4 text-blue-500" />
           </OptimizedTooltip>
         </CardTitle>
@@ -1039,8 +1044,8 @@ export function RequerimentoForm({
             {/* Seção: Informações Básicas */}
             <div className={responsiveForm.spacing}>
               <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                Informações Básicas
-                <OptimizedTooltip content="Dados principais do requerimento">
+                {t('reqForm.basicInfo')}
+                <OptimizedTooltip content={t('reqForm.basicInfoTooltip')}>
                   <HelpCircle className="h-4 w-4 text-gray-400" />
                 </OptimizedTooltip>
               </h4>
@@ -1052,9 +1057,9 @@ export function RequerimentoForm({
                   name="chamado"
                   render={({ field }) => (
                     <FormFieldHelp
-                      label="Chamado"
+                      label={t('requirements.ticket')}
                       required
-                      helpText="Código único do chamado técnico. Use apenas letras, números e hífen (-)."
+                      helpText={t('reqForm.ticketHelp')}
                       error={form.formState.errors.chamado?.message}
                     >
                       <Input
@@ -1079,9 +1084,9 @@ export function RequerimentoForm({
                   name="cliente_id"
                   render={({ field }) => (
                     <FormFieldHelp
-                      label="Cliente"
+                      label={t('requirements.client')}
                       required
-                      helpText="Selecione o cliente responsável pelo requerimento da lista de empresas ativas."
+                      helpText={t('reqForm.clientHelp')}
                       error={form.formState.errors.cliente_id?.message}
                     >
                       <Select
@@ -1093,16 +1098,16 @@ export function RequerimentoForm({
                           aria-describedby="cliente-help"
                           className={cn(getErrorClasses(field.value))}
                         >
-                          <SelectValue placeholder="Selecione um cliente" />
+                          <SelectValue placeholder={t('reqForm.selectClient')} />
                         </SelectTrigger>
                         <SelectContent>
                           {isLoadingClientes ? (
                             <SelectItem value="__loading__" disabled>
-                              <LoadingSpinner size="sm" text="Carregando..." />
+                              <LoadingSpinner size="sm" text={t('common.loading')} />
                             </SelectItem>
                           ) : clientes.length === 0 ? (
                             <SelectItem value="__no_clients__" disabled>
-                              Nenhum cliente encontrado
+                              {t('common.noData')}
                             </SelectItem>
                           ) : (
                             clientes.map((cliente) => (
@@ -1178,12 +1183,12 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Módulo <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('requirements.module')} <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className={cn(getErrorClasses(field.value))}>
-                            <SelectValue placeholder="Selecione um módulo" />
+                            <SelectValue placeholder={t('reqForm.selectModule')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -1207,17 +1212,17 @@ export function RequerimentoForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Descrição <span className="text-gray-700 dark:text-gray-300">*</span>
+                      {t('requirements.description')} <span className="text-gray-700 dark:text-gray-300">*</span>
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Descreva o requerimento..."
+                        placeholder={t('reqForm.descriptionPlaceholder')}
                         className={cn("min-h-[100px]", getErrorClasses(field.value))}
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Máximo 500 caracteres ({(field.value || '').length}/500)
+                      {t('reqForm.maxChars', { count: 500 })} ({(field.value || '').length}/500)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1229,7 +1234,7 @@ export function RequerimentoForm({
 
             {/* Seção: Datas */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Datas</h4>
+              <h4 className="text-sm font-semibold mb-3">{t('reqForm.dates')}</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Data de Envio */}
@@ -1239,7 +1244,7 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Data de Envio do Orçamento <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.sendDate')} <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -1261,7 +1266,7 @@ export function RequerimentoForm({
                   name="data_aprovacao"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Data de Aprovação do Orçamento</FormLabel>
+                      <FormLabel>{t('reqForm.approvalDate')}</FormLabel>
                       <FormControl>
                         <Input
                           type="date"
@@ -1271,7 +1276,7 @@ export function RequerimentoForm({
                         />
                       </FormControl>
                       <FormDescription>
-                        Campo opcional. Deve ser igual ou posterior à data de envio.
+                        {t('reqForm.approvalDateHelp')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -1286,7 +1291,7 @@ export function RequerimentoForm({
             <div className="space-y-4">
               <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
-                Controle de Horas
+                {t('reqForm.hoursControl')}
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1297,7 +1302,7 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Horas Funcionais <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.functionalHours')} <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <InputHoras
@@ -1321,7 +1326,7 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Horas Técnicas <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.technicalHours')} <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <FormControl>
                         <InputHoras
@@ -1340,14 +1345,14 @@ export function RequerimentoForm({
 
                 {/* Horas Total (calculado automaticamente) */}
                 <div className="space-y-2">
-                  <Label>Horas Total</Label>
+                  <Label>{t('reqForm.totalHours')}</Label>
                   <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                     <span className="font-semibold text-lg">
                       {formatarHorasParaExibicao(horasTotal, 'completo')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Calculado automaticamente
+                    {t('reqForm.calculatedAuto')}
                   </p>
                 </div>
               </div>
@@ -1355,7 +1360,7 @@ export function RequerimentoForm({
 
             {/* Seção: Cobrança */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Informações de Cobrança</h4>
+              <h4 className="text-sm font-semibold mb-3">{t('reqForm.billingInfo')}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 {/* Tipo de Cobrança */}
@@ -1365,12 +1370,12 @@ export function RequerimentoForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Tipo de Cobrança <span className="text-gray-700 dark:text-gray-300">*</span>
+                        {t('reqForm.billingType')} <span className="text-gray-700 dark:text-gray-300">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className={cn(getErrorClasses(field.value))}>
-                            <SelectValue placeholder="Selecione o tipo de cobrança" />
+                            <SelectValue placeholder={t('reqForm.selectBillingType')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -1489,7 +1494,7 @@ export function RequerimentoForm({
                   name="mes_cobranca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mês/Ano de Cobrança</FormLabel>
+                      <FormLabel>{t('reqForm.billingMonthYear')}</FormLabel>
                       <FormControl>
                         <MonthYearPicker
                           value={field.value}
@@ -1517,12 +1522,12 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Linguagem Técnica <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.technicalLanguage')} <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma linguagem técnica" />
+                              <SelectValue placeholder={t('reqForm.selectLanguage')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1709,7 +1714,7 @@ export function RequerimentoForm({
 
             {/* Seção: Observações */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold mb-3">Observações</h4>
+              <h4 className="text-sm font-semibold mb-3">{t('requirements.observation')}</h4>
 
               <FormField
                 control={form.control}
@@ -1719,13 +1724,13 @@ export function RequerimentoForm({
                     
                     <FormControl>
                       <Textarea
-                        placeholder="Observações adicionais (opcional)..."
+                        placeholder={t('reqForm.observationPlaceholder')}
                         className="min-h-[80px]"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Máximo 1000 caracteres ({(field.value || '').length}/1000)
+                      {t('reqForm.maxChars', { count: 1000 })} ({(field.value || '').length}/1000)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1744,25 +1749,25 @@ export function RequerimentoForm({
                 onClick={onCancel}
                 disabled={isLoading}
                 size={responsiveForm.buttonSize as any}
-                aria-label="Cancelar edição do requerimento"
+                aria-label={t('common.cancel')}
               >
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={isLoading || !validationStatus.isValid}
                 className="min-w-[120px]"
                 size={responsiveForm.buttonSize as any}
-                aria-label={requerimento ? 'Atualizar requerimento' : 'Criar novo requerimento'}
-                title={!validationStatus.isValid ? `Campos obrigatórios: ${validationStatus.camposFaltando.join(', ')}` : undefined}
+                aria-label={requerimento ? t('reqForm.updateBtn') : t('reqForm.createBtn')}
+                title={!validationStatus.isValid ? `${t('form.required')}: ${validationStatus.camposFaltando.join(', ')}` : undefined}
               >
                 {isLoading ? (
                   <LoadingSpinner
                     size="sm"
-                    text={requerimento ? 'Atualizando...' : 'Criando...'}
+                    text={t('common.loading')}
                   />
                 ) : (
-                  requerimento ? 'Atualizar' : 'Criar Requerimento'
+                  requerimento ? t('reqForm.updateBtn') : t('reqForm.createBtn')
                 )}
               </Button>
             </div>
