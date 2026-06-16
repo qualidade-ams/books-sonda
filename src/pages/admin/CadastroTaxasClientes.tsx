@@ -552,7 +552,8 @@ function CadastroTaxasClientes() {
           'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Indefinida',
           'Status': statusTexto,
           'Tipo de Taxa': taxa.personalizado ? 'Personalizada' : (taxa.cliente?.tem_ams === false ? 'Padrão' : 'Automática'),
-          'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média'
+          'Tipo de Cálculo': taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média',
+          'Prazo de Pagamento': taxa.prazo_pagamento ? `${taxa.prazo_pagamento} dias` : '-'
         };
       });
 
@@ -579,6 +580,7 @@ function CadastroTaxasClientes() {
               'Vigência Início': taxa.vigencia_inicio ? format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+              'Prazo Pagamento': taxa.prazo_pagamento ? `${taxa.prazo_pagamento} dias` : '-',
               'Tipo Hora': 'Remota',
               'Função': funcao,
               'Valor Base': parseFloat(valorRemoto.valor_base.toFixed(2)),
@@ -608,6 +610,7 @@ function CadastroTaxasClientes() {
               'Vigência Início': taxa.vigencia_inicio ? format(new Date(taxa.vigencia_inicio + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Vigência Fim': taxa.vigencia_fim ? format(new Date(taxa.vigencia_fim + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
               'Tipo Produto': taxa.tipo_produto === 'GALLERY' ? 'GALLERY' : 'COMEX, FISCAL',
+              'Prazo Pagamento': taxa.prazo_pagamento ? `${taxa.prazo_pagamento} dias` : '-',
               'Tipo Hora': 'Local',
               'Função': funcao,
               'Valor Base': parseFloat(valorLocal.valor_base.toFixed(2)),
@@ -695,7 +698,7 @@ function CadastroTaxasClientes() {
       // Tabela Resumo
       let yPos = 48;
       const lineHeight = 7;
-      const colWidths = [40, 30, 25, 25, 20, 20, 20]; // Ajustado para incluir Tipo de Taxa e Tipo de Cálculo
+      const colWidths = [35, 28, 25, 25, 20, 20, 20, 22]; // Ajustado para incluir Prazo de Pagamento
 
       // Cabeçalho da tabela
       doc.setFillColor(0, 102, 255);
@@ -711,6 +714,7 @@ function CadastroTaxasClientes() {
       doc.text('Status', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 5);
       doc.text('Tipo Taxa', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 5);
       doc.text('Tipo Cálculo', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + 2, yPos + 5);
+      doc.text('Prazo Pgto', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + colWidths[6] + 2, yPos + 5);
 
       yPos += lineHeight;
 
@@ -739,6 +743,7 @@ function CadastroTaxasClientes() {
         doc.text(statusTexto, margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos + 4.5);
         doc.text(taxa.personalizado ? 'Personalizada' : (taxa.cliente?.tem_ams === false ? 'Padrão' : 'Automática'), margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 2, yPos + 4.5);
         doc.text(taxa.tipo_calculo_adicional === 'normal' ? 'Normal' : 'Média', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + 2, yPos + 4.5);
+        doc.text(taxa.prazo_pagamento ? `${taxa.prazo_pagamento} dias` : '-', margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5] + colWidths[6] + 2, yPos + 4.5);
 
         yPos += lineHeight;
       });
