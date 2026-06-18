@@ -85,7 +85,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                     <path
                       d="M 40 220 A 160 160 0 0 1 360 220"
                       fill="none"
-                      stroke={data.status === 'vencido' ? '#EF4444' : '#2563eb'}
+                      stroke="#2563eb"
                       strokeWidth="36"
                       strokeLinecap="round"
                       strokeDasharray={`${(percentage / 100) * 503} 503`}
@@ -94,9 +94,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   
                   {/* Valor Central - Centralizado e Maior */}
                   <div className="flex flex-col items-center justify-center text-center z-10 mt-12 pt-14">
-                    <div className={`text-6xl font-bold ${
-                      data.status === 'vencido' ? 'text-red-500' : 'text-blue-600'
-                    }`}>
+                    <div className="text-6xl font-bold text-blue-600">
                       {data.sla_percentual}%
                     </div>
                     <div className="text-xl text-gray-500 mt-2">
@@ -225,21 +223,12 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   dataKey="percentual" 
                   radius={[0, 4, 4, 0]}
                 >
-                  {data.sla_historico.map((entry, index) => {
-                    // Azul: Se não for elegível OU se percentual >= meta
-                    // Vermelho: Apenas se for elegível E percentual < meta
-                    const isElegivel = entry.elegivel !== false; // Default true se não definido
-                    const cor = (!isElegivel || entry.percentual >= data.meta_percentual) 
-                      ? '#2563eb' // Azul
-                      : '#ef4444'; // Vermelho
-                    
-                    return (
-                      <Cell 
-                        key={`cell-${index}`}
-                        fill={cor}
-                      />
-                    );
-                  })}
+                  {data.sla_historico.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`}
+                      fill="#2563eb"
+                    />
+                  ))}
                 </Bar>
                 {/* Linha de referência da meta - DEPOIS das barras para ficar na frente */}
                 <ReferenceLine 
@@ -259,17 +248,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               </BarChart>
             </ResponsiveContainer>
             
-            {/* Legenda abaixo do gráfico */}
-            <div className="flex items-center justify-center gap-6 mt-6">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-600" />
-                <span className="text-sm text-gray-700">No Prazo</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-500" />
-                <span className="text-sm text-gray-700">Vencido</span>
-              </div>
-            </div>
+
           </CardContent>
         </Card>
       </div>
