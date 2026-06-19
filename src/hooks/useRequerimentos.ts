@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { requerimentosService } from '@/services/requerimentosService';
 import {
@@ -345,6 +346,7 @@ export function useRejeitarRequerimento() {
  */
 export function useMarcarComoFaturados() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: (ids: string[]) => requerimentosService.marcarComoFaturados(ids),
@@ -357,12 +359,12 @@ export function useMarcarComoFaturados() {
         queryKey: [...REQUERIMENTOS_QUERY_KEYS.all, 'faturamento'] 
       });
 
-      toast.success(`${ids.length} requerimento(s) marcado(s) como faturado(s) com sucesso!`);
+      toast.success(t('billing.markedAsBilledSuccess', { count: ids.length }));
     },
     onError: (error: unknown) => {
       console.error('Erro ao marcar requerimentos como faturados:', error);
       const message = getRequerimentoErrorMessage(error);
-      toast.error(`Erro ao marcar como faturados: ${message}`);
+      toast.error(t('billing.markedAsBilledError', { message }));
     }
   });
 }

@@ -132,10 +132,16 @@ const LancarRequerimentos = () => {
 
 
 
-    const tipoCobrancaOptions: Option[] = TIPO_COBRANCA_OPTIONS.map(opt => ({
-        value: opt.value,
-        label: opt.label
-    }));
+    const tipoCobrancaOptions: Option[] = [
+        { value: 'Banco de Horas', label: t('options.billingType.bancoHoras') },
+        { value: 'Cobro Interno', label: t('options.billingType.cobroInterno') },
+        { value: 'Contrato', label: t('options.billingType.contrato') },
+        { value: 'Faturado', label: t('options.billingType.faturado') },
+        { value: 'Hora Extra', label: t('options.billingType.horaExtra') },
+        { value: 'Sobreaviso', label: t('options.billingType.sobreaviso') },
+        { value: 'Reprovado', label: t('options.billingType.reprovado') },
+        { value: 'Bolsão Enel', label: t('options.billingType.bolsaoEnel') },
+    ];
 
     // Hooks
     const {

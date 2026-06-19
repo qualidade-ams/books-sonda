@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Calculator, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
   open,
   onClose
 }) => {
+  const { t } = useTranslation();
   const { data: clientes = [] } = useClientesRequerimentos();
 
   if (!requerimento) return null;
@@ -50,8 +52,8 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
-            Visualizar Requerimento
-            <Badge variant="secondary" className="ml-2 text-xs">Somente Leitura</Badge>
+            {t('reqForm.viewTitle')}
+            <Badge variant="secondary" className="ml-2 text-xs">{t('reqForm.readOnly')}</Badge>
           </DialogTitle>
         </DialogHeader>
 
@@ -60,7 +62,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
             {/* Seção: Informações Básicas */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                Informações Básicas
+                {t('reqForm.basicInfo')}
                 <HelpCircle className="h-4 w-4 text-gray-400" />
               </h4>
 
@@ -68,7 +70,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                 {/* Chamado */}
                 <div className="space-y-2">
                   <Label htmlFor="chamado" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Chamado <span className="text-red-500">*</span>
+                    {t('requirements.ticket')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="chamado"
@@ -81,7 +83,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                 {/* Cliente */}
                 <div className="space-y-2">
                   <Label htmlFor="cliente" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Cliente <span className="text-red-500">*</span>
+                    {t('requirements.client')} <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.cliente_id} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -100,7 +102,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                 {/* Módulo */}
                 <div className="space-y-2">
                   <Label htmlFor="modulo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Módulo <span className="text-red-500">*</span>
+                    {t('requirements.module')} <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.modulo} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -115,17 +117,17 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               {/* Descrição */}
               <div className="space-y-2">
                 <Label htmlFor="descricao" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Descrição <span className="text-red-500">*</span>
+                  {t('requirements.description')} <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
                   id="descricao"
                   value={requerimento.descricao}
                   readOnly
                   className="bg-gray-50 dark:bg-gray-800 min-h-[100px]"
-                  placeholder="Descreva o requerimento..."
+                  placeholder={t('reqForm.descriptionPlaceholder')}
                 />
                 <div className="text-sm text-muted-foreground">
-                  Máximo 500 caracteres ({requerimento.descricao.length}/500)
+                  {t('reqForm.maxChars', { count: 500 })} ({requerimento.descricao.length}/500)
                 </div>
               </div>
             </div>
@@ -134,13 +136,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Datas */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Datas</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('reqForm.dates')}</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Data de Envio */}
                 <div className="space-y-2">
                   <Label htmlFor="data_envio" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Data de Envio do Orçamento <span className="text-red-500">*</span>
+                    {t('reqForm.sendDate')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="data_envio"
@@ -153,7 +155,9 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Data de Aprovação */}
                 <div className="space-y-2">
-                  <Label htmlFor="data_aprovacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">Data de Aprovação do Orçamento</Label>
+                  <Label htmlFor="data_aprovacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('reqForm.approvalDate')}
+                  </Label>
                   <Input
                     id="data_aprovacao"
                     type="date"
@@ -171,14 +175,14 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
-                Controle de Horas
+                {t('reqForm.hoursControl')}
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Horas Funcionais */}
                 <div className="space-y-2">
                   <Label htmlFor="horas_funcional" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Horas Funcionais <span className="text-red-500">*</span>
+                    {t('reqForm.functionalHours')} <span className="text-red-500">*</span>
                   </Label>
                   <InputHoras
                     id="horas_funcional"
@@ -191,7 +195,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                 {/* Horas Técnicas */}
                 <div className="space-y-2">
                   <Label htmlFor="horas_tecnico" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Horas Técnicas <span className="text-red-500">*</span>
+                    {t('reqForm.technicalHours')} <span className="text-red-500">*</span>
                   </Label>
                   <InputHoras
                     id="horas_tecnico"
@@ -203,7 +207,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Horas Total */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Horas Total</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('reqForm.totalHours')}</Label>
                   <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                     <span className="font-semibold text-lg">
                       {formatarHorasParaExibicao(horasTotal, 'completo')}
@@ -217,13 +221,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Cobrança */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Informações de Cobrança</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('reqForm.billingInfo')}</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Tipo de Cobrança */}
                 <div className="space-y-2">
                   <Label htmlFor="tipo_cobranca" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Tipo de Cobrança <span className="text-red-500">*</span>
+                    {t('reqForm.billingType')} <span className="text-red-500">*</span>
                   </Label>
                   <Select value={requerimento.tipo_cobranca} disabled>
                     <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
@@ -239,21 +243,23 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
                 {/* Mês/Ano de Cobrança */}
                 <div className="space-y-2">
-                  <Label htmlFor="mes_cobranca" className="text-sm font-medium text-gray-700 dark:text-gray-300">Mês/Ano de Cobrança</Label>
+                  <Label htmlFor="mes_cobranca" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('reqForm.billingMonthYear')}
+                  </Label>
                   <MonthYearPicker
                     value={requerimento.mes_cobranca || ''}
-                    onChange={() => {}} // No-op function for readonly mode
+                    onChange={() => {}}
                     disabled
                     className="bg-gray-50 dark:bg-gray-800"
                   />
                 </div>
               </div>
 
-              {/* Linguagem Técnica - só mostrar se houver horas técnicas e não foi mostrado acima */}
+              {/* Linguagem Técnica - só mostrar se houver horas técnicas */}
               {((typeof requerimento.horas_tecnico === 'string' ? parseFloat(requerimento.horas_tecnico) : requerimento.horas_tecnico) || 0) > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="linguagem_tecnica" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Linguagem Técnica <span className="text-red-500">*</span>
+                    {t('reqForm.technicalLanguage')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="linguagem_tecnica"
@@ -270,33 +276,47 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Calculator className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                      Valores por Hora
+                      {t('reqForm.hourlyValues')}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="valor_hora_funcional" className="text-sm font-medium text-gray-700 dark:text-gray-300">Valor/Hora Funcional</Label>
-                      <Input
-                        id="valor_hora_funcional"
-                        type="number"
-                        step="0.01"
-                        value={requerimento.valor_hora_funcional || ''}
-                        readOnly
-                        className="bg-gray-50 dark:bg-gray-800"
-                      />
+                      <Label htmlFor="valor_hora_funcional" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('reqForm.functionalHourlyRate')}
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          R$
+                        </span>
+                        <Input
+                          id="valor_hora_funcional"
+                          type="number"
+                          step="0.01"
+                          value={requerimento.valor_hora_funcional || ''}
+                          readOnly
+                          className="bg-gray-50 dark:bg-gray-800 pl-8"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="valor_hora_tecnico" className="text-sm font-medium text-gray-700 dark:text-gray-300">Valor/Hora Técnico</Label>
-                      <Input
-                        id="valor_hora_tecnico"
-                        type="number"
-                        step="0.01"
-                        value={requerimento.valor_hora_tecnico || ''}
-                        readOnly
-                        className="bg-gray-50 dark:bg-gray-800"
-                      />
+                      <Label htmlFor="valor_hora_tecnico" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('reqForm.technicalHourlyRate')}
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          R$
+                        </span>
+                        <Input
+                          id="valor_hora_tecnico"
+                          type="number"
+                          step="0.01"
+                          value={requerimento.valor_hora_tecnico || ''}
+                          readOnly
+                          className="bg-gray-50 dark:bg-gray-800 pl-8"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -304,7 +324,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   {(requerimento.valor_hora_funcional || requerimento.valor_hora_tecnico) && (
                     <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-md">
                       <div className="text-sm font-medium text-green-700 dark:text-green-300">
-                        Valor Total Estimado
+                        {t('reqForm.estimatedTotalValue')}
                       </div>
                       <div className="text-lg font-bold text-green-800 dark:text-green-200">
                         R$ {(
@@ -323,11 +343,13 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">🎫</span>
                     <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-                      Controle de Tickets
+                      {t('reqForm.ticketControl')}
                     </span>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quantidade_tickets" className="text-sm font-medium text-gray-700 dark:text-gray-300">Quantidade de Tickets</Label>
+                    <Label htmlFor="quantidade_tickets" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('reqForm.ticketQuantity')}
+                    </Label>
                     <Input
                       id="quantidade_tickets"
                       type="number"
@@ -344,19 +366,21 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
 
             {/* Seção: Observações */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Observações</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('requirements.observation')}</h4>
               
               <div className="space-y-2">
-                <Label htmlFor="observacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">Observações adicionais (opcional)</Label>
+                <Label htmlFor="observacao" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('reqForm.additionalObservations')}
+                </Label>
                 <Textarea
                   id="observacao"
                   value={requerimento.observacao || ''}
                   readOnly
                   className="bg-gray-50 dark:bg-gray-800 min-h-[100px]"
-                  placeholder="Observações adicionais..."
+                  placeholder={t('reqForm.observationPlaceholder')}
                 />
                 <div className="text-sm text-muted-foreground">
-                  Máximo 1000 caracteres ({(requerimento.observacao || '').length}/1000)
+                  {t('reqForm.maxChars', { count: 1000 })} ({(requerimento.observacao || '').length}/1000)
                 </div>
               </div>
 
@@ -364,12 +388,12 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
               <div className="pt-4 border-t">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                   <div>
-                    <span className="font-medium">Autor:</span> {requerimento.autor_nome || 'Não informado'}
+                    <span className="font-medium">{t('reqForm.author')}:</span> {requerimento.autor_nome || t('reqForm.notInformed')}
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span>{' '}
+                    <span className="font-medium">{t('reqForm.statusLabel')}:</span>{' '}
                     <Badge variant={requerimento.enviado_faturamento ? "default" : "secondary"}>
-                      {requerimento.enviado_faturamento ? 'Enviado para Faturamento' : 'Lançado'}
+                      {requerimento.enviado_faturamento ? t('reqForm.sentToBilling') : t('reqForm.registered')}
                     </Badge>
                   </div>
                 </div>
@@ -381,7 +405,7 @@ const RequerimentoViewModal: React.FC<RequerimentoViewModalProps> = ({
         <div className="flex justify-end pt-4">
           <Button onClick={onClose} variant="outline">
             <X className="h-4 w-4 mr-2" />
-            Fechar
+            {t('reqForm.close')}
           </Button>
         </div>
       </DialogContent>
