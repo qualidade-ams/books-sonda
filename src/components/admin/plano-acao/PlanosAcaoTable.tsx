@@ -5,6 +5,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import { Clock, Edit, Eye, Trash2, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ export function PlanosAcaoTable({
   onExcluir,
   showActions = { visualizar: true, editar: true, excluir: true },
 }: PlanosAcaoTableProps) {
+  const { t } = useTranslation();
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
 
@@ -81,7 +83,7 @@ export function PlanosAcaoTable({
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>Nenhum plano de ação encontrado</p>
+        <p>{t('dashboard.plansTab.noPlanFound')}</p>
       </div>
     );
   }
@@ -91,14 +93,14 @@ export function PlanosAcaoTable({
       <Table className="w-full text-xs sm:text-sm">
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-            <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Ação Corretiva</TableHead>
-            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 hidden md:table-cell">Prioridade</TableHead>
-            <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Status</TableHead>
-            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2 hidden xl:table-cell">Data Início</TableHead>
-            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-            <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+            <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('dashboard.plansTab.tableHeaders.ticket')}</TableHead>
+            <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('dashboard.plansTab.tableHeaders.client')}</TableHead>
+            <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">{t('dashboard.plansTab.tableHeaders.correctiveAction')}</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 hidden md:table-cell">{t('dashboard.plansTab.tableHeaders.priority')}</TableHead>
+            <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('dashboard.plansTab.tableHeaders.status')}</TableHead>
+            <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2 hidden xl:table-cell">{t('dashboard.plansTab.tableHeaders.startDate')}</TableHead>
+            <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('dashboard.plansTab.tableHeaders.period')}</TableHead>
+            <TableHead className="w-32 text-center text-xs sm:text-sm py-2">{t('dashboard.plansTab.tableHeaders.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -152,7 +154,7 @@ export function PlanosAcaoTable({
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-xs text-red-600 dark:text-red-400">
-                                  ⚠️ Empresa não cadastrada no sistema
+                                  ⚠️ {t('dashboard.plansTab.companyNotRegistered')}
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -202,25 +204,14 @@ export function PlanosAcaoTable({
                 {/* Coluna Prioridade */}
                 <TableCell className="py-2 text-center hidden md:table-cell">
                   <Badge className={`${getCorPrioridade(plano.prioridade || 'baixa')} text-xs`}>
-                    {plano.prioridade 
-                      ? plano.prioridade.charAt(0).toUpperCase() + plano.prioridade.slice(1)
-                      : 'Baixa'
-                    }
+                    {t(`dashboard.plansTab.priorities.${plano.prioridade || 'baixa'}`)}
                   </Badge>
                 </TableCell>
                 
                 {/* Coluna Status */}
                 <TableCell className="py-2 text-center">
                   <Badge className={`${getCorStatus(plano.status_plano || 'aberto')} text-xs`}>
-                    {!plano.status_plano 
-                      ? 'Aberto'
-                      : plano.status_plano === 'em_andamento'
-                      ? 'Em Andamento'
-                      : plano.status_plano === 'aguardando_retorno'
-                      ? 'Aguardando'
-                      : plano.status_plano === 'concluido'
-                      ? 'Concluído'
-                      : plano.status_plano.charAt(0).toUpperCase() + plano.status_plano.slice(1)}
+                    {t(`dashboard.plansTab.statuses.${plano.status_plano || 'aberto'}`)}
                   </Badge>
                 </TableCell>
                 
@@ -251,6 +242,7 @@ export function PlanosAcaoTable({
                         onClick={() => onVisualizar?.(plano)}
                         disabled={isLoading}
                         className="h-8 w-8 p-0"
+                        title={t('dashboard.plansTab.viewPlan')}
                       >
                         <Eye className="h-4 w-4 text-blue-600" />
                       </Button>
@@ -264,6 +256,7 @@ export function PlanosAcaoTable({
                           onClick={() => onEditar?.(plano)}
                           disabled={isLoading}
                           className="h-8 w-8 p-0"
+                          title={t('dashboard.plansTab.editPlan')}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -278,6 +271,7 @@ export function PlanosAcaoTable({
                           onClick={() => onExcluir?.(plano.id)}
                           disabled={isLoading}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title={t('dashboard.plansTab.deletePlan')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

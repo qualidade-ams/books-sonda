@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,9 +49,11 @@ import {
 interface ContatosListProps {
   planoAcaoId: string;
   onSubModalChange?: (isOpen: boolean) => void;
+  readOnly?: boolean;
 }
 
-export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProps) {
+export function ContatosList({ planoAcaoId, onSubModalChange, readOnly = false }: ContatosListProps) {
+  const { t } = useTranslation();
   const [expandedContatos, setExpandedContatos] = useState<Set<string>>(new Set());
   const [modalNovoContato, setModalNovoContato] = useState(false);
   const [contatoEditando, setContatoEditando] = useState<PlanoAcaoContato | null>(null);
@@ -153,14 +156,16 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="font-semibold">Histórico de Contatos</h4>
-          <Button size="sm" disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Contato
-          </Button>
+          <h4 className="font-semibold">{t('dashboard.plansTab.contacts.contactHistory')}</h4>
+          {!readOnly && (
+            <Button size="sm" disabled>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('dashboard.plansTab.contacts.newContact')}
+            </Button>
+          )}
         </div>
         <div className="text-center py-8 text-muted-foreground">
-          Carregando contatos...
+          {t('dashboard.plansTab.contacts.loadingContacts')}
         </div>
       </div>
     );
@@ -170,15 +175,17 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
     <div className="space-y-4">
       {/* Cabeçalho com botão de adicionar */}
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold">Histórico de Contatos ({contatos.length})</h4>
-        <Button 
-          size="sm" 
-          onClick={handleNovoContato}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Contato
-        </Button>
+        <h4 className="font-semibold">{t('dashboard.plansTab.contacts.contactHistory')} ({contatos.length})</h4>
+        {!readOnly && (
+          <Button 
+            size="sm" 
+            onClick={handleNovoContato}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('dashboard.plansTab.contacts.newContact')}
+          </Button>
+        )}
       </div>
 
       {/* Lista de contatos */}
@@ -186,8 +193,10 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
         <Card>
           <CardContent className="text-center py-8 text-muted-foreground">
             <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum contato registrado ainda</p>
-            <p className="text-sm mt-1">Clique em "Novo Contato" para registrar o primeiro contato</p>
+            <p>{t('dashboard.plansTab.contacts.noContactYet')}</p>
+            {!readOnly && (
+              <p className="text-sm mt-1">{t('dashboard.plansTab.contacts.noContactHint')}</p>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -234,30 +243,32 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
                             </Badge>
                           )}
                           
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setContatoEditando(contato);
-                              }}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setContatoParaDeletar(contato.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          {!readOnly && (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setContatoEditando(contato);
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setContatoParaDeletar(contato.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
@@ -270,7 +281,7 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
                         <div>
                           <p className="text-sm font-medium mb-1 flex items-center gap-1 mt-2">
                             <MessageSquare className="h-3 w-3" />
-                            Resumo da Comunicação
+                            {t('dashboard.plansTab.contacts.communicationSummary')}
                           </p>
                           <p className="text-sm bg-background p-3 rounded-md border">
                             {contato.resumo_comunicacao}
@@ -282,7 +293,7 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
                           <div>
                             <p className="text-sm font-medium mb-1 flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              Retorno do Cliente
+                              {t('dashboard.plansTab.contacts.clientReturn')}
                             </p>
                             <Badge variant="outline">
                               {getRetornoClienteLabel(contato.retorno_cliente)}
@@ -293,7 +304,7 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
                         {/* Observações */}
                         {contato.observacoes && (
                           <div>
-                            <p className="text-sm font-medium mb-1">Observações</p>
+                            <p className="text-sm font-medium mb-1">{t('dashboard.plansTab.contacts.observations')}</p>
                             <p className="text-sm bg-background p-3 rounded-md border">
                               {contato.observacoes}
                             </p>
@@ -304,12 +315,12 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
                         <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            Registrado em {format(new Date(contato.criado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            {t('dashboard.plansTab.contacts.registeredOn')} {format(new Date(contato.criado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
                           {contato.atualizado_em !== contato.criado_em && (
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              Atualizado em {format(new Date(contato.atualizado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              {t('dashboard.plansTab.contacts.updatedOn')} {format(new Date(contato.atualizado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </span>
                           )}
                         </div>
@@ -327,7 +338,7 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
       <Dialog open={modalNovoContato} onOpenChange={setModalNovoContato}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Registrar Novo Contato</DialogTitle>
+            <DialogTitle>{t('dashboard.plansTab.contacts.registerNewContact')}</DialogTitle>
           </DialogHeader>
           <ContatoForm
             onSubmit={handleCriarContato}
@@ -341,7 +352,7 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
       <Dialog open={!!contatoEditando} onOpenChange={() => setContatoEditando(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Editar Contato</DialogTitle>
+            <DialogTitle>{t('dashboard.plansTab.contacts.editContact')}</DialogTitle>
           </DialogHeader>
           {contatoEditando && (
             <ContatoForm
@@ -358,19 +369,19 @@ export function ContatosList({ planoAcaoId, onSubModalChange }: ContatosListProp
       <AlertDialog open={!!contatoParaDeletar} onOpenChange={() => setContatoParaDeletar(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.plansTab.contacts.confirmDeletion')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover este contato? Esta ação não pode ser desfeita.
+              {t('dashboard.plansTab.contacts.confirmDeletionDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('dashboard.plansTab.contacts.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeletarContato}
               className="bg-red-600 hover:bg-red-700"
               disabled={deletarContatoMutation.isPending}
             >
-              {deletarContatoMutation.isPending ? 'Removendo...' : 'Remover'}
+              {deletarContatoMutation.isPending ? t('dashboard.plansTab.contacts.removing') : t('dashboard.plansTab.contacts.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

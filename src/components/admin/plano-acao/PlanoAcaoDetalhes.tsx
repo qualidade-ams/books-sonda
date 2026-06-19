@@ -4,6 +4,7 @@
 
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -35,6 +36,7 @@ interface PlanoAcaoDetalhesProps {
 }
 
 export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) {
+  const { t } = useTranslation();
   // Buscar especialistas salvos na tabela de relacionamento (pesquisa_especialistas)
   const { data: especialistasPesquisa = [] } = useEspecialistasPesquisa(plano.pesquisa_id);
   
@@ -71,19 +73,19 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="informacoes">
           <FileText className="h-4 w-4 mr-2" />
-          Informações
+          {t('dashboard.plansTab.detail.tabInfo')}
         </TabsTrigger>
         <TabsTrigger value="contato">
           <MessageCircle className="h-4 w-4 mr-2" />
-          Contato
+          {t('dashboard.plansTab.detail.tabContact')}
         </TabsTrigger>
         <TabsTrigger value="resultado">
           <Target className="h-4 w-4 mr-2" />
-          Resultado
+          {t('dashboard.plansTab.detail.tabResult')}
         </TabsTrigger>
         <TabsTrigger value="historico">
           <History className="h-4 w-4 mr-2" />
-          Histórico
+          {t('dashboard.plansTab.detail.tabHistory')}
         </TabsTrigger>
       </TabsList>
 
@@ -92,30 +94,30 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
       {/* Informações da Pesquisa */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Informações da Pesquisa</CardTitle>
+          <CardTitle className="text-lg">{t('dashboard.plansTab.detail.surveyInfo')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Empresa</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.company')}</p>
               <p className="font-medium">{empresa?.nome_abreviado || plano.pesquisa?.empresa || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Cliente</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.client')}</p>
               <p className="font-medium">{plano.pesquisa?.cliente || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Chamado</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.ticket')}</p>
               <p className="font-medium">
                 {plano.pesquisa?.tipo_caso} {plano.pesquisa?.nro_caso}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Resposta</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.response')}</p>
               <p className="font-medium">{plano.pesquisa?.resposta || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Consultor(es)</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.consultants')}</p>
               {especialistasPesquisa.length > 0 ? (
                 <p className="font-medium">
                   {especialistasPesquisa.map(esp => esp.nome).join(', ')}
@@ -127,7 +129,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
               )}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Coordenador(a)</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.plansTab.detail.coordinator')}</p>
               <p className="font-medium">{coordenador?.nome || '-'}</p>
             </div>
           </div>
@@ -136,7 +138,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
             <>
               <Separator className="my-4" />
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Comentário do Cliente</p>
+                <p className="text-sm text-muted-foreground mb-1">{t('dashboard.plansTab.detail.clientComment')}</p>
                 <p className="text-sm bg-muted p-3 rounded-md">
                   {plano.comentario_cliente || plano.pesquisa?.comentario_pesquisa}
                 </p>
@@ -149,13 +151,13 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
       {/* Ação Corretiva e Preventiva */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Ações Planejadas</CardTitle>
+          <CardTitle className="text-lg">{t('dashboard.plansTab.detail.plannedActions')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Tipo de Ação */}
           {plano.tipo_acao && (
             <div>
-              <p className="text-sm font-medium mb-2">Tipo de Ação</p>
+              <p className="text-sm font-medium mb-2">{t('dashboard.plansTab.detail.actionType')}</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-sm">
                   {plano.tipo_acao}
@@ -168,14 +170,14 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
           )}
           
           <div>
-            <p className="text-sm font-medium mb-2">Ação Corretiva</p>
+            <p className="text-sm font-medium mb-2">{t('dashboard.plansTab.detail.correctiveAction')}</p>
             <p className="text-sm bg-muted p-3 rounded-md">
               {plano.descricao_acao_corretiva}
             </p>
           </div>
           {plano.acao_preventiva && (
             <div>
-              <p className="text-sm font-medium mb-2">Ação Preventiva</p>
+              <p className="text-sm font-medium mb-2">{t('dashboard.plansTab.detail.preventiveAction')}</p>
               <p className="text-sm bg-muted p-3 rounded-md">{plano.acao_preventiva}</p>
             </div>
           )}
@@ -185,28 +187,24 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
       {/* Status e Prioridade */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Status do Plano</CardTitle>
+          <CardTitle className="text-lg">{t('dashboard.plansTab.detail.planStatus')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Prioridade</p>
+              <p className="text-sm text-muted-foreground mb-2">{t('dashboard.plansTab.detail.priority')}</p>
               <Badge className={getCorPrioridade(plano.prioridade)}>
-                {plano.prioridade.charAt(0).toUpperCase() + plano.prioridade.slice(1)}
+                {t(`dashboard.plansTab.priorities.${plano.prioridade}`)}
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Status</p>
+              <p className="text-sm text-muted-foreground mb-2">{t('dashboard.plansTab.detail.status')}</p>
               <Badge className={getCorStatus(plano.status_plano)}>
-                {plano.status_plano === 'em_andamento'
-                  ? 'Em Andamento'
-                  : plano.status_plano === 'aguardando_retorno'
-                  ? 'Aguardando'
-                  : plano.status_plano.charAt(0).toUpperCase() + plano.status_plano.slice(1)}
+                {t(`dashboard.plansTab.statuses.${plano.status_plano}`)}
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Data Início</p>
+              <p className="text-sm text-muted-foreground mb-2">{t('dashboard.plansTab.detail.startDate')}</p>
               <p className="text-sm font-medium flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 {format(new Date(plano.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
@@ -214,7 +212,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
             </div>
             {plano.data_conclusao && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Data Conclusão</p>
+                <p className="text-sm text-muted-foreground mb-2">{t('dashboard.plansTab.detail.conclusionDate')}</p>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" />
                   {format(new Date(plano.data_conclusao), 'dd/MM/yyyy', { locale: ptBR })}
@@ -231,7 +229,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
 
       {/* Aba: Contato */}
       <TabsContent value="contato" className="space-y-6 mt-6">
-        <ContatosList planoAcaoId={plano.id} />
+        <ContatosList planoAcaoId={plano.id} readOnly />
       </TabsContent>
 
       {/* Aba: Resultado */}
@@ -239,19 +237,19 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
         {plano.status_final ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Resultado Final</CardTitle>
+              <CardTitle className="text-lg">{t('dashboard.plansTab.detail.finalResult')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Status Final</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('dashboard.plansTab.detail.finalStatus')}</p>
                   <p className="text-sm font-medium capitalize">
-                    {plano.status_final.replace(/_/g, ' ')}
+                    {t(`dashboard.plansTab.finalStatuses.${plano.status_final}`, { defaultValue: plano.status_final.replace(/_/g, ' ') })}
                   </p>
                 </div>
                 {plano.data_fechamento && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Data de Fechamento</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.plansTab.detail.closingDate')}</p>
                     <p className="text-sm font-medium">
                       {format(new Date(plano.data_fechamento), "dd/MM/yyyy 'às' HH:mm", {
                         locale: ptBR,
@@ -265,7 +263,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Plano de ação ainda não foi concluído</p>
+            <p>{t('dashboard.plansTab.detail.planNotCompleted')}</p>
           </div>
         )}
       </TabsContent>
@@ -275,7 +273,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
         {historico && historico.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Histórico de Atualizações</CardTitle>
+              <CardTitle className="text-lg">{t('dashboard.plansTab.detail.updateHistory')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -314,7 +312,7 @@ export function PlanoAcaoDetalhes({ plano, historico }: PlanoAcaoDetalhesProps) 
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma atualização registrada ainda</p>
+            <p>{t('dashboard.plansTab.detail.noUpdatesYet')}</p>
           </div>
         )}
       </TabsContent>
