@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -94,13 +95,14 @@ const ElogiosSubTabs = ({ statsElogios, anoSelecionado, mesSelecionado, elogios,
   elogios?: any[];
   hasPermission: (screenKey: string, level?: string) => boolean;
 }) => {
+  const { t } = useTranslation();
   const [activeElogiosTab, setActiveElogiosTab] = useState<string>('visao-geral');
 
   const elogiosSubTabs = [
-    { key: 'visao-geral', label: 'Visão Geral' },
-    { key: 'mapeamento', label: 'Mapeamento' },
-    { key: 'volume', label: 'Volume' },
-    { key: 'pesquisas', label: 'Pesquisas' }
+    { key: 'visao-geral', label: t('dashboard.complimentsTab.overview') },
+    { key: 'mapeamento', label: t('dashboard.complimentsTab.mapping') },
+    { key: 'volume', label: t('dashboard.complimentsTab.volume') },
+    { key: 'pesquisas', label: t('dashboard.complimentsTab.surveys') }
   ];
 
   return (
@@ -149,6 +151,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  const { t } = useTranslation();
   // Hook para buscar de-para de categorias
   const { data: deParaCategorias = [] } = useDeParaCategoria();
   
@@ -305,7 +308,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios Processados</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.processedCompliments')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.total || 0}</p>
               </div>
@@ -319,7 +322,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Validados</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.validated')}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.validados || 0}</p>
               </div>
@@ -333,7 +336,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Enviados por Email</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.sentByEmail')}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{statsElogios?.enviados || 0}</p>
               </div>
@@ -347,7 +350,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Satisfação Média</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.avgSatisfaction')}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                   {statsElogios?.satisfacaoMedia ? `${Number((Math.floor(statsElogios.satisfacaoMedia * 10) / 10).toFixed(1))}/5` : 'N/A'}
@@ -399,9 +402,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       return (
                         <>
                           <div>
-                            <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Top Colaborador</p>
+                            <p className="text-xs font-medium text-green-600 uppercase tracking-wide">{t('dashboard.complimentsTab.topCollaborator')}</p>
                             <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Nenhum elogio no período</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.noComplimentsInPeriod')}</p>
                           </div>
                           <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                             <Star className="h-4 w-4 text-green-600" />
@@ -416,10 +419,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       <>
                         <div>
                           <p className="text-xs font-medium text-green-600 uppercase tracking-wide">
-                            Top Colaborador {mesSelecionado === 'todos' ? 'Ano' : 'Mês'}
+                            {mesSelecionado === 'todos' ? t('dashboard.complimentsTab.topCollaboratorYear') : t('dashboard.complimentsTab.topCollaboratorMonth')}
                           </p>
                           <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 uppercase">{nome}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">{quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'} no período</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{quantidade} {quantidade === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')} no período</p>
                         </div>
                         <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                           <Star className="h-4 w-4 text-green-600 fill-green-600" />
@@ -580,9 +583,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       return (
                         <>
                           <div>
-                            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento - Grupo</p>
+                            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">{t('dashboard.complimentsTab.highestGrowthGroup')}</p>
                             <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Sem crescimento positivo</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.noPositiveGrowth')}</p>
                           </div>
                           <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                             <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -593,7 +596,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     
                     const gruposFormatados = gruposComMaiorCrescimento.map(g => g.grupo).join(', ');
                     const melhor = gruposComMaiorCrescimento[0];
-                    const nomesMeses = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    const nomesMeses = ['', ...['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(k => t(`monthPicker.monthsShort.${k}`))];
                     const periodoDesc = anoComparacao === anoAnterior 
                       ? `${nomesMeses[mesAnterior]}→${nomesMeses[mesComparacao]}`
                       : `${nomesMeses[mesAnterior]}/${anoAnterior}→${nomesMeses[mesComparacao]}/${anoComparacao}`;
@@ -604,7 +607,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     return (
                       <>
                         <div>
-                          <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Crescimento - Grupo</p>
+                          <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">{t('dashboard.complimentsTab.highestGrowthGroup')}</p>
                           <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{gruposFormatados}</p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             {descricao}
@@ -771,9 +774,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       return (
                         <>
                           <div>
-                            <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Maior Crescimento - Módulo</p>
+                            <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">{t('dashboard.complimentsTab.highestGrowthModule')}</p>
                             <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">-</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Sem crescimento positivo</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.noPositiveGrowth')}</p>
                           </div>
                           <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                             <Users className="h-4 w-4 text-purple-600" />
@@ -784,7 +787,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     
                     const modulosFormatados = modulosComMaiorCrescimento.map(m => m.modulo).join(', ');
                     const melhorMod = modulosComMaiorCrescimento[0];
-                    const nomesMesesMod = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    const nomesMesesMod = ['', ...['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(k => t(`monthPicker.monthsShort.${k}`))];
                     const periodoDescMod = anoComparacao === anoAnterior 
                       ? `${nomesMesesMod[mesAnterior]}→${nomesMesesMod[mesComparacao]}`
                       : `${nomesMesesMod[mesAnterior]}/${anoAnterior}→${nomesMesesMod[mesComparacao]}/${anoComparacao}`;
@@ -795,7 +798,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     return (
                       <>
                         <div>
-                          <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Maior Crescimento - Módulo</p>
+                          <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">{t('dashboard.complimentsTab.highestGrowthModule')}</p>
                           <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{modulosFormatados}</p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             {descricaoMod}
@@ -817,10 +820,10 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-gray-600" />
-            <CardTitle className="text-lg font-semibold">Volume de Elogios</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t('dashboard.complimentsTab.complimentsVolume')}</CardTitle>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Evolução mensal no ano {anoSelecionado}
+            {t('dashboard.complimentsTab.monthlyEvolutionYear', { year: anoSelecionado })}
           </p>
         </CardHeader>
         <CardContent>
@@ -900,11 +903,11 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-600">Validados</span>
+                <span className="text-gray-600">{t('dashboard.complimentsTab.validatedLabel')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-gray-600">Enviados</span>
+                <span className="text-gray-600">{t('dashboard.complimentsTab.sentLabel')}</span>
               </div>
             </div>
           </div>
@@ -919,14 +922,14 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-orange-600" />
-                <CardTitle className="text-sm font-semibold">Top Empresas com Elogios</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t('dashboard.complimentsTab.byCompany')}</CardTitle>
               </div>
               {statsElogios?.porEmpresa && Object.keys(statsElogios.porEmpresa).length > 5 && (
                 <button
                   onClick={() => setEmpresasExpandido(!empresasExpandido)}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  {empresasExpandido ? 'Recolher' : 'Expandir'}
+                  {empresasExpandido ? t('dashboard.complimentsTab.collapse') : t('dashboard.complimentsTab.expand')}
                   <ChevronUp className={`h-4 w-4 transition-transform ${empresasExpandido ? '' : 'rotate-180'}`} />
                 </button>
               )}
@@ -993,7 +996,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center gap-2">
                 <Star className="h-4 w-4 text-green-600" />
                 <CardTitle className="text-sm font-semibold text-green-600">
-                  {mesSelecionado === 'todos' ? 'TOP COLABORADOR ANUAL' : 'TOP COLABORADOR MENSAL'}
+                  {mesSelecionado === 'todos' ? t('dashboard.complimentsTab.topCollaboratorYear').toUpperCase() : t('dashboard.complimentsTab.topCollaboratorMonth').toUpperCase()}
                 </CardTitle>
               </div>
               {(() => {
@@ -1016,7 +1019,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     onClick={() => setColaboradoresExpandido(!colaboradoresExpandido)}
                     className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                   >
-                    {colaboradoresExpandido ? 'Recolher' : 'Expandir'}
+                    {colaboradoresExpandido ? t('dashboard.complimentsTab.collapse') : t('dashboard.complimentsTab.expand')}
                     <ChevronUp className={`h-4 w-4 transition-transform ${colaboradoresExpandido ? '' : 'rotate-180'}`} />
                   </button>
                 ) : null;
@@ -1165,7 +1168,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-purple-600" />
-                <CardTitle className="text-sm font-semibold">Últimos Elogios</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t('dashboard.complimentsTab.recentCompliments')}</CardTitle>
               </div>
               {(() => {
                 const todosElogios = elogios?.filter(e => 
@@ -1180,7 +1183,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     onClick={() => setElogiosExpandido(!elogiosExpandido)}
                     className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                   >
-                    {elogiosExpandido ? 'Recolher' : 'Expandir'}
+                    {elogiosExpandido ? t('dashboard.complimentsTab.collapse') : t('dashboard.complimentsTab.expand')}
                     <ChevronUp className={`h-4 w-4 transition-transform ${elogiosExpandido ? '' : 'rotate-180'}`} />
                   </button>
                 ) : null;
@@ -1289,7 +1292,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center gap-2">
               <Heart className="h-4 w-4 text-blue-600" />
               <CardTitle className="text-lg font-semibold">
-                Detalhes dos Elogios
+                {t('dashboard.complimentsTab.complimentDetails')}
               </CardTitle>
             </div>
             {itemSelecionado && (
@@ -1317,14 +1320,14 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 <Table className="w-full text-xs sm:text-sm">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Empresa</TableHead>
-                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Resposta</TableHead>
-                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Colaborador</TableHead>
-                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Comentário</TableHead>
-                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Status</TableHead>
-                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.ticket')}</TableHead>
+                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.company')}</TableHead>
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.responseDate')}</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.client')}</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.collaborator')}</TableHead>
+                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">{t('dashboard.complimentsTab.comment')}</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
+                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1380,7 +1383,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                               <UITooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-xs text-gray-600 cursor-help line-clamp-2">
-                                    {comentarioTruncado || <span className="italic text-gray-400">Sem comentário</span>}
+                                    {comentarioTruncado || <span className="italic text-gray-400">{t('dashboard.complimentsTab.noComment')}</span>}
                                   </span>
                                 </TooltipTrigger>
                                 {comentario && (
@@ -1397,7 +1400,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                              {elogio.status === 'enviado' ? t('dashboard.complimentsTab.statusSent') : t('dashboard.complimentsTab.statusValidated')}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
@@ -1410,7 +1413,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                                   setModalVisualizarAberto(true);
                                 }}
                                 className="h-8 w-8 p-0"
-                                title="Visualizar"
+                                title={t('dashboard.complimentsTab.view')}
                               >
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -1491,14 +1494,14 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              Detalhes do Elogio
+              {t('dashboard.complimentsTab.complimentDetailTitle')}
             </DialogTitle>
           </DialogHeader>
           {elogioVisualizando && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Chamado</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.ticket')}</p>
                   <div className="flex items-center gap-2">
                     {elogioVisualizando.pesquisa?.origem === 'sql_server' ? (
                       <Database className="h-4 w-4 text-blue-600" />
@@ -1512,54 +1515,54 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Status</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.status')}</p>
                   <Badge className={`text-xs ${
                     elogioVisualizando.status === 'enviado'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {elogioVisualizando.status === 'enviado' ? 'Enviado' : 'Validado'}
+                    {elogioVisualizando.status === 'enviado' ? t('dashboard.complimentsTab.statusSent') : t('dashboard.complimentsTab.statusValidated')}
                   </Badge>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Empresa</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.company')}</p>
                   <p className="text-sm font-medium">{obterNomeAbreviadoEmpresa(elogioVisualizando.pesquisa?.empresa || 'N/A')}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Data Resposta</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.responseDate')}</p>
                   <p className="text-sm">{elogioVisualizando.data_resposta ? new Date(elogioVisualizando.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Cliente</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.client')}</p>
                   <p className="text-sm">{elogioVisualizando.pesquisa?.cliente || '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Colaborador</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.collaborator')}</p>
                   <p className="text-sm">{elogioVisualizando.pesquisa?.prestador || '-'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Categoria</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.category')}</p>
                   <p className="text-sm">{elogioVisualizando.pesquisa?.categoria || '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Resposta</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.response')}</p>
                   <p className="text-sm">{elogioVisualizando.pesquisa?.resposta || '-'}</p>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium text-gray-500">Comentário</p>
+                <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.comment')}</p>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizando.pesquisa?.comentario_pesquisa || 'Sem comentário'}</p>
+                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizando.pesquisa?.comentario_pesquisa || t('dashboard.complimentsTab.noComment')}</p>
                 </div>
               </div>
             </div>
@@ -1577,6 +1580,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  const { t } = useTranslation();
   // Estado para controlar expansão das áreas
   const [areasExpandido, setAreasExpandido] = useState(true);
   
@@ -1906,14 +1910,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Setor em Alta</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.topSector')}</p>
               <p className="text-sm font-bold text-gray-900 dark:text-white">
                 {setorDestaque ? setorDestaque[0].split(/[\s-]+/)[0].trim().toUpperCase() : '-'}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 {setorDestaque 
-                  ? `${setorDestaque[1]} ${setorDestaque[1] === 1 ? 'Elogio' : 'Elogios'} ${mesSelecionado === 'todos' ? 'no ano' : 'no mês'}`
-                  : 'Sem dados'
+                  ? `${setorDestaque[1]} ${setorDestaque[1] === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')} ${mesSelecionado === 'todos' ? t('dashboard.complimentsTab.inYear') : t('dashboard.complimentsTab.inMonth')}`
+                  : t('dashboard.complimentsTab.noData')
                 }
               </p>
             </div>
@@ -2252,7 +2256,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center gap-2">
               <Heart className="h-4 w-4 text-blue-600" />
               <CardTitle className="text-lg font-semibold">
-                Detalhes dos Elogios
+                {t('dashboard.complimentsTab.complimentDetails')}
               </CardTitle>
             </div>
             {itemSelecionado && (
@@ -2281,7 +2285,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           {elogiosDetalhados.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>{itemSelecionado ? 'Nenhum elogio encontrado para a seleção atual.' : 'Selecione um item nos gráficos acima para ver os detalhes dos elogios.'}</p>
+              <p>{itemSelecionado ? t('dashboard.complimentsTab.noComplimentsFound') : t('dashboard.complimentsTab.selectItemToFilter')}</p>
             </div>
           ) : (
             <>
@@ -2289,14 +2293,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 <Table className="w-full text-xs sm:text-sm">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Empresa</TableHead>
-                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">Data Resposta</TableHead>
-                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">Colaborador</TableHead>
-                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">Comentário</TableHead>
-                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Status</TableHead>
-                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                      <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.ticket')}</TableHead>
+                      <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.company')}</TableHead>
+                      <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.responseDate')}</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.client')}</TableHead>
+                      <TableHead className="min-w-[150px] text-center text-xs sm:text-sm py-2">{t('dashboard.complimentsTab.collaborator')}</TableHead>
+                      <TableHead className="min-w-[200px] text-center text-xs sm:text-sm py-2 hidden lg:table-cell">{t('dashboard.complimentsTab.comment')}</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
+                      <TableHead className="w-32 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2352,7 +2356,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                               <UITooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-xs text-gray-600 cursor-help line-clamp-2">
-                                    {comentarioTruncado || <span className="italic text-gray-400">Sem comentário</span>}
+                                    {comentarioTruncado || <span className="italic text-gray-400">{t('dashboard.complimentsTab.noComment')}</span>}
                                   </span>
                                 </TooltipTrigger>
                                 {comentario && (
@@ -2369,7 +2373,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {elogio.status === 'enviado' ? 'Enviado' : 'Validado'}
+                              {elogio.status === 'enviado' ? t('dashboard.complimentsTab.statusSent') : t('dashboard.complimentsTab.statusValidated')}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
@@ -2382,7 +2386,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                                   setModalVisualizarAbertoMap(true);
                                 }}
                                 className="h-8 w-8 p-0"
-                                title="Visualizar"
+                                title={t('dashboard.complimentsTab.view')}
                               >
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -2460,14 +2464,14 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              Detalhes do Elogio
+              {t('dashboard.complimentsTab.complimentDetailTitle')}
             </DialogTitle>
           </DialogHeader>
           {elogioVisualizandoMap && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Chamado</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.ticket')}</p>
                   <div className="flex items-center gap-2">
                     {elogioVisualizandoMap.pesquisa?.origem === 'sql_server' ? (
                       <Database className="h-4 w-4 text-blue-600" />
@@ -2481,42 +2485,42 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Status</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.status')}</p>
                   <Badge className={`text-xs ${
                     elogioVisualizandoMap.status === 'enviado'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {elogioVisualizandoMap.status === 'enviado' ? 'Enviado' : 'Validado'}
+                    {elogioVisualizandoMap.status === 'enviado' ? t('dashboard.complimentsTab.statusSent') : t('dashboard.complimentsTab.statusValidated')}
                   </Badge>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Empresa</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.company')}</p>
                   <p className="text-sm font-medium">{obterNomeAbreviadoEmpresa(elogioVisualizandoMap.pesquisa?.empresa || 'N/A')}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Data Resposta</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.responseDate')}</p>
                   <p className="text-sm">{elogioVisualizandoMap.data_resposta ? new Date(elogioVisualizandoMap.data_resposta + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Cliente</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.client')}</p>
                   <p className="text-sm">{elogioVisualizandoMap.pesquisa?.cliente || '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Colaborador</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.collaborator')}</p>
                   <p className="text-sm">{elogioVisualizandoMap.pesquisa?.prestador || '-'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Categoria</p>
+                  <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.category')}</p>
                   <p className="text-sm">{elogioVisualizandoMap.pesquisa?.categoria || '-'}</p>
                 </div>
                 <div className="space-y-1">
@@ -2526,9 +2530,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium text-gray-500">Comentário</p>
+                <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.comment')}</p>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizandoMap.pesquisa?.comentario_pesquisa || 'Sem comentário'}</p>
+                  <p className="text-sm whitespace-pre-wrap">{elogioVisualizandoMap.pesquisa?.comentario_pesquisa || t('dashboard.complimentsTab.noComment')}</p>
                 </div>
               </div>
             </div>
@@ -2699,6 +2703,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  const { t, i18n } = useTranslation();
   // Estados para filtros múltiplos
   const [colaboradoresSelecionados, setColaboradoresSelecionados] = useState<string[]>([]);
   const [empresasSelecionadas, setEmpresasSelecionadas] = useState<string[]>([]);
@@ -2772,10 +2777,8 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
 
   // Calcular dados por mês para comparação múltipla
   const dadosPorMes = useMemo(() => {
-    const meses = [
-      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-    ];
+    const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const meses = monthKeys.map(key => t(`monthPicker.monthsShort.${key}`));
     
     if (tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0) {
       // Dados separados por colaborador
@@ -2843,7 +2846,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
       mes: nome,
       elogios: contagemPorMes[index + 1] || 0
     }));
-  }, [elogiosFiltrados, colaboradoresSelecionados, empresasSelecionadas, tipoFiltro]);
+  }, [elogiosFiltrados, colaboradoresSelecionados, empresasSelecionadas, tipoFiltro, i18n.language]);
 
   // Calcular estatísticas
   // Quando mês específico selecionado, usar esse mês; senão, encontrar último mês com dados
@@ -3014,7 +3017,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
       {/* Gráfico de Volume por Mês */}
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Volume de Elogios por Mês - Comparação</CardTitle>
+          <CardTitle className="text-lg font-semibold">{t('dashboard.complimentsTab.complimentsVolume')}</CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0
               ? `Comparando ${colaboradoresSelecionados.length} colaborador(es): ${colaboradoresSelecionados.slice(0, 3).join(', ')}${colaboradoresSelecionados.length > 3 ? '...' : ''}`
@@ -3480,6 +3483,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  const { t } = useTranslation();
   // Estados para controlar seleção e detalhes
   const [itemSelecionado, setItemSelecionado] = useState<{
     tipo: 'empresa' | 'status' | 'acao-paliativa' | null;
@@ -3806,7 +3810,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando planos de ação...</p>
+          <p className="text-gray-600">{t('dashboard.plansTab.loadingPlans')}</p>
         </div>
       </div>
     );
@@ -3887,7 +3891,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total de Planos</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.totalPlans')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{totalPlanos}</p>
               </div>
@@ -3901,7 +3905,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Concluídos</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.completed')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-green-600">{concluidos}</p>
                 <span className="text-xs text-gray-500">
@@ -3918,7 +3922,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Andamento</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.inProgress')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl text-xl font-bold text-blue-600">{emAndamento}</p>
                 <span className="text-xs text-gray-500">
@@ -3935,10 +3939,10 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Tempo Médio Resolução</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.avgResolutionTime')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-purple-600">{tempoMedioResolucao}</p>
-                <span className="text-xs text-gray-500">dias</span>
+                <span className="text-xs text-gray-500">{t('dashboard.plansTab.days')}</span>
               </div>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -3953,7 +3957,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Aguardando Retorno</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.awaitingReturn')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-yellow-600">{aguardandoRetorno}</p>
                 <span className="text-xs text-gray-500">
@@ -3970,7 +3974,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Cancelados</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.cancelled')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{cancelados}</p>
                 <span className="text-xs text-gray-500">
@@ -3987,11 +3991,11 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Total)</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.dissatisfactionTotal')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600">{percInsatisfacaoTotal}%</p>
                 <span className="text-xs text-gray-500">
-                  {pesquisasComPlanoAcaoFechamento} de {totalPesquisasFechamento}
+                  {pesquisasComPlanoAcaoFechamento} {t('dashboard.plansTab.of')} {totalPesquisasFechamento}
                 </span>
               </div>
             </div>
@@ -4004,11 +4008,11 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">% Insatisfação (Respondidas)</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.dissatisfactionAnswered')}</p>
               <div className="flex items-center gap-2">
                 <p className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-red-600">{percInsatisfacaoRespondidas}%</p>
                 <span className="text-xs text-gray-500">
-                  {pesquisasComPlanoAcao} de {pesquisasRespondidas}
+                  {pesquisasComPlanoAcao} {t('dashboard.plansTab.of')} {pesquisasRespondidas}
                 </span>
               </div>
             </div>
@@ -4024,12 +4028,12 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Evolução dos Planos de Ação</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboard.plansTab.plansEvolution')}</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {mesSelecionado === 'todos' 
-                ? `Evolução mensal no ano ${anoSelecionado}`
-                : `Dados do mês selecionado em ${anoSelecionado}`
+                ? t('dashboard.plansTab.monthlyEvolutionYear', { year: anoSelecionado })
+                : t('dashboard.plansTab.selectedMonthData', { year: anoSelecionado })
               }
             </p>
           </CardHeader>
@@ -4038,25 +4042,29 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Carregando dados...</p>
+                  <p className="text-gray-600">{t('dashboard.plansTab.loadingData')}</p>
                 </div>
               </div>
             ) : dadosMensais.length === 0 || dadosMensais.every(item => item.total === 0) ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-600">Nenhum plano de ação encontrado para este período</p>
+                  <p className="text-gray-600">{t('dashboard.plansTab.noPlansForPeriod')}</p>
                 </div>
               </div>
             ) : (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={dadosMensais.map(item => ({
-                      mes: item.mesNome,
-                      concluidos: item.concluidos,
-                      abertos: item.abertos + item.em_andamento + item.aguardando_retorno // Somar todos os não concluídos
-                    }))}
+                    data={dadosMensais.map(item => {
+                      const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                      const monthKey = monthKeys[item.mes - 1] || item.mesNome;
+                      return {
+                        mes: t(`monthPicker.monthsShort.${monthKey}`, { defaultValue: item.mesNome }),
+                        concluidos: item.concluidos,
+                        abertos: item.abertos + item.em_andamento + item.aguardando_retorno
+                      };
+                    })}
                     margin={{
                       top: 10,
                       right: 30,
@@ -4097,17 +4105,17 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                         padding: '12px'
                       }}
                       formatter={(value: any, name: string) => {
-                        if (name === 'concluidos') return [value, 'Concluídos'];
-                        if (name === 'abertos') return [value, 'Abertos'];
+                        if (name === 'concluidos') return [value, t('dashboard.plansTab.completedLabel')];
+                        if (name === 'abertos') return [value, t('dashboard.plansTab.openLabel')];
                         return [value, name];
                       }}
-                      labelFormatter={(label) => `Mês: ${label}`}
+                      labelFormatter={(label) => t('dashboard.plansTab.month', { name: label })}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0);
                           return (
                             <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                              <p className="font-semibold text-gray-800 mb-2">{`Mês: ${label}`}</p>
+                              <p className="font-semibold text-gray-800 mb-2">{t('dashboard.plansTab.month', { name: label })}</p>
                               {payload.map((entry, index) => (
                                 <div key={index} className="flex items-center justify-between mb-1">
                                   <div className="flex items-center gap-2">
@@ -4122,7 +4130,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                               ))}
                               <div className="border-t pt-2 mt-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-700">Total:</span>
+                                  <span className="text-sm font-medium text-gray-700">{t('dashboard.plansTab.total')}</span>
                                   <span className="text-sm font-bold text-gray-900">{total}</span>
                                 </div>
                               </div>
@@ -4160,11 +4168,11 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-600">Concluídos</span>
+                  <span className="text-gray-600">{t('dashboard.plansTab.completedLabel')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-gray-600">Abertos</span>
+                  <span className="text-gray-600">{t('dashboard.plansTab.openLabel')}</span>
                 </div>
               </div>
             </div>
@@ -4179,7 +4187,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-gray-600" />
-                <CardTitle className="text-lg font-semibold">Distribuição por Prioridade</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t('dashboard.plansTab.priorityDistribution')}</CardTitle>
               </div>
               {prioridadeFiltro && (
                 <Button
@@ -4189,13 +4197,13 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   className="whitespace-nowrap hover:border-red-300"
                 >
                   <X className="h-4 w-4 mr-2 text-red-600" />
-                  Limpar Filtro
+                  {t('dashboard.plansTab.clearFilter')}
                 </Button>
               )}
             </div>
             {prioridadeFiltro && (
               <p className="text-xs text-blue-600 mt-2">
-                Filtrando por: {prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}
+                {t('dashboard.plansTab.filteringBy', { value: prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1) })}
               </p>
             )}
           </CardHeader>
@@ -4205,7 +4213,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
                 onClick={() => handleFiltrarPrioridade('critica')}
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Crítica</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.plansTab.critical')}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-red-600">{porPrioridade.critica}</span>
                   <span className="text-xs text-gray-500">
@@ -4220,7 +4228,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
                 onClick={() => handleFiltrarPrioridade('alta')}
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Alta</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.plansTab.high')}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-orange-600">{porPrioridade.alta}</span>
                   <span className="text-xs text-gray-500">
@@ -4235,7 +4243,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
                 onClick={() => handleFiltrarPrioridade('media')}
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Média</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.plansTab.medium')}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-yellow-600">{porPrioridade.media}</span>
                   <span className="text-xs text-gray-500">
@@ -4250,7 +4258,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
                 onClick={() => handleFiltrarPrioridade('baixa')}
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Baixa</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.plansTab.low')}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-blue-600">{porPrioridade.baixa}</span>
                   <span className="text-xs text-gray-500">
@@ -4271,7 +4279,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <PieChart className="h-5 w-5 text-gray-600" />
-                <CardTitle className="text-lg font-semibold">Distribuição por Grupo</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t('dashboard.plansTab.groupDistribution')}</CardTitle>
               </div>
               {grupoFiltro && (
                 <Button
@@ -4281,17 +4289,17 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   className="whitespace-nowrap hover:border-red-300"
                 >
                   <X className="h-4 w-4 mr-2 text-red-600" />
-                  Limpar Filtro
+                  {t('dashboard.plansTab.clearFilter')}
                 </Button>
               )}
             </div>
             {grupoFiltro && (
               <p className="text-xs text-blue-600 mt-2">
-                Filtrando por: {grupoFiltro}
+                {t('dashboard.plansTab.filteringBy', { value: grupoFiltro })}
               </p>
             )}
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Planos de ação agrupados por grupo da tabela de categorias
+              {t('dashboard.plansTab.plansGroupedByCategory')}
             </p>
           </CardHeader>
           <CardContent>
@@ -4299,7 +4307,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center justify-center h-48">
                 <div className="text-center">
                   <PieChart className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-600">Nenhum plano de ação com categoria associada</p>
+                  <p className="text-gray-600">{t('dashboard.plansTab.noPlanWithCategory')}</p>
                 </div>
               </div>
             ) : (
@@ -4403,14 +4411,14 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-red-600" />
-                <CardTitle className="text-sm font-semibold">Top Clientes com Reincidência de Insatisfação</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t('dashboard.plansTab.topClientsRecurrence')}</CardTitle>
               </div>
               {topClientes.length > 6 && (
                 <button
                   onClick={() => setTopClientesExpandido(!topClientesExpandido)}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  {topClientesExpandido ? 'Recolher' : 'Expandir'}
+                  {topClientesExpandido ? t('dashboard.plansTab.collapse') : t('dashboard.plansTab.expand')}
                   <ChevronUp className={`h-4 w-4 transition-transform ${topClientesExpandido ? '' : 'rotate-180'}`} />
                 </button>
               )}
@@ -4420,7 +4428,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             {topClientes.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Building2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Nenhum plano de ação no período</p>
+                <p className="text-sm">{t('dashboard.plansTab.noPlansInPeriod')}</p>
               </div>
             ) : (
               <div className={`space-y-3 ${topClientesExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
@@ -4471,14 +4479,14 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-red-600" />
-                <CardTitle className="text-sm font-semibold">Top Consultores com Reincidência de Insatisfação</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t('dashboard.plansTab.topConsultantsRecurrence')}</CardTitle>
               </div>
               {topConsultores.length > 5 && (
                 <button
                   onClick={() => setTopConsultoresExpandido(!topConsultoresExpandido)}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  {topConsultoresExpandido ? 'Recolher' : 'Expandir'}
+                  {topConsultoresExpandido ? t('dashboard.plansTab.collapse') : t('dashboard.plansTab.expand')}
                   <ChevronUp className={`h-4 w-4 transition-transform ${topConsultoresExpandido ? '' : 'rotate-180'}`} />
                 </button>
               )}
@@ -4488,7 +4496,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             {topConsultores.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Nenhum plano de ação no período</p>
+                <p className="text-sm">{t('dashboard.plansTab.noPlansInPeriod')}</p>
               </div>
             ) : (
               <div className={`space-y-3 ${topConsultoresExpandido ? 'max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800' : ''}`}>
@@ -4529,7 +4537,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                           {consultor.nome}
                         </p>
                         <span className="text-xs font-semibold text-red-600">
-                          {consultor.total} {consultor.total === 1 ? 'reclamação' : 'reclamações'}
+                          {consultor.total} {consultor.total === 1 ? t('dashboard.plansTab.complaint') : t('dashboard.plansTab.complaints')}
                         </span>
                       </div>
                     </div>
@@ -4548,14 +4556,14 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-blue-600" />
               <CardTitle className="text-lg font-semibold text-center">
-                Lista de Planos de Ação
+                {t('dashboard.plansTab.plansList')}
                 {(prioridadeFiltro || empresaFiltrada || consultorFiltrado || grupoFiltro) && (
                   <span className="text-sm font-normal text-gray-500 ml-2">
-                    ({planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'}
-                    {prioridadeFiltro && ` • Prioridade: ${prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}`}
-                    {empresaFiltrada && ` • Empresa: ${empresaFiltrada}`}
-                    {consultorFiltrado && ` • Consultor: ${consultorFiltrado}`}
-                    {grupoFiltro && ` • Grupo: ${grupoFiltro}`}
+                    ({planosAcao.length} {planosAcao.length === 1 ? t('dashboard.plansTab.plan') : t('dashboard.plansTab.plans')}
+                    {prioridadeFiltro && ` • ${t('dashboard.plansTab.priority')} ${prioridadeFiltro.charAt(0).toUpperCase() + prioridadeFiltro.slice(1)}`}
+                    {empresaFiltrada && ` • ${t('dashboard.plansTab.company')} ${empresaFiltrada}`}
+                    {consultorFiltrado && ` • ${t('dashboard.plansTab.consultant')} ${consultorFiltrado}`}
+                    {grupoFiltro && ` • ${t('dashboard.plansTab.group')} ${grupoFiltro}`}
                     )
                   </span>
                 )}
@@ -4569,7 +4577,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="whitespace-nowrap hover:border-red-300"
               >
                 <X className="h-4 w-4 mr-2 text-red-600" />
-                Limpar Filtros
+                {t('dashboard.plansTab.clearFilters')}
               </Button>
             )}
           </div>
@@ -4587,7 +4595,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between px-2 py-4 border-t">
               {/* Lado esquerdo: Dropdown "Mostrar" */}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.plansTab.show')}</span>
                 <Select
                   value={itensPorPagina.toString()}
                   onValueChange={(value) => setItensPorPagina(Number(value))}
@@ -4613,19 +4621,19 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                     size="sm"
                     onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
                     disabled={paginaAtual === 1}
-                    aria-label="Página anterior"
+                    aria-label={t('dashboard.plansTab.previousPage')}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                    Página {paginaAtual} de {totalPaginas}
+                    {t('dashboard.plansTab.page', { current: paginaAtual, total: totalPaginas })}
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
                     disabled={paginaAtual === totalPaginas}
-                    aria-label="Próxima página"
+                    aria-label={t('dashboard.plansTab.nextPage')}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -4634,7 +4642,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
               {/* Lado direito: Contador de registros */}
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {indiceInicio + 1}-{Math.min(indiceFim, planosAcao.length)} de {planosAcao.length} {planosAcao.length === 1 ? 'plano' : 'planos'}
+                {indiceInicio + 1}-{Math.min(indiceFim, planosAcao.length)} {t('dashboard.plansTab.of')} {planosAcao.length} {planosAcao.length === 1 ? t('dashboard.plansTab.plan') : t('dashboard.plansTab.plans')}
               </div>
             </div>
           )}
@@ -4646,7 +4654,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              Detalhes do Plano de Ação
+              {t('dashboard.plansTab.planDetails')}
             </DialogTitle>
           </DialogHeader>
           {planoVisualizando && (
@@ -4659,6 +4667,7 @@ const PlanosAcaoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 };
 
 const Dashboard = () => {
+  const { t, i18n } = useTranslation();
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   
@@ -4698,7 +4707,7 @@ const Dashboard = () => {
     if (hasPermission('lancar_requerimentos', 'view') || hasPermission('faturar_requerimentos', 'view')) {
       tabs.push({
         key: 'requerimentos',
-        label: 'Requerimentos',
+        label: t('dashboard.tabs.requirements'),
         icon: FileText,
         screenKeys: ['lancar_requerimentos', 'faturar_requerimentos']
       });
@@ -4708,7 +4717,7 @@ const Dashboard = () => {
     if (hasPermission('plano_acao', 'view') || hasPermission('plano_acao', 'view')) {
       tabs.push({
         key: 'planos-acao',
-        label: 'Planos de Ação',
+        label: t('dashboard.tabs.actionPlans'),
         icon: BarChart3,
         screenKeys: ['plano_acao_visualizar']
       });
@@ -4717,7 +4726,7 @@ const Dashboard = () => {
     if (hasPermission('lancar_pesquisas', 'view') || hasPermission('enviar_pesquisas', 'view')) {
       tabs.push({
         key: 'elogios',
-        label: 'Elogios',
+        label: t('dashboard.tabs.compliments'),
         icon: Heart,
         screenKeys: ['lancar_pesquisas', 'enviar_pesquisas']
       });
@@ -4727,14 +4736,14 @@ const Dashboard = () => {
     if (hasPermission('empresas_clientes', 'view')) {
       tabs.push({
         key: 'empresas',
-        label: 'Empresas',
+        label: t('dashboard.tabs.companies'),
         icon: Building2,
         screenKeys: ['empresas_clientes']
       });
     }
     
     return tabs;
-  }, [hasPermission]);
+  }, [hasPermission, i18n.language]);
 
   // Definir aba ativa inicial
   useMemo(() => {
@@ -4890,7 +4899,7 @@ const Dashboard = () => {
       })
       .map(([mes, data]) => ({
         mes,
-        mesNome: new Date(2000, parseInt(mes.split('/')[0]) - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        mesNome: (() => { const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']; return t(`monthPicker.monthsShort.${monthKeys[parseInt(mes.split('/')[0]) - 1]}`); })(),
         ...data
       }));
 
@@ -4961,7 +4970,7 @@ const Dashboard = () => {
       crescimentoMensalFaturamento,
       dados // Adicionar os dados filtrados para uso no gráfico COMEX vs FISCAL
     };
-  }, [requerimentos, filtroModulo, anoSelecionado, mesSelecionado]);
+  }, [requerimentos, filtroModulo, anoSelecionado, mesSelecionado, i18n.language]);
 
   // Calcular estatísticas filtradas para o comparativo COMEX vs FISCAL
   const statsRequerimentosFiltradas = useMemo(() => {
@@ -5129,7 +5138,7 @@ const Dashboard = () => {
       
       mesesCompletos.push({
         mes: chaveMs,
-        mesNome: new Date(2000, mes - 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        mesNome: (() => { const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']; return t(`monthPicker.monthsShort.${monthKeys[mes - 1]}`); })(),
         mesNumero: mes,
         ...dadosDoMes,
         validados: dadosDoMes.compartilhados + dadosDoMes.enviados + dadosDoMes.arquivados
@@ -5189,7 +5198,7 @@ const Dashboard = () => {
       porEmpresa,
       porMes: porMesOrdenado
     };
-  }, [elogios, anoSelecionado, mesSelecionado]);
+  }, [elogios, anoSelecionado, mesSelecionado, i18n.language]);
 
   // Calcular estatísticas por empresa
   const statsEmpresas = useMemo(() => {
@@ -5311,10 +5320,10 @@ const Dashboard = () => {
           <div className="text-center">
             <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Acesso Restrito
+              {t('dashboard.accessRestricted')}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Você não possui permissão para visualizar nenhuma seção do dashboard.
+              {t('dashboard.noPermission')}
             </p>
           </div>
         </div>
@@ -5328,8 +5337,8 @@ const Dashboard = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400">Visão geral do sistema</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('dashboard.title')}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{t('dashboard.overview')}</p>
           </div>
 
           {/* Linha com Abas e Filtros */}
@@ -5373,32 +5382,32 @@ const Dashboard = () => {
 
                 <Select value={String(mesSelecionado)} onValueChange={(v) => setMesSelecionado(v === 'todos' ? 'todos' : parseInt(v))}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Mês" />
+                    <SelectValue placeholder={t('dashboard.filters.allMonths')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos os Meses</SelectItem>
-                    <SelectItem value="1">Janeiro</SelectItem>
-                    <SelectItem value="2">Fevereiro</SelectItem>
-                    <SelectItem value="3">Março</SelectItem>
-                    <SelectItem value="4">Abril</SelectItem>
-                    <SelectItem value="5">Maio</SelectItem>
-                    <SelectItem value="6">Junho</SelectItem>
-                    <SelectItem value="7">Julho</SelectItem>
-                    <SelectItem value="8">Agosto</SelectItem>
-                    <SelectItem value="9">Setembro</SelectItem>
-                    <SelectItem value="10">Outubro</SelectItem>
-                    <SelectItem value="11">Novembro</SelectItem>
-                    <SelectItem value="12">Dezembro</SelectItem>
+                    <SelectItem value="todos">{t('dashboard.filters.allMonths')}</SelectItem>
+                    <SelectItem value="1">{t('monthPicker.months.january')}</SelectItem>
+                    <SelectItem value="2">{t('monthPicker.months.february')}</SelectItem>
+                    <SelectItem value="3">{t('monthPicker.months.march')}</SelectItem>
+                    <SelectItem value="4">{t('monthPicker.months.april')}</SelectItem>
+                    <SelectItem value="5">{t('monthPicker.months.may')}</SelectItem>
+                    <SelectItem value="6">{t('monthPicker.months.june')}</SelectItem>
+                    <SelectItem value="7">{t('monthPicker.months.july')}</SelectItem>
+                    <SelectItem value="8">{t('monthPicker.months.august')}</SelectItem>
+                    <SelectItem value="9">{t('monthPicker.months.september')}</SelectItem>
+                    <SelectItem value="10">{t('monthPicker.months.october')}</SelectItem>
+                    <SelectItem value="11">{t('monthPicker.months.november')}</SelectItem>
+                    <SelectItem value="12">{t('monthPicker.months.december')}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 {activeTab === 'requerimentos' && (
                   <Select value={filtroModulo} onValueChange={(v) => setFiltroModulo(v as ModuloType | 'todos')}>
                     <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Módulo" />
+                      <SelectValue placeholder={t('dashboard.filters.module')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos Módulos</SelectItem>
+                      <SelectItem value="todos">{t('dashboard.filters.allModules')}</SelectItem>
                       <SelectItem value="Comex">Comex</SelectItem>
                       <SelectItem value="Comply">Comply</SelectItem>
                       <SelectItem value="Comply e-DOCS">Comply e-DOCS</SelectItem>
@@ -5425,7 +5434,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
-                  Requerimentos
+                  {t('dashboard.reqTab.title')}
                 </h2>
 
                 {/* Layout Principal - Cards Expandidos */}
@@ -5436,7 +5445,7 @@ const Dashboard = () => {
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                            Requerimentos
+                            {t('dashboard.reqTab.requirements')}
                             {comparativoFiltroAtivo && (
                               <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                 {comparativoFiltroAtivo.toUpperCase()}
@@ -5468,7 +5477,7 @@ const Dashboard = () => {
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                            Total Horas
+                            {t('dashboard.reqTab.totalHours')}
                             {comparativoFiltroAtivo && (
                               <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                 {comparativoFiltroAtivo.toUpperCase()}
@@ -5483,7 +5492,7 @@ const Dashboard = () => {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="text-sm">
-                                    Inclui todas as horas: Faturado, Hora Extra, Sobreaviso, Bolsão Enel e Banco de Horas
+                                    {t('dashboard.reqTab.totalHoursTooltip')}
                                   </p>
                                 </TooltipContent>
                               </UITooltip>
@@ -5500,7 +5509,7 @@ const Dashboard = () => {
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                            Faturamento
+                            {t('dashboard.reqTab.billing')}
                             {comparativoFiltroAtivo && (
                               <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                 {comparativoFiltroAtivo.toUpperCase()}
@@ -5532,7 +5541,7 @@ const Dashboard = () => {
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div>
                           <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                            Tickets
+                            {t('dashboard.reqTab.tickets')}
                             {comparativoFiltroAtivo && (
                               <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                 {comparativoFiltroAtivo.toUpperCase()}
@@ -5557,12 +5566,12 @@ const Dashboard = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <TrendingUp className="h-5 w-5 text-gray-600" />
-                              <CardTitle className="text-lg font-semibold">Evolução Mensal</CardTitle>
+                              <CardTitle className="text-lg font-semibold">{t('dashboard.reqTab.monthlyEvolution')}</CardTitle>
                             </div>
                             <button
                               onClick={() => setEvolucaoMensalMode(prev => prev === 'requerimentos' ? 'faturamento' : 'requerimentos')}
                               className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200 flex items-center gap-1"
-                              title={`Alternar para ${evolucaoMensalMode === 'requerimentos' ? 'Faturamento' : 'Requerimentos'}`}
+                              title={t('dashboard.reqTab.switchToLabel', { mode: evolucaoMensalMode === 'requerimentos' ? t('dashboard.reqTab.billingLabel') : t('dashboard.reqTab.requirementsLabel') })}
                             >
                               {evolucaoMensalMode === 'requerimentos' ? (
                                 <>
@@ -5580,7 +5589,7 @@ const Dashboard = () => {
                             </button>
                           </div>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Comparativo de {evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'} por mês
+                            {t('dashboard.reqTab.comparisonByMonth', { mode: evolucaoMensalMode === 'requerimentos' ? t('dashboard.reqTab.requirementsLabel') : t('dashboard.reqTab.billingLabel') })}
                           </p>
                         </CardHeader>
                         <CardContent>
@@ -5647,11 +5656,11 @@ const Dashboard = () => {
                                     }
                                     
                                     const crescimentoTexto = temCrescimento ? 
-                                      ` (${crescimento >= 0 ? '+' : ''}${crescimento.toFixed(1)}% vs mês anterior)` : '';
+                                      ` (${crescimento >= 0 ? '+' : ''}${crescimento.toFixed(1)}% ${t('dashboard.reqTab.vsPreviousMonth')})` : '';
                                     
                                     return [
                                       `${valorFormatado}${crescimentoTexto}`,
-                                      evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'
+                                      evolucaoMensalMode === 'requerimentos' ? t('dashboard.reqTab.requirementsLabel') : t('dashboard.reqTab.billingLabel')
                                     ];
                                   }}
                                 />
@@ -5663,13 +5672,13 @@ const Dashboard = () => {
                                   strokeWidth={2}
                                   fillOpacity={1} 
                                   fill={`url(#color${evolucaoMensalMode})`} 
-                                  name={evolucaoMensalMode === 'requerimentos' ? 'Requerimentos' : 'Faturamento'}
+                                  name={evolucaoMensalMode === 'requerimentos' ? t('dashboard.reqTab.requirementsLabel') : t('dashboard.reqTab.billingLabel')}
                                 />
                               </AreaChart>
                             </ResponsiveContainer>
                           ) : (
                             <div className="flex items-center justify-center h-[300px] text-gray-500">
-                              Sem dados para exibir
+                              {t('dashboard.reqTab.noDataToDisplay')}
                             </div>
                           )}
                         </CardContent>
@@ -5684,7 +5693,7 @@ const Dashboard = () => {
                           <CardHeader className="pb-3 h-full flex flex-col justify-center">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Maior Faturamento</p>
+                                <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">{t('dashboard.reqTab.highestBilling')}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">
                                   {statsEmpresas.empresaMaisFatura.nome.length > 20 
                                     ? statsEmpresas.empresaMaisFatura.nome.substring(0, 20) + '...' 
@@ -5708,7 +5717,7 @@ const Dashboard = () => {
                           <CardHeader className="pb-3 h-full flex flex-col justify-center">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Maior Banco de Horas</p>
+                                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">{t('dashboard.reqTab.highestBankHours')}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">
                                   {statsEmpresas.empresaMaisBancoHoras.nome.length > 20 
                                     ? statsEmpresas.empresaMaisBancoHoras.nome.substring(0, 20) + '...' 
@@ -5731,7 +5740,7 @@ const Dashboard = () => {
                         <CardHeader className="pb-3">
                           <div className="flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-gray-600" />
-                            <CardTitle className="text-sm font-semibold">Módulos</CardTitle>
+                            <CardTitle className="text-sm font-semibold">{t('dashboard.reqTab.modules')}</CardTitle>
                           </div>
                         </CardHeader>
                         <CardContent className="flex-1">
@@ -5752,7 +5761,7 @@ const Dashboard = () => {
                                 ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-gray-500">Sem dados</p>
+                            <p className="text-xs text-gray-500">{t('dashboard.reqTab.noData')}</p>
                           )}
                         </CardContent>
                       </Card>
@@ -5767,7 +5776,7 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <BarChart3 className="h-5 w-5 text-gray-600" />
-                          <CardTitle className="text-lg font-semibold">Comparativo COMEX vs FISCAL</CardTitle>
+                          <CardTitle className="text-lg font-semibold">{t('dashboard.reqTab.comparativeCOMEXvsFISCAL')}</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
                           {/* Botões de filtro */}
@@ -5779,9 +5788,9 @@ const Dashboard = () => {
                                   ? 'bg-blue-500 text-white'
                                   : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
                               }`}
-                              title="Mostrar todos"
+                              title={t('dashboard.reqTab.showAll')}
                             >
-                              Todos
+                              {t('dashboard.reqTab.all')}
                             </button>
                             <button
                               onClick={() => setComparativoFiltroAtivo('comex')}
@@ -5790,7 +5799,7 @@ const Dashboard = () => {
                                   ? 'bg-blue-500 text-white'
                                   : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
                               }`}
-                              title="Filtrar apenas COMEX"
+                              title={t('dashboard.reqTab.filterCOMEX')}
                             >
                               COMEX
                             </button>
@@ -5801,7 +5810,7 @@ const Dashboard = () => {
                                   ? 'bg-blue-500 text-white'
                                   : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
                               }`}
-                              title="Filtrar apenas FISCAL"
+                              title={t('dashboard.reqTab.filterFISCAL')}
                             >
                               FISCAL
                             </button>
@@ -5809,17 +5818,17 @@ const Dashboard = () => {
                           <button
                             onClick={() => setComparativoMode(prev => prev === 'faturamento' ? 'banco_horas' : 'faturamento')}
                             className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200 font-medium"
-                            title={`Alternar para ${comparativoMode === 'faturamento' ? 'Banco de Horas' : 'Faturamento'}`}
+                            title={t('dashboard.reqTab.switchToLabel', { mode: comparativoMode === 'faturamento' ? t('dashboard.reqTab.bankHoursLabel') : t('dashboard.reqTab.billingLabel') })}
                           >
                             {comparativoMode === 'faturamento' ? '💰→⏰' : '⏰→💰'}
                           </button>
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Evolução mensal de {comparativoMode === 'faturamento' ? 'Faturamento' : 'Banco de Horas'} - Últimos 12 meses
+                        {t('dashboard.reqTab.monthlyEvolutionOf', { mode: comparativoMode === 'faturamento' ? t('dashboard.reqTab.billingLabel') : t('dashboard.reqTab.bankHoursLabel') })}
                         {comparativoFiltroAtivo && (
                           <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                            Filtrado: {comparativoFiltroAtivo.toUpperCase()}
+                            {t('dashboard.reqTab.filtered', { filter: comparativoFiltroAtivo.toUpperCase() })}
                           </span>
                         )}
                       </p>
@@ -5948,7 +5957,7 @@ const Dashboard = () => {
                                     return `R$ ${value}`;
                                   }
                                 }}
-                                label={{ value: 'Faturamento (R$)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
+                                label={{ value: t('dashboard.reqTab.billingAxis'), angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
                               />
                             ) : (
                               <YAxis 
@@ -5960,12 +5969,12 @@ const Dashboard = () => {
                                   const horasFormatadas = converterMinutosParaHoras(value);
                                   return horasFormatadas;
                                 }}
-                                label={{ value: 'Banco de Horas', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
+                                label={{ value: t('dashboard.reqTab.bankHoursAxis'), angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }}
                               />
                             )}
                             <Tooltip 
                               formatter={(value: number, name: string) => {
-                                if (comparativoMode === 'faturamento' && name.includes('Faturamento')) {
+                                if (comparativoMode === 'faturamento' && (name.includes('Billing') || name.includes('Faturamento') || name.includes('Facturación'))) {
                                   return [
                                     new Intl.NumberFormat('pt-BR', { 
                                       style: 'currency', 
@@ -5973,14 +5982,14 @@ const Dashboard = () => {
                                     }).format(value),
                                     name
                                   ];
-                                } else if (comparativoMode === 'banco_horas' && name.includes('Banco de Horas')) {
+                                } else if (comparativoMode === 'banco_horas' && (name.includes('Hours Bank') || name.includes('Banco de Horas'))) {
                                   // Converter minutos para formato HH:MM
                                   const horasFormatadas = converterMinutosParaHoras(value);
                                   return [horasFormatadas, name];
                                 }
                                 return [value, name];
                               }}
-                              labelFormatter={(label) => `Mês: ${label}`}
+                              labelFormatter={(label) => t('dashboard.reqTab.month', { name: label })}
                               contentStyle={{
                                 backgroundColor: '#ffffff',
                                 border: '1px solid #e5e7eb',
@@ -6007,7 +6016,7 @@ const Dashboard = () => {
                                     strokeWidth={2}
                                     fillOpacity={1}
                                     fill="url(#colorComexFaturamento)"
-                                    name="COMEX - Faturamento"
+                                    name={t('dashboard.reqTab.comexBilling')}
                                   />
                                 )}
                                 {/* Mostrar FISCAL apenas se filtro for null ou 'fiscal' */}
@@ -6020,7 +6029,7 @@ const Dashboard = () => {
                                     strokeWidth={2}
                                     fillOpacity={1}
                                     fill="url(#colorFiscalFaturamento)"
-                                    name="FISCAL - Faturamento"
+                                    name={t('dashboard.reqTab.fiscalBilling')}
                                   />
                                 )}
                               </>
@@ -6037,7 +6046,7 @@ const Dashboard = () => {
                                     strokeWidth={2}
                                     fillOpacity={1}
                                     fill="url(#colorComexBancoHoras)"
-                                    name="COMEX - Banco de Horas"
+                                    name={t('dashboard.reqTab.comexBankHours')}
                                   />
                                 )}
                                 {/* Mostrar FISCAL apenas se filtro for null ou 'fiscal' */}
@@ -6050,7 +6059,7 @@ const Dashboard = () => {
                                     strokeWidth={2}
                                     fillOpacity={1}
                                     fill="url(#colorFiscalBancoHoras)"
-                                    name="FISCAL - Banco de Horas"
+                                    name={t('dashboard.reqTab.fiscalBankHours')}
                                   />
                                 )}
                               </>
@@ -6059,7 +6068,7 @@ const Dashboard = () => {
                         </ResponsiveContainer>
                       ) : (
                         <div className="flex items-center justify-center h-[400px] text-gray-500">
-                          Sem dados para exibir
+                          {t('dashboard.reqTab.noDataToDisplay')}
                         </div>
                       )}
                     </CardContent>
@@ -6075,13 +6084,13 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <Award className={`h-4 w-4 ${topFaturamentoMode === 'faturamento' ? 'text-orange-600' : 'text-blue-600'}`} />
                           <CardTitle className="text-sm font-semibold">
-                            {topFaturamentoMode === 'faturamento' ? 'Top Faturamento' : 'Top Banco de Horas'}
+                            {topFaturamentoMode === 'faturamento' ? t('dashboard.reqTab.topBilling') : t('dashboard.reqTab.topBankHours')}
                           </CardTitle>
                         </div>
                         <button
                           onClick={() => setTopFaturamentoMode(prev => prev === 'faturamento' ? 'banco_horas' : 'faturamento')}
                           className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200"
-                          title={`Alternar para ${topFaturamentoMode === 'faturamento' ? 'Banco de Horas' : 'Faturamento'}`}
+                          title={t('dashboard.reqTab.switchToLabel', { mode: topFaturamentoMode === 'faturamento' ? t('dashboard.reqTab.bankHoursLabel') : t('dashboard.reqTab.billingLabel') })}
                         >
                           {topFaturamentoMode === 'faturamento' ? '💰→⏰' : '⏰→💰'}
                         </button>
@@ -6121,7 +6130,7 @@ const Dashboard = () => {
                                         style={{ 
                                           width: `${porcentagem}%`
                                         }}
-                                        title={`${porcentagem.toFixed(1)}% do maior valor`}
+                                        title={t('dashboard.reqTab.percentOfHighest', { percent: porcentagem.toFixed(1) })}
                                       />
                                     </div>
                                   </div>
@@ -6154,7 +6163,7 @@ const Dashboard = () => {
                                         style={{ 
                                           width: `${porcentagem}%`
                                         }}
-                                        title={`${porcentagem.toFixed(1)}% do maior valor`}
+                                        title={t('dashboard.reqTab.percentOfHighest', { percent: porcentagem.toFixed(1) })}
                                       />
                                     </div>
                                   </div>
@@ -6164,7 +6173,7 @@ const Dashboard = () => {
                           })()}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500">Sem dados</p>
+                        <p className="text-xs text-gray-500">{t('dashboard.reqTab.noData')}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -6174,7 +6183,7 @@ const Dashboard = () => {
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
                         <PieChart className="h-4 w-4 text-green-600" />
-                        <CardTitle className="text-sm font-semibold">Distribuição de Faturamento</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('dashboard.reqTab.billingDistribution')}</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -6191,12 +6200,12 @@ const Dashboard = () => {
                               const reprovado = statsRequerimentos.porTipoCobranca.find(item => item.tipo === 'Reprovado');
                               
                               const categorias = [
-                                { name: 'Faturado', value: faturado?.valor || 0, tipo: 'Faturado' as TipoCobrancaType },
-                                { name: 'Hora Extra', value: horaExtra?.valor || 0, tipo: 'Hora Extra' as TipoCobrancaType },
-                                { name: 'Sobreaviso', value: sobreaviso?.valor || 0, tipo: 'Sobreaviso' as TipoCobrancaType },
-                                { name: 'Bolsão Enel', value: bolsaoEnel?.valor || 0, tipo: 'Bolsão Enel' as TipoCobrancaType },
-                                { name: 'Banco de Horas', value: bancoHoras?.valor || 0, tipo: 'Banco de Horas' as TipoCobrancaType },
-                                { name: 'Reprovado', value: reprovado?.valor || 0, tipo: 'Reprovado' as TipoCobrancaType }
+                                { name: t('billing.typeName.Faturado'), value: faturado?.valor || 0, tipo: 'Faturado' as TipoCobrancaType },
+                                { name: t('billing.typeName.Hora Extra'), value: horaExtra?.valor || 0, tipo: 'Hora Extra' as TipoCobrancaType },
+                                { name: t('billing.typeName.Sobreaviso'), value: sobreaviso?.valor || 0, tipo: 'Sobreaviso' as TipoCobrancaType },
+                                { name: t('billing.typeName.Bolsão Enel'), value: bolsaoEnel?.valor || 0, tipo: 'Bolsão Enel' as TipoCobrancaType },
+                                { name: t('billing.typeName.Banco de Horas'), value: bancoHoras?.valor || 0, tipo: 'Banco de Horas' as TipoCobrancaType },
+                                { name: t('billing.typeName.Reprovado'), value: reprovado?.valor || 0, tipo: 'Reprovado' as TipoCobrancaType }
                               ]
                               .filter(item => item.value > 0)
                               .sort((a, b) => a.value - b.value); // Ordenar do menor para o maior (menor no centro)
@@ -6253,13 +6262,13 @@ const Dashboard = () => {
                                   `${name}`
                                 ];
                               }}
-                              labelFormatter={(label: string) => label !== 'Vazio' ? `Categoria: ${label}` : ''}
+                              labelFormatter={(label: string) => label !== 'Vazio' ? t('dashboard.reqTab.category', { name: label }) : ''}
                             />
                           </RechartsPieChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
-                          Sem dados
+                          {t('dashboard.reqTab.noData')}
                         </div>
                       )}
                     </CardContent>
@@ -6270,7 +6279,7 @@ const Dashboard = () => {
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
                         <BarChart3 className="h-4 w-4 text-gray-600" />
-                        <CardTitle className="text-sm font-semibold">Tipo de Cobrança</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('dashboard.reqTab.billingType')}</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -6282,7 +6291,7 @@ const Dashboard = () => {
                               <div key={item.tipo} className="space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-gray-600 dark:text-gray-400">
-                                    {item.tipo}
+                                    {t(`billing.typeName.${item.tipo}`, { defaultValue: item.tipo })}
                                   </span>
                                   <span className="text-xs font-medium">
                                     {item.count}
@@ -6295,14 +6304,14 @@ const Dashboard = () => {
                                       width: `${item.porcentagem}%`,
                                       backgroundColor: getHexColor(item.tipo)
                                     }}
-                                    title={`${item.porcentagem.toFixed(1)}% do total`}
+                                    title={t('dashboard.reqTab.percentOfTotal', { percent: item.porcentagem.toFixed(1) })}
                                   />
                                 </div>
                               </div>
                             ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500">Sem dados</p>
+                        <p className="text-xs text-gray-500">{t('dashboard.reqTab.noData')}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -6312,8 +6321,8 @@ const Dashboard = () => {
                 {(!statsRequerimentos || statsRequerimentos.total === 0) && (
                   <EmptyState
                     icon={FileText}
-                    title="Nenhum requerimento encontrado"
-                    description={`Não há requerimentos para o ano selecionado: ${anoSelecionado}`}
+                    title={t('dashboard.reqTab.noRequirementsFound')}
+                    description={t('dashboard.reqTab.noRequirementsForYear', { year: anoSelecionado })}
                   />
                 )}
               </div>
@@ -6324,7 +6333,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Heart className="h-6 w-6 text-blue-600" />
-                  Elogios
+                  {t('dashboard.complimentsTab.title')}
                 </h2>
 
                 {/* Sub-abas de Elogios */}
@@ -6343,7 +6352,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h2 className="sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-6 w-6 text-blue-600" />
-                  Planos de Ação
+                  {t('dashboard.plansTab.title')}
                 </h2>
 
                 {/* Conteúdo dos Planos de Ação */}
