@@ -179,6 +179,7 @@ const es = {
     userManagement: 'Gestionar Usuarios',
     companies: 'Registro de Empresas',
     clients: 'Registro de Emails Clientes',
+    clientEmails: 'Registro de Emails Clientes',
     responsibleGroups: 'Grupos Responsables',
     clientRates: 'Registro de Tasas Clientes',
     auditLogs: 'Auditoría',

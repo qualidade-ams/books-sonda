@@ -368,7 +368,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         },
         {
           icon: Contact,
-          label: t('nav.clients'),
+          label: t('nav.clientEmails'),
           path: '/admin/clientes',
           screenKey: 'clientes'
         },
