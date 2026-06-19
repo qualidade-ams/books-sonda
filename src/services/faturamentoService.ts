@@ -342,7 +342,7 @@ export class FaturamentoService {
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Envio</th>
                             <th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0;">Data Aprov.</th>
                             ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel'].includes(tipo) ? '<th align="center" style="padding:10px; border-bottom:2px solid #e2e8f0; white-space:nowrap;">Valor Total</th>' : ''}
-                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? '<th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0;">Observação</th>' : ''}
+                            ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? '<th align="left" style="padding:10px; border-bottom:2px solid #e2e8f0; min-width:320px;">Observação</th>' : ''}
                           </tr>
                         </thead>
                         <tbody>
@@ -419,7 +419,7 @@ export class FaturamentoService {
                                 </td>
                                 ` : ''}
                                 ${['Faturado', 'Hora Extra', 'Sobreaviso', 'Bolsão Enel', 'Reprovado'].includes(tipo) ? `
-                                <td align="left" style="padding:10px; color:#64748b; font-size:12px; max-width:200px;">
+                                <td align="left" style="padding:10px; color:#64748b; font-size:12px; min-width:320px; max-width:420px; word-wrap:break-word; white-space:normal;">
                                   ${req.observacao || '-'}
                                 </td>
                                 ` : ''}

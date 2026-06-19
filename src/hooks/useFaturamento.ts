@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { faturamentoService } from '@/services/faturamentoService';
 import type { 
   RelatorioFaturamento, 
@@ -111,6 +112,7 @@ export function useDispararFaturamento() {
  */
 export function useMarcarComoFaturados() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: (requerimentoIds: string[]) => 
@@ -118,9 +120,9 @@ export function useMarcarComoFaturados() {
     onSuccess: (resultado, requerimentoIds) => {
       if (resultado.success) {
         toast.success(
-          resultado.message || 'Requerimentos marcados como faturados!',
+          t('billing.markedAsBilledSuccess', { count: requerimentoIds.length }),
           {
-            description: `${requerimentoIds.length} requerimento(s) atualizado(s)`,
+            description: t('billing.markedAsBilledUpdated', { count: requerimentoIds.length }),
             duration: 5000,
           }
         );
@@ -136,9 +138,9 @@ export function useMarcarComoFaturados() {
         });
       } else {
         toast.error(
-          resultado.error || 'Erro ao marcar requerimentos como faturados',
+          resultado.error || t('billing.markedAsBilledErrorFallback'),
           {
-            description: 'Verifique os dados e tente novamente',
+            description: t('billing.markedAsBilledRetry'),
             duration: 8000,
           }
         );
@@ -146,7 +148,7 @@ export function useMarcarComoFaturados() {
     },
     onError: (error: Error) => {
       console.error('Erro na mutation de marcar como faturados:', error);
-      toast.error('Erro inesperado ao marcar requerimentos', {
+      toast.error(t('billing.markedAsBilledUnexpected'), {
         description: error.message,
         duration: 8000,
       });

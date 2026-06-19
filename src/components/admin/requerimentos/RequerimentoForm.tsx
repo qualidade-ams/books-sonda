@@ -1133,7 +1133,7 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Empresa (Segmentação) <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.companySegmentation')} <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
                         <Select
                           onValueChange={(value) => {
@@ -1149,17 +1149,17 @@ export function RequerimentoForm({
                         >
                           <FormControl>
                             <SelectTrigger className={cn(getErrorClasses(field.value))}>
-                              <SelectValue placeholder="Selecione uma empresa" />
+                              <SelectValue placeholder={t('reqForm.selectCompany')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {isLoadingEmpresasSegmentacao ? (
                               <SelectItem value="__loading__" disabled>
-                                <LoadingSpinner size="sm" text="Carregando..." />
+                                <LoadingSpinner size="sm" text={t('common.loading')} />
                               </SelectItem>
                             ) : empresasSegmentacao.length === 0 ? (
                               <SelectItem value="__no_empresas__" disabled>
-                                Nenhuma empresa encontrada
+                                {t('reqForm.noCompanyFound')}
                               </SelectItem>
                             ) : (
                               empresasSegmentacao.map((empresa) => (
@@ -1392,9 +1392,9 @@ export function RequerimentoForm({
                       <FormMessage />
                       {(clienteSelecionado?.tipo_cobranca === 'outros' || clienteSelecionado?.tem_ams === false) && (
                         <FormDescription className="text-amber-600 dark:text-amber-400">
-                          ⚠️ A opção "Banco de Horas" não está disponível para esta empresa
-                          {clienteSelecionado?.tipo_cobranca === 'outros' && ' (tipo de cobrança "Outros")'}
-                          {clienteSelecionado?.tem_ams === false && ' (não possui AMS)'}
+                          ⚠️ {t('reqForm.bankHoursNotAvailable')}
+                          {clienteSelecionado?.tipo_cobranca === 'outros' && ` ${t('reqForm.billingTypeOthers')}`}
+                          {clienteSelecionado?.tem_ams === false && ` ${t('reqForm.noAMS')}`}
                         </FormDescription>
                       )}
                     </FormItem>
@@ -1416,7 +1416,7 @@ export function RequerimentoForm({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-normal cursor-pointer">
-                            Atendimento presencial
+                            {t('reqForm.onSiteService')}
                           </FormLabel>
                         </div>
                       </FormItem>
@@ -1432,7 +1432,7 @@ export function RequerimentoForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Tipo de Hora Extra <span className="text-gray-700 dark:text-gray-300">*</span>
+                          {t('reqForm.overtimeType')} <span className="text-gray-700 dark:text-gray-300">*</span>
                         </FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
@@ -1440,7 +1440,7 @@ export function RequerimentoForm({
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo de hora extra" />
+                              <SelectValue placeholder={t('reqForm.selectOvertimeType')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1454,7 +1454,7 @@ export function RequerimentoForm({
                         <FormMessage />
                         {!taxaVigente && (
                           <FormDescription className="text-amber-600 dark:text-amber-400">
-                            ⚠️ Cliente não possui taxa vigente cadastrada
+                            ⚠️ {t('reqForm.noRateRegistered')}
                           </FormDescription>
                         )}
                       </FormItem>
@@ -1469,8 +1469,8 @@ export function RequerimentoForm({
                     name="horas_analise_ef"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Horas de Análise EF
+                      <FormLabel>
+                          {t('reqForm.analysisHoursEF')}
                         </FormLabel>
                         <FormControl>
                           <InputHoras
@@ -1555,8 +1555,8 @@ export function RequerimentoForm({
                 <Separator />
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    💰 Valores por Hora
-                    <OptimizedTooltip content="Campos obrigatórios para tipos de cobrança com valor monetário">
+                    💰 {t('reqForm.hourlyValues')}
+                    <OptimizedTooltip content={t('reqForm.hourlyValuesTooltip')}>
                       <HelpCircle className="h-4 w-4 text-blue-500" />
                     </OptimizedTooltip>
                   </h4>
@@ -1569,9 +1569,9 @@ export function RequerimentoForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Valor/Hora Funcional <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {t('reqForm.functionalHourlyRate')} <span className="text-gray-700 dark:text-gray-300">*</span>
                             {valoresEditadosManualmente.funcional && (
-                              <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
                             )}
                           </FormLabel>
                           <FormControl>
@@ -1608,9 +1608,9 @@ export function RequerimentoForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Valor/Hora Técnico <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {t('reqForm.technicalHourlyRate')} <span className="text-gray-700 dark:text-gray-300">*</span>
                             {valoresEditadosManualmente.tecnico && (
-                              <span className="ml-1 text-xs text-blue-600" title="Editado manualmente">✏️</span>
+                              <span className="ml-1 text-xs text-blue-600" title={t('reqForm.editedManually')}>✏️</span>
                             )}
                           </FormLabel>
                           <FormControl>
@@ -1642,7 +1642,7 @@ export function RequerimentoForm({
 
                     {/* Valor Total Estimado */}
                     <div className="space-y-2">
-                      <Label>Valor Total Estimado</Label>
+                      <Label>{t('reqForm.estimatedTotalValue')}</Label>
                       <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                         <span className="font-semibold text-lg text-green-600">
                           R$ {valoresCalculados.valorTotalGeral.toLocaleString('pt-BR', {
@@ -1652,7 +1652,7 @@ export function RequerimentoForm({
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Calculado automaticamente
+                        {t('reqForm.calculatedAuto')}
                       </p>
                     </div>
                   </div>
@@ -1666,8 +1666,8 @@ export function RequerimentoForm({
                 <Separator />
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    🎫 Controle de Tickets
-                    <OptimizedTooltip content="Campo automático para empresas do tipo 'ticket' quando selecionado 'Banco de Horas'">
+                    🎫 {t('reqForm.ticketControl')}
+                    <OptimizedTooltip content={t('reqForm.ticketControlTooltip')}>
                       <HelpCircle className="h-4 w-4 text-blue-500" />
                     </OptimizedTooltip>
                   </h4>
@@ -1680,7 +1680,7 @@ export function RequerimentoForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Quantidade de Tickets <span className="text-gray-700 dark:text-gray-300">*</span>
+                            {t('reqForm.ticketQuantity')} <span className="text-gray-700 dark:text-gray-300">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -1779,7 +1779,7 @@ export function RequerimentoForm({
                   <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm">
                     <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">
-                      Campos obrigatórios pendentes:
+                      {t('reqForm.pendingRequiredFields')}
                     </p>
                     <ul className="text-amber-700 dark:text-amber-300 space-y-1">
                       {validationStatus.camposFaltando.map((campo, index) => (
