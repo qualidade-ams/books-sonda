@@ -316,8 +316,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           
           if (eFuturo) {
             const dadosMesAnterior = idx > 0 ? resultadosProcessados[idx - 1]?.dados : null;
-            const repasseMesAnterior = dadosMesAnterior?.repasse_horas || '00:00:00';
-            const baselineMes = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
+            const repasseMesAnterior: string = dadosMesAnterior?.repasse_horas || '00:00:00';
+            const baselineMes: string = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
             
             const baselineMinutos = parseHorasParaMinutos(baselineMes);
             const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
@@ -492,10 +492,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           if (eFuturo) {
             // Pegar repasse do mês anterior já processado
             const dadosMesAnterior = idx > 0 ? resultadosProcessados[idx - 1]?.dados : null;
-            const repasseMesAnterior = dadosMesAnterior?.repasse_horas || '00:00:00';
+            const repasseMesAnterior = String(dadosMesAnterior?.repasse_horas || '00:00:00');
             
             // Usar baseline do mês atual se existir, senão usar o baseline encontrado
-            const baselineMes = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
+            const baselineMes = String(resultado.dados?.baseline_horas || baselineHoras || '00:00:00');
             
             // Saldo a utilizar = baseline + repasse mês anterior
             const baselineMinutos = parseHorasParaMinutos(baselineMes);
@@ -528,7 +528,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 excedentes_horas: '00:00:00',
                 valor_excedentes_horas: 0,
                 taxa_hora_utilizada: null
-              }
+              } as any
             });
           } else {
             resultadosProcessados.push(resultado);
