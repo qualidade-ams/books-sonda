@@ -63,6 +63,24 @@ function minutosParaHoras(minutos: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
 }
 
+/**
+ * Determina a cor do valor com base no sinal (positivo/negativo/zero)
+ * - Negativo (começa com '-'): vermelho
+ * - Positivo (> 0 minutos): verde
+ * - Zero: preto
+ */
+function getColorClass(horas?: string): string {
+  if (!horas) return 'text-gray-900';
+  
+  const isNegativo = horas.startsWith('-');
+  if (isNegativo) return 'text-red-600';
+  
+  const minutos = parseHorasParaMinutos(horas);
+  if (minutos > 0) return 'text-green-600';
+  
+  return 'text-gray-900';
+}
+
 export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, onDataLoaded }: BookConsumoProps) {
   const [modalRequerimentosAberto, setModalRequerimentosAberto] = useState(false);
   const [mesSelecionado, setMesSelecionado] = useState<string>('');
@@ -1074,7 +1092,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2 font-semibold">Banco Contratado</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-semibold">
-                        {item.dados?.baseline_horas ? item.dados.baseline_horas.substring(0, 5) : '00:00'}
+                        {formatarHorasSemSegundos(item.dados?.baseline_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1083,8 +1101,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2">Repasse mês anterior</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className="px-4 py-2 text-center text-green-600 font-semibold">
-                        {item.dados?.repasses_mes_anterior_horas ? item.dados.repasses_mes_anterior_horas.substring(0, 5) : '00:00'}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasses_mes_anterior_horas)}`}>
+                        {formatarHorasSemSegundos(item.dados?.repasses_mes_anterior_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1093,8 +1111,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 font-semibold">Saldo a utilizar</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className="px-4 py-2 text-center text-green-600 font-bold">
-                        {item.dados?.saldo_a_utilizar_horas ? item.dados.saldo_a_utilizar_horas.substring(0, 5) : '00:00'}
+                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_a_utilizar_horas)}`}>
+                        {formatarHorasSemSegundos(item.dados?.saldo_a_utilizar_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1104,7 +1122,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2">Consumo Chamados</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
-                        {item.dados?.consumo_horas ? item.dados.consumo_horas.substring(0, 5) : '00:00'}
+                        {formatarHorasSemSegundos(item.dados?.consumo_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1114,7 +1132,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2">Requerimentos</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
-                        {item.dados?.requerimentos_horas ? item.dados.requerimentos_horas.substring(0, 5) : '00:00'}
+                        {formatarHorasSemSegundos(item.dados?.requerimentos_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1123,8 +1141,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-white">
                     <td className="px-4 py-2">Reajuste</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className="px-4 py-2 text-center">
-                        {item.dados?.reajustes_horas ? item.dados.reajustes_horas.substring(0, 5) : '00:00'}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.reajustes_horas)}`}>
+                        {formatarHorasSemSegundos(item.dados?.reajustes_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1134,7 +1152,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2 font-semibold">Consumo Total</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-bold">
-                        {item.dados?.consumo_total_horas ? item.dados.consumo_total_horas.substring(0, 5) : '00:00'}
+                        {formatarHorasSemSegundos(item.dados?.consumo_total_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1143,8 +1161,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2 font-semibold">Saldo</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className="px-4 py-2 text-center text-green-600 font-bold">
-                        {item.dados?.saldo_horas ? item.dados.saldo_horas.substring(0, 5) : '00:00'}
+                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_horas)}`}>
+                        {formatarHorasSemSegundos(item.dados?.saldo_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
@@ -1153,8 +1171,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2">Repasse - 50%</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className="px-4 py-2 text-center text-green-600 font-semibold">
-                        {item.dados?.repasse_horas ? item.dados.repasse_horas.substring(0, 5) : '00:00'}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasse_horas)}`}>
+                        {formatarHorasSemSegundos(item.dados?.repasse_horas || '00:00')}
                       </td>
                     ))}
                   </tr>
