@@ -392,6 +392,7 @@ const es = {
       inMonth: 'en el mes',
       compliment: 'Elogio',
       complimentsWord: 'Elogios',
+      of: 'de',
       // Table
       detailedList: 'Lista Detallada de Elogios',
       showAll: 'Ver todos',

@@ -392,6 +392,7 @@ const ptBR = {
       inMonth: 'no mês',
       compliment: 'Elogio',
       complimentsWord: 'Elogios',
+      of: 'de',
       // Table
       detailedList: 'Lista Detalhada de Elogios',
       showAll: 'Ver todos',

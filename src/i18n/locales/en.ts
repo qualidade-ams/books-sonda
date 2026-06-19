@@ -392,6 +392,7 @@ const en = {
       inMonth: 'in the month',
       compliment: 'Compliment',
       complimentsWord: 'Compliments',
+      of: 'of',
       // Table
       detailedList: 'Detailed Compliments List',
       showAll: 'View all',

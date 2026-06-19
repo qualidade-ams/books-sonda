@@ -1139,7 +1139,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                             </h3>
                             <div className="flex items-center gap-2">
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {quantidade} {quantidade === 1 ? 'Elogio' : 'Elogios'}
+                                {quantidade} {quantidade === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')}
                               </p>
                               {(() => {
                                 const grupoPrincipal = obterGrupoPrincipal(nome);
@@ -1431,7 +1431,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 <div className="flex items-center justify-between px-2 py-4 border-t">
                   {/* Lado esquerdo: Dropdown "Mostrar" */}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.show')}</span>
                     <Select
                       value={itensPorPagina.toString()}
                       onValueChange={(value) => {
@@ -1459,19 +1459,19 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                         size="sm"
                         onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
                         disabled={paginaAtual === 1}
-                        aria-label="Página anterior"
+                        aria-label={t('dashboard.complimentsTab.previousPage')}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        Página {paginaAtual} de {totalPaginas}
+                        {t('dashboard.complimentsTab.page', { current: paginaAtual, total: totalPaginas })}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
                         disabled={paginaAtual === totalPaginas}
-                        aria-label="Próxima página"
+                        aria-label={t('dashboard.complimentsTab.nextPage')}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -1480,7 +1480,7 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
 
                   {/* Lado direito: Contador de registros */}
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {indiceInicio + 1}-{Math.min(indiceFim, elogiosDetalhados.length)} de {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? 'elogio' : 'elogios'}
+                    {indiceInicio + 1}-{Math.min(indiceFim, elogiosDetalhados.length)} {t('dashboard.complimentsTab.of')} {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')}
                   </div>
                 </div>
               )}
@@ -1549,9 +1549,9 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 overflow-hidden">
                   <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.category')}</p>
-                  <p className="text-sm">{elogioVisualizando.pesquisa?.categoria || '-'}</p>
+                  <p className="text-sm break-words">{elogioVisualizando.pesquisa?.categoria || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.response')}</p>
@@ -2403,7 +2403,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               {elogiosDetalhados.length > 0 && (
                 <div className="flex items-center justify-between px-2 py-4 border-t">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.show')}</span>
                     <Select
                       value={itensPorPaginaMap.toString()}
                       onValueChange={(value) => {
@@ -2430,19 +2430,19 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                         size="sm"
                         onClick={() => setPaginaAtualMap(prev => Math.max(1, prev - 1))}
                         disabled={paginaAtualMap === 1}
-                        aria-label="Página anterior"
+                        aria-label={t('dashboard.complimentsTab.previousPage')}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        Página {paginaAtualMap} de {totalPaginasMap}
+                        {t('dashboard.complimentsTab.page', { current: paginaAtualMap, total: totalPaginasMap })}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPaginaAtualMap(prev => Math.min(totalPaginasMap, prev + 1))}
                         disabled={paginaAtualMap === totalPaginasMap}
-                        aria-label="Próxima página"
+                        aria-label={t('dashboard.complimentsTab.nextPage')}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -2450,7 +2450,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   )}
 
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {indiceInicioMap + 1}-{Math.min(indiceFimMap, elogiosDetalhados.length)} de {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? 'elogio' : 'elogios'}
+                    {indiceInicioMap + 1}-{Math.min(indiceFimMap, elogiosDetalhados.length)} {t('dashboard.complimentsTab.of')} {elogiosDetalhados.length} {elogiosDetalhados.length === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')}
                   </div>
                 </div>
               )}
@@ -2519,9 +2519,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 overflow-hidden">
                   <p className="text-xs font-medium text-gray-500">{t('dashboard.complimentsTab.category')}</p>
-                  <p className="text-sm">{elogioVisualizandoMap.pesquisa?.categoria || '-'}</p>
+                  <p className="text-sm break-words">{elogioVisualizandoMap.pesquisa?.categoria || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-gray-500">Grupo</p>
