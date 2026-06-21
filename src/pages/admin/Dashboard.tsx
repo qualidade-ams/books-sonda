@@ -1874,7 +1874,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                {mesSelecionado === 'todos' ? 'Destaque Geral' : 'Destaque do Ano'}
+                {mesSelecionado === 'todos' ? t('dashboard.complimentsTab.generalHighlight') : t('dashboard.complimentsTab.yearHighlight')}
               </p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {mesSelecionado === 'todos' ? (topAno ? topAno[0] : '-') : (topAno ? topAno[0] : '-')}
@@ -1895,10 +1895,10 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Mapeado</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.totalMapped')}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{colaboradoresUnicos}</p>
-                <span className="text-xs font-medium text-green-600">colaboradores</span>
+                <span className="text-xs font-medium text-green-600">{t('dashboard.complimentsTab.collaborators')}</span>
               </div>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -1934,9 +1934,9 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PieChart className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg font-semibold">Top 5 Grupos - Acumulado do Ano</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboard.complimentsTab.top5GroupsYear')}</CardTitle>
             </div>
-            <span className="text-xs text-gray-500">Ano {anoSelecionado}</span>
+            <span className="text-xs text-gray-500">{t('dashboard.complimentsTab.year')} {anoSelecionado}</span>
           </div>
         </CardHeader>
         <CardContent>
@@ -1975,7 +1975,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             }
             {Object.keys(contagemAno).length === 0 && (
               <div className="text-center py-8 text-gray-500 text-sm">
-                Nenhum grupo com elogios este ano
+                {t('dashboard.complimentsTab.noGroupWithComplimentsYear')}
               </div>
             )}
           </div>
@@ -1991,14 +1991,15 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-blue-600" />
                 <CardTitle className="text-lg font-semibold">
-                  Top 5 Grupos - {mesSelecionado === 'todos' ? 'Mês Vigente' : 'Mês Selecionado'}
+                  {mesSelecionado === 'todos' ? t('dashboard.complimentsTab.top5GroupsCurrentMonth') : t('dashboard.complimentsTab.top5GroupsSelectedMonth')}
                 </CardTitle>
               </div>
               <span className="text-xs text-gray-500">
-                {mesSelecionado === 'todos' 
-                  ? `${new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())} ${anoSelecionado}`
-                  : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())} ${anoSelecionado}`
-                }
+                {(() => {
+                  const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                  const monthIndex = mesSelecionado === 'todos' ? new Date().getMonth() : (mesSelecionado as number) - 1;
+                  return `${t(`monthPicker.monthsShort.${monthKeys[monthIndex]}`)} ${anoSelecionado}`;
+                })()}
               </span>
             </div>
           </CardHeader>
@@ -2041,7 +2042,7 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               })()}
               {Object.keys(mesSelecionado === 'todos' ? contagemMesVigente : contagemPeriodo).length === 0 && (
                 <div className="text-center py-8 text-gray-500 text-sm">
-                  Nenhum grupo com elogios no período selecionado
+                  {t('dashboard.complimentsTab.noGroupWithComplimentsPeriod')}
                 </div>
               )}
             </div>
@@ -2054,20 +2055,20 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-green-600" />
-                <CardTitle className="text-sm font-semibold">Distribuição por Área</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t('dashboard.complimentsTab.distributionByArea')}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setAreasExpandido(!areasExpandido)}
                   className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors duration-200"
-                  title={areasExpandido ? 'Mostrar apenas principais (FISCAL e COMEX)' : 'Mostrar todas as áreas'}
+                  title={areasExpandido ? t('dashboard.complimentsTab.showMainOnly') : t('dashboard.complimentsTab.showAllAreas')}
                 >
-                  {areasExpandido ? 'Principais' : 'Todas'}
+                  {areasExpandido ? t('dashboard.complimentsTab.mainOnly') : t('dashboard.complimentsTab.allAreas')}
                 </button>
                 <span className="text-xs text-gray-500">
                   {mesSelecionado === 'todos' 
-                    ? `Ano ${anoSelecionado}`
-                    : `${new Date(2000, mesSelecionado - 1).toLocaleDateString('pt-BR', { month: 'long' })} ${anoSelecionado}`
+                    ? `${t('dashboard.complimentsTab.year')} ${anoSelecionado}`
+                    : (() => { const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']; return `${t(`monthPicker.monthsShort.${monthKeys[mesSelecionado - 1]}`)} ${anoSelecionado}`; })()
                   }
                 </span>
               </div>
