@@ -89,6 +89,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const [bancoHorasTrimestre, setBancoHorasTrimestre] = useState<any[]>([]);
   const [carregandoBancoHoras, setCarregandoBancoHoras] = useState(false);
   const [taxaPadraoEmpresa, setTaxaPadraoEmpresa] = useState<number>(0);
+  const [percentualRepasseEmpresa, setPercentualRepasseEmpresa] = useState<number>(50);
 
   // Buscar taxas específicas do cliente (igual à tela de banco de horas)
   const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(empresaId) as {
@@ -299,60 +300,83 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
     if (data.banco_horas_trimestre && data.banco_horas_trimestre.length > 0) {
       console.log('✅ Usando banco_horas_trimestre do snapshot:', data.banco_horas_trimestre.length, 'meses');
       
-      // Aplicar mesma lógica de zerar consumo para meses futuros
-      const mesReferencia = mes;
-      const anoReferencia = ano;
-      
-      if (mesReferencia && anoReferencia) {
-        const mesComDados = data.banco_horas_trimestre.find(r => r.dados?.baseline_horas);
-        const baselineHoras = mesComDados?.dados?.baseline_horas || null;
-        
-        const resultadosProcessados: typeof data.banco_horas_trimestre = [];
-        
-        for (let idx = 0; idx < data.banco_horas_trimestre.length; idx++) {
-          const resultado = data.banco_horas_trimestre[idx];
-          const eFuturo = (resultado.ano > anoReferencia) || 
-                          (resultado.ano === anoReferencia && resultado.mes > mesReferencia);
-          
-          if (eFuturo) {
-            const dadosMesAnterior = idx > 0 ? resultadosProcessados[idx - 1]?.dados : null;
-            const repasseMesAnterior: string = dadosMesAnterior?.repasse_horas || '00:00:00';
-            const baselineMes: string = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
-            
-            const baselineMinutos = parseHorasParaMinutos(baselineMes);
-            const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
-            const saldoUtilizar = baselineMinutos + repasseMinutos;
-            const repasse = Math.floor(saldoUtilizar / 2);
-            
-            resultadosProcessados.push({
-              ...resultado,
-              dados: {
-                baseline_horas: baselineMes,
-                repasses_mes_anterior_horas: repasseMesAnterior,
-                saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
-                consumo_horas: '00:00:00',
-                requerimentos_horas: '00:00:00',
-                reajustes_horas: '00:00:00',
-                consumo_total_horas: '00:00:00',
-                saldo_horas: minutosParaHoras(saldoUtilizar),
-                repasse_horas: minutosParaHoras(repasse),
-                excedentes_horas: '00:00:00',
-                valor_excedentes_horas: 0,
-                taxa_hora_utilizada: null
-              }
-            });
-          } else {
-            resultadosProcessados.push(resultado);
+      // Buscar percentual da empresa para usar no cálculo de meses futuros
+      const processarSnapshot = async () => {
+        let percentualRepasse = 50; // fallback
+        if (empresaId) {
+          try {
+            const { supabase } = await import('@/integrations/supabase/client');
+            const { data: empresa } = await supabase
+              .from('empresas_clientes')
+              .select('percentual_repasse_mensal')
+              .eq('id', empresaId)
+              .single();
+            if (empresa?.percentual_repasse_mensal != null) {
+              percentualRepasse = empresa.percentual_repasse_mensal;
+            }
+          } catch (e) {
+            console.warn('⚠️ Erro ao buscar percentual da empresa, usando fallback 50%');
           }
+          setPercentualRepasseEmpresa(percentualRepasse);
+        }
+
+        // Aplicar mesma lógica de zerar consumo para meses futuros
+        const mesReferencia = mes;
+        const anoReferencia = ano;
+        
+        if (mesReferencia && anoReferencia) {
+          const mesComDados = data.banco_horas_trimestre!.find(r => r.dados?.baseline_horas);
+          const baselineHoras = mesComDados?.dados?.baseline_horas || null;
+          
+          const resultadosProcessados: typeof data.banco_horas_trimestre = [];
+          
+          for (let idx = 0; idx < data.banco_horas_trimestre!.length; idx++) {
+            const resultado = data.banco_horas_trimestre![idx];
+            const eFuturo = (resultado.ano > anoReferencia) || 
+                            (resultado.ano === anoReferencia && resultado.mes > mesReferencia);
+            
+            if (eFuturo) {
+              const dadosMesAnterior = idx > 0 ? resultadosProcessados![idx - 1]?.dados : null;
+              const repasseMesAnterior: string = dadosMesAnterior?.repasse_horas || '00:00:00';
+              const baselineMes: string = resultado.dados?.baseline_horas || baselineHoras || '00:00:00';
+              
+              const baselineMinutos = parseHorasParaMinutos(baselineMes);
+              const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
+              const saldoUtilizar = baselineMinutos + repasseMinutos;
+              const repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
+              
+              resultadosProcessados!.push({
+                ...resultado,
+                dados: {
+                  baseline_horas: baselineMes,
+                  repasses_mes_anterior_horas: repasseMesAnterior,
+                  saldo_a_utilizar_horas: minutosParaHoras(saldoUtilizar),
+                  consumo_horas: '00:00:00',
+                  requerimentos_horas: '00:00:00',
+                  reajustes_horas: '00:00:00',
+                  consumo_total_horas: '00:00:00',
+                  saldo_horas: minutosParaHoras(saldoUtilizar),
+                  repasse_horas: minutosParaHoras(repasse),
+                  excedentes_horas: '00:00:00',
+                  valor_excedentes_horas: 0,
+                  taxa_hora_utilizada: null
+                }
+              });
+            } else {
+              resultadosProcessados!.push(resultado);
+            }
+          }
+          
+          setBancoHorasTrimestre(resultadosProcessados!);
+        } else {
+          setBancoHorasTrimestre(data.banco_horas_trimestre!);
         }
         
-        setBancoHorasTrimestre(resultadosProcessados);
-      } else {
-        setBancoHorasTrimestre(data.banco_horas_trimestre);
-      }
-      
-      setCarregandoBancoHoras(false);
-      onDataLoaded?.();
+        setCarregandoBancoHoras(false);
+        onDataLoaded?.();
+      };
+
+      processarSnapshot();
       return;
     }
 
@@ -370,7 +394,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
         const { data: empresa, error: empresaError } = await supabase
           .from('empresas_clientes')
-          .select('periodo_apuracao, inicio_vigencia')
+          .select('periodo_apuracao, inicio_vigencia, percentual_repasse_mensal')
           .eq('id', empresaId)
           .single();
         
@@ -383,6 +407,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         
         const periodoApuracao = empresa?.periodo_apuracao || 3; // Default: trimestral
         const inicioVigencia = empresa?.inicio_vigencia;
+        const percentualRepasse = empresa?.percentual_repasse_mensal ?? 50;
+        setPercentualRepasseEmpresa(percentualRepasse);
         
         // 2. Calcular os meses do ciclo baseado no periodo_apuracao e inicio_vigencia
         let mesesCiclo: { mes: number; ano: number }[] = [];
@@ -502,8 +528,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
             const saldoUtilizar = baselineMinutos + repasseMinutos;
             
-            // Com consumo zero: saldo = saldo a utilizar, repasse = 50% do saldo
-            const repasse = Math.floor(saldoUtilizar / 2);
+            // Com consumo zero: saldo = saldo a utilizar, repasse = percentual real do saldo
+            const repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
             
             console.log(`📅 Mês futuro ${resultado.mes}/${resultado.ano}: preenchendo com consumo zerado`, {
               baseline: baselineMes,
@@ -1198,9 +1224,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     ))}
                   </tr>
 
-                  {/* Repasse - 50% */}
+                  {/* Repasse */}
                   <tr className="bg-gray-50">
-                    <td className="px-4 py-2">Repasse - 50%</td>
+                    <td className="px-4 py-2">Repasse - {percentualRepasseEmpresa}%</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasse_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.repasse_horas || '00:00')}
