@@ -1381,13 +1381,15 @@ class BooksDataCollectorService {
         .select('*')
         .ilike('org_us_final', `%${empresaNomeCompleto}%`)
         .eq('ativi_interna', 'Não')
-        .in('tipo_chamado', ['IM', 'RF'])
+        .in('tipo_chamado', ['IM', 'RF', 'PM'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .in('cod_resolucao', [
           'Alocação - T&M',
           'Alocação - T&M (Banco=S |SLA=N)',
+          'Alocação - T&M (Banco=S| SLA=N)',
           'AMS SAP',
           'AMS SAP (Banco=S |SLA=S)',
+          'AMS SAP (Banco=S| SLA=S)',
           'Aplicação de Nota / Licença - Contratados',
           'Aplicação de Nota / Licença (Banco=S |SLA=N)',
           'Consultoria',
@@ -1395,10 +1397,13 @@ class BooksDataCollectorService {
           'Consultoria (Banco=S| SLA=S)',
           'Consultoria - Banco de Dados',
           'Consultoria - Banco de Dados (Banco=S |SLA=S)',
+          'Consultoria - Banco de Dados (Banco=S| SLA=S)',
           'Consultoria - Nota Publicada',
           'Consultoria - Nota Publicada (Banco=S |SLA=S)',
+          'Consultoria - Nota Publicada (Banco=S| SLA=S)',
           'Consultoria - Solução Paliativa',
           'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
+          'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
           'Dúvida',
           'Dúvida (Banco=S |SLA=N)',
           'Erro de classificação na abertura',
@@ -1418,9 +1423,11 @@ class BooksDataCollectorService {
           'Parametrização / Cadastro',
           'Parametrização / Cadastro (Banco=S |SLA=N)',
           'Parametrização / Funcionalidade',
+          'Parametrização / Funcionalidade (Banco=S |SLA=S)',
           'Parametrização / Funcionalidade (Banco=S |SLA=N)',
           'Validação de Arquivo',
           'Validação de Arquivo (Banco=S |SLA=N)',
+          'Validação de Arquivo (Banco=S| SLA=N)',
         ])
         .gte('data_atividade', dataInicio.toISOString())
         .lt('data_atividade', proximoMesInicio.toISOString());
@@ -2522,7 +2529,7 @@ class BooksDataCollectorService {
           .select('tempo_gasto_horas, data_atividade, data_sistema, nro_chamado')
           .ilike('org_us_final', `%${empresaNomeCompleto}%`)
           .eq('ativi_interna', 'Não')
-          .in('tipo_chamado', ['IM', 'RF'])
+          .in('tipo_chamado', ['IM', 'RF', 'PM'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
           .in('cod_resolucao', [
             'Alocação - T&M',
@@ -2546,7 +2553,7 @@ class BooksDataCollectorService {
             'Consultoria - Solução Paliativa (Banco=S |SLA=S)',
             'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
             'Dúvida',
-            'Dúvida (Banco=S |SLA=N)',            
+            'Dúvida (Banco=S |SLA=N)',
             'Erro de classificação na abertura',
             'Erro de classificação na abertura (Banco=S |SLA=N)',
             'Erro de classificação na abertura (Banco=S| SLA=N)',
@@ -2560,13 +2567,15 @@ class BooksDataCollectorService {
             'Monitoramento DBA (Banco=S |SLA=S)',
             'Nota Publicada',
             'Nota Publicada (Banco=S |SLA=N)',
+            'Nota Publicada (Banco=S| SLA=N)',
             'Parametrização / Cadastro',
             'Parametrização / Cadastro (Banco=S |SLA=N)',
             'Parametrização / Funcionalidade',
+            'Parametrização / Funcionalidade (Banco=S |SLA=S)',
             'Parametrização / Funcionalidade (Banco=S |SLA=N)',
             'Validação de Arquivo',
             'Validação de Arquivo (Banco=S |SLA=N)',
-            'Validação de Arquivo (Banco=S| SLA=N)'
+            'Validação de Arquivo (Banco=S| SLA=N)',
           ])
           .gte('data_atividade', dataInicio.toISOString())
           .lt('data_atividade', proximoMesInicio.toISOString());

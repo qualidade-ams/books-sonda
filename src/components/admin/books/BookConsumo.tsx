@@ -680,6 +680,35 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const totalHorasRequerimentos = calcularTotalHorasRequerimentos();
   const consumoTotal = calcularConsumoTotal();
 
+  // Calcular variação percentual em relação ao mês anterior
+  const calcularVariacaoMesAnterior = (): { percentual: number; tipo: 'aumento' | 'queda' | 'igual' } => {
+    const historico = data.historico_consumo;
+    if (!historico || historico.length < 2) {
+      return { percentual: 0, tipo: 'igual' };
+    }
+
+    // Último elemento = mês atual, penúltimo = mês anterior
+    const mesAtual = historico[historico.length - 1];
+    const mesAnterior = historico[historico.length - 2];
+
+    const minutosAtual = parseHorasParaMinutos(mesAtual?.horas || '00:00');
+    const minutosAnterior = parseHorasParaMinutos(mesAnterior?.horas || '00:00');
+
+    if (minutosAnterior === 0) {
+      if (minutosAtual === 0) return { percentual: 0, tipo: 'igual' };
+      return { percentual: 100, tipo: 'aumento' };
+    }
+
+    const variacao = ((minutosAtual - minutosAnterior) / minutosAnterior) * 100;
+    const percentualArredondado = Math.abs(Math.round(variacao));
+
+    if (variacao > 0) return { percentual: percentualArredondado, tipo: 'aumento' };
+    if (variacao < 0) return { percentual: percentualArredondado, tipo: 'queda' };
+    return { percentual: 0, tipo: 'igual' };
+  };
+
+  const variacaoConsumo = calcularVariacaoMesAnterior();
+
   return (
     <div className="w-full h-full bg-white p-8">
       <div className="space-y-6">{/* Título da Seção */}
@@ -722,8 +751,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.horas_consumo) || '00:00'}</div>
-            <div className="text-xs text-green-600 mt-2">
-              ↑ 12% em relação ao mês anterior
+            <div className={`text-xs mt-2 ${variacaoConsumo.tipo === 'aumento' ? 'text-green-600' : variacaoConsumo.tipo === 'queda' ? 'text-red-600' : 'text-gray-600'}`}>
+              {variacaoConsumo.tipo === 'aumento' && `↑ ${variacaoConsumo.percentual}% em relação ao mês anterior`}
+              {variacaoConsumo.tipo === 'queda' && `↓ ${variacaoConsumo.percentual}% em relação ao mês anterior`}
+              {variacaoConsumo.tipo === 'igual' && 'Sem variação em relação ao mês anterior'}
             </div>
           </CardContent>
         </Card>

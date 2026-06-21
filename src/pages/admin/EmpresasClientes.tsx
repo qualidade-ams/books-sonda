@@ -862,6 +862,7 @@ const EmpresasClientes = () => {
             {selectedEmpresa && (
               <EmpresaForm
                 mode="view"
+                empresaId={selectedEmpresa.id}
                 initialData={getInitialDataForEdit(selectedEmpresa)}
                 grupos={grupos}
                 onSubmit={async () => {}} // Não faz nada no modo view
