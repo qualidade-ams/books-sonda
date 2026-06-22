@@ -18,7 +18,9 @@ import {
   AlertCircle,
   Copy,
   Filter,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -685,6 +687,32 @@ export function VisaoConsolidada({
     return mesAno.mes === mesAtual && mesAno.ano === anoAtual;
   }, [mesAno]);
 
+  // Paginação de meses: exibir 6 por vez quando periodoApuracao > 6
+  const MAX_COLUNAS_VISIVEIS = 6;
+  const [paginaMeses, setPaginaMeses] = useState(0);
+  
+  // Resetar paginação quando empresa ou período muda
+  useEffect(() => {
+    setPaginaMeses(0);
+  }, [calculos.length, periodoApuracao, mesAno.mes, mesAno.ano]);
+  
+  const totalPaginas = Math.ceil(calculos.length / MAX_COLUNAS_VISIVEIS);
+  const precisaPaginacao = calculos.length > MAX_COLUNAS_VISIVEIS;
+  
+  // Calculos visíveis na página atual
+  const calculosVisiveis = useMemo(() => {
+    if (!precisaPaginacao) return calculos;
+    const inicio = paginaMeses * MAX_COLUNAS_VISIVEIS;
+    return calculos.slice(inicio, inicio + MAX_COLUNAS_VISIVEIS);
+  }, [calculos, paginaMeses, precisaPaginacao]);
+  
+  // Meses do período visíveis na página atual
+  const mesesDoPeriodoVisiveis = useMemo(() => {
+    if (!mesesDoPeriodo || !precisaPaginacao) return mesesDoPeriodo;
+    const inicio = paginaMeses * MAX_COLUNAS_VISIVEIS;
+    return mesesDoPeriodo.slice(inicio, inicio + MAX_COLUNAS_VISIVEIS);
+  }, [mesesDoPeriodo, paginaMeses, precisaPaginacao]);
+
   // Função para limpar filtro (voltar ao mês atual)
   const handleLimparFiltro = () => {
     const hoje = new Date();
@@ -924,13 +952,42 @@ export function VisaoConsolidada({
         
         {/* Wrapper com scroll horizontal melhorado para mobile */}
         <div className="relative -mx-6 sm:mx-0">
+          {/* Botões de paginação de meses (quando período > 6 meses) */}
+          {precisaPaginacao && (
+            <div className="flex items-center justify-center gap-3 mb-3 px-6 sm:px-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaMeses(0)}
+                disabled={paginaMeses === 0}
+                className={`text-xs ${paginaMeses === 0 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
+              >
+                <ChevronLeft className="h-3 w-3 mr-1" />
+                1º Semestre
+              </Button>
+              <span className="text-xs text-gray-500">
+                {paginaMeses + 1} / {totalPaginas}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaMeses(1)}
+                disabled={paginaMeses === totalPaginas - 1}
+                className={`text-xs ${paginaMeses === 1 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
+              >
+                2º Semestre
+                <ChevronRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+          )}
+          
           <div className="overflow-x-auto px-6 sm:px-0">
             <Table className="min-w-full">
             <TableHeader>
               {/* Nova linha: Período */}
               <TableRow className="bg-gray-700 hover:bg-gray-700">
                 <TableHead className="font-semibold text-white text-center">{labels.periodo}</TableHead>
-                <TableHead className="font-semibold text-white text-center" colSpan={calculos.length}>
+                <TableHead className="font-semibold text-white text-center" colSpan={calculosVisiveis.length}>
                   {nomePeriodoAtual}
                 </TableHead>
               </TableRow>
@@ -938,21 +995,22 @@ export function VisaoConsolidada({
               {/* Linha original: Mês */}
               <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
                 <TableHead className="text-white font-semibold text-center">{labels.mes}</TableHead>
-                {calculos.map((calculo, index) => {
+                {calculosVisiveis.map((calculo, index) => {
+                  const indexReal = paginaMeses * MAX_COLUNAS_VISIVEIS + index;
                   // Usar meses do período se disponível, senão usar mês do cálculo
-                  const mesExibir = mesesDoPeriodo && mesesDoPeriodo[index] 
-                    ? mesesDoPeriodo[index].mes 
+                  const mesExibir = mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index] 
+                    ? mesesDoPeriodoVisiveis[index].mes 
                     : calculo.mes;
                   
-                  const anoExibir = mesesDoPeriodo && mesesDoPeriodo[index]
-                    ? mesesDoPeriodo[index].ano
+                  const anoExibir = mesesDoPeriodoVisiveis && mesesDoPeriodoVisiveis[index]
+                    ? mesesDoPeriodoVisiveis[index].ano
                     : calculo.ano;
                   
                   // Pegar apenas os 2 últimos dígitos do ano (ex: 2025 -> 25)
                   const anoAbreviado = String(anoExibir).slice(-2);
                   
                   return (
-                    <TableHead key={index} className="text-white font-semibold text-center">
+                    <TableHead key={indexReal} className="text-white font-semibold text-center">
                       {MESES[mesExibir - 1]}/{anoAbreviado}
                     </TableHead>
                   );
@@ -965,7 +1023,7 @@ export function VisaoConsolidada({
                 <TableCell className="font-semibold text-white text-center">
                   {(tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets') ? labels.ticketsContratados : labels.bancoContratado}
                 </TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-white">
                     {formatarValor(calculo.baseline_horas, calculo.baseline_tickets, tipoCobranca)}
                   </TableCell>
@@ -975,7 +1033,7 @@ export function VisaoConsolidada({
               {/* Repasse mês anterior */}
               <TableRow className="bg-gray-200 hover:bg-gray-200">
                 <TableCell className="font-medium text-gray-900 text-center">{labels.repasseMesAnterior}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasses_mes_anterior_horas, calculo.repasses_mes_anterior_tickets, tipoCobranca)}
                   </TableCell>
@@ -985,7 +1043,7 @@ export function VisaoConsolidada({
               {/* Saldo a utilizar */}
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">{labels.saldoAUtilizar}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell 
                     key={index} 
                     className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_a_utilizar_horas, calculo.saldo_a_utilizar_tickets, tipoCobranca)}`}
@@ -998,7 +1056,7 @@ export function VisaoConsolidada({
               {/* Consumo Chamados */}
               <TableRow>
                 <TableCell className="font-medium text-center">{labels.consumoChamados}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_horas, calculo.consumo_tickets, tipoCobranca)}
                   </TableCell>
@@ -1015,7 +1073,7 @@ export function VisaoConsolidada({
                     )}
                   </span>
                 </TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.requerimentos_horas, calculo.requerimentos_tickets, tipoCobranca)}
                   </TableCell>
@@ -1025,7 +1083,7 @@ export function VisaoConsolidada({
               {/* Reajuste (botão com modal) */}
               <TableRow>
                 <TableCell className="font-medium text-center">{labels.reajuste}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center">
                     <BotaoReajusteHoras
                       horasAtuais={calculo.reajustes_horas}
@@ -1048,7 +1106,7 @@ export function VisaoConsolidada({
               {/* Consumo Total */}
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">{labels.consumoTotal}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className="text-center font-semibold text-gray-900">
                     {formatarValor(calculo.consumo_total_horas, calculo.consumo_total_tickets, tipoCobranca)}
                   </TableCell>
@@ -1058,7 +1116,7 @@ export function VisaoConsolidada({
               {/* Saldo */}
               <TableRow className="bg-gray-50">
                 <TableCell className="font-medium text-center">{labels.saldo}</TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.saldo_horas, calculo.saldo_tickets, tipoCobranca)}
                   </TableCell>
@@ -1086,7 +1144,7 @@ export function VisaoConsolidada({
                     )}
                   </div>
                 </TableCell>
-                {calculos.map((calculo, index) => (
+                {calculosVisiveis.map((calculo, index) => (
                   <TableCell key={index} className={`text-center font-semibold ${getColorClassDinamico(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}`}>
                     {formatarValor(calculo.repasse_horas, calculo.repasse_tickets, tipoCobranca)}
                   </TableCell>
@@ -1097,7 +1155,7 @@ export function VisaoConsolidada({
               {temExcedentes && (
                 <TableRow className="bg-gray-50">
                   <TableCell className="font-medium text-center">{labels.excedenteTrimestreLabel}</TableCell>
-                  <TableCell className="text-center font-semibold text-green-600" colSpan={calculos.length}>
+                  <TableCell className="text-center font-semibold text-green-600" colSpan={calculosVisiveis.length}>
                     {formatarHoras(calculoPrincipal.excedentes_horas)}
                   </TableCell>
                 </TableRow>
@@ -1134,7 +1192,7 @@ export function VisaoConsolidada({
                 <TableCell className="text-center font-semibold text-white">
                   {taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : ''}
                 </TableCell>
-                <TableCell className="font-medium text-center text-white" colSpan={calculos.length > 1 ? calculos.length - 2 : 1}>
+                <TableCell className="font-medium text-center text-white" colSpan={calculosVisiveis.length > 1 ? calculosVisiveis.length - 2 : 1}>
                   {labels.valorTotal}
                 </TableCell>
                 <TableCell className="text-center font-semibold text-white">
@@ -1191,7 +1249,7 @@ export function VisaoConsolidada({
               {/* Mensagem de fim de período */}
               {calculoPrincipal?.is_fim_periodo && (
                 <TableRow className="bg-blue-50">
-                  <TableCell colSpan={calculos.length + 1} className="text-center font-semibold text-blue-800">
+                  <TableCell colSpan={calculosVisiveis.length + 1} className="text-center font-semibold text-blue-800">
                     {labels.finalTrimestreMsg}
                   </TableCell>
                 </TableRow>
