@@ -502,10 +502,22 @@ export default function GeracaoBooks() {
         });
         setShowRetificacaoDialog(false);
         
-        // Iniciar automaticamente a geração e envio do book retificado
-        const bookParaGerar = bookRetificando;
-        setIsRetificando(false);
-        await handleGerarUnitario(bookParaGerar);
+        // Usar processamento global (indicador flutuante) para que o usuário veja o progresso
+        startProcessing({
+          empresaIds: [bookRetificando.empresa_id],
+          books: [{
+            empresa_id: bookRetificando.empresa_id,
+            empresa_nome: bookRetificando.empresa_nome,
+            empresa_nome_abreviado: bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome,
+            status: 'desatualizado',
+          }],
+          mesReferencia,
+          anoReferencia,
+          forcarAtualizacao: true,
+          onComplete: () => {
+            refetch();
+          },
+        });
       } else {
         toast({
           title: 'Erro ao retificar',

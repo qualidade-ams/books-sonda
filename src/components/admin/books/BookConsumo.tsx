@@ -329,6 +329,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           const baselineHoras = mesComDados?.dados?.baseline_horas || null;
           
           const resultadosProcessados: typeof data.banco_horas_trimestre = [];
+          const totalMesesCiclo = data.banco_horas_trimestre!.length;
           
           for (let idx = 0; idx < data.banco_horas_trimestre!.length; idx++) {
             const resultado = data.banco_horas_trimestre![idx];
@@ -343,7 +344,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               const baselineMinutos = parseHorasParaMinutos(baselineMes);
               const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
               const saldoUtilizar = baselineMinutos + repasseMinutos;
-              const repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
+              
+              // ✅ CORREÇÃO: Verificar se é o último mês do ciclo para zerar repasse
+              const isUltimoMesCiclo = idx === (totalMesesCiclo - 1);
+              const repasse = isUltimoMesCiclo ? 0 : Math.floor(saldoUtilizar * percentualRepasse / 100);
               
               resultadosProcessados!.push({
                 ...resultado,
@@ -528,15 +532,26 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             const repasseMinutos = parseHorasParaMinutos(repasseMesAnterior);
             const saldoUtilizar = baselineMinutos + repasseMinutos;
             
-            // Com consumo zero: saldo = saldo a utilizar, repasse = percentual real do saldo
-            const repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
+            // ✅ CORREÇÃO: Verificar se é o último mês do ciclo para zerar repasse
+            const isUltimoMesCiclo = idx === (mesesCiclo.length - 1);
+            let repasse: number;
+            
+            if (isUltimoMesCiclo) {
+              // No último mês do ciclo, repasse é ZERO (banco zera)
+              repasse = 0;
+              console.log(`📅 Mês futuro ${resultado.mes}/${resultado.ano}: ÚLTIMO MÊS DO CICLO - repasse zerado`);
+            } else {
+              // Meses normais: repasse = percentual × saldo
+              repasse = Math.floor(saldoUtilizar * percentualRepasse / 100);
+            }
             
             console.log(`📅 Mês futuro ${resultado.mes}/${resultado.ano}: preenchendo com consumo zerado`, {
               baseline: baselineMes,
               repasseMesAnterior,
               saldoUtilizar: minutosParaHoras(saldoUtilizar),
               saldo: minutosParaHoras(saldoUtilizar),
-              repasse: minutosParaHoras(repasse)
+              repasse: minutosParaHoras(repasse),
+              isUltimoMesCiclo
             });
             
             resultadosProcessados.push({
