@@ -31,7 +31,7 @@ class BooksService {
       // PASSO 1: Buscar empresas que atendem aos critérios
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select('id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao')
+        .select('id, nome_completo, nome_abreviado, tem_ams, tipo_book, dia_inicio_apuracao, dia_fim_apuracao, inicio_vigencia')
         .eq('status', 'ativo')
         .eq('tem_ams', true)
         .eq('tipo_book', 'qualidade')
@@ -47,7 +47,22 @@ class BooksService {
         return [];
       }
 
-      console.log(`📊 Empresas encontradas: ${empresas.length} (ativas + AMS + tipo_book qualidade)`);
+      // PASSO 1.5: Filtrar empresas cuja vigência já havia iniciado no mês de referência
+      // O mês de referência é filtros.mes/filtros.ano (o book de Maio/2026 tem referência Abril/2026)
+      // A empresa só aparece se inicio_vigencia <= último dia do mês de referência
+      const empresasFiltradas = empresas.filter(empresa => {
+        if (!empresa.inicio_vigencia) return true; // Sem vigência definida = sempre visível
+        
+        const [anoVigencia, mesVigencia] = empresa.inicio_vigencia.split('-').map(Number);
+        
+        // Empresa aparece se o mês de referência >= mês de início da vigência
+        if (filtros.ano > anoVigencia) return true;
+        if (filtros.ano === anoVigencia && filtros.mes >= mesVigencia) return true;
+        
+        return false;
+      });
+
+      console.log(`📊 Empresas encontradas: ${empresas.length} total, ${empresasFiltradas.length} com vigência válida para ${String(filtros.mes).padStart(2, '0')}/${filtros.ano}`);
 
       // PASSO 2: Buscar books existentes para o período
       const { data: booksExistentes, error: booksError } = await (supabase as any)
@@ -68,7 +83,7 @@ class BooksService {
       });
 
       // PASSO 4: Montar lista combinando empresas com books (se existirem)
-      let books: BookListItem[] = empresas.map(empresa => {
+      let books: BookListItem[] = empresasFiltradas.map(empresa => {
         const book = booksMap.get(empresa.id);
         
         return {
@@ -305,7 +320,7 @@ class BooksService {
       // (mesma lógica do método listarBooks)
       const { data: empresas, error: empresasError } = await supabase
         .from('empresas_clientes')
-        .select('id, nome_completo, nome_abreviado, status, tipo_book')
+        .select('id, nome_completo, nome_abreviado, status, tipo_book, inicio_vigencia')
         .or('status.eq.ativo,status.eq.AMS')
         .or('tipo_book.is.null,tipo_book.eq.qualidade');
 
@@ -314,8 +329,17 @@ class BooksService {
         throw empresasError;
       }
 
-      const totalEmpresas = empresas?.length || 0;
-      console.log('📊 [buscarEstatisticas] Total de empresas:', totalEmpresas);
+      // Filtrar empresas cuja vigência já havia iniciado no mês de referência
+      const empresasFiltradas = (empresas || []).filter(empresa => {
+        if (!empresa.inicio_vigencia) return true;
+        const [anoVigencia, mesVigencia] = empresa.inicio_vigencia.split('-').map(Number);
+        if (ano > anoVigencia) return true;
+        if (ano === anoVigencia && mes >= mesVigencia) return true;
+        return false;
+      });
+
+      const totalEmpresas = empresasFiltradas.length;
+      console.log('📊 [buscarEstatisticas] Total de empresas:', totalEmpresas, `(filtradas por vigência <= ${String(mes).padStart(2, '0')}/${ano})`);
 
       // PASSO 2: Buscar books existentes para o período
       const { data: books, error: booksError } = await (supabase as any)
