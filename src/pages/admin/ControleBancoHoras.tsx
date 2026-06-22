@@ -56,6 +56,7 @@ import {
 } from '@/hooks/useBancoHoras';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useRequerimentos } from '@/hooks/useRequerimentos';
+import { usePercentualRepasseVigentePorPeriodo } from '@/hooks/usePercentualRepasseHistorico';
 import { useToast } from '@/hooks/use-toast';
 import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
@@ -122,6 +123,24 @@ export default function ControleBancoHoras() {
     });
     return empresa;
   }, [empresas, empresaSelecionada]);
+  
+  // ✅ Buscar percentual de repasse vigente para o período selecionado (usa histórico de vigências)
+  const { data: percentualRepasseVigente } = usePercentualRepasseVigentePorPeriodo(
+    empresaSelecionada || '',
+    mesAno.mes,
+    mesAno.ano
+  );
+  
+  // Percentual efetivo: prioriza histórico de vigências, fallback para tabela empresas_clientes
+  const percentualRepasseEfetivo = useMemo(() => {
+    if (percentualRepasseVigente?.percentual !== undefined && percentualRepasseVigente?.percentual !== null) {
+      console.log('✅ [percentualRepasse] Usando percentual do histórico de vigências:', percentualRepasseVigente.percentual);
+      return percentualRepasseVigente.percentual;
+    }
+    const fallback = empresaAtual?.percentual_repasse_mensal ?? 100;
+    console.log('⚠️ [percentualRepasse] Usando fallback da tabela empresas_clientes:', fallback);
+    return fallback;
+  }, [percentualRepasseVigente, empresaAtual]);
   
   // Calcular os meses do período baseado na vigência
   const mesesDoPeriodo = useMemo(() => {
@@ -1102,7 +1121,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
+                  percentualRepasseMensal={percentualRepasseEfetivo}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1125,7 +1144,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
+                  percentualRepasseMensal={percentualRepasseEfetivo}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1166,7 +1185,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
+                  percentualRepasseMensal={percentualRepasseEfetivo}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1191,7 +1210,7 @@ export default function ControleBancoHoras() {
                   segmentacaoConfig={empresaAtual?.segmentacao_config as unknown as SegmentacaoConfig | undefined}
                   mesAno={mesAno}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
+                  percentualRepasseMensal={percentualRepasseEfetivo}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   disabled={isFetchingCalculos || isRecalculatingAny}
@@ -1208,7 +1227,7 @@ export default function ControleBancoHoras() {
             <VisaoConsolidada
               calculos={calculos}
               periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-              percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
+              percentualRepasseMensal={percentualRepasseEfetivo}
               mesesDoPeriodo={mesesDoPeriodo}
               requerimentos={requerimentosConcluidos || []}
               requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}

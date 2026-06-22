@@ -76,6 +76,30 @@ export function usePercentualRepasseAtual(empresaId: string) {
 }
 
 // =====================================================
+// HOOK: Buscar percentual vigente para um mês/ano específico
+// =====================================================
+
+export function usePercentualRepasseVigentePorPeriodo(empresaId: string, mes: number, ano: number) {
+  const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+  
+  return useQuery({
+    queryKey: [...percentualRepasseHistoricoKeys.vigente(empresaId), mes, ano] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .rpc('get_percentual_repasse_vigente', {
+          p_empresa_id: empresaId,
+          p_data: dataReferencia
+        });
+
+      if (error) throw error;
+      
+      return data && data.length > 0 ? (data[0] as PercentualRepasseVigente) : null;
+    },
+    enabled: !!empresaId && !!mes && !!ano,
+  });
+}
+
+// =====================================================
 // HOOK: Criar nova vigência
 // =====================================================
 
