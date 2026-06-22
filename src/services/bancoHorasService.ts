@@ -875,6 +875,50 @@ export class BancoHorasService {
       );
     }
 
+    // ✅ Buscar percentual de repasse do histórico (vigência temporal)
+    let percentualRepasseMensal: number = empresa.percentual_repasse_mensal ?? 100;
+
+    if (mes && ano) {
+      try {
+        const dataReferenciaRepasse = `${ano}-${String(mes).padStart(2, '0')}-01`;
+        
+        console.log('🔍 [buscarParametrosEmpresa] Buscando percentual de repasse vigente:', {
+          empresaId,
+          mes,
+          ano,
+          dataReferenciaRepasse,
+          percentualAtualTabela: empresa.percentual_repasse_mensal
+        });
+
+        // @ts-ignore - Função get_percentual_repasse_vigente existe no banco mas tipos não foram regenerados
+        const { data: repasseVigente, error: repasseError } = await (supabase as any)
+          .rpc('get_percentual_repasse_vigente', {
+            p_empresa_id: empresaId,
+            p_data: dataReferenciaRepasse
+          });
+
+        if (!repasseError && repasseVigente && repasseVigente.length > 0) {
+          percentualRepasseMensal = repasseVigente[0].percentual;
+          
+          console.log('✅ [buscarParametrosEmpresa] Percentual de repasse vigente encontrado:', {
+            percentual: percentualRepasseMensal,
+            data_inicio: repasseVigente[0].data_inicio,
+            data_fim: repasseVigente[0].data_fim,
+            motivo: repasseVigente[0].motivo,
+            fonte: 'percentual_repasse_historico'
+          });
+        } else {
+          console.warn('⚠️ [buscarParametrosEmpresa] Percentual de repasse vigente não encontrado no histórico, usando valor da tabela empresas_clientes:', {
+            error: repasseError?.message,
+            percentualFallback: empresa.percentual_repasse_mensal
+          });
+        }
+      } catch (error) {
+        console.error('❌ [buscarParametrosEmpresa] Erro ao buscar percentual de repasse vigente:', error);
+        // Continuar com valor da tabela empresas_clientes (fallback)
+      }
+    }
+
     // ✅ NOVO: Buscar baseline do histórico se mês/ano fornecidos
     let baselineHorasMensal: string | undefined = empresa.baseline_horas_mensal as string | undefined;
     let baselineTicketsMensal: number | undefined = empresa.baseline_tickets_mensal as number | undefined;
@@ -951,7 +995,7 @@ export class BancoHorasService {
       possui_repasse_especial: empresa.possui_repasse_especial || false,
       tipo_repasse_especial: empresa.tipo_repasse_especial as 'simples' | 'por_periodo' || 'simples',
       ciclos_para_zerar: empresa.ciclos_para_zerar || 1,
-      percentual_repasse_mensal: empresa.percentual_repasse_mensal ?? 100, // Padrão 100% se não configurado
+      percentual_repasse_mensal: percentualRepasseMensal, // Usa valor do histórico de vigências
       percentual_repasse_especial: empresa.percentual_repasse_especial ?? 100, // Padrão 100% se não configurado
       // NOVO: Configuração de repasse por período
       duracao_periodo_meses: empresa.duracao_periodo_meses || undefined,
