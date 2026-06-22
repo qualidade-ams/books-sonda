@@ -52,23 +52,78 @@ class BooksDataCollectorService {
         throw new Error('Empresa não encontrada');
       }
 
-      // Converter baseline_horas_mensal (INTERVAL) para número decimal (horas)
-      // INTERVAL vem como string no formato "HH:MM:SS" ou objeto
+      // ✅ Buscar baseline do histórico (baseline_historico) usando RPC get_baseline_vigente
+      // Isso garante que o baseline correto da época seja usado, não o campo legado da tabela empresas_clientes
       let baselineHoras = 0;
-      if (empresa.baseline_horas_mensal) {
-        // Se vier como string "HH:MM:SS"
-        if (typeof empresa.baseline_horas_mensal === 'string') {
-          const parts = empresa.baseline_horas_mensal.split(':');
-          if (parts.length >= 2) {
-            const hours = parseInt(parts[0]) || 0;
-            const minutes = parseInt(parts[1]) || 0;
-            baselineHoras = hours + (minutes / 60);
+      
+      try {
+        const dataReferencia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+        
+        console.log('🔍 [booksDataCollector] Buscando baseline vigente:', {
+          empresaId,
+          mes,
+          ano,
+          dataReferencia
+        });
+
+        // @ts-ignore - Função get_baseline_vigente existe no banco mas tipos não foram regenerados
+        const { data: baselineVigente, error: baselineError } = await (supabase as any)
+          .rpc('get_baseline_vigente', {
+            p_empresa_id: empresaId,
+            p_data: dataReferencia
+          });
+
+        if (!baselineError && baselineVigente && baselineVigente.length > 0) {
+          const baseline = baselineVigente[0];
+          
+          console.log('✅ [booksDataCollector] Baseline vigente encontrado:', {
+            baseline_horas: baseline.baseline_horas,
+            data_inicio: baseline.data_inicio,
+            data_fim: baseline.data_fim,
+            is_vigente: baseline.is_vigente
+          });
+
+          if (baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
+            baselineHoras = Number(baseline.baseline_horas);
           }
-        } else if (typeof empresa.baseline_horas_mensal === 'object') {
-          // Se vier como objeto com propriedades
-          baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
+        } else {
+          console.warn('⚠️ [booksDataCollector] Baseline vigente não encontrado via RPC, usando fallback da tabela empresas_clientes:', {
+            error: baselineError?.message
+          });
+          
+          // Fallback: usar campo legado baseline_horas_mensal da tabela empresas_clientes
+          if (empresa.baseline_horas_mensal) {
+            if (typeof empresa.baseline_horas_mensal === 'string') {
+              const parts = empresa.baseline_horas_mensal.split(':');
+              if (parts.length >= 2) {
+                const hours = parseInt(parts[0]) || 0;
+                const minutes = parseInt(parts[1]) || 0;
+                baselineHoras = hours + (minutes / 60);
+              }
+            } else if (typeof empresa.baseline_horas_mensal === 'object') {
+              baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ [booksDataCollector] Erro ao buscar baseline vigente:', error);
+        
+        // Fallback: usar campo legado baseline_horas_mensal da tabela empresas_clientes
+        if (empresa.baseline_horas_mensal) {
+          if (typeof empresa.baseline_horas_mensal === 'string') {
+            const parts = empresa.baseline_horas_mensal.split(':');
+            if (parts.length >= 2) {
+              const hours = parseInt(parts[0]) || 0;
+              const minutes = parseInt(parts[1]) || 0;
+              baselineHoras = hours + (minutes / 60);
+            }
+          } else if (typeof empresa.baseline_horas_mensal === 'object') {
+            baselineHoras = (empresa.baseline_horas_mensal as any).hours || 0;
+          }
         }
       }
+      
+      console.log('📊 [booksDataCollector] Baseline final para cálculo:', { baselineHoras });
 
       console.log('✅ Empresa encontrada:', {
         nome: empresa.nome_completo,
