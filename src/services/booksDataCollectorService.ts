@@ -1438,6 +1438,7 @@ class BooksDataCollectorService {
         .eq('ativi_interna', 'Não')
         .in('tipo_chamado', ['IM', 'RF', 'PM'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
+        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
         .in('cod_resolucao', [
           'Alocação - T&M',
           'Alocação - T&M (Banco=S |SLA=N)',
@@ -2586,6 +2587,7 @@ class BooksDataCollectorService {
           .eq('ativi_interna', 'Não')
           .in('tipo_chamado', ['IM', 'RF', 'PM'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
+          .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
           .in('cod_resolucao', [
             'Alocação - T&M',
             'Alocação - T&M (Banco=S |SLA=N)',

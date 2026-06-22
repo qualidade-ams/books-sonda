@@ -168,6 +168,7 @@ async function buscarApontamentosDetalhados(
     .eq('ativi_interna', 'Não')
     .neq('item_configuracao', '000000 - PROJETOS APL')
     .in('tipo_chamado', ['IM', 'RF', 'PM'])
+    .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
     .ilike('org_us_final', `%${nomeCompleto}%`)
