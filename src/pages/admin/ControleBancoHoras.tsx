@@ -994,7 +994,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1017,7 +1017,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1058,7 +1058,7 @@ export default function ControleBancoHoras() {
                 <VisaoConsolidada
                   calculos={calculos}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
@@ -1083,7 +1083,7 @@ export default function ControleBancoHoras() {
                   segmentacaoConfig={empresaAtual?.segmentacao_config as unknown as SegmentacaoConfig | undefined}
                   mesAno={mesAno}
                   periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+                  percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
                   mesesDoPeriodo={mesesDoPeriodo}
                   requerimentos={requerimentosConcluidos || []}
                   disabled={isFetchingCalculos || isRecalculatingAny}
@@ -1100,7 +1100,7 @@ export default function ControleBancoHoras() {
             <VisaoConsolidada
               calculos={calculos}
               periodoApuracao={empresaAtual?.periodo_apuracao || 1}
-              percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal || 100}
+              percentualRepasseMensal={empresaAtual?.percentual_repasse_mensal ?? 100}
               mesesDoPeriodo={mesesDoPeriodo}
               requerimentos={requerimentosConcluidos || []}
               requerimentosNaoConcluidos={requerimentosNaoConcluidos || []}
