@@ -656,7 +656,11 @@ export default function GeracaoBooks() {
                 </CardTitle>
 
                 <div className="flex gap-2">
-                  {hasSelection && (
+                  {hasSelection && (() => {
+                    const booksSelecionados = books.filter(b => selectedIds.includes(b.id));
+                    const todosJaGerados = booksSelecionados.every(b => b.status === 'gerado' || b.status === 'enviado');
+                    return !todosJaGerados;
+                  })() && (
                     <>
                       <Button
                         size="sm"
