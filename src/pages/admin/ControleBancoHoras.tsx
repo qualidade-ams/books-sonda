@@ -262,6 +262,84 @@ export default function ControleBancoHoras() {
     mesesDoPeriodo[5]?.ano
   );
   
+  // Buscar cálculo do sétimo mês (condicional ao período)
+  const {
+    calculo: calculo7,
+    isLoading: isLoading7,
+    isFetching: isFetching7,
+    recalcular: recalcular7,
+    isRecalculating: isRecalculating7
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 7 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[6]?.mes,
+    mesesDoPeriodo[6]?.ano
+  );
+  
+  // Buscar cálculo do oitavo mês (condicional ao período)
+  const {
+    calculo: calculo8,
+    isLoading: isLoading8,
+    isFetching: isFetching8,
+    recalcular: recalcular8,
+    isRecalculating: isRecalculating8
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 8 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[7]?.mes,
+    mesesDoPeriodo[7]?.ano
+  );
+  
+  // Buscar cálculo do nono mês (condicional ao período)
+  const {
+    calculo: calculo9,
+    isLoading: isLoading9,
+    isFetching: isFetching9,
+    recalcular: recalcular9,
+    isRecalculating: isRecalculating9
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 9 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[8]?.mes,
+    mesesDoPeriodo[8]?.ano
+  );
+  
+  // Buscar cálculo do décimo mês (condicional ao período)
+  const {
+    calculo: calculo10,
+    isLoading: isLoading10,
+    isFetching: isFetching10,
+    recalcular: recalcular10,
+    isRecalculating: isRecalculating10
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 10 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[9]?.mes,
+    mesesDoPeriodo[9]?.ano
+  );
+  
+  // Buscar cálculo do décimo primeiro mês (condicional ao período)
+  const {
+    calculo: calculo11,
+    isLoading: isLoading11,
+    isFetching: isFetching11,
+    recalcular: recalcular11,
+    isRecalculating: isRecalculating11
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 11 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[10]?.mes,
+    mesesDoPeriodo[10]?.ano
+  );
+  
+  // Buscar cálculo do décimo segundo mês (condicional ao período)
+  const {
+    calculo: calculo12,
+    isLoading: isLoading12,
+    isFetching: isFetching12,
+    recalcular: recalcular12,
+    isRecalculating: isRecalculating12
+  } = useBancoHorasCalculos(
+    empresaAtual?.periodo_apuracao && empresaAtual.periodo_apuracao >= 12 ? empresaSelecionada : undefined,
+    mesesDoPeriodo[11]?.mes,
+    mesesDoPeriodo[11]?.ano
+  );
+  
   // Montar array de cálculos baseado no período
   const calculos = useMemo(() => {
     const periodoApuracao = empresaAtual?.periodo_apuracao || 1;
@@ -273,13 +351,19 @@ export default function ControleBancoHoras() {
     if (periodoApuracao >= 4 && calculo4) resultado.push(calculo4);
     if (periodoApuracao >= 5 && calculo5) resultado.push(calculo5);
     if (periodoApuracao >= 6 && calculo6) resultado.push(calculo6);
+    if (periodoApuracao >= 7 && calculo7) resultado.push(calculo7);
+    if (periodoApuracao >= 8 && calculo8) resultado.push(calculo8);
+    if (periodoApuracao >= 9 && calculo9) resultado.push(calculo9);
+    if (periodoApuracao >= 10 && calculo10) resultado.push(calculo10);
+    if (periodoApuracao >= 11 && calculo11) resultado.push(calculo11);
+    if (periodoApuracao >= 12 && calculo12) resultado.push(calculo12);
     
     return resultado;
-  }, [calculo1, calculo2, calculo3, calculo4, calculo5, calculo6, empresaAtual]);
+  }, [calculo1, calculo2, calculo3, calculo4, calculo5, calculo6, calculo7, calculo8, calculo9, calculo10, calculo11, calculo12, empresaAtual]);
   
-  const isLoadingCalculos = isLoading1 || isLoading2 || isLoading3 || isLoading4 || isLoading5 || isLoading6;
-  const isFetchingCalculos = isFetching1 || isFetching2 || isFetching3 || isFetching4 || isFetching5 || isFetching6;
-  const isRecalculatingAny = isRecalculating1 || isRecalculating2 || isRecalculating3 || isRecalculating4 || isRecalculating5 || isRecalculating6;
+  const isLoadingCalculos = isLoading1 || isLoading2 || isLoading3 || isLoading4 || isLoading5 || isLoading6 || isLoading7 || isLoading8 || isLoading9 || isLoading10 || isLoading11 || isLoading12;
+  const isFetchingCalculos = isFetching1 || isFetching2 || isFetching3 || isFetching4 || isFetching5 || isFetching6 || isFetching7 || isFetching8 || isFetching9 || isFetching10 || isFetching11 || isFetching12;
+  const isRecalculatingAny = isRecalculating1 || isRecalculating2 || isRecalculating3 || isRecalculating4 || isRecalculating5 || isRecalculating6 || isRecalculating7 || isRecalculating8 || isRecalculating9 || isRecalculating10 || isRecalculating11 || isRecalculating12;
   
   // Buscar alocações
   const {
@@ -463,6 +547,24 @@ export default function ControleBancoHoras() {
           } else if (i === 5 && recalcular6) {
             await recalcular6();
             console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 6 && recalcular7) {
+            await recalcular7();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 7 && recalcular8) {
+            await recalcular8();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 8 && recalcular9) {
+            await recalcular9();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 9 && recalcular10) {
+            await recalcular10();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 10 && recalcular11) {
+            await recalcular11();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
+          } else if (i === 11 && recalcular12) {
+            await recalcular12();
+            console.log(`✅ Mês ${mes}/${ano} calculado`);
           }
           
           // ✅ CRÍTICO: Pequeno delay para garantir que o banco salvou
@@ -613,6 +715,12 @@ export default function ControleBancoHoras() {
       if (periodoApuracao >= 4) recalculos.push(recalcular4());
       if (periodoApuracao >= 5) recalculos.push(recalcular5());
       if (periodoApuracao >= 6) recalculos.push(recalcular6());
+      if (periodoApuracao >= 7) recalculos.push(recalcular7());
+      if (periodoApuracao >= 8) recalculos.push(recalcular8());
+      if (periodoApuracao >= 9) recalculos.push(recalcular9());
+      if (periodoApuracao >= 10) recalculos.push(recalcular10());
+      if (periodoApuracao >= 11) recalculos.push(recalcular11());
+      if (periodoApuracao >= 12) recalculos.push(recalcular12());
       
       await Promise.all(recalculos);
       
