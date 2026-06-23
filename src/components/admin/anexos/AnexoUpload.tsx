@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, X, AlertCircle, CheckCircle2, Loader2, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Progress } from '../../ui/progress';
@@ -94,6 +95,8 @@ export function AnexoUpload({
   maxFiles = MAX_FILES_DEFAULT,
   className
 }: AnexoUploadProps) {
+  const { t } = useTranslation();
+
   // Usar o hook useAnexos para integração real com o serviço
   const {
     uploadAnexos,
@@ -188,17 +191,17 @@ export function AnexoUpload({
     // Validar extensão
     const extensao = '.' + arquivo.name.split('.').pop()?.toLowerCase();
     if (!EXTENSOES_PERMITIDAS.includes(extensao)) {
-      erros.push(`Extensão "${extensao}" não permitida para "${arquivo.name}"`);
+      erros.push(`${t('anexoUpload.extensionNotAllowed', { ext: extensao, file: arquivo.name })}`);
     }
 
     // Validar assinatura do arquivo (magic numbers)
     try {
       const assinaturaValida = await validarAssinaturaArquivo(arquivo);
       if (!assinaturaValida) {
-        erros.push(`Arquivo "${arquivo.name}" possui assinatura inválida ou está corrompido`);
+        erros.push(`${t('anexoUpload.invalidSignature', { file: arquivo.name })}`);
       }
     } catch (error) {
-      erros.push(`Erro ao validar arquivo "${arquivo.name}"`);
+      erros.push(`${t('anexoUpload.validationError', { file: arquivo.name })}`);
     }
 
     return erros;
@@ -210,12 +213,12 @@ export function AnexoUpload({
     const totalArquivos = resumo.totalArquivos + novosArquivos.length;
 
     if (totalArquivos > maxFiles) {
-      erros.push(`Máximo de ${maxFiles} arquivos permitidos por empresa`);
+      erros.push(t('anexoUpload.maxFilesExceeded', { max: maxFiles }));
     }
 
     const limiteOk = await validarLimiteTotal(empresaId, novosArquivos);
     if (!limiteOk) {
-      erros.push(`Limite total de ${formatarTamanho(maxTotalSize)} por empresa seria excedido`);
+      erros.push(t('anexoUpload.totalSizeExceeded', { limit: formatarTamanho(maxTotalSize) }));
     }
 
     return erros;
@@ -324,15 +327,15 @@ export function AnexoUpload({
   const obterStatusAnexo = (status: AnexoData['status']) => {
     switch (status) {
       case 'pendente':
-        return { icon: CheckCircle2, color: 'text-blue-500', label: 'Pendente' };
+        return { icon: CheckCircle2, color: 'text-blue-500', label: t('anexoUpload.statusPending') };
       case 'enviando':
-        return { icon: Loader2, color: 'text-yellow-500', label: 'Enviando' };
+        return { icon: Loader2, color: 'text-yellow-500', label: t('anexoUpload.statusSending') };
       case 'processado':
-        return { icon: CheckCircle2, color: 'text-green-500', label: 'Processado' };
+        return { icon: CheckCircle2, color: 'text-green-500', label: t('anexoUpload.statusProcessed') };
       case 'erro':
-        return { icon: AlertCircle, color: 'text-red-500', label: 'Erro' };
+        return { icon: AlertCircle, color: 'text-red-500', label: t('anexoUpload.statusError') };
       default:
-        return { icon: FileText, color: 'text-gray-500', label: 'Desconhecido' };
+        return { icon: FileText, color: 'text-gray-500', label: t('anexoUpload.statusUnknown') };
     }
   };
 
@@ -340,7 +343,7 @@ export function AnexoUpload({
     <Card className={cn("w-full", className)}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Anexar Arquivos</span>
+          <span>{t('anexoUpload.title')}</span>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -350,19 +353,19 @@ export function AnexoUpload({
                 await recarregarAnexosEmpresa(empresaId);
               }}
               className="text-xs"
-              title="Atualizar status dos anexos"
+              title={t('anexoUpload.refreshStatus')}
             >
               🔄
             </Button>
             <Badge variant="secondary">
-              {resumo.totalArquivos}/{maxFiles} arquivos
+              {t('anexoUpload.filesCount', { current: resumo.totalArquivos, max: maxFiles })}
             </Badge>
           </div>
         </CardTitle>
         <div className="text-sm text-muted-foreground">
           <div className="flex justify-between items-center">
-            <span>Tamanho total: {formatarTamanho(resumo.tamanhoTotal)}</span>
-            <span>Limite: {formatarTamanho(resumo.tamanhoLimite)}</span>
+            <span>{t('anexoUpload.totalSize')}: {formatarTamanho(resumo.tamanhoTotal)}</span>
+            <span>{t('anexoUpload.limit')}: {formatarTamanho(resumo.tamanhoLimite)}</span>
           </div>
           <Progress
             value={(resumo.tamanhoTotal / resumo.tamanhoLimite) * 100}
@@ -393,21 +396,21 @@ export function AnexoUpload({
             <div>
               <p className="font-medium">
                 {isDragActive
-                  ? "Solte os arquivos aqui"
+                  ? t('anexoUpload.dropFiles')
                   : isUploading
-                    ? "Salvando no banco de dados..."
+                    ? t('anexoUpload.savingToDatabase')
                     : !resumo.podeAdicionar
-                      ? "Limite atingido"
-                      : "Arraste arquivos ou clique para selecionar"
+                      ? t('anexoUpload.limitReached')
+                      : t('anexoUpload.dragOrClick')
                 }
               </p>
 
               <p className="text-sm text-muted-foreground">
-                Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB cada)
+                {t('anexoUpload.acceptedFormats')}
                 <br />
                 <span className="inline-flex items-center gap-1 text-xs text-blue-600">
                   <Zap className="h-3 w-3" />
-                  Compressão automática para arquivos grandes
+                  {t('anexoUpload.autoCompression')}
                 </span>
               </p>
             </div>
@@ -420,14 +423,14 @@ export function AnexoUpload({
               className="mt-4"
             >
               <Upload className="h-4 w-4 mr-2" />
-              Selecionar Arquivos
+              {t('anexoUpload.selectFiles')}
             </Button>
           )}
 
           {isUploading && (
             <div className="mt-4 flex items-center justify-center space-x-2 text-blue-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Salvando no banco de dados...</span>
+              <span className="text-sm">{t('anexoUpload.savingToDatabase')}</span>
             </div>
           )}
         </div>
@@ -437,7 +440,7 @@ export function AnexoUpload({
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
             <div className="flex items-center space-x-2 mb-2">
               <AlertCircle className="h-4 w-4 text-destructive" />
-              <span className="font-medium text-destructive">Erros de Validação</span>
+              <span className="font-medium text-destructive">{t('anexoUpload.validationErrors')}</span>
             </div>
             <ul className="text-sm text-destructive space-y-1">
               {validationErrors.map((erro, index) => (
@@ -452,7 +455,7 @@ export function AnexoUpload({
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
             <div className="flex items-center space-x-2 mb-2">
               <AlertCircle className="h-4 w-4 text-destructive" />
-              <span className="font-medium text-destructive">Erro no Sistema</span>
+              <span className="font-medium text-destructive">{t('anexoUpload.systemError')}</span>
             </div>
             <p className="text-sm text-destructive">{error.message}</p>
           </div>
@@ -463,7 +466,7 @@ export function AnexoUpload({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <Zap className="h-4 w-4 text-blue-600" />
-              <span className="font-medium text-blue-800">Otimização Aplicada</span>
+              <span className="font-medium text-blue-800">{t('anexoUpload.optimizationApplied')}</span>
             </div>
             <p className="text-sm text-blue-700 mt-1">{compressionStats}</p>
           </div>
@@ -472,7 +475,7 @@ export function AnexoUpload({
         {/* Lista de Arquivos Selecionados (excluindo arquivos com status "enviando" e "processado") */}
         {anexos.length > 0 && (
           <div className="space-y-2">
-            <h4 className="font-medium">Arquivos Selecionados</h4>
+            <h4 className="font-medium">{t('anexoUpload.selectedFiles')}</h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {anexos.map((anexo) => {
                 const status = obterStatusAnexo(anexo.status);
