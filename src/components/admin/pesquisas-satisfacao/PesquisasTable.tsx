@@ -5,6 +5,7 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import { 
   Edit, 
   Trash2, 
@@ -82,6 +83,7 @@ export function PesquisasTable({
   isLoading
 }: PesquisasTableProps) {
   const [pesquisaParaExcluir, setPesquisaParaExcluir] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Buscar empresas cadastradas no sistema
   const { empresas: empresasCadastradas = [] } = useEmpresas();
@@ -187,7 +189,7 @@ export function PesquisasTable({
   if (pesquisas.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Nenhum pesquisa encontrado</p>
+        <p>{t('lancarPesquisas.noSurveyFound')}</p>
       </div>
     );
   }
@@ -206,13 +208,13 @@ export function PesquisasTable({
                   className={algunsSelecionados ? "data-[state=checked]:bg-primary" : ""}
                 />
               </TableHead>
-              <TableHead className="w-[120px] text-center">Chamado</TableHead>
-              <TableHead className="w-[180px] text-center">Empresa</TableHead>
-              <TableHead className="w-[120px] text-center">Data Resposta</TableHead>
-              <TableHead className="w-[150px] text-center">Cliente</TableHead>
-              <TableHead className="w-[200px] text-center">Comentário</TableHead>
-              <TableHead className="w-[140px] text-center">Resposta</TableHead>
-              <TableHead className="text-center w-[120px]">Ações</TableHead>
+              <TableHead className="w-[120px] text-center">{t('lancarPesquisas.ticket')}</TableHead>
+              <TableHead className="w-[180px] text-center">{t('lancarPesquisas.company')}</TableHead>
+              <TableHead className="w-[120px] text-center">{t('lancarPesquisas.responseDate')}</TableHead>
+              <TableHead className="w-[150px] text-center">{t('lancarPesquisas.client')}</TableHead>
+              <TableHead className="w-[200px] text-center">{t('lancarPesquisas.comment')}</TableHead>
+              <TableHead className="w-[140px] text-center">{t('lancarPesquisas.responseLabel')}</TableHead>
+              <TableHead className="text-center w-[120px]">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -367,6 +369,7 @@ export function PesquisasTable({
                           onClick={() => onEditar(pesquisa)}
                           disabled={isLoading}
                           className="h-8 w-8 p-0"
+                          title={t('lancarPesquisas.editTooltip')}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -380,6 +383,7 @@ export function PesquisasTable({
                           onClick={() => handleExcluirClick(pesquisa.id)}
                           disabled={isLoading}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                          title={t('lancarPesquisas.deleteTooltip')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -405,14 +409,14 @@ export function PesquisasTable({
                                 className="cursor-pointer"
                               >
                                 <Send className="h-4 w-4 mr-2" />
-                                Enviar para Plano de Ação
+                                {t('lancarPesquisas.sendToActionPlan')}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => onEnviarParaElogios?.(pesquisa)}
                                 className="cursor-pointer"
                               >
                                 <Send className="h-4 w-4 mr-2" />
-                                Enviar para Elogios
+                                {t('lancarPesquisas.sendToCompliments')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -423,7 +427,7 @@ export function PesquisasTable({
                             onClick={() => onEnviar(pesquisa)}
                             disabled={isLoading || !pesquisa.resposta}
                             className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                            title="Enviar pesquisa"
+                            title={t('lancarPesquisas.sendTooltip')}
                           >
                             <Send className="h-4 w-4" />
                           </Button>
@@ -444,18 +448,18 @@ export function PesquisasTable({
       <AlertDialog open={!!pesquisaParaExcluir} onOpenChange={() => setPesquisaParaExcluir(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('lancarPesquisas.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este pesquisa? Esta ação não pode ser desfeita.
+              {t('lancarPesquisas.confirmDeleteDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmarExclusao}
               className="bg-red-600 hover:bg-red-700"
             >
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

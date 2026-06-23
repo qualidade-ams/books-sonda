@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,7 @@ interface PesquisaFormProps {
 }
 
 export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSolicitante = true }: PesquisaFormProps) {
+  const { t } = useTranslation();
   // Buscar empresas para o select
   const { empresas } = useEmpresas();
   
@@ -555,7 +557,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
         {/* Seção: Dados Principais */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Dados Principais</h3>
+          <h3 className="text-lg font-semibold">{t('lancarPesquisas.form.mainData')}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -575,7 +577,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                 
                 return (
                   <FormItem>
-                    <FormLabel>Empresa *</FormLabel>
+                    <FormLabel>{t('lancarPesquisas.form.companyLabel')} *</FormLabel>
                     <Select
                       value={field.value || ''}
                       onValueChange={field.onChange}
@@ -584,7 +586,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                         <SelectTrigger className={cn(
                           fieldState.error && "border-red-500 focus:border-red-500"
                         )}>
-                          <SelectValue placeholder="Selecione a empresa" />
+                          <SelectValue placeholder={t('lancarPesquisas.form.selectCompany')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -605,11 +607,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="cliente"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Cliente *</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.clientLabel')} *</FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
-                      placeholder="Nome do cliente"
+                      placeholder={t('lancarPesquisas.form.clientPlaceholder')}
                       className={cn(
                         fieldState.error && "border-red-500 focus:border-red-500"
                       )}
@@ -626,12 +628,12 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="email_cliente"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Email do Cliente</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.clientEmail')}</FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
                       type="email" 
-                      placeholder="email@exemplo.com"
+                      placeholder={t('lancarPesquisas.form.emailPlaceholder')}
                       value={field.value || ''}
                       className={cn(
                         fieldState.error && "border-red-500 focus:border-red-500"
@@ -648,11 +650,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                 name="solicitante"
                 render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel>Solicitante</FormLabel>
+                    <FormLabel>{t('lancarPesquisas.form.requester')}</FormLabel>
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder="Nome do solicitante"
+                        placeholder={t('lancarPesquisas.form.requesterPlaceholder')}
                         value={field.value || ''}
                         className={cn(
                           fieldState.error && "border-red-500 focus:border-red-500"
@@ -670,7 +672,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             name="especialistas_ids"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>Consultores</FormLabel>
+                <FormLabel>{t('lancarPesquisas.form.consultants')}</FormLabel>
                 <FormControl>
                   <MultiSelectEspecialistas
                     value={field.value || []}
@@ -690,7 +692,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                       setConsultoresManuais(consultores);
                     }}
                     initialConsultoresManuais={consultoresManuais}
-                    placeholder="Selecione os consultores..."
+                    placeholder={t('lancarPesquisas.form.consultantsPlaceholder')}
                     className={cn(
                       fieldState.error && "border-red-500"
                     )}
@@ -705,7 +707,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
         {/* Seção: Categorização */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Categorização</h3>
+          <h3 className="text-lg font-semibold">{t('lancarPesquisas.form.categorization')}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -741,7 +743,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                 
                 return (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Categoria <span className="text-foreground">*</span></FormLabel>
+                    <FormLabel>{t('lancarPesquisas.form.categoryLabel')} <span className="text-foreground">*</span></FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -756,7 +758,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                           >
                             {field.value
                               ? categorias.find((categoria) => categoria.value === field.value)?.label
-                              : "Selecione a categoria"}
+                              : t('lancarPesquisas.form.selectCategory')}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
@@ -764,12 +766,12 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                       <PopoverContent className="w-full p-0" align="start">
                         <Command shouldFilter={false}>
                           <CommandInput 
-                            placeholder="Buscar categoria..." 
+                            placeholder={t('lancarPesquisas.form.searchCategory')}
                             value={searchCategoria}
                             onValueChange={setSearchCategoria}
                           />
                           <CommandList>
-                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            <CommandEmpty>{t('lancarPesquisas.form.noCategoryFound')}</CommandEmpty>
                             <CommandGroup>
                               {categoriasFiltradas.map((categoria) => (
                                 <CommandItem
@@ -808,7 +810,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="grupo"
               render={({ field, fieldState }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Grupo</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.groupLabel')}</FormLabel>
                   {grupos.length === 1 ? (
                     // Quando há apenas um grupo, mostra como campo readonly
                     <FormControl>
@@ -832,10 +834,10 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                         )}>
                           <SelectValue placeholder={
                             !categoriaSelecionada 
-                              ? "Selecione uma categoria primeiro" 
+                              ? t('lancarPesquisas.form.selectCategoryFirst')
                               : grupos.length === 0 
-                              ? "Nenhum grupo disponível" 
-                              : "Selecione o grupo"
+                              ? t('lancarPesquisas.form.noGroupAvailable')
+                              : t('lancarPesquisas.form.selectGroup')
                           } />
                         </SelectTrigger>
                       </FormControl>
@@ -856,7 +858,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
         {/* Seção: Caso */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Informações do Caso</h3>
+          <h3 className="text-lg font-semibold">{t('lancarPesquisas.form.caseInfo')}</h3>
           
           {/* Linha com Tipo do Chamado e Número do Chamado */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -865,7 +867,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="tipo_caso"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Tipo do Chamado</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.ticketType')}</FormLabel>
                   <Select
                     value={field.value || 'none'}
                     onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
@@ -874,11 +876,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                       <SelectTrigger className={cn(
                         fieldState.error && "border-red-500 focus:border-red-500"
                       )}>
-                        <SelectValue placeholder="Selecione o tipo" />
+                        <SelectValue placeholder={t('lancarPesquisas.form.selectType')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Selecione o tipo</SelectItem>
+                      <SelectItem value="none">{t('lancarPesquisas.form.selectType')}</SelectItem>
                       {tiposChamado.map(tipo => (
                         <SelectItem key={tipo.value} value={tipo.value}>
                           {tipo.label}
@@ -895,11 +897,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="nro_caso"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Número do Chamado</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.ticketNumber')}</FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
-                      placeholder="Nº do chamado"
+                      placeholder={t('lancarPesquisas.form.ticketNumberPlaceholder')}
                       inputMode="numeric"
                       value={field.value || ''}
                       onChange={(e) => {
@@ -919,7 +921,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
 
         {/* Seção: Feedback */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Feedback do Cliente</h3>
+          <h3 className="text-lg font-semibold">{t('lancarPesquisas.form.clientFeedback')}</h3>
           
           {/* Linha com Resposta e Data da Resposta */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -929,7 +931,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>
-                    Resposta
+                    {t('lancarPesquisas.form.responseLabel')}
                     {isPesquisaManual && <span className="text-foreground ml-1">*</span>}
                   </FormLabel>
                   <Select
@@ -940,7 +942,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                       <SelectTrigger className={cn(
                         fieldState.error && "border-red-500 focus:border-red-500"
                       )}>
-                        <SelectValue placeholder="Selecione a resposta" />
+                        <SelectValue placeholder={t('lancarPesquisas.form.selectResponse')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -960,7 +962,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               name="data_resposta"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Data da Resposta</FormLabel>
+                  <FormLabel>{t('lancarPesquisas.form.responseDate')}</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -975,7 +977,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                           {field.value ? (
                             format(field.value, "PPP 'às' HH:mm", { locale: ptBR })
                           ) : (
-                            <span>Selecione a data e hora</span>
+                            <span>{t('lancarPesquisas.form.selectDateTime')}</span>
                           )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -1005,7 +1007,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             render={({ field, fieldState }) => (
               <FormItem>
                 <FormLabel>
-                  Comentário da Pesquisa
+                  {t('lancarPesquisas.form.surveyComment')}
                   {isPesquisaManual && <span className="text-foreground ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
@@ -1013,8 +1015,8 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
                     {...field} 
                     placeholder={
                       isPesquisaManual 
-                        ? "Comentário obrigatório para pesquisas manuais - descreva o contexto ou motivo da pesquisa"
-                        : "Comentários adicionais da pesquisa"
+                        ? t('lancarPesquisas.form.commentPlaceholderManual')
+                        : t('lancarPesquisas.form.commentPlaceholder')
                     }
                     rows={3}
                     value={field.value || ''}
@@ -1032,11 +1034,11 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             name="observacao"
             render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>Observação Interna</FormLabel>
+                <FormLabel>{t('lancarPesquisas.form.internalObservation')}</FormLabel>
                 <FormControl>
                   <Textarea 
                     {...field} 
-                    placeholder="Observações internas (não visível para o cliente)"
+                    placeholder={t('lancarPesquisas.form.observationPlaceholder')}
                     rows={2}
                     value={field.value || ''}
                     className={cn(
@@ -1057,7 +1059,7 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
             onClick={onCancel}
             disabled={isLoading}
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button 
             type="submit" 
@@ -1071,10 +1073,9 @@ export function PesquisaForm({ pesquisa, onSubmit, onCancel, isLoading, showSoli
               console.log('🖱️ [PesquisaForm] form.formState.errors:', form.formState.errors);
               console.log('🖱️ [PesquisaForm] form.formState.isDirty:', form.formState.isDirty);
               console.log('🖱️ [PesquisaForm] Valores do formulário:', form.getValues());
-              // Não prevenir o comportamento padrão - deixar o submit acontecer naturalmente
             }}
           >
-            {isLoading ? 'Salvando...' : pesquisa ? 'Atualizar' : 'Criar'}
+            {isLoading ? t('lancarPesquisas.form.saving') : pesquisa ? t('lancarPesquisas.form.update') : t('lancarPesquisas.form.create')}
           </Button>
         </div>
       </form>

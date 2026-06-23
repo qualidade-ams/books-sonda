@@ -12,6 +12,21 @@ interface BookCapaProps {
 
 export default function BookCapa({ data }: BookCapaProps) {
   const { t } = useTranslation();
+
+  // Traduzir período (ex: "Maio 2026" → "May 2026") usando chaves monthsFull
+  const traduzirPeriodo = (periodo: string): string => {
+    if (!periodo) return periodo;
+    const parts = periodo.split(' ');
+    if (parts.length === 2) {
+      const key = `books.bookContent.monthsFull.${parts[0]}`;
+      const translated = t(key);
+      if (translated !== key) {
+        return `${translated} ${parts[1]}`;
+      }
+    }
+    return periodo;
+  };
+
   // Log para debug
   console.log('📄 Dados da capa:', {
     empresa_nome: data.empresa_nome,
@@ -59,7 +74,7 @@ export default function BookCapa({ data }: BookCapaProps) {
           {/* Lado esquerdo: Período */}
           <div className="inline-block">
             <div className="text-5xl font-bold tracking-tight mt-28 text-white bg-[#2563eb] px-8 py-5 rounded-xl shadow-2xl">
-              {data.periodo}
+              {traduzirPeriodo(data.periodo)}
             </div>
           </div>
         </div>

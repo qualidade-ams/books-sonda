@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Copy
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,12 +72,17 @@ import type {
   StatusDisparo,
   EmpresaClienteCompleta
 } from '@/types/clientBooks';
-import {
-  STATUS_DISPARO_OPTIONS
-} from '@/types/clientBooks';
 
 const HistoricoBooks = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  // Nomes dos meses via i18n
+  const monthKeys = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december'
+  ];
+  const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
   
   // Estados para filtros
   const currentDate = new Date();
@@ -278,11 +284,6 @@ const HistoricoBooks = () => {
     }
   };
 
-  const nomesMeses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -290,10 +291,10 @@ const HistoricoBooks = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Histórico e Relatórios
+              {t('historico.title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Consulte o histórico detalhado e gere relatórios de envio de books
+              {t('historico.subtitle')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -312,11 +313,11 @@ const HistoricoBooks = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Mail className="h-4 w-4 text-gray-500" />
-                <p className="text-xs font-medium text-gray-500">Total de Disparos</p>
+                <p className="text-xs font-medium text-gray-500">{t('historico.totalDispatches')}</p>
               </div>
               <p className="text-2xl font-bold text-gray-900">{statsHistorico.total}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {statsHistorico.empresasUnicas} empresas • {statsHistorico.clientesUnicos} clientes
+                {statsHistorico.empresasUnicas} {t('historico.companies')} • {statsHistorico.clientesUnicos} {t('disparos.clients')}
               </p>
             </CardContent>
           </Card>
@@ -325,11 +326,11 @@ const HistoricoBooks = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                <p className="text-xs font-medium text-green-500">Sucessos</p>
+                <p className="text-xs font-medium text-green-500">{t('historico.successes')}</p>
               </div>
               <p className="text-2xl font-bold text-green-600">{statsHistorico.enviados}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {statsHistorico.taxaSucesso}% de sucesso
+                {statsHistorico.taxaSucesso}% {t('historico.successRate')}
               </p>
             </CardContent>
           </Card>
@@ -338,7 +339,7 @@ const HistoricoBooks = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="h-4 w-4 text-red-500" />
-                <p className="text-xs font-medium text-red-500">Falhas</p>
+                <p className="text-xs font-medium text-red-500">{t('disparos.failures')}</p>
               </div>
               <p className="text-2xl font-bold text-red-600">{statsHistorico.falhas}</p>
             </CardContent>
@@ -348,7 +349,7 @@ const HistoricoBooks = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-blue-500" />
-                <p className="text-xs font-medium text-blue-500">Agendados</p>
+                <p className="text-xs font-medium text-blue-500">{t('historico.scheduled')}</p>
               </div>
               <p className="text-2xl font-bold text-blue-600">{statsHistorico.agendados}</p>
             </CardContent>
@@ -391,15 +392,15 @@ const HistoricoBooks = () => {
                 className="flex items-center gap-1"
               >
                 <span className="text-lg">←</span>
-                <span className="hidden sm:inline">Anterior</span>
+                <span className="hidden sm:inline">{t('common.previous')}</span>
               </Button>
 
               <div className="text-center">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {nomesMeses[(filtros.mes || mesAtual) - 1]} {filtros.ano || anoAtual}
+                  {getMonthName((filtros.mes || mesAtual) - 1)} {filtros.ano || anoAtual}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {historicoFiltrado.length} {historicoFiltrado.length === 1 ? 'requerimento' : 'requerimentos'}
+                  {historicoFiltrado.length} {historicoFiltrado.length === 1 ? t('historico.record') : t('historico.records')}
                 </p>
               </div>
 
@@ -434,7 +435,7 @@ const HistoricoBooks = () => {
                 }}
                 className="flex items-center gap-1"
               >
-                <span className="hidden sm:inline">Próximo</span>
+                <span className="hidden sm:inline">{t('common.next')}</span>
                 <span className="text-lg">→</span>
               </Button>
             </div>
@@ -444,9 +445,9 @@ const HistoricoBooks = () => {
         {/* Abas Principais */}
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-            <TabsTrigger value="relatorio">Relatório Mensal</TabsTrigger>
-            <TabsTrigger value="problemas">Problemas</TabsTrigger>
+            <TabsTrigger value="historico">{t('historico.tabHistory')}</TabsTrigger>
+            <TabsTrigger value="relatorio">{t('historico.tabMonthlyReport')}</TabsTrigger>
+            <TabsTrigger value="problemas">{t('historico.tabProblems')}</TabsTrigger>
           </TabsList>
 
           {/* Aba Histórico */}
@@ -457,7 +458,7 @@ const HistoricoBooks = () => {
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <History className="h-5 w-5" />
-                    Histórico de Disparos
+                    {t('historico.dispatchHistory')}
                   </CardTitle>
 
                   <div className="flex gap-2">
@@ -468,7 +469,7 @@ const HistoricoBooks = () => {
                       className="flex items-center justify-center space-x-2"
                     >
                       <Filter className="h-4 w-4" />
-                      <span>Filtros</span>
+                      <span>{t('common.filter')}</span>
                     </Button>
                     
                     {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -480,7 +481,7 @@ const HistoricoBooks = () => {
                         className="whitespace-nowrap hover:border-red-300"
                       >
                         <X className="h-4 w-4 mr-2 text-red-600" />
-                        Limpar Filtro
+                        {t('common.clearFilter')}
                       </Button>
                     )}
                   </div>
@@ -492,11 +493,11 @@ const HistoricoBooks = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Campo de busca com ícone */}
                       <div>
-                        <div className="text-sm font-medium mb-2">Buscar</div>
+                        <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input
-                            placeholder="Buscar por empresa, cliente..."
+                            placeholder={t('historico.searchPlaceholder')}
                             value={termoBusca}
                             onChange={(e) => setTermoBusca(e.target.value)}
                             className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -506,28 +507,27 @@ const HistoricoBooks = () => {
 
                       {/* Filtro Status */}
                       <div>
-                        <div className="text-sm font-medium mb-2">Status</div>
+                        <div className="text-sm font-medium mb-2">{t('common.status')}</div>
                         <Select
                           value={filtros.status && filtros.status.length > 0 ? filtros.status[0] : 'all'}
                           onValueChange={(value) => handleFiltroChange('status', value === 'all' ? [] : [value])}
                         >
                           <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                            <SelectValue placeholder="Todos os status" />
+                            <SelectValue placeholder={t('historico.allStatuses')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Todos os status</SelectItem>
-                            {STATUS_DISPARO_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="all">{t('historico.allStatuses')}</SelectItem>
+                            <SelectItem value="enviado">{t('disparos.badgeSent')}</SelectItem>
+                            <SelectItem value="falhou">{t('disparos.badgeFailed')}</SelectItem>
+                            <SelectItem value="agendado">{t('disparos.badgeScheduled')}</SelectItem>
+                            <SelectItem value="cancelado">{t('disparos.badgeCancelled')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       {/* Filtro Período de Envio */}
                       <div className="md:col-span-2">
-                        <div className="text-sm font-medium mb-2">Período de Envio</div>
+                        <div className="text-sm font-medium mb-2">{t('historico.sendPeriod')}</div>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
@@ -537,7 +537,7 @@ const HistoricoBooks = () => {
                               <span>
                                 {filtros.mes && filtros.ano
                                   ? `${filtros.mes.toString().padStart(2, '0')}/${filtros.ano}`
-                                  : 'Todos os períodos'}
+                                  : t('historico.allPeriods')}
                               </span>
                               <Calendar className="h-4 w-4 ml-2 text-gray-500" />
                             </Button>
@@ -545,13 +545,13 @@ const HistoricoBooks = () => {
                           <PopoverContent className="w-80 p-4" align="start">
                             <div className="space-y-4">
                               <div>
-                                <h4 className="font-medium text-sm mb-3">Selecionar Mês/Ano</h4>
+                                <h4 className="font-medium text-sm mb-3">{t('historico.selectMonthYear')}</h4>
                               </div>
                               
                               <div className="grid grid-cols-2 gap-3">
                                 {/* Select Mês */}
                                 <div className="space-y-2">
-                                  <Label className="text-xs text-gray-600">Mês</Label>
+                                  <Label className="text-xs text-gray-600">{t('historico.month')}</Label>
                                   <Select
                                     value={filtros.mes?.toString() || 'all'}
                                     onValueChange={(value) => {
@@ -563,13 +563,13 @@ const HistoricoBooks = () => {
                                     }}
                                   >
                                     <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                                      <SelectValue placeholder="Mês" />
+                                      <SelectValue placeholder={t('historico.month')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="all">Todos</SelectItem>
-                                      {nomesMeses.map((nome, index) => (
+                                      <SelectItem value="all">{t('common.all')}</SelectItem>
+                                      {monthKeys.map((key, index) => (
                                         <SelectItem key={index} value={(index + 1).toString()}>
-                                          {nome}
+                                          {t(`monthPicker.months.${key}`)}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -578,7 +578,7 @@ const HistoricoBooks = () => {
                                 
                                 {/* Select Ano */}
                                 <div className="space-y-2">
-                                  <Label className="text-xs text-gray-600">Ano</Label>
+                                  <Label className="text-xs text-gray-600">{t('historico.year')}</Label>
                                   <Select
                                     value={filtros.ano?.toString() || 'all'}
                                     onValueChange={(value) => {
@@ -590,10 +590,10 @@ const HistoricoBooks = () => {
                                     }}
                                   >
                                     <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                                      <SelectValue placeholder="Ano" />
+                                      <SelectValue placeholder={t('historico.year')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="all">Todos</SelectItem>
+                                      <SelectItem value="all">{t('common.all')}</SelectItem>
                                       {/* Gerar anos de 2025 até ano atual + 1 */}
                                       {Array.from(
                                         { length: currentDate.getFullYear() + 1 - 2025 + 1 }, 
@@ -619,13 +619,13 @@ const HistoricoBooks = () => {
                 {isLoading ? (
                   <div className="text-center py-8">
                     <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">Carregando...</p>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">{t('common.loading')}</p>
                   </div>
                 ) : historicoFiltrado.length === 0 ? (
                   <div className="text-center py-8">
                     <History className="h-8 w-8 mx-auto text-gray-400" />
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      Nenhum registro encontrado
+                      {t('historico.noRecordFound')}
                     </p>
                   </div>
                 ) : (
@@ -633,12 +633,12 @@ const HistoricoBooks = () => {
                     <Table className="w-full" style={{ tableLayout: 'fixed' }}>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[15%]">Data/Hora</TableHead>
-                          <TableHead className="w-[20%]">Empresa</TableHead>
-                          <TableHead className="w-[25%]">Cliente</TableHead>
-                          <TableHead className="w-[15%]">Status</TableHead>
-                          <TableHead className="w-[15%]">Assunto</TableHead>
-                          <TableHead className="w-[10%]">Ações</TableHead>
+                          <TableHead className="w-[15%]">{t('historico.dateTime')}</TableHead>
+                          <TableHead className="w-[20%]">{t('historico.company')}</TableHead>
+                          <TableHead className="w-[25%]">{t('historico.client')}</TableHead>
+                          <TableHead className="w-[15%]">{t('common.status')}</TableHead>
+                          <TableHead className="w-[15%]">{t('historico.subject')}</TableHead>
+                          <TableHead className="w-[10%]">{t('common.actions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -648,7 +648,7 @@ const HistoricoBooks = () => {
                               {item.data_disparo 
                                 ? formatDateTime(item.data_disparo)
                                 : item.data_agendamento
-                                ? `Agendado: ${formatDateTime(item.data_agendamento)}`
+                                ? `${t('historico.scheduledLabel')}: ${formatDateTime(item.data_agendamento)}`
                                 : '-'
                               }
                             </TableCell>
@@ -676,7 +676,10 @@ const HistoricoBooks = () => {
                               <div className="flex items-center gap-2">
                                 {getStatusIcon(item.status as StatusDisparo)}
                                 <Badge className={getStatusColor(item.status as StatusDisparo)}>
-                                  {STATUS_DISPARO_OPTIONS.find(opt => opt.value === item.status)?.label}
+                                  {item.status === 'enviado' && t('disparos.badgeSent')}
+                                  {item.status === 'falhou' && t('disparos.badgeFailed')}
+                                  {item.status === 'agendado' && t('disparos.badgeScheduled')}
+                                  {item.status === 'cancelado' && t('disparos.badgeCancelled')}
                                 </Badge>
                               </div>
                             </TableCell>
@@ -707,7 +710,7 @@ const HistoricoBooks = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                     {/* Select de itens por página */}
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('historico.show')}</span>
                       <Select
                         value={itemsPerPage.toString()}
                         onValueChange={(value) => {
@@ -740,7 +743,7 @@ const HistoricoBooks = () => {
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                          Página {currentPage} de {totalPages}
+                          {t('historico.pageOf', { current: currentPage, total: totalPages })}
                         </span>
                         <Button
                           variant="outline"
@@ -756,7 +759,7 @@ const HistoricoBooks = () => {
 
                     {/* Contador de registros */}
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {startIndex + 1}-{Math.min(endIndex, historicoFiltrado.length)} de {historicoFiltrado.length} {historicoFiltrado.length === 1 ? 'registro' : 'registros'}
+                      {startIndex + 1}-{Math.min(endIndex, historicoFiltrado.length)} de {historicoFiltrado.length} {historicoFiltrado.length === 1 ? t('historico.recordSingular') : t('historico.recordPlural')}
                     </div>
                   </div>
                 )}
@@ -768,7 +771,7 @@ const HistoricoBooks = () => {
           <TabsContent value="relatorio" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Relatório Mensal</CardTitle>
+                <CardTitle>{t('historico.monthlyReport')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {relatorioMensal ? (
@@ -779,7 +782,7 @@ const HistoricoBooks = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Users className="h-4 w-4 text-gray-500" />
-                            <p className="text-xs font-medium text-gray-500">Empresas Ativas</p>
+                            <p className="text-xs font-medium text-gray-500">{t('historico.activeCompanies')}</p>
                           </div>
                           <p className="text-2xl font-bold text-gray-900">
                             {relatorioMensal.metricas.empresasAtivas}
@@ -791,7 +794,7 @@ const HistoricoBooks = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Mail className="h-4 w-4 text-green-500" />
-                            <p className="text-xs font-medium text-green-500">E-mails Enviados</p>
+                            <p className="text-xs font-medium text-green-500">{t('historico.emailsSent')}</p>
                           </div>
                           <p className="text-2xl font-bold text-green-600">
                             {relatorioMensal.metricas.emailsEnviadosMes}
@@ -803,7 +806,7 @@ const HistoricoBooks = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <XCircle className="h-4 w-4 text-red-500" />
-                            <p className="text-xs font-medium text-red-500">E-mails com Falha</p>
+                            <p className="text-xs font-medium text-red-500">{t('historico.emailsFailed')}</p>
                           </div>
                           <p className="text-2xl font-bold text-red-600">
                             {relatorioMensal.metricas.emailsFalharamMes}
@@ -815,7 +818,7 @@ const HistoricoBooks = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="h-4 w-4 text-blue-500" />
-                            <p className="text-xs font-medium text-blue-500">Taxa de Sucesso</p>
+                            <p className="text-xs font-medium text-blue-500">{t('historico.successRateLabel')}</p>
                           </div>
                           <p className="text-2xl font-bold text-blue-600">
                             {relatorioMensal.metricas.taxaSucessoMes}%
@@ -830,7 +833,7 @@ const HistoricoBooks = () => {
                         <CardHeader>
                           <CardTitle className="text-green-600 flex items-center gap-2">
                             <CheckCircle className="h-5 w-5" />
-                            Empresas com Books Enviados ({relatorioMensal.metricas.empresasComBooks.length})
+                            {t('historico.companiesWithBooks')} ({relatorioMensal.metricas.empresasComBooks.length})
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -847,7 +850,7 @@ const HistoricoBooks = () => {
                                   </div>
                                 </div>
                                 <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                  Books Enviados
+                                  {t('historico.booksSent')}
                                 </Badge>
                               </div>
                             ))}
@@ -862,7 +865,7 @@ const HistoricoBooks = () => {
                         <CardHeader>
                           <CardTitle className="text-red-600 flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5" />
-                            Empresas sem Books ({relatorioMensal.metricas.empresasSemBooks.length})
+                            {t('historico.companiesWithoutBooks')} ({relatorioMensal.metricas.empresasSemBooks.length})
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -879,7 +882,7 @@ const HistoricoBooks = () => {
                                   </div>
                                 </div>
                                 <Badge variant="destructive">
-                                  Sem Books
+                                  {t('historico.noBooks')}
                                 </Badge>
                               </div>
                             ))}
@@ -892,7 +895,7 @@ const HistoricoBooks = () => {
                   <div className="text-center py-8">
                     <FileText className="h-8 w-8 mx-auto text-gray-400" />
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      Selecione um mês e ano nos filtros para visualizar o relatório
+                      {t('historico.selectMonthForReport')}
                     </p>
                   </div>
                 )}
@@ -907,7 +910,7 @@ const HistoricoBooks = () => {
                 <CardHeader>
                   <CardTitle className="text-orange-600 flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Clientes com Falhas
+                    {t('historico.clientsWithFailures')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -925,12 +928,12 @@ const HistoricoBooks = () => {
                             </div>
                             {item.ultimaFalha && (
                               <div className="text-xs text-gray-500">
-                                Última falha: {formatDateTime(item.ultimaFalha.toISOString())}
+                                {t('historico.lastFailure')}: {formatDateTime(item.ultimaFalha.toISOString())}
                               </div>
                             )}
                           </div>
                           <Badge variant="destructive">
-                            {item.totalFalhas} falhas
+                            {t('historico.failuresCount', { count: item.totalFalhas })}
                           </Badge>
                         </div>
                       ))}
@@ -939,7 +942,7 @@ const HistoricoBooks = () => {
                     <div className="text-center py-4">
                       <CheckCircle className="h-6 w-6 mx-auto text-green-600" />
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Nenhum cliente com falhas recentes
+                        {t('historico.noClientsWithFailures')}
                       </p>
                     </div>
                   )}
@@ -956,7 +959,7 @@ const HistoricoBooks = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-sonda-blue">
-                Detalhes do Disparo
+                {t('historico.dispatchDetails')}
               </DialogTitle>
             </DialogHeader>
             {itemSelecionado && (
@@ -966,7 +969,7 @@ const HistoricoBooks = () => {
                   {/* Empresa */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Empresa
+                      {t('historico.company')}
                     </label>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="font-semibold text-gray-900 dark:text-white">
@@ -981,16 +984,16 @@ const HistoricoBooks = () => {
                   {/* Cliente(s) */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Cliente(s)
+                      {t('historico.clients')}
                     </label>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       {itemSelecionado.erro_detalhes && itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? (
                         <div className="space-y-1">
                           <p className="font-semibold text-blue-600 dark:text-blue-400">
-                            E-mail Consolidado
+                            {t('historico.consolidatedEmail')}
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {itemSelecionado.erro_detalhes.match(/enviado para (\d+) clientes?:/)?.[1] || 'Múltiplos'} cliente(s)
+                            {itemSelecionado.erro_detalhes.match(/enviado para (\d+) clientes?:/)?.[1] || t('historico.multipleClients')} {t('historico.clientsCount', { count: '' }).replace('  ', ' ')}
                           </p>
                         </div>
                       ) : (
@@ -1009,13 +1012,16 @@ const HistoricoBooks = () => {
                   {/* Status */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Status
+                      {t('common.status')}
                     </label>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center gap-2">
                         {getStatusIcon(itemSelecionado.status as StatusDisparo)}
                         <Badge className={getStatusColor(itemSelecionado.status as StatusDisparo)}>
-                          {STATUS_DISPARO_OPTIONS.find(opt => opt.value === itemSelecionado.status)?.label}
+                          {itemSelecionado.status === 'enviado' && t('disparos.badgeSent')}
+                          {itemSelecionado.status === 'falhou' && t('disparos.badgeFailed')}
+                          {itemSelecionado.status === 'agendado' && t('disparos.badgeScheduled')}
+                          {itemSelecionado.status === 'cancelado' && t('disparos.badgeCancelled')}
                         </Badge>
                       </div>
                     </div>
@@ -1024,14 +1030,14 @@ const HistoricoBooks = () => {
                   {/* Data/Hora */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Data/Hora
+                      {t('historico.dateTime')}
                     </label>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="font-medium text-gray-900 dark:text-white">
                         {itemSelecionado.data_disparo 
                           ? formatDateTime(itemSelecionado.data_disparo)
                           : itemSelecionado.data_agendamento
-                          ? `Agendado: ${formatDateTime(itemSelecionado.data_agendamento)}`
+                          ? `${t('historico.scheduledLabel')}: ${formatDateTime(itemSelecionado.data_agendamento)}`
                           : '-'
                         }
                       </p>
@@ -1043,7 +1049,7 @@ const HistoricoBooks = () => {
                 {itemSelecionado.assunto && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Assunto
+                      {t('historico.subject')}
                     </label>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="font-medium text-gray-900 dark:text-white">
@@ -1058,7 +1064,7 @@ const HistoricoBooks = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? 'Detalhes do Envio' : 'Detalhes do Erro'}
+                        {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') ? t('historico.sendDetails') : t('historico.errorDetails')}
                       </label>
                       {/* Botão Copiar - só aparece para e-mails consolidados */}
                       {itemSelecionado.erro_detalhes.includes('E-mail consolidado enviado para') && (() => {
@@ -1073,14 +1079,14 @@ const HistoricoBooks = () => {
                               const emailsFormatted = emails.join('; ');
                               navigator.clipboard.writeText(emailsFormatted);
                               toast({
-                                title: "E-mails copiados!",
-                                description: `${emails.length} e-mails copiados para a área de transferência`,
+                                title: t('historico.emailsCopied'),
+                                description: t('historico.emailsCopiedDesc', { count: emails.length }),
                               });
                             }}
                             className="flex items-center gap-2"
                           >
                             <Copy className="h-4 w-4" />
-                            Copiar E-mails
+                            {t('historico.copyEmails')}
                           </Button>
                         );
                       })()}
@@ -1107,7 +1113,7 @@ const HistoricoBooks = () => {
                           return (
                             <div className="space-y-3">
                               <p className="font-semibold text-blue-800 dark:text-blue-200">
-                                E-mail consolidado enviado para {numClientes} cliente(s):
+                                {t('historico.consolidatedSentTo', { count: numClientes })}
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {emails.map((email, index) => (
@@ -1138,7 +1144,7 @@ const HistoricoBooks = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        E-mails em Cópia
+                        {t('historico.ccEmails')}
                       </label>
                       {/* Botão Copiar */}
                       <Button
@@ -1148,14 +1154,14 @@ const HistoricoBooks = () => {
                           const emailsFormatted = itemSelecionado.emails_cc.join('; ');
                           navigator.clipboard.writeText(emailsFormatted);
                           toast({
-                            title: "E-mails copiados!",
-                            description: `${itemSelecionado.emails_cc.length} e-mails copiados para a área de transferência`,
+                            title: t('historico.emailsCopied'),
+                            description: t('historico.emailsCopiedDesc', { count: itemSelecionado.emails_cc.length }),
                           });
                         }}
                         className="flex items-center gap-2"
                       >
                         <Copy className="h-4 w-4" />
-                        Copiar E-mails
+                        {t('historico.copyEmails')}
                       </Button>
                     </div>
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -1179,7 +1185,7 @@ const HistoricoBooks = () => {
                     variant="outline"
                     onClick={() => setShowDetalhesModal(false)}
                   >
-                    Fechar
+                    {t('common.close')}
                   </Button>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ export function PesquisasExportButtons({
   disabled = false
 }: PesquisasExportButtonsProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const { t } = useTranslation();
 
   const handleExportExcel = async () => {
     if (disabled || pesquisas.length === 0) {
@@ -79,7 +81,7 @@ export function PesquisasExportButtons({
           disabled={disabled || isExporting || pesquisas.length === 0}
         >
           <Download className="h-4 w-4 mr-2" />
-          {isExporting ? 'Exportando...' : 'Exportar'}
+          {isExporting ? t('lancarPesquisas.exporting') : t('common.export')}
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </DropdownMenuTrigger>
@@ -89,14 +91,14 @@ export function PesquisasExportButtons({
           disabled={isExporting}
         >
           <FileSpreadsheet className="mr-2 h-4 w-4" />
-          Exportar para Excel
+          {t('common.exportExcel')}
         </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={handleExportPDF}
           disabled={isExporting}
         >
           <FileText className="mr-2 h-4 w-4" />
-          Exportar para PDF
+          {t('common.exportPdf')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
