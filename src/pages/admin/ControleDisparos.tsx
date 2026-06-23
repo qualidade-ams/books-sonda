@@ -12,6 +12,7 @@ import {
   X,
   FileText
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -56,12 +57,17 @@ import type {
   StatusControleMensal,
   StatusMensal
 } from '@/types/clientBooks';
-import {
-  STATUS_CONTROLE_MENSAL_OPTIONS
-} from '@/types/clientBooks';
 
 const ControleDisparos = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  // Nomes dos meses via i18n
+  const monthKeys = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december'
+  ];
+  const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
 
   // Estados para controle de mês/ano
   const currentDate = new Date();
@@ -242,14 +248,14 @@ const ControleDisparos = () => {
     try {
       const resultado = await dispararSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
-        title: 'Disparo concluído',
-        description: `${resultado.sucesso} empresas processadas com sucesso, ${resultado.falhas} falhas`,
+        title: t('disparos.dispatchCompleted'),
+        description: t('disparos.dispatchCompletedDesc', { success: resultado.sucesso, failures: resultado.falhas }),
       });
       setSelecionadas([]);
     } catch (error) {
       toast({
-        title: 'Erro no disparo selecionado',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        title: t('disparos.dispatchError'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       });
     }
@@ -260,14 +266,14 @@ const ControleDisparos = () => {
     try {
       const resultado = await reenviarSelecionados(mesAtual, anoAtual, selecionadas);
       toast({
-        title: 'Reenvio concluído',
-        description: `${resultado.sucesso} empresas reprocessadas com sucesso`,
+        title: t('disparos.resendCompleted'),
+        description: t('disparos.resendCompletedDesc', { success: resultado.sucesso }),
       });
       setSelecionadas([]);
     } catch (error) {
       toast({
-        title: 'Erro no reenvio selecionado',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        title: t('disparos.resendError'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       });
     }
@@ -285,14 +291,14 @@ const ControleDisparos = () => {
       const resultado = await reenviarFalhas(mesAtual, anoAtual);
 
       toast({
-        title: "Reenvio concluído",
-        description: `${resultado.sucesso} empresas processadas com sucesso`,
+        title: t('disparos.resendFailedCompleted'),
+        description: t('disparos.resendFailedCompletedDesc', { success: resultado.sucesso }),
       });
 
     } catch (error) {
       toast({
-        title: "Erro no reenvio",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        title: t('disparos.resendFailedError'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: "destructive",
       });
     }
@@ -326,14 +332,14 @@ const ControleDisparos = () => {
       setObservacoesAgendamento('');
 
       toast({
-        title: "Agendamento realizado",
-        description: "Disparo agendado com sucesso",
+        title: t('disparos.scheduleCompleted'),
+        description: t('disparos.scheduleCompletedDesc'),
       });
 
     } catch (error) {
       toast({
-        title: "Erro no agendamento",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        title: t('disparos.scheduleError'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: "destructive",
       });
     }
@@ -367,11 +373,6 @@ const ControleDisparos = () => {
     }
   };
 
-  const nomesMeses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-
   // Calcular mês de referência (mês anterior)
   const mesReferencia = mesAtual === 1 ? 12 : mesAtual - 1;
   const anoReferencia = mesAtual === 1 ? anoAtual - 1 : anoAtual;
@@ -385,10 +386,10 @@ const ControleDisparos = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Disparos
+                {t('disparos.title')}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Acompanhe e gerencie o envio mensal de books
+                {t('disparos.subtitle')}
               </p>
             </div>
           </div>
@@ -419,18 +420,18 @@ const ControleDisparos = () => {
                   onClick={handleMesAnterior}
                   disabled={isLoading}
                 >
-                  ← Anterior
+                  ← {t('common.previous')}
                 </Button>
 
                 <div className="text-center">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {nomesMeses[mesAtual - 1]} {anoAtual}
+                    {getMonthName(mesAtual - 1)} {anoAtual}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    (Referência {nomesMeses[mesReferencia - 1]} {anoReferencia})
+                    ({t('disparos.reference')} {getMonthName(mesReferencia - 1)} {anoReferencia})
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Carregando...
+                    {t('common.loading')}
                   </p>
                 </div>
 
@@ -439,7 +440,7 @@ const ControleDisparos = () => {
                   onClick={handleProximoMes}
                   disabled={isLoading}
                 >
-                  Próximo →
+                  {t('common.next')} →
                 </Button>
               </div>
 
@@ -465,10 +466,10 @@ const ControleDisparos = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Disparos
+              {t('disparos.title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Acompanhe e gerencie o envio mensal de books
+              {t('disparos.subtitle')}
             </p>
           </div>
 
@@ -478,10 +479,10 @@ const ControleDisparos = () => {
                 onClick={handleDispararSelecionados}
                 disabled={isDisparandoSelecionados || contadoresInteligentes.paraDisparar === 0}
                 size="sm"
-                title={contadoresInteligentes.paraDisparar === 0 ? 'Nenhuma empresa selecionada precisa ser disparada' : `Disparar books de ${contadoresInteligentes.paraDisparar} empresa(s) selecionada(s)`}
+                title={contadoresInteligentes.paraDisparar === 0 ? t('disparos.noCompanyNeedsDispatch') : t('disparos.dispatchBooksFor', { count: contadoresInteligentes.paraDisparar })}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isDisparandoSelecionados ? 'Disparando...' : `Disparar Selecionados (${contadoresInteligentes.paraDisparar})`}
+                {isDisparandoSelecionados ? t('disparos.sending') : `${t('disparos.sendSelected')} (${contadoresInteligentes.paraDisparar})`}
               </Button>
             </ProtectedAction>
 
@@ -491,10 +492,10 @@ const ControleDisparos = () => {
                 onClick={handleReenviarSelecionados}
                 disabled={contadoresInteligentes.paraReenviar === 0}
                 size="sm"
-                title={contadoresInteligentes.paraReenviar === 0 ? 'Nenhuma empresa selecionada precisa ser reenviada' : 'Reenviar empresas já processadas (força novo processamento)'}
+                title={contadoresInteligentes.paraReenviar === 0 ? t('disparos.noCompanyNeedsResend') : t('disparos.resendAlreadyProcessed')}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Reenviar Selecionados ({contadoresInteligentes.paraReenviar})
+                {t('disparos.resendSelected')} ({contadoresInteligentes.paraReenviar})
               </Button>
             </ProtectedAction>
 
@@ -505,10 +506,10 @@ const ControleDisparos = () => {
                   onClick={handleReenvioFalhas}
                   disabled={isReenviando}
                   size="sm"
-                  title={`Reenviar ${stats.falhas} empresa(s) com falha`}
+                  title={t('disparos.resendCompaniesWithFailure', { count: stats.falhas })}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  {isReenviando ? 'Reenviando...' : `Reenviar Falhas (${stats.falhas})`}
+                  {isReenviando ? t('disparos.resending') : `${t('disparos.resendFailed')} (${stats.falhas})`}
                 </Button>
               </ProtectedAction>
             )}
@@ -522,13 +523,13 @@ const ControleDisparos = () => {
               <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Total de Empresas
+                  {t('disparos.totalCompanies')}
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} clientes</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalClientes} {t('disparos.clients')}</p>
             </CardContent>
           </Card>
 
@@ -537,13 +538,13 @@ const ControleDisparos = () => {
               <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
-                  Enviados
+                  {t('disparos.sent')}
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.enviados}</div>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} e-mails</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalEmails} {t('disparos.emails')}</p>
             </CardContent>
           </Card>
 
@@ -552,7 +553,7 @@ const ControleDisparos = () => {
               <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
                 <div className="flex items-center gap-2">
                   <XCircle className="h-4 w-4" />
-                  Falhas
+                  {t('disparos.failures')}
                 </div>
               </CardTitle>
             </CardHeader>
@@ -566,7 +567,7 @@ const ControleDisparos = () => {
               <CardTitle className="text-xs lg:text-sm font-medium text-yellow-600">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  Pendentes
+                  {t('disparos.pending')}
                 </div>
               </CardTitle>
             </CardHeader>
@@ -585,18 +586,18 @@ const ControleDisparos = () => {
                 onClick={handleMesAnterior}
                 disabled={isLoading}
               >
-                ← Anterior
+                ← {t('common.previous')}
               </Button>
 
               <div className="text-center">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {nomesMeses[mesAtual - 1]} {anoAtual}
+                  {getMonthName(mesAtual - 1)} {anoAtual}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  (Referência {nomesMeses[mesReferencia - 1]} {anoReferencia})
+                  ({t('disparos.reference')} {getMonthName(mesReferencia - 1)} {anoReferencia})
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {stats.percentualConcluido}% concluído
+                  {stats.percentualConcluido}% {t('disparos.completed')}
                 </p>
               </div>
 
@@ -605,7 +606,7 @@ const ControleDisparos = () => {
                 onClick={handleProximoMes}
                 disabled={isLoading}
               >
-                Próximo →
+                {t('common.next')} →
               </Button>
             </div>
 
@@ -626,11 +627,11 @@ const ControleDisparos = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <CardTitle className="flex items-center gap-3">
-                Status por Empresa ({statusMensalFiltrado.length})
+                {t('disparos.statusByCompany')} ({statusMensalFiltrado.length})
                 {statusMensalFiltrado.length > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Checkbox id="select-all" checked={allSelected} onCheckedChange={toggleSelectAll} />
-                    <Label htmlFor="select-all">Selecionar todas</Label>
+                    <Label htmlFor="select-all">{t('disparos.selectAll')}</Label>
                   </div>
                 )}
               </CardTitle>
@@ -643,7 +644,7 @@ const ControleDisparos = () => {
                   className="flex items-center justify-center space-x-2"
                 >
                   <Filter className="h-4 w-4" />
-                  <span>Filtros</span>
+                  <span>{t('common.filter')}</span>
                 </Button>
                 
                 {(statusFiltro !== 'todos' || buscaEmpresa) && (
@@ -657,7 +658,7 @@ const ControleDisparos = () => {
                     className="whitespace-nowrap hover:border-red-300"
                   >
                     <X className="h-4 w-4 mr-2 text-red-600" />
-                    Limpar Filtro
+                    {t('common.clearFilter')}
                   </Button>
                 )}
               </div>
@@ -669,11 +670,11 @@ const ControleDisparos = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Busca por Nome de Empresa */}
                   <div>
-                    <div className="text-sm font-medium mb-2">Buscar Empresa</div>
+                    <div className="text-sm font-medium mb-2">{t('disparos.searchCompany')}</div>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        placeholder="Nome da empresa..."
+                        placeholder={t('disparos.companyNamePlaceholder')}
                         value={buscaEmpresa}
                         onChange={(e) => setBuscaEmpresa(e.target.value)}
                         className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -683,20 +684,20 @@ const ControleDisparos = () => {
 
                   {/* Status do Disparo */}
                   <div>
-                    <div className="text-sm font-medium mb-2">Status do Disparo</div>
+                    <div className="text-sm font-medium mb-2">{t('disparos.dispatchStatus')}</div>
                     <Select
                       value={statusFiltro}
                       onValueChange={(value) => setStatusFiltro(value as StatusControleMensal | 'todos')}
                     >
                       <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                        <SelectValue placeholder="Todos os status" />
+                        <SelectValue placeholder={t('disparos.allStatuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todos os Status ({stats.total})</SelectItem>
-                        <SelectItem value="enviado">Enviados ({stats.enviados})</SelectItem>
-                        <SelectItem value="pendente">Pendentes ({stats.pendentes})</SelectItem>
-                        <SelectItem value="falhou">Falhas ({stats.falhas})</SelectItem>
-                        <SelectItem value="agendado">Agendados ({stats.agendados})</SelectItem>
+                        <SelectItem value="todos">{t('disparos.allStatuses')} ({stats.total})</SelectItem>
+                        <SelectItem value="enviado">{t('disparos.statusSent')} ({stats.enviados})</SelectItem>
+                        <SelectItem value="pendente">{t('disparos.statusPending')} ({stats.pendentes})</SelectItem>
+                        <SelectItem value="falhou">{t('disparos.statusFailed')} ({stats.falhas})</SelectItem>
+                        <SelectItem value="agendado">{t('disparos.statusScheduled')} ({stats.agendados})</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -710,8 +711,8 @@ const ControleDisparos = () => {
                 <AlertCircle className="h-8 w-8 mx-auto text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
                   {statusFiltro === 'todos' 
-                    ? 'Nenhuma empresa encontrada para este período'
-                    : `Nenhuma empresa com status "${statusFiltro}" encontrada`
+                    ? t('disparos.noCompanyFound')
+                    : t('disparos.noCompanyWithStatus', { status: statusFiltro })
                   }
                 </p>
               </div>
@@ -734,12 +735,19 @@ const ControleDisparos = () => {
                           {status.empresa.nome_abreviado}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {status.clientesAtivos} clientes ativos
-                          {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} e-mails enviados`}
+                          {status.clientesAtivos} {t('disparos.activeClients')}
+                          {status.emailsEnviados > 0 && ` • ${status.emailsEnviados} ${t('disparos.emailsSent')}`}
                         </p>
                         {status.observacoes && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            {status.observacoes}
+                            {(() => {
+                              // Traduzir observações que seguem padrão conhecido
+                              const match = status.observacoes.match(/E-mail consolidado enviado para (\d+) clientes/);
+                              if (match) {
+                                return `${t('disparos.consolidatedEmailSent')} ${match[1]} ${t('disparos.clients')}`;
+                              }
+                              return status.observacoes;
+                            })()}
                           </p>
                         )}
                       </div>
@@ -747,7 +755,10 @@ const ControleDisparos = () => {
 
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(status.status)}>
-                        {STATUS_CONTROLE_MENSAL_OPTIONS.find(opt => opt.value === status.status)?.label}
+                        {status.status === 'enviado' && t('disparos.badgeSent')}
+                        {status.status === 'pendente' && t('disparos.badgePending')}
+                        {status.status === 'falhou' && t('disparos.badgeFailed')}
+                        {status.status === 'agendado' && t('disparos.badgeScheduled')}
                       </Badge>
 
                       {false && status.status === 'pendente' && (
@@ -759,7 +770,7 @@ const ControleDisparos = () => {
                             disabled={isAgendando}
                           >
                             <Clock className="h-3 w-3 mr-1" />
-                            Agendar
+                            {t('disparos.schedule')}
                           </Button>
                         </ProtectedAction>
                       )}
@@ -783,18 +794,18 @@ const ControleDisparos = () => {
         <AlertDialog open={showReenvioModal} onOpenChange={setShowReenvioModal}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Reenvio de Falhas</AlertDialogTitle>
+              <AlertDialogTitle>{t('disparos.confirmResendTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Deseja reenviar os books para as {stats.falhas} empresas que falharam em {nomesMeses[mesAtual - 1]} de {anoAtual}?
+                {t('disparos.confirmResendDescription', { count: stats.falhas, month: getMonthName(mesAtual - 1), year: anoAtual })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmarReenvioFalhas}
                 disabled={isReenviando}
               >
-                {isReenviando ? 'Reenviando...' : 'Confirmar Reenvio'}
+                {isReenviando ? t('disparos.resending') : t('disparos.confirmResend')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -804,11 +815,11 @@ const ControleDisparos = () => {
         <Dialog open={showAgendamentoModal} onOpenChange={setShowAgendamentoModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Agendar Disparo</DialogTitle>
+              <DialogTitle>{t('disparos.scheduleDispatch')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="data-agendamento">Data e Hora do Agendamento</Label>
+                <Label htmlFor="data-agendamento">{t('disparos.scheduleDatetime')}</Label>
                 <Input
                   id="data-agendamento"
                   type="datetime-local"
@@ -819,12 +830,12 @@ const ControleDisparos = () => {
               </div>
 
               <div>
-                <Label htmlFor="observacoes-agendamento">Observações (opcional)</Label>
+                <Label htmlFor="observacoes-agendamento">{t('disparos.scheduleObservations')}</Label>
                 <Textarea
                   id="observacoes-agendamento"
                   value={observacoesAgendamento}
                   onChange={(e) => setObservacoesAgendamento(e.target.value)}
-                  placeholder="Observações sobre o agendamento..."
+                  placeholder={t('disparos.scheduleObservationsPlaceholder')}
                 />
               </div>
 
@@ -833,13 +844,13 @@ const ControleDisparos = () => {
                   variant="outline"
                   onClick={() => setShowAgendamentoModal(false)}
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={confirmarAgendamento}
                   disabled={isAgendando || !dataAgendamento}
                 >
-                  {isAgendando ? 'Agendando...' : 'Confirmar Agendamento'}
+                  {isAgendando ? t('disparos.scheduling') : t('disparos.confirmSchedule')}
                 </Button>
               </div>
             </div>
