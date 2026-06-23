@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   History, 
   Eye, 
@@ -32,6 +33,7 @@ interface BookVersoesHistoricoProps {
 }
 
 export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, onVisualizarVersao }: BookVersoesHistoricoProps) {
+  const { t } = useTranslation();
   const [versoes, setVersoes] = useState<BookVersao[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedVersao, setExpandedVersao] = useState<number | null>(null);
@@ -98,12 +100,9 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
             <History className="h-5 w-5" />
-            Histórico de Versões
+            {t('books.booksVersionHistory')}
           </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500">
-            Versões enviadas do book de <strong>{empresaNome}</strong>. 
-            Cada versão é um snapshot imutável do que foi enviado ao cliente.
-          </DialogDescription>
+          <DialogDescription className="text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: t('books.booksVersionHistoryDesc', { company: empresaNome }) }} />
         </DialogHeader>
 
         <div className="py-4">
@@ -115,9 +114,9 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">Nenhuma versão registrada</p>
+                <p className="text-gray-500 font-medium">{t('books.noVersionRegistered')}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  As versões são criadas automaticamente quando o book é enviado por email.
+                  {t('books.noVersionRegisteredDesc')}
                 </p>
               </div>
             </div>
@@ -135,18 +134,18 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                         <div>
                           <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
                             <ShieldCheck className="h-4 w-4 text-green-600" />
-                            Snapshot Imutável
+                            {t('books.immutableSnapshot')}
                           </div>
                           <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                             <Calendar className="h-3 w-3" />
-                            Enviado em {formatarData(versao.enviado_em)}
+                            {t('books.sentOnDate', { date: formatarData(versao.enviado_em) })}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {versao.motivo_retificacao && (
                           <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                            Retificação
+                            {t('books.rectification')}
                           </Badge>
                         )}
                         {expandedVersao === versao.versao ? (
@@ -167,7 +166,7 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                           <div className="flex items-start gap-2">
                             <Mail className="h-4 w-4 text-gray-400 mt-0.5" />
                             <div>
-                              <p className="text-xs font-medium text-gray-600">Destinatários:</p>
+                              <p className="text-xs font-medium text-gray-600">{t('books.recipientsLabel')}</p>
                               <p className="text-xs text-gray-500">
                                 {versao.destinatarios.join(', ')}
                               </p>
@@ -180,7 +179,7 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                           <div className="flex items-start gap-2">
                             <History className="h-4 w-4 text-orange-400 mt-0.5" />
                             <div>
-                              <p className="text-xs font-medium text-orange-600">Motivo da retificação:</p>
+                              <p className="text-xs font-medium text-orange-600">{t('books.rectificationReasonLabel')}</p>
                               <p className="text-xs text-gray-600 italic">
                                 "{versao.motivo_retificacao}"
                               </p>
@@ -190,14 +189,14 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
 
                         {/* Resumo dos dados do snapshot */}
                         <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs font-medium text-gray-600 mb-2">Dados do Snapshot:</p>
+                          <p className="text-xs font-medium text-gray-600 mb-2">{t('books.snapshotData')}</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <SnapshotIndicator 
-                              label="Capa" 
+                              label={t('books.cover')} 
                               hasData={!!versao.dados_capa} 
                             />
                             <SnapshotIndicator 
-                              label="Volumetria" 
+                              label={t('books.volumetry')} 
                               hasData={!!versao.dados_volumetria} 
                             />
                             <SnapshotIndicator 
@@ -205,15 +204,15 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                               hasData={!!versao.dados_sla} 
                             />
                             <SnapshotIndicator 
-                              label="Backlog" 
+                              label={t('books.backlog')} 
                               hasData={!!versao.dados_backlog} 
                             />
                             <SnapshotIndicator 
-                              label="Consumo" 
+                              label={t('books.consumption')} 
                               hasData={!!versao.dados_consumo} 
                             />
                             <SnapshotIndicator 
-                              label="Pesquisa" 
+                              label={t('books.survey')} 
                               hasData={!!versao.dados_pesquisa} 
                             />
                           </div>
@@ -229,7 +228,7 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:underline"
                             >
-                              Abrir PDF desta versão
+                              {t('books.openPDFVersion')}
                             </a>
                           </div>
                         )}
@@ -244,7 +243,7 @@ export function BookVersoesHistorico({ bookId, empresaNome, open, onOpenChange, 
                               onClick={() => handleVisualizarVersao(versao)}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              Visualizar dados desta versão
+                              {t('books.viewVersionData')}
                             </Button>
                           </div>
                         )}

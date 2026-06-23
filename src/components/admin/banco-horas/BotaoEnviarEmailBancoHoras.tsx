@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, Mail, FileText, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -511,6 +512,7 @@ export function BotaoEnviarEmailBancoHoras({
   observacoes = [],
   disabled = false,
 }: BotaoEnviarEmailBancoHorasProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   
   const [modalAberto, setModalAberto] = useState(false);
@@ -1022,7 +1024,7 @@ img { -ms-interpolation-mode: bicubic; }
             className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
           >
             <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Enviar Email</span>
+            <span className="hidden sm:inline">{t('bankHours.sendEmail')}</span>
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
@@ -1030,15 +1032,15 @@ img { -ms-interpolation-mode: bicubic; }
           <DropdownMenuItem onClick={() => handleAbrirModal('saldo_parcial')}>
             <FileText className="h-4 w-4 mr-2 text-blue-600" />
             <div>
-              <p className="font-medium">Saldo Parcial</p>
-              <p className="text-xs text-gray-500">Previsão parcial do período em andamento</p>
+              <p className="font-medium">{t('bankHours.partialBalance')}</p>
+              <p className="text-xs text-gray-500">{t('bankHours.partialBalanceDesc')}</p>
             </div>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAbrirModal('saldo_mes')}>
             <Send className="h-4 w-4 mr-2 text-green-600" />
             <div>
-              <p className="font-medium">Saldo do Mês</p>
-              <p className="text-xs text-gray-500">Fechamento consolidado do período</p>
+              <p className="font-medium">{t('bankHours.monthBalance')}</p>
+              <p className="text-xs text-gray-500">{t('bankHours.monthBalanceDesc')}</p>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -1049,19 +1051,19 @@ img { -ms-interpolation-mode: bicubic; }
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-blue-600" />
-              {tipoEmail === 'saldo_parcial' ? 'Enviar Saldo Parcial' : 'Enviar Saldo do Mês'}
+              {tipoEmail === 'saldo_parcial' ? t('bankHours.sendPartialBalance') : t('bankHours.sendMonthBalance')}
               <Badge className={tipoEmail === 'saldo_parcial' ? 'bg-blue-100 text-blue-800 text-xs' : 'bg-green-100 text-green-800 text-xs'}>
-                {tipoEmail === 'saldo_parcial' ? 'Parcial' : 'Fechamento'}
+                {tipoEmail === 'saldo_parcial' ? t('bankHours.partial') : t('bankHours.closing')}
               </Badge>
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-medium">Destinatários</Label>
+              <Label className="text-base font-medium">{t('bankHours.recipients')}</Label>
               <div className="mt-2">
                 <textarea
-                  placeholder="Digite emails separados por ponto e vírgula (;)&#10;Ex: joao@exemplo.com; maria@exemplo.com"
+                  placeholder={t('bankHours.recipientsPlaceholder')}
                   className="w-full p-3 border rounded-md text-sm min-h-[80px] bg-white dark:bg-gray-800 font-mono focus:ring-sonda-blue focus:border-sonda-blue"
                   value={destinatariosTexto}
                   onChange={(e) => setDestinatariosTexto(e.target.value)}
@@ -1073,10 +1075,10 @@ img { -ms-interpolation-mode: bicubic; }
             </div>
 
             <div>
-              <Label className="text-base font-medium">Cópia (CC) - Opcional</Label>
+              <Label className="text-base font-medium">{t('bankHours.ccOptional')}</Label>
               <div className="mt-2">
                 <textarea
-                  placeholder="Emails em cópia separados por ponto e vírgula (;)"
+                  placeholder={t('bankHours.ccPlaceholder')}
                   className="w-full p-3 border rounded-md text-sm min-h-[60px] bg-white dark:bg-gray-800 font-mono focus:ring-sonda-blue focus:border-sonda-blue"
                   value={destinatariosCCTexto}
                   onChange={(e) => setDestinatariosCCTexto(e.target.value)}
@@ -1085,19 +1087,19 @@ img { -ms-interpolation-mode: bicubic; }
             </div>
 
             <div>
-              <Label htmlFor="assunto-bh" className="text-base font-medium">Assunto</Label>
+              <Label htmlFor="assunto-bh" className="text-base font-medium">{t('bankHours.subject')}</Label>
               <Input
                 id="assunto-bh"
                 value={assuntoEmail}
                 onChange={(e) => setAssuntoEmail(e.target.value)}
-                placeholder="Assunto do email"
+                placeholder={t('bankHours.subjectPlaceholder')}
                 className="mt-2 focus:ring-sonda-blue focus:border-sonda-blue"
               />
             </div>
 
             <div>
-              <Label className="text-base font-medium">Texto do Email</Label>
-              <p className="text-xs text-gray-500 mt-1 mb-2">Edite o texto introdutório do email. As tabelas serão adicionadas automaticamente abaixo.</p>
+              <Label className="text-base font-medium">{t('bankHours.emailText')}</Label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">{t('bankHours.emailTextDesc')}</p>
               <textarea
                 className="w-full p-3 border rounded-md text-sm min-h-[180px] bg-white dark:bg-gray-800 focus:ring-sonda-blue focus:border-sonda-blue"
                 value={textoIntrodutorio}
@@ -1107,7 +1109,7 @@ img { -ms-interpolation-mode: bicubic; }
 
             {/* Anexos */}
             <div>
-              <Label className="text-base font-medium">Anexos</Label>
+              <Label className="text-base font-medium">{t('bankHours.attachments')}</Label>
               <div className="mt-2">
                 <div className="flex items-center gap-2">
                   <Button
@@ -1118,7 +1120,7 @@ img { -ms-interpolation-mode: bicubic; }
                     className="flex items-center gap-2"
                   >
                     <FileText className="h-4 w-4" />
-                    Adicionar Arquivos
+                    {t('bankHours.addFiles')}
                   </Button>
                   <input
                     id="file-input-bh"
@@ -1128,15 +1130,15 @@ img { -ms-interpolation-mode: bicubic; }
                     onChange={handleAdicionarAnexos}
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
                   />
-                  <span className="text-xs text-gray-500">Limite: 25MB total</span>
+                  <span className="text-xs text-gray-500">{t('bankHours.sizeLimit')}</span>
                 </div>
 
                 {anexos.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <div className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <span>{anexos.length} arquivo(s) anexado(s)</span>
+                      <span>{t('bankHours.filesAttached', { count: anexos.length })}</span>
                       <span className="text-xs text-gray-500">
-                        Total: {formatarTamanhoArquivo(anexos.reduce((acc, file) => acc + file.size, 0))}
+                        {t('bankHours.totalSize', { size: formatarTamanhoArquivo(anexos.reduce((acc, file) => acc + file.size, 0)) })}
                       </span>
                     </div>
                     <div className="border rounded-lg divide-y dark:divide-gray-700">
@@ -1167,13 +1169,13 @@ img { -ms-interpolation-mode: bicubic; }
             </div>
 
             <div>
-              <Label className="text-base font-medium">Preview do Email</Label>
+              <Label className="text-base font-medium">{t('bankHours.emailPreview')}</Label>
               <div className="mt-2 border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
                 <div className="bg-gray-100 dark:bg-gray-800 p-3 border-b">
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Tipo:</strong> {tipoEmail === 'saldo_parcial' ? 'Saldo Parcial' : 'Saldo do Mês'} |{' '}
-                    <strong>Empresa:</strong> {empresaNome} |{' '}
-                    <strong>Período:</strong> {MESES_PT[mesAno.mes - 1]} {mesAno.ano}
+                    <strong>{t('bankHours.previewType')}:</strong> {tipoEmail === 'saldo_parcial' ? t('bankHours.partialBalance') : t('bankHours.monthBalance')} |{' '}
+                    <strong>{t('bankHours.previewCompany')}:</strong> {empresaNome} |{' '}
+                    <strong>{t('bankHours.previewPeriod')}:</strong> {MESES_PT[mesAno.mes - 1]} {mesAno.ano}
                   </div>
                 </div>
                 <div
@@ -1186,10 +1188,10 @@ img { -ms-interpolation-mode: bicubic; }
 
           <DialogFooter className="flex items-center gap-2">
             {gerandoImagem && (
-              <span className="text-xs text-gray-500 mr-2">Gerando imagem das tabelas...</span>
+              <span className="text-xs text-gray-500 mr-2">{t('bankHours.generatingImage')}</span>
             )}
             <Button type="button" variant="outline" onClick={() => setModalAberto(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => setConfirmacaoAberta(true)}
@@ -1197,7 +1199,7 @@ img { -ms-interpolation-mode: bicubic; }
               className="bg-sonda-blue hover:bg-sonda-dark-blue"
             >
               <Send className="h-4 w-4 mr-2" />
-              {gerandoImagem ? 'Aguarde...' : 'Enviar'}
+              {gerandoImagem ? t('bankHours.wait') : t('common.send')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1208,21 +1210,23 @@ img { -ms-interpolation-mode: bicubic; }
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-blue-600" />
-              Confirmar Envio
+              {t('bankHours.confirmSend')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja enviar o email de <strong>{tipoEmail === 'saldo_parcial' ? 'Saldo Parcial' : 'Saldo do Mês'}</strong> para{' '}
-              <strong>{extrairEmails(destinatariosTexto).length} destinatário(s)</strong>?
+              {t('bankHours.confirmSendDesc', { 
+                type: tipoEmail === 'saldo_parcial' ? t('bankHours.partialBalance') : t('bankHours.monthBalance'),
+                count: extrairEmails(destinatariosTexto).length
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={enviandoEmail}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={enviandoEmail}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleEnviarEmail}
               disabled={enviandoEmail}
               className="bg-sonda-blue hover:bg-sonda-dark-blue"
             >
-              {enviandoEmail ? 'Enviando...' : 'Confirmar Envio'}
+              {enviandoEmail ? t('bankHours.sending') : t('bankHours.confirmSend')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

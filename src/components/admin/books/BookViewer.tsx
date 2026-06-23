@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Download, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -18,7 +19,6 @@ import { useBookData } from '@/hooks/useBooks';
 import { useEmpresaProdutos } from '@/hooks/useEmpresaProdutos';
 import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookData } from '@/types/books';
-import { BOOK_TABS_LABELS } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
 
@@ -31,22 +31,6 @@ import BookConsumo from './BookConsumo';
 import BookPesquisa from './BookPesquisa';
 import BookOrganograma from './BookOrganograma';
 import BookOrganogramaComercialCS from './BookOrganogramaComercialCS';
-
-// Mapeamento de meses para nomes
-const MESES_NOMES: Record<number, string> = {
-  1: 'Janeiro',
-  2: 'Fevereiro',
-  3: 'Março',
-  4: 'Abril',
-  5: 'Maio',
-  6: 'Junho',
-  7: 'Julho',
-  8: 'Agosto',
-  9: 'Setembro',
-  10: 'Outubro',
-  11: 'Novembro',
-  12: 'Dezembro'
-};
 
 interface BookViewerProps {
   book: BookListItem | null;
@@ -61,7 +45,22 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
   const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // Helper to translate periodo string (e.g. "Maio 2026" → "May 2026")
+  const translatePeriodo = (periodo: string): string => {
+    if (!periodo) return periodo;
+    const parts = periodo.split(' ');
+    if (parts.length === 2) {
+      const key = `books.bookContent.monthsFull.${parts[0]}`;
+      const translated = t(key);
+      if (translated !== key) {
+        return `${translated} ${parts[1]}`;
+      }
+    }
+    return periodo;
+  };
 
   // Usar override se fornecido, senão usar dados buscados
   const bookData = bookDataOverride || bookDataFetched;
@@ -119,40 +118,40 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
       if (book.pdf_url) {
         window.open(book.pdf_url, '_blank');
         toast({
-          title: 'Download iniciado',
-          description: 'O PDF está sendo baixado.',
+          title: t('books.downloadStarted'),
+          description: t('books.downloadStartedDesc'),
         });
         return;
       }
 
       // Gerar PDF usando nova rota dedicada (V2)
       const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome || 'empresa';
-      const mesNome = MESES_NOMES[book.mes];
+      const mesNome = t(`bankHours.months.${['january','february','march','april','may','june','july','august','september','october','november','december'][book.mes - 1]}`);
       const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
       
       toast({
-        title: 'Gerando PDF',
-        description: `Aguarde enquanto o PDF de ${nomeEmpresa} é gerado...`,
+        title: t('books.generatingPDF'),
+        description: t('books.generatingPDFDesc', { company: nomeEmpresa }),
       });
 
       // Usar novo serviço V2 - muito mais simples!
       await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
       toast({
-        title: 'PDF baixado com sucesso',
-        description: `O arquivo de ${nomeEmpresa} foi salvo no seu computador.`,
+        title: t('books.pdfDownloaded'),
+        description: t('books.pdfDownloadedDesc', { company: nomeEmpresa }),
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
       
       // Mensagem de erro mais útil
-      const errorMessage = error instanceof Error ? error.message : 'Não foi possível gerar o PDF. Tente novamente.';
+      const errorMessage = error instanceof Error ? error.message : t('books.pdfErrorDesc');
       const isApiError = errorMessage.includes('API de PDF não encontrada') || errorMessage.includes('404');
       
       toast({
-        title: 'Erro ao baixar PDF',
+        title: t('books.pdfError'),
         description: isApiError 
-          ? '⚠️ API não encontrada. Acesse http://localhost:3000 ou execute: vercel dev'
+          ? t('books.pdfApiError')
           : errorMessage,
         variant: 'destructive',
       });
@@ -167,7 +166,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold text-sonda-blue">
-              {bookData?.capa.empresa_nome_abreviado || book?.empresa_nome} - {bookData?.capa.periodo}
+              {bookData?.capa.empresa_nome_abreviado || book?.empresa_nome} - {translatePeriodo(bookData?.capa.periodo || '')}
             </DialogTitle>
             <div className="flex items-center gap-2 mr-5">
               <Button
@@ -181,7 +180,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                {isDownloading ? 'Gerando...' : 'Baixar PDF'}
+                {isDownloading ? t('books.generating') : t('books.downloadPDF')}
               </Button>
             </div>
           </div>
@@ -202,7 +201,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 value="capa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.capa}
+                {t('books.tabs.capa')}
               </TabsTrigger>
               
               {/* Abas dinâmicas de Organograma por produto - ANTES de Volumetria */}
@@ -216,7 +215,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                     value={`org-${produto}`}
                     className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                   >
-                    Organograma {produtoFormatado}
+                    {t('books.tabs.organograma')} {produtoFormatado}
                   </TabsTrigger>
                 );
               })}
@@ -226,38 +225,38 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 value="org-comercial-cs"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                Organograma Comercial/CS/T&M
+                {t('books.tabs.organogramaComercial')}
               </TabsTrigger>
               
               <TabsTrigger
                 value="volumetria"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.volumetria}
+                {t('books.tabs.volumetria')}
               </TabsTrigger>
               <TabsTrigger
                 value="sla"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.sla}
+                {t('books.tabs.sla')}
               </TabsTrigger>
               <TabsTrigger
                 value="backlog"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.backlog}
+                {t('books.tabs.backlog')}
               </TabsTrigger>
               <TabsTrigger
                 value="consumo"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.consumo}
+                {t('books.tabs.consumo')}
               </TabsTrigger>
               <TabsTrigger
                 value="pesquisa"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                {BOOK_TABS_LABELS.pesquisa}
+                {t('books.tabs.pesquisa')}
               </TabsTrigger>
             </TabsList>
 
@@ -339,7 +338,7 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
           </Tabs>
         ) : (
           <div className="flex items-center justify-center py-20">
-            <p className="text-gray-500">Não foi possível carregar os dados do book</p>
+            <p className="text-gray-500">{t('books.couldNotLoadBookData')}</p>
           </div>
         )}
       </DialogContent>

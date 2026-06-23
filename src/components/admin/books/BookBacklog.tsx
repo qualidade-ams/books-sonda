@@ -27,6 +27,7 @@ import {
 import type { BookBacklogData } from '@/types/books';
 import { useGrupoBookMapping, mapearMultiplosGrupos } from '@/hooks/useGrupoBookMapping';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface BookBacklogProps {
   data: BookBacklogData;
@@ -34,6 +35,15 @@ interface BookBacklogProps {
 }
 
 export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
+  const { t } = useTranslation();
+
+  // Helper to translate aging ranges from backend (Portuguese) to current language
+  const translateAging = (faixa: string): string => {
+    const key = `books.bookContent.aging.${faixa}`;
+    const translated = t(key);
+    return translated !== key ? translated : faixa;
+  };
+
   const { data: mappingMap, isLoading: isLoadingMapping } = useGrupoBookMapping();
   
   const distribuicaoPorGrupoMapeada = useMemo(() => {
@@ -62,9 +72,9 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          Backlog {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : ''}
+          {t('books.bookContent.backlogTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : ''}
         </h2>
-        <p className="text-sm text-gray-500">Visão detalhada de pendências e envelhecimento de chamados</p>
+        <p className="text-sm text-gray-500">{t('books.bookContent.backlogSubtitle')}</p>
       </div>
 
       {/* Layout principal: Grid 4 colunas - Conteúdo esquerdo (3 cols) + CHAMADOS | GRUPO (1 col) */}
@@ -80,12 +90,12 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                   <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                     <FileText className="h-4 w-4 text-gray-600" />
                   </div>
-                  TOTAL
+                  {t('books.bookContent.total')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-black">{data.total}</div>
-                <div className="text-xs text-gray-500 mt-1">Pendentes de atuação</div>
+                <div className="text-xs text-gray-500 mt-1">{t('books.bookContent.pendingAction')}</div>
               </CardContent>
             </Card>
 
@@ -96,7 +106,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                   <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-red-600" />
                   </div>
-                  INCIDENTE
+                  {t('books.bookContent.incident')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -111,7 +121,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                   <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                   </div>
-                  SOLICITAÇÃO
+                  {t('books.bookContent.request')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -123,13 +133,13 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
           {/* Gráfico: Aging dos Chamados */}
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Aging dos Chamados</CardTitle>
-              <p className="text-xs text-gray-500">Distribuição por faixa de envelhecimento</p>
+              <CardTitle className="text-base font-semibold">{t('books.bookContent.agingTickets')}</CardTitle>
+              <p className="text-xs text-gray-500">{t('books.bookContent.agingDistribution')}</p>
             </CardHeader>
             <CardContent>
               {data.aging_chamados && data.aging_chamados.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.aging_chamados}>
+                  <BarChart data={data.aging_chamados.map(d => ({ ...d, faixa: translateAging(d.faixa) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="faixa" 
@@ -156,7 +166,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                     <Bar 
                       dataKey="incidente" 
                       fill="#666666" 
-                      name="INCIDENTE"
+                      name={t('books.bookContent.incident')}
                       radius={[4, 4, 0, 0]}
                     >
                       <LabelList 
@@ -169,7 +179,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                     <Bar 
                       dataKey="solicitacao" 
                       fill="#2563eb" 
-                      name="SOLICITAÇÃO"
+                      name={t('books.bookContent.request')}
                       radius={[4, 4, 0, 0]}
                     >
                       <LabelList 
@@ -185,7 +195,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                 <div className="flex items-center justify-center h-[300px]">
                   <div className="text-center">
                     <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Nenhum dado disponível</p>
+                    <p className="text-sm text-gray-500">{t('books.bookContent.noDataAvailable')}</p>
                   </div>
                 </div>
               )}
@@ -196,7 +206,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
           <Card className="border-2 flex flex-col" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '500px' }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Backlog Atualizado X CAUSA</CardTitle>
+                <CardTitle className="text-base font-semibold">{t('books.bookContent.backlogUpdatedCause')}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-0 flex-1 flex flex-col">
@@ -204,10 +214,10 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">ORIGEM</TableHead>
-                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>INCIDENTE</TableHead>
-                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>SOLICITAÇÃO</TableHead>
-                      <TableHead className="text-center font-semibold bg-blue-600 text-white">TOTAL</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.origin')}</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.incident')}</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.request')}</TableHead>
+                      <TableHead className="text-center font-semibold bg-blue-600 text-white">{t('books.bookContent.total')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -224,7 +234,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                             const outrosIncidente = outrasOrigens.reduce((sum, item) => sum + (item.incidente || 0), 0);
                             const outrosSolicitacao = outrasOrigens.reduce((sum, item) => sum + (item.solicitacao || 0), 0);
                             const outrosTotal = outrasOrigens.reduce((sum, item) => sum + item.total, 0);
-                            linhaOutros = { origem: 'Outros', incidente: outrosIncidente, solicitacao: outrosSolicitacao, total: outrosTotal };
+                            linhaOutros = { origem: t('books.bookContent.others'), incidente: outrosIncidente, solicitacao: outrosSolicitacao, total: outrosTotal };
                           }
                           
                           // Calcular total de linhas (dados + outros + total)
@@ -236,7 +246,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                             <>
                               {linhasExibir.map((item, index) => (
                                 <TableRow key={index} className="hover:bg-gray-50">
-                                  <TableCell className="font-medium" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.origem}</TableCell>
+                                  <TableCell className="font-medium" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.origem.replace(/\s*\(Banco=[SN]\s*\|?\s*SLA=[SN]\)\s*/gi, '').trim()}</TableCell>
                                   <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.incidente || 0}</TableCell>
                                   <TableCell className="text-center" style={{ backgroundColor: '#e3f2fd', paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.solicitacao || 0}</TableCell>
                                   <TableCell className="text-center bg-blue-50" style={{ paddingTop: rowPadding, paddingBottom: rowPadding }}>{item.total}</TableCell>
@@ -254,7 +264,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                           );
                         })()}
                         <TableRow className="font-bold" style={{ backgroundColor: '#666666', color: 'white' }}>
-                          <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>TOTAL</TableCell>
+                          <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>{t('books.bookContent.total')}</TableCell>
                           <TableCell className="text-center py-2">
                             {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.incidente || 0), 0)}
                           </TableCell>
@@ -269,7 +279,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                          Nenhum dado de backlog por causa disponível
+                          {t('books.bookContent.noBacklogData')}
                         </TableCell>
                       </TableRow>
                     )}
@@ -284,7 +294,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
         <div className="lg:col-span-1">
           <Card className="border-2 h-full" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">CHAMADOS | GRUPO</CardTitle>
+              <CardTitle className="text-sm font-semibold">{t('books.bookContent.ticketsGroup')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
               {distribuicaoPorGrupoMapeada && distribuicaoPorGrupoMapeada.length > 0 ? (
@@ -313,10 +323,10 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                         <div className="pt-2 mt-2 border-t border-gray-200">
                           <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
                             <p className="text-xs text-gray-600 font-medium">
-                              + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
+                              + {gruposRestantes} {gruposRestantes === 1 ? t('books.bookContent.additionalGroup') : t('books.bookContent.additionalGroups')}
                             </p>
                             <p className="text-[11px] text-gray-500 mt-0.5">
-                              Exibindo os {maxGrupos} primeiros grupos
+                              {t('books.bookContent.showingFirstGroups', { count: maxGrupos })}
                             </p>
                           </div>
                         </div>
@@ -326,7 +336,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
                 })()
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p className="text-sm">Nenhum grupo encontrado</p>
+                  <p className="text-sm">{t('books.bookContent.noGroupFound')}</p>
                 </div>
               )}
             </CardContent>

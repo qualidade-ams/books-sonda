@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
   MessageSquare,
   Plus,
@@ -65,6 +65,7 @@ export function SecaoObservacoes({
   onHistoricoClick,
   mesesDoPeriodo = []
 }: SecaoObservacoesProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const {
@@ -101,8 +102,10 @@ export function SecaoObservacoes({
   const [observacaoExcluir, setObservacaoExcluir] = useState<ObservacaoUnificada | null>(null);
 
   const MESES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    t('bankHours.months.january'), t('bankHours.months.february'), t('bankHours.months.march'),
+    t('bankHours.months.april'), t('bankHours.months.may'), t('bankHours.months.june'),
+    t('bankHours.months.july'), t('bankHours.months.august'), t('bankHours.months.september'),
+    t('bankHours.months.october'), t('bankHours.months.november'), t('bankHours.months.december')
   ];
 
   const handleAdicionarObservacao = async () => {
@@ -188,10 +191,10 @@ export function SecaoObservacoes({
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-base font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Observações
+            {t('bankHours.observations')}
           </h4>
         </div>
-        <p className="text-sm text-gray-500">Carregando observações...</p>
+        <p className="text-sm text-gray-500">{t('bankHours.loadingObservations')}</p>
       </div>
     );
   }
@@ -203,7 +206,7 @@ export function SecaoObservacoes({
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-base font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Observações
+            {t('bankHours.observations')}
           </h4>
           
           {!disabled && !modoAdicionar && (
@@ -213,7 +216,7 @@ export function SecaoObservacoes({
               className="bg-sonda-blue hover:bg-sonda-dark-blue"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nova Observação
+              {t('bankHours.newObservation')}
             </Button>
           )}
         </div>
@@ -224,7 +227,7 @@ export function SecaoObservacoes({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-sm">Nova Observação</span>
+                <span className="font-medium text-sm">{t('bankHours.newObservation')}</span>
               </div>
             </div>
             
@@ -232,7 +235,7 @@ export function SecaoObservacoes({
             {mesesDoPeriodo.length > 0 && (
               <div className="mb-3">
                 <label className="text-xs font-medium text-gray-700 mb-1 block">
-                  Selecione o mês da observação:
+                  {t('bankHours.selectObservationMonth')}
                 </label>
                 <Select
                   value={`${mesSelecionado.mes}-${mesSelecionado.ano}`}
@@ -243,7 +246,7 @@ export function SecaoObservacoes({
                   disabled={isCreating}
                 >
                   <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                    <SelectValue placeholder="Selecione o mês" />
+                    <SelectValue placeholder={t('bankHours.selectMonth')} />
                   </SelectTrigger>
                   <SelectContent>
                     {mesesDoPeriodo.map((periodo) => (
@@ -260,7 +263,7 @@ export function SecaoObservacoes({
             )}
             
             <Textarea
-              placeholder="Digite sua observação aqui... (máximo 700 caracteres)"
+              placeholder={t('bankHours.observationPlaceholder')}
               value={novaObservacao}
               onChange={(e) => setNovaObservacao(e.target.value.slice(0, 700))}
               className="min-h-[80px] focus:ring-sonda-blue focus:border-sonda-blue mb-2"
@@ -269,7 +272,7 @@ export function SecaoObservacoes({
             
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                {novaObservacao.length}/700 caracteres
+                {novaObservacao.length}/700 {t('bankHours.characters')}
               </span>
               
               <div className="flex gap-2">
@@ -283,7 +286,7 @@ export function SecaoObservacoes({
                   }}
                   disabled={isCreating}
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   size="sm"
@@ -292,7 +295,7 @@ export function SecaoObservacoes({
                   className="bg-sonda-blue hover:bg-sonda-dark-blue"
                 >
                   <Check className="h-4 w-4 mr-2" />
-                  Salvar
+                  {t('common.save')}
                 </Button>
               </div>
             </div>
@@ -303,7 +306,7 @@ export function SecaoObservacoes({
         {observacoesUnificadas.length === 0 ? (
           <div className="text-center py-8 border border-gray-200 rounded-lg bg-gray-50">
             <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 mb-3">Nenhuma observação registrada</p>
+            <p className="text-sm text-gray-500 mb-3">{t('bankHours.noObservationsRegistered')}</p>
             {!disabled && !modoAdicionar && (
               <Button
                 size="sm"
@@ -311,7 +314,7 @@ export function SecaoObservacoes({
                 onClick={() => setModoAdicionar(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar primeira observação
+                {t('bankHours.addFirstObservation')}
               </Button>
             )}
           </div>
@@ -320,12 +323,12 @@ export function SecaoObservacoes({
             <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 px-4">Tipo</TableHead>														
-                  <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 px-4">Período</TableHead>
-                  <TableHead className="text-center text-xs sm:text-sm py-2 px-4">Observação</TableHead>															  
-                  <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 px-4">Usuário</TableHead>															   
-                  <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 px-4">Data</TableHead>																	 
-                  {!disabled && <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>}
+                  <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 px-4">{t('bankHours.typeColumn')}</TableHead>														
+                  <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2 px-4">{t('bankHours.periodColumn')}</TableHead>
+                  <TableHead className="text-center text-xs sm:text-sm py-2 px-4">{t('bankHours.observationColumn')}</TableHead>															  
+                  <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 px-4">{t('bankHours.userColumn')}</TableHead>															   
+                  <TableHead className="min-w-[120px] text-center text-xs sm:text-sm py-2 px-4">{t('bankHours.dateColumn')}</TableHead>																	 
+                  {!disabled && <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -336,11 +339,11 @@ export function SecaoObservacoes({
                       <div className="flex flex-col items-center gap-1">
                         {obs.tipo === 'manual' ? (
                           <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-blue-100 text-blue-700 w-fit">
-                            💬 Manual
+                            💬 {t('bankHours.manualType')}
                           </Badge>
                         ) : (
                           <Badge variant="secondary" className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 leading-tight bg-orange-100 text-orange-700 w-fit">
-                            ⚙️ Ajuste
+                            ⚙️ {t('bankHours.adjustmentType')}
                           </Badge>
                         )}
                         {obs.tipo === 'ajuste' && obs.tipo_ajuste && (
@@ -380,7 +383,7 @@ export function SecaoObservacoes({
                           />
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-500">
-                              {textoEditando.length}/700 caracteres
+                              {textoEditando.length}/700 {t('bankHours.characters')}
                             </span>
                             <div className="flex gap-2">
                               <Button
@@ -390,7 +393,7 @@ export function SecaoObservacoes({
                                 disabled={isUpdating}
                                 className="h-7 text-xs"
                               >
-                                Cancelar
+                                {t('common.cancel')}
                               </Button>
                               <Button
                                 size="sm"
@@ -398,7 +401,7 @@ export function SecaoObservacoes({
                                 disabled={!textoEditando.trim() || isUpdating}
                                 className="bg-sonda-blue hover:bg-sonda-dark-blue h-7 text-xs"
                               >
-                                Salvar
+                                {t('common.save')}
                               </Button>
                             </div>
                           </div>
@@ -407,7 +410,7 @@ export function SecaoObservacoes({
                         <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap">
                           {obs.observacao}
                           {obs.updated_at && obs.updated_at !== obs.created_at && (
-                            <span className="text-xs text-gray-400 italic ml-2">(editado)</span>
+                            <span className="text-xs text-gray-400 italic ml-2">{t('bankHours.edited')}</span>
                           )}
                         </p>
                       )}
@@ -423,9 +426,7 @@ export function SecaoObservacoes({
                     {/* Data */}
                     <TableCell className="py-2 px-4 text-center">
                       <div className="text-[10px] sm:text-xs text-gray-500">
-                        {format(new Date(obs.created_at), "dd/MM/yyyy 'às' HH:mm", {
-                          locale: ptBR
-                        })}
+                        {format(new Date(obs.created_at), "dd/MM/yyyy HH:mm")}
                       </div>
                     </TableCell>
 
@@ -440,7 +441,7 @@ export function SecaoObservacoes({
                               variant="outline"
                               onClick={onHistoricoClick}
                               className="h-8 w-8 p-0"
-                              title="Ver histórico de versões"
+                              title={t('bankHours.viewVersionHistory')}
                             >
                               <Eye className="h-4 w-4 text-blue-600" />
                             </Button>
@@ -487,19 +488,19 @@ export function SecaoObservacoes({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('bankHours.confirmDeletion')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta observação? Esta ação não pode ser desfeita.
+              {t('bankHours.confirmDeletionDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleExcluirObservacao}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

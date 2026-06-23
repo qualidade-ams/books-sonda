@@ -25,6 +25,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import type { BookSLAData } from '@/types/books';
+import { useTranslation } from 'react-i18next';
 
 interface BookSLAProps {
   data: BookSLAData;
@@ -32,6 +33,15 @@ interface BookSLAProps {
 }
 
 export default function BookSLA({ data, empresaNome }: BookSLAProps) {
+  const { t } = useTranslation();
+
+  // Helper to translate month names from backend (Portuguese) to current language
+  const translateMonth = (mes: string): string => {
+    const key = `books.bookContent.months.${mes}` as const;
+    const translated = t(key);
+    return translated !== key ? translated : mes;
+  };
+
   // Calcular porcentagem para o gráfico circular (gauge)
   const percentage = data.sla_percentual;
   
@@ -52,9 +62,9 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          SLA {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          {t('books.bookContent.slaTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
         </h2>
-        <p className="text-sm text-gray-500">Dashboard de Monitoramento de Nível de Serviço</p>
+        <p className="text-sm text-gray-500">{t('books.bookContent.slaSubtitle')}</p>
       </div>
 
       {/* Layout Principal: Coluna Esquerda (SLA + Cards) e Coluna Direita (Gráfico) */}
@@ -65,7 +75,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600">
-                SLA | META DE ATENDIMENTO
+                {t('books.bookContent.slaServiceGoal')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 pb-6">
@@ -98,14 +108,14 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                       {data.sla_percentual}%
                     </div>
                     <div className="text-xl text-gray-500 mt-2">
-                      {data.sla_elegivel === false ? 'NÃO ELEGÍVEL' : 'CONTRATO'}
+                      {data.sla_elegivel === false ? t('books.bookContent.notEligible') : t('books.bookContent.contract')}
                     </div>
                   </div>
                 </div>
               </div>
               
               <div className="text-center -mt-4 relative z-20">
-                <span className="text-base text-gray-600">Meta: </span>
+                <span className="text-base text-gray-600">{t('books.bookContent.goal')} </span>
                 <span className="text-base font-semibold text-blue-600">{data.meta_percentual}%</span>
               </div>
               
@@ -138,13 +148,13 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-blue-600" />
                   </div>
-                  {data.fechados >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
+                  {data.fechados >= 2 ? t('books.bookContent.incidents') : t('books.bookContent.incident')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-black">{data.fechados}</span>
-                  <span className="text-xs font-medium text-gray-500 uppercase">FECHADOS</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">{t('books.bookContent.closedLabel')}</span>
                 </div>
               </CardContent>
             </Card>
@@ -155,13 +165,13 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
-                  {data.incidentes >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
+                  {data.incidentes >= 2 ? t('books.bookContent.incidents') : t('books.bookContent.incident')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-black">{data.incidentes}</span>
-                  <span className="text-xs font-medium text-gray-500 uppercase">CONSULTORIAS FECHADAS</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">{t('books.bookContent.closedConsultations')}</span>
                 </div>
               </CardContent>
             </Card>
@@ -172,13 +182,13 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
                     <XCircle className="h-4 w-4 text-red-600" />
                   </div>
-                  {data.violados >= 2 ? 'INCIDENTES' : 'INCIDENTE'}
+                  {data.violados >= 2 ? t('books.bookContent.incidents') : t('books.bookContent.incident')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-black">{data.violados}</span>
-                  <span className="text-xs font-medium text-gray-500 uppercase">CONSULTORIAS VIOLADAS</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">{t('books.bookContent.violatedConsultations')}</span>
                 </div>
               </CardContent>
             </Card>
@@ -188,12 +198,12 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         {/* Coluna Direita: Gráfico SLA Histórico */}
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader>
-            <CardTitle className="text-base font-semibold">SLA HISTÓRICO | MENSAL</CardTitle>
+            <CardTitle className="text-base font-semibold">{t('books.bookContent.slaHistoryMonthly')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={450}>
               <BarChart 
-                data={data.sla_historico}
+                data={data.sla_historico.map(d => ({ ...d, mes: translateMonth(d.mes) }))}
                 layout="vertical"
                 margin={{ top: 25, right: 30, left: 80, bottom: 5 }}
                 barSize={45}
@@ -217,7 +227,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px'
                   }}
-                  formatter={(value: number) => `${value}%`}
+                  formatter={(value: number) => [`${value}%`, t('books.bookContent.slaTitle')]}
                 />
                 <Bar 
                   dataKey="percentual" 
@@ -237,7 +247,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   strokeWidth={2} 
                   strokeDasharray="5 5"
                   label={{
-                    value: `META: ${data.meta_percentual}%`,
+                    value: `${t('books.bookContent.metaLabel')} ${data.meta_percentual}%`,
                     position: 'top',
                     fill: '#000000',
                     fontSize: 12,
@@ -259,10 +269,10 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base font-semibold">CHAMADOS VIOLADOS</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('books.bookContent.violatedTickets')}</CardTitle>
               {data.chamados_violados.length === 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Nenhum chamado violado no período
+                  {t('books.bookContent.noViolatedTicketsPeriod')}
                 </p>
               )}
             </div>
@@ -274,10 +284,10 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               <div className="text-center">
                 <CheckCircle2 className="h-20 w-20 text-blue-600 mx-auto mb-6" />
                 <p className="text-lg text-gray-600 font-medium mb-3">
-                  Nenhum chamado violado
+                  {t('books.bookContent.noViolatedTickets')}
                 </p>
                 <p className="text-base text-gray-500">
-                  Todos os chamados estão dentro do prazo estabelecido
+                  {t('books.bookContent.allTicketsOnTime')}
                 </p>
               </div>
             </div>
@@ -286,11 +296,11 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>CHAMADO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>TIPO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTURA</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>SOLUÇÃO</TableHead>
-                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>GRUPO</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.ticketHeader')}</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.typeHeader')}</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.openingHeader')}</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.solutionHeader')}</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.groupHeader')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

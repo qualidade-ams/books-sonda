@@ -27,6 +27,7 @@ import {
 import type { BookVolumetriaData } from '@/types/books';
 import { useGrupoBookMapping, mapearMultiplosGrupos } from '@/hooks/useGrupoBookMapping';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface BookVolumetriaProps {
   data: BookVolumetriaData;
@@ -36,6 +37,14 @@ interface BookVolumetriaProps {
 }
 
 export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolumetriaProps) {
+  const { t } = useTranslation();
+
+  // Helper to translate month names from backend (Portuguese) to current language
+  const translateMonth = (mes: string): string => {
+    const key = `books.bookContent.months.${mes}` as const;
+    const translated = t(key);
+    return translated !== key ? translated : mes;
+  };
   // Buscar mapeamento de categorias para grupos
   const { data: mappingMap, isLoading: isLoadingMapping } = useGrupoBookMapping();
   
@@ -81,10 +90,17 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
     anoInicial -= 1;
   }
   
-  const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const MESES_ABREV_KEYS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  const getMonthAbbrev = (index: number) => {
+    const key = `books.bookContent.monthsAbbrev.${MESES_ABREV_KEYS[index]}`;
+    const translated = t(key);
+    const result = translated !== key ? translated : MESES_ABREV_KEYS[index];
+    // Title case: first letter uppercase, rest lowercase
+    return result.charAt(0).toUpperCase() + result.slice(1).toLowerCase();
+  };
   const periodoTexto = anoInicial === anoExibicao 
-    ? `${MESES_ABREV[mesInicial - 1]} - ${MESES_ABREV[mesAtual - 1]} ${anoExibicao}`
-    : `${MESES_ABREV[mesInicial - 1]}/${anoInicial} - ${MESES_ABREV[mesAtual - 1]}/${anoExibicao}`;
+    ? `${getMonthAbbrev(mesInicial - 1)} - ${getMonthAbbrev(mesAtual - 1)} ${anoExibicao}`
+    : `${getMonthAbbrev(mesInicial - 1)}/${anoInicial} - ${getMonthAbbrev(mesAtual - 1)}/${anoExibicao}`;
   
   // Debug: Log dos dados do gráfico
   console.log('📊 BookVolumetria - Dados do gráfico:', {
@@ -103,9 +119,9 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          Volumetria {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          {t('books.bookContent.volumetryTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
         </h2>
-        <p className="text-sm text-gray-500">Visão Geral de Chamados e Desempenho Operacional</p>
+        <p className="text-sm text-gray-500">{t('books.bookContent.volumetrySubtitle')}</p>
       </div>
 
       {/* Layout principal: Grid 4 colunas - Conteúdo esquerdo (3 cols) + CHAMADOS | GRUPO | MÊS (1 col) */}
@@ -121,7 +137,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                   <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                     <FileText className="h-4 w-4 text-gray-600" />
                   </div>
-                  ABERTOS | MÊS
+                  {t('books.bookContent.openedMonth')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -138,7 +154,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <FileText className="h-4 w-4 text-black" />
                   </div>
-                  FECHADOS | MÊS
+                  {t('books.bookContent.closedMonth')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -155,7 +171,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                   <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-gray-600" />
                   </div>
-                  TOTAL BACKLOG
+                  {t('books.bookContent.totalBacklog')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -169,15 +185,15 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
           {/* Gráfico: Chamados | Semestre */}
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Chamados | Semestre</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('books.bookContent.ticketsSemester')}</CardTitle>
               <p className="text-xs text-gray-500">
-                Monitoramento do volume mensal ({periodoTexto})
+                {t('books.bookContent.monthlyVolumeMonitoring')} ({periodoTexto})
               </p>
             </CardHeader>
             <CardContent>
               {data.chamados_semestre && data.chamados_semestre.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.chamados_semestre}>
+                  <BarChart data={data.chamados_semestre.map(d => ({ ...d, mes: translateMonth(d.mes) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="mes" 
@@ -204,7 +220,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     <Bar 
                       dataKey="abertos" 
                       fill="#666666" 
-                      name="ABERTOS"
+                      name={t('books.bookContent.opened')}
                       radius={[4, 4, 0, 0]}
                     >
                       <LabelList 
@@ -221,7 +237,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                     <Bar 
                       dataKey="fechados" 
                       fill="#2563eb" 
-                      name="FECHADOS"
+                      name={t('books.bookContent.closed')}
                       radius={[4, 4, 0, 0]}
                     >
                       <LabelList 
@@ -241,7 +257,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 <div className="flex items-center justify-center h-[300px]">
                   <div className="text-center">
                     <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Nenhum dado disponível para o período</p>
+                    <p className="text-sm text-gray-500">{t('books.bookContent.noDataForPeriod')}</p>
                   </div>
                 </div>
               )}
@@ -252,7 +268,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
           <Card className="border-2 flex flex-col" style={{ borderRadius: '35.5px', borderColor: '#666666', minHeight: '500px' }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Chamados X Código de Resolução</CardTitle>           
+                <CardTitle className="text-base font-semibold">{t('books.bookContent.ticketsResolutionCode')}</CardTitle>           
               </div>
             </CardHeader>
             <CardContent className="pt-0 flex-1 flex flex-col">
@@ -260,9 +276,9 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">ORIGEM</TableHead>
-                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>ABERTOS</TableHead>
-                      <TableHead className="text-center font-semibold bg-blue-600 text-white">FECHADOS</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.origin')}</TableHead>
+                      <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.opened')}</TableHead>
+                      <TableHead className="text-center font-semibold bg-blue-600 text-white">{t('books.bookContent.closed')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -283,7 +299,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                         const outrosAbertos = outrasOrigens.reduce((sum, item) => sum + (item.abertos || 0), 0);
                         const outrosFechados = outrasOrigens.reduce((sum, item) => sum + (item.fechados || 0), 0);
                         linhaOutros = {
-                          origem: 'Outros',
+                          origem: t('books.bookContent.others'),
                           abertos: outrosAbertos,
                           fechados: outrosFechados
                         };
@@ -314,7 +330,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                       );
                     })()}
                     <TableRow className="font-bold hover:bg-blue-600" style={{ backgroundColor: '#666666', color: 'white' }}>
-                      <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>TOTAL</TableCell>
+                      <TableCell className="py-2" style={{ borderBottomLeftRadius: '15.5px' }}>{t('books.bookContent.total')}</TableCell>
                       <TableCell className="text-center py-2">
                         {backlogPorCausaMapeado.reduce((sum, item) => sum + (item.abertos || 0), 0)}
                       </TableCell>
@@ -333,7 +349,7 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
         <div className="lg:col-span-1">
           <Card className="border-2 h-full" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">CHAMADOS | GRUPO | MÊS</CardTitle>
+              <CardTitle className="text-sm font-semibold">{t('books.bookContent.ticketsGroupMonth')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
               {(() => {
@@ -356,13 +372,13 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                               className="bg-[#666666] rounded px-2 py-0.5 flex items-center gap-1 transition-all duration-300 flex-1"
                             >
                               <span className="text-base text-white font-bold leading-tight">{grupo.abertos}</span>
-                              <span className="text-[11px] text-white/90 font-semibold leading-tight ml-auto">ABERTOS</span>
+                              <span className="text-[11px] text-white/90 font-semibold leading-tight ml-auto">{t('books.bookContent.opened')}</span>
                             </div>
                             <div 
                               className="bg-blue-600 rounded px-2 py-0.5 flex items-center gap-1 transition-all duration-300 flex-1"
                             >
                               <span className="text-base text-white font-bold leading-tight">{grupo.fechados}</span>
-                              <span className="text-[11px] text-white/90 font-semibold leading-tight ml-auto">FECHADOS</span>
+                              <span className="text-[11px] text-white/90 font-semibold leading-tight ml-auto">{t('books.bookContent.closed')}</span>
                             </div>
                           </div>
                         </div>
@@ -373,10 +389,10 @@ export default function BookVolumetria({ data, empresaNome, mes, ano }: BookVolu
                       <div className="pt-2 mt-2 border-t border-gray-200">
                         <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
                           <p className="text-xs text-gray-600 font-medium">
-                            + {gruposRestantes} {gruposRestantes === 1 ? 'grupo adicional' : 'grupos adicionais'}
+                            + {gruposRestantes} {gruposRestantes === 1 ? t('books.bookContent.additionalGroup') : t('books.bookContent.additionalGroups')}
                           </p>
                           <p className="text-[11px] text-gray-500 mt-0.5">
-                            Exibindo os {maxGrupos} primeiros grupos
+                            {t('books.bookContent.showingFirstGroups', { count: maxGrupos })}
                           </p>
                         </div>
                       </div>

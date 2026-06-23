@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -56,7 +57,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { bancoHorasService } from '@/services/bancoHorasService';
 import type { BancoHorasVersao, BancoHorasReajuste } from '@/types/bancoHoras';
@@ -133,6 +133,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   const [excluindo, setExcluindo] = useState(false);
 
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   
   // Verificar se é tipo ticket (singular ou plural)
@@ -386,8 +387,8 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       console.log('✅ Queries atualizadas - exclusão concluída!');
 
       toast({
-        title: 'Versão excluída',
-        description: 'A versão foi excluída e os valores foram recalculados.',
+        title: t('bankHours.versionDeleted'),
+        description: t('bankHours.versionDeletedDesc'),
       });
 
       // Fechar o modal de histórico APÓS todas as atualizações
@@ -395,8 +396,8 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
     } catch (error) {
       console.error('❌ Erro ao excluir versão:', error);
       toast({
-        title: 'Erro ao excluir',
-        description: 'Ocorreu um erro ao excluir a versão. Tente novamente.',
+        title: t('bankHours.deleteError'),
+        description: t('bankHours.deleteErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -417,11 +418,11 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
   const getBadgeTipoMudanca = (tipo: string) => {
     switch (tipo) {
       case 'reajuste':
-        return <Badge className="bg-orange-100 text-orange-800 text-xs">Reajuste</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 text-xs">{t('bankHours.adjustmentLabel')}</Badge>;
       case 'recalculo':
-        return <Badge className="bg-blue-100 text-blue-800 text-xs">Recálculo</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 text-xs">{t('bankHours.recalculateType')}</Badge>;
       case 'correcao':
-        return <Badge className="bg-green-100 text-green-800 text-xs">Correção</Badge>;
+        return <Badge className="bg-green-100 text-green-800 text-xs">{t('bankHours.correctionType')}</Badge>;
       default:
         return <Badge variant="secondary" className="text-xs">{tipo}</Badge>;
     }
@@ -437,7 +438,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         return (
           <Badge className="bg-green-100 text-green-800 text-xs flex items-center gap-1">
             <TrendingUp className="h-3 w-3" />
-            Entrada
+            {t('bankHours.entryType')}
           </Badge>
         );
       case 'saida':
@@ -445,7 +446,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         return (
           <Badge className="bg-red-100 text-red-800 text-xs flex items-center gap-1">
             <TrendingDown className="h-3 w-3" />
-            Saída
+            {t('bankHours.exitType')}
           </Badge>
         );
       default:
@@ -458,18 +459,18 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
    */
   const formatarDataHora = (data: Date | string) => {
     const dataObj = typeof data === 'string' ? new Date(data) : data;
-    return format(dataObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    return format(dataObj, "dd/MM/yyyy HH:mm");
   };
 
   /**
    * Formata mês/ano para exibição
    */
   const formatarMesAno = (mes: number, ano: number) => {
-    const meses = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    const monthKeys = [
+      'january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'
     ];
-    return `${meses[mes - 1]}/${ano}`;
+    return `${t(`bankHours.months.${monthKeys[mes - 1]}`)}/${ano}`;
   };
   
   /**
@@ -495,10 +496,10 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
             <History className="h-5 w-5" />
-            Histórico de Versões
+            {t('bankHours.versionHistory')}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            Visualize todas as mudanças realizadas no período selecionado
+            {t('bankHours.versionHistoryDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -515,10 +516,10 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                   <div className="text-center">
                     <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-2 font-medium">
-                      Nenhuma versão encontrada
+                      {t('bankHours.noVersionsFound')}
                     </p>
                     <p className="text-sm text-gray-400">
-                      Não há histórico de versões para este período
+                      {t('bankHours.noVersionsDesc')}
                     </p>
                   </div>
                 </div>
@@ -527,14 +528,14 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50">
-                        <TableHead className="font-semibold text-gray-700 text-center">Versão</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center">Mês/Ano</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center">Tipo</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center">Data/Hora</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center">Usuário</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center">Entrada/Saída</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-center w-24">Ações</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.versionColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.monthYearColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.typeColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.dateTimeColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.userColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700">{t('bankHours.reasonColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center">{t('bankHours.entryExitColumn')}</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-center w-24">{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -597,7 +598,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                   {getBadgeTipoMudanca(versao.tipo_mudanca)}
                                   {versao.tipo_mudanca === 'reajuste' && (
                                     <span className="text-xs text-gray-400 italic">
-                                      Sem dados
+                                      {t('bankHours.noData')}
                                     </span>
                                   )}
                                 </div>
@@ -615,11 +616,11 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                 <span className="text-gray-700">
                                   {/* Mostrar autor do reajuste se existir, senão autor da versão */}
                                   {reajuste && reajuste.created_by ? (
-                                    usuarios[reajuste.created_by] || 'Carregando...'
+                                    usuarios[reajuste.created_by] || t('common.loading')
                                   ) : versao.created_by ? (
-                                    usuarios[versao.created_by] || 'Carregando...'
+                                    usuarios[versao.created_by] || t('common.loading')
                                   ) : (
-                                    'Sistema'
+                                    t('bankHours.system')
                                   )}
                                 </span>
                               </div>
@@ -636,7 +637,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
                                     {versao.motivo}
                                   </div>
                                 ) : (
-                                  <span className="text-gray-400 italic text-sm">Sem motivo registrado</span>
+                                  <span className="text-gray-400 italic text-sm">{t('bankHours.noReasonRegistered')}</span>
                                 )}
                               </div>
                             </TableCell>
@@ -673,7 +674,7 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
           {/* Informações adicionais */}
           {!isLoading && !loadingReajustes && !loadingUsuarios && versoes.length > 0 && (
             <div className="text-sm text-gray-500 text-center">
-              Mostrando {versoes.length} versão(ões)
+              {t('bankHours.showingVersions', { count: versoes.length })}
             </div>
           )}
         </div>
@@ -683,19 +684,19 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
       <AlertDialog open={!!versaoParaExcluir} onOpenChange={(open) => !open && cancelarExclusao()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('bankHours.confirmDeletion')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta versão do histórico? Esta ação não pode ser desfeita.
+              {t('bankHours.confirmDeleteVersionDesc')}
               {versaoParaExcluir && versoes.find(v => v.id === versaoParaExcluir)?.reajuste_id && (
                 <span className="block mt-2 text-orange-600 font-medium">
-                  ⚠️ O reajuste associado a esta versão também será desativado.
+                  ⚠️ {t('bankHours.adjustmentWillBeDeactivated')}
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={cancelarExclusao} disabled={excluindo}>
-              Cancelar
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmarExclusao}
@@ -705,12 +706,12 @@ export const ModalHistorico: React.FC<ModalHistoricoProps> = ({
               {excluindo ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Excluindo...
+                  {t('bankHours.deleting')}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
+                  {t('common.delete')}
                 </>
               )}
             </AlertDialogAction>

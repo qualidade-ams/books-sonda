@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBookData } from '@/hooks/useBooks';
@@ -29,6 +30,7 @@ import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganograma
 
 export default function BookPrintView() {
   const { id: rawId } = useParams<{ id: string }>();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   
   // Remover prefixo "book-" se existir
@@ -103,7 +105,7 @@ export default function BookPrintView() {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-sonda-blue mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados do book...</p>
+          <p className="text-gray-600">{t('books.loadingBookData')}</p>
         </div>
       </div>
     );
@@ -115,7 +117,7 @@ export default function BookPrintView() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
-          <p className="text-red-600 mb-2">Erro ao carregar book</p>
+          <p className="text-red-600 mb-2">{t('books.errorLoadingBook')}</p>
           <p className="text-gray-500 text-sm">{error.message}</p>
         </div>
       </div>
@@ -127,7 +129,7 @@ export default function BookPrintView() {
     console.warn('⚠️ Book não encontrado');
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <p className="text-gray-500">Book não encontrado (ID: {id})</p>
+        <p className="text-gray-500">{t('books.bookNotFound')} (ID: {id})</p>
       </div>
     );
   }

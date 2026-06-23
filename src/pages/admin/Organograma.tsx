@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Users, Filter, Search, Loader2, Edit, Trash2, X, ArrowUpDown, Eye } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import ProtectedAction from '@/components/auth/ProtectedAction';
@@ -35,6 +36,15 @@ import type { PessoaOrganograma } from '@/types/organograma';
 export default function Organograma() {
   const { pessoas, loading, construirArvoreHierarquica, fetchPessoas, deletarPessoa, setProdutoSelecionado: setHookProdutoSelecionado } = useOrganograma();
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  // Helper to translate position/cargo names from database values
+  const translatePosition = (cargo: string): string => {
+    const key = `orgChart.positions.${cargo}`;
+    const translated = t(key);
+    return translated !== key ? translated : cargo;
+  };
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState(false);
   const [pessoaEditando, setPessoaEditando] = useState<PessoaOrganograma | undefined>();
@@ -107,14 +117,14 @@ export default function Organograma() {
     try {
       await deletarPessoa(pessoaParaExcluir.id);
       toast({
-        title: 'Pessoa excluída',
-        description: `${pessoaParaExcluir.nome} foi removido(a) do organograma.`,
+        title: t('orgChart.personDeleted'),
+        description: t('orgChart.personDeletedDesc', { name: pessoaParaExcluir.nome }),
       });
       fetchPessoas();
     } catch (error: any) {
       toast({
-        title: 'Erro ao excluir',
-        description: error?.message || 'Não foi possível excluir a pessoa.',
+        title: t('orgChart.deleteError'),
+        description: error?.message || t('orgChart.deleteErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -174,10 +184,10 @@ export default function Organograma() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Organograma
+                {t('orgChart.title')}
               </h1>
               <p className="text-muted-foreground mt-1">
-                Visualize e gerencie a estrutura organizacional da empresa
+                {t('orgChart.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -188,7 +198,7 @@ export default function Organograma() {
                   onClick={handleNovaPessoa}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Pessoa
+                  {t('orgChart.newPerson')}
                 </Button>
               </ProtectedAction>
             </div>
@@ -201,7 +211,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Total
+                    {t('orgChart.total')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -217,7 +227,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Diretores
+                    {t('orgChart.directors')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -233,7 +243,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-blue-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Gerentes
+                    {t('orgChart.managers')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -249,7 +259,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-green-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Coordenadores
+                    {t('orgChart.coordinators')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -265,7 +275,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Central Escalação
+                    {t('orgChart.centralEscalation')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -281,7 +291,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-emerald-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Customer Success
+                    {t('orgChart.customerSuccess')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -297,7 +307,7 @@ export default function Organograma() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-amber-600">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Comercial
+                    {t('orgChart.commercial')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -315,7 +325,7 @@ export default function Organograma() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Estrutura Organizacional
+                  {t('orgChart.organizationalStructure')}
                 </CardTitle>
 
                 <div className="flex gap-2">
@@ -326,7 +336,7 @@ export default function Organograma() {
                     className="flex items-center justify-center space-x-2"
                   >
                     <Filter className="h-4 w-4" />
-                    <span>Filtros</span>
+                    <span>{t('orgChart.filters')}</span>
                   </Button>
                   
                   {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -338,7 +348,7 @@ export default function Organograma() {
                       className="whitespace-nowrap hover:border-red-300"
                     >
                       <X className="h-4 w-4 mr-2 text-red-600" />
-                      Limpar Filtro
+                      {t('orgChart.clearFilter')}
                     </Button>
                   )}
                 </div>
@@ -350,11 +360,11 @@ export default function Organograma() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Campo de busca */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="text-sm font-medium mb-2">{t('orgChart.search')}</div>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Buscar por nome, email ou cargo..."
+                          placeholder={t('orgChart.searchPlaceholder')}
                           value={filtros.busca}
                           onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
                           className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -364,16 +374,16 @@ export default function Organograma() {
 
                     {/* Filtro Produto */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Produto</div>
+                      <div className="text-sm font-medium mb-2">{t('orgChart.product')}</div>
                       <Select value={produtoSelecionado} onValueChange={(value: any) => handleProdutoChange(value)}>
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Todos os produtos" />
+                          <SelectValue placeholder={t('orgChart.allProducts')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="TODOS">
                             <div className="flex items-center gap-2">
                               <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                              <span>Todos</span>
+                              <span>{t('orgChart.all')}</span>
                             </div>
                           </SelectItem>
                           <SelectItem value="COMEX">
@@ -418,16 +428,16 @@ export default function Organograma() {
 
                     {/* Filtro Departamento */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Departamento</div>
+                      <div className="text-sm font-medium mb-2">{t('orgChart.department')}</div>
                       <Select 
                         value={filtros.departamento} 
                         onValueChange={(value) => setFiltros({...filtros, departamento: value})}
                       >
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Todos os departamentos" />
+                          <SelectValue placeholder={t('orgChart.allDepartments')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos os departamentos</SelectItem>
+                          <SelectItem value="all">{t('orgChart.allDepartments')}</SelectItem>
                           {departamentos.map((dept) => (
                             <SelectItem key={dept} value={dept}>
                               {dept}
@@ -439,22 +449,22 @@ export default function Organograma() {
 
                     {/* Filtro Cargo */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Cargo</div>
+                      <div className="text-sm font-medium mb-2">{t('orgChart.position')}</div>
                       <Select 
                         value={filtros.cargo} 
                         onValueChange={(value) => setFiltros({...filtros, cargo: value})}
                       >
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Todos os cargos" />
+                          <SelectValue placeholder={t('orgChart.allPositions')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos os cargos</SelectItem>
-                          <SelectItem value="Diretor">Diretor</SelectItem>
-                          <SelectItem value="Gerente">Gerente</SelectItem>
-                          <SelectItem value="Coordenador">Coordenador</SelectItem>
-                          <SelectItem value="Central Escalação">Central Escalação</SelectItem>
-                          <SelectItem value="Customer Success">Customer Success</SelectItem>
-                          <SelectItem value="Comercial">Comercial</SelectItem>
+                          <SelectItem value="all">{t('orgChart.allPositions')}</SelectItem>
+                          <SelectItem value="Diretor">{t('orgChart.director')}</SelectItem>
+                          <SelectItem value="Gerente">{t('orgChart.manager')}</SelectItem>
+                          <SelectItem value="Coordenador">{t('orgChart.coordinator')}</SelectItem>
+                          <SelectItem value="Central Escalação">{t('orgChart.centralEscalation')}</SelectItem>
+                          <SelectItem value="Customer Success">{t('orgChart.customerSuccess')}</SelectItem>
+                          <SelectItem value="Comercial">{t('orgChart.commercial')}</SelectItem>
                           <SelectItem value="T&M">T&M</SelectItem>
                         </SelectContent>
                       </Select>
@@ -477,13 +487,13 @@ export default function Organograma() {
                         value="arvore"
                         className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                       >
-                        Visualização em Árvore
+                        {t('orgChart.treeView')}
                       </TabsTrigger>
                       <TabsTrigger 
                         value="lista"
                         className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                       >
-                        Lista de Pessoas
+                        {t('orgChart.peopleList')}
                       </TabsTrigger>
                     </TabsList>
                     
@@ -496,7 +506,7 @@ export default function Organograma() {
                         className="flex items-center gap-2"
                       >
                         <ArrowUpDown className="h-4 w-4" />
-                        Gerenciar Ordem
+                        {t('orgChart.manageOrder')}
                       </Button>
                     )}
                   </div>
@@ -515,14 +525,14 @@ export default function Organograma() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="text-xs sm:text-sm py-2">Foto</TableHead>
-                            <TableHead className="text-xs sm:text-sm py-2">Nome</TableHead>
-                            <TableHead className="text-center text-xs sm:text-sm py-2">Cargo</TableHead>
-                            <TableHead className="text-xs sm:text-sm py-2">Departamento</TableHead>
-                            <TableHead className="text-xs sm:text-sm py-2">Email</TableHead>
-                            <TableHead className="text-center text-xs sm:text-sm py-2">Telefone</TableHead>
-                            <TableHead className="text-xs sm:text-sm py-2">Superior</TableHead>
-                            <TableHead className="text-center text-xs sm:text-sm py-2 w-32">Ações</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">{t('orgChart.photo')}</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">{t('orgChart.name')}</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2">{t('orgChart.positionHeader')}</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">{t('orgChart.departmentHeader')}</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">{t('orgChart.email')}</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2">{t('orgChart.phone')}</TableHead>
+                            <TableHead className="text-xs sm:text-sm py-2">{t('orgChart.superior')}</TableHead>
+                            <TableHead className="text-center text-xs sm:text-sm py-2 w-32">{t('orgChart.actions')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -531,7 +541,7 @@ export default function Organograma() {
                               <TableCell colSpan={8} className="text-center py-8">
                                 <div className="flex flex-col items-center justify-center text-gray-500">
                                   <Users className="h-12 w-12 mb-2 text-gray-400" />
-                                  <p>Nenhuma pessoa encontrada</p>
+                                  <p>{t('orgChart.noPersonFound')}</p>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -575,7 +585,7 @@ export default function Organograma() {
                                           : 'bg-orange-100 text-orange-800 text-xs'
                                       }
                                     >
-                                      {pessoa.cargo}
+                                      {translatePosition(pessoa.cargo)}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>{pessoa.departamento}</TableCell>
@@ -591,7 +601,7 @@ export default function Organograma() {
                                         size="sm" 
                                         className="h-8 w-8 p-0"
                                         onClick={() => handleVisualizarPessoa(pessoa)}
-                                        title="Visualizar"
+                                        title={t('orgChart.view')}
                                       >
                                         <Eye className="h-4 w-4 text-blue-600" />
                                       </Button>
@@ -601,7 +611,7 @@ export default function Organograma() {
                                           size="sm" 
                                           className="h-8 w-8 p-0"
                                           onClick={() => handleEditarPessoa(pessoa)}
-                                          title="Editar"
+                                          title={t('orgChart.edit')}
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
@@ -612,7 +622,7 @@ export default function Organograma() {
                                           size="sm" 
                                           className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                                           onClick={() => setPessoaParaExcluir(pessoa)}
-                                          title="Excluir"
+                                          title={t('orgChart.delete')}
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -657,17 +667,17 @@ export default function Organograma() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-semibold text-red-600">
-              Excluir pessoa
+              {t('orgChart.deletePerson')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-gray-500">
-              Tem certeza que deseja excluir{' '}
+              {t('orgChart.deleteConfirm')}{' '}
               <span className="font-semibold text-gray-800">{pessoaParaExcluir?.nome}</span>?
               <br />
-              Esta ação não pode ser desfeita. Pessoas com subordinados não podem ser excluídas.
+              {t('orgChart.deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluindo}>{t('orgChart.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmarExclusao}
               disabled={excluindo}
@@ -676,10 +686,10 @@ export default function Organograma() {
               {excluindo ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Excluindo...
+                  {t('orgChart.deleting')}
                 </>
               ) : (
-                'Excluir'
+                t('orgChart.delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

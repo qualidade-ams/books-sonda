@@ -44,10 +44,11 @@ export function calcularNomePeriodoComIdioma(
   periodoApuracao: number | null | undefined,
   mesAtual: number,
   anoAtual: number,
-  isEnglish: boolean
+  isEnglish: boolean | string
 ): string {
   // Validações básicas
   if (!inicioVigencia || !periodoApuracao) {
+    if (isEnglish === 'es') return 'Período no definido';
     return isEnglish ? 'Period not defined' : 'Período não definido';
   }
 
@@ -74,6 +75,7 @@ export function calcularNomePeriodoComIdioma(
     }
   } catch (error) {
     console.error('Erro ao processar início da vigência:', error);
+    if (isEnglish === 'es') return 'Período inválido';
     return isEnglish ? 'Invalid period' : 'Período inválido';
   }
 
@@ -82,6 +84,7 @@ export function calcularNomePeriodoComIdioma(
   
   // Se ainda não chegou no início da vigência
   if (mesesPassados < 0) {
+    if (isEnglish === 'es') return 'Vigencia no iniciada';
     return isEnglish ? 'Validity not started' : 'Vigência não iniciada';
   }
 

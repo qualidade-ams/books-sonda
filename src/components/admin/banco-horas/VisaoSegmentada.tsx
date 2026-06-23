@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -295,9 +296,15 @@ export function VisaoSegmentada({
   tipoRepasseEspecial,
   percentualEntrePeriodos,
 }: VisaoSegmentadaProps) {
+  const { t } = useTranslation();
   
-  // Nomes dos meses completos (igual à Visão Consolidada)
-  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  // Nomes dos meses traduzidos
+  const MESES = [
+    t('bankHours.months.january'), t('bankHours.months.february'), t('bankHours.months.march'),
+    t('bankHours.months.april'), t('bankHours.months.may'), t('bankHours.months.june'),
+    t('bankHours.months.july'), t('bankHours.months.august'), t('bankHours.months.september'),
+    t('bankHours.months.october'), t('bankHours.months.november'), t('bankHours.months.december')
+  ];
   
   // Estado para armazenar dados de consumo de chamados
   const [consumoPorEmpresaMes, setConsumoPorEmpresaMes] = useState<Record<string, Record<string, number>>>({});
@@ -688,7 +695,7 @@ export function VisaoSegmentada({
           <div className="flex flex-col items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-sonda-blue" />
             <p className="text-sm text-gray-500">
-              {carregandoConsumo ? 'Carregando dados de consumo segmentado...' : 'Carregando reajustes...'}
+              {carregandoConsumo ? t('bankHours.loadingSegmentedData') : t('bankHours.loadingAdjustments')}
             </p>
           </div>
         </CardContent>
@@ -716,7 +723,7 @@ export function VisaoSegmentada({
                 {dados.nome}
               </CardTitle>
               <Badge className="bg-sonda-blue text-white">
-                {dados.percentual}% do Baseline
+                {dados.percentual}% {t('bankHours.ofBaseline')}
               </Badge>
             </div>
           </CardHeader>
@@ -727,15 +734,15 @@ export function VisaoSegmentada({
                 <TableHeader>
                   {/* Linha: Período */}
                   <TableRow className="bg-gray-700 hover:bg-gray-700">
-                    <TableHead className="font-semibold text-white text-center">Período</TableHead>
+                    <TableHead className="font-semibold text-white text-center">{t('common.period')}</TableHead>
                     <TableHead className="font-semibold text-white text-center" colSpan={mesesDoPeriodo.length}>
-                      {periodoApuracao}º Quadrimestre
+                      {t('bankHours.periodLabel', { number: periodoApuracao })}
                     </TableHead>
                   </TableRow>
                   
                   {/* Linha: Mês */}
                   <TableRow className="bg-sonda-blue hover:bg-sonda-blue">
-                    <TableHead className="text-white font-semibold text-center">Mês</TableHead>
+                    <TableHead className="text-white font-semibold text-center">{t('bankHours.monthLabel')}</TableHead>
                     {mesesDoPeriodo.map((mesAno, idx) => {
                       return (
                         <TableHead key={idx} className="text-white font-semibold text-center">
@@ -749,7 +756,7 @@ export function VisaoSegmentada({
                   {/* Banco Contratado (Baseline) */}
                   <TableRow className="bg-gray-700 hover:bg-gray-700">
                     <TableCell className="font-semibold text-white text-center">
-                      Banco Contratado
+                      {t('bankHours.contractedBank')}
                     </TableCell>
                     {mesesDoPeriodo.map((_, idx) => (
                       <TableCell key={idx} className="text-center font-semibold text-white">
@@ -761,7 +768,7 @@ export function VisaoSegmentada({
                   {/* Repasse mês anterior */}
                   <TableRow className="bg-gray-200 hover:bg-gray-200">
                     <TableCell className="font-medium text-gray-900 text-center">
-                      Repasse mês anterior
+                      {t('bankHours.previousMonthCarryover')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
@@ -776,7 +783,7 @@ export function VisaoSegmentada({
                   {/* Saldo a utilizar */}
                   <TableRow className="bg-gray-50">
                     <TableCell className="font-medium text-center">
-                      Saldo a utilizar
+                      {t('bankHours.balanceToUse')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
@@ -791,7 +798,7 @@ export function VisaoSegmentada({
                   {/* Consumo Chamados */}
                   <TableRow>
                     <TableCell className="font-medium text-center">
-                      Consumo Chamados
+                      {t('bankHours.ticketConsumption')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell key={idx} className="text-center font-semibold text-gray-900">
@@ -803,7 +810,7 @@ export function VisaoSegmentada({
                   {/* Requerimentos */}
                   <TableRow>
                     <TableCell className="font-medium text-center">
-                      Requerimentos
+                      {t('bankHours.requirementsLabel')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell key={idx} className="text-center font-semibold text-gray-900">
@@ -815,7 +822,7 @@ export function VisaoSegmentada({
                   {/* Reajuste */}
                   <TableRow>
                     <TableCell className="font-medium text-center">
-                      Reajuste
+                      {t('bankHours.adjustmentLabel')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
@@ -830,7 +837,7 @@ export function VisaoSegmentada({
                   {/* Consumo Total */}
                   <TableRow className="bg-gray-50">
                     <TableCell className="font-medium text-center">
-                      Consumo Total
+                      {t('bankHours.totalConsumption')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell key={idx} className="text-center font-semibold text-gray-900">
@@ -842,7 +849,7 @@ export function VisaoSegmentada({
                   {/* Saldo */}
                   <TableRow className="bg-gray-50">
                     <TableCell className="font-medium text-center">
-                      Saldo
+                      {t('bankHours.balance')}
                     </TableCell>
                     {dados.dadosPorMes.map((mesDados, idx) => (
                       <TableCell 
@@ -858,7 +865,7 @@ export function VisaoSegmentada({
                   <TableRow className="bg-gray-50">
                     <TableCell className="font-medium text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <span>Repasse - {percentualRepasseMensal}%</span>
+                        <span>{t('bankHours.carryover')} - {percentualRepasseMensal}%</span>
                         {tipoRepasseEspecial === 'por_periodo' && (
                           <TooltipProvider>
                             <Tooltip>
@@ -867,7 +874,7 @@ export function VisaoSegmentada({
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
                                 <p className="text-sm">
-                                  Repasse especial entre períodos: <strong>{percentualEntrePeriodos ?? 0}%</strong>
+                                  {t('bankHours.specialCarryover')}: <strong>{percentualEntrePeriodos ?? 0}%</strong>
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -889,7 +896,7 @@ export function VisaoSegmentada({
                   <TableRow className="bg-gray-700 hover:bg-gray-700">
                     <TableCell className="font-medium text-white text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <span>Taxa/hora Excedente</span>
+                        <span>{t('bankHours.surplusRate')}</span>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -899,9 +906,9 @@ export function VisaoSegmentada({
                             </TooltipTrigger>
                             <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
                               <div className="space-y-2 text-sm">
-                                <p className="font-semibold">Nota – Excedente na Visão Segmentada:</p>
-                                <p>Os excedentes identificados na visão segmentada não geram cobrança individual por segmento.</p>
-                                <p>A cobrança de excedentes é sempre calculada e faturada com base na visão consolidada do contrato.</p>
+                                <p className="font-semibold">{t('bankHours.segmentedExceedanceNote')}</p>
+                                <p>{t('bankHours.segmentedExceedanceDesc1')}</p>
+                                <p>{t('bankHours.segmentedExceedanceDesc2')}</p>
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -912,7 +919,7 @@ export function VisaoSegmentada({
                       {taxaHoraCalculada && taxaHoraCalculada > 0 ? formatarMoeda(taxaHoraCalculada) : ''}
                     </TableCell>
                     <TableCell className="font-medium text-center text-white" colSpan={mesesDoPeriodo.length > 1 ? mesesDoPeriodo.length - 2 : 1}>
-                      Valor Total
+                      {t('bankHours.totalAmount')}
                     </TableCell>
                     <TableCell className="text-center font-semibold text-white">
                       {formatarMoeda(dados.valorTotalExcedentes)}

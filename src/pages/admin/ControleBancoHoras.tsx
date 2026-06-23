@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Clock, 
   ChevronLeft, 
@@ -62,12 +63,20 @@ import { converterHorasParaMinutos } from '@/utils/horasUtils';
 import type { BancoHorasCalculo } from '@/types/bancoHoras';
 
 /**
- * Nomes dos meses em português
+ * Nomes dos meses em português (fallback)
  */
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
+
+/**
+ * Chaves dos meses para i18n
+ */
+const MONTH_KEYS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december'
+] as const;
 
 /**
  * Página ControleBancoHoras
@@ -78,6 +87,7 @@ const MESES = [
  */
 export default function ControleBancoHoras() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   
   // Estado de navegação
   const [empresaSelecionada, setEmpresaSelecionada] = useState<string | undefined>(undefined);
@@ -593,13 +603,13 @@ export default function ControleBancoHoras() {
         console.log('✅ Período calculado sequencialmente com sucesso!');
         
         toast({
-          title: 'Cálculo concluído',
-          description: `${mesesDoPeriodo.length} mês(es) calculado(s) com sucesso`,
+          title: t('bankHours.calculationComplete'),
+          description: t('bankHours.monthsCalculated', { count: mesesDoPeriodo.length }),
         });
       } catch (error) {
         console.error('❌ Erro ao calcular período:', error);
         toast({
-          title: 'Erro ao calcular',
+          title: t('bankHours.calculationError'),
           description: error instanceof Error ? error.message : 'Erro desconhecido',
           variant: 'destructive',
         });
@@ -640,8 +650,8 @@ export default function ControleBancoHoras() {
       
       if (dataNovoPeríodo < dataVigencia) {
         toast({
-          title: 'Período não disponível',
-          description: `Não é possível navegar para períodos anteriores ao início da vigência (${String(mesInicioVigencia).padStart(2, '0')}/${anoInicioVigencia}).`,
+          title: t('bankHours.periodNotAvailable'),
+          description: t('bankHours.periodNotAvailableDesc', { date: `${String(mesInicioVigencia).padStart(2, '0')}/${anoInicioVigencia}` }),
           variant: 'destructive',
         });
         return; // Bloquear navegação
@@ -698,10 +708,13 @@ export default function ControleBancoHoras() {
   
   // Formatar período baseado nos meses reais do período
   const formatarPeriodo = useMemo(() => {
+    const getMonthNamei18n = (monthIndex: number) => 
+      t(`bankHours.months.${MONTH_KEYS[monthIndex - 1]}`);
+
     if (mesesDoPeriodo.length === 1) {
       // Mensal - ano abreviado (ex: Novembro/25)
       const anoAbreviado = String(mesesDoPeriodo[0].ano).slice(-2);
-      return `${MESES[mesesDoPeriodo[0].mes - 1]}/${anoAbreviado}`;
+      return `${getMonthNamei18n(mesesDoPeriodo[0].mes)}/${anoAbreviado}`;
     } else {
       // Múltiplos meses - mostrar intervalo
       const primeiro = mesesDoPeriodo[0];
@@ -713,13 +726,13 @@ export default function ControleBancoHoras() {
       
       if (primeiro.ano === ultimo.ano) {
         // Mesmo ano (ex: Novembro - Dezembro/25)
-        return `${MESES[primeiro.mes - 1]} - ${MESES[ultimo.mes - 1]}/${anoAbreviadoPrimeiro}`;
+        return `${getMonthNamei18n(primeiro.mes)} - ${getMonthNamei18n(ultimo.mes)}/${anoAbreviadoPrimeiro}`;
       } else {
         // Anos diferentes (ex: Novembro/25 - Janeiro/26)
-        return `${MESES[primeiro.mes - 1]}/${anoAbreviadoPrimeiro} - ${MESES[ultimo.mes - 1]}/${anoAbreviadoUltimo}`;
+        return `${getMonthNamei18n(primeiro.mes)}/${anoAbreviadoPrimeiro} - ${getMonthNamei18n(ultimo.mes)}/${anoAbreviadoUltimo}`;
       }
     }
-  }, [mesesDoPeriodo]);
+  }, [mesesDoPeriodo, t]);
   
   // Handler de recálculo
   const handleRecalcular = async () => {
@@ -744,13 +757,13 @@ export default function ControleBancoHoras() {
       await Promise.all(recalculos);
       
       toast({
-        title: 'Recálculo concluído',
-        description: 'O banco de horas foi recalculado com sucesso.',
+        title: t('bankHours.recalculationComplete'),
+        description: t('bankHours.recalculationSuccess'),
       });
     } catch (error) {
       console.error('Erro ao recalcular:', error);
       toast({
-        title: 'Erro ao recalcular',
+        title: t('bankHours.recalculationError'),
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
@@ -878,10 +891,10 @@ export default function ControleBancoHoras() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  Controle de Banco de Horas
+                  {t('bankHours.title')}
                 </h1>
                 <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                  Gerencie o banco de horas por contratos de empresas clientes
+                  {t('bankHours.subtitle')}
                 </p>
               </div>
             </div>
@@ -924,7 +937,7 @@ export default function ControleBancoHoras() {
                   <CardTitle className={`text-xs lg:text-sm font-medium ${saldoColor}`}>
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4" />
-                      Saldo Mês Vigente
+                      {t('bankHours.currentMonthBalance')}
                     </div>
                   </CardTitle>
                 </CardHeader>
@@ -940,7 +953,7 @@ export default function ControleBancoHoras() {
                   <CardTitle className="text-xs lg:text-sm font-medium text-sonda-blue">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
-                      Requerimentos Trimestre
+                      {t('bankHours.quarterRequirements')}
                     </div>
                   </CardTitle>
                 </CardHeader>
@@ -956,7 +969,7 @@ export default function ControleBancoHoras() {
                   <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="h-4 w-4" />
-                      Excedentes
+                      {t('bankHours.exceedances')}
                     </div>
                   </CardTitle>
                 </CardHeader>
@@ -975,7 +988,7 @@ export default function ControleBancoHoras() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Empresa / Cliente
+                  {t('bankHours.companyClient')}
                 </label>
                 <Select
                   value={empresaSelecionada}
@@ -983,7 +996,7 @@ export default function ControleBancoHoras() {
                   disabled={isLoadingEmpresas}
                 >
                   <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                    <SelectValue placeholder="Selecione uma empresa" />
+                    <SelectValue placeholder={t('bankHours.selectCompany')} />
                   </SelectTrigger>
                   <SelectContent>
                     {empresas?.map((empresa) => (
@@ -1007,10 +1020,10 @@ export default function ControleBancoHoras() {
                   onClick={handleMesAnterior}
                   disabled={isLoading || isCalculandoPeriodo || !podeNavegarAnterior}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
-                  title={!podeNavegarAnterior ? 'Período anterior à vigência inicial' : 'Período anterior'}
+                  title={!podeNavegarAnterior ? t('bankHours.periodNotAvailable') : t('bankHours.previous')}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Anterior</span>
+                  <span className="hidden sm:inline">{t('bankHours.previous')}</span>
                 </Button>
                 
                 <div className="text-center flex-1">
@@ -1026,7 +1039,7 @@ export default function ControleBancoHoras() {
                   disabled={isLoading || isCalculandoPeriodo}
                   className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
                 >
-                  <span className="hidden sm:inline">Próximo</span>
+                  <span className="hidden sm:inline">{t('bankHours.next')}</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -1040,10 +1053,10 @@ export default function ControleBancoHoras() {
                 <div className="text-center">
                   <RefreshCw className="h-16 w-16 text-sonda-blue mx-auto mb-4 animate-spin" />
                   <p className="text-gray-900 mb-2 font-medium">
-                    Calculando período...
+                    {t('bankHours.calculatingPeriod')}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Processando {mesesDoPeriodo.length} mês(es) de dados
+                    {t('bankHours.processingMonths', { count: mesesDoPeriodo.length })}
                   </p>
                 </div>
               </CardContent>
@@ -1054,10 +1067,10 @@ export default function ControleBancoHoras() {
                 <div className="text-center">
                   <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 mb-2 font-medium">
-                    Selecione uma empresa
+                    {t('bankHours.selectACompany')}
                   </p>
                   <p className="text-sm text-gray-400">
-                    Escolha uma empresa acima para visualizar o banco de horas
+                    {t('bankHours.selectCompanyDescription')}
                   </p>
                 </div>
               </CardContent>
@@ -1068,10 +1081,10 @@ export default function ControleBancoHoras() {
                 <div className="text-center">
                   <RefreshCw className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
                   <p className="text-gray-500 mb-2 font-medium">
-                    Carregando dados...
+                    {t('bankHours.loadingData')}
                   </p>
                   <p className="text-sm text-gray-400">
-                    Aguarde enquanto buscamos os cálculos do banco de horas
+                    {t('bankHours.loadingDataDescription')}
                   </p>
                 </div>
               </CardContent>
@@ -1082,10 +1095,10 @@ export default function ControleBancoHoras() {
                 <div className="text-center">
                   <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4 font-medium">
-                    Nenhum cálculo disponível
+                    {t('bankHours.noCalculationAvailable')}
                   </p>
                   <p className="text-sm text-gray-400 mb-4">
-                    Não há cálculos para este período. Clique em "Recalcular" para gerar.
+                    {t('bankHours.noCalculationDescription')}
                   </p>
                   <Button
                     className="bg-sonda-blue hover:bg-sonda-dark-blue"
@@ -1093,7 +1106,7 @@ export default function ControleBancoHoras() {
                     disabled={isRecalculatingAny}
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${isRecalculatingAny ? 'animate-spin' : ''}`} />
-                    {isRecalculatingAny ? 'Calculando...' : 'Calcular Agora'}
+                    {isRecalculatingAny ? t('bankHours.calculating') : t('bankHours.calculateNow')}
                   </Button>
                 </div>
               </CardContent>
@@ -1106,13 +1119,13 @@ export default function ControleBancoHoras() {
                   value="consolidada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
-                  Visão Consolidada (Tickets)
+                  {t('bankHours.consolidatedViewTickets')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="segmentada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
-                  Visão Consolidada (Horas)
+                  {t('bankHours.consolidatedViewHours')}
                 </TabsTrigger>
               </TabsList>
 
@@ -1170,13 +1183,13 @@ export default function ControleBancoHoras() {
                   value="consolidada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
-                  Visão Consolidada
+                  {t('bankHours.consolidatedView')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="segmentada"
                   className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
                 >
-                  Visão Segmentada
+                  {t('bankHours.segmentedView')}
                 </TabsTrigger>
               </TabsList>
 
