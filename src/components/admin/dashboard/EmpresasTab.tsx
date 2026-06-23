@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardLoading } from '@/components/admin/dashboard/DashboardLoading';
 import { EmptyState } from '@/components/admin/dashboard/EmptyState';
@@ -75,6 +76,7 @@ interface EmpresasTabProps {
 }
 
 export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
+  const { t } = useTranslation();
   const { data: stats, isLoading, error } = useEstatisticasEmpresas();
 
   if (isLoading) {
@@ -85,8 +87,8 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
     return (
       <EmptyState
         icon={AlertCircle}
-        title="Erro ao carregar dados"
-        description="Não foi possível carregar as estatísticas das empresas."
+        title={t('dashboardEmpresas.errorLoadingData')}
+        description={t('dashboardEmpresas.errorLoadingDescription')}
       />
     );
   }
@@ -95,34 +97,34 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
     return (
       <EmptyState
         icon={Building2}
-        title="Sem dados disponíveis"
-        description="Nenhuma estatística de empresa foi encontrada."
+        title={t('dashboardEmpresas.noDataAvailable')}
+        description={t('dashboardEmpresas.noDataDescription')}
       />
     );
   }
 
   // Dados para gráficos
   const statusData = [
-    { name: 'Ativas', value: stats.empresasAtivas, color: COLORS.success },
-    { name: 'Inativas', value: stats.empresasInativas, color: COLORS.danger },
-    { name: 'Suspensas', value: stats.empresasSuspensas, color: COLORS.warning }
+    { name: t('dashboardEmpresas.active'), value: stats.empresasAtivas, color: COLORS.success },
+    { name: t('dashboardEmpresas.inactive'), value: stats.empresasInativas, color: COLORS.danger },
+    { name: t('dashboardEmpresas.suspended'), value: stats.empresasSuspensas, color: COLORS.warning }
   ];
 
   const amsData = [
-    { name: 'Com AMS', value: stats.empresasComAms, color: COLORS.primary },
-    { name: 'Sem AMS', value: stats.empresasSemAms, color: COLORS.gray }
+    { name: t('dashboardEmpresas.withAms'), value: stats.empresasComAms, color: COLORS.primary },
+    { name: t('dashboardEmpresas.withoutAms'), value: stats.empresasSemAms, color: COLORS.gray }
   ];
 
   const produtosData = [
-    { name: 'Fiscal', value: stats.empresasComFiscal, color: '#00FFFF' },
-    { name: 'Comex', value: stats.empresasComComex, color: '#2563eb' },
-    { name: 'Fiscal + Comex', value: stats.empresasComFiscalEComex, color: '#7c3aed' }
+    { name: t('dashboardEmpresas.fiscal'), value: stats.empresasComFiscal, color: '#00FFFF' },
+    { name: t('dashboardEmpresas.comex'), value: stats.empresasComComex, color: '#2563eb' },
+    { name: t('dashboardEmpresas.fiscalComex'), value: stats.empresasComFiscalEComex, color: '#7c3aed' }
   ];
 
   const bookData = [
-    { name: 'Qualidade', value: stats.empresasAmsComBookQualidade, color: COLORS.success },
-    { name: 'Outros', value: stats.empresasAmsComBookOutros, color: COLORS.warning },
-    { name: 'Sem Book', value: stats.empresasAmsSemBook, color: COLORS.gray }
+    { name: t('dashboardEmpresas.quality'), value: stats.empresasAmsComBookQualidade, color: COLORS.success },
+    { name: t('dashboardEmpresas.others'), value: stats.empresasAmsComBookOutros, color: COLORS.warning },
+    { name: t('dashboardEmpresas.noBook'), value: stats.empresasAmsSemBook, color: COLORS.gray }
   ];
 
   return (
@@ -132,7 +134,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Empresas Ativas</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.activeCompanies')}</p>
               <p className="text-2xl font-bold">{stats.empresasAtivas}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -144,7 +146,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Clientes Ativos</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.activeClients')}</p>
               <p className="text-2xl font-bold">{stats.clientesAtivos}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -156,7 +158,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Em Projeto (Novo cliente)</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.inProject')}</p>
               <p className="text-2xl font-bold">{stats.empresasEmProjeto}</p>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
@@ -171,7 +173,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Entraram em {new Date().getFullYear()}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.joinedIn', { year: new Date().getFullYear() })}</p>
               <p className="text-2xl font-bold text-green-600">{stats.empresasEntraramAno}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -183,7 +185,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Saíram em {new Date().getFullYear()}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.leftIn', { year: new Date().getFullYear() })}</p>
               <p className="text-2xl font-bold text-red-600">{stats.empresasSairamAno}</p>
             </div>
             <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
@@ -195,7 +197,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Banco de Horas</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.hoursBank')}</p>
               <p className="text-2xl font-bold">{stats.empresasBancoHoras}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -207,7 +209,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Ticket</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.ticket')}</p>
               <p className="text-2xl font-bold">{stats.empresasTicket}</p>
             </div>
             <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
@@ -219,7 +221,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Com AMS</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withAms')}</p>
               <p className="text-2xl font-bold">{stats.empresasComAms}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -231,7 +233,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Sem AMS</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.withoutAms')}</p>
               <p className="text-2xl font-bold">{stats.empresasSemAms}</p>
             </div>
             <div className="p-2 bg-gray-100 dark:bg-gray-900/20 rounded-lg">
@@ -247,10 +249,10 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Status das Empresas</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboardEmpresas.companyStatus')}</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Distribuição por status atual
+              {t('dashboardEmpresas.statusDistribution')}
             </p>
           </CardHeader>
           <CardContent>
@@ -309,10 +311,10 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Distribuição AMS</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboardEmpresas.amsDistribution')}</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Empresas com e sem AMS
+              {t('dashboardEmpresas.companiesWithAndWithoutAms')}
             </p>
           </CardHeader>
           <CardContent>
@@ -373,7 +375,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Fiscal</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.fiscal')}</p>
               <p className="text-2xl font-bold">{stats.empresasComFiscal}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -385,7 +387,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Comex</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.comex')}</p>
               <p className="text-2xl font-bold">{stats.empresasComComex}</p>
             </div>
             <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
@@ -397,7 +399,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Fiscal + Comex</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.fiscalComex')}</p>
               <p className="text-2xl font-bold">{stats.empresasComFiscalEComex}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -412,7 +414,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Fiscal</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyFiscal')}</p>
               <p className="text-2xl font-bold">{stats.empresasSomenteFiscal || 0}</p>
             </div>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -424,7 +426,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Gallery</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyGallery')}</p>
               <p className="text-2xl font-bold">{stats.empresasSomenteGallery || 0}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -436,7 +438,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Somente Comex</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboardEmpresas.onlyComex')}</p>
               <p className="text-2xl font-bold">{stats.empresasSomenteComex || 0}</p>
             </div>
             <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
@@ -452,10 +454,10 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Distribuição de Produtos</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboardEmpresas.productDistribution')}</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Produtos contratados pelas empresas
+              {t('dashboardEmpresas.contractedProducts')}
             </p>
           </CardHeader>
           <CardContent>
@@ -481,7 +483,7 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
-                    formatter={(value: any) => [value, 'Empresas']}
+                    formatter={(value: any) => [value, t('dashboardEmpresas.companies')]}
                   />
                   <Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]} maxBarSize={80}>
                     {produtosData.map((entry, index) => (
@@ -509,10 +511,10 @@ export const EmpresasTab: React.FC<EmpresasTabProps> = ({ hasPermission }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold">Tipos de Book AMS</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('dashboardEmpresas.amsBookTypes')}</CardTitle>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Distribuição por tipo de book (apenas clientes com AMS)
+              {t('dashboardEmpresas.bookTypeDistribution')}
             </p>
           </CardHeader>
           <CardContent>
