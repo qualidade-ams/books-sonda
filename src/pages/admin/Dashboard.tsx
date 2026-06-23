@@ -2554,6 +2554,7 @@ interface MultiSelectProps {
 }
 
 const MultiSelect = ({ options, selected, onSelectionChange, placeholder, searchPlaceholder }: MultiSelectProps) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2650,13 +2651,13 @@ const MultiSelect = ({ options, selected, onSelectionChange, placeholder, search
               onClick={handleSelectAll}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
             >
-              Selecionar todos
+              {t('multiSelect.selectAll')}
             </button>
             <button
               onClick={handleClearAll}
               className="text-xs text-gray-600 hover:text-gray-800 font-medium"
             >
-              Limpar seleção
+              {t('multiSelect.clearSelection')}
             </button>
           </div>
 
@@ -2664,7 +2665,7 @@ const MultiSelect = ({ options, selected, onSelectionChange, placeholder, search
           <div className="max-h-48 overflow-y-auto">
             {filteredOptions.length === 0 ? (
               <div className="p-3 text-sm text-muted-foreground text-center">
-                Nenhum item encontrado
+                {t('common.noData')}
               </div>
             ) : (
               filteredOptions.map(option => (
@@ -2901,7 +2902,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Elogios em {nomeMesUltimo}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.complimentsInMonth', { month: nomeMesUltimo })}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosMesAtual.length}</p>
                 <span className={`text-xs font-medium ${crescimento >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -2918,7 +2919,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Acumulado Ano</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.yearAccumulated')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{elogiosAnoCompletoVol.length}</p>
             </div>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -2930,7 +2931,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Pessoas Elogiadas</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.praisedPeople')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.prestador).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
@@ -2942,7 +2943,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Categorias Citadas</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.categoriesMentioned')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.categoria).filter(Boolean)).size}</p>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -2958,7 +2959,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <div className="space-y-4">
             <div className="flex flex-col lg:flex-row gap-4 items-start">
               <div className="flex-shrink-0">
-                <Label className="text-sm font-medium mb-2 block">Filtrar por:</Label>
+                <Label className="text-sm font-medium mb-2 block">{t('dashboard.complimentsTab.filterBy')}</Label>
                 <div className="flex gap-2">
                   <Button
                     variant={tipoFiltro === 'colaborador' ? 'default' : 'outline'}
@@ -2969,7 +2970,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
                       setEmpresasSelecionadas([]);
                     }}
                   >
-                    Colaborador
+                    {t('dashboard.complimentsTab.collaboratorBtn')}
                   </Button>
                   <Button
                     variant={tipoFiltro === 'empresa' ? 'default' : 'outline'}
@@ -2980,33 +2981,33 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
                       setEmpresasSelecionadas([]);
                     }}
                   >
-                    Empresa
+                    {t('dashboard.complimentsTab.companyBtn')}
                   </Button>
                 </div>
               </div>
 
               {tipoFiltro === 'colaborador' && (
                 <div className="flex-1 min-w-0">
-                  <Label className="text-sm font-medium mb-2 block">Colaboradores para comparação:</Label>
+                  <Label className="text-sm font-medium mb-2 block">{t('dashboard.complimentsTab.collaboratorsComparison')}</Label>
                   <MultiSelect
                     options={colaboradoresUnicos}
                     selected={colaboradoresSelecionados}
                     onSelectionChange={setColaboradoresSelecionados}
-                    placeholder="Selecione colaboradores para comparar..."
-                    searchPlaceholder="Buscar colaborador..."
+                    placeholder={t('dashboard.complimentsTab.selectCollaboratorsPlaceholder')}
+                    searchPlaceholder={t('dashboard.complimentsTab.searchCollaboratorPlaceholder')}
                   />
                 </div>
               )}
 
               {tipoFiltro === 'empresa' && (
                 <div className="flex-1 min-w-0">
-                  <Label className="text-sm font-medium mb-2 block">Empresas para comparação:</Label>
+                  <Label className="text-sm font-medium mb-2 block">{t('dashboard.complimentsTab.companiesComparison')}</Label>
                   <MultiSelect
                     options={empresasUnicas}
                     selected={empresasSelecionadas}
                     onSelectionChange={setEmpresasSelecionadas}
-                    placeholder="Selecione empresas para comparar..."
-                    searchPlaceholder="Buscar empresa..."
+                    placeholder={t('dashboard.complimentsTab.selectCompaniesPlaceholder')}
+                    searchPlaceholder={t('dashboard.complimentsTab.searchCompanyPlaceholder')}
                   />
                 </div>
               )}
@@ -3021,10 +3022,10 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardTitle className="text-lg font-semibold">{t('dashboard.complimentsTab.complimentsVolume')}</CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0
-              ? `Comparando ${colaboradoresSelecionados.length} colaborador(es): ${colaboradoresSelecionados.slice(0, 3).join(', ')}${colaboradoresSelecionados.length > 3 ? '...' : ''}`
+              ? t('dashboard.complimentsTab.comparingCollaborators', { count: colaboradoresSelecionados.length, names: `${colaboradoresSelecionados.slice(0, 3).join(', ')}${colaboradoresSelecionados.length > 3 ? '...' : ''}` })
               : tipoFiltro === 'empresa' && empresasSelecionadas.length > 0
-              ? `Comparando ${empresasSelecionadas.length} empresa(s): ${empresasSelecionadas.slice(0, 3).join(', ')}${empresasSelecionadas.length > 3 ? '...' : ''}`
-              : 'Todos os elogios - Selecione itens para comparação'
+              ? t('dashboard.complimentsTab.comparingCompanies', { count: empresasSelecionadas.length, names: `${empresasSelecionadas.slice(0, 3).join(', ')}${empresasSelecionadas.length > 3 ? '...' : ''}` })
+              : t('dashboard.complimentsTab.allComplimentsSelectItems')
             }
           </p>
         </CardHeader>
@@ -3067,7 +3068,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
                           
                           return (
                             <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-4xl">
-                              <p className="font-semibold mb-2 text-gray-800">Mês: {label}</p>
+                              <p className="font-semibold mb-2 text-gray-800">{t('dashboard.complimentsTab.monthLabel')}: {label}</p>
                               <div className="flex gap-6">
                                 {columns.map((column, columnIndex) => (
                                   <div key={columnIndex} className="flex flex-col gap-1">
@@ -3134,7 +3135,7 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
                           
                           return (
                             <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-4xl">
-                              <p className="font-semibold mb-2 text-gray-800">Mês: {label}</p>
+                              <p className="font-semibold mb-2 text-gray-800">{t('dashboard.complimentsTab.monthLabel')}: {label}</p>
                               <div className="flex gap-6">
                                 {columns.map((column, columnIndex) => (
                                   <div key={columnIndex} className="flex flex-col gap-1">
@@ -3200,8 +3201,8 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                       }}
-                      formatter={(value: any) => [value, 'Elogios']}
-                      labelFormatter={(label) => `Mês: ${label}`}
+                      formatter={(value: any) => [value, t('dashboard.complimentsTab.complimentsLabel')]}
+                      labelFormatter={(label) => `${t('dashboard.complimentsTab.monthLabel')}: ${label}`}
                     />
                     <Area
                       type="monotone"
@@ -3273,6 +3274,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
   mesSelecionado: number | 'todos';
   elogios?: any[];
 }) => {
+  const { t } = useTranslation();
   // Hook para buscar estatísticas de pesquisas (filtra por ano/mês da data_fechamento)
   const filtrosPesquisas = {
     ano_fechamento: anoSelecionado,
@@ -3307,7 +3309,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Pesquisas Enviadas</p>
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">{t('dashboard.complimentsTab.surveysSent')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_enviadas}
               </p>
@@ -3321,7 +3323,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-green-600 dark:text-green-400">Pesquisas Respondidas</p>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400">{t('dashboard.complimentsTab.surveysAnswered')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_respondidas}
               </p>
@@ -3335,7 +3337,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-red-600 dark:text-red-400">Não Respondidas</p>
+              <p className="text-xs font-medium text-red-600 dark:text-red-400">{t('dashboard.complimentsTab.notAnswered')}</p>
               <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
                 {loadingEstatisticas ? '...' : stats.total_nao_respondidas}
               </p>
@@ -3349,7 +3351,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa de Resposta</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.responseRate')}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">
                   {loadingEstatisticas ? '...' : `${stats.taxa_resposta}%`}
@@ -3359,8 +3361,8 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                     stats.taxa_resposta >= 80 ? 'text-green-600' : 
                     stats.taxa_resposta >= 60 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
-                    {stats.taxa_resposta >= 80 ? '✓ Boa' : 
-                     stats.taxa_resposta >= 60 ? '⚠ Regular' : '✗ Baixa'}
+                    {stats.taxa_resposta >= 80 ? t('dashboard.complimentsTab.rateGood') : 
+                     stats.taxa_resposta >= 60 ? t('dashboard.complimentsTab.rateRegular') : t('dashboard.complimentsTab.rateLow')}
                   </span>
                 )}
               </div>
@@ -3376,21 +3378,21 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
       <div className="grid grid-cols-1 gap-6">
         <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Enviadas vs Respondidas</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t('dashboard.complimentsTab.sentVsAnswered')}</CardTitle>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Comparação entre pesquisas enviadas e respondidas - Todos os Grupos
+              {t('dashboard.complimentsTab.comparisonAllGroups')}
             </p>
           </CardHeader>
           <CardContent>
             {loadingEstatisticas ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="text-gray-500">Carregando dados...</div>
+                <div className="text-gray-500">{t('dashboard.complimentsTab.loadingData')}</div>
               </div>
             ) : error ? (
               <div className="h-64 flex items-center justify-center">
                 <div className="text-red-500 text-center">
-                  <p>Erro ao carregar dados das pesquisas</p>
-                  <p className="text-xs mt-1">Verifique se há pesquisas cadastradas no sistema</p>
+                  <p>{t('dashboard.complimentsTab.errorLoadingSurveys')}</p>
+                  <p className="text-xs mt-1">{t('dashboard.complimentsTab.checkSurveys')}</p>
                 </div>
               </div>
             ) : estatisticasPesquisas ? (
@@ -3400,7 +3402,7 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                     <BarChart
                       data={[
                         {
-                          categoria: 'Pesquisas',
+                          categoria: t('dashboard.complimentsTab.surveysLabel'),
                           enviadas: stats.total_enviadas,
                           respondidas: stats.total_respondidas,
                           nao_respondidas: stats.total_nao_respondidas
@@ -3415,9 +3417,9 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                       <Tooltip 
                         formatter={(value: number, name: string) => {
                           const labels: Record<string, string> = {
-                            'enviadas': 'Enviadas',
-                            'respondidas': 'Respondidas', 
-                            'nao_respondidas': 'Não Respondidas'
+                            'enviadas': t('dashboard.complimentsTab.sentLegend'),
+                            'respondidas': t('dashboard.complimentsTab.answeredLegend'), 
+                            'nao_respondidas': t('dashboard.complimentsTab.notAnsweredLegend')
                           };
                           return [value, labels[name] || name];
                         }}
@@ -3452,22 +3454,22 @@ const PesquisasElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogio
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="text-gray-600">Enviadas</span>
+                      <span className="text-gray-600">{t('dashboard.complimentsTab.sentLegend')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-600">Respondidas</span>
+                      <span className="text-gray-600">{t('dashboard.complimentsTab.answeredLegend')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                      <span className="text-gray-600">Não Respondidas</span>
+                      <span className="text-gray-600">{t('dashboard.complimentsTab.notAnsweredLegend')}</span>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center text-gray-500">
-                Nenhum dado disponível
+                {t('dashboard.complimentsTab.noDataAvailable')}
               </div>
             )}
           </CardContent>
