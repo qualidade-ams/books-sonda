@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { Database, CheckSquare, Square, CalendarDays, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,7 @@ export function SyncSelectionModal({
     tickets: true
   });
   const [dataInicial, setDataInicial] = useState<string>('');
-
+  const { t } = useTranslation();
   // Buscar última sincronização de cada tabela
   const { data: ultimasSincronizacoes } = useUltimasSincronizacoesPorTabela();
 
@@ -113,10 +114,10 @@ export function SyncSelectionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" />
-            Selecionar Tabelas para Sincronizar
+            {t('lancarPesquisas.syncTitle')}
           </DialogTitle>
           <DialogDescription>
-            Escolha quais tabelas do SQL Server deseja sincronizar
+            {t('lancarPesquisas.syncDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -139,10 +140,10 @@ export function SyncSelectionModal({
                 ) : (
                   <Square className="h-4 w-4 text-gray-400" />
                 )}
-                Selecionar Todos
+                {t('lancarPesquisas.selectAll')}
               </Label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Sincronizar todas as tabelas de uma vez
+                {t('lancarPesquisas.syncAllTables')}
               </p>
             </div>
           </div>
@@ -154,7 +155,7 @@ export function SyncSelectionModal({
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white dark:bg-gray-900 px-2 text-gray-500">
-                ou selecione individualmente
+                {t('lancarPesquisas.orSelectIndividually')}
               </span>
             </div>
           </div>
@@ -177,7 +178,7 @@ export function SyncSelectionModal({
                   📊 AMSpesquisa
                 </Label>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
-                  Pesquisas de satisfação dos clientes
+                  {t('lancarPesquisas.amsPesquisaDesc')}
                 </p>
               </div>
               {ultimasSincronizacoes?.pesquisas && (
@@ -204,7 +205,7 @@ export function SyncSelectionModal({
                   👥 AMSespecialistas
                 </Label>
                 <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
-                  Cadastro de especialistas e consultores
+                  {t('lancarPesquisas.amsEspecialistasDesc')}
                 </p>
               </div>
               {ultimasSincronizacoes?.especialistas && (
@@ -231,7 +232,7 @@ export function SyncSelectionModal({
                   📝 AMSapontamento
                 </Label>
                 <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
-                  Apontamentos de horas e atividades
+                  {t('lancarPesquisas.amsApontamentoDesc')}
                 </p>
               </div>
               {ultimasSincronizacoes?.apontamentos && (
@@ -258,7 +259,7 @@ export function SyncSelectionModal({
                   🎫 AMSticketsabertos
                 </Label>
                 <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5">
-                  Tickets e chamados abertos
+                  {t('lancarPesquisas.amsTicketsDesc')}
                 </p>
               </div>
               {ultimasSincronizacoes?.tickets && (
@@ -275,7 +276,7 @@ export function SyncSelectionModal({
             <div className="flex items-center gap-2 mb-2">
               <CalendarDays className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               <Label htmlFor="dataInicial" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Data inicial para sincronização
+                {t('lancarPesquisas.startDate')}
               </Label>
             </div>
             <Input
@@ -288,8 +289,8 @@ export function SyncSelectionModal({
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
               {dataInicial 
-                ? `Sincronizar registros a partir de ${new Date(dataInicial + 'T00:00:00').toLocaleDateString('pt-BR')}`
-                : 'Deixe vazio para usar a sincronização incremental automática'
+                ? t('lancarPesquisas.syncFromDate', { date: new Date(dataInicial + 'T00:00:00').toLocaleDateString() })
+                : t('lancarPesquisas.leaveEmptyForIncremental')
               }
             </p>
           </div>
@@ -298,10 +299,10 @@ export function SyncSelectionModal({
           {algumaSelecionada && (
             <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
               <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                ✓ {quantidadeSelecionada} {quantidadeSelecionada === 1 ? 'tabela selecionada' : 'tabelas selecionadas'}
+                ✓ {quantidadeSelecionada === 1 ? t('lancarPesquisas.tablesSelected', { count: quantidadeSelecionada }) : t('lancarPesquisas.tablesSelectedPlural', { count: quantidadeSelecionada })}
               </p>
               <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                A sincronização pode levar alguns minutos dependendo da quantidade de dados
+                {t('lancarPesquisas.syncMayTakeMinutes')}
               </p>
             </div>
           )}
@@ -310,10 +311,10 @@ export function SyncSelectionModal({
           {!algumaSelecionada && (
             <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
               <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                ⚠️ Selecione pelo menos uma tabela
+                ⚠️ {t('lancarPesquisas.selectAtLeastOneTable')}
               </p>
               <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                Você precisa selecionar ao menos uma tabela para sincronizar
+                {t('lancarPesquisas.needSelectOneTable')}
               </p>
             </div>
           )}
@@ -325,7 +326,7 @@ export function SyncSelectionModal({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleConfirmar}
@@ -333,7 +334,7 @@ export function SyncSelectionModal({
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Database className="h-4 w-4 mr-2" />
-            Sincronizar {quantidadeSelecionada > 0 && `(${quantidadeSelecionada})`}
+            {t('lancarPesquisas.syncButton')} {quantidadeSelecionada > 0 && `(${quantidadeSelecionada})`}
           </Button>
         </DialogFooter>
       </DialogContent>

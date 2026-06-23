@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,15 +68,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-const MESES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
 const DEFAULT_ITEMS_PER_PAGE = 25;
 
 export default function InconsistenciaChamados() {
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  // Nomes dos meses via i18n
+  const monthKeys = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december'
+  ];
+  const getMonthName = (monthIndex: number) => t(`monthPicker.months.${monthKeys[monthIndex]}`);
+
   const [activeTab, setActiveTab] = useState('inconsistencias_detectadas');
   const [showFilters, setShowFilters] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -134,7 +139,7 @@ export default function InconsistenciaChamados() {
     destinatarios: '',
     cc: '',
     bcc: '',
-    assunto: `Inconsistências Detectadas - ${MESES[mesAtual - 1]} ${anoAtual}`,
+    assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
     anexos: [] as File[]
   });
 
@@ -221,8 +226,8 @@ export default function InconsistenciaChamados() {
     
     if (selecionadas.length === 0) {
       toast({
-        title: "Nenhuma inconsistência selecionada",
-        description: "Selecione pelo menos uma inconsistência para enviar.",
+        title: t('inconsistencias.noInconsistencySelected'),
+        description: t('inconsistencias.selectAtLeastOne'),
         variant: "destructive"
       });
       return;
@@ -258,7 +263,7 @@ export default function InconsistenciaChamados() {
       destinatarios: emails.join('; '),
       cc: '',
       bcc: '',
-      assunto: `Inconsistências Detectadas - ${MESES[mesAtual - 1]} ${anoAtual}`,
+      assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
       anexos: []
     });
 
@@ -271,8 +276,8 @@ export default function InconsistenciaChamados() {
     // Validar campos obrigatórios
     if (!emailForm.destinatarios.trim()) {
       toast({
-        title: "Destinatários obrigatórios",
-        description: "Informe pelo menos um destinatário.",
+        title: t('inconsistencias.recipientsRequired'),
+        description: t('inconsistencias.enterAtLeastOneRecipient'),
         variant: "destructive"
       });
       return;
@@ -285,8 +290,8 @@ export default function InconsistenciaChamados() {
     }, {
       onSuccess: () => {
         toast({
-          title: "Notificações enviadas!",
-          description: `${selecionadas.length} inconsistência(s) foram notificadas aos analistas.`
+          title: t('inconsistencias.notificationsSent'),
+          description: t('inconsistencias.notificationsSentDesc', { count: selecionadas.length })
         });
         setSelectedIds([]);
         setShowEmailModal(false);
@@ -295,15 +300,15 @@ export default function InconsistenciaChamados() {
           destinatarios: '',
           cc: '',
           bcc: '',
-          assunto: `Inconsistências Detectadas - ${MESES[mesAtual - 1]} ${anoAtual}`,
+          assunto: `${t('inconsistencias.inconsistenciasDetectadas')} - ${getMonthName(mesAtual - 1)} ${anoAtual}`,
           anexos: []
         });
         refetch();
       },
       onError: (error) => {
         toast({
-          title: "Erro ao enviar notificações",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
+          title: t('inconsistencias.sendError'),
+          description: error instanceof Error ? error.message : t('common.error'),
           variant: "destructive"
         });
       }
@@ -318,8 +323,8 @@ export default function InconsistenciaChamados() {
       // Limite de 25MB
       if (totalSize > 25 * 1024 * 1024) {
         toast({
-          title: "Limite de anexos excedido",
-          description: "O tamanho total dos anexos não pode exceder 25MB.",
+          title: t('inconsistencias.attachmentLimitExceeded'),
+          description: t('inconsistencias.attachmentLimitDesc'),
           variant: "destructive"
         });
         return;
@@ -382,10 +387,10 @@ export default function InconsistenciaChamados() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Inconsistência de Chamados
+                {t('inconsistencias.title')}
               </h1>
               <p className="text-muted-foreground mt-1">
-                Auditoria de chamados com inconsistências detectadas
+                {t('inconsistencias.subtitle')}
               </p>
             </div>
             <div className="flex space-x-2">
@@ -394,7 +399,7 @@ export default function InconsistenciaChamados() {
                 size="sm"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Exportar
+                {t('common.export')}
               </Button>
               {selectedIds.length > 0 && (
                 <Button
@@ -404,7 +409,7 @@ export default function InconsistenciaChamados() {
                   className="bg-sonda-blue hover:bg-sonda-dark-blue"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  Enviar Email ({selectedIds.length})
+                  {t('inconsistencias.sendEmail')} ({selectedIds.length})
                 </Button>
               )}
             </div>
@@ -417,7 +422,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    Total de Inconsistências
+                    {t('inconsistencias.totalInconsistencies')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -437,7 +442,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-yellow-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Mês Diferente
+                    {t('inconsistencias.differentMonth')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -457,7 +462,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-red-600">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    Data Invertida
+                    {t('inconsistencias.invertedDate')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -477,7 +482,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-orange-600">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    Tempo Excessivo
+                    {t('inconsistencias.excessiveTime')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -497,7 +502,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-purple-600">
                   <div className="flex items-center gap-2">
                     <Settings className="h-4 w-4" />
-                    IC 999999
+                    {t('inconsistencias.ic999999')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -517,7 +522,7 @@ export default function InconsistenciaChamados() {
                 <CardTitle className="text-xs lg:text-sm font-medium text-sky-600">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    Sem Atualização 16+ dias
+                    {t('inconsistencias.noUpdate16Days')}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -544,10 +549,10 @@ export default function InconsistenciaChamados() {
                   className="flex items-center gap-1"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Anterior
+                  {t('common.previous')}
                 </Button>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {MESES[mesAtual - 1]} {anoAtual}
+                  {getMonthName(mesAtual - 1)} {anoAtual}
                 </h2>
                 <Button
                   variant="outline"
@@ -555,7 +560,7 @@ export default function InconsistenciaChamados() {
                   onClick={navegarMesProximo}
                   className="flex items-center gap-1"
                 >
-                  Próximo
+                  {t('common.next')}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -569,13 +574,13 @@ export default function InconsistenciaChamados() {
                 value="inconsistencias_detectadas"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                Inconsistências Detectadas ({inconsistencias.length})
+                {t('inconsistencias.tabDetected')} ({inconsistencias.length})
               </TabsTrigger>
               <TabsTrigger 
                 value="historico_de_inconsistencias"
                 className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
               >
-                Histórico de Inconsistências ({historico.length})
+                {t('inconsistencias.tabHistory')} ({historico.length})
               </TabsTrigger>
             </TabsList>
 
@@ -586,7 +591,7 @@ export default function InconsistenciaChamados() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      Inconsistências Detectadas
+                      {t('inconsistencias.detectedTitle')}
                     </CardTitle>
 
                     <div className="flex gap-2">
@@ -596,7 +601,7 @@ export default function InconsistenciaChamados() {
                         onClick={() => setShowFilters(!showFilters)}
                       >
                         <Filter className="h-4 w-4 mr-2" />
-                        Filtros
+                        {t('common.filter')}
                       </Button>
 
                       {hasActiveFilters() && (
@@ -607,7 +612,7 @@ export default function InconsistenciaChamados() {
                           className="hover:border-red-300"
                         >
                           <X className="h-4 w-4 mr-2 text-red-600" />
-                          Limpar
+                          {t('common.clearFilter')}
                         </Button>
                       )}
                     </div>
@@ -618,11 +623,11 @@ export default function InconsistenciaChamados() {
                     <div className="space-y-4 pt-4 border-t">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                          <div className="text-sm font-medium mb-2">Buscar</div>
+                          <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                              placeholder="Nº do chamado..."
+                              placeholder={t('inconsistencias.searchPlaceholder')}
                               value={filtros.busca}
                               onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
                               className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -631,7 +636,7 @@ export default function InconsistenciaChamados() {
                         </div>
 
                         <div>
-                          <div className="text-sm font-medium mb-2">Tipo</div>
+                          <div className="text-sm font-medium mb-2">{t('common.type')}</div>
                           <Select
                             value={filtros.tipo_inconsistencia}
                             onValueChange={(value: any) => setFiltros({ ...filtros, tipo_inconsistencia: value })}
@@ -640,27 +645,27 @@ export default function InconsistenciaChamados() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todos</SelectItem>
-                              <SelectItem value="mes_diferente">Mês Diferente</SelectItem>
-                              <SelectItem value="data_invertida">Data Invertida</SelectItem>
-                              <SelectItem value="tempo_excessivo">Tempo Excessivo</SelectItem>
-                              <SelectItem value="ic_999999">IC 999999</SelectItem>
-                              <SelectItem value="sem_atualizacao">Sem Atualização 16+ dias</SelectItem>
+                              <SelectItem value="all">{t('common.all')}</SelectItem>
+                              <SelectItem value="mes_diferente">{t('inconsistencias.differentMonth')}</SelectItem>
+                              <SelectItem value="data_invertida">{t('inconsistencias.invertedDate')}</SelectItem>
+                              <SelectItem value="tempo_excessivo">{t('inconsistencias.excessiveTime')}</SelectItem>
+                              <SelectItem value="ic_999999">{t('inconsistencias.ic999999')}</SelectItem>
+                              <SelectItem value="sem_atualizacao">{t('inconsistencias.noUpdate16Days')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div>
-                          <div className="text-sm font-medium mb-2">Analista</div>
+                          <div className="text-sm font-medium mb-2">{t('inconsistencias.analyst')}</div>
                           <Select
                             value={filtros.analista || 'all'}
                             onValueChange={(value: any) => setFiltros({ ...filtros, analista: value === 'all' ? '' : value })}
                           >
                             <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                              <SelectValue placeholder="Todos os analistas" />
+                              <SelectValue placeholder={t('inconsistencias.allAnalysts')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todos os analistas</SelectItem>
+                              <SelectItem value="all">{t('inconsistencias.allAnalysts')}</SelectItem>
                               {analistasUnicos.map((analista) => (
                                 <SelectItem key={analista} value={analista}>
                                   {analista}
@@ -671,7 +676,7 @@ export default function InconsistenciaChamados() {
                         </div>
 
                         <div>
-                          <div className="text-sm font-medium mb-2">Origem</div>
+                          <div className="text-sm font-medium mb-2">{t('inconsistencias.origin')}</div>
                           <Select
                             value={filtros.origem || 'all'}
                             onValueChange={(value: any) => setFiltros({ ...filtros, origem: value })}
@@ -680,9 +685,9 @@ export default function InconsistenciaChamados() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todas</SelectItem>
-                              <SelectItem value="apontamentos">Apontamentos</SelectItem>
-                              <SelectItem value="tickets">Tickets</SelectItem>
+                              <SelectItem value="all">{t('inconsistencias.allOrigins')}</SelectItem>
+                              <SelectItem value="apontamentos">{t('inconsistencias.originAppointments')}</SelectItem>
+                              <SelectItem value="tickets">{t('inconsistencias.originTickets')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -703,7 +708,7 @@ export default function InconsistenciaChamados() {
                       <div className="text-center">
                         <AlertTriangle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500 mb-2 font-medium">
-                          Nenhuma inconsistência encontrada
+                          {t('inconsistencias.noInconsistencyFound')}
                         </p>
                       </div>
                     </div>
@@ -718,16 +723,16 @@ export default function InconsistenciaChamados() {
                                 onCheckedChange={handleSelectAll}
                               />
                             </TableHead>
-                            <TableHead className="w-[120px] text-center">Nº Chamado</TableHead>
-                            <TableHead className="w-[100px] text-center">N Tarefa</TableHead>
-                            <TableHead className="w-[150px] text-center">Tipo</TableHead>
-                            <TableHead className="w-[150px] text-center">Data Abertura</TableHead>
-                            <TableHead className="w-[150px] text-center">Data Atividade</TableHead>
-                            <TableHead className="w-[150px] text-center">Data Sistema</TableHead>
-                            <TableHead className="w-[100px] text-center">Tempo</TableHead>
-                            <TableHead className="w-[180px] text-center">Empresa</TableHead>
-                            <TableHead className="w-[150px] text-center">Analista</TableHead>
-                            <TableHead className="text-center w-[120px]">Ações</TableHead>
+                            <TableHead className="w-[120px] text-center">{t('inconsistencias.ticketNumber')}</TableHead>
+                            <TableHead className="w-[100px] text-center">{t('inconsistencias.taskNumber')}</TableHead>
+                            <TableHead className="w-[150px] text-center">{t('common.type')}</TableHead>
+                            <TableHead className="w-[150px] text-center">{t('inconsistencias.openDate')}</TableHead>
+                            <TableHead className="w-[150px] text-center">{t('inconsistencias.activityDate')}</TableHead>
+                            <TableHead className="w-[150px] text-center">{t('inconsistencias.systemDate')}</TableHead>
+                            <TableHead className="w-[100px] text-center">{t('inconsistencias.time')}</TableHead>
+                            <TableHead className="w-[180px] text-center">{t('historico.company')}</TableHead>
+                            <TableHead className="w-[150px] text-center">{t('inconsistencias.analyst')}</TableHead>
+                            <TableHead className="text-center w-[120px]">{t('common.actions')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -804,7 +809,7 @@ export default function InconsistenciaChamados() {
                                     setSelectedInconsistencia(inc);
                                     setShowViewModal(true);
                                   }}
-                                  title="Visualizar detalhes"
+                                  title={t('inconsistencias.viewDetails')}
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
@@ -819,7 +824,7 @@ export default function InconsistenciaChamados() {
                         <div className="flex items-center justify-between px-2 py-4 border-t">
                           {/* Seletor de itens por página */}
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-700">Mostrar</span>
+                            <span className="text-sm text-gray-700">{t('historico.show')}</span>
                             <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
                               <SelectTrigger className="w-[100px]">
                                 <SelectValue />
@@ -845,7 +850,7 @@ export default function InconsistenciaChamados() {
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                              Página {currentPage} de {totalPages}
+                              {t('historico.pageOf', { current: currentPage, total: totalPages })}
                             </span>
                             <Button
                               variant="outline"
@@ -860,7 +865,7 @@ export default function InconsistenciaChamados() {
 
                           {/* Contador de registros */}
                           <div className="text-sm text-gray-600 dark:text-gray-400">
-                            {startIndex + 1}-{Math.min(endIndex, inconsistencias.length)} de {inconsistencias.length} inconsistências
+                            {startIndex + 1}-{Math.min(endIndex, inconsistencias.length)} de {inconsistencias.length} {t('inconsistencias.inconsistenciesCount')}
                           </div>
                         </div>
                       )}
@@ -876,7 +881,7 @@ export default function InconsistenciaChamados() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <History className="h-5 w-5" />
-                    Histórico de Inconsistências
+                    {t('inconsistencias.historyTitle')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
@@ -890,10 +895,10 @@ export default function InconsistenciaChamados() {
                       <div className="text-center">
                         <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500 mb-2 font-medium">
-                          Nenhum histórico encontrado
+                          {t('inconsistencias.noHistoryFound')}
                         </p>
                         <p className="text-sm text-gray-400">
-                          Inconsistências enviadas aparecerão aqui
+                          {t('inconsistencias.sentInconsistenciesHere')}
                         </p>
                       </div>
                     </div>
@@ -901,12 +906,12 @@ export default function InconsistenciaChamados() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[120px] text-center">Nº Chamado</TableHead>
-                          <TableHead className="w-[150px] text-center">Tipo</TableHead>
-                          <TableHead className="w-[150px] text-center">Analista</TableHead>
-                          <TableHead className="w-[180px] text-center">Empresa</TableHead>
-                          <TableHead className="w-[150px] text-center">Data Envio</TableHead>
-                          <TableHead className="w-[150px] text-center">Enviado Por</TableHead>
+                          <TableHead className="w-[120px] text-center">{t('inconsistencias.ticketNumber')}</TableHead>
+                          <TableHead className="w-[150px] text-center">{t('common.type')}</TableHead>
+                          <TableHead className="w-[150px] text-center">{t('inconsistencias.analyst')}</TableHead>
+                          <TableHead className="w-[180px] text-center">{t('historico.company')}</TableHead>
+                          <TableHead className="w-[150px] text-center">{t('inconsistencias.sendDate')}</TableHead>
+                          <TableHead className="w-[150px] text-center">{t('inconsistencias.sentBy')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -966,10 +971,10 @@ export default function InconsistenciaChamados() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
               <Eye className="h-5 w-5" />
-              Detalhes da Inconsistência
+              {t('inconsistencias.detailsTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Informações completas sobre a inconsistência detectada
+              {t('inconsistencias.detailsDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -978,7 +983,7 @@ export default function InconsistenciaChamados() {
               {/* Informações Principais */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Nº Chamado</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.ticketNumber')}</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <ClipboardList className="h-4 w-4 text-blue-600" />
                     <span className="font-mono text-sm">{selectedInconsistencia.nro_chamado}</span>
@@ -986,7 +991,7 @@ export default function InconsistenciaChamados() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Tipo de Inconsistência</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.inconsistencyType')}</Label>
                   <div className="mt-1">
                     <Badge className={TIPO_INCONSISTENCIA_COLORS[selectedInconsistencia.tipo_inconsistencia]}>
                       {TIPO_INCONSISTENCIA_LABELS[selectedInconsistencia.tipo_inconsistencia]}
@@ -998,12 +1003,12 @@ export default function InconsistenciaChamados() {
               {/* Datas */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Data Atividade</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.activityDate')}</Label>
                   <p className="text-sm mt-1">{formatarData(selectedInconsistencia.data_atividade)}</p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Data Sistema</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.systemDate')}</Label>
                   <p className="text-sm mt-1">{formatarData(selectedInconsistencia.data_sistema)}</p>
                 </div>
               </div>
@@ -1012,13 +1017,13 @@ export default function InconsistenciaChamados() {
               <div className="grid grid-cols-2 gap-4">
                 {selectedInconsistencia.tempo_gasto_horas && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Tempo Gasto</Label>
+                    <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.timeSpent')}</Label>
                     <p className="text-sm font-mono mt-1">{selectedInconsistencia.tempo_gasto_horas}</p>
                   </div>
                 )}
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Empresa</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('historico.company')}</Label>
                   <p className="text-sm mt-1">{selectedInconsistencia.empresa || '-'}</p>
                 </div>
               </div>
@@ -1026,14 +1031,14 @@ export default function InconsistenciaChamados() {
               {/* Analista */}
               {selectedInconsistencia.analista && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Analista</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.analyst')}</Label>
                   <p className="text-sm mt-1">{selectedInconsistencia.analista}</p>
                 </div>
               )}
 
               {/* Descrição da Inconsistência */}
               <div>
-                <Label className="text-sm font-medium text-gray-700">Descrição da Inconsistência</Label>
+                <Label className="text-sm font-medium text-gray-700">{t('inconsistencias.inconsistencyDescription')}</Label>
                 <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">{selectedInconsistencia.descricao_inconsistencia}</p>
                 </div>
@@ -1047,7 +1052,7 @@ export default function InconsistenciaChamados() {
               variant="outline"
               onClick={() => setShowViewModal(false)}
             >
-              Fechar
+              {t('common.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1059,10 +1064,10 @@ export default function InconsistenciaChamados() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Disparar Inconsistências por Email
+              {t('inconsistencias.emailTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Configure os destinatários e envie as inconsistências selecionadas
+              {t('inconsistencias.emailDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1070,11 +1075,11 @@ export default function InconsistenciaChamados() {
             {/* Destinatários */}
             <div className="space-y-2">
               <Label htmlFor="destinatarios" className="text-sm font-medium text-gray-700">
-                Destinatários <span className="text-red-500">*</span>
+                {t('inconsistencias.recipients')} <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 id="destinatarios"
-                placeholder="Cole ou digite emails separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                placeholder={t('inconsistencias.recipientsPlaceholder')}
                 value={emailForm.destinatarios}
                 onChange={(e) => setEmailForm({ ...emailForm, destinatarios: e.target.value })}
                 className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[80px]"
@@ -1084,11 +1089,11 @@ export default function InconsistenciaChamados() {
             {/* CC */}
             <div className="space-y-2">
               <Label htmlFor="cc" className="text-sm font-medium text-gray-700">
-                Destinatários em Cópia (CC) - Opcional
+                {t('inconsistencias.ccRecipients')}
               </Label>
               <Textarea
                 id="cc"
-                placeholder="Cole ou digite emails em cópia separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                placeholder={t('inconsistencias.recipientsPlaceholder')}
                 value={emailForm.cc}
                 onChange={(e) => setEmailForm({ ...emailForm, cc: e.target.value })}
                 className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
@@ -1098,11 +1103,11 @@ export default function InconsistenciaChamados() {
             {/* BCC */}
             <div className="space-y-2">
               <Label htmlFor="bcc" className="text-sm font-medium text-gray-700">
-                Destinatários em Cópia Oculta (BCC) - Opcional
+                {t('inconsistencias.bccRecipients')}
               </Label>
               <Textarea
                 id="bcc"
-                placeholder="Cole ou digite emails em cópia oculta separados por ponto e vírgula (;) Ex: joao@exemplo.com; maria@exemplo.com; pedro@exemplo.com"
+                placeholder={t('inconsistencias.recipientsPlaceholder')}
                 value={emailForm.bcc}
                 onChange={(e) => setEmailForm({ ...emailForm, bcc: e.target.value })}
                 className="focus:ring-sonda-blue focus:border-sonda-blue min-h-[60px]"
@@ -1112,7 +1117,7 @@ export default function InconsistenciaChamados() {
             {/* Assunto */}
             <div className="space-y-2">
               <Label htmlFor="assunto" className="text-sm font-medium text-gray-700">
-                Assunto
+                {t('inconsistencias.emailSubject')}
               </Label>
               <Input
                 id="assunto"
@@ -1125,7 +1130,7 @@ export default function InconsistenciaChamados() {
             {/* Anexos */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">
-                Anexos
+                {t('inconsistencias.attachments')}
               </Label>
               <div className="flex items-center gap-2">
                 <Button
@@ -1136,9 +1141,9 @@ export default function InconsistenciaChamados() {
                   className="flex items-center gap-2"
                 >
                   <Paperclip className="h-4 w-4" />
-                  Adicionar Arquivos
+                  {t('inconsistencias.addFiles')}
                 </Button>
-                <span className="text-xs text-gray-500">Limite: 25MB total</span>
+                <span className="text-xs text-gray-500">{t('inconsistencias.totalLimit')}</span>
               </div>
               <input
                 id="file-upload"
@@ -1176,42 +1181,42 @@ export default function InconsistenciaChamados() {
             {/* Preview do Relatório */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">
-                Preview do Email
+                {t('inconsistencias.emailPreview')}
               </Label>
               <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded border max-h-[300px] overflow-y-auto">
                 <div className="space-y-3">
                   {/* Header Preview */}
                   <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded text-center">
-                    <div className="font-bold text-lg">⚠️ Inconsistências Detectadas em Chamados</div>
-                    <div className="text-sm mt-1">{MESES[mesAtual - 1]} {anoAtual}</div>
+                    <div className="font-bold text-lg">{t('inconsistencias.previewHeader')}</div>
+                    <div className="text-sm mt-1">{getMonthName(mesAtual - 1)} {anoAtual}</div>
                   </div>
 
                   {/* Intro */}
                   <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
                     <p className="text-yellow-800 text-xs">
-                      <strong>Atenção!</strong> Foram detectadas inconsistências nos chamados que requerem sua verificação e correção.
+                      <strong>{t('inconsistencias.previewAttention')}</strong>
                     </p>
                   </div>
 
                   {/* Summary */}
                   <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                    <div className="font-semibold text-blue-900 text-xs mb-2">Resumo das Inconsistências</div>
+                    <div className="font-semibold text-blue-900 text-xs mb-2">{t('inconsistencias.previewSummary')}</div>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <div className="text-lg font-bold text-blue-900">{selectedIds.length}</div>
-                        <div className="text-xs text-blue-600">Total</div>
+                        <div className="text-xs text-blue-600">{t('common.total')}</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-blue-900">
                           {inconsistencias.filter(inc => selectedIds.includes(inc.id) && inc.tipo_inconsistencia === 'mes_diferente').length}
                         </div>
-                        <div className="text-xs text-blue-600">Mês Diferente</div>
+                        <div className="text-xs text-blue-600">{t('inconsistencias.differentMonth')}</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-blue-900">
                           {inconsistencias.filter(inc => selectedIds.includes(inc.id) && inc.tipo_inconsistencia === 'data_invertida').length}
                         </div>
-                        <div className="text-xs text-blue-600">Data Invertida</div>
+                        <div className="text-xs text-blue-600">{t('inconsistencias.invertedDate')}</div>
                       </div>
                     </div>
                   </div>
@@ -1219,7 +1224,7 @@ export default function InconsistenciaChamados() {
                   {/* Sample Cards */}
                   <div className="space-y-2">
                     <div className="text-xs font-semibold text-gray-700 border-b pb-1">
-                      Exemplo de Inconsistências ({selectedIds.length} no total)
+                      {t('inconsistencias.previewExample')} ({selectedIds.length})
                     </div>
                     {inconsistencias
                       .filter(inc => selectedIds.includes(inc.id))
@@ -1241,7 +1246,7 @@ export default function InconsistenciaChamados() {
                       ))}
                     {selectedIds.length > 2 && (
                       <div className="text-xs text-gray-500 text-center py-1">
-                        + {selectedIds.length - 2} inconsistências adicionais
+                        {t('inconsistencias.additionalInconsistencies', { count: selectedIds.length - 2 })}
                       </div>
                     )}
                   </div>
@@ -1256,7 +1261,7 @@ export default function InconsistenciaChamados() {
               variant="outline"
               onClick={() => setShowEmailModal(false)}
             >
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -1265,7 +1270,7 @@ export default function InconsistenciaChamados() {
               className="bg-sonda-blue hover:bg-sonda-dark-blue"
             >
               <Send className="h-4 w-4 mr-2" />
-              {isEnviando ? 'Enviando...' : 'Enviar Email'}
+              {isEnviando ? t('inconsistencias.sending') : t('inconsistencias.sendEmail')}
             </Button>
           </DialogFooter>
         </DialogContent>

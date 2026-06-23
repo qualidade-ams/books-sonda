@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Database, ChevronLeft, ChevronRight, Filter, Search, X, FileText, Server, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,6 +59,7 @@ import type { Pesquisa, PesquisaFormData, FiltrosPesquisas } from '@/types/pesqu
 import { ORIGEM_PESQUISA_OPTIONS, RESPOSTA_PESQUISA_OPTIONS } from '@/types/pesquisasSatisfacao';
 
 function LancarPesquisas() {
+  const { t } = useTranslation();
   const { clearFeatureCache } = useCacheManager();
   
   // Limpar cache ao entrar na tela
@@ -266,10 +268,10 @@ function LancarPesquisas() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Lançar Pesquisas
+              {t('lancarPesquisas.title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Gerencie pesquisas de clientes sincronizados e manuais
+              {t('lancarPesquisas.subtitle')}
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -316,7 +318,7 @@ function LancarPesquisas() {
                         />
                       </div>
                       <span>
-                        {isSyncing ? 'Sincronizando...' : 'Sincronizar SQL Server'}
+                        {isSyncing ? t('lancarPesquisas.syncing') : t('lancarPesquisas.syncSqlServer')}
                       </span>
                     </div>
                   </Button>
@@ -324,8 +326,8 @@ function LancarPesquisas() {
                 <TooltipContent>
                   <p>
                     {apiOnline
-                      ? 'API de sincronização online'
-                      : 'API de sincronização offline'}
+                      ? t('lancarPesquisas.apiOnline')
+                      : t('lancarPesquisas.apiOffline')}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -333,7 +335,7 @@ function LancarPesquisas() {
             <ProtectedAction screenKey="lancar_pesquisas" requiredLevel="edit">
               <Button onClick={handleNovoPesquisa}>
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Pesquisa
+                {t('lancarPesquisas.newSurvey')}
               </Button>
             </ProtectedAction>
           </div>
@@ -346,7 +348,7 @@ function LancarPesquisas() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-4 w-4 text-gray-500" />
-                <p className="text-xs font-medium text-gray-500">Total</p>
+                <p className="text-xs font-medium text-gray-500">{t('lancarPesquisas.total')}</p>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{estatisticas.total}</p>
             </CardContent>
@@ -356,7 +358,7 @@ function LancarPesquisas() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Server className="h-4 w-4 text-blue-500" />
-                <p className="text-xs font-medium text-blue-500">SQL Server</p>
+                <p className="text-xs font-medium text-blue-500">{t('lancarPesquisas.sqlServer')}</p>
               </div>
               <p className="text-2xl font-bold text-blue-600">{estatisticas.sql_server}</p>
             </CardContent>
@@ -366,7 +368,7 @@ function LancarPesquisas() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileEdit className="h-4 w-4 text-purple-500" />
-                <p className="text-xs font-medium text-purple-500">Manuais</p>
+                <p className="text-xs font-medium text-purple-500">{t('lancarPesquisas.manual')}</p>
               </div>
               <p className="text-2xl font-bold text-purple-600">{estatisticas.manuais}</p>
             </CardContent>
@@ -381,10 +383,10 @@ function LancarPesquisas() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              Pesquisas ({pesquisas.length})
+              {t('lancarPesquisas.surveys')} ({pesquisas.length})
               {selecionados.length > 0 && (
                 <span className="text-sm font-normal text-muted-foreground ml-2">
-                  {selecionados.length} selecionado(s)
+                  {selecionados.length} {t('lancarPesquisas.selected')}
                 </span>
               )}
             </CardTitle>
@@ -397,7 +399,7 @@ function LancarPesquisas() {
                 className="flex items-center justify-center space-x-2"
               >
                 <Filter className="h-4 w-4" />
-                <span>Filtros</span>
+                <span>{t('common.filter')}</span>
               </Button>
               
               {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -409,7 +411,7 @@ function LancarPesquisas() {
                   className="whitespace-nowrap hover:border-red-300"
                 >
                   <X className="h-4 w-4 mr-2 text-red-600" />
-                  Limpar Filtro
+                  {t('common.clearFilter')}
                 </Button>
               )}
             </div>
@@ -421,11 +423,11 @@ function LancarPesquisas() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Campo de busca com ícone */}
                 <div>
-                  <div className="text-sm font-medium mb-2">Buscar</div>
+                  <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Buscar por empresa, cliente..."
+                      placeholder={t('lancarPesquisas.searchPlaceholder')}
                       value={filtros.busca}
                       onChange={(e) => handleAtualizarFiltro('busca', e.target.value)}
                       className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -435,14 +437,14 @@ function LancarPesquisas() {
 
                 {/* Filtro Origem */}
                 <div>
-                  <div className="text-sm font-medium mb-2">Origem</div>
+                  <div className="text-sm font-medium mb-2">{t('lancarPesquisas.origin')}</div>
                   <Select
                     value={filtros.origem}
                     onValueChange={(value) => handleAtualizarFiltro('origem', value)}
                     defaultValue="todos"
                   >
                     <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Todas as origens" />
+                      <SelectValue placeholder={t('lancarPesquisas.allOrigins')} />
                     </SelectTrigger>
                     <SelectContent>
                       {ORIGEM_PESQUISA_OPTIONS.map(opt => (
@@ -456,14 +458,14 @@ function LancarPesquisas() {
 
                 {/* Filtro Resposta */}
                 <div>
-                  <div className="text-sm font-medium mb-2">Resposta</div>
+                  <div className="text-sm font-medium mb-2">{t('lancarPesquisas.response')}</div>
                   <Select
                     value={filtros.resposta || 'todas'}
                     onValueChange={(value) => handleAtualizarFiltro('resposta', value)}
                     defaultValue="todas"
                   >
                     <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                      <SelectValue placeholder="Todas as respostas" />
+                      <SelectValue placeholder={t('lancarPesquisas.allResponses')} />
                     </SelectTrigger>
                     <SelectContent>
                       {RESPOSTA_PESQUISA_OPTIONS.map(opt => (
@@ -496,7 +498,7 @@ function LancarPesquisas() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
             {/* Select de itens por página */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('historico.show')}</span>
               <Select
                 value={itensPorPagina >= pesquisas.length ? 'todos' : itensPorPagina.toString()}
                 onValueChange={handleAlterarItensPorPagina}
@@ -509,7 +511,7 @@ function LancarPesquisas() {
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
                   <SelectItem value="500">500</SelectItem>
-                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="todos">{t('lancarPesquisas.showAll')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -527,7 +529,7 @@ function LancarPesquisas() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                  Página {paginaAtual} de {totalPaginas}
+                  {t('historico.pageOf', { current: paginaAtual, total: totalPaginas })}
                 </span>
                 <Button
                   variant="outline"
@@ -543,7 +545,7 @@ function LancarPesquisas() {
 
             {/* Contador de registros */}
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {indiceInicial + 1}-{Math.min(indiceFinal, pesquisas.length)} de {pesquisas.length} pesquisas
+              {indiceInicial + 1}-{Math.min(indiceFinal, pesquisas.length)} de {pesquisas.length} {t('lancarPesquisas.surveysCount')}
             </div>
           </div>
         </CardContent>
@@ -554,7 +556,7 @@ function LancarPesquisas() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {pesquisaEditando ? 'Editar Pesquisa' : 'Nova Pesquisa'}
+              {pesquisaEditando ? t('lancarPesquisas.editSurvey') : t('lancarPesquisas.newSurvey')}
             </DialogTitle>
           </DialogHeader>
           <PesquisaForm
