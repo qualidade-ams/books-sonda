@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,7 @@ interface BookOrganogramaComercialCSProps {
 }
 
 export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: BookOrganogramaComercialCSProps) {
+  const { t } = useTranslation();
   const [pessoas, setPessoas] = useState<PessoaComSubordinados[]>([]);
   const [pessoasTM, setPessoasTM] = useState<PessoaComSubordinados[]>([]);
   const [loading, setLoading] = useState(true);
@@ -256,10 +258,10 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
     <div className="h-full w-full overflow-auto">
       <div className="p-6">
         <h2 className="text-xl font-bold mb-1">
-          Organograma Comercial/Customer Success/T&M <span className="text-sonda-blue">{empresaNome}</span>
+          {t('books.organogramaComercialTitle')} <span className="text-sonda-blue">{empresaNome}</span>
         </h2>
         <p className="text-sm text-gray-500 mb-6">
-          Visão Geral do Organograma Comercial, Customer Success e T&M
+          {t('books.organogramaComercialSubtitle')}
         </p>
       </div>
       <div className="relative">
@@ -317,7 +319,7 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
                   {/* Nível */}
                   <div className="text-center">
                     <span className="text-base font-bold tracking-wide text-blue-600">
-                      4º NÍVEL DE ESCALAÇÃO
+                      {t('books.escalationLevel', { level: 4 })}
                     </span>
                   </div>
 

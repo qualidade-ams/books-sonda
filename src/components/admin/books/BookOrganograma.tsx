@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ interface BookOrganogramaProps {
 }
 
 export default function BookOrganograma({ empresaId, produto, empresaNome }: BookOrganogramaProps) {
+  const { t } = useTranslation();
   const [pessoas, setPessoas] = useState<PessoaComSubordinados[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -485,9 +487,9 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
         {/* Título da Seção */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Organograma {formatarNomeProduto()} <span className="text-blue-600">{empresaNome || 'RAINBOW'}</span>
+            {t('books.tabs.organograma')} {formatarNomeProduto()} <span className="text-blue-600">{empresaNome || 'RAINBOW'}</span>
           </h2>
-          <p className="text-sm text-gray-500">Visão Geral do Organograma do Produto</p>
+          <p className="text-sm text-gray-500">{t('books.organogramaSubtitle')}</p>
         </div>
 
         {/* Card sem borda e sem sombra */}

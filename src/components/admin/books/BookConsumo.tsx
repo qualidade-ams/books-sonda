@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import type { BookConsumoData, RequerimentoDescontadoData } from '@/types/books';
 import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
+import { useTranslation } from 'react-i18next';
 
 interface BookConsumoProps {
   data: BookConsumoData;
@@ -82,6 +83,15 @@ function getColorClass(horas?: string): string {
 }
 
 export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, onDataLoaded }: BookConsumoProps) {
+  const { t } = useTranslation();
+
+  // Helper to translate abbreviated month names from backend (Portuguese) to current language
+  const translateMonthAbbrev = (mes: string): string => {
+    const key = `books.bookContent.monthsAbbrev.${mes}`;
+    const translated = t(key);
+    return translated !== key ? translated : mes;
+  };
+
   const [modalRequerimentosAberto, setModalRequerimentosAberto] = useState(false);
   const [mesSelecionado, setMesSelecionado] = useState<string>('');
   const [requerimentosMes, setRequerimentosMes] = useState<RequerimentoDescontadoData[]>([]);
@@ -755,9 +765,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
       <div className="space-y-6">{/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          Consumo {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          {t('books.bookContent.consumptionTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
         </h2>
-        <p className="text-sm text-gray-500">Visão detalhada de utilização de horas e baseline</p>
+        <p className="text-sm text-gray-500">{t('books.bookContent.consumptionSubtitle')}</p>
       </div>
 
       {/* Cards de Métricas Principais */}
@@ -769,13 +779,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-purple-600" />
               </div>
-              CONSUMO TOTAL
+              {t('books.bookContent.totalConsumption')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{consumoTotal}</div>
             <div className="text-xs text-gray-600 mt-2">
-              Consumo + Requerimentos
+              {t('books.bookContent.consumptionPlusRequirements')}
             </div>
           </CardContent>
         </Card>
@@ -787,15 +797,15 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                 <Clock className="h-4 w-4 text-blue-600" />
               </div>
-              HORAS CONSUMO
+              {t('books.bookContent.hoursConsumption')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.horas_consumo) || '00:00'}</div>
             <div className={`text-xs mt-2 ${variacaoConsumo.tipo === 'aumento' ? 'text-green-600' : variacaoConsumo.tipo === 'queda' ? 'text-red-600' : 'text-gray-600'}`}>
-              {variacaoConsumo.tipo === 'aumento' && `↑ ${variacaoConsumo.percentual}% em relação ao mês anterior`}
-              {variacaoConsumo.tipo === 'queda' && `↓ ${variacaoConsumo.percentual}% em relação ao mês anterior`}
-              {variacaoConsumo.tipo === 'igual' && 'Sem variação em relação ao mês anterior'}
+              {variacaoConsumo.tipo === 'aumento' && t('books.bookContent.increaseVsPrevious', { percent: variacaoConsumo.percentual })}
+              {variacaoConsumo.tipo === 'queda' && t('books.bookContent.decreaseVsPrevious', { percent: variacaoConsumo.percentual })}
+              {variacaoConsumo.tipo === 'igual' && t('books.bookContent.noVariation')}
             </div>
           </CardContent>
         </Card>
@@ -807,13 +817,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-orange-600" />
               </div>
-              HORAS REQUERIMENTOS
+              {t('books.bookContent.hoursRequirements')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{totalHorasRequerimentos}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {data.requerimentos_descontados?.length || 0} requerimento(s)
+              {t('books.bookContent.requirementsCount', { count: data.requerimentos_descontados?.length || 0 })}
             </div>
           </CardContent>
         </Card>
@@ -825,13 +835,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-purple-600" />
               </div>
-              BASELINE DE APL
+              {t('books.bookContent.baselineAPL')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.baseline_apl) || '00:00'}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {data.percentual_consumido || 0}% consumido
+              {t('books.bookContent.percentConsumed', { percent: data.percentual_consumido || 0 })}
             </div>
           </CardContent>
         </Card>
@@ -847,7 +857,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <AlertCircle className="h-4 w-4 text-blue-600" />
                 )}
               </div>
-              INCIDENTE
+              {t('books.bookContent.incident')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -855,14 +865,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <>
                 <div className="text-3xl font-bold text-black">00:00</div>
                 <div className="text-xs text-gray-600 mt-2">
-                  0% do total consumido
+                  {t('books.bookContent.percentOfTotal', { percent: 0 })}
                 </div>
               </>
             ) : (
               <>
                 <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.incidente)}</div>
                 <div className="text-xs text-gray-600 mt-2">
-                  {data.percentual_incidente || 0}% do total consumido
+                  {t('books.bookContent.percentOfTotal', { percent: data.percentual_incidente || 0 })}
                 </div>
               </>
             )}
@@ -876,13 +886,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              SOLICITAÇÃO
+              {t('books.bookContent.request')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {data.percentual_solicitacao || 0}% do total consumido
+              {t('books.bookContent.percentOfTotal', { percent: data.percentual_solicitacao || 0 })}
             </div>
           </CardContent>
         </Card>
@@ -893,13 +903,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         {/* Gráfico: Histórico de Consumo Mensal */}
         <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Horas Mês</CardTitle>
-            <p className="text-xs text-gray-500">Histórico de consumo mensal em 2025</p>
+            <CardTitle className="text-base font-semibold">{t('books.bookContent.hoursMonth')}</CardTitle>
+            <p className="text-xs text-gray-500">{t('books.bookContent.monthlyConsumptionHistory', { year: ano || new Date().getFullYear() })}</p>
           </CardHeader>
           <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart 
-                data={data.historico_consumo}
+                data={data.historico_consumo.map(d => ({ ...d, mes: translateMonthAbbrev(d.mes) }))}
                 margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -911,7 +921,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 <YAxis 
                   tick={{ fontSize: 12 }}
                   stroke="#666"
-                  label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                  label={{ value: t('books.bookContent.hoursLabel'), angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -920,10 +930,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     borderRadius: '8px'
                   }}
                   formatter={(value: number, name: string, props: any) => {
-                    if (name === 'Consumo') {
-                      return [props.payload.horas, 'CHAMADOS'];
-                    } else if (name === 'Requerimentos') {
-                      return [props.payload.requerimentos_horas || '00:00', 'REQUERIMENTOS'];
+                    if (name === t('books.bookContent.consumptionLine')) {
+                      return [props.payload.horas, t('books.bookContent.ticketsTooltip')];
+                    } else if (name === t('books.bookContent.requirementsLine')) {
+                      return [props.payload.requerimentos_horas || '00:00', t('books.bookContent.requirementsTooltip')];
                     }
                     return [value, name];
                   }}
@@ -935,7 +945,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   strokeWidth={3}
                   dot={{ fill: '#2563eb', r: 5 }}
                   activeDot={{ r: 7 }}
-                  name="Consumo"
+                  name={t('books.bookContent.consumptionLine')}
                   label={{
                     position: 'top',
                     content: (props: any) => {
@@ -997,7 +1007,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                       buscarRequerimentosMes(mesNum, ano);
                     }
                   }}
-                  name="Requerimentos"
+                  name={t('books.bookContent.requirementsLine')}
                   label={{
                     position: 'bottom',
                     content: (props: any) => {
@@ -1051,11 +1061,11 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             <div className="flex items-center justify-center gap-6 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                <span className="text-sm font-medium text-gray-700">Chamados</span>
+                <span className="text-sm font-medium text-gray-700">{t('books.bookContent.ticketsLegend')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-orange-600"></div>
-                <span className="text-sm font-medium text-gray-700">Requerimentos</span>
+                <span className="text-sm font-medium text-gray-700">{t('books.bookContent.requirementsLegend')}</span>
               </div>
             </div>
           </CardContent>
@@ -1066,7 +1076,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Requerimentos Descontados
+              {t('books.bookContent.discountedRequirements')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1106,7 +1116,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 {data.requerimentos_descontados.length > 6 && (
                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-center">
                     <p className="text-xs text-blue-700">
-                      + {data.requerimentos_descontados.length - 6} requerimento(s) adicional(is)
+                      {t('books.bookContent.additionalRequirements', { count: data.requerimentos_descontados.length - 6 })}
                     </p>
                   </div>
                 )}
@@ -1114,14 +1124,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             ) : (
               <div className="text-center py-6 text-gray-500">
                 <FileText className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                <p className="text-xs">Nenhum requerimento descontado neste período</p>
+                <p className="text-xs">{t('books.bookContent.noDiscountedRequirements')}</p>
               </div>
             )}
             
             {data.requerimentos_descontados && data.requerimentos_descontados.length > 0 && (
               <div className="pt-2 border-t mt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-blue-600">TOTAL DE REQUERIMENTOS</span>
+                  <span className="text-xs font-semibold text-blue-600">{t('books.bookContent.totalRequirements')}</span>
                   <span className="text-lg font-bold text-blue-600">
                     {data.requerimentos_descontados.length}
                   </span>
@@ -1138,9 +1148,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Banco de Horas
+              {t('books.bookContent.bankHoursTitle')}
             </CardTitle>
-            <p className="text-xs text-gray-500">Controle trimestral de horas contratadas</p>
+            <p className="text-xs text-gray-500">{t('books.bookContent.quarterlyControl')}</p>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="overflow-x-auto">
@@ -1149,7 +1159,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   {/* Primeira linha - Azul com meses */}
                   <tr className="bg-blue-600 text-white">
                     <th className="px-4 py-3 text-left font-semibold">
-                      Período - 1º Trimestre
+                      {t('books.bookContent.periodTrimester')}
                     </th>
                     {bancoHorasTrimestre.map((item, index) => (
                       <th key={index} className="px-4 py-3 text-center font-semibold">
@@ -1161,7 +1171,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 <tbody className="divide-y divide-gray-200">
                   {/* Banco Contratado */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">Banco Contratado</td>
+                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.contractedBank')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-semibold">
                         {formatarHorasSemSegundos(item.dados?.baseline_horas || '00:00')}
@@ -1171,7 +1181,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Repasse mês anterior */}
                   <tr className="bg-gray-200">
-                    <td className="px-4 py-2">Repasse mês anterior</td>
+                    <td className="px-4 py-2">{t('books.bookContent.previousMonthCarryover')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasses_mes_anterior_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.repasses_mes_anterior_horas || '00:00')}
@@ -1181,7 +1191,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Saldo a utilizar */}
                   <tr className="bg-gray-50">
-                    <td className="px-4 py-2 font-semibold">Saldo a utilizar</td>
+                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.balanceToUse')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_a_utilizar_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.saldo_a_utilizar_horas || '00:00')}
@@ -1191,7 +1201,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Consumo Chamados */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">Consumo Chamados</td>
+                    <td className="px-4 py-2">{t('books.bookContent.ticketConsumption')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
                         {formatarHorasSemSegundos(item.dados?.consumo_horas || '00:00')}
@@ -1201,7 +1211,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Requerimentos */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">Requerimentos</td>
+                    <td className="px-4 py-2">{t('books.bookContent.requirementsLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
                         {formatarHorasSemSegundos(item.dados?.requerimentos_horas || '00:00')}
@@ -1211,7 +1221,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Reajuste */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2">Reajuste</td>
+                    <td className="px-4 py-2">{t('books.bookContent.adjustment')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.reajustes_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.reajustes_horas || '00:00')}
@@ -1221,7 +1231,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Consumo Total */}
                   <tr className="bg-white">
-                    <td className="px-4 py-2 font-semibold">Consumo Total</td>
+                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.totalConsumptionLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-bold">
                         {formatarHorasSemSegundos(item.dados?.consumo_total_horas || '00:00')}
@@ -1231,7 +1241,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Saldo */}
                   <tr className="bg-gray-200">
-                    <td className="px-4 py-2 font-semibold">Saldo</td>
+                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.balance')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.saldo_horas || '00:00')}
@@ -1241,7 +1251,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Repasse */}
                   <tr className="bg-gray-50">
-                    <td className="px-4 py-2">Repasse - {percentualRepasseEmpresa}%</td>
+                    <td className="px-4 py-2">{t('books.bookContent.carryover')} - {percentualRepasseEmpresa}%</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasse_horas)}`}>
                         {formatarHorasSemSegundos(item.dados?.repasse_horas || '00:00')}
@@ -1251,7 +1261,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
                   {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">Taxa/hora Excedente</td>
+                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.surplusRate')}</td>
                     {bancoHorasTrimestre.map((item, index) => {
                       const isPenultima = index === bancoHorasTrimestre.length - 2;
                       const isUltima = index === bancoHorasTrimestre.length - 1;
@@ -1260,7 +1270,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                         // Penúltima coluna: exibir "Valor Total"
                         return (
                           <td key={index} className="px-4 py-2 text-center font-semibold">
-                            Valor Total
+                            {t('books.bookContent.totalValue')}
                           </td>
                         );
                       } else if (isUltima) {
@@ -1314,7 +1324,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             <div className="flex items-center justify-center">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-500">Carregando banco de horas...</p>
+                <p className="text-gray-500">{t('books.bookContent.loadingBankHours')}</p>
               </div>
             </div>
           </CardContent>
@@ -1327,10 +1337,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Requerimentos de {mesSelecionado}
+              {t('books.bookContent.requirementsOfMonth', { month: mesSelecionado })}
             </DialogTitle>
             <p className="text-sm text-gray-500 mt-1">
-              Detalhes dos requerimentos de Banco de Horas deste mês
+              {t('books.bookContent.requirementsDetails')}
             </p>
           </DialogHeader>
 
@@ -1339,7 +1349,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sonda-blue mx-auto mb-4"></div>
-                  <p className="text-gray-500">Carregando requerimentos...</p>
+                  <p className="text-gray-500">{t('books.bookContent.loadingRequirements')}</p>
                 </div>
               </div>
             ) : requerimentosMes.length > 0 ? (
@@ -1366,26 +1376,26 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <div className="space-y-2 text-xs text-gray-600">
                       {req.modulo && (
                         <div className="flex justify-between">
-                          <span>Módulo:</span>
+                          <span>{t('books.bookContent.moduleLabel')}</span>
                           <span className="font-medium text-gray-900">{req.modulo}</span>
                         </div>
                       )}
                       
                       {req.horas_funcional && req.horas_funcional !== '--' && (
                         <div className="flex justify-between">
-                          <span>H. Funcional:</span>
+                          <span>{t('books.bookContent.functionalH')}</span>
                           <span className="font-medium text-gray-900">{req.horas_funcional}</span>
                         </div>
                       )}
                       {req.horas_tecnica && req.horas_tecnica !== '--' && (
                         <div className="flex justify-between">
-                          <span>H. Técnica:</span>
+                          <span>{t('books.bookContent.technicalH')}</span>
                           <span className="font-medium text-gray-900">{req.horas_tecnica}</span>
                         </div>
                       )}
                       {req.total_horas && req.total_horas !== '--' && (
                         <div className="flex justify-between border-t pt-2 mt-2">
-                          <span className="font-semibold">Total:</span>
+                          <span className="font-semibold">{t('books.bookContent.totalLabel')}</span>
                           <span className="font-semibold text-green-600">{req.total_horas}</span>
                         </div>
                       )}
@@ -1395,13 +1405,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 
                 <div className="pt-4 border-t mt-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-green-600">TOTAL DE REQUERIMENTOS</span>
+                    <span className="text-sm font-semibold text-green-600">{t('books.bookContent.totalRequirements')}</span>
                     <span className="text-2xl font-bold text-green-600">
                       {requerimentosMes.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm font-semibold text-green-600">TOTAL DE HORAS</span>
+                    <span className="text-sm font-semibold text-green-600">{t('books.bookContent.totalHours')}</span>
                     <span className="text-2xl font-bold text-green-600">
                       {requerimentosMes.reduce((sum, req) => {
                         const total = Number(req.total_horas) || 0;
@@ -1414,7 +1424,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <FileText className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Nenhum requerimento encontrado neste mês</p>
+                <p className="text-sm">{t('books.bookContent.noRequirementsMonth')}</p>
               </div>
             )}
           </div>

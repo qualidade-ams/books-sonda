@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Tree from 'react-d3-tree';
 import { Edit, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ interface TreeNode {
 
 export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, centerOffset = 0, height = 800, initialZoom = 0.7, isFiltered = false }: OrganoTreeProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { deletarPessoa } = useOrganograma();
   const [pessoaParaDeletar, setPessoaParaDeletar] = useState<string | null>(null);
   
@@ -164,11 +166,7 @@ export function OrganoTree({ pessoas, onEdit, onDelete, viewOnly = false, center
     const mostrarNivel = !(isCustomerSuccessOuComercial && nivelAjustado === 0);
     const nivelExibicao = isCustomerSuccessOuComercial && nivelAjustado > 0 ? 3 : nivelAjustado;
     
-    const nivelTexto = nivelExibicao === 0 ? '1º NÍVEL DE ESCALAÇÃO' : 
-                       nivelExibicao === 1 ? '2º NÍVEL DE ESCALAÇÃO' : 
-                       nivelExibicao === 2 ? '3º NÍVEL DE ESCALAÇÃO' : 
-                       nivelExibicao === 3 ? '4º NÍVEL DE ESCALAÇÃO' :
-                       `${nivelExibicao + 1}º NÍVEL DE ESCALAÇÃO`;
+    const nivelTexto = t('books.escalationLevel', { level: nivelExibicao + 1 });
 
     const isCentralPriorizacao = pessoa?.cargo === 'Central Escalação' || nivelAjustado === 3;
     

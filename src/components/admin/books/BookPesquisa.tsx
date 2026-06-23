@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { BookPesquisaData } from '@/types/books';
+import { useTranslation } from 'react-i18next';
 
 interface BookPesquisaProps {
   data: BookPesquisaData;
@@ -21,6 +22,7 @@ interface BookPesquisaProps {
 }
 
 export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
+  const { t } = useTranslation();
   // Calcular ângulo para o gráfico circular de aderência
   const aderenciaAngle = (data.percentual_aderencia / 100) * 360;
 
@@ -30,10 +32,10 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          Pesquisa {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
+          {t('books.bookContent.surveyTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
         </h2>
         <p className="text-muted-foreground mt-1">
-          Acompanhe as pesquisas de satisfação e aderência dos clientes
+          {t('books.bookContent.surveySubtitle')}
         </p>
       </div>
 
@@ -43,7 +45,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
-              PESQUISAS RESPONDIDAS
+              {t('books.bookContent.surveysAnswered')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center py-4">
@@ -93,7 +95,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
-              PESQUISAS NÃO RESPONDIDAS
+              {t('books.bookContent.surveysNotAnswered')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center py-4">
@@ -143,7 +145,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 text-center">
-              PESQUISAS ENVIADAS
+              {t('books.bookContent.surveysSent')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center py-4">
@@ -196,14 +198,14 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
         <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <span>Resumo de Pesquisas</span>
+              <span>{t('books.bookContent.surveySummary')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             {data.sem_avaliacoes ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 italic">
-                  Nenhum dado para exibir no momento...
+                  {t('books.bookContent.noDataToShow')}
                 </p>
               </div>
             ) : (
@@ -211,11 +213,11 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">Chamado</TableHead>
-                      <TableHead className="font-semibold">Tipo</TableHead>
-                      <TableHead className="font-semibold">Solicitante</TableHead>
-                      <TableHead className="font-semibold">Grupo</TableHead>
-                      <TableHead className="font-semibold text-white" style={{ backgroundColor: '#666666' }}>Resposta</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.ticketColumn')}</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.typeColumn')}</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.requesterColumn')}</TableHead>
+                      <TableHead className="font-semibold">{t('books.bookContent.groupColumn')}</TableHead>
+                      <TableHead className="font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.responseColumn')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -241,7 +243,7 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600 text-center">
-                % PESQUISA ADERÊNCIA
+                {t('books.bookContent.surveyAdherence')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-4">
@@ -299,27 +301,27 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
           <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-gray-600 text-center">
-                NÍVEL DE SATISFAÇÃO
+                {t('books.bookContent.satisfactionLevel')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {data.sem_avaliacoes ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-400 italic mb-4">
-                    Sem avaliações recentes
+                    {t('books.bookContent.noRecentEvaluations')}
                   </p>
                   <div className="flex justify-center gap-8 opacity-30">
                     <div className="text-center">
                       <Frown className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                      <div className="text-xs text-gray-400">INSATISFEITO</div>
+                      <div className="text-xs text-gray-400">{t('books.bookContent.dissatisfied')}</div>
                     </div>
                     <div className="text-center">
                       <Meh className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                      <div className="text-xs text-gray-400">NEUTRO</div>
+                      <div className="text-xs text-gray-400">{t('books.bookContent.neutral')}</div>
                     </div>
                     <div className="text-center">
                       <Smile className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                      <div className="text-xs text-gray-400">SATISFEITO</div>
+                      <div className="text-xs text-gray-400">{t('books.bookContent.satisfied')}</div>
                     </div>
                   </div>
                 </div>
@@ -330,21 +332,21 @@ export default function BookPesquisa({ data, empresaNome }: BookPesquisaProps) {
                     <div className="text-2xl font-bold text-red-500">
                       {data.nivel_satisfacao.insatisfeito}
                     </div>
-                    <div className="text-xs text-gray-500">INSATISFEITO</div>
+                    <div className="text-xs text-gray-500">{t('books.bookContent.dissatisfied')}</div>
                   </div>
                   <div className="text-center">
                     <Meh className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-yellow-500">
                       {data.nivel_satisfacao.neutro}
                     </div>
-                    <div className="text-xs text-gray-500">NEUTRO</div>
+                    <div className="text-xs text-gray-500">{t('books.bookContent.neutral')}</div>
                   </div>
                   <div className="text-center">
                     <Smile className="h-12 w-12 text-green-500 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-green-500">
                       {data.nivel_satisfacao.satisfeito}
                     </div>
-                    <div className="text-xs text-gray-500">SATISFEITO</div>
+                    <div className="text-xs text-gray-500">{t('books.bookContent.satisfied')}</div>
                   </div>
                 </div>
               )}

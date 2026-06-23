@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -88,6 +89,7 @@ const MESES_NOMES: Record<number, string> = {
 
 export default function GeracaoBooks() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { startProcessing, isProcessing: isProcessingGlobal, progress: progressoGlobal } = useBooksProcessing();
   
@@ -191,10 +193,11 @@ export default function GeracaoBooks() {
     setAnoAtual(novoAno);
   };
 
-  // Formatar período para exibição
-  const mesNome = MESES_NOMES[mesAtual];
+  // Formatar período para exibição (usando i18n)
+  const MONTH_KEYS_BOOKS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const mesNome = t(`bankHours.months.${MONTH_KEYS_BOOKS[mesAtual - 1]}`);
   const periodoLabel = `${mesNome} ${anoAtual}`;
-  const periodoReferenciaLabel = `${MESES_NOMES[mesReferencia]} ${anoReferencia}`;
+  const periodoReferenciaLabel = `${t(`bankHours.months.${MONTH_KEYS_BOOKS[mesReferencia - 1]}`)} ${anoReferencia}`;
 
   // Função para verificar se há filtros ativos (exceto período, que é navegação)
   const hasActiveFilters = () => {
@@ -328,8 +331,8 @@ export default function GeracaoBooks() {
         const nomeEmpresa = book.empresa_nome_abreviado || book.empresa_nome;
         window.open(book.pdf_url, '_blank');
         toast({
-          title: 'Download iniciado',
-          description: `PDF de ${nomeEmpresa} está sendo baixado.`,
+          title: t('books.downloadStarted'),
+          description: t('books.downloadStartedDesc'),
         });
         return;
       }
@@ -341,22 +344,22 @@ export default function GeracaoBooks() {
       const nomeArquivo = `Book ${nomeEmpresa} ${mesNome} ${book.ano}.pdf`;
       
       toast({
-        title: 'Gerando PDF',
-        description: `Aguarde enquanto o PDF de ${nomeEmpresa} é gerado...`,
+        title: t('books.generatingPDF'),
+        description: t('books.generatingPDFDesc', { company: nomeEmpresa }),
       });
 
       // Usar novo serviço V2 - muito mais simples!
       await booksPDFServiceV2.baixarPDF(book.id, nomeArquivo);
 
       toast({
-        title: 'PDF baixado com sucesso',
-        description: `O arquivo de ${nomeEmpresa} foi salvo no seu computador.`,
+        title: t('books.pdfDownloaded'),
+        description: t('books.pdfDownloadedDesc', { company: nomeEmpresa }),
       });
     } catch (error) {
       console.error('Erro ao baixar PDF:', error);
       toast({
-        title: 'Erro ao baixar PDF',
-        description: 'Não foi possível gerar o PDF. Tente novamente.',
+        title: t('books.pdfError'),
+        description: t('books.pdfErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -544,10 +547,10 @@ export default function GeracaoBooks() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Geração de Books
+                {t('books.title')}
               </h1>
               <p className="text-muted-foreground mt-1">
-                Gere e envie relatórios de books para os clientes
+                {t('books.subtitle')}
               </p>
             </div>
             <Button
@@ -557,7 +560,7 @@ export default function GeracaoBooks() {
               onClick={() => navigate('/admin/organograma')}
             >
               <Users className="h-4 w-4 mr-2" />
-              Organograma
+              {t('books.organogram')}
             </Button>
           </div>
 
@@ -568,7 +571,7 @@ export default function GeracaoBooks() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="h-4 w-4 text-gray-500" />
-                  <p className="text-xs font-medium text-gray-500">Total de Clientes</p>
+                  <p className="text-xs font-medium text-gray-500">{t('books.totalClients')}</p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">{stats.total_empresas || 0}</p>
               </CardContent>
@@ -579,7 +582,7 @@ export default function GeracaoBooks() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <p className="text-xs font-medium text-green-500">Books Gerados</p>
+                  <p className="text-xs font-medium text-green-500">{t('books.booksGenerated')}</p>
                 </div>
                 <p className="text-2xl font-bold text-green-600">{stats.books_gerados || 0}</p>
               </CardContent>
@@ -590,7 +593,7 @@ export default function GeracaoBooks() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-4 w-4 text-gray-500" />
-                  <p className="text-xs font-medium text-gray-500">Books Pendentes</p>
+                  <p className="text-xs font-medium text-gray-500">{t('books.booksPending')}</p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">{stats.books_pendentes || 0}</p>
               </CardContent>
@@ -601,7 +604,7 @@ export default function GeracaoBooks() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <RefreshCw className="h-4 w-4 text-blue-500" />
-                  <p className="text-xs font-medium text-blue-500">Books Atualizados</p>
+                  <p className="text-xs font-medium text-blue-500">{t('books.booksUpdated')}</p>
                 </div>
                 <p className="text-2xl font-bold text-blue-600">{stats.books_atualizados || 0}</p>
               </CardContent>
@@ -620,7 +623,7 @@ export default function GeracaoBooks() {
                   className="flex items-center gap-2"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Anterior
+                  {t('common.previous')}
                 </Button>
                 
                 <div className="text-center">
@@ -628,7 +631,7 @@ export default function GeracaoBooks() {
                     {periodoLabel}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    (Referência {periodoReferenciaLabel})
+                    ({t('books.reference')} {periodoReferenciaLabel})
                   </div>
                 </div>
                 
@@ -639,7 +642,7 @@ export default function GeracaoBooks() {
                   disabled={isLoading || isGerando || isAtualizando}
                   className="flex items-center gap-2"
                 >
-                  Próximo
+                  {t('common.next')}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -652,7 +655,7 @@ export default function GeracaoBooks() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Books por Empresa
+                  {t('books.booksByCompany')}
                 </CardTitle>
 
                 <div className="flex gap-2">
@@ -685,7 +688,7 @@ export default function GeracaoBooks() {
                     className="flex items-center justify-center space-x-2"
                   >
                     <Filter className="h-4 w-4" />
-                    <span>Filtros</span>
+                    <span>{t('common.filter')}</span>
                   </Button>
                   
                   {/* Botão Limpar Filtro - só aparece se há filtros ativos */}
@@ -709,11 +712,11 @@ export default function GeracaoBooks() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Campo de busca com ícone */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Buscar</div>
+                      <div className="text-sm font-medium mb-2">{t('common.search')}</div>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Buscar por empresa..."
+                          placeholder={t('books.searchCompany')}
                           value={filtros.busca}
                           onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
                           className="pl-10 focus:ring-sonda-blue focus:border-sonda-blue"
@@ -723,21 +726,21 @@ export default function GeracaoBooks() {
 
                     {/* Filtro Status */}
                     <div>
-                      <div className="text-sm font-medium mb-2">Status</div>
+                      <div className="text-sm font-medium mb-2">{t('common.status')}</div>
                       <Select 
                         value={filtros.status} 
                         onValueChange={(value: any) => setFiltros({...filtros, status: value})}
                       >
                         <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
-                          <SelectValue placeholder="Todos os status" />
+                          <SelectValue placeholder={t('books.allStatuses')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos os status</SelectItem>
-                          <SelectItem value="gerado">Gerado</SelectItem>
-                          <SelectItem value="pendente">Pendente</SelectItem>
-                          <SelectItem value="enviado">Enviado</SelectItem>
-                          <SelectItem value="desatualizado">Aguardando nova geração</SelectItem>
-                          <SelectItem value="erro">Erro</SelectItem>
+                          <SelectItem value="all">{t('books.allStatuses')}</SelectItem>
+                          <SelectItem value="gerado">{t('books.status.generated')}</SelectItem>
+                          <SelectItem value="pendente">{t('books.pending')}</SelectItem>
+                          <SelectItem value="enviado">{t('books.status.sent')}</SelectItem>
+                          <SelectItem value="desatualizado">{t('books.outdated')}</SelectItem>
+                          <SelectItem value="erro">{t('books.error')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -792,7 +795,7 @@ export default function GeracaoBooks() {
                       htmlFor="select-all"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
-                      Selecionar todos ({booksFiltrados.filter(b => isEmpresaLiberada(b)).length} liberados)
+                      {t('books.selectAll')} ({booksFiltrados.filter(b => isEmpresaLiberada(b)).length} {t('books.released')})
                     </label>
                   </div>
 
@@ -850,7 +853,7 @@ export default function GeracaoBooks() {
                             {book.status === 'enviado' && book.enviado_em && (
                               <div className="text-xs text-purple-600 mt-0.5 flex items-center gap-1">
                                 <ShieldCheck className="h-3 w-3" />
-                                Enviado em {new Date(book.enviado_em).toLocaleDateString('pt-BR')} — Imutável
+                                {t('books.sentOn')} {new Date(book.enviado_em).toLocaleDateString()} — {t('books.immutable')}
                               </div>
                             )}
                           </div>
@@ -867,7 +870,12 @@ export default function GeracaoBooks() {
 
                           <Badge className={BOOK_STATUS_COLORS[book.status]}>
                             {book.status === 'enviado' && <Lock className="h-3 w-3 mr-1" />}
-                            {BOOK_STATUS_LABELS[book.status]}
+                            {book.status === 'gerado' ? t('books.status.generated') : 
+                             book.status === 'enviado' ? t('books.status.sent') : 
+                             book.status === 'pendente' ? t('books.pending') :
+                             book.status === 'desatualizado' ? t('books.outdated') :
+                             book.status === 'erro' ? t('books.error') :
+                             BOOK_STATUS_LABELS[book.status]}
                           </Badge>
 
                           {/* Botões de Ação */}
@@ -880,7 +888,7 @@ export default function GeracaoBooks() {
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleVisualizarBook(book)}
-                                  title="Visualizar"
+                                  title={t("books.view")}
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
@@ -890,7 +898,7 @@ export default function GeracaoBooks() {
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleDownloadPDF(book)}
                                   disabled={downloadingBookId === book.id}
-                                  title="Baixar PDF"
+                                  title={t("books.downloadPDF")}
                                 >
                                   {downloadingBookId === book.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -906,7 +914,7 @@ export default function GeracaoBooks() {
                                     setBookHistorico(book);
                                     setShowHistoricoDialog(true);
                                   }}
-                                  title="Ver histórico de versões"
+                                  title={t("books.viewVersionHistory")}
                                 >
                                   <History className="h-4 w-4" />
                                 </Button>
@@ -915,7 +923,7 @@ export default function GeracaoBooks() {
                                   size="sm"
                                   className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800"
                                   onClick={() => handleIniciarRetificacao(book)}
-                                  title="Retificar"
+                                  title={t("books.rectify")}
                                 >
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
@@ -929,7 +937,7 @@ export default function GeracaoBooks() {
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleVisualizarBook(book)}
-                                  title="Visualizar"
+                                  title={t("books.view")}
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
@@ -939,7 +947,7 @@ export default function GeracaoBooks() {
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleDownloadPDF(book)}
                                   disabled={downloadingBookId === book.id}
-                                  title="Baixar PDF"
+                                  title={t("books.downloadPDF")}
                                 >
                                   {downloadingBookId === book.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -957,7 +965,7 @@ export default function GeracaoBooks() {
                                       setBookHistorico(book);
                                       setShowHistoricoDialog(true);
                                     }}
-                                    title="Ver histórico de versões"
+                                    title={t("books.viewVersionHistory")}
                                   >
                                     <History className="h-4 w-4" />
                                   </Button>
@@ -973,7 +981,7 @@ export default function GeracaoBooks() {
                                   className="h-8 w-8 p-0 text-green-600 hover:text-green-800"
                                   onClick={() => handleGerarUnitario(book)}
                                   disabled={gerandoUnitarioId === book.id}
-                                  title="Regenerar Book"
+                                  title={t("books.regenerateBook")}
                                 >
                                   {gerandoUnitarioId === book.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -986,7 +994,7 @@ export default function GeracaoBooks() {
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleVisualizarBook(book)}
-                                  title="Visualizar"
+                                  title={t("books.view")}
                                 >
                                   <Eye className="h-4 w-4 text-blue-600" />
                                 </Button>
@@ -996,7 +1004,7 @@ export default function GeracaoBooks() {
                                   className="h-8 w-8 p-0"
                                   onClick={() => handleDownloadPDF(book)}
                                   disabled={downloadingBookId === book.id}
-                                  title="Baixar PDF"
+                                  title={t("books.downloadPDF")}
                                 >
                                   {downloadingBookId === book.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1012,7 +1020,7 @@ export default function GeracaoBooks() {
                                     setBookHistorico(book);
                                     setShowHistoricoDialog(true);
                                   }}
-                                  title="Ver histórico de versões"
+                                  title={t("books.viewVersionHistory")}
                                 >
                                   <History className="h-4 w-4" />
                                 </Button>
@@ -1107,19 +1115,18 @@ export default function GeracaoBooks() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-sonda-blue flex items-center gap-2">
               <History className="h-5 w-5" />
-              Retificar Book
+              {t('books.rectifyBook')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
               {bookRetificando && (
                 <>
-                  Você está solicitando a retificação do book de{' '}
+                  {t('books.rectifyDesc')}{' '}
                   <strong>{bookRetificando.empresa_nome_abreviado || bookRetificando.empresa_nome}</strong>
                   {bookRetificando.versao_atual && (
-                    <> (versão atual: {bookRetificando.versao_atual})</>
+                    <> ({t('books.rectifyCurrentVersion')}: {bookRetificando.versao_atual})</>
                   )}.
                   <br /><br />
-                  Isso irá desbloquear o book para edição e criar uma nova versão quando for reenviado.
-                  A versão anterior permanecerá armazenada como histórico imutável.
+                  {t('books.rectifyExplanation')}
                 </>
               )}
             </DialogDescription>
@@ -1128,11 +1135,11 @@ export default function GeracaoBooks() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="motivo-retificacao" className="text-sm font-medium text-gray-700">
-                Motivo da Retificação <span className="text-red-500">*</span>
+                {t('books.rectifyReasonLabel')} <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 id="motivo-retificacao"
-                placeholder="Descreva o motivo da retificação (mínimo 10 caracteres)..."
+                placeholder={t('books.rectifyReasonPlaceholder')}
                 value={motivoRetificacao}
                 onChange={(e) => setMotivoRetificacao(e.target.value)}
                 className={`focus:ring-sonda-blue focus:border-sonda-blue ${
@@ -1144,11 +1151,11 @@ export default function GeracaoBooks() {
               />
               {motivoRetificacao.length > 0 && motivoRetificacao.length < 10 && (
                 <p className="text-sm text-red-500">
-                  Mínimo de 10 caracteres ({motivoRetificacao.length}/10)
+                  {t('books.rectifyMinChars', { count: motivoRetificacao.length })}
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                O motivo ficará registrado no histórico de versões para auditoria.
+                {t('books.rectifyAuditNote')}
               </p>
             </div>
           </div>
@@ -1159,7 +1166,7 @@ export default function GeracaoBooks() {
               onClick={() => setShowRetificacaoDialog(false)}
               disabled={isRetificando}
             >
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button
               className="bg-orange-600 hover:bg-orange-700"
@@ -1171,7 +1178,7 @@ export default function GeracaoBooks() {
               ) : (
                 <History className="h-4 w-4 mr-2" />
               )}
-              Confirmar Retificação
+              {t('books.confirmRectification')}
             </Button>
           </DialogFooter>
         </DialogContent>

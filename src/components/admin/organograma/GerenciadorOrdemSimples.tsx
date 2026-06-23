@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GripVertical, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +55,7 @@ interface GrupoPessoas {
 }
 
 function SortableItem({ pessoa }: { pessoa: PessoaOrdem }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -84,7 +86,7 @@ function SortableItem({ pessoa }: { pessoa: PessoaOrdem }) {
           <div className="flex-1">
             <div className="font-medium text-gray-900">{pessoa.nome}</div>
             <div className="text-sm text-gray-500">
-              {pessoa.cargo} • {pessoa.departamento}
+              {t(`orgChart.positions.${pessoa.cargo}`) !== `orgChart.positions.${pessoa.cargo}` ? t(`orgChart.positions.${pessoa.cargo}`) : pessoa.cargo} • {pessoa.departamento}
             </div>
           </div>
           
@@ -99,6 +101,7 @@ function SortableItem({ pessoa }: { pessoa: PessoaOrdem }) {
 
 export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }: GerenciadorOrdemSimplesProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [grupos, setGrupos] = useState<GrupoPessoas[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -192,7 +195,7 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
         const superior = flatListUnico.find(p => p.id === superiorId);
         gruposArray.push({
           superiorId: superiorId === 'root' ? null : superiorId,
-          superiorNome: superior ? superior.nome : 'Nível Superior',
+          superiorNome: superior ? superior.nome : t('orgChart.topLevel'),
           pessoas,
         });
       });
@@ -241,8 +244,8 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
       }
       
       toast({
-        title: 'Sucesso!',
-        description: 'Ordem atualizada com sucesso.',
+        title: t('orgChart.orderUpdated'),
+        description: t('orgChart.orderUpdatedDesc'),
       });
       
       onSave();
@@ -250,8 +253,8 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
     } catch (error) {
       console.error('Erro ao salvar ordem:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao atualizar ordem.',
+        title: t('orgChart.orderError'),
+        description: t('orgChart.orderErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -264,10 +267,10 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue">
-            Gerenciar Ordem de Exibição
+            {t('orgChart.manageDisplayOrder')}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            Arraste e solte para reordenar as pessoas no organograma
+            {t('orgChart.manageDisplayOrderDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -305,7 +308,7 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
             onClick={() => onOpenChange(false)}
           >
             <X className="h-4 w-4 mr-2" />
-            Cancelar
+            {t('orgChart.cancelBtn')}
           </Button>
           <Button
             type="button"
@@ -314,7 +317,7 @@ export function GerenciadorOrdemSimples({ open, onOpenChange, pessoas, onSave }:
             disabled={saving}
           >
             <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Salvando...' : 'Salvar Ordem'}
+            {saving ? t('orgChart.saving') : t('orgChart.saveOrder')}
           </Button>
         </DialogFooter>
       </DialogContent>

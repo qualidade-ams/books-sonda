@@ -60,7 +60,10 @@ const LABELS_PT = {
   visaoConsolidada: 'Visão Consolidada',
   bancoDeHoras: 'Banco de horas',
   verHistorico: 'Ver Histórico',
-  historico: 'Histórico'
+  historico: 'Histórico',
+  filtros: 'Filtros',
+  limparFiltro: 'Limpar Filtro',
+  irParaPeriodo: 'Ir para período'
 };
 
 /**
@@ -103,7 +106,64 @@ const LABELS_EN = {
   visaoConsolidada: 'Consolidated View',
   bancoDeHoras: 'Hours bank',
   verHistorico: 'View History',
-  historico: 'History'
+  historico: 'History',
+  filtros: 'Filters',
+  limparFiltro: 'Clear Filter',
+  irParaPeriodo: 'Go to period'
+};
+
+/**
+ * Meses em espanhol
+ */
+const MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+/**
+ * Labels da tabela em espanhol
+ */
+const LABELS_ES = {
+  // Cabeçalho
+  periodo: 'Período',
+  mes: 'Mes',
+  
+  // Linhas da tabela
+  bancoContratado: 'Banco Contratado',
+  ticketsContratados: 'Tickets Contratados',
+  repasseMesAnterior: 'Traspaso mes anterior',
+  saldoAUtilizar: 'Saldo a utilizar',
+  consumoChamados: 'Consumo Llamados',
+  requerimentos: 'Requerimientos',
+  reajuste: 'Reajuste',
+  consumoTotal: 'Consumo Total',
+  saldo: 'Saldo',
+  repasse: 'Traspaso',
+  excedenteTrimestreLabel: 'Excedente Trimestre',
+  taxaHoraExcedente: 'Tasa/hora Excedente',
+  valorTotal: 'Valor Total',
+  finalTrimestreMsg: 'Al final del Trimestre el saldo se reinicia a cero.',
+  
+  // Períodos
+  periodos: {
+    mensal: 'Mensual',
+    bimestre: (n: number) => `${n}º Bimestre`,
+    trimestre: (n: number) => `${n}º Trimestre`,
+    quadrimestre: (n: number) => `${n}º Cuatrimestre`,
+    semestre: (n: number) => `${n}º Semestre`,
+    anual: 'Anual',
+    meses: (n: number) => `${n} meses`,
+    vigenciaNaoIniciada: 'Vigencia no iniciada'
+  },
+  
+  // Otros
+  visaoConsolidada: 'Visión Consolidada',
+  bancoDeHoras: 'Banco de horas',
+  verHistorico: 'Ver Historial',
+  historico: 'Historial',
+  filtros: 'Filtros',
+  limparFiltro: 'Limpiar Filtro',
+  irParaPeriodo: 'Ir al período'
 };
 
 /**
@@ -159,16 +219,27 @@ export function isEnglishTemplateByName(templateName?: string): boolean {
 
 /**
  * Retorna o nome do mês traduzido
+ * @param monthIndex Número do mês (1-12)
+ * @param isEnglish Se true, retorna em inglês. Se string 'es', retorna em espanhol.
  */
-export function getMonthName(monthIndex: number, isEnglish: boolean): string {
-  const months = isEnglish ? MESES_EN : MESES_PT;
+export function getMonthName(monthIndex: number, isEnglish: boolean | string): string {
+  let months: string[];
+  if (isEnglish === 'es') {
+    months = MESES_ES;
+  } else if (isEnglish) {
+    months = MESES_EN;
+  } else {
+    months = MESES_PT;
+  }
   return months[monthIndex - 1] || months[0];
 }
 
 /**
  * Retorna todos os labels traduzidos
+ * @param isEnglish Se true, retorna em inglês. Se string 'es', retorna em espanhol.
  */
-export function getLabels(isEnglish: boolean) {
+export function getLabels(isEnglish: boolean | string) {
+  if (isEnglish === 'es') return LABELS_ES;
   return isEnglish ? LABELS_EN : LABELS_PT;
 }
 
@@ -178,7 +249,7 @@ export function getLabels(isEnglish: boolean) {
 export function getPeriodName(
   periodoApuracao: number,
   numeroPeriodo: number,
-  isEnglish: boolean
+  isEnglish: boolean | string
 ): string {
   const labels = getLabels(isEnglish);
   

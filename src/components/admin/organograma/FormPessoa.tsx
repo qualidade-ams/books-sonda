@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -65,6 +66,7 @@ interface FormPessoaProps {
 
 export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = false, onSuccess }: FormPessoaProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { getSuperioresDisponiveis, criarPessoa, atualizarPessoa, getProdutosPessoa } = useOrganograma();
   const [loading, setLoading] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
@@ -243,8 +245,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
           fotoParaEnviar
         );
         toast({
-          title: 'Sucesso!',
-          description: 'Pessoa atualizada com sucesso.',
+          title: t('orgChart.form.personUpdated'),
+          description: t('orgChart.form.personUpdatedDesc'),
         });
       } else {
         // Criar pessoa
@@ -261,8 +263,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
           foto || undefined
         );
         toast({
-          title: 'Sucesso!',
-          description: 'Pessoa cadastrada com sucesso.',
+          title: t('orgChart.form.personCreated'),
+          description: t('orgChart.form.personCreatedDesc'),
         });
       }
 
@@ -283,8 +285,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
     } catch (error) {
       console.error('Erro ao salvar pessoa:', error);
       toast({
-        title: 'Erro',
-        description: error instanceof Error ? error.message : 'Erro ao salvar pessoa',
+        title: t('orgChart.form.saveError'),
+        description: error instanceof Error ? error.message : t('orgChart.form.saveErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -297,12 +299,12 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-sonda-blue">
-            {modoVisualizacao ? 'Visualizar Pessoa' : pessoa ? 'Editar Pessoa' : 'Nova Pessoa'}
+            {modoVisualizacao ? t('orgChart.form.viewPerson') : pessoa ? t('orgChart.form.editPerson') : t('orgChart.form.newPerson')}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
             {modoVisualizacao 
-              ? 'Visualize os dados da pessoa cadastrada'
-              : 'Preencha os dados da pessoa e selecione os produtos em que ela atuará'
+              ? t('orgChart.form.formDescView')
+              : t('orgChart.form.formDescCreate')
             }
           </DialogDescription>
         </DialogHeader>
@@ -312,7 +314,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
             {/* Upload de Foto */}
             <div className="space-y-2">
               <FormLabel className="text-sm font-medium text-gray-700">
-                Foto
+                {t('orgChart.form.photo')}
               </FormLabel>
               <div className="flex items-center gap-4">
                 <div className="relative">
@@ -355,10 +357,10 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                     disabled={modoVisualizacao}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {previewUrl ? 'Alterar Foto' : 'Adicionar Foto'}
+                    {previewUrl ? t('orgChart.form.changePhoto') : t('orgChart.form.addPhoto')}
                   </Button>
                   <p className="text-xs text-gray-500 mt-1">
-                    JPG, PNG ou GIF (máx. 5MB)
+                    {t('orgChart.form.photoFormat')}
                   </p>
                 </div>
               </div>
@@ -372,11 +374,11 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Nome Completo <span className="text-red-500">*</span>
+                      {t('orgChart.form.fullName')} <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Digite o nome completo"
+                        placeholder={t('orgChart.form.fullNamePlaceholder')}
                         {...field}
                         disabled={modoVisualizacao}
                         className={form.formState.errors.nome 
@@ -397,7 +399,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Cargo <span className="text-red-500">*</span>
+                      {t('orgChart.form.position')} <span className="text-red-500">*</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} disabled={modoVisualizacao}>
                       <FormControl>
@@ -405,16 +407,16 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                           ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
                           : 'focus:ring-sonda-blue focus:border-sonda-blue'
                         }>
-                          <SelectValue placeholder="Selecione o cargo" />
+                          <SelectValue placeholder={t('orgChart.form.positionPlaceholder')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Diretor">Diretor</SelectItem>
-                        <SelectItem value="Gerente">Gerente</SelectItem>
-                        <SelectItem value="Coordenador">Coordenador</SelectItem>
-                        <SelectItem value="Central Escalação">Central Escalação</SelectItem>
-                        <SelectItem value="Customer Success">Customer Success</SelectItem>
-                        <SelectItem value="Comercial">Comercial</SelectItem>
+                        <SelectItem value="Diretor">{t('orgChart.positions.Diretor')}</SelectItem>
+                        <SelectItem value="Gerente">{t('orgChart.positions.Gerente')}</SelectItem>
+                        <SelectItem value="Coordenador">{t('orgChart.positions.Coordenador')}</SelectItem>
+                        <SelectItem value="Central Escalação">{t('orgChart.positions.Central Escalação')}</SelectItem>
+                        <SelectItem value="Customer Success">{t('orgChart.positions.Customer Success')}</SelectItem>
+                        <SelectItem value="Comercial">{t('orgChart.positions.Comercial')}</SelectItem>
                         <SelectItem value="T&M">T&M</SelectItem>
                       </SelectContent>
                     </Select>
@@ -430,11 +432,11 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Departamento <span className="text-red-500">*</span>
+                      {t('orgChart.form.department')} <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: TI, RH, Financeiro"
+                        placeholder={t('orgChart.form.departmentPlaceholder')}
                         {...field}
                         disabled={modoVisualizacao}
                         className={form.formState.errors.departamento 
@@ -455,12 +457,12 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Email <span className="text-red-500">*</span>
+                      {t('orgChart.form.email')} <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="email@exemplo.com"
+                        placeholder={t('orgChart.form.emailPlaceholder')}
                         {...field}
                         disabled={modoVisualizacao}
                         className={form.formState.errors.email 
@@ -481,11 +483,11 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Telefone
+                      {t('orgChart.form.phone')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="(00) 00000-0000"
+                        placeholder={t('orgChart.form.phonePlaceholder')}
                         {...field}
                         disabled={modoVisualizacao}
                         className="focus:ring-sonda-blue focus:border-sonda-blue"
@@ -501,10 +503,10 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div>
                 <FormLabel className="text-sm font-medium text-gray-700">
-                  Produtos <span className="text-red-500">*</span>
+                  {t('orgChart.form.products')} <span className="text-red-500">*</span>
                 </FormLabel>
                 <p className="text-xs text-gray-500 mt-1 mb-3">
-                  Selecione os produtos em que esta pessoa atuará
+                  {t('orgChart.form.productsDesc')}
                 </p>
                 <div className="flex gap-4">
                   {PRODUTOS.map((produto) => (
@@ -536,10 +538,10 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                     // Central Escalação: Mostrar aviso que será vinculado a todos os coordenadores
                     <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
                       <p className="text-sm font-medium text-orange-900 mb-2">
-                        Vinculação Automática
+                        {t('orgChart.form.autoLinking')}
                       </p>
                       <p className="text-xs text-orange-800">
-                        Central Escalação será automaticamente vinculado a TODOS os Coordenadores dos produtos selecionados.
+                        {t('orgChart.form.autoLinkingDesc')}
                       </p>
                       {produtosSelecionados.map((produto) => {
                         const coordenadores = getSuperioresDisponiveis('Central Escalação' as Cargo, produto);
@@ -556,7 +558,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                               </ul>
                             ) : (
                               <p className="text-xs text-orange-700 ml-4">
-                                Nenhum Coordenador cadastrado ainda
+                                {t('orgChart.form.noCoordinatorRegistered')}
                               </p>
                             )}
                           </div>
@@ -571,7 +573,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                       return (
                         <div key={produto}>
                           <FormLabel className="text-sm font-medium text-gray-700">
-                            Superior em {PRODUTO_LABELS[produto]}
+                            {t('orgChart.form.superiorIn', { product: PRODUTO_LABELS[produto] })}
                           </FormLabel>
                           {superioresDisponiveis.length > 0 ? (
                             <Select 
@@ -580,12 +582,12 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                               disabled={modoVisualizacao}
                             >
                               <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue mt-1">
-                                <SelectValue placeholder="Nenhum (vincular depois)" />
+                                <SelectValue placeholder={t('orgChart.form.noSuperiorYet')} />
                               </SelectTrigger>
                               <SelectContent>
                                 {superioresDisponiveis.map((superior) => (
                                   <SelectItem key={superior.id} value={superior.id}>
-                                    {superior.nome} - {superior.cargo}
+                                    {superior.nome} - {t(`orgChart.positions.${superior.cargo}`) !== `orgChart.positions.${superior.cargo}` ? t(`orgChart.positions.${superior.cargo}`) : superior.cargo}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -594,10 +596,10 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                             <div className="p-2 bg-blue-50 border border-blue-200 rounded-md mt-1">
                               <p className="text-xs text-blue-800">
                                 {cargoSelecionado === 'Gerente' 
-                                  ? `Nenhum Diretor cadastrado em ${PRODUTO_LABELS[produto]} ainda.`
+                                  ? t('orgChart.form.noDirector', { product: PRODUTO_LABELS[produto] })
                                   : cargoSelecionado === 'Coordenador'
-                                  ? `Nenhum Gerente cadastrado em ${PRODUTO_LABELS[produto]} ainda.`
-                                  : `Nenhum Coordenador cadastrado em ${PRODUTO_LABELS[produto]} ainda.`}
+                                  ? t('orgChart.form.noManager', { product: PRODUTO_LABELS[produto] })
+                                  : t('orgChart.form.noCoordinator', { product: PRODUTO_LABELS[produto] })}
                               </p>
                             </div>
                           )}
@@ -618,7 +620,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                     onClick={() => onOpenChange(false)}
                     disabled={loading}
                   >
-                    Cancelar
+                    {t('orgChart.form.cancel')}
                   </Button>
                   <Button
                     type="submit"
@@ -627,8 +629,8 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                   >
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {pessoa 
-                      ? 'Salvar Alterações' 
-                      : `Criar ${cargoSelecionado || 'Pessoa'}`
+                      ? t('orgChart.form.saveChanges') 
+                      : t('orgChart.form.create', { position: t(`orgChart.positions.${cargoSelecionado}`) || cargoSelecionado || 'Pessoa' })
                     }
                   </Button>
                 </>
@@ -638,7 +640,7 @@ export function FormPessoa({ open, onOpenChange, pessoa, modoVisualizacao = fals
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Fechar
+                  {t('orgChart.form.close')}
                 </Button>
               )}
             </DialogFooter>

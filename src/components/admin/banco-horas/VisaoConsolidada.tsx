@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   History,
@@ -69,7 +70,6 @@ import { useBancoHorasObservacoes } from '@/hooks/useBancoHorasObservacoes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { converterParaHorasDecimal } from '@/utils/horasUtils'; // ✅ ADICIONADO
 import { calcularNomePeriodoComIdioma } from '@/utils/periodoVigenciaUtils';
 import { getLabels, getMonthName } from '@/utils/bancoHorasI18n';
@@ -282,12 +282,32 @@ export function VisaoConsolidada({
   templatePadrao,
   empresaAtual
 }: VisaoConsolidadaProps) {
+  const { t, i18n } = useTranslation();
+  
+  // Helper para traduzir valores de dados do banco (tipo_cobranca, status)
+  const translateDataValue = (value: string): string => {
+    const map: Record<string, string> = {
+      'Banco de Horas': t('bankHours.hoursBank'),
+      'banco_horas': t('bankHours.hoursBank'),
+      'Faturado': t('bankHours.billed'),
+      'faturado': t('bankHours.billed'),
+      'Enviado para Faturamento': t('bankHours.sentToBilling'),
+      'enviado_faturamento': t('bankHours.sentToBilling'),
+      'Lançado': t('bankHours.launched'),
+      'lancado': t('bankHours.launched'),
+    };
+    return map[value] || value;
+  };
+  
   // Usar primeiro cálculo para informações gerais (DEVE SER PRIMEIRO)
   const calculoPrincipal = calculos[0];
   
   // Detectar idioma do template baseado no nome na tabela email_templates
   const { isEnglish, isLoading: isLoadingTemplate } = useTemplateLanguage(templatePadrao);
-  const labels = getLabels(isEnglish);
+  
+  // Para a UI da tabela: usar o idioma da interface do usuário (i18n), não o idioma do template
+  const uiLanguage = i18n.language === 'en' ? true : i18n.language === 'es' ? 'es' : false;
+  const labels = getLabels(uiLanguage);
   
   // Buscar taxas específicas do cliente (para casos especiais como EXXONMOBIL)
   const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(calculoPrincipal?.empresa_id) as {
@@ -538,20 +558,23 @@ export function VisaoConsolidada({
   
   const temExcedentes = calculoPrincipal?.excedentes_horas && horasParaMinutos(calculoPrincipal.excedentes_horas) > 0;
   
-  // Nomes dos meses traduzidos
+  // Nomes dos meses traduzidos (baseado no idioma da interface do usuário)
   const MESES = useMemo(() => {
-    if (isEnglish) {
-      return [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ];
-    } else {
-      return [
-        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-      ];
-    }
-  }, [isEnglish]);
+    return [
+      t('bankHours.months.january'),
+      t('bankHours.months.february'),
+      t('bankHours.months.march'),
+      t('bankHours.months.april'),
+      t('bankHours.months.may'),
+      t('bankHours.months.june'),
+      t('bankHours.months.july'),
+      t('bankHours.months.august'),
+      t('bankHours.months.september'),
+      t('bankHours.months.october'),
+      t('bankHours.months.november'),
+      t('bankHours.months.december'),
+    ];
+  }, [t]);
 
   // Calcular nome do período atual
   const nomePeriodoAtual = useMemo(() => {
@@ -567,9 +590,9 @@ export function VisaoConsolidada({
       periodoApuracao,
       mesReferencia.mes,
       mesReferencia.ano,
-      isEnglish
+      uiLanguage
     );
-  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo, isEnglish, labels]);
+  }, [inicioVigencia, periodoApuracao, mesesDoPeriodo, uiLanguage, labels]);
 
   // Função para salvar reajuste (chamada pelo BotaoReajusteHoras)
   const handleSalvarReajuste = async (dados: {
@@ -726,11 +749,11 @@ export function VisaoConsolidada({
     <Card className="rounded-xl overflow-hidden">
       {/* Cabeçalho de Impressão (visível apenas ao imprimir) */}
       <div className="hidden print:block print-header">
-        <h1>Controle de Banco de Horas - Visão Consolidada</h1>
+        <h1>{t('bankHours.title')} - {t('bankHours.consolidatedView')}</h1>
         <p>
-          Empresa: {calculos[0]?.empresa_id} | 
-          Período: {mesesDoPeriodo?.map(m => `${m.mes}/${m.ano}`).join(' - ')} | 
-          Data: {new Date().toLocaleDateString('pt-BR')}
+          {t('bankHours.companyClient')}: {calculos[0]?.empresa_id} | 
+          {t('common.period')}: {mesesDoPeriodo?.map(m => `${m.mes}/${m.ano}`).join(' - ')} | 
+          {t('common.date')}: {new Date().toLocaleDateString()}
         </p>
       </div>
 
@@ -755,8 +778,8 @@ export function VisaoConsolidada({
                 onRecalculoSucesso={() => {
                   // Refetch será feito automaticamente pelo componente
                   toast({
-                    title: 'Recálculo concluído',
-                    description: 'Os valores foram atualizados com sucesso.',
+                    title: t('bankHours.recalculationComplete'),
+                    description: t('bankHours.recalculationSuccess'),
                   });
                 }}
               />
@@ -812,7 +835,7 @@ export function VisaoConsolidada({
               className="flex items-center gap-2 text-xs sm:text-sm print:hidden"
             >
               <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Filtros</span>
+              <span className="hidden sm:inline">{t('bankHours.filters')}</span>
             </Button>
             
             {/* Botão Limpar Filtro - só aparece se período selecionado for diferente do mês atual */}
@@ -825,7 +848,7 @@ export function VisaoConsolidada({
                 className="flex items-center gap-2 text-xs sm:text-sm print:hidden whitespace-nowrap hover:border-red-300"
               >
                 <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
-                <span className="hidden sm:inline">Limpar Filtro</span>
+                <span className="hidden sm:inline">{t('bankHours.clearFilter')}</span>
               </Button>
             )}
           </div>
@@ -837,7 +860,7 @@ export function VisaoConsolidada({
             <div className="grid grid-cols-1 gap-4">
               {/* Filtro de Período */}
               <div>
-                <div className="text-sm font-medium mb-2">Ir para período</div>
+                <div className="text-sm font-medium mb-2">{t('bankHours.goToPeriod')}</div>
                 <Select
                   value={`${mesAno.mes}-${mesAno.ano}`}
                   onValueChange={(value) => {
@@ -944,8 +967,7 @@ export function VisaoConsolidada({
           <Alert className="mb-4 border-orange-200 bg-orange-50">
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-800">
-              <strong>Consumo zerado detectado.</strong> Se você sabe que existem apontamentos para este período, 
-              clique no botão "Forçar Recálculo" acima para atualizar os valores.
+              <strong>{t('bankHours.zeroConsumptionDetected')}</strong> {t('bankHours.zeroConsumptionDescription')}
             </AlertDescription>
           </Alert>
         )}
@@ -963,7 +985,7 @@ export function VisaoConsolidada({
                 className={`text-xs ${paginaMeses === 0 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
               >
                 <ChevronLeft className="h-3 w-3 mr-1" />
-                1º Semestre
+                {t('bankHours.firstSemester')}
               </Button>
               <span className="text-xs text-gray-500">
                 {paginaMeses + 1} / {totalPaginas}
@@ -975,7 +997,7 @@ export function VisaoConsolidada({
                 disabled={paginaMeses === totalPaginas - 1}
                 className={`text-xs ${paginaMeses === 1 ? 'bg-sonda-blue text-white hover:bg-sonda-blue' : ''}`}
               >
-                2º Semestre
+                {t('bankHours.secondSemester')}
                 <ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
@@ -1135,9 +1157,7 @@ export function VisaoConsolidada({
                             <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sonda-blue text-white text-[9px] font-bold cursor-help">i</span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs p-3 bg-white text-gray-900 shadow-lg">
-                            <p className="text-sm">
-                              Repasse especial entre períodos: <strong>{empresaAtual?.percentual_entre_periodos ?? 0}%</strong>
-                            </p>
+                            <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('bankHours.specialCarryoverTooltip', { percent: empresaAtual?.percentual_entre_periodos ?? 0 }) }} />
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1177,11 +1197,11 @@ export function VisaoConsolidada({
                           </TooltipTrigger>
                           <TooltipContent className="max-w-md p-4 bg-white text-gray-900 shadow-lg">
                             <div className="space-y-2 text-sm">
-                              <p className="font-semibold">Nota – Regra de Paridade:</p>
-                              <p>Para fins de apuração de esforço, 1 ticket complexo equivale a 2 tickets simples.</p>
-                              <p>A proposta considera 5 tickets simples e 2 complexos, totalizando 9 tickets equivalentes no quadro de horas.</p>
-                              <p className="font-semibold mt-2">Saldo de tickets:</p>
-                              <p>Poderá ser transportado para o mês seguinte até 50% do saldo, desde que haja no mínimo 2 tickets válidos dentro do trimestre. Após o término do terceiro mês, o saldo remanescente será zerado.</p>
+                              <p className="font-semibold">{t('bankHours.parityRuleTitle')}</p>
+                              <p>{t('bankHours.parityRuleDesc1')}</p>
+                              <p>{t('bankHours.parityRuleDesc2')}</p>
+                              <p className="font-semibold mt-2">{t('bankHours.ticketBalanceTitle')}</p>
+                              <p>{t('bankHours.ticketBalanceDesc')}</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -1217,17 +1237,17 @@ export function VisaoConsolidada({
                                 const valorHoraExcedente = taxaHoraExibir && taxaHoraExibir > 0 ? formatarMoeda(taxaHoraExibir) : 'R$ 0,00';
                                 const valorTotalExcedentes = formatarMoeda(calculoFimPeriodo?.valor_a_faturar);
                                 
-                                const mensagem = `Horas Excedentes: ${horasExcedentes}\nValor Hora Excedentes: ${valorHoraExcedente}\nValor total dos Excedentes: ${valorTotalExcedentes}\n\nFicamos no aguardo da PO ou o "de acordo" para seguir com o faturamento.`;
+                                const mensagem = `${t('bankHours.surplusHoursLabel')}: ${horasExcedentes}\n${t('bankHours.surplusHourRateLabel')}: ${valorHoraExcedente}\n${t('bankHours.surplusTotalLabel')}: ${valorTotalExcedentes}\n\n${t('bankHours.surplusAwaitingApproval')}`;
                                 
                                 navigator.clipboard.writeText(mensagem).then(() => {
                                   toast({
-                                    title: "Copiado!",
-                                    description: "Mensagem de excedentes copiada para a área de transferência.",
+                                    title: t('bankHours.copiedTitle'),
+                                    description: t('bankHours.copiedSurplusMessage'),
                                   });
                                 }).catch(() => {
                                   toast({
-                                    title: "Erro",
-                                    description: "Não foi possível copiar a mensagem.",
+                                    title: t('bankHours.copyErrorTitle'),
+                                    description: t('bankHours.copyErrorMessage'),
                                     variant: "destructive",
                                   });
                                 });
@@ -1237,7 +1257,7 @@ export function VisaoConsolidada({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Copiar mensagem de excedentes para email</p>
+                            <p>{t('bankHours.copySurplusToEmail')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1266,18 +1286,18 @@ export function VisaoConsolidada({
             {carregandoSincronizacao ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-3 w-3 animate-spin" />
-                <span>Verificando última sincronização...</span>
+                <span>{t('common.loading')}</span>
               </div>
             ) : ultimaSincronizacao ? (
               <>
-                <strong>Dados de Consumo Chamados:</strong> Os dados são equivalentes à última sincronização realizada em{' '}
+                <strong>{t('bankHours.consumptionDataLabel')}</strong> {t('bankHours.consumptionDataSyncMsg')}{' '}
                 <strong>
-                  {format(ultimaSincronizacao, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {format(ultimaSincronizacao, "dd/MM/yyyy HH:mm")}
                 </strong>
               </>
             ) : (
               <>
-                <strong>Dados de Consumo Chamados:</strong> Não foi possível verificar a data da última sincronização.
+                <strong>{t('bankHours.consumptionDataLabel')}</strong> {t('bankHours.consumptionDataNoSync')}
               </>
             )}
           </AlertDescription>
@@ -1286,7 +1306,7 @@ export function VisaoConsolidada({
         {/* Observação Pública */}
         {calculoPrincipal?.observacao_publica && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">Observação Pública</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">{t('bankHours.publicObservation')}</h4>
             <p className="text-sm text-gray-600 whitespace-pre-wrap">
               {calculoPrincipal.observacao_publica}
             </p>
@@ -1299,16 +1319,14 @@ export function VisaoConsolidada({
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5" />
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-1">
-                {isEnglish ? 'Period Requirements' : 'Requerimentos do Período'}
+                {t('bankHours.periodRequirements')}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="text-blue-600 text-sm cursor-help">*</span>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm bg-blue-50 border-blue-200">
-                      <p className="text-sm text-blue-800">
-                        Os valores abaixo estão sendo considerados na linha <strong>Requerimentos</strong> da tabela acima, em seus respectivos meses.
-                      </p>
+                      <p className="text-sm text-blue-800" dangerouslySetInnerHTML={{ __html: t('bankHours.periodRequirementsTooltip') }} />
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1325,17 +1343,17 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1362,7 +1380,7 @@ export function VisaoConsolidada({
                               </span>
                             </div>
                             <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
-                              {req.tipo_cobranca || 'Banco de Horas'}
+                              {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
                             </span>
                           </div>
                         </TableCell>
@@ -1436,7 +1454,7 @@ export function VisaoConsolidada({
                               size="sm" 
                               className="h-8 w-8 p-0"
                               onClick={() => handleVisualizarRequerimento(req)}
-                              title="Visualizar detalhes"
+                              title={t('bankHours.viewDetails')}
                             >
                               <Eye className="h-4 w-4 text-blue-600" />
                             </Button>
@@ -1460,15 +1478,12 @@ export function VisaoConsolidada({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <h4 className="text-lg font-semibold text-gray-900 dark:text-white cursor-help inline-flex items-center gap-1.5">
-                      {isEnglish ? 'Requirements in Development' : 'Requerimentos em Desenvolvimento'}
+                      {t('bankHours.requirementsInDevelopment')}
                       <span className="inline-flex items-center justify-center h-4 w-4 rounded-full border-2 border-orange-500 text-orange-500 text-[10px] font-bold leading-none">!</span>
                     </h4>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm bg-orange-50 border-orange-200">
-                    <p className="text-sm text-orange-800">
-                      <strong>⚠️ Atenção:</strong> Estes requerimentos estão com status "Lançado" e ainda não foram enviados para solicitação de faturamento. 
-                      As horas/tickets abaixo ainda serão descontadas do banco quando os requerimentos forem enviados e aprovados.
-                    </p>
+                    <p className="text-sm text-orange-800" dangerouslySetInnerHTML={{ __html: t('bankHours.requirementsInDevelopmentTooltip') }} />
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1484,17 +1499,17 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow className="bg-orange-50">
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Status</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1521,7 +1536,7 @@ export function VisaoConsolidada({
                                 </span>
                               </div>
                               <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
-                                {req.tipo_cobranca || 'Banco de Horas'}
+                                {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
                               </span>
                             </div>
                           </TableCell>
@@ -1608,7 +1623,7 @@ export function VisaoConsolidada({
                                   setRequerimentoSelecionado(req);
                                   setModalVisualizacaoAberto(true);
                                 }}
-                                title="Visualizar detalhes"
+                                title={t('bankHours.viewDetails')}
                               >
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -1629,7 +1644,7 @@ export function VisaoConsolidada({
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-orange-600" />
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isEnglish ? 'Period Requirements NOT COMPLETED' : 'Requerimentos do Período NÃO CONCLUÍDOS'}
+                {t('bankHours.periodRequirementsNotCompleted')}
               </h4>
               <Badge className="bg-orange-100 text-orange-800 text-xs">
                 {requerimentosNaoConcluidos.length}
@@ -1640,17 +1655,17 @@ export function VisaoConsolidada({
               <Table className="w-full text-xs sm:text-sm min-w-[1300px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">Chamado</TableHead>
-                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">Cliente</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Módulo</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Func</TableHead>
-                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">H.Téc</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Total</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Envio</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Data Aprovação</TableHead>
-                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">Valor Total</TableHead>
-                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">Período</TableHead>
-                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">Ações</TableHead>
+                    <TableHead className="min-w-[140px] text-center text-xs sm:text-sm py-2">{t('requirements.ticket')}</TableHead>
+                    <TableHead className="min-w-[160px] text-center text-xs sm:text-sm py-2">{t('requirements.client')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('requirements.module')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.functionalHours')}</TableHead>
+                    <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('requirements.technicalHours')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.total')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.sendDate')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.approvalDate')}</TableHead>
+                    <TableHead className="min-w-[110px] text-center text-xs sm:text-sm py-2">{t('requirements.totalValue')}</TableHead>
+                    <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('common.period')}</TableHead>
+                    <TableHead className="w-40 text-center text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1677,7 +1692,7 @@ export function VisaoConsolidada({
                               </span>
                             </div>
                             <span className={getBadgeClasses(req.tipo_cobranca || 'Banco de Horas')}>
-                              {req.tipo_cobranca || 'Banco de Horas'}
+                              {translateDataValue(req.tipo_cobranca || 'Banco de Horas')}
                             </span>
                           </div>
                         </TableCell>
@@ -1756,7 +1771,7 @@ export function VisaoConsolidada({
                                 setRequerimentoSelecionado(req);
                                 setModalVisualizacaoAberto(true);
                               }}
-                              title="Visualizar detalhes"
+                              title={t('bankHours.viewDetails')}
                             >
                               <Eye className="h-4 w-4 text-blue-600" />
                             </Button>
@@ -1796,8 +1811,8 @@ export function VisaoConsolidada({
       {/* Rodapé de Impressão (visível apenas ao imprimir) */}
       <div className="hidden print:block print-footer">
         <p>
-          Relatório gerado em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')} | 
-          Sistema Books SND - Controle de Banco de Horas
+          {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | 
+          Sistema Books SND - {t('bankHours.title')}
         </p>
       </div>
     </Card>

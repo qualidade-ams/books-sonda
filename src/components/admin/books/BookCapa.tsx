@@ -3,6 +3,7 @@
  * Design baseado no layout oficial Sonda com logo grande e informações do book
  */
 
+import { useTranslation } from 'react-i18next';
 import type { BookCapaData } from '@/types/books';
 
 interface BookCapaProps {
@@ -10,6 +11,7 @@ interface BookCapaProps {
 }
 
 export default function BookCapa({ data }: BookCapaProps) {
+  const { t } = useTranslation();
   // Log para debug
   console.log('📄 Dados da capa:', {
     empresa_nome: data.empresa_nome,
@@ -43,7 +45,7 @@ export default function BookCapa({ data }: BookCapaProps) {
                 {data.empresa_nome_abreviado || data.empresa_nome}
               </h2>
               <h1 className="text-6xl font-bold tracking-tight leading-tight">
-                Book Mensal
+                {t('books.bookContent.monthlyBook')}
               </h1>
             </div>
           </div>
@@ -74,7 +76,7 @@ export default function BookCapa({ data }: BookCapaProps) {
         {/* Rodapé com créditos - posicionado no final */}
         <div className="px-24 pb-8 mt-auto">
           <div className="text-[#2563eb] text-sm">
-            Fonte: Aranda
+            {t('books.bookContent.source')}
           </div>
         </div>
       </div>
