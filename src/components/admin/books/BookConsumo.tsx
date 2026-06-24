@@ -307,8 +307,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   // Se os dados já estão no snapshot (data.banco_horas_trimestre), usar direto
   useEffect(() => {
     // Se já tem dados no snapshot, usar direto (PDF e versões antigas)
-    if (data.banco_horas_trimestre && data.banco_horas_trimestre.length > 0) {
-      console.log('✅ Usando banco_horas_trimestre do snapshot:', data.banco_horas_trimestre.length, 'meses');
+    // CORREÇÃO: Verificar se pelo menos um mês tem dados reais (não null)
+    const snapshotTemDadosReais = data.banco_horas_trimestre && 
+      data.banco_horas_trimestre.length > 0 &&
+      data.banco_horas_trimestre.some((item: any) => item.dados !== null && item.dados !== undefined);
+    
+    if (snapshotTemDadosReais) {
+      console.log('✅ Usando banco_horas_trimestre do snapshot:', data.banco_horas_trimestre!.length, 'meses');
       
       // Buscar percentual da empresa para usar no cálculo de meses futuros
       const processarSnapshot = async () => {
@@ -392,6 +397,11 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
 
       processarSnapshot();
       return;
+    }
+
+    // Snapshot não tem dados reais (todos null) ou não existe - buscar em tempo real
+    if (data.banco_horas_trimestre && data.banco_horas_trimestre.length > 0) {
+      console.log('⚠️ Snapshot banco_horas_trimestre existe mas todos os meses têm dados null. Buscando em tempo real...');
     }
 
     const buscarBancoHorasTrimestre = async () => {
