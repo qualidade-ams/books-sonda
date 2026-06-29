@@ -1645,16 +1645,35 @@ class BooksDataCollectorService {
 
     if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
       // Buscar de apontamentos_tickets_aranda (tickets fechados)
+      // CORREÇÃO: Usar mesma lógica do bancoHorasIntegracaoService.buscarConsumoTickets
+      // Filtrar por data_fechamento + status = 'Closed' (em vez de data_solucao + caso_pai)
+      const dataFimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
+      const nomeParaBuscaTickets = empresaNomeAbreviado || empresaNomeCompleto;
+      
+      console.log('🎫 [gerarDadosConsumo] Buscando tickets com mesma lógica do banco de horas:', {
+        nomeParaBusca: nomeParaBuscaTickets,
+        data_fechamento_inicio: dataInicio.toISOString(),
+        data_fechamento_fim: dataFimMes.toISOString(),
+        status: 'Closed'
+      });
+
       const { data: ticketsFechados } = await supabase
         .from('apontamentos_tickets_aranda')
         .select('*')
-        .ilike('organizacao', `%${empresaNomeCompleto}%`)
-        .gte('data_solucao', dataInicio.toISOString())
-        .lt('data_solucao', proximoMesInicio.toISOString())
-        .neq('cod_tipo', 'Problema')
-        .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
-        .eq('caso_pai', 'SIM')
-        .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+        .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
+        .gte('data_fechamento', dataInicio.toISOString())
+        .lte('data_fechamento', dataFimMes.toISOString())
+        .eq('status', 'Closed');
+
+      console.log('🎫 [gerarDadosConsumo] Tickets encontrados:', {
+        quantidade: ticketsFechados?.length || 0,
+        filtros: {
+          organizacao: nomeParaBuscaTickets,
+          data_fechamento_inicio: dataInicio.toISOString(),
+          data_fechamento_fim: dataFimMes.toISOString(),
+          status: 'Closed'
+        }
+      });
 
       if (ticketsFechados && ticketsFechados.length > 0) {
         if (tipoContrato === 'tickets') {
@@ -1756,6 +1775,7 @@ class BooksDataCollectorService {
     // Histórico de consumo (últimos 6 meses)
     const historicoConsumo = await this.calcularHistoricoConsumoReal(
       empresaNomeCompleto,
+      empresaNomeAbreviado,
       mes,
       ano,
       tipoContrato
@@ -2564,6 +2584,7 @@ class BooksDataCollectorService {
    */
   private async calcularHistoricoConsumoReal(
     empresaNomeCompleto: string,
+    empresaNomeAbreviado: string,
     mesAtual: number,
     anoAtual: number,
     tipoContrato: 'horas' | 'tickets' | 'ambos' | null
@@ -2685,16 +2706,18 @@ class BooksDataCollectorService {
 
       // Buscar de apontamentos_tickets_aranda se necessário
       if (tipoContrato === 'tickets' || tipoContrato === 'ambos') {
+        // CORREÇÃO: Usar mesma lógica do bancoHorasIntegracaoService.buscarConsumoTickets
+        // Filtrar por data_fechamento + status = 'Closed' (em vez de data_solucao + caso_pai)
+        const dataFimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
+        const nomeParaBuscaTickets = empresaNomeAbreviado || empresaNomeCompleto;
+        
         const { data: ticketsFechados } = await supabase
           .from('apontamentos_tickets_aranda')
           .select('tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos')
-          .ilike('organizacao', `%${empresaNomeCompleto}%`)
-          .gte('data_solucao', dataInicio.toISOString())
-          .lt('data_solucao', proximoMesInicio.toISOString())
-          .neq('cod_tipo', 'Problema')
-          .or('item_configuracao.is.null,item_configuracao.neq.000000 - PROJETOS APL')
-          .eq('caso_pai', 'SIM')
-          .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
+          .ilike('organizacao', `%${nomeParaBuscaTickets}%`)
+          .gte('data_fechamento', dataInicio.toISOString())
+          .lte('data_fechamento', dataFimMes.toISOString())
+          .eq('status', 'Closed');
 
         if (ticketsFechados) {
           if (tipoContrato === 'tickets') {
