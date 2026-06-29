@@ -297,6 +297,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                 <TableHeader>
                   <TableRow className="bg-gray-50">
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.ticketHeader')}</TableHead>
+                    <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>Ticket Externo</TableHead>
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.typeHeader')}</TableHead>
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.openingHeader')}</TableHead>
                     <TableHead className="text-center font-semibold text-white" style={{ backgroundColor: '#666666' }}>{t('books.bookContent.solutionHeader')}</TableHead>
@@ -307,6 +308,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
                   {data.chamados_violados.map((chamado, index) => (
                     <TableRow key={index} className="hover:bg-gray-50">
                       <TableCell className="font-medium text-center text-blue-600">{chamado.id_chamado}</TableCell>
+                      <TableCell className='text-center'>{chamado.ticket_externo}</TableCell>
                       <TableCell className='text-center'>{chamado.tipo}</TableCell>
                       <TableCell className='text-center'>{chamado.data_abertura}</TableCell>
                       <TableCell className='text-center'>{chamado.data_solucao}</TableCell>

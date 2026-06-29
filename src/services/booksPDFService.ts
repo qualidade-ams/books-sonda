@@ -688,9 +688,10 @@ class BooksPDFService {
     if (bookData.sla.chamados_violados.length > 0) {
       autoTable(doc, {
         startY: yPos,
-        head: [['ID CHAMADO', 'TIPO', 'ABERTURA', 'SOLUÇÃO', 'GRUPO']],
+        head: [['ID CHAMADO', 'TICKET EXTERNO', 'TIPO', 'ABERTURA', 'SOLUÇÃO', 'GRUPO']],
         body: bookData.sla.chamados_violados.map(chamado => [
           chamado.id_chamado,
+          chamado.ticket_externo,
           chamado.tipo,
           chamado.data_abertura,
           chamado.data_solucao,
@@ -709,11 +710,12 @@ class BooksPDFService {
           cellPadding: 4
         },
         columnStyles: {
-          0: { cellWidth: 40, fontStyle: 'bold', textColor: this.COLORS.sondaBlue, halign: 'center' },
-          1: { cellWidth: 35, halign: 'center' },
-          2: { cellWidth: 35, halign: 'center' },
-          3: { cellWidth: 35, halign: 'center' },
-          4: { cellWidth: 60 }
+          0: { cellWidth: 35, fontStyle: 'bold', textColor: this.COLORS.sondaBlue, halign: 'center' },
+          1: { cellWidth: 30, halign: 'center' },
+          2: { cellWidth: 30, halign: 'center' },
+          3: { cellWidth: 30, halign: 'center' },
+          4: { cellWidth: 30, halign: 'center' },
+          5: { cellWidth: 50 }
         },
         margin: { left: 20, right: 20 }
       });

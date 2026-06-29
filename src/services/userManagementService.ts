@@ -168,7 +168,8 @@ class UserManagementService {
         p_user_id: userData.userId,
         p_email: userData.email || null,
         p_full_name: userData.fullName || null,
-        p_group_id: null // groupId não está na interface UpdateUserData
+        p_group_id: null, // groupId não está na interface UpdateUserData
+        p_active: userData.active
       });
 
       if (error) {

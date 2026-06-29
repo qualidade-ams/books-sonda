@@ -274,6 +274,7 @@ export class BancoHorasIntegracaoService {
       // Códigos de resolução válidos para banco de horas
       const codigosResolucaoValidos = [
         'Alocação - T&M',
+        'Alocação T&M',
         'Alocação - T&M (Banco=S |SLA=N)',
         'Alocação - T&M (Banco=S| SLA=N)',
         'AMS SAP',
