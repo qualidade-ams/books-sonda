@@ -906,6 +906,7 @@ export class BancoHorasQuarentenaService {
 
       const codigosResolucaoValidos = [
         'Alocação - T&M',
+        'Alocação T&M',
         'Alocação - T&M (Banco=S |SLA=N)',
         'Alocação - T&M (Banco=S| SLA=N)',
         'AMS SAP',

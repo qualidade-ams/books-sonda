@@ -115,6 +115,7 @@ async function buscarApontamentosDetalhados(
   // Códigos de resolução válidos (mesmos do bancoHorasIntegracaoService)
   const codigosResolucaoValidos = [
     'Alocação - T&M',
+    'Alocação T&M',
     'Alocação - T&M (Banco=S |SLA=N)',
     'Alocação - T&M (Banco=S| SLA=N)',
     'AMS SAP',

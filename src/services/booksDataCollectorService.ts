@@ -1250,6 +1250,7 @@ class BooksDataCollectorService {
       .slice(0, 10)
       .map(t => ({
       id_chamado: t.nro_solicitacao,
+      ticket_externo: t.ticket_externo || 'N/A',
       tipo: (t.cod_tipo === 'Incidente' ? 'Incidente' : 'Requisição') as 'Incidente' | 'Requisição',
       data_abertura: new Date(t.data_abertura).toLocaleDateString('pt-BR'),
       data_solucao: t.data_solucao 
@@ -1656,33 +1657,44 @@ class BooksDataCollectorService {
         .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
       if (ticketsFechados && ticketsFechados.length > 0) {
-        // Calcular horas de tickets usando tempo_gasto_dias, tempo_gasto_horas, tempo_gasto_minutos
-        const horasTickets = ticketsFechados.reduce((sum, t) => {
-          const dias = Number(t.tempo_gasto_dias) || 0;
-          const horas = Number(t.tempo_gasto_horas) || 0;
-          const minutos = Number(t.tempo_gasto_minutos) || 0;
-          
-          // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
-          const totalHoras = (dias * 24) + horas + (minutos / 60);
-          return sum + totalHoras;
-        }, 0);
+        if (tipoContrato === 'tickets') {
+          // Para tipo ticket: cada chamado conta como 1 ticket
+          const ticketsIncidente = ticketsFechados.filter(t => t.cod_tipo === 'Incidente').length;
+          const ticketsSolicitacao = ticketsFechados.length - ticketsIncidente;
 
-        // Separar por tipo
-        const horasTicketsIncidente = ticketsFechados
-          .filter(t => t.cod_tipo === 'Incidente')
-          .reduce((sum, t) => {
+          horasTotal += ticketsFechados.length;
+          horasIncidente += ticketsIncidente;
+          horasSolicitacao += ticketsSolicitacao;
+          totalRegistros += ticketsFechados.length;
+        } else {
+          // Para tipo ambos: calcular horas normalmente
+          const horasTickets = ticketsFechados.reduce((sum, t) => {
             const dias = Number(t.tempo_gasto_dias) || 0;
             const horas = Number(t.tempo_gasto_horas) || 0;
             const minutos = Number(t.tempo_gasto_minutos) || 0;
-            return sum + (dias * 24) + horas + (minutos / 60);
+            
+            // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
+            const totalHoras = (dias * 24) + horas + (minutos / 60);
+            return sum + totalHoras;
           }, 0);
 
-        const horasTicketsSolicitacao = horasTickets - horasTicketsIncidente;
+          // Separar por tipo
+          const horasTicketsIncidente = ticketsFechados
+            .filter(t => t.cod_tipo === 'Incidente')
+            .reduce((sum, t) => {
+              const dias = Number(t.tempo_gasto_dias) || 0;
+              const horas = Number(t.tempo_gasto_horas) || 0;
+              const minutos = Number(t.tempo_gasto_minutos) || 0;
+              return sum + (dias * 24) + horas + (minutos / 60);
+            }, 0);
 
-        horasTotal += horasTickets;
-        horasIncidente += horasTicketsIncidente;
-        horasSolicitacao += horasTicketsSolicitacao;
-        totalRegistros += ticketsFechados.length;
+          const horasTicketsSolicitacao = horasTickets - horasTicketsIncidente;
+
+          horasTotal += horasTickets;
+          horasIncidente += horasTicketsIncidente;
+          horasSolicitacao += horasTicketsSolicitacao;
+          totalRegistros += ticketsFechados.length;
+        }
 
         // Distribuição por causa (cod_resolucao)
         const causasMap = new Map<string, number>();
@@ -1699,9 +1711,9 @@ class BooksDataCollectorService {
 
         console.log('✅ Horas de apontamentos_tickets_aranda:', {
           registros: ticketsFechados.length,
-          horas: horasTickets,
-          incidente: horasTicketsIncidente,
-          solicitacao: horasTicketsSolicitacao
+          horasTotal,
+          horasIncidente,
+          horasSolicitacao
         });
       }
     }
@@ -1791,10 +1803,10 @@ class BooksDataCollectorService {
     const taxaHoraExcedente = await this.buscarTaxaHoraExcedente(empresaId, mes, ano);
 
     return {
-      horas_consumo: this.formatarHoras(horasTotal),
-      baseline_apl: this.formatarHoras(baselineHoras),
-      incidente: horasIncidente > 0 ? this.formatarHoras(horasIncidente) : '--',
-      solicitacao: this.formatarHoras(horasSolicitacao),
+      horas_consumo: tipoContrato === 'tickets' ? String(Math.round(horasTotal)) : this.formatarHoras(horasTotal),
+      baseline_apl: tipoContrato === 'tickets' ? String(Math.round(baselineHoras)) : this.formatarHoras(baselineHoras),
+      incidente: horasIncidente > 0 ? (tipoContrato === 'tickets' ? String(Math.round(horasIncidente)) : this.formatarHoras(horasIncidente)) : '--',
+      solicitacao: tipoContrato === 'tickets' ? String(Math.round(horasSolicitacao)) : this.formatarHoras(horasSolicitacao),
       percentual_consumido: percentualConsumido,
       percentual_incidente: percentualIncidente,
       percentual_solicitacao: percentualSolicitacao,
@@ -2685,22 +2697,28 @@ class BooksDataCollectorService {
           .not('nome_grupo', 'in', '("AMS APL - TÉCNICO","CA SDM")');
 
         if (ticketsFechados) {
-          const horasTickets = ticketsFechados.reduce((sum, t) => {
-            const dias = Number(t.tempo_gasto_dias) || 0;
-            const horas = Number(t.tempo_gasto_horas) || 0;
-            const minutos = Number(t.tempo_gasto_minutos) || 0;
-            
-            // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
-            return sum + (dias * 24) + horas + (minutos / 60);
-          }, 0);
-          horasMes += horasTickets;
+          if (tipoContrato === 'tickets') {
+            // Para tipo ticket: cada chamado conta como 1 ticket
+            horasMes += ticketsFechados.length;
+          } else {
+            // Para tipo ambos: somar horas normalmente
+            const horasTickets = ticketsFechados.reduce((sum, t) => {
+              const dias = Number(t.tempo_gasto_dias) || 0;
+              const horas = Number(t.tempo_gasto_horas) || 0;
+              const minutos = Number(t.tempo_gasto_minutos) || 0;
+              
+              // Converter tudo para horas: (dias * 24) + horas + (minutos / 60)
+              return sum + (dias * 24) + horas + (minutos / 60);
+            }, 0);
+            horasMes += horasTickets;
+          }
         }
       }
 
       resultado.push({
         mes: MESES_NOMES[mes - 1],
-        horas: this.formatarHoras(horasMes),
-        valor_numerico: Math.round(horasMes * 100) / 100
+        horas: tipoContrato === 'tickets' ? String(Math.round(horasMes)) : this.formatarHoras(horasMes),
+        valor_numerico: tipoContrato === 'tickets' ? Math.round(horasMes) : Math.round(horasMes * 100) / 100
       });
     }
 

@@ -151,6 +151,7 @@ export interface SLAHistoricoData {
 
 export interface ChamadoVioladoData {
   id_chamado: string; // Ex: "5017679"
+  ticket_externo: string; // Ticket externo (campo ticket_externo da tabela apontamentos_tickets_aranda)
   tipo: 'Incidente' | 'Requisição';
   data_abertura: string;
   data_solucao: string;

@@ -1111,6 +1111,7 @@ class BooksPDFServicePuppeteer {
         <thead>
           <tr>
             <th>CHAMADO</th>
+            <th>TICKET EXTERNO</th>
             <th>TIPO</th>
             <th style="text-align: center;">DATA ABERTURA</th>
             <th style="text-align: center;">DATA SOLUÇÃO</th>
@@ -1121,6 +1122,7 @@ class BooksPDFServicePuppeteer {
           ${bookData.sla.chamados_violados.slice(0, 10).map(item => `
             <tr>
               <td><strong>${item.id_chamado}</strong></td>
+              <td>${item.ticket_externo}</td>
               <td>${item.tipo}</td>
               <td style="text-align: center;">${item.data_abertura}</td>
               <td style="text-align: center;">${item.data_solucao}</td>

@@ -100,6 +100,41 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const [carregandoBancoHoras, setCarregandoBancoHoras] = useState(false);
   const [taxaPadraoEmpresa, setTaxaPadraoEmpresa] = useState<number>(0);
   const [percentualRepasseEmpresa, setPercentualRepasseEmpresa] = useState<number>(50);
+  const [tipoContratoEmpresa, setTipoContratoEmpresa] = useState<string>('horas');
+
+  // Determina se o contrato é do tipo ticket
+  const isTicket = tipoContratoEmpresa === 'tickets' || tipoContratoEmpresa === 'ticket';
+
+  /**
+   * Formata valor da tabela de banco de horas baseado no tipo de contrato
+   * - Ticket: exibe como número inteiro (ex: "5", "12")
+   * - Horas: exibe como HH:MM (ex: "15:30")
+   */
+  const formatarValorBanco = (horas?: string | null, tickets?: number | null): string => {
+    if (isTicket) {
+      if (tickets === undefined || tickets === null) return '0';
+      return tickets.toString();
+    }
+    return formatarHorasSemSegundos(horas || '00:00');
+  };
+
+  /**
+   * Determina cor para valores de ticket (positivo/negativo/zero)
+   */
+  const getColorClassTicket = (tickets?: number | null): string => {
+    if (tickets === undefined || tickets === null || tickets === 0) return 'text-gray-900';
+    if (tickets < 0) return 'text-red-600';
+    if (tickets > 0) return 'text-green-600';
+    return 'text-gray-900';
+  };
+
+  /**
+   * Retorna a classe de cor baseada no tipo de contrato
+   */
+  const getColorClassValor = (horas?: string | null, tickets?: number | null): string => {
+    if (isTicket) return getColorClassTicket(tickets);
+    return getColorClass(horas || undefined);
+  };
 
   // Buscar taxas específicas do cliente (igual à tela de banco de horas)
   const { taxasEspecificas, isLoading: isLoadingTaxas } = useTaxasEspecificasCliente(empresaId) as {
@@ -323,11 +358,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             const { supabase } = await import('@/integrations/supabase/client');
             const { data: empresa } = await supabase
               .from('empresas_clientes')
-              .select('percentual_repasse_mensal')
+              .select('percentual_repasse_mensal, tipo_contrato')
               .eq('id', empresaId)
               .single();
             if (empresa?.percentual_repasse_mensal != null) {
               percentualRepasse = empresa.percentual_repasse_mensal;
+            }
+            if (empresa?.tipo_contrato) {
+              setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
             }
           } catch (e) {
             console.warn('⚠️ Erro ao buscar percentual da empresa, usando fallback 50%');
@@ -418,7 +456,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         // 1. Buscar dados da empresa para pegar periodo_apuracao e inicio_vigencia
         const { data: empresa, error: empresaError } = await supabase
           .from('empresas_clientes')
-          .select('periodo_apuracao, inicio_vigencia, percentual_repasse_mensal')
+          .select('periodo_apuracao, inicio_vigencia, percentual_repasse_mensal, tipo_contrato')
           .eq('id', empresaId)
           .single();
         
@@ -433,6 +471,9 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         const inicioVigencia = empresa?.inicio_vigencia;
         const percentualRepasse = empresa?.percentual_repasse_mensal ?? 50;
         setPercentualRepasseEmpresa(percentualRepasse);
+        if (empresa?.tipo_contrato) {
+          setTipoContratoEmpresa(empresa.tipo_contrato.toLowerCase());
+        }
         
         // 2. Calcular os meses do ciclo baseado no periodo_apuracao e inicio_vigencia
         let mesesCiclo: { mes: number; ano: number }[] = [];
@@ -793,25 +834,25 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{consumoTotal}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? data.total_geral : consumoTotal}</div>
             <div className="text-xs text-gray-600 mt-2">
-              {t('books.bookContent.consumptionPlusRequirements')}
+              {isTicket ? 'Chamados + Requerimentos' : t('books.bookContent.consumptionPlusRequirements')}
             </div>
           </CardContent>
         </Card>
 
-        {/* 2. HORAS CONSUMO */}
+        {/* 2. HORAS CONSUMO / TICKETS CONSUMO */}
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                 <Clock className="h-4 w-4 text-blue-600" />
               </div>
-              {t('books.bookContent.hoursConsumption')}
+              {isTicket ? 'Tickets Consumo' : t('books.bookContent.hoursConsumption')}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.horas_consumo) || '00:00'}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? data.total_geral : (formatarHorasSemSegundos(data.horas_consumo) || '00:00')}</div>
             <div className={`text-xs mt-2 ${variacaoConsumo.tipo === 'aumento' ? 'text-green-600' : variacaoConsumo.tipo === 'queda' ? 'text-red-600' : 'text-gray-600'}`}>
               {variacaoConsumo.tipo === 'aumento' && t('books.bookContent.increaseVsPrevious', { percent: variacaoConsumo.percentual })}
               {variacaoConsumo.tipo === 'queda' && t('books.bookContent.decreaseVsPrevious', { percent: variacaoConsumo.percentual })}
@@ -820,18 +861,18 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           </CardContent>
         </Card>
 
-        {/* 3. HORAS REQUERIMENTOS - Logo após Horas Consumo */}
+        {/* 3. HORAS REQUERIMENTOS / TICKETS REQUERIMENTOS */}
         <Card className="border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-600 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-orange-600" />
               </div>
-              {t('books.bookContent.hoursRequirements')}
+              {isTicket ? 'Tickets Requerimentos' : t('books.bookContent.hoursRequirements')}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{totalHorasRequerimentos}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? (data.requerimentos_descontados?.length || 0) : totalHorasRequerimentos}</div>
             <div className="text-xs text-gray-600 mt-2">
               {t('books.bookContent.requirementsCount', { count: data.requerimentos_descontados?.length || 0 })}
             </div>
@@ -845,11 +886,16 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
               <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-purple-600" />
               </div>
-              {t('books.bookContent.baselineAPL')}
+              {isTicket ? 'Baseline Tickets' : t('books.bookContent.baselineAPL')}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.baseline_apl) || '00:00'}</div>
+            <div className="text-3xl font-bold text-black">
+              {isTicket 
+                ? (bancoHorasTrimestre.length > 0 ? (bancoHorasTrimestre[0]?.dados?.baseline_tickets || 0) : 0)
+                : (formatarHorasSemSegundos(data.baseline_apl) || '00:00')
+              }
+            </div>
             <div className="text-xs text-gray-600 mt-2">
               {t('books.bookContent.percentConsumed', { percent: data.percentual_consumido || 0 })}
             </div>
@@ -873,14 +919,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
           <CardContent>
             {data.incidente === '--' || !data.incidente || data.incidente === '00:00:00' || data.incidente === '00:00' ? (
               <>
-                <div className="text-3xl font-bold text-black">00:00</div>
+                <div className="text-3xl font-bold text-black">{isTicket ? '0' : '00:00'}</div>
                 <div className="text-xs text-gray-600 mt-2">
                   {t('books.bookContent.percentOfTotal', { percent: 0 })}
                 </div>
               </>
             ) : (
               <>
-                <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.incidente)}</div>
+                <div className="text-3xl font-bold text-black">{isTicket ? Math.round(parseHorasParaMinutos(data.incidente) / 60) : formatarHorasSemSegundos(data.incidente)}</div>
                 <div className="text-xs text-gray-600 mt-2">
                   {t('books.bookContent.percentOfTotal', { percent: data.percentual_incidente || 0 })}
                 </div>
@@ -900,7 +946,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-black">{formatarHorasSemSegundos(data.solicitacao) || '00:00'}</div>
+            <div className="text-3xl font-bold text-black">{isTicket ? Math.round(parseHorasParaMinutos(data.solicitacao) / 60) : (formatarHorasSemSegundos(data.solicitacao) || '00:00')}</div>
             <div className="text-xs text-gray-600 mt-2">
               {t('books.bookContent.percentOfTotal', { percent: data.percentual_solicitacao || 0 })}
             </div>
@@ -913,8 +959,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         {/* Gráfico: Histórico de Consumo Mensal */}
         <Card className="lg:col-span-2 border-2" style={{ borderRadius: '35.5px', borderColor: '#666666' }}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">{t('books.bookContent.hoursMonth')}</CardTitle>
-            <p className="text-xs text-gray-500">{t('books.bookContent.monthlyConsumptionHistory', { year: ano || new Date().getFullYear() })}</p>
+            <CardTitle className="text-base font-semibold">{isTicket ? 'Tickets Mês' : t('books.bookContent.hoursMonth')}</CardTitle>
+            <p className="text-xs text-gray-500">{isTicket ? `Histórico de consumo mensal em ${ano || new Date().getFullYear()}` : t('books.bookContent.monthlyConsumptionHistory', { year: ano || new Date().getFullYear() })}</p>
           </CardHeader>
           <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={300}>
@@ -931,7 +977,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                 <YAxis 
                   tick={{ fontSize: 12 }}
                   stroke="#666"
-                  label={{ value: t('books.bookContent.hoursLabel'), angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                  label={{ value: isTicket ? 'Tickets' : t('books.bookContent.hoursLabel'), angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -941,8 +987,14 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   }}
                   formatter={(value: number, name: string, props: any) => {
                     if (name === t('books.bookContent.consumptionLine')) {
+                      if (isTicket) {
+                        return [props.payload.valor_numerico || 0, 'Tickets'];
+                      }
                       return [props.payload.horas, t('books.bookContent.ticketsTooltip')];
                     } else if (name === t('books.bookContent.requirementsLine')) {
+                      if (isTicket) {
+                        return [props.payload.requerimentos_valor_numerico || 0, 'Requerimentos'];
+                      }
                       return [props.payload.requerimentos_horas || '00:00', t('books.bookContent.requirementsTooltip')];
                     }
                     return [value, name];
@@ -961,10 +1013,17 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     content: (props: any) => {
                       const { x, y, value, index } = props;
                       const horasFormatadas = data.historico_consumo[index]?.horas || '';
-                      // Remover segundos se existir
-                      const horasSemSegundos = horasFormatadas.split(':').length === 3 
-                        ? `${horasFormatadas.split(':')[0]}:${horasFormatadas.split(':')[1]}`
-                        : horasFormatadas;
+                      
+                      let displayValue: string;
+                      if (isTicket) {
+                        // Para tickets, mostrar valor numérico inteiro
+                        displayValue = String(data.historico_consumo[index]?.valor_numerico || 0);
+                      } else {
+                        // Remover segundos se existir
+                        displayValue = horasFormatadas.split(':').length === 3 
+                          ? `${horasFormatadas.split(':')[0]}:${horasFormatadas.split(':')[1]}`
+                          : horasFormatadas;
+                      }
                       
                       // Ajustar posição para primeiro e último ponto
                       const totalPontos = data.historico_consumo.length;
@@ -973,15 +1032,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                       let yOffset = -10;
                       
                       if (index === 0) {
-                        // Primeiro ponto: alinhar à direita do ponto
                         textAnchor = 'start';
                         xOffset = 8;
                         yOffset = -5;
                       } else if (index === totalPontos - 1) {
-                        // Último ponto: alinhar à esquerda do ponto e mais acima
                         textAnchor = 'end';
                         xOffset = -8;
-                        yOffset = -20; // Mais espaço acima para evitar sobreposição
+                        yOffset = -20;
                       }
                       
                       return (
@@ -993,7 +1050,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                           fontWeight="600"
                           textAnchor={textAnchor}
                         >
-                          {horasSemSegundos}
+                          {displayValue}
                         </text>
                       );
                     }
@@ -1023,13 +1080,22 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     content: (props: any) => {
                       const { x, y, index } = props;
                       const horasFormatadas = data.historico_consumo[index]?.requerimentos_horas || '00:00';
-                      // Remover segundos se existir
-                      const horasSemSegundos = horasFormatadas.split(':').length === 3 
-                        ? `${horasFormatadas.split(':')[0]}:${horasFormatadas.split(':')[1]}`
-                        : horasFormatadas;
                       
-                      // Não exibir se for 00:00
-                      if (horasSemSegundos === '00:00') return null;
+                      let displayValue: string;
+                      if (isTicket) {
+                        // Para tickets, mostrar valor numérico inteiro
+                        const val = data.historico_consumo[index]?.requerimentos_valor_numerico || 0;
+                        if (val === 0) return null;
+                        displayValue = String(val);
+                      } else {
+                        // Remover segundos se existir
+                        const horasSemSegundos = horasFormatadas.split(':').length === 3 
+                          ? `${horasFormatadas.split(':')[0]}:${horasFormatadas.split(':')[1]}`
+                          : horasFormatadas;
+                        // Não exibir se for 00:00
+                        if (horasSemSegundos === '00:00') return null;
+                        displayValue = horasSemSegundos;
+                      }
                       
                       // Ajustar posição para primeiro e último ponto (igual à linha azul)
                       const totalPontos = data.historico_consumo.length;
@@ -1038,12 +1104,10 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                       let yOffset = 15;
                       
                       if (index === 0) {
-                        // Primeiro ponto: alinhar à direita do ponto
                         textAnchor = 'start';
                         xOffset = 8;
                         yOffset = 15;
                       } else if (index === totalPontos - 1) {
-                        // Último ponto: alinhar à esquerda do ponto e mais abaixo
                         textAnchor = 'end';
                         xOffset = -8;
                         yOffset = 30;
@@ -1058,7 +1122,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                           fontWeight="600"
                           textAnchor={textAnchor}
                         >
-                          {horasSemSegundos}
+                          {displayValue}
                         </text>
                       );
                     }
@@ -1179,12 +1243,12 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {/* Banco Contratado */}
+                  {/* Banco Contratado / Tickets Contratados */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.contractedBank')}</td>
+                    <td className="px-4 py-2 font-semibold">{isTicket ? 'Tickets Contratados' : t('books.bookContent.contractedBank')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-semibold">
-                        {formatarHorasSemSegundos(item.dados?.baseline_horas || '00:00')}
+                        {formatarValorBanco(item.dados?.baseline_horas, item.dados?.baseline_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1193,8 +1257,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2">{t('books.bookContent.previousMonthCarryover')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasses_mes_anterior_horas)}`}>
-                        {formatarHorasSemSegundos(item.dados?.repasses_mes_anterior_horas || '00:00')}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.repasses_mes_anterior_horas, item.dados?.repasses_mes_anterior_tickets)}`}>
+                        {formatarValorBanco(item.dados?.repasses_mes_anterior_horas, item.dados?.repasses_mes_anterior_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1203,8 +1267,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 font-semibold">{t('books.bookContent.balanceToUse')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_a_utilizar_horas)}`}>
-                        {formatarHorasSemSegundos(item.dados?.saldo_a_utilizar_horas || '00:00')}
+                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClassValor(item.dados?.saldo_a_utilizar_horas, item.dados?.saldo_a_utilizar_tickets)}`}>
+                        {formatarValorBanco(item.dados?.saldo_a_utilizar_horas, item.dados?.saldo_a_utilizar_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1214,7 +1278,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2">{t('books.bookContent.ticketConsumption')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
-                        {formatarHorasSemSegundos(item.dados?.consumo_horas || '00:00')}
+                        {formatarValorBanco(item.dados?.consumo_horas, item.dados?.consumo_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1224,7 +1288,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2">{t('books.bookContent.requirementsLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center">
-                        {formatarHorasSemSegundos(item.dados?.requerimentos_horas || '00:00')}
+                        {formatarValorBanco(item.dados?.requerimentos_horas, item.dados?.requerimentos_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1233,8 +1297,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-white">
                     <td className="px-4 py-2">{t('books.bookContent.adjustment')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.reajustes_horas)}`}>
-                        {formatarHorasSemSegundos(item.dados?.reajustes_horas || '00:00')}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.reajustes_horas, item.dados?.reajustes_tickets)}`}>
+                        {formatarValorBanco(item.dados?.reajustes_horas, item.dados?.reajustes_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1244,7 +1308,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                     <td className="px-4 py-2 font-semibold">{t('books.bookContent.totalConsumptionLabel')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
                       <td key={index} className="px-4 py-2 text-center font-bold">
-                        {formatarHorasSemSegundos(item.dados?.consumo_total_horas || '00:00')}
+                        {formatarValorBanco(item.dados?.consumo_total_horas, item.dados?.consumo_total_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1253,8 +1317,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-200">
                     <td className="px-4 py-2 font-semibold">{t('books.bookContent.balance')}</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClass(item.dados?.saldo_horas)}`}>
-                        {formatarHorasSemSegundos(item.dados?.saldo_horas || '00:00')}
+                      <td key={index} className={`px-4 py-2 text-center font-bold ${getColorClassValor(item.dados?.saldo_horas, item.dados?.saldo_tickets)}`}>
+                        {formatarValorBanco(item.dados?.saldo_horas, item.dados?.saldo_tickets)}
                       </td>
                     ))}
                   </tr>
@@ -1263,15 +1327,15 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2">{t('books.bookContent.carryover')} - {percentualRepasseEmpresa}%</td>
                     {bancoHorasTrimestre.map((item, index) => (
-                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClass(item.dados?.repasse_horas)}`}>
-                        {formatarHorasSemSegundos(item.dados?.repasse_horas || '00:00')}
+                      <td key={index} className={`px-4 py-2 text-center font-semibold ${getColorClassValor(item.dados?.repasse_horas, item.dados?.repasse_tickets)}`}>
+                        {formatarValorBanco(item.dados?.repasse_horas, item.dados?.repasse_tickets)}
                       </td>
                     ))}
                   </tr>
 
                   {/* Taxa/hora Excedente e Valor Total - LINHA ÚNICA */}
                   <tr className="text-white" style={{ backgroundColor: '#666666' }}>
-                    <td className="px-4 py-2 font-semibold">{t('books.bookContent.surplusRate')}</td>
+                    <td className="px-4 py-2 font-semibold">{isTicket ? 'Taxa/ticket Excedente' : t('books.bookContent.surplusRate')}</td>
                     {bancoHorasTrimestre.map((item, index) => {
                       const isPenultima = index === bancoHorasTrimestre.length - 2;
                       const isUltima = index === bancoHorasTrimestre.length - 1;
@@ -1285,10 +1349,13 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
                         );
                       } else if (isUltima) {
                         // Última coluna: exibir valor total dos excedentes
+                        const valorExcedentes = isTicket 
+                          ? item.dados?.valor_excedentes_tickets 
+                          : item.dados?.valor_excedentes_horas;
                         return (
                           <td key={index} className="px-4 py-2 text-center font-semibold">
-                            {item.dados?.valor_excedentes_horas 
-                              ? `R$ ${item.dados.valor_excedentes_horas.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            {valorExcedentes 
+                              ? `R$ ${valorExcedentes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               : 'R$ 0,00'
                             }
                           </td>
