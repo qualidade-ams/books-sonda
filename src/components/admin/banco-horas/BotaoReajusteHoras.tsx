@@ -135,6 +135,7 @@ export function BotaoReajusteHoras({
   const [observacao, setObservacao] = useState('');
   const [empresaSegmentada, setEmpresaSegmentada] = useState<string>('');
   const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
   
   // Verificar se é tipo ticket (singular ou plural)
   const isTicket = tipoCobranca?.toLowerCase() === 'ticket' || tipoCobranca?.toLowerCase() === 'tickets';
@@ -192,6 +193,9 @@ export function BotaoReajusteHoras({
   
   // Salvar reajuste
   const handleSalvar = async () => {
+    // Prevenção contra duplo clique
+    if (salvando || isSaving) return;
+    
     // Validação de empresa segmentada (se aplicável)
     if (baselineSegmentado && empresasSegmentadas.length > 0 && !empresaSegmentada) {
       setErro('Selecione a empresa segmentada para este reajuste');
@@ -216,6 +220,7 @@ export function BotaoReajusteHoras({
         return;
       }
       
+      setSalvando(true);
       try {
         await onSalvar({
           mes,
@@ -240,6 +245,8 @@ export function BotaoReajusteHoras({
       } catch (error) {
         console.error('Erro ao salvar reajuste:', error);
         setErro(error instanceof Error ? error.message : 'Erro ao salvar reajuste');
+      } finally {
+        setSalvando(false);
       }
       return;
     }
@@ -260,6 +267,7 @@ export function BotaoReajusteHoras({
       return;
     }
     
+    setSalvando(true);
     try {
       await onSalvar({
         mes,
@@ -284,6 +292,8 @@ export function BotaoReajusteHoras({
     } catch (error) {
       console.error('Erro ao salvar reajuste:', error);
       setErro(error instanceof Error ? error.message : 'Erro ao salvar reajuste');
+    } finally {
+      setSalvando(false);
     }
   };
   
@@ -473,17 +483,17 @@ export function BotaoReajusteHoras({
               type="button"
               variant="outline"
               onClick={handleFecharModal}
-              disabled={isSaving}
+              disabled={salvando || isSaving}
             >
               Cancelar
             </Button>
             <Button
               type="button"
               onClick={handleSalvar}
-              disabled={isSaving}
+              disabled={salvando || isSaving}
               className="bg-sonda-blue hover:bg-sonda-dark-blue"
             >
-              {isSaving ? 'Salvando...' : 'Salvar Reajuste'}
+              {(salvando || isSaving) ? 'Salvando...' : 'Salvar Reajuste'}
             </Button>
           </DialogFooter>
         </DialogContent>

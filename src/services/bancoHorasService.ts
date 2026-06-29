@@ -1067,42 +1067,44 @@ export class BancoHorasService {
     mes: number,
     ano: number
   ): Promise<{ repasseHoras: string; repasseTickets: number }> {
-    // Buscar parâmetros da empresa para verificar se tem repasse especial
+    // Buscar parâmetros da empresa para verificar início de vigência
     const parametros = await this.buscarParametrosEmpresa(empresaId, mes, ano);
     
-    // ✅ CORREÇÃO FINAL: Se possui repasse especial, zerar repasse APENAS no primeiro mês do contrato
-    if (parametros.possui_repasse_especial) {
-      // Calcular quantos meses se passaram desde o início da vigência
-      const mesInicio = parametros.inicio_vigencia.getUTCMonth() + 1;
-      const anoInicio = parametros.inicio_vigencia.getUTCFullYear();
-      const mesesPassados = ((ano - anoInicio) * 12) + (mes - mesInicio + 1);
-      
-      console.log('🔍 Verificando se deve zerar repasse (repasse especial):', {
-        possui_repasse_especial: parametros.possui_repasse_especial,
-        mes_atual: `${mes}/${ano}`,
-        inicio_vigencia: parametros.inicio_vigencia.toISOString(),
-        periodo_apuracao: parametros.periodo_apuracao,
+    // ✅ CORREÇÃO: Zerar repasse no primeiro mês do contrato para TODOS os clientes
+    // Independente de ter ou não repasse especial, o primeiro mês da vigência
+    // não deve carregar saldo de meses anteriores (que são pré-contratuais)
+    const mesInicio = parametros.inicio_vigencia.getUTCMonth() + 1;
+    const anoInicio = parametros.inicio_vigencia.getUTCFullYear();
+    const mesesPassados = ((ano - anoInicio) * 12) + (mes - mesInicio + 1);
+    
+    console.log('🔍 Verificando se deve zerar repasse (início de vigência):', {
+      possui_repasse_especial: parametros.possui_repasse_especial,
+      mes_atual: `${mes}/${ano}`,
+      inicio_vigencia: parametros.inicio_vigencia.toISOString(),
+      periodo_apuracao: parametros.periodo_apuracao,
+      mesesPassados,
+      decisao: (mesesPassados <= 1) 
+        ? 'ZERAR (primeiro mês do contrato ou antes da vigência)' 
+        : 'BUSCAR REPASSE NORMAL'
+    });
+    
+    // Zerar repasse se for o primeiro mês do contrato (mesesPassados === 1)
+    // ou se for antes do início da vigência (mesesPassados <= 0)
+    // Isso garante que:
+    // - Janeiro/25 com vigência 01/2025 (mesesPassados=1): Zera ✅
+    // - Fevereiro/25 com vigência 01/2025 (mesesPassados=2): Busca repasse normal ✅
+    // - Janeiro/26 com vigência 01/2025 (mesesPassados=13): NÃO zera, recebe repasse de Dezembro/25 ✅
+    // - Dezembro/24 com vigência 01/2025 (mesesPassados=0): Zera ✅
+    if (mesesPassados <= 1) {
+      console.log('✅ Primeiro mês do contrato ou antes da vigência - zerando repasse:', {
+        mes: `${mes}/${ano}`,
         mesesPassados,
-        decisao: (mesesPassados === 1) 
-          ? 'ZERAR (primeiro mês do contrato)' 
-          : 'BUSCAR REPASSE NORMAL'
+        motivo: 'O primeiro mês da vigência não carrega saldo de meses anteriores (pré-contratuais)'
       });
-      
-      // Zerar repasse APENAS se for o primeiro mês do contrato (mesesPassados === 1)
-      // Isso garante que:
-      // - Janeiro/26 (mesesPassados=1): Zera ✅
-      // - Janeiro/27 (mesesPassados=13): NÃO zera, recebe repasse de Dezembro/26 ✅
-      if (mesesPassados === 1) {
-        console.log('✅ Primeiro mês do contrato - zerando repasse:', {
-          mes: `${mes}/${ano}`,
-          mesesPassados,
-          motivo: 'Apenas o primeiro mês do contrato inicia com repasse zerado'
-        });
-        return {
-          repasseHoras: '0:00',
-          repasseTickets: 0
-        };
-      }
+      return {
+        repasseHoras: '0:00',
+        repasseTickets: 0
+      };
     }
     
     // Calcular mês anterior
