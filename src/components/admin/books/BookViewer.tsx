@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Download, Loader2 } from 'lucide-react';
+import { X, Download, Loader2, FileSpreadsheet } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { BookListItem, BookData } from '@/types/books';
 import { booksPDFServiceV2 } from '@/services/booksPDFServiceV2';
 import { booksService } from '@/services/booksService';
+import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
+import { supabase } from '@/integrations/supabase/client';
 
 // Importar componentes das abas
 import BookCapa from './BookCapa';
@@ -42,6 +44,7 @@ interface BookViewerProps {
 export default function BookViewer({ book, open, onOpenChange, bookDataOverride }: BookViewerProps) {
   const [activeTab, setActiveTab] = useState<string>('capa');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const { bookData: bookDataFetched, isLoading, refetch } = useBookData(book?.id || null);
   const { data: produtos, isLoading: isLoadingProdutos } = useEmpresaProdutos(book?.empresa_id || null);
   const { toast } = useToast();
@@ -160,6 +163,147 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
     }
   };
 
+  const handleDownloadExcel = async () => {
+    if (!book) return;
+
+    try {
+      setIsDownloadingExcel(true);
+
+      const empresaNome = book.empresa_nome_abreviado || book.empresa_nome || 'empresa';
+
+      toast({
+        title: 'Gerando Excel...',
+        description: `Preparando detalhamento de consumo para ${empresaNome}`,
+      });
+
+      // Buscar requerimentos do período
+      const mesCobranca = `${String(book.mes).padStart(2, '0')}/${book.ano}`;
+      const { data: requerimentosData } = await supabase
+        .from('requerimentos')
+        .select('*')
+        .eq('cliente_id', book.empresa_id)
+        .eq('mes_cobranca', mesCobranca)
+        .in('status', ['enviado_faturamento', 'faturado', 'concluido', 'em_desenvolvimento']);
+
+      // Buscar observações manuais do período
+      const { data: observacoesManuais } = await (supabase
+        .from('banco_horas_observacoes' as any)
+        .select('*')
+        .eq('empresa_id', book.empresa_id)
+        .eq('mes', book.mes)
+        .eq('ano', book.ano)
+        .order('created_at', { ascending: false }) as any);
+
+      // Buscar reajustes com observações do período
+      const { data: reajustesData } = await (supabase
+        .from('banco_horas_reajustes' as any)
+        .select('id, mes, ano, observacao, tipo_reajuste, valor_reajuste_horas, valor_reajuste_tickets, created_by, created_at')
+        .eq('empresa_id', book.empresa_id)
+        .eq('mes', book.mes)
+        .eq('ano', book.ano)
+        .eq('ativo', true)
+        .not('observacao', 'is', null)
+        .neq('observacao', '')
+        .order('created_at', { ascending: false }) as any);
+
+      // Buscar nomes dos usuários para observações
+      const allObs = [...(observacoesManuais || []), ...(reajustesData || [])];
+      const userIds = [...new Set(allObs.map((o: any) => o.created_by).filter(Boolean))];
+      let profilesMap = new Map<string, any>();
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      }
+
+      // Unificar observações manuais + reajustes no formato esperado pelo Excel
+      const observacoesFormatadas = [
+        ...(observacoesManuais || []).map((obs: any) => ({
+          tipo: 'manual',
+          mes: obs.mes,
+          ano: obs.ano,
+          texto: obs.observacao || '',
+          usuario_nome: profilesMap.get(obs.created_by)?.full_name || '',
+          created_at: obs.created_at || '',
+          tipo_ajuste: '',
+          valor_horas: '',
+        })),
+        ...(reajustesData || []).map((rea: any) => ({
+          tipo: 'ajuste',
+          mes: rea.mes,
+          ano: rea.ano,
+          texto: rea.observacao || '',
+          usuario_nome: profilesMap.get(rea.created_by)?.full_name || '',
+          created_at: rea.created_at || '',
+          tipo_ajuste: rea.tipo_reajuste || '',
+          valor_horas: rea.valor_reajuste_horas || '',
+        })),
+      ];
+
+      // Formatar requerimentos para o formato esperado pelo Excel
+      const requerimentosFormatados = (requerimentosData || []).map((req: any) => ({
+        chamado: req.chamado || '',
+        cliente_nome: empresaNome,
+        modulo: req.modulo || '',
+        descricao: req.descricao || '',
+        horas_funcional: req.horas_funcional || '',
+        horas_tecnico: req.horas_tecnico || '',
+        horas_total: req.horas_total || '',
+        tipo_cobranca: req.tipo_cobranca || '',
+        data_envio: req.data_envio_faturamento || '',
+        data_aprovacao: req.data_aprovacao || '',
+        mes_cobranca: req.mes_cobranca || '',
+        valor_total_geral: req.valor_total_geral || '',
+        observacao: req.observacao || '',
+      }));
+
+      const excelFile = await gerarExcelConsumoHoras(
+        book.empresa_id,
+        empresaNome,
+        book.mes,
+        book.ano,
+        requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
+        observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined
+      );
+
+      if (!excelFile) {
+        toast({
+          title: 'Nenhum dado encontrado',
+          description: 'Não há apontamentos de consumo para gerar o Excel neste período.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Trigger download
+      const url = URL.createObjectURL(excelFile);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = excelFile.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Excel baixado!',
+        description: `Arquivo "${excelFile.name}" gerado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao gerar Excel:', error);
+      toast({
+        title: 'Erro ao gerar Excel',
+        description: error instanceof Error ? error.message : 'Erro desconhecido ao gerar planilha.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloadingExcel(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col p-0">
@@ -169,6 +313,19 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
               {bookData?.capa.empresa_nome_abreviado || book?.empresa_nome} - {translatePeriodo(bookData?.capa.periodo || '')}
             </DialogTitle>
             <div className="flex items-center gap-2 mr-5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadExcel}
+                disabled={isDownloadingExcel}
+              >
+                {isDownloadingExcel ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
+                {isDownloadingExcel ? 'Gerando...' : 'Baixar Excel'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

@@ -24,6 +24,7 @@ import type {
 import { emailService, RATE_LIMIT_CONFIG } from './emailService';
 import { clientBooksTemplateService } from './clientBooksTemplateService';
 import { anexoService } from './anexoService';
+import { gerarExcelConsumoHoras } from '@/utils/gerarExcelConsumoHoras';
 
 class BooksDisparoService {
   /** Utilitário de sleep para rate limiting */
@@ -1859,6 +1860,130 @@ class BooksDisparoService {
         };
       }
 
+      // Gerar Excel de detalhamento de consumo de horas para anexar ao email
+      let excelAttachment: { filename: string; content: string; contentType: string } | null = null;
+      try {
+        // Calcular mês de referência (mês anterior ao mês de disparo)
+        const mesRef = mes === 1 ? 12 : mes - 1;
+        const anoRef = mes === 1 ? ano - 1 : ano;
+        const empresaNome = empresa.nome_abreviado || empresa.nome_completo || '';
+
+        console.log(`📊 Gerando Excel de consumo para ${empresaNome} (${mesRef}/${anoRef})...`);
+
+        // Buscar requerimentos do período
+        const mesCobranca = `${String(mesRef).padStart(2, '0')}/${anoRef}`;
+        const { data: requerimentosData } = await supabase
+          .from('requerimentos')
+          .select('*')
+          .eq('cliente_id', empresa.id)
+          .eq('mes_cobranca', mesCobranca)
+          .in('status', ['enviado_faturamento', 'faturado', 'concluido', 'em_desenvolvimento']);
+
+        // Buscar observações manuais do período
+        const { data: observacoesManuais } = await (supabase
+          .from('banco_horas_observacoes' as any)
+          .select('*')
+          .eq('empresa_id', empresa.id)
+          .eq('mes', mesRef)
+          .eq('ano', anoRef)
+          .order('created_at', { ascending: false }) as any);
+
+        // Buscar reajustes com observações do período
+        const { data: reajustesData } = await (supabase
+          .from('banco_horas_reajustes' as any)
+          .select('id, mes, ano, observacao, tipo_reajuste, valor_reajuste_horas, valor_reajuste_tickets, created_by, created_at')
+          .eq('empresa_id', empresa.id)
+          .eq('mes', mesRef)
+          .eq('ano', anoRef)
+          .eq('ativo', true)
+          .not('observacao', 'is', null)
+          .neq('observacao', '')
+          .order('created_at', { ascending: false }) as any);
+
+        // Buscar nomes dos usuários
+        const allObs = [...(observacoesManuais || []), ...(reajustesData || [])];
+        const userIds = [...new Set(allObs.map((o: any) => o.created_by).filter(Boolean))];
+        let profilesMap = new Map<string, any>();
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', userIds);
+          profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        }
+
+        // Formatar observações
+        const observacoesFormatadas = [
+          ...(observacoesManuais || []).map((obs: any) => ({
+            tipo: 'manual',
+            mes: obs.mes,
+            ano: obs.ano,
+            texto: obs.observacao || '',
+            usuario_nome: profilesMap.get(obs.created_by)?.full_name || '',
+            created_at: obs.created_at || '',
+            tipo_ajuste: '',
+            valor_horas: '',
+          })),
+          ...(reajustesData || []).map((rea: any) => ({
+            tipo: 'ajuste',
+            mes: rea.mes,
+            ano: rea.ano,
+            texto: rea.observacao || '',
+            usuario_nome: profilesMap.get(rea.created_by)?.full_name || '',
+            created_at: rea.created_at || '',
+            tipo_ajuste: rea.tipo_reajuste || '',
+            valor_horas: rea.valor_reajuste_horas || '',
+          })),
+        ];
+
+        // Formatar requerimentos
+        const requerimentosFormatados = (requerimentosData || []).map((req: any) => ({
+          chamado: req.chamado || '',
+          cliente_nome: empresaNome,
+          modulo: req.modulo || '',
+          descricao: req.descricao || '',
+          horas_funcional: req.horas_funcional || '',
+          horas_tecnico: req.horas_tecnico || '',
+          horas_total: req.horas_total || '',
+          tipo_cobranca: req.tipo_cobranca || '',
+          data_envio: req.data_envio_faturamento || '',
+          data_aprovacao: req.data_aprovacao || '',
+          mes_cobranca: req.mes_cobranca || '',
+          valor_total_geral: req.valor_total_geral || '',
+          observacao: req.observacao || '',
+        }));
+
+        const excelFile = await gerarExcelConsumoHoras(
+          empresa.id,
+          empresaNome,
+          mesRef,
+          anoRef,
+          requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
+          observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined
+        );
+
+        if (excelFile) {
+          // Converter File para base64
+          const arrayBuffer = await excelFile.arrayBuffer();
+          const base64 = btoa(
+            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+
+          excelAttachment = {
+            filename: excelFile.name,
+            content: base64,
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          };
+
+          console.log(`✅ Excel gerado: ${excelFile.name} (${(excelFile.size / 1024).toFixed(1)} KB)`);
+        } else {
+          console.log(`⚠️ Nenhum apontamento encontrado para gerar Excel de ${empresaNome}`);
+        }
+      } catch (excelError) {
+        console.warn(`⚠️ Erro ao gerar Excel de consumo (não bloqueia envio):`, excelError);
+        // Não falhar o envio do book por erro no Excel
+      }
+
       // Enviar e-mail consolidado usando o emailService (com anexos se houver)
       const resultadoEnvio = await this.enviarEmailConsolidadoComAnexos(
         emailsClientes,
@@ -1867,7 +1992,8 @@ class BooksDisparoService {
         templateProcessado.corpo,
         empresa,
         clientes,
-        anexosWebhook
+        anexosWebhook,
+        excelAttachment ? [excelAttachment] : undefined
       );
 
       if (resultadoEnvio.sucesso) {
@@ -2120,11 +2246,15 @@ class BooksDisparoService {
     corpo: string,
     empresa: EmpresaCliente,
     clientes: Cliente[],
-    anexosWebhook: AnexoWebhookData[]
+    anexosWebhook: AnexoWebhookData[],
+    attachments?: Array<{ filename: string; content: string; contentType: string }>
   ): Promise<{ sucesso: boolean; erro?: string }> {
     try {
       console.log(`📧 Preparando e-mail consolidado para ${destinatarios.length} destinatários`);
       console.log(`📎 Anexos incluídos: ${anexosWebhook.length}`);
+      if (attachments && attachments.length > 0) {
+        console.log(`📊 Attachments base64 incluídos: ${attachments.length} (${attachments.map(a => a.filename).join(', ')})`);
+      }
 
       // Preparar dados básicos para o emailService
       const emailData: any = {
@@ -2133,6 +2263,11 @@ class BooksDisparoService {
         subject: assunto,
         html: corpo
       };
+
+      // Incluir attachments base64 (ex: Excel de consumo)
+      if (attachments && attachments.length > 0) {
+        emailData.attachments = attachments;
+      }
 
       // Incluir dados dos anexos no payload se houver
       if (anexosWebhook.length > 0) {
