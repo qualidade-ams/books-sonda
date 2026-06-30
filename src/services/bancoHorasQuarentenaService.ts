@@ -987,8 +987,11 @@ export class BancoHorasQuarentenaService {
       if (!apontamentos) return [];
 
       // Aplicar mesma regra de data_atividade == data_sistema (mesmo mês)
+      // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar esta regra
+      // pois o período naturalmente cruza dois meses
       return apontamentos
         .filter((a: any) => {
+          if (diaInicioApuracao > 1) return true; // Pular validação para período customizado
           if (!a.data_atividade || !a.data_sistema) return true;
           const dAtiv = new Date(a.data_atividade);
           const dSist = new Date(a.data_sistema);

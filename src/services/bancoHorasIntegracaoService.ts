@@ -452,8 +452,10 @@ export class BancoHorasIntegracaoService {
       if (apontamentos && apontamentos.length > 0) {
         for (const apontamento of apontamentos) {
           // NOVA REGRA 3: Validar que data_atividade e data_sistema estão no mesmo mês
+          // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar esta regra
+          // pois o período naturalmente cruza dois meses e a divergência é esperada
           let mesmoMes = true;
-          if (apontamento.data_atividade && apontamento.data_sistema) {
+          if (diaInicioApuracao === 1 && apontamento.data_atividade && apontamento.data_sistema) {
             const dataAtividade = new Date(apontamento.data_atividade);
             const dataSistema = new Date(apontamento.data_sistema);
             
