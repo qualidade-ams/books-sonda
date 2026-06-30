@@ -892,17 +892,33 @@ export class BancoHorasQuarentenaService {
     ano: number
   ): Promise<string[]> {
     try {
-      // Buscar nome da empresa
+      // Buscar nome da empresa e parâmetros de periodicidade
       const { data: empresa } = await supabase
         .from('empresas_clientes')
-        .select('nome_completo')
+        .select('nome_completo, dia_inicio_apuracao, dia_fim_apuracao')
         .eq('id', empresaId)
         .single();
 
       if (!empresa?.nome_completo) return [];
 
-      const dataInicio = new Date(ano, mes - 1, 1);
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
+      const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
+
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (diaInicioApuracao > 1) {
+        // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
+        const mesSeguinte = mes === 12 ? 1 : mes + 1;
+        const anoSeguinte = mes === 12 ? ano + 1 : ano;
+        dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+        const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+        dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59, 999);
+      } else {
+        // Período padrão: dia 1 ao último dia do mês
+        dataInicio = new Date(ano, mes - 1, 1);
+        dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      }
 
       const codigosResolucaoValidos = [
         'Alocação - T&M',
@@ -999,14 +1015,29 @@ export class BancoHorasQuarentenaService {
     try {
       const { data: empresa } = await supabase
         .from('empresas_clientes')
-        .select('nome_abreviado, nome_completo')
+        .select('nome_abreviado, nome_completo, dia_inicio_apuracao, dia_fim_apuracao')
         .eq('id', empresaId)
         .single();
 
       if (!empresa) return [];
 
-      const dataInicio = new Date(ano, mes - 1, 1);
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
+      const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
+
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (diaInicioApuracao > 1) {
+        const mesSeguinte = mes === 12 ? 1 : mes + 1;
+        const anoSeguinte = mes === 12 ? ano + 1 : ano;
+        dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+        const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+        dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59, 999);
+      } else {
+        dataInicio = new Date(ano, mes - 1, 1);
+        dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      }
+
       const nomeParaBusca = empresa.nome_abreviado || empresa.nome_completo;
 
       const { data: tickets } = await db

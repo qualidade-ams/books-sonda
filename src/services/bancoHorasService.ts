@@ -94,6 +94,9 @@ interface ParametrosEmpresa {
   percentual_entre_periodos?: number;
   periodos_ate_zerar?: number;
   ciclo_atual: number;
+  // Periodicidade customizada de apuração (ex: Samarco dia 16 a dia 15)
+  dia_inicio_apuracao: number;
+  dia_fim_apuracao: number;
 }
 
 /**
@@ -242,7 +245,9 @@ export class BancoHorasService {
         });
       } else {
         // Período ABERTO: buscar dados em tempo real (comportamento normal)
-        const consumo = await bancoHorasIntegracaoService.buscarConsumo(empresaId, mes, ano);
+        const consumo = await bancoHorasIntegracaoService.buscarConsumo(
+          empresaId, mes, ano, parametros.dia_inicio_apuracao, parametros.dia_fim_apuracao
+        );
         consumoHoras = consumo.horas;
         consumoTickets = consumo.tickets;
         
@@ -826,7 +831,9 @@ export class BancoHorasService {
         percentual_dentro_periodo,
         percentual_entre_periodos,
         periodos_ate_zerar,
-        ciclo_atual
+        ciclo_atual,
+        dia_inicio_apuracao,
+        dia_fim_apuracao
       `)
       .eq('id', empresaId)
       .single();
@@ -1002,6 +1009,9 @@ export class BancoHorasService {
       percentual_dentro_periodo: empresa.percentual_dentro_periodo || undefined,
       percentual_entre_periodos: empresa.percentual_entre_periodos || undefined,
       periodos_ate_zerar: empresa.periodos_ate_zerar || undefined,
+      // Periodicidade customizada de apuração
+      dia_inicio_apuracao: (empresa as any).dia_inicio_apuracao ?? 1,
+      dia_fim_apuracao: (empresa as any).dia_fim_apuracao ?? 0,
       ciclo_atual: this.calcularCicloAtual(
         mes || new Date().getMonth() + 1,
         ano || new Date().getFullYear(),

@@ -55,13 +55,17 @@ export class BancoHorasIntegracaoService {
   async buscarConsumoTickets(
     empresaId: string,
     mes: number,
-    ano: number
+    ano: number,
+    diaInicioApuracao: number = 1,
+    diaFimApuracao: number = 0
   ): Promise<number> {
     try {
       console.log('🎫 BancoHorasIntegracaoService.buscarConsumoTickets:', {
         empresaId,
         mes,
-        ano
+        ano,
+        diaInicioApuracao,
+        diaFimApuracao
       });
 
       // Validar parâmetros
@@ -108,14 +112,29 @@ export class BancoHorasIntegracaoService {
         );
       }
 
-      // Calcular data de início e fim do mês
-      const dataInicio = new Date(ano, mes - 1, 1);
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      // Calcular data de início e fim do período de apuração
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (diaInicioApuracao > 1) {
+        // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
+        // Para o mês de referência Fevereiro/2025 com dia_inicio=16: período = 16/02/2025 a 15/03/2025
+        const mesSeguinte = mes === 12 ? 1 : mes + 1;
+        const anoSeguinte = mes === 12 ? ano + 1 : ano;
+        dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+        const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+        dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59, 999);
+      } else {
+        // Período padrão: dia 1 ao último dia do mês
+        dataInicio = new Date(ano, mes - 1, 1);
+        dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      }
 
       console.log('📅 Período de busca de tickets:', {
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
         empresaNome: empresa.nome_abreviado || empresa.nome_completo,
+        periodicidade: diaInicioApuracao > 1 ? `Customizada (dia ${diaInicioApuracao} a dia ${diaFimApuracao || diaInicioApuracao - 1})` : 'Padrão (mês calendário)',
         observacao: 'Usando data_fechamento para contabilizar tickets consumidos. Campo: organizacao. Status: Closed'
       });
 
@@ -214,13 +233,17 @@ export class BancoHorasIntegracaoService {
   async buscarConsumo(
     empresaId: string,
     mes: number,
-    ano: number
+    ano: number,
+    diaInicioApuracao: number = 1,
+    diaFimApuracao: number = 0
   ): Promise<{ horas: string; tickets: number }> {
     try {
       console.log('🔍 BancoHorasIntegracaoService.buscarConsumo:', {
         empresaId,
         mes,
-        ano
+        ano,
+        diaInicioApuracao,
+        diaFimApuracao
       });
 
       // Validar parâmetros
@@ -267,9 +290,23 @@ export class BancoHorasIntegracaoService {
         );
       }
 
-      // Calcular data de início e fim do mês
-      const dataInicio = new Date(ano, mes - 1, 1);
-      const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      // Calcular data de início e fim do período de apuração
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (diaInicioApuracao > 1) {
+        // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
+        // Para o mês de referência Fevereiro/2025 com dia_inicio=16: período = 16/02/2025 a 15/03/2025
+        const mesSeguinte = mes === 12 ? 1 : mes + 1;
+        const anoSeguinte = mes === 12 ? ano + 1 : ano;
+        dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+        const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+        dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59, 999);
+      } else {
+        // Período padrão: dia 1 ao último dia do mês
+        dataInicio = new Date(ano, mes - 1, 1);
+        dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      }
 
       // Códigos de resolução válidos para banco de horas
       const codigosResolucaoValidos = [
@@ -327,6 +364,7 @@ export class BancoHorasIntegracaoService {
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
         empresaNome: empresa.nome_abreviado || empresa.nome_completo,
+        periodicidade: diaInicioApuracao > 1 ? `Customizada (dia ${diaInicioApuracao} a dia ${diaFimApuracao || diaInicioApuracao - 1})` : 'Padrão (mês calendário)',
         codigosResolucao: codigosResolucaoValidos.length
       });
 
@@ -462,7 +500,7 @@ export class BancoHorasIntegracaoService {
       const horasFormatadas = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
 
       // Buscar tickets reais da tabela apontamentos_tickets_aranda
-      const ticketsReais = await this.buscarConsumoTickets(empresaId, mes, ano);
+      const ticketsReais = await this.buscarConsumoTickets(empresaId, mes, ano, diaInicioApuracao, diaFimApuracao);
 
       console.log('✅ Consumo calculado:', {
         totalMinutos,

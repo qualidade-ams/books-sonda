@@ -280,18 +280,15 @@ class BooksDataCollectorService {
     let proximoMesInicio: Date;
 
     if (diaInicioApuracao > 1) {
-      // Periodicidade customizada (ex: dia 15 do mês anterior até dia 14 do mês atual)
-      // Para o book de referência mes/ano, o período é:
-      // Início: dia X do mês anterior ao mes de referência
-      // Fim: dia (X-1) do mes de referência
-      const mesAnterior = mes === 1 ? 12 : mes - 1;
-      const anoAnterior = mes === 1 ? ano - 1 : ano;
+      // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
+      // Para o book de referência Fevereiro/2025 com dia_inicio=16: período = 16/02/2025 a 15/03/2025
+      const mesSeguinte = mes === 12 ? 1 : mes + 1;
+      const anoSeguinte = mes === 12 ? ano + 1 : ano;
       
-      dataInicio = new Date(anoAnterior, mesAnterior - 1, diaInicioApuracao);
-      // Fim: dia_fim do mês de referência (ou dia_inicio - 1 se dia_fim não especificado)
+      dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
       const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
-      dataFim = new Date(ano, mes - 1, diaFimReal, 23, 59, 59);
-      proximoMesInicio = new Date(ano, mes - 1, diaFimReal + 1);
+      dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59);
+      proximoMesInicio = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal + 1);
       
       console.log('📅 Periodicidade CUSTOMIZADA:', {
         empresa: empresaNomeAbreviado,

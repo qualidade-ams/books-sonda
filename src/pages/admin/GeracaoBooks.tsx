@@ -132,13 +132,13 @@ export default function GeracaoBooks() {
     const diaFim = book.dia_fim_apuracao ?? 0;
     if (diaInicio === 1 && diaFim === 0) return null; // Período padrão
     
-    // Calcular mês anterior ao mês de referência
-    const mesAnterior = mesReferencia === 1 ? 12 : mesReferencia - 1;
-    const mesAnteriorFormatado = String(mesAnterior).padStart(2, '0');
+    // Calcular mês seguinte ao mês de referência
+    const mesSeguinte = mesReferencia === 12 ? 1 : mesReferencia + 1;
     const mesRefFormatado = String(mesReferencia).padStart(2, '0');
+    const mesSeguinteFormatado = String(mesSeguinte).padStart(2, '0');
     const diaFimReal = diaFim > 0 ? diaFim : 'último';
     
-    return `${diaInicio}/${mesAnteriorFormatado} a ${diaFimReal}/${mesRefFormatado}`;
+    return `${diaInicio}/${mesRefFormatado} a ${diaFimReal}/${mesSeguinteFormatado}`;
   };
   
   // Hook useBooks sempre busca o período de referência atual (não afetado pelo filtro)

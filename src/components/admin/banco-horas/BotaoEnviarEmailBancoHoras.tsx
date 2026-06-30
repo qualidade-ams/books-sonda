@@ -72,6 +72,8 @@ interface BotaoEnviarEmailBancoHorasProps {
   requerimentosEmDesenvolvimento?: Requerimento[];
   observacoes?: Observacao[];
   disabled?: boolean;
+  diaInicioApuracao?: number;
+  diaFimApuracao?: number;
 }
 
 const MESES_PT = [
@@ -511,6 +513,8 @@ export function BotaoEnviarEmailBancoHoras({
   requerimentosEmDesenvolvimento = [],
   observacoes = [],
   disabled = false,
+  diaInicioApuracao = 1,
+  diaFimApuracao = 0,
 }: BotaoEnviarEmailBancoHorasProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -772,7 +776,9 @@ export function BotaoEnviarEmailBancoHoras({
         mesAno.mes,
         mesAno.ano,
         [...requerimentos, ...requerimentosEmDesenvolvimento],
-        observacoes
+        observacoes,
+        diaInicioApuracao,
+        diaFimApuracao
       ).then(excelFile => {
         if (excelFile) {
           setAnexos(prev => [...prev, excelFile]);
