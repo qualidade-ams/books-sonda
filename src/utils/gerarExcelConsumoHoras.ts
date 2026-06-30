@@ -84,7 +84,9 @@ function formatarHorasMinutos(tempoHoras: string | null, tempoMinutos: number | 
 async function buscarApontamentosDetalhados(
   empresaId: string,
   mes: number,
-  ano: number
+  ano: number,
+  diaInicioApuracao: number = 1,
+  diaFimApuracao: number = 0
 ): Promise<ApontamentoExcel[]> {
   // Buscar dados da empresa
   const { data: empresa, error: empresaError } = await supabase
@@ -104,11 +106,28 @@ async function buscarApontamentosDetalhados(
     return [];
   }
 
-  // Calcular período (usar strings de data para evitar problemas de timezone)
-  const mesStr = String(mes).padStart(2, '0');
-  const ultimoDia = new Date(ano, mes, 0).getDate();
-  const dataInicioStr = `${ano}-${mesStr}-01T00:00:00.000Z`;
-  const dataFimStr = `${ano}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999Z`;
+  // Calcular período baseado na periodicidade da empresa
+  let dataInicioStr: string;
+  let dataFimStr: string;
+
+  if (diaInicioApuracao > 1) {
+    // Periodicidade customizada (ex: dia 16 do mês de referência até dia 15 do mês seguinte)
+    // Para o mês de referência Fevereiro/2025 com dia_inicio=16: período = 16/02/2025 a 15/03/2025
+    const mesSeguinte = mes === 12 ? 1 : mes + 1;
+    const anoSeguinte = mes === 12 ? ano + 1 : ano;
+    const mesStr = String(mes).padStart(2, '0');
+    const mesSeguinteStr = String(mesSeguinte).padStart(2, '0');
+    const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+    dataInicioStr = `${ano}-${mesStr}-${String(diaInicioApuracao).padStart(2, '0')}T00:00:00.000Z`;
+    dataFimStr = `${anoSeguinte}-${mesSeguinteStr}-${String(diaFimReal).padStart(2, '0')}T23:59:59.999Z`;
+  } else {
+    // Período padrão: dia 1 ao último dia do mês
+    const mesStr = String(mes).padStart(2, '0');
+    const ultimoDia = new Date(ano, mes, 0).getDate();
+    dataInicioStr = `${ano}-${mesStr}-01T00:00:00.000Z`;
+    dataFimStr = `${ano}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999Z`;
+  }
+
   const dataInicio = new Date(dataInicioStr);
   const dataFim = new Date(dataFimStr);
 
@@ -478,13 +497,15 @@ export async function gerarExcelConsumoHoras(
   mes: number,
   ano: number,
   requerimentos?: any[],
-  observacoes?: any[]
+  observacoes?: any[],
+  diaInicioApuracao: number = 1,
+  diaFimApuracao: number = 0
 ): Promise<File | null> {
   try {
-    console.log('📊 Gerando Excel de consumo de horas...', { empresaId, empresaNome, mes, ano });
+    console.log('📊 Gerando Excel de consumo de horas...', { empresaId, empresaNome, mes, ano, diaInicioApuracao, diaFimApuracao });
 
     // Buscar apontamentos detalhados
-    const apontamentos = await buscarApontamentosDetalhados(empresaId, mes, ano);
+    const apontamentos = await buscarApontamentosDetalhados(empresaId, mes, ano, diaInicioApuracao, diaFimApuracao);
 
     if (apontamentos.length === 0) {
       console.warn('⚠️ Nenhum apontamento encontrado para o período — gerando Excel com planilha vazia');

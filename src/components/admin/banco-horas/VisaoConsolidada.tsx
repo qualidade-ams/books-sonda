@@ -813,6 +813,8 @@ export function VisaoConsolidada({
                 })
                 .map(obs => ({ texto: obs.observacao, tipo: obs.tipo, tipo_ajuste: obs.tipo_ajuste, valor_horas: obs.valor_horas, valor_tickets: obs.valor_tickets, mes: obs.mes, ano: obs.ano, usuario_nome: obs.usuario_nome, created_at: obs.created_at }))}
               disabled={disabled}
+              diaInicioApuracao={(empresaAtual as any)?.dia_inicio_apuracao ?? 1}
+              diaFimApuracao={(empresaAtual as any)?.dia_fim_apuracao ?? 0}
             />
 
             <Button

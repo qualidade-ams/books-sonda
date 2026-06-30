@@ -1959,7 +1959,9 @@ class BooksDisparoService {
           mesRef,
           anoRef,
           requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
-          observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined
+          observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined,
+          (empresa as any).dia_inicio_apuracao ?? 1,
+          (empresa as any).dia_fim_apuracao ?? 0
         );
 
         if (excelFile) {

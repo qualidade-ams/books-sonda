@@ -266,7 +266,9 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
         book.mes,
         book.ano,
         requerimentosFormatados.length > 0 ? requerimentosFormatados : undefined,
-        observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined
+        observacoesFormatadas.length > 0 ? observacoesFormatadas : undefined,
+        book.dia_inicio_apuracao ?? 1,
+        book.dia_fim_apuracao ?? 0
       );
 
       if (!excelFile) {
