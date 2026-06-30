@@ -1855,13 +1855,13 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Destaque do {mesSelecionado === 'todos' ? 'Ano' : 'Mês'}
+                {mesSelecionado === 'todos' ? t('dashboard.complimentsTab.yearHighlight') : t('dashboard.complimentsTab.monthHighlight')}
               </p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {topPeriodo ? topPeriodo[0] : '-'}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                {topPeriodo ? `${topPeriodo[1]} ${topPeriodo[1] === 1 ? 'Elogio' : 'Elogios'}` : 'Nenhum elogio'}
+                {topPeriodo ? `${topPeriodo[1]} ${topPeriodo[1] === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')}` : t('dashboard.complimentsTab.noCompliment')}
               </p>
             </div>
             <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
@@ -1881,8 +1881,8 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 {mesSelecionado === 'todos' 
-                  ? (topAno ? `${topAno[1]} ${topAno[1] === 1 ? 'Elogio' : 'Elogios'} no ano` : 'Nenhum elogio')
-                  : (topAno ? `${topAno[1]} ${topAno[1] === 1 ? 'Elogio' : 'Elogios'} no ano` : 'Nenhum elogio')
+                  ? (topAno ? `${topAno[1]} ${topAno[1] === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')} ${t('dashboard.complimentsTab.inYear')}` : t('dashboard.complimentsTab.noCompliment'))
+                  : (topAno ? `${topAno[1]} ${topAno[1] === 1 ? t('dashboard.complimentsTab.compliment') : t('dashboard.complimentsTab.complimentsWord')} ${t('dashboard.complimentsTab.inYear')}` : t('dashboard.complimentsTab.noCompliment'))
                 }
               </p>
             </div>
@@ -2142,8 +2142,8 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                   return (
                     <div className="text-center py-8 text-gray-500 text-sm">
                       {areasExpandido 
-                        ? 'Nenhuma pesquisa encontrada para todas as áreas'
-                        : 'Nenhuma pesquisa encontrada para FISCAL e COMEX'
+                        ? t('dashboard.complimentsTab.noSurveyFoundAllAreas')
+                        : t('dashboard.complimentsTab.noSurveyFoundFiscalComex')
                       }
                     </div>
                   );
@@ -2268,17 +2268,17 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 className="whitespace-nowrap hover:border-red-300"
               >
                 <X className="h-4 w-4 mr-2 text-red-600" />
-                Limpar Filtro
+                {t('common.clearFilter')}
               </Button>
             )}
           </div>
           {itemSelecionado && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {itemSelecionado.tipo === 'empresa' && `Empresa: ${itemSelecionado.dados}`}
-              {itemSelecionado.tipo === 'colaborador' && `Colaborador: ${itemSelecionado.dados}`}
-              {itemSelecionado.tipo === 'grupo' && `Grupo: ${itemSelecionado.dados}`}
-              {itemSelecionado.tipo === 'grupos-principais' && 'Grupos: FISCAL e COMEX'}
-              {itemSelecionado.tipo === 'volume' && 'Todos os Elogios do Período'}
+              {itemSelecionado.tipo === 'empresa' && `${t('dashboard.complimentsTab.filterByCompanyLabel')}: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'colaborador' && `${t('dashboard.complimentsTab.filterByCollaboratorLabel')}: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'grupo' && `${t('dashboard.complimentsTab.filterByGroupLabel')}: ${itemSelecionado.dados}`}
+              {itemSelecionado.tipo === 'grupos-principais' && t('dashboard.complimentsTab.groupsFiscalComex')}
+              {itemSelecionado.tipo === 'volume' && t('dashboard.complimentsTab.allComplimentsPeriod')}
             </p>
           )}
         </CardHeader>
