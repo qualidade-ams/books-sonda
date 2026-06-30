@@ -46,13 +46,21 @@ function formatarHorasSemSegundos(horasCompletas: string): string {
 
 /**
  * Converte string de horas (HH:MM:SS ou HH:MM) para minutos totais
+ * Suporta valores negativos (ex: "-10:35" = -635 minutos)
  */
 function parseHorasParaMinutos(horas: string): number {
   if (!horas || horas === '--') return 0;
-  const partes = horas.split(':');
+  
+  const valor = horas.trim();
+  const isNegativo = valor.startsWith('-');
+  const valorSemSinal = isNegativo ? valor.substring(1) : valor;
+  
+  const partes = valorSemSinal.split(':');
   const h = parseInt(partes[0] || '0', 10);
   const m = parseInt(partes[1] || '0', 10);
-  return h * 60 + m;
+  const totalMinutos = h * 60 + m;
+  
+  return isNegativo ? -totalMinutos : totalMinutos;
 }
 
 /**
