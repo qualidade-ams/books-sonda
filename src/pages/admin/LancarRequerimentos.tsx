@@ -565,8 +565,8 @@ const LancarRequerimentos = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <RequerimentosExportButtons
-                            requerimentos={activeTab === 'nao-enviados' ? requerimentosFiltrados : []}
-                            requerimentosEnviados={activeTab === 'enviados' ? requerimentosFiltrados : []}
+                            requerimentos={requerimentos}
+                            requerimentosEnviados={requerimentosEnviados}
                             estatisticas={statsRequerimentos}
                             disabled={isLoading || isLoadingEnviados}
                         />
