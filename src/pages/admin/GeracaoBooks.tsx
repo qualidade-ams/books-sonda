@@ -661,8 +661,8 @@ export default function GeracaoBooks() {
                 <div className="flex gap-2">
                   {hasSelection && (() => {
                     const booksSelecionados = books.filter(b => selectedIds.includes(b.id));
-                    const todosJaGerados = booksSelecionados.every(b => b.status === 'gerado' || b.status === 'enviado');
-                    return !todosJaGerados;
+                    const todosJaEnviados = booksSelecionados.every(b => b.status === 'enviado');
+                    return !todosJaEnviados;
                   })() && (
                     <>
                       <Button
