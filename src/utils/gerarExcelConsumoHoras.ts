@@ -353,21 +353,37 @@ function gerarWorkbook(
       'OBSERVAÇÃO',
     ];
 
-    const reqRows = requerimentos.map(req => [
-      req.chamado || '',
-      req.cliente_nome || '',
-      req.modulo || '',
-      req.descricao || '',
-      req.horas_funcional || '',
-      req.horas_tecnico || '',
-      req.horas_total || '',
-      req.tipo_cobranca || '',
-      req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '',
-      req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '',
-      req.mes_cobranca || '',
-      req.valor_total_geral || '',
-      req.observacao || '',
-    ]);
+    const reqRows = requerimentos.map(req => {
+      // Converter horas numéricas para formato H:MM
+      const formatarHoraReq = (valor: any): string => {
+        if (!valor && valor !== 0) return '';
+        const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+        if (isNaN(num)) return String(valor);
+        const horas = Math.floor(num);
+        const minutos = Math.round((num - horas) * 60);
+        return `${horas}:${String(minutos).padStart(2, '0')}`;
+      };
+
+      const hFunc = formatarHoraReq(req.horas_funcional);
+      const hTec = formatarHoraReq(req.horas_tecnico);
+      const hTotal = formatarHoraReq(req.horas_total);
+
+      return [
+        req.chamado || '',
+        req.cliente_nome || '',
+        req.modulo || '',
+        req.descricao || '',
+        hFunc,
+        hTec,
+        hTotal,
+        req.tipo_cobranca || '',
+        req.data_envio ? new Date(req.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '',
+        req.data_aprovacao ? new Date(req.data_aprovacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '',
+        req.mes_cobranca || '',
+        req.valor_total_geral || '',
+        req.observacao || '',
+      ];
+    });
 
     const reqSheetData = [reqHeaders, ...reqRows];
     const reqSheet = XLSX.utils.aoa_to_sheet(reqSheetData);
