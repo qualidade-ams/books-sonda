@@ -3,7 +3,7 @@
  * Gerencia a geração e envio de relatórios de books para clientes
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -148,6 +148,17 @@ export default function GeracaoBooks() {
   });
 
   const { stats } = useBooksStats({ mes: mesReferencia, ano: anoReferencia });
+
+  // Refetch automático a cada 5s enquanto há processamento em andamento
+  useEffect(() => {
+    if (!isProcessingGlobal) return;
+
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isProcessingGlobal, refetch]);
   
   const {
     selectedIds,
@@ -258,20 +269,6 @@ export default function GeracaoBooks() {
 
   const handleAtualizarBooks = async () => {
     if (!hasSelection) return;
-    
-    // Verificar se algum book selecionado está enviado (imutável)
-    const booksEnviados = books.filter(b => 
-      selectedIds.includes(b.id) && b.status === 'enviado'
-    );
-    
-    if (booksEnviados.length > 0) {
-      toast({
-        title: 'Ação bloqueada',
-        description: `${booksEnviados.length} book(s) selecionado(s) já foram enviados e estão imutáveis. Use "Retificar" para desbloqueá-los.`,
-        variant: 'destructive',
-      });
-      return;
-    }
     
     setShowAtualizarDialog(false);
     
@@ -659,11 +656,7 @@ export default function GeracaoBooks() {
                 </CardTitle>
 
                 <div className="flex gap-2">
-                  {hasSelection && (() => {
-                    const booksSelecionados = books.filter(b => selectedIds.includes(b.id));
-                    const todosJaEnviados = booksSelecionados.every(b => b.status === 'enviado');
-                    return !todosJaEnviados;
-                  })() && (
+                  {hasSelection && (
                     <>
                       <Button
                         size="sm"
