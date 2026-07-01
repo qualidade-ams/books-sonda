@@ -59,11 +59,31 @@ function formatarData(dataISO: string | null): string {
 }
 
 /**
- * Formata minutos para formato HH:MM:SS
+ * Converte tempo para valor numérico nativo do Excel (fração de dia).
+ * No Excel, 1.0 = 24 horas, então 1 hora = 1/24.
+ * Prioriza tempo_gasto_horas sobre tempo_gasto_minutos (mesmo critério do backend).
+ * Retorna null se não houver valor válido.
+ */
+function horasParaExcelNumerico(tempoHoras: string | null, tempoMinutos: number | null): number {
+  if (tempoHoras) {
+    const partes = tempoHoras.split(':');
+    if (partes.length >= 2) {
+      const h = parseInt(partes[0]) || 0;
+      const m = parseInt(partes[1]) || 0;
+      return (h * 60 + m) / (24 * 60);
+    }
+  }
+  if (tempoMinutos != null && tempoMinutos > 0) {
+    return tempoMinutos / (24 * 60);
+  }
+  return 0;
+}
+
+/**
+ * Formata minutos para formato HH:MM:SS (usado apenas como fallback textual)
  */
 function formatarHorasMinutos(tempoHoras: string | null, tempoMinutos: number | null): string {
   if (tempoHoras) {
-    // Se já está no formato HH:MM, adicionar :00
     const partes = tempoHoras.split(':');
     if (partes.length === 2) return `${tempoHoras}:00`;
     if (partes.length === 3) return tempoHoras;
@@ -282,36 +302,69 @@ function gerarWorkbook(
     apt.analista_tarefa || '',
     apt.analista_caso || apt.analista_tarefa || '',
     apt.solicitante || '',
-    formatarHorasMinutos(apt.tempo_gasto_horas, apt.tempo_gasto_minutos),
+    horasParaExcelNumerico(apt.tempo_gasto_horas, apt.tempo_gasto_minutos), // valor numérico nativo Excel
     apt.tempo_gasto_minutos || 0,
     apt.ativi_interna || '',
     apt.grupo_tarefa || '',
     apt.descricao_tarefa || '',
   ]);
 
-  // Calcular total de horas
+  // Calcular total de horas como valor numérico nativo do Excel (soma dos valores das linhas).
+  // IMPORTANTE: Priorizar tempo_gasto_horas sobre tempo_gasto_minutos (mesma lógica do backend).
   let totalMinutos = 0;
   apontamentos.forEach(apt => {
-    if (apt.tempo_gasto_minutos) {
-      totalMinutos += apt.tempo_gasto_minutos;
-    } else if (apt.tempo_gasto_horas) {
+    if (apt.tempo_gasto_horas) {
+      // Prioridade 1: usar tempo_gasto_horas (formato HH:MM ou HH:MM:SS)
       const partes = apt.tempo_gasto_horas.split(':');
       if (partes.length >= 2) {
         totalMinutos += parseInt(partes[0]) * 60 + parseInt(partes[1]);
       }
+    } else if (apt.tempo_gasto_minutos) {
+      // Fallback: usar tempo_gasto_minutos apenas quando não há tempo_gasto_horas
+      totalMinutos += apt.tempo_gasto_minutos;
     }
   });
-  const totalHoras = Math.floor(totalMinutos / 60);
-  const totalMins = totalMinutos % 60;
-  const totalFormatado = `${String(totalHoras).padStart(1, '0')}:${String(totalMins).padStart(2, '0')}:00`;
+  // Valor numérico nativo do Excel: minutos / (24 * 60)
+  const totalExcelNumerico = totalMinutos / (24 * 60);
 
   // Adicionar linha de total
   const linhaTotal = Array(headers.length).fill('');
   linhaTotal[headers.indexOf('HORAS') - 1] = 'Total de Horas:';
-  linhaTotal[headers.indexOf('HORAS')] = totalFormatado;
+  linhaTotal[headers.indexOf('HORAS')] = totalExcelNumerico;
 
   const sheetData = [headers, ...rows, [], linhaTotal];
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+  // Aplicar formato de tempo nativo do Excel na coluna HORAS.
+  // Formato [h]:mm:ss permite exibir totais >= 24h corretamente (ex: 46:00:00).
+  // As células já contêm valores numéricos (fração de dia); o formato apenas define a exibição.
+  const colHoras = headers.indexOf('HORAS');
+  const timeStyle = {
+    numFmt: '[h]:mm:ss',
+    alignment: { horizontal: 'center' },
+  };
+  const timeTotalStyle = {
+    numFmt: '[h]:mm:ss',
+    font: { bold: true },
+    alignment: { horizontal: 'center' },
+  };
+
+  // Formatar células de dados (linhas 1..N, índice base 0 = header)
+  for (let r = 1; r <= apontamentos.length; r++) {
+    const cellRef = XLSX.utils.encode_cell({ r, c: colHoras });
+    if (sheet[cellRef]) {
+      sheet[cellRef].t = 'n'; // tipo numérico
+      sheet[cellRef].s = timeStyle;
+    }
+  }
+
+  // Formatar célula do total (última linha = header + rows + linha vazia + linhaTotal)
+  const rowTotal = 1 + apontamentos.length + 1 + 1; // header(1) + dados + linha vazia(1) + total
+  const cellRefTotal = XLSX.utils.encode_cell({ r: rowTotal, c: colHoras });
+  if (sheet[cellRefTotal]) {
+    sheet[cellRefTotal].t = 'n';
+    sheet[cellRefTotal].s = timeTotalStyle;
+  }
 
   // Aplicar estilos nos headers (fundo azul Sonda com texto branco em negrito)
   const headerStyle = {
