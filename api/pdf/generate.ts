@@ -8,7 +8,6 @@
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { existsSync } from 'fs';
-import chromium from '@sparticuz/chromium';
 
 interface GeneratePDFRequest {
   html?: string;
@@ -106,6 +105,8 @@ export default async function handler(
       });
     } else {
       console.log('🔧 Usando @sparticuz/chromium (Vercel)...');
+      // Import lazy para evitar crash no Windows onde o binário não existe
+      const chromium = (await import('@sparticuz/chromium')).default;
       const executablePath = await chromium.executablePath();
       console.log('📍 Chromium path:', executablePath);
       browser = await puppeteer.launch({
