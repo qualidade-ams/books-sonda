@@ -358,13 +358,19 @@ function gerarWorkbook(
     }
   }
 
-  // Formatar célula do total (última linha = header + rows + linha vazia + linhaTotal)
-  const rowTotal = 1 + apontamentos.length + 1 + 1; // header(1) + dados + linha vazia(1) + total
+  // Formatar célula do total
+  // sheetData = [headers(1), ...rows(N), [](1), linhaTotal(1)]
+  // índice 0-based: header=0, dados=1..N, linha_vazia=N+1, total=N+2
+  const rowTotal = apontamentos.length + 2;
   const cellRefTotal = XLSX.utils.encode_cell({ r: rowTotal, c: colHoras });
-  if (sheet[cellRefTotal]) {
-    sheet[cellRefTotal].t = 'n';
-    sheet[cellRefTotal].s = timeTotalStyle;
+
+  // Garantir que a célula existe (pode não ser criada pelo aoa_to_sheet se o valor for 0)
+  if (!sheet[cellRefTotal]) {
+    sheet[cellRefTotal] = { t: 'n', v: totalExcelNumerico };
   }
+  sheet[cellRefTotal].t = 'n';
+  sheet[cellRefTotal].v = totalExcelNumerico;
+  sheet[cellRefTotal].s = timeTotalStyle;
 
   // Aplicar estilos nos headers (fundo azul Sonda com texto branco em negrito)
   const headerStyle = {

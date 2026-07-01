@@ -748,16 +748,34 @@ export function BotaoEnviarEmailBancoHoras({
     }
     
     if (tipo === 'saldo_parcial') {
-      const ontem = new Date(hoje);
-      ontem.setDate(ontem.getDate() - 1);
-      const dia = String(ontem.getDate()).padStart(2, '0');
-      const mesAtual = String(ontem.getMonth() + 1).padStart(2, '0');
+      // Se o mês selecionado é o mês atual, usa "ontem" como referência de data.
+      // Se é um mês passado ou futuro, usa o último dia do mês selecionado.
+      const mesSelecionado = mesAno.mes;
+      const anoSelecionado = mesAno.ano;
+      const isMesAtual = mesSelecionado === hoje.getMonth() + 1 && anoSelecionado === hoje.getFullYear();
+
+      let dia: string;
+      let mesAtual: string;
+
+      if (isMesAtual) {
+        // Mês corrente: usar ontem como data de referência
+        const ontem = new Date(hoje);
+        ontem.setDate(ontem.getDate() - 1);
+        dia = String(ontem.getDate()).padStart(2, '0');
+        mesAtual = String(ontem.getMonth() + 1).padStart(2, '0');
+      } else {
+        // Mês diferente: usar o último dia do mês selecionado
+        const ultimoDia = new Date(anoSelecionado, mesSelecionado, 0).getDate();
+        dia = String(ultimoDia).padStart(2, '0');
+        mesAtual = String(mesSelecionado).padStart(2, '0');
+      }
+
       setAssuntoEmail(`${empresaNome} - Saldo Parcial ${dia}.${mesAtual}`);
       const texto = getTextoPadraoParcial();
       setTextoIntrodutorio(texto);
       setCorpoEmail(gerarHtmlFinal(texto, tipo));
     } else {
-      setAssuntoEmail(`Book | ${empresaNome} | ${MESES_PT[mesAssunto - 1]} - ${anoAssunto}`);
+      setAssuntoEmail(`Book | ${empresaNome} | ${MESES_PT[mesAno.mes - 1]} - ${mesAno.ano}`);
       const texto = getTextoPadraoMes();
       setTextoIntrodutorio(texto);
       setCorpoEmail(gerarHtmlFinal(texto, tipo));
@@ -1218,11 +1236,13 @@ img { -ms-interpolation-mode: bicubic; }
               <Send className="h-5 w-5 text-blue-600" />
               {t('bankHours.confirmSend')}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('bankHours.confirmSendDesc', { 
-                type: tipoEmail === 'saldo_parcial' ? t('bankHours.partialBalance') : t('bankHours.monthBalance'),
-                count: extrairEmails(destinatariosTexto).length
-              })}
+            <AlertDialogDescription asChild>
+              <p>
+                {t('bankHours.confirmSendDescPre')}{' '}
+                <strong>{tipoEmail === 'saldo_parcial' ? t('bankHours.partialBalance') : t('bankHours.monthBalance')}</strong>{' '}
+                {t('bankHours.confirmSendDescMid')}{' '}
+                <strong>{extrairEmails(destinatariosTexto).length} {t('bankHours.recipients')}</strong>?
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
