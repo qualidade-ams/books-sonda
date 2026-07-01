@@ -1066,6 +1066,9 @@ const en = {
     wait: 'Please wait...',
     confirmSend: 'Confirm Send',
     confirmSendDesc: 'Do you want to send the <strong>{{type}}</strong> email to <strong>{{count}} recipient(s)</strong>?',
+    confirmSendDescPre: 'Do you want to send the',
+    confirmSendDescMid: 'email to',
+    recipients: 'recipient(s)',
     sending: 'Sending...',
     // Segmented View
     loadingSegmentedData: 'Loading segmented consumption data...',

@@ -1066,6 +1066,9 @@ const ptBR = {
     wait: 'Aguarde...',
     confirmSend: 'Confirmar Envio',
     confirmSendDesc: 'Deseja enviar o email de <strong>{{type}}</strong> para <strong>{{count}} destinatário(s)</strong>?',
+    confirmSendDescPre: 'Deseja enviar o email de',
+    confirmSendDescMid: 'para',
+    recipients: 'destinatário(s)',
     sending: 'Enviando...',
     // Visão Segmentada
     loadingSegmentedData: 'Carregando dados de consumo segmentado...',
