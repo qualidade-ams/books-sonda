@@ -101,6 +101,7 @@ export default function SecaoBaselineComHistorico({
   const [novoBaseline, setNovoBaseline] = useState({
     baseline_horas: '',
     baseline_tickets: '',
+    tipo_banco: 'mensal' as 'mensal' | 'anual',
     data_inicio: '',
     data_fim: '',
     motivo: '',
@@ -122,6 +123,7 @@ export default function SecaoBaselineComHistorico({
       // Preparar dados baseado no tipo de contrato
       const baselineData: any = {
         empresa_id: empresaId,
+        tipo_banco: novoBaseline.tipo_banco,
         data_inicio: novoBaseline.data_inicio,
         data_fim: novoBaseline.data_fim || null,
         motivo: novoBaseline.motivo,
@@ -148,6 +150,7 @@ export default function SecaoBaselineComHistorico({
       setNovoBaseline({
         baseline_horas: '',
         baseline_tickets: '',
+        tipo_banco: 'mensal',
         data_inicio: '',
         data_fim: '',
         motivo: '',
@@ -226,7 +229,7 @@ export default function SecaoBaselineComHistorico({
             <div>
               <CardTitle className="text-base font-medium flex items-center gap-2">
                 <Clock className="h-4 w-4 text-sonda-blue" />
-                Baseline Mensal
+                Baseline {baselineAtual?.tipo_banco === 'anual' ? 'Anual' : 'Mensal'}
               </CardTitle>
               {baselineAtual && (
                 <CardDescription className="mt-1 text-xs">
@@ -276,7 +279,9 @@ export default function SecaoBaselineComHistorico({
                   {/* Horas - só exibir se tipo não for apenas "tickets" */}
                   {tipoContrato !== 'tickets' && (
                     <div>
-                      <div className="text-xs text-gray-600 mb-1">Horas Mensais</div>
+                      <div className="text-xs text-gray-600 mb-1">
+                        Horas {baselineAtual.tipo_banco === 'anual' ? 'Anuais' : 'Mensais'}
+                      </div>
                       <div className="text-2xl font-bold text-sonda-blue">
                         {baselineAtual.baseline_horas.toFixed(2)}h
                       </div>
@@ -285,17 +290,24 @@ export default function SecaoBaselineComHistorico({
                   {/* Tickets - só exibir se tipo não for apenas "horas" */}
                   {tipoContrato !== 'horas' && baselineAtual.baseline_tickets !== null && (
                     <div>
-                      <div className="text-xs text-gray-600 mb-1">Tickets Mensais</div>
+                      <div className="text-xs text-gray-600 mb-1">Tickets {baselineAtual.tipo_banco === 'anual' ? 'Anuais' : 'Mensais'}</div>
                       <div className="text-2xl font-bold text-sonda-blue">
                         {baselineAtual.baseline_tickets}
                       </div>
                     </div>
                   )}
                 </div>
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Ativo
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {baselineAtual.tipo_banco === 'anual' && (
+                    <Badge className="bg-purple-100 text-purple-800 text-xs">
+                      Anual
+                    </Badge>
+                  )}
+                  <Badge className="bg-green-100 text-green-800">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Ativo
+                  </Badge>
+                </div>
               </div>
             ) : (
               <Alert>
@@ -382,6 +394,12 @@ export default function SecaoBaselineComHistorico({
                               {baseline.motivo}
                             </Badge>
                           )}
+                          {/* Tipo Banco */}
+                          {baseline.tipo_banco === 'anual' && (
+                            <Badge className="bg-purple-100 text-purple-800 text-xs">
+                              Anual
+                            </Badge>
+                          )}
                         </div>
 
                         {/* Ações */}
@@ -441,11 +459,36 @@ export default function SecaoBaselineComHistorico({
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Tipo de Banco */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Tipo de Banco *
+              </Label>
+              <Select
+                value={novoBaseline.tipo_banco}
+                onValueChange={(value: 'mensal' | 'anual') => setNovoBaseline({ ...novoBaseline, tipo_banco: value })}
+              >
+                <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal (creditado todo mês)</SelectItem>
+                  <SelectItem value="anual">Anual (creditado apenas no mês de início)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                {novoBaseline.tipo_banco === 'anual' 
+                  ? 'As horas serão creditadas apenas no mês da Data Início. Nos demais meses o banco contratado será 0, e o saldo virá do repasse.'
+                  : 'As horas serão creditadas todo mês dentro da vigência.'
+                }
+              </p>
+            </div>
+
             {/* Baseline Horas - só aparece se tipo_contrato for 'horas' ou 'ambos' */}
             {(tipoContrato === 'horas' || tipoContrato === 'ambos') && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Baseline de Horas Mensal *
+                  Baseline de Horas {novoBaseline.tipo_banco === 'anual' ? 'Anual' : 'Mensal'} *
                 </Label>
                 <Input
                   type="number"
@@ -565,11 +608,39 @@ export default function SecaoBaselineComHistorico({
 
           {baselineSelecionado && (
             <div className="space-y-4">
+              {/* Tipo de Banco */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Tipo de Banco *
+                </Label>
+                <Select
+                  defaultValue={baselineSelecionado.tipo_banco || 'mensal'}
+                  onValueChange={(value: 'mensal' | 'anual') => setBaselineSelecionado({
+                    ...baselineSelecionado,
+                    tipo_banco: value
+                  })}
+                >
+                  <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal (creditado todo mês)</SelectItem>
+                    <SelectItem value="anual">Anual (creditado apenas no mês de início)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  {(baselineSelecionado.tipo_banco || 'mensal') === 'anual' 
+                    ? 'As horas serão creditadas apenas no mês da Data Início. Nos demais meses o banco contratado será 0.'
+                    : 'As horas serão creditadas todo mês dentro da vigência.'
+                  }
+                </p>
+              </div>
+
               {/* Baseline Horas - só aparece se tipo_contrato for 'horas' ou 'ambos' */}
               {(tipoContrato === 'horas' || tipoContrato === 'ambos') && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    Baseline de Horas Mensal *
+                    Baseline de Horas {(baselineSelecionado.tipo_banco || 'mensal') === 'anual' ? 'Anual' : 'Mensal'} *
                   </Label>
                   <Input
                     type="number"
@@ -589,7 +660,7 @@ export default function SecaoBaselineComHistorico({
               {(tipoContrato === 'tickets' || tipoContrato === 'ambos') && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    Baseline de Tickets Mensal *
+                    Baseline de Tickets {(baselineSelecionado.tipo_banco || 'mensal') === 'anual' ? 'Anual' : 'Mensal'} *
                   </Label>
                   <Input
                     type="number"
@@ -685,6 +756,7 @@ export default function SecaoBaselineComHistorico({
                     data: {
                       baseline_horas: baselineSelecionado.baseline_horas,
                       baseline_tickets: baselineSelecionado.baseline_tickets,
+                      tipo_banco: baselineSelecionado.tipo_banco || 'mensal',
                       data_inicio: baselineSelecionado.data_inicio,
                       data_fim: baselineSelecionado.data_fim,
                       motivo: baselineSelecionado.motivo,

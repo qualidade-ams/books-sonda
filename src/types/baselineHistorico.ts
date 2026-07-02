@@ -6,6 +6,13 @@
  */
 
 /**
+ * Tipo de alocação do banco de horas
+ * - mensal: creditado todo mês (padrão)
+ * - anual: creditado apenas no mês da data_inicio da vigência
+ */
+export type TipoBanco = 'mensal' | 'anual';
+
+/**
  * Registro de histórico de baseline
  */
 export interface BaselineHistorico {
@@ -13,6 +20,7 @@ export interface BaselineHistorico {
   empresa_id: string;
   baseline_horas: number;
   baseline_tickets: number | null;
+  tipo_banco: TipoBanco; // 'mensal' (padrão) ou 'anual'
   data_inicio: string; // ISO date string (YYYY-MM-DD)
   data_fim: string | null; // ISO date string (YYYY-MM-DD) ou null para vigência atual
   motivo: string | null;
@@ -30,6 +38,7 @@ export interface BaselineHistoricoInsert {
   empresa_id: string;
   baseline_horas: number;
   baseline_tickets?: number | null;
+  tipo_banco?: TipoBanco; // default: 'mensal'
   data_inicio: string; // ISO date string (YYYY-MM-DD)
   data_fim?: string | null; // ISO date string (YYYY-MM-DD)
   motivo?: string | null;
@@ -43,6 +52,7 @@ export interface BaselineHistoricoInsert {
 export interface BaselineHistoricoUpdate {
   baseline_horas?: number;
   baseline_tickets?: number | null;
+  tipo_banco?: TipoBanco;
   data_inicio?: string;
   data_fim?: string | null;
   motivo?: string | null;
@@ -59,6 +69,7 @@ export interface BaselineVigente {
   data_inicio: string;
   data_fim: string | null;
   motivo: string | null;
+  tipo_banco: TipoBanco;
 }
 
 /**

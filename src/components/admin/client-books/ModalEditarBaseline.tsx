@@ -44,6 +44,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 // Schema de validação
 const formSchema = z.object({
+  tipo_banco: z.enum(['mensal', 'anual']).default('mensal'),
   baseline_horas: z.string()
     .min(1, 'Baseline de horas é obrigatório')
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
@@ -79,6 +80,7 @@ export default function ModalEditarBaseline({
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      tipo_banco: baseline.tipo_banco || 'mensal',
       baseline_horas: baseline.baseline_horas.toString(),
       baseline_tickets: baseline.baseline_tickets?.toString() || '',
       data_inicio: baseline.data_inicio,
@@ -88,9 +90,12 @@ export default function ModalEditarBaseline({
     }
   });
 
+  const tipoBanco = form.watch('tipo_banco');
+
   // Atualizar valores quando baseline mudar
   useEffect(() => {
     form.reset({
+      tipo_banco: baseline.tipo_banco || 'mensal',
       baseline_horas: baseline.baseline_horas.toString(),
       baseline_tickets: baseline.baseline_tickets?.toString() || '',
       data_inicio: baseline.data_inicio,
@@ -107,6 +112,7 @@ export default function ModalEditarBaseline({
         data: {
           baseline_horas: parseFloat(data.baseline_horas),
           baseline_tickets: data.baseline_tickets ? parseInt(data.baseline_tickets) : null,
+          tipo_banco: data.tipo_banco || 'mensal',
           data_inicio: data.data_inicio,
           data_fim: data.data_fim || null,
           motivo: data.motivo,
@@ -147,6 +153,37 @@ export default function ModalEditarBaseline({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Tipo de Banco */}
+            <FormField
+              control={form.control}
+              name="tipo_banco"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Tipo de Banco *
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="focus:ring-sonda-blue focus:border-sonda-blue">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="mensal">Mensal (creditado todo mês)</SelectItem>
+                      <SelectItem value="anual">Anual (creditado apenas no mês de início)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-xs text-gray-500">
+                    {tipoBanco === 'anual'
+                      ? 'As horas serão creditadas apenas no mês da Data Início. Nos demais meses o banco contratado será 0.'
+                      : 'As horas serão creditadas todo mês dentro da vigência.'
+                    }
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Baseline de Horas */}
             <FormField
               control={form.control}
@@ -154,7 +191,7 @@ export default function ModalEditarBaseline({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium text-gray-700">
-                    Baseline de Horas Mensal *
+                    Baseline de Horas {tipoBanco === 'anual' ? 'Anual' : 'Mensal'} *
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -170,7 +207,10 @@ export default function ModalEditarBaseline({
                     />
                   </FormControl>
                   <FormDescription className="text-xs text-gray-500">
-                    Quantidade de horas contratadas por mês
+                    {tipoBanco === 'anual'
+                      ? 'Quantidade total de horas contratadas para o ano'
+                      : 'Quantidade de horas contratadas por mês'
+                    }
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

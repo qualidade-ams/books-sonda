@@ -958,25 +958,57 @@ export class BancoHorasService {
             baseline_tickets: baseline.baseline_tickets,
             data_inicio: baseline.data_inicio,
             data_fim: baseline.data_fim,
-            is_vigente: baseline.is_vigente,
-            fonte: baseline.is_vigente ? 'baseline_historico' : 'empresas_clientes (fallback)'
+            tipo_banco: baseline.tipo_banco,
+            fonte: 'baseline_historico'
           });
 
+          // ✅ LÓGICA DE TIPO BANCO (MENSAL vs ANUAL)
+          // Se tipo_banco = 'anual', o baseline só é creditado no mês da data_inicio
+          // (mesmo mês todo ano, enquanto a vigência estiver ativa)
+          // Nos demais meses, o baseline é 0 (o saldo virá exclusivamente do repasse)
+          const tipoBanco = baseline.tipo_banco || 'mensal';
+          let deveAplicarBaseline = true;
+
+          if (tipoBanco === 'anual' && mes && ano) {
+            // Extrair mês da data_inicio da vigência (o mês de crédito anual)
+            const dataInicioVigencia = new Date(baseline.data_inicio + 'T00:00:00');
+            const mesInicioVigencia = dataInicioVigencia.getMonth() + 1; // 1-12
+
+            // Baseline anual é creditado no MESMO MÊS todo ano (não apenas no ano de início)
+            deveAplicarBaseline = (mes === mesInicioVigencia);
+
+            console.log('📅 [buscarParametrosEmpresa] Tipo banco ANUAL:', {
+              mesAtual: `${mes}/${ano}`,
+              mesCreditoAnual: mesInicioVigencia,
+              deveAplicarBaseline,
+              observacao: deveAplicarBaseline 
+                ? '✅ Mês de crédito anual - baseline será aplicado' 
+                : '⏳ Mês fora do crédito anual - baseline será 0 (saldo virá do repasse)'
+            });
+          }
+
           // Converter baseline_horas de DECIMAL para formato HH:MM
-          if (baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
+          if (deveAplicarBaseline && baseline.baseline_horas !== null && baseline.baseline_horas !== undefined) {
             const horas = Math.floor(baseline.baseline_horas);
             const minutos = Math.round((baseline.baseline_horas - horas) * 60);
             baselineHorasMensal = `${horas}:${String(minutos).padStart(2, '0')}`;
+          } else if (!deveAplicarBaseline) {
+            // Tipo anual, mas não é o mês de crédito — baseline = 0
+            baselineHorasMensal = '0:00';
           }
 
-          // Usar baseline_tickets do histórico
-          if (baseline.baseline_tickets !== null && baseline.baseline_tickets !== undefined) {
+          // Usar baseline_tickets do histórico (mesma lógica)
+          if (deveAplicarBaseline && baseline.baseline_tickets !== null && baseline.baseline_tickets !== undefined) {
             baselineTicketsMensal = baseline.baseline_tickets;
+          } else if (!deveAplicarBaseline) {
+            baselineTicketsMensal = 0;
           }
 
           console.log('📊 [buscarParametrosEmpresa] Baseline convertido:', {
             baselineHorasMensal,
-            baselineTicketsMensal
+            baselineTicketsMensal,
+            tipoBanco,
+            deveAplicarBaseline
           });
         } else {
           console.warn('⚠️ [buscarParametrosEmpresa] Baseline vigente não encontrado, usando valores da tabela empresas_clientes:', {
