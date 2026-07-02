@@ -538,8 +538,25 @@ function CadastroTaxasClientes() {
     try {
       setExportando(true);
       
-      const XLSX = await import('xlsx');
+      const XLSX = await import('xlsx-js-style');
       
+      // Estilo do header (fundo azul Sonda com texto branco em negrito)
+      const headerStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { fgColor: { rgb: '2563EB' } },
+        alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+      };
+
+      // Função auxiliar para aplicar estilo de header em uma sheet
+      const aplicarEstiloHeader = (sheet: any, numColunas: number) => {
+        for (let col = 0; col < numColunas; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
+          if (sheet[cellRef]) {
+            sheet[cellRef].s = headerStyle;
+          }
+        }
+      };
+
       // Aba 1: Resumo das Taxas
       const dadosResumo = taxasOrdenadas.map(taxa => {
         const statusTaxa = obterStatusTaxa(taxa.vigencia_inicio, taxa.vigencia_fim);
@@ -643,13 +660,16 @@ function CadastroTaxasClientes() {
       const wb = XLSX.utils.book_new();
       
       const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
+      aplicarEstiloHeader(wsResumo, 8); // 8 colunas no Resumo
       XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
       
       const wsDetalhes = XLSX.utils.json_to_sheet(dadosDetalhes);
+      aplicarEstiloHeader(wsDetalhes, 13); // 13 colunas nos Detalhes
       XLSX.utils.book_append_sheet(wb, wsDetalhes, 'Detalhes das Taxas');
 
       // ✅ NOVO: Adicionar aba de Clientes Sem Taxa
       const wsClientesSemTaxa = XLSX.utils.json_to_sheet(dadosClientesSemTaxa);
+      aplicarEstiloHeader(wsClientesSemTaxa, 8); // 8 colunas em Clientes Sem Taxa
       XLSX.utils.book_append_sheet(wb, wsClientesSemTaxa, 'Clientes Sem Taxa');
 
       const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
@@ -1286,7 +1306,14 @@ function CadastroTaxasClientes() {
                       return (
                         <TableRow key={taxa.id}>
                           <TableCell className="font-medium">
-                            {taxa.cliente?.nome_abreviado || '-'}
+                            <div className="flex flex-col">
+                              <span>{taxa.cliente?.nome_abreviado || '-'}</span>
+                              {taxa.cliente?.nome_completo && taxa.cliente.nome_completo !== taxa.cliente.nome_abreviado && (
+                                <span className="text-[9px] sm:text-[10px] text-gray-500 truncate" title={taxa.cliente.nome_completo}>
+                                  {taxa.cliente.nome_completo}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge 
