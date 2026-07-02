@@ -363,6 +363,11 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                           </TooltipProvider>
                         )}
                       </div>
+                      {empresa.nome_completo && empresa.nome_completo !== empresa.nome_abreviado && (
+                        <span className="text-[9px] sm:text-[10px] text-gray-500 truncate" title={empresa.nome_completo}>
+                          {empresa.nome_completo}
+                        </span>
+                      )}
                       {empresa.link_sharepoint && (
                         <a
                           href={empresa.link_sharepoint}
@@ -532,6 +537,11 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                             </TooltipProvider>
                           )}
                         </div>
+                        {empresa.nome_completo && empresa.nome_completo !== empresa.nome_abreviado && (
+                          <span className="text-[9px] sm:text-[10px] text-gray-500 truncate" title={empresa.nome_completo}>
+                            {empresa.nome_completo}
+                          </span>
+                        )}
                         {empresa.link_sharepoint && (
                           <a
                             href={empresa.link_sharepoint}
