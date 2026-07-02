@@ -29,6 +29,15 @@ function hhmmParaMinutos(valor: string): number {
   return parseInt(match[1]) * 60 + parseInt(match[2]);
 }
 
+/** Converte "HH:MM" para fração de dia (formato numérico do Excel). Retorna null para não-hora. */
+function hhmmParaExcelTime(valor: string): number | null {
+  const match = valor.match(/^(\d+):(\d+)$/);
+  if (!match) return null;
+  const horas = parseInt(match[1]);
+  const minutos = parseInt(match[2]);
+  return (horas * 60 + minutos) / 1440; // 1440 = 24*60 minutos em um dia
+}
+
 function minutosParaHHMM(totalMinutos: number): string {
   const h = Math.floor(totalMinutos / 60);
   const m = totalMinutos % 60;
@@ -68,7 +77,14 @@ export function exportarConsumoHorasExcel(
     .reduce((acc, d) => acc + hhmmParaMinutos(d.consumo_horas), 0);
   const totalHHMM = minutosParaHHMM(totalMinutos);
 
-  const rows = dadosOrdenados.map((d, i) => [i + 1, d.empresa, d.consumo_horas]);
+  // Monta rows com valores numéricos de tempo para Excel
+  const rows = dadosOrdenados.map((d, i) => {
+    const excelTime = hhmmParaExcelTime(d.consumo_horas);
+    // Se é ticket ou não conseguiu converter, mantém como string
+    return [i + 1, d.empresa, excelTime !== null ? excelTime : d.consumo_horas];
+  });
+
+  const totalExcelTime = totalMinutos / 1440; // Converte total para fração de dia
 
   const sheetData: any[][] = [
     [`RELATÓRIO DE CONSUMO DE HORAS — ${periodo.toUpperCase()}`],
@@ -77,7 +93,7 @@ export function exportarConsumoHorasExcel(
     headers,
     ...rows,
     [],
-    ['', 'TOTAL HORAS (banco_horas)', totalHHMM],
+    ['', 'TOTAL HORAS (banco_horas)', totalExcelTime],
   ];
 
   const sheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -96,9 +112,16 @@ export function exportarConsumoHorasExcel(
 
   // Estilo em linhas de dados
   dadosOrdenados.forEach((d, rowIdx) => {
+    const ref = XLSX.utils.encode_cell({ r: 4 + rowIdx, c: 2 });
     if (d.tipo_cobranca === 'ticket') {
-      const ref = XLSX.utils.encode_cell({ r: 4 + rowIdx, c: 2 });
       if (sheet[ref]) sheet[ref].s = ticketStyle;
+    } else {
+      // Aplicar formato de hora [h]:mm para que o Excel reconheça como tempo
+      if (sheet[ref]) {
+        sheet[ref].t = 'n'; // tipo numérico
+        sheet[ref].z = '[h]:mm'; // formato de hora que aceita >24h
+        sheet[ref].s = { alignment: { horizontal: 'center' } };
+      }
     }
   });
 
@@ -106,7 +129,14 @@ export function exportarConsumoHorasExcel(
   const totalRow = 4 + rows.length + 1;
   [0, 1, 2].forEach(col => {
     const ref = XLSX.utils.encode_cell({ r: totalRow, c: col });
-    if (sheet[ref]) sheet[ref].s = totalStyle;
+    if (sheet[ref]) {
+      sheet[ref].s = totalStyle;
+      // Aplicar formato de hora na coluna de consumo do total
+      if (col === 2) {
+        sheet[ref].t = 'n';
+        sheet[ref].z = '[h]:mm';
+      }
+    }
   });
 
   sheet['!cols'] = [{ width: 5 }, { width: 38 }, { width: 20 }];

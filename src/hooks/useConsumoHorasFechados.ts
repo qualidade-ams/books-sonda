@@ -38,7 +38,7 @@ const CODIGOS_RESOLUCAO_VALIDOS = [
   'Erro de classificação na abertura', 'Erro de classificação na abertura (Banco=S |SLA=N)', 'Erro de classificação na abertura (Banco=S| SLA=N)',
   'Erro de programa especifico (SEM SLA)', 'Erro de programa especifico (Banco=S |SLA=N)', 'Erro de programa especifico (Banco=S| SLA=N)',
   'Levantamento de Versão / Orçamento', 'Levantamento de Versão / Orçamento (Banco=S |SLA=N)', 'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
-  'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=S)',
+  'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=S)', 'Monitoramento DBA (Banco=S |SLA=N)',
   'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
   'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
   'Parametrização / Funcionalidade', 'Parametrização / Funcionalidade (Banco=S |SLA=S)', 'Parametrização / Funcionalidade (Banco=S |SLA=N)',
