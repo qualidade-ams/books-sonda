@@ -474,6 +474,71 @@ export async function sincronizarDados(
       mensagensCombinadas.push('--- Tickets ---');
       mensagensCombinadas.push(...(resultadoTickets?.mensagens || ['Erro na sincronização de tickets']));
     }
+
+    // 7. Validação final: comparar SQL Server vs Supabase
+    console.log('🔍 Executando validação SQL Server vs Supabase...');
+    onLog?.('🔍 Executando validação SQL Server vs Supabase...');
+    
+    let validacao: any = null;
+    try {
+      const responseValidacao = await safeFetch(`${API_URL}/api/validate-sync`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (responseValidacao.ok) {
+        validacao = await responseValidacao.json();
+        
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        mensagensCombinadas.push('📊 VALIDAÇÃO: SQL Server vs Supabase');
+        mensagensCombinadas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        const tabelas = validacao.tabelas || {};
+        
+        // Formato compacto: "Tabela | SQL | Supa | Dif | Status"
+        if (tabelas.pesquisas) {
+          const p = tabelas.pesquisas;
+          const status = p.diferenca === 0 ? '✅ OK' : p.diferenca > 0 ? '⚠️ FALTA' : '🔄 EXTRA';
+          mensagensCombinadas.push(`Pesquisas | ${p.sql_server} | ${p.supabase} | ${p.diferenca > 0 ? '+' : ''}${p.diferenca} | ${status}`);
+        }
+        
+        if (tabelas.especialistas) {
+          const e = tabelas.especialistas;
+          const sqlTotal = e.sql_server_total ?? e.sql_server ?? 0;
+          const status = e.diferenca === 0 ? '✅ OK' : e.diferenca > 0 ? '⚠️ FALTA' : '🔄 EXTRA';
+          mensagensCombinadas.push(`Especialistas | ${sqlTotal} | ${e.supabase} | ${e.diferenca > 0 ? '+' : ''}${e.diferenca} | ${status}`);
+        }
+        
+        if (tabelas.apontamentos) {
+          const a = tabelas.apontamentos;
+          const status = a.diferenca === 0 ? '✅ OK' : a.diferenca > 0 ? '⚠️ FALTA' : '🔄 EXTRA';
+          mensagensCombinadas.push(`Apontamentos | ${a.sql_server} | ${a.supabase} | ${a.diferenca > 0 ? '+' : ''}${a.diferenca} | ${status}`);
+        }
+        
+        if (tabelas.tickets) {
+          const t = tabelas.tickets;
+          const status = t.diferenca === 0 ? '✅ OK' : t.diferenca > 0 ? '⚠️ FALTA' : '🔄 EXTRA';
+          mensagensCombinadas.push(`Tickets | ${t.sql_server} | ${t.supabase} | ${t.diferenca > 0 ? '+' : ''}${t.diferenca} | ${status}`);
+        }
+        
+        // Resumo
+        const resumo = validacao.resumo || {};
+        mensagensCombinadas.push(`📋 ${resumo.tabelas_ok || 0} OK, ${resumo.tabelas_com_diferenca || 0} com diferença, ${resumo.tabelas_com_erro || 0} erro`);
+
+        onLog?.('✅ Validação concluída');
+      } else {
+        console.warn('⚠️ Não foi possível executar validação (API retornou erro)');
+        onLog?.('⚠️ Validação não disponível');
+        mensagensCombinadas.push('');
+        mensagensCombinadas.push('⚠️ Validação não disponível (API offline)');
+      }
+    } catch (erroValidacao) {
+      console.warn('⚠️ Erro ao executar validação:', erroValidacao);
+      onLog?.('⚠️ Erro na validação');
+      mensagensCombinadas.push('');
+      mensagensCombinadas.push('⚠️ Validação não disponível (erro de conexão)');
+    }
     
     const resultadoCombinado = {
       ...resultadoPesquisas,
@@ -481,6 +546,7 @@ export async function sincronizarDados(
       apontamentos: resultadoApontamentos,
       tickets: resultadoTickets,
       totais_reais_banco: totaisReaisBancoApos,
+      validacao,
       mensagens: mensagensCombinadas
     };
 

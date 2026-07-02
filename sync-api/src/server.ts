@@ -648,7 +648,11 @@ app.get('/api/validate-sync', async (req, res) => {
     try {
       console.log('📊 [VALIDATE] Validando tickets...');
       
-      const resultSqlTickets = await pool.request().query('SELECT COUNT(*) as total FROM AMSticketsabertos');
+      const resultSqlTickets = await pool.request().query(`
+        SELECT COUNT(*) as total FROM AMSticketsabertos
+        WHERE Data_Ultima_Modificacao IS NOT NULL
+          AND (Nome_grupo NOT LIKE 'AMS SAP%' OR Nome_grupo IS NULL)
+      `);
       const totalSqlTickets = resultSqlTickets.recordset[0].total;
 
       const { count: totalSupabaseTickets, error: errTickets } = await supabase
