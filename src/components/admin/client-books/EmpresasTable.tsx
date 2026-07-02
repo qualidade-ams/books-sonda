@@ -566,7 +566,7 @@ const EmpresasTable: React.FC<EmpresasTableProps> = ({
                     </TableCell>
                     <TableCell className="text-center">
                       <span className="text-sm">
-                        {formatVigenciaMesAno(empresa.inicio_vigencia_banco_horas)}
+                        {formatVigenciaMesAno(empresa.inicio_vigencia)}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
