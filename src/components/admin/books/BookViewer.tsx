@@ -33,6 +33,7 @@ import BookConsumo from './BookConsumo';
 import BookPesquisa from './BookPesquisa';
 import BookOrganograma from './BookOrganograma';
 import BookOrganogramaComercialCS from './BookOrganogramaComercialCS';
+import BookPortfolio from './BookPortfolio';
 
 interface BookViewerProps {
   book: BookListItem | null;
@@ -417,6 +418,12 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
               >
                 {t('books.tabs.pesquisa')}
               </TabsTrigger>
+              <TabsTrigger
+                value="portfolio"
+                className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium"
+              >
+                {t('books.tabs.portfolio')}
+              </TabsTrigger>
             </TabsList>
 
             {/* Container com scroll e escala automática para caber na tela */}
@@ -470,6 +477,12 @@ export default function BookViewer({ book, open, onOpenChange, bookDataOverride 
                 <TabsContent value="pesquisa" className="mt-0 h-full">
                   <BookPesquisa 
                     data={bookData.pesquisa}
+                    empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+                  />
+                </TabsContent>
+
+                <TabsContent value="portfolio" className="mt-0 h-full">
+                  <BookPortfolio 
                     empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
                   />
                 </TabsContent>

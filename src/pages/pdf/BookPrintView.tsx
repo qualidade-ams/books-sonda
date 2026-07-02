@@ -25,6 +25,7 @@ import BookSLA from '@/components/admin/books/BookSLA';
 import BookBacklog from '@/components/admin/books/BookBacklog';
 import BookConsumo from '@/components/admin/books/BookConsumo';
 import BookPesquisa from '@/components/admin/books/BookPesquisa';
+import BookPortfolio from '@/components/admin/books/BookPortfolio';
 import BookOrganograma from '@/components/admin/books/BookOrganograma';
 import BookOrganogramaComercialCS from '@/components/admin/books/BookOrganogramaComercialCS';
 
@@ -249,6 +250,13 @@ export default function BookPrintView() {
       <div className="page-section page-break" data-section="pesquisa">
         <BookPesquisa 
           data={bookData.pesquisa}
+          empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
+        />
+      </div>
+
+      {/* Portfólio */}
+      <div className="page-section page-break" data-section="portfolio">
+        <BookPortfolio 
           empresaNome={bookData.capa.empresa_nome_abreviado || bookData.empresa_nome}
         />
       </div>

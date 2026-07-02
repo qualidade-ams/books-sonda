@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { supabase } from '@/integrations/supabase/client';
 import type { PessoaComSubordinados, Cargo, Produto } from '@/types/organograma';
+import BookFooterBar from './BookFooterBar';
 
 interface BookOrganogramaProps {
   empresaId: string;
@@ -482,8 +483,8 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
   };
 
   return (
-    <div key={`org-container-${produto}`} className="w-full h-full bg-white p-8" data-organograma={produto}>
-      <div className="space-y-6">
+    <div key={`org-container-${produto}`} className="w-full h-full bg-white p-8 flex flex-col relative" data-organograma={produto}>
+      <div className="space-y-6 flex-1">
         {/* Título da Seção */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
@@ -508,6 +509,7 @@ export default function BookOrganograma({ empresaId, produto, empresaNome }: Boo
           />
         </div>
       </div>
+      <BookFooterBar />
     </div>
   );
 }

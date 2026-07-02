@@ -612,6 +612,7 @@ const es = {
       backlog: 'Backlog',
       consumo: 'Consumo',
       pesquisa: 'Encuesta',
+      portfolio: 'Portafolio',
       organograma: 'Organigrama',
       organogramaComercial: 'Organigrama Comercial/CS/T&M',
     },

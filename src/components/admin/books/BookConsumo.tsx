@@ -20,6 +20,7 @@ import {
 import type { BookConsumoData, RequerimentoDescontadoData } from '@/types/books';
 import { useTaxasEspecificasCliente, type TaxasEspecificasCliente } from '@/hooks/useTaxasEspecificasCliente';
 import { useTranslation } from 'react-i18next';
+import BookFooterBar from './BookFooterBar';
 
 interface BookConsumoProps {
   data: BookConsumoData;
@@ -820,8 +821,8 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
   const variacaoConsumo = calcularVariacaoMesAnterior();
 
   return (
-    <div className="w-full h-full bg-white p-8">
-      <div className="space-y-6">{/* Título da Seção */}
+    <div className="w-full h-full bg-white p-8 flex flex-col relative">
+      <div className="space-y-6 flex-1">{/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
           {t('books.bookContent.consumptionTitle')} {empresaNome ? <span className="text-blue-600">{empresaNome}</span> : 'RAINBOW'}
@@ -1516,6 +1517,7 @@ export default function BookConsumo({ data, empresaNome, empresaId, mes, ano, on
         </DialogContent>
       </Dialog>
       </div>
+      <BookFooterBar />
     </div>
   );
 }

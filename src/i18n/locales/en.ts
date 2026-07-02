@@ -612,6 +612,7 @@ const en = {
       backlog: 'Backlog',
       consumo: 'Consumption',
       pesquisa: 'Survey',
+      portfolio: 'Portfolio',
       organograma: 'Org Chart',
       organogramaComercial: 'Commercial/CS/T&M Org Chart',
     },

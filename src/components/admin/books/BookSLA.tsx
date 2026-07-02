@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import type { BookSLAData } from '@/types/books';
 import { useTranslation } from 'react-i18next';
+import BookFooterBar from './BookFooterBar';
 
 interface BookSLAProps {
   data: BookSLAData;
@@ -57,8 +58,8 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
   });
   
   return (
-    <div className="w-full h-full bg-white p-8">
-      <div className="space-y-5">
+    <div className="w-full h-full bg-white p-8 flex flex-col relative">
+      <div className="space-y-5 flex-1">
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
@@ -323,6 +324,7 @@ export default function BookSLA({ data, empresaNome }: BookSLAProps) {
       </Card>
       </div>
       </div>
+      <BookFooterBar />
     </div>
   );
 }
