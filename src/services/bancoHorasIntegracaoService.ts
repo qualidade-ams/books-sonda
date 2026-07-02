@@ -346,7 +346,7 @@ export class BancoHorasIntegracaoService {
         'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
         'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
         'Monitoramento DBA',
-        'Monitoramento DBA (Banco=S |SLA=S)',
+        'Monitoramento DBA (Banco=S |SLA=N)',
         'Nota Publicada',
         'Nota Publicada (Banco=S |SLA=N)',
         'Nota Publicada (Banco=S| SLA=N)',
@@ -399,19 +399,22 @@ export class BancoHorasIntegracaoService {
         );
       }
       
-      // Construir query com filtro pelo nome completo
+      // Construir query com filtro pelo nome completo (match exato case-insensitive)
+      // IMPORTANTE: usar ilike SEM wildcards (%) para evitar capturar org_us_final de
+      // outras organizações que contenham o nome da empresa como substring
+      // Ex: "BRFONSDAGUIRRE-Sonda Procwork" não deve ser capturado para "SONDA PROCWORK INFORMATICA LTDA"
       const query = supabase
         .from('apontamentos_aranda' as any)
         .select('tempo_gasto_horas, tempo_gasto_minutos, cod_resolucao, org_us_final, item_configuracao, tipo_chamado, data_atividade, data_sistema, id_externo, nro_chamado')
         .eq('ativi_interna', 'Não')
         .neq('item_configuracao', '000000 - PROJETOS APL')
-        .in('tipo_chamado', ['IM', 'RF', 'PM']) // Incluir IM (Incidente), RF (Requisição) e PM (Problema)
-        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+        .in('tipo_chamado', ['IM', 'RF', 'PM'])
+        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
-        .ilike('org_us_final', `%${nomeCompleto}%`) // Buscar APENAS pelo nome completo
-        .limit(10000); // Limite de segurança para evitar timeout
+        .ilike('org_us_final', nomeCompleto) // match exato case-insensitive (sem %)
+        .limit(10000);
       
       console.log('🔍 [DEBUG] Filtro aplicado:', {
         nomeCompleto,
@@ -458,15 +461,18 @@ export class BancoHorasIntegracaoService {
           if (diaInicioApuracao === 1 && apontamento.data_atividade && apontamento.data_sistema) {
             const dataAtividade = new Date(apontamento.data_atividade);
             const dataSistema = new Date(apontamento.data_sistema);
-            
-            // Comparar mês e ano
-            if (
-              dataAtividade.getMonth() !== dataSistema.getMonth() ||
-              dataAtividade.getFullYear() !== dataSistema.getFullYear()
-            ) {
+
+            // Calcular "mês-índice" (ano * 12 + mês) para comparação ordinal
+            const mesAtividade = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
+            const mesSistema   = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
+
+            // Descartar APENAS quando data_sistema é POSTERIOR à data_atividade
+            // (apontamento lançado depois do mês em que ocorreu — retroativo)
+            // Manter quando data_sistema é anterior ou igual ao mês da atividade
+            if (mesSistema > mesAtividade) {
               mesmoMes = false;
               apontamentosExcluidos++;
-              console.log('⚠️ Apontamento excluído (mês diferente):', {
+              console.log('⚠️ Apontamento excluído (data_sistema posterior à data_atividade):', {
                 data_atividade: apontamento.data_atividade,
                 data_sistema: apontamento.data_sistema,
                 nro_chamado: apontamento.nro_chamado || 'N/A'

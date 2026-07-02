@@ -52,6 +52,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 import {
   useAjustesRetroativos,
@@ -115,8 +121,8 @@ export default function AjustesRetroativos() {
     const executarDeteccaoAutomatica = async () => {
       try {
         setIsDetectando(true);
-        console.log('🔍 Executando detecção automática de extemporâneos...');
-        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoParaTodosFechamentos();
+        console.log('🔍 Executando detecção automática (últimos 3 meses)...');
+        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(3);
         console.log('✅ Detecção automática concluída:', ajustes.length, 'ajustes');
         if (ajustes.length > 0) {
           // Forçar refetch dos dados da tela
@@ -204,6 +210,50 @@ export default function AjustesRetroativos() {
     }
   };
 
+  // Extrair números de chamados e tarefas do detalhes_mudanca
+  const extrairChamadosTarefas = (ajuste: AjusteRetroativo) => {
+    const detalhes = ajuste.detalhes_mudanca;
+    if (!detalhes) return { chamados: [], tarefas: [] };
+
+    const chamados = new Set<string>();
+    const tarefas = new Set<string>();
+
+    const processarItens = (itens: any[]) => {
+      for (const item of itens) {
+        // nro_chamado disponível diretamente
+        if (item.nro_chamado) {
+          chamados.add(item.nro_chamado);
+        }
+        // nro_solicitacao para tickets
+        if (item.nro_solicitacao) {
+          tarefas.add(item.nro_solicitacao);
+        }
+        // Extrair tarefa do id_externo (formato: AMSapontamento|{chamado}|{tarefa})
+        if (item.id_externo) {
+          const partes = item.id_externo.split('|');
+          if (partes.length >= 3) {
+            tarefas.add(partes[2]);
+          }
+          if (partes.length >= 2 && !item.nro_chamado) {
+            chamados.add(partes[1]);
+          }
+        }
+      }
+    };
+
+    if (detalhes.novos && Array.isArray(detalhes.novos)) {
+      processarItens(detalhes.novos);
+    }
+    if (detalhes.removidos && Array.isArray(detalhes.removidos)) {
+      processarItens(detalhes.removidos);
+    }
+
+    return {
+      chamados: Array.from(chamados),
+      tarefas: Array.from(tarefas)
+    };
+  };
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -272,7 +322,7 @@ export default function AjustesRetroativos() {
           </div>
 
           {/* Tabela Principal */}
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -351,7 +401,7 @@ export default function AjustesRetroativos() {
               )}
             </CardHeader>
 
-            <CardContent className="overflow-x-auto">
+            <CardContent className="space-y-4 overflow-x-auto">
               {(isLoading || isDetectando) ? (
                 <div className="space-y-3">
                   {isDetectando && (
@@ -383,6 +433,8 @@ export default function AjustesRetroativos() {
                       <TableHead className="font-semibold text-gray-700">{t('ajustesRetroativos.company')}</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.refPeriod')}</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.type')}</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Chamado(s)</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Tarefa(s)</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.previousValue')}</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.newValue')}</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.difference')}</TableHead>
@@ -392,7 +444,9 @@ export default function AjustesRetroativos() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ajustes.map((ajuste) => (
+                    {ajustes.map((ajuste) => {
+                      const { chamados, tarefas } = extrairChamadosTarefas(ajuste);
+                      return (
                       <TableRow key={ajuste.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -411,6 +465,72 @@ export default function AjustesRetroativos() {
                           <Badge className="bg-blue-100 text-blue-800 text-xs">
                             {getTipoDadoLabel(ajuste.tipo_dado)}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {chamados.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {chamados.slice(0, 3).map((chamado, idx) => (
+                                <span key={idx} className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                                  {chamado}
+                                </span>
+                              ))}
+                              {chamados.length > 3 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-xs font-mono font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-100">
+                                        +{chamados.length - 3}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                      <div className="flex flex-wrap gap-1 p-1">
+                                        {chamados.slice(3).map((chamado, idx) => (
+                                          <span key={idx} className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                                            {chamado}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {tarefas.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {tarefas.slice(0, 3).map((tarefa, idx) => (
+                                <span key={idx} className="text-xs font-mono bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                                  {tarefa}
+                                </span>
+                              ))}
+                              {tarefas.length > 3 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-xs font-mono font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-100">
+                                        +{tarefas.length - 3}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                      <div className="flex flex-wrap gap-1 p-1">
+                                        {tarefas.slice(3).map((tarefa, idx) => (
+                                          <span key={idx} className="text-xs font-mono bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                                            {tarefa}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center font-mono text-sm">
                           {ajuste.valor_anterior || '-'}
@@ -462,7 +582,8 @@ export default function AjustesRetroativos() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

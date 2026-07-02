@@ -25,7 +25,11 @@ import {
   Users,
   Lock,
   History,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3,
+  ChevronDown,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/LayoutAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +63,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useBooksProcessing } from '@/contexts/BooksProcessingContext';
+import { useConsumoHorasFechados } from '@/hooks/useConsumoHorasFechados';
+import { exportarConsumoHorasExcel, exportarConsumoHorasPDF } from '@/utils/consumoHorasExportUtils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /**
  * Remove acentos e caracteres especiais de uma string para uso em nomes de arquivo/storage.
@@ -148,6 +155,10 @@ export default function GeracaoBooks() {
   });
 
   const { stats } = useBooksStats({ mes: mesReferencia, ano: anoReferencia });
+
+  // Hook de consumo de horas — período de referência com fechamento
+  const { data: consumoHoras = [], isLoading: isLoadingConsumo } = useConsumoHorasFechados(mesReferencia, anoReferencia);
+  const [exportandoConsumo, setExportandoConsumo] = useState(false);
 
   // Refetch automático a cada 5s enquanto há processamento em andamento
   useEffect(() => {
@@ -536,6 +547,37 @@ export default function GeracaoBooks() {
     }
   };
 
+  // Handlers de exportação do relatório de consumo
+  const handleExportarConsumoExcel = async () => {
+    if (!consumoHoras.length) {
+      toast({ title: 'Sem dados', description: 'Não há empresas com período fechado para exportar.', variant: 'destructive' });
+      return;
+    }
+    setExportandoConsumo(true);
+    try {
+      exportarConsumoHorasExcel(consumoHoras, mesReferencia, anoReferencia);
+    } catch {
+      toast({ title: 'Erro ao exportar', description: 'Não foi possível gerar o Excel.', variant: 'destructive' });
+    } finally {
+      setExportandoConsumo(false);
+    }
+  };
+
+  const handleExportarConsumoPDF = async () => {
+    if (!consumoHoras.length) {
+      toast({ title: 'Sem dados', description: 'Não há empresas com período fechado para exportar.', variant: 'destructive' });
+      return;
+    }
+    setExportandoConsumo(true);
+    try {
+      exportarConsumoHorasPDF(consumoHoras, mesReferencia, anoReferencia);
+    } catch {
+      toast({ title: 'Erro ao exportar', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    } finally {
+      setExportandoConsumo(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-bg-secondary">
@@ -550,15 +592,48 @@ export default function GeracaoBooks() {
                 {t('books.subtitle')}
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
-              onClick={() => navigate('/admin/organograma')}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              {t('books.organogram')}
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Botão Relatório de Consumo de Horas */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isLoadingConsumo || exportandoConsumo}
+                    className="flex items-center gap-2 data-[state=open]:bg-transparent data-[state=open]:border-input data-[state=open]:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  >
+                    {isLoadingConsumo || exportandoConsumo ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {isLoadingConsumo ? 'Exportando...' : 'Exportar'}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportarConsumoExcel} className="cursor-pointer">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exportar para Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportarConsumoPDF} className="cursor-pointer">
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Exportar para PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Botão Organograma */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-sonda-blue text-sonda-blue hover:bg-sonda-light-blue/10"
+                onClick={() => navigate('/admin/organograma')}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                {t('books.organogram')}
+              </Button>
+            </div>
           </div>
 
           {/* Cards de Estatísticas */}

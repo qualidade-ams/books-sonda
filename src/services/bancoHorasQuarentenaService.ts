@@ -730,6 +730,8 @@ export class BancoHorasQuarentenaService {
     let query = db
       .from('banco_horas_ajustes_retroativos')
       .select('*')
+      .order('ano_referencia', { ascending: false })
+      .order('mes_referencia', { ascending: false })
       .order('created_at', { ascending: false });
 
     if (filtros?.empresaId) {
@@ -957,7 +959,7 @@ export class BancoHorasQuarentenaService {
         'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
         'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
         'Monitoramento DBA',
-        'Monitoramento DBA (Banco=S |SLA=S)',
+        'Monitoramento DBA (Banco=S |SLA=N)',
         'Nota Publicada',
         'Nota Publicada (Banco=S |SLA=N)',
         'Nota Publicada (Banco=S| SLA=N)',
@@ -977,26 +979,23 @@ export class BancoHorasQuarentenaService {
         .eq('ativi_interna', 'Não')
         .neq('item_configuracao', '000000 - PROJETOS APL')
         .in('tipo_chamado', ['IM', 'RF', 'PM'])
-        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
         .gte('data_atividade', dataInicio.toISOString())
         .lte('data_atividade', dataFim.toISOString())
         .in('cod_resolucao', codigosResolucaoValidos)
         .ilike('org_us_final', `%${empresa.nome_completo}%`)
-        .limit(10000);
 
-      if (!apontamentos) return [];
-
-      // Aplicar mesma regra de data_atividade == data_sistema (mesmo mês)
-      // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar esta regra
-      // pois o período naturalmente cruza dois meses
+      // Regra: descartar apenas quando data_sistema é POSTERIOR ao mês da data_atividade
+      // EXCEÇÃO: Para período customizado (diaInicioApuracao > 1), não aplicar
       return apontamentos
         .filter((a: any) => {
-          if (diaInicioApuracao > 1) return true; // Pular validação para período customizado
+          if (diaInicioApuracao > 1) return true;
           if (!a.data_atividade || !a.data_sistema) return true;
           const dAtiv = new Date(a.data_atividade);
           const dSist = new Date(a.data_sistema);
-          return dAtiv.getMonth() === dSist.getMonth() &&
-                 dAtiv.getFullYear() === dSist.getFullYear();
+          const mesAtiv = dAtiv.getFullYear() * 12 + dAtiv.getMonth();
+          const mesSist = dSist.getFullYear() * 12 + dSist.getMonth();
+          return mesSist <= mesAtiv; // descarta somente se sistema é posterior à atividade
         })
         .map((a: any) => a.id_externo)
         .filter(Boolean);
@@ -1066,22 +1065,39 @@ export class BancoHorasQuarentenaService {
    * Executa detecção automática para TODOS os períodos fechados.
    * Chamado automaticamente ao abrir a tela de Ajustes Retroativos.
    */
-  async executarDeteccaoParaTodosFechamentos(): Promise<AjusteRetroativo[]> {
+  /**
+   * Executa detecção automática apenas para os últimos N meses (padrão: 3).
+   * Muito mais rápido que verificar todos os fechamentos.
+   * Para varredura completa, usar a Edge Function `detectar-extemporaneos`.
+   */
+  async executarDeteccaoRecente(mesesAtras: number = 3): Promise<AjusteRetroativo[]> {
     try {
-      console.log('🔍 Executando detecção para todos os fechamentos...');
+      console.log(`🔍 Executando detecção para os últimos ${mesesAtras} meses...`);
 
-      // Buscar todos os fechamentos existentes
+      // Calcular o período mínimo a verificar
+      const hoje = new Date();
+      const periodos: { mes: number; ano: number }[] = [];
+      for (let i = 0; i < mesesAtras; i++) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        periodos.push({ mes: d.getMonth() + 1, ano: d.getFullYear() });
+      }
+
+      // Buscar fechamentos apenas dos últimos N meses usando filtro OR
+      const orFilter = periodos
+        .map(p => `and(mes.eq.${p.mes},ano.eq.${p.ano})`)
+        .join(',');
+
       const { data: fechamentos, error } = await db
         .from('banco_horas_fechamentos')
         .select('empresa_id, mes, ano')
-        .order('created_at', { ascending: false });
+        .or(orFilter);
 
       if (error || !fechamentos || fechamentos.length === 0) {
-        console.log('ℹ️ Nenhum fechamento encontrado');
+        console.log('ℹ️ Nenhum fechamento recente encontrado');
         return [];
       }
 
-      console.log(`📋 ${fechamentos.length} fechamento(s) encontrado(s)`);
+      console.log(`📋 ${fechamentos.length} fechamento(s) recente(s) encontrado(s) (últimos ${mesesAtras} meses)`);
 
       const todosAjustes: AjusteRetroativo[] = [];
 
@@ -1098,12 +1114,21 @@ export class BancoHorasQuarentenaService {
         }
       }
 
-      console.log(`✅ Detecção global concluída: ${todosAjustes.length} ajuste(s) criado(s)/atualizado(s)`);
+      console.log(`✅ Detecção recente concluída: ${todosAjustes.length} ajuste(s) criado(s)/atualizado(s)`);
       return todosAjustes;
     } catch (error) {
-      console.error('❌ Erro na detecção global:', error);
+      console.error('❌ Erro na detecção recente:', error);
       return [];
     }
+  }
+
+  /**
+   * @deprecated Use executarDeteccaoRecente() para melhor performance.
+   * Para varredura completa, use a Edge Function `detectar-extemporaneos`.
+   */
+  async executarDeteccaoParaTodosFechamentos(): Promise<AjusteRetroativo[]> {
+    // Agora apenas delega para detecção recente (3 meses)
+    return this.executarDeteccaoRecente(3);
   }
 }
 
