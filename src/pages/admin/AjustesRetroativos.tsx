@@ -121,8 +121,8 @@ export default function AjustesRetroativos() {
     const executarDeteccaoAutomatica = async () => {
       try {
         setIsDetectando(true);
-        console.log('🔍 Executando detecção automática (últimos 3 meses)...');
-        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(3);
+        console.log('🔍 Executando detecção automática (último mês)...');
+        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(1);
         console.log('✅ Detecção automática concluída:', ajustes.length, 'ajustes');
         if (ajustes.length > 0) {
           // Forçar refetch dos dados da tela
@@ -427,46 +427,46 @@ export default function AjustesRetroativos() {
                   </div>
                 </div>
               ) : (
-                <Table>
+                <Table className="w-full text-xs sm:text-sm min-w-[1200px]">
                   <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold text-gray-700">{t('ajustesRetroativos.company')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.refPeriod')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.type')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Chamado(s)</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Tarefa(s)</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.previousValue')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.newValue')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.difference')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('common.status')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center">{t('ajustesRetroativos.date')}</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-32">{t('common.actions')}</TableHead>
+                    <TableRow>
+                      <TableHead className="min-w-[120px] text-xs sm:text-sm py-2">{t('ajustesRetroativos.company')}</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.refPeriod')}</TableHead>
+                      <TableHead className="min-w-[100px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.type')}</TableHead>
+                      <TableHead className="min-w-[120px] text-xs sm:text-sm py-2">Chamado(s)</TableHead>
+                      <TableHead className="min-w-[120px] text-xs sm:text-sm py-2">Tarefa(s)</TableHead>
+                      <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.previousValue')}</TableHead>
+                      <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.newValue')}</TableHead>
+                      <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.difference')}</TableHead>
+                      <TableHead className="min-w-[80px] text-center text-xs sm:text-sm py-2">{t('common.status')}</TableHead>
+                      <TableHead className="min-w-[90px] text-center text-xs sm:text-sm py-2">{t('ajustesRetroativos.date')}</TableHead>
+                      <TableHead className="w-24 text-xs sm:text-sm py-2">{t('common.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ajustes.map((ajuste) => {
                       const { chamados, tarefas } = extrairChamadosTarefas(ajuste);
                       return (
-                      <TableRow key={ajuste.id} className="hover:bg-gray-50">
-                        <TableCell>
+                      <TableRow key={ajuste.id}>
+                        <TableCell className="py-2">
                           <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">
+                            <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span className="font-medium text-xs sm:text-sm truncate">
                               {empresasMap.get(ajuste.empresa_id) || 'N/A'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-sm">
+                        <TableCell className="text-center py-2">
+                          <span className="text-xs sm:text-sm">
                             {getMonthName(ajuste.mes_referencia - 1)}/{ajuste.ano_referencia}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Badge className="bg-blue-100 text-blue-800 text-xs">
                             {getTipoDadoLabel(ajuste.tipo_dado)}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           {chamados.length > 0 ? (
                             <div className="flex flex-wrap gap-1 items-center">
                               {chamados.slice(0, 3).map((chamado, idx) => (
@@ -499,7 +499,7 @@ export default function AjustesRetroativos() {
                             <span className="text-xs text-gray-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           {tarefas.length > 0 ? (
                             <div className="flex flex-wrap gap-1 items-center">
                               {tarefas.slice(0, 3).map((tarefa, idx) => (
@@ -532,28 +532,28 @@ export default function AjustesRetroativos() {
                             <span className="text-xs text-gray-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-center font-mono text-sm">
+                        <TableCell className="text-center py-2 font-mono text-xs sm:text-sm">
                           {ajuste.valor_anterior || '-'}
                         </TableCell>
-                        <TableCell className="text-center font-mono text-sm">
+                        <TableCell className="text-center py-2 font-mono text-xs sm:text-sm">
                           {ajuste.valor_novo || '-'}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <span className={`font-mono font-semibold ${
+                        <TableCell className="text-center py-2">
+                          <span className={`font-mono font-semibold text-xs sm:text-sm ${
                             ajuste.diferenca?.startsWith('+') ? 'text-red-600' : 'text-green-600'
                           }`}>
                             {ajuste.diferenca || '-'}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           {getStatusBadge(ajuste.status)}
                         </TableCell>
-                        <TableCell className="text-center text-sm">
+                        <TableCell className="text-center py-2 text-xs sm:text-sm">
                           {new Date(ajuste.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="py-2">
                           {ajuste.status === 'pendente' && (
-                            <div className="flex justify-center gap-1">
+                            <div className="flex gap-1">
                               <Button
                                 variant="outline"
                                 size="sm"
