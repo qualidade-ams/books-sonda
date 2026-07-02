@@ -301,63 +301,39 @@ export class BancoHorasQuarentenaService {
         return null;
       }
 
-      // Buscar IDs atuais dos apontamentos para este período
-      const idsAtuais = await this.buscarIdsApontamentos(empresaId, mes, ano);
+      // Buscar apontamentos extemporâneos: data_atividade no período fechado,
+      // mas data_sistema em mês POSTERIOR ao da data_atividade.
+      // Ou seja: foram lançados atrasados (depois do fechamento).
+      const idsExtemporaneos = await this.buscarIdsApontamentosExtemporaneos(empresaId, mes, ano);
       const idsSnapshot = fechamento.apontamentos_ids || [];
 
-      // Detectar novos apontamentos (estão nos atuais mas não no snapshot)
-      const novosIds = idsAtuais.filter(id => !idsSnapshot.includes(id));
-      // Detectar removidos (estão no snapshot mas não nos atuais)
-      const removidosIds = idsSnapshot.filter(id => !idsAtuais.includes(id));
+      // Filtrar apenas os extemporâneos que NÃO estão no snapshot (novos desde o fechamento)
+      const novosIds = idsExtemporaneos.filter(id => !idsSnapshot.includes(id));
 
-      if (novosIds.length === 0 && removidosIds.length === 0) {
-        console.log('✅ Nenhuma diferença detectada para horas');
+      if (novosIds.length === 0) {
+        console.log('✅ Nenhum extemporâneo novo detectado para horas');
         return null;
       }
 
-      console.log('⚠️ Diferenças detectadas:', {
-        novos: novosIds.length,
-        removidos: removidosIds.length
-      });
+      console.log('⚠️ Extemporâneos detectados:', { novos: novosIds.length });
 
-      // Buscar detalhes dos novos apontamentos
+      // Buscar detalhes dos novos apontamentos extemporâneos
       let novosApontamentos: any[] = [];
       if (novosIds.length > 0) {
         const { data } = await db
           .from('apontamentos_aranda')
-          .select('id_externo, nro_chamado, data_atividade, tempo_gasto_minutos, synced_at')
+          .select('id_externo, nro_chamado, data_atividade, data_sistema, tempo_gasto_minutos, synced_at')
           .in('id_externo', novosIds);
         novosApontamentos = data || [];
       }
 
-      // Buscar detalhes dos removidos
-      let apontamentosRemovidos: any[] = [];
-      if (removidosIds.length > 0) {
-        const { data } = await db
-          .from('apontamentos_aranda')
-          .select('id_externo, nro_chamado')
-          .in('id_externo', removidosIds);
-        apontamentosRemovidos = data || [];
-      }
-
-      // Calcular diferença em minutos
+      // Calcular diferença em minutos (apenas novos extemporâneos, não removidos)
       const minutosNovos = novosApontamentos.reduce(
         (acc, a) => acc + (a.tempo_gasto_minutos || 0), 0
       );
-      // Para removidos, precisamos buscar o tempo que tinham
-      let minutosRemovidos = 0;
-      if (removidosIds.length > 0) {
-        const { data: removidos } = await db
-          .from('apontamentos_aranda')
-          .select('tempo_gasto_minutos')
-          .in('id_externo', removidosIds);
-        minutosRemovidos = (removidos || []).reduce(
-          (acc: number, a: any) => acc + (a.tempo_gasto_minutos || 0), 0
-        );
-      }
 
-      const diferencaMinutos = minutosNovos - minutosRemovidos;
-      const sinal = diferencaMinutos >= 0 ? '+' : '-';
+      const diferencaMinutos = minutosNovos;
+      const sinal = '+';
       const absMinutos = Math.abs(diferencaMinutos);
       const hDif = Math.floor(absMinutos / 60);
       const mDif = absMinutos % 60;
@@ -377,7 +353,7 @@ export class BancoHorasQuarentenaService {
         diferenca,
         diferencaMinutos,
         novosApontamentos,
-        apontamentosRemovidos
+        apontamentosRemovidos: []
       };
     } catch (error) {
       console.error('❌ Erro ao detectar extemporâneos:', error);
@@ -1006,6 +982,108 @@ export class BancoHorasQuarentenaService {
   }
 
   /**
+   * Busca IDs de apontamentos EXTEMPORÂNEOS para um período fechado.
+   * Extemporâneo = data_atividade no período, mas data_sistema em mês POSTERIOR.
+   * Isso significa que o apontamento foi lançado atrasado, depois do fechamento.
+   */
+  private async buscarIdsApontamentosExtemporaneos(
+    empresaId: string,
+    mes: number,
+    ano: number
+  ): Promise<string[]> {
+    try {
+      // Buscar nome da empresa e parâmetros de periodicidade
+      const { data: empresa } = await supabase
+        .from('empresas_clientes')
+        .select('nome_completo, dia_inicio_apuracao, dia_fim_apuracao')
+        .eq('id', empresaId)
+        .single();
+
+      if (!empresa?.nome_completo) return [];
+
+      const diaInicioApuracao = (empresa as any).dia_inicio_apuracao ?? 1;
+      const diaFimApuracao = (empresa as any).dia_fim_apuracao ?? 0;
+
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (diaInicioApuracao > 1) {
+        const mesSeguinte = mes === 12 ? 1 : mes + 1;
+        const anoSeguinte = mes === 12 ? ano + 1 : ano;
+        dataInicio = new Date(ano, mes - 1, diaInicioApuracao);
+        const diaFimReal = diaFimApuracao > 0 ? diaFimApuracao : diaInicioApuracao - 1;
+        dataFim = new Date(anoSeguinte, mesSeguinte - 1, diaFimReal, 23, 59, 59, 999);
+      } else {
+        dataInicio = new Date(ano, mes - 1, 1);
+        dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      }
+
+      const codigosResolucaoValidos = [
+        'Alocação - T&M', 'Alocação T&M',
+        'Alocação - T&M (Banco=S |SLA=N)', 'Alocação - T&M (Banco=S| SLA=N)',
+        'AMS SAP', 'AMS SAP (Banco=S |SLA=S)', 'AMS SAP (Banco=S| SLA=S)',
+        'Aplicação de Nota / Licença - Contratados',
+        'Aplicação de Nota / Licença (Banco=S |SLA=N)',
+        'Consultoria', 'Consultoria (Banco=S |SLA=S)', 'Consultoria (Banco=S| SLA=S)',
+        'Consultoria - Banco de Dados',
+        'Consultoria - Banco de Dados (Banco=S |SLA=S)', 'Consultoria - Banco de Dados (Banco=S| SLA=S)',
+        'Consultoria - Nota Publicada',
+        'Consultoria - Nota Publicada (Banco=S |SLA=S)', 'Consultoria - Nota Publicada (Banco=S| SLA=S)',
+        'Consultoria - Solução Paliativa',
+        'Consultoria - Solução Paliativa (Banco=S |SLA=S)', 'Consultoria - Solução Paliativa (Banco=S| SLA=S)',
+        'Dúvida', 'Dúvida (Banco=S |SLA=N)',
+        'Erro de classificação na abertura',
+        'Erro de classificação na abertura (Banco=S |SLA=N)', 'Erro de classificação na abertura (Banco=S| SLA=N)',
+        'Erro de programa especifico (SEM SLA)',
+        'Erro de programa especifico (Banco=S |SLA=N)', 'Erro de programa especifico (Banco=S| SLA=N)',
+        'Levantamento de Versão / Orçamento',
+        'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
+        'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
+        'Monitoramento DBA', 'Monitoramento DBA (Banco=S |SLA=N)',
+        'Nota Publicada', 'Nota Publicada (Banco=S |SLA=N)', 'Nota Publicada (Banco=S| SLA=N)',
+        'Parametrização / Cadastro', 'Parametrização / Cadastro (Banco=S |SLA=N)',
+        'Parametrização / Funcionalidade',
+        'Parametrização / Funcionalidade (Banco=S |SLA=S)',
+        'Parametrização / Funcionalidade (Banco=S |SLA=N)',
+        'Validação de Arquivo',
+        'Validação de Arquivo (Banco=S |SLA=N)', 'Validação de Arquivo (Banco=S| SLA=N)'
+      ];
+
+      const { data: apontamentos } = await db
+        .from('apontamentos_aranda')
+        .select('id_externo, data_atividade, data_sistema')
+        .eq('ativi_interna', 'Não')
+        .neq('item_configuracao', '000000 - PROJETOS APL')
+        .in('tipo_chamado', ['IM', 'RF', 'PM'])
+        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%')
+        .gte('data_atividade', dataInicio.toISOString())
+        .lte('data_atividade', dataFim.toISOString())
+        .in('cod_resolucao', codigosResolucaoValidos)
+        .ilike('org_us_final', `%${empresa.nome_completo}%`);
+
+      if (!apontamentos) return [];
+
+      // Filtrar APENAS extemporâneos: data_sistema em mês POSTERIOR ao da data_atividade
+      // Isso significa que o apontamento foi lançado ATRASADO
+      return apontamentos
+        .filter((a: any) => {
+          if (!a.data_atividade || !a.data_sistema) return false;
+          const dAtiv = new Date(a.data_atividade);
+          const dSist = new Date(a.data_sistema);
+          const mesAtiv = dAtiv.getFullYear() * 12 + dAtiv.getMonth();
+          const mesSist = dSist.getFullYear() * 12 + dSist.getMonth();
+          // Extemporâneo = sistema é de um mês POSTERIOR à atividade
+          return mesSist > mesAtiv;
+        })
+        .map((a: any) => a.id_externo)
+        .filter(Boolean);
+    } catch (error) {
+      console.error('❌ Erro ao buscar IDs de apontamentos extemporâneos:', error);
+      return [];
+    }
+  }
+
+  /**
    * Busca IDs dos tickets que compõem o cálculo de um período.
    * Usa os mesmos filtros do bancoHorasIntegracaoService.buscarConsumoTickets()
    */
@@ -1127,8 +1205,8 @@ export class BancoHorasQuarentenaService {
    * Para varredura completa, use a Edge Function `detectar-extemporaneos`.
    */
   async executarDeteccaoParaTodosFechamentos(): Promise<AjusteRetroativo[]> {
-    // Agora apenas delega para detecção recente (3 meses)
-    return this.executarDeteccaoRecente(3);
+    // Agora apenas delega para detecção recente (1 mês)
+    return this.executarDeteccaoRecente(1);
   }
 }
 
