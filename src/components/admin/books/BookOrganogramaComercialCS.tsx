@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { OrganoTree } from '@/components/admin/organograma/OrganoTree';
 import { supabase } from '@/integrations/supabase/client';
 import type { PessoaComSubordinados, Cargo, Produto } from '@/types/organograma';
+import BookFooterBar from './BookFooterBar';
 
 interface BookOrganogramaComercialCSProps {
   empresaId: string;
@@ -255,7 +256,7 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
   // para não afetar o posicionamento/centralização dos outros nós
 
   return (
-    <div className="h-full w-full overflow-auto">
+    <div className="h-full w-full overflow-auto flex flex-col relative">
       <div className="p-6">
         <h2 className="text-xl font-bold mb-1">
           {t('books.organogramaComercialTitle')} <span className="text-sonda-blue">{empresaNome}</span>
@@ -354,6 +355,9 @@ export default function BookOrganogramaComercialCS({ empresaId, empresaNome }: B
             ))}
           </div>
         )}
+      </div>
+      <div className="px-6 pb-6">
+        <BookFooterBar />
       </div>
     </div>
   );

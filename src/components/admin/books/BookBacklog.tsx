@@ -28,6 +28,7 @@ import type { BookBacklogData } from '@/types/books';
 import { useGrupoBookMapping, mapearMultiplosGrupos } from '@/hooks/useGrupoBookMapping';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import BookFooterBar from './BookFooterBar';
 
 interface BookBacklogProps {
   data: BookBacklogData;
@@ -67,8 +68,8 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
   }, [data.backlog_por_causa, mappingMap, isLoadingMapping]);
 
   return (
-    <div className="w-full h-full bg-white p-8">
-      <div className="space-y-6">
+    <div className="w-full h-full bg-white p-8 flex flex-col relative">
+      <div className="space-y-6 flex-1">
       {/* Título da Seção */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
@@ -345,6 +346,7 @@ export default function BookBacklog({ data, empresaNome }: BookBacklogProps) {
       </div>
 
       </div>
+      <BookFooterBar />
     </div>
   );
 }

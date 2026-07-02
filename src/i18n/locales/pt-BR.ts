@@ -612,6 +612,7 @@ const ptBR = {
       backlog: 'Backlog',
       consumo: 'Consumo',
       pesquisa: 'Pesquisa',
+      portfolio: 'Portfólio',
       organograma: 'Organograma',
       organogramaComercial: 'Organograma Comercial/CS/T&M',
     },

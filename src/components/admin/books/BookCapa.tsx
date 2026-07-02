@@ -5,6 +5,7 @@
 
 import { useTranslation } from 'react-i18next';
 import type { BookCapaData } from '@/types/books';
+import BookFooterBar from './BookFooterBar';
 
 interface BookCapaProps {
   data: BookCapaData;
@@ -95,6 +96,8 @@ export default function BookCapa({ data }: BookCapaProps) {
           </div>
         </div>
       </div>
+
+      <BookFooterBar />
     </div>
   );
 }

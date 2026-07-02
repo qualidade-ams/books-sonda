@@ -7,7 +7,7 @@
 export type BookStatus = 'pendente' | 'gerando' | 'gerado' | 'erro' | 'desatualizado' | 'enviado';
 
 // Tipos de abas do book
-export type BookTab = 'capa' | 'volumetria' | 'sla' | 'backlog' | 'consumo' | 'pesquisa';
+export type BookTab = 'capa' | 'volumetria' | 'sla' | 'backlog' | 'consumo' | 'pesquisa' | 'portfolio';
 
 // ============================================================================
 // INTERFACES PRINCIPAIS

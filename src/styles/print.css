@@ -56,6 +56,7 @@
 .page-section > div {
   padding: 0 !important;
   margin: 0 !important;
+  position: relative !important;
 }
 
 /* Page breaks entre seções */
@@ -113,6 +114,11 @@
 
 .print-container * {
   overflow: visible !important;
+}
+
+/* Exceção: manter overflow-hidden em containers que usam imagens de fundo decorativas */
+.print-container .overflow-hidden {
+  overflow: hidden !important;
 }
 
 /* Configuração de página - dimensões fixas */
@@ -199,4 +205,44 @@
 .print-container button,
 .print-container [class*="Button"] {
   display: none !important;
+}
+
+/* Footer bar decorativo - posicionar na borda absoluta da page-section */
+.print-container .book-footer-bar {
+  position: absolute !important;
+  bottom: -45px !important;
+  left: -45px !important;
+  right: -45px !important;
+  width: calc(100% + 90px) !important;
+  z-index: 9999 !important;
+}
+
+/* Capa - footer bar não precisa de offset negativo (padding já é 0) */
+.print-container [data-section="capa"] .book-footer-bar {
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+/* Portfólio - imagem decorativa colada nas bordas da page-section no PDF */
+.print-container [data-section="portfolio"] .portfolio-bg-image {
+  top: -45px !important;
+  left: -45px !important;
+  right: -45px !important;
+  bottom: -45px !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Portfólio - manter layout flex para borda arredondada */
+.print-container [data-section="portfolio"] > div {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Portfólio - borda arredondada deve ocupar todo o espaço vertical */
+.print-container [data-section="portfolio"] .flex-1 {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
 }
