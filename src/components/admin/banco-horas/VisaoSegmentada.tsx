@@ -152,7 +152,7 @@ async function calcularConsumoSegmentadoPorMes(
       'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
       'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
       'Monitoramento DBA',
-      'Monitoramento DBA (Banco=S |SLA=S)',
+      'Monitoramento DBA (Banco=S |SLA=N)',
       'Nota Publicada',
       'Nota Publicada (Banco=S |SLA=N)',
       'Parametrização / Cadastro',

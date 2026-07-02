@@ -502,31 +502,21 @@ class BooksService {
               console.warn('⚠️ Erro ao reabrir/recalcular período (não crítico):', reabrirError);
             }
           } else {
-            // Verificar se o banco de horas já foi calculado para este período
-            // O book só pode ser gerado se o banco de horas estiver gerado
-            const { data: bancoCalculado } = await supabase
-              .from('banco_horas_calculos')
-              .select('id')
-              .eq('empresa_id', empresaId)
-              .eq('mes', config.mes)
-              .eq('ano', config.ano)
-              .maybeSingle();
-
-            if (!bancoCalculado) {
-              console.log(`⚠️ Banco de horas não calculado para ${empresa.nome_abreviado} - ${config.mes}/${config.ano}. Calculando automaticamente...`);
-              try {
-                await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
-                console.log(`✅ Banco de horas calculado para empresa ${empresaId} - ${config.mes}/${config.ano}`);
-              } catch (calcError: any) {
-                console.error(`❌ Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`, calcError);
-                resultados.push({
-                  sucesso: false,
-                  empresa_id: empresaId,
-                  empresa_nome: empresa.nome_completo,
-                  erro: `Banco de horas não pôde ser calculado: ${calcError.message || 'Erro desconhecido'}`
-                });
-                continue;
-              }
+            // SEMPRE recalcular o banco de horas antes de gerar o book.
+            // Garante que o snapshot captura os dados mais recentes de apontamentos,
+            // reajustes e requerimentos — mesmo que já exista um cálculo anterior.
+            try {
+              await bancoHorasService.calcularMes(empresaId, config.mes, config.ano);
+              console.log(`🔄 Banco de horas recalculado para empresa ${empresa.nome_abreviado} - ${config.mes}/${config.ano}`);
+            } catch (calcError: any) {
+              console.error(`❌ Erro ao calcular banco de horas para ${empresa.nome_abreviado}:`, calcError);
+              resultados.push({
+                sucesso: false,
+                empresa_id: empresaId,
+                empresa_nome: empresa.nome_completo,
+                erro: `Banco de horas não pôde ser calculado: ${calcError.message || 'Erro desconhecido'}`
+              });
+              continue;
             }
           }
 

@@ -1436,7 +1436,7 @@ class BooksDataCollectorService {
         .eq('ativi_interna', 'Não')
         .in('tipo_chamado', ['IM', 'RF', 'PM'])
         .neq('item_configuracao', '000000 - PROJETOS APL')
-        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+        .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
         .in('cod_resolucao', [
           'Alocação - T&M',
           'Alocação - T&M (Banco=S |SLA=N)',
@@ -1470,7 +1470,7 @@ class BooksDataCollectorService {
           'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
           'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
           'Monitoramento DBA',
-          'Monitoramento DBA (Banco=S |SLA=S)',
+          'Monitoramento DBA (Banco=S |SLA=N)',
           'Nota Publicada',
           'Nota Publicada (Banco=S |SLA=N)',
           'Nota Publicada (Banco=S| SLA=N)',
@@ -1515,19 +1515,19 @@ class BooksDataCollectorService {
       });
 
       if (apontamentosHoras && apontamentosHoras.length > 0) {
-        // REGRA: Filtrar registros onde data_atividade e data_sistema estão em meses diferentes
-        // (mesma lógica do bancoHorasIntegracaoService.buscarConsumo)
+        // REGRA: Descartar apontamentos onde data_sistema é POSTERIOR à data_atividade
+        // (lançado retroativamente fora do mês — não conta para o período)
+        // Manter quando data_sistema é anterior ou igual ao mês da atividade
         let apontamentosExcluidos = 0;
         const apontamentosFiltrados = apontamentosHoras.filter(a => {
           if (a.data_atividade && a.data_sistema) {
             const dataAtividade = new Date(a.data_atividade);
-            const dataSistema = new Date(a.data_sistema);
-            if (
-              dataAtividade.getMonth() !== dataSistema.getMonth() ||
-              dataAtividade.getFullYear() !== dataSistema.getFullYear()
-            ) {
+            const dataSistema   = new Date(a.data_sistema);
+            const mesAtividade  = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
+            const mesSistema    = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
+            if (mesSistema > mesAtividade) {
               apontamentosExcluidos++;
-              console.log('⚠️ [gerarDadosConsumo] Apontamento excluído (mês diferente):', {
+              console.log('⚠️ [gerarDadosConsumo] Apontamento excluído (data_sistema posterior à data_atividade):', {
                 data_atividade: a.data_atividade,
                 data_sistema: a.data_sistema,
                 nro_chamado: a.nro_chamado || 'N/A'
@@ -2617,7 +2617,7 @@ class BooksDataCollectorService {
           .eq('ativi_interna', 'Não')
           .in('tipo_chamado', ['IM', 'RF', 'PM'])
           .neq('item_configuracao', '000000 - PROJETOS APL')
-          .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+          .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
           .in('cod_resolucao', [
             'Alocação - T&M',
             'Alocação - T&M (Banco=S |SLA=N)',
@@ -2651,7 +2651,7 @@ class BooksDataCollectorService {
             'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
             'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
             'Monitoramento DBA',
-            'Monitoramento DBA (Banco=S |SLA=S)',
+            'Monitoramento DBA (Banco=S |SLA=N)',
             'Nota Publicada',
             'Nota Publicada (Banco=S |SLA=N)',
             'Nota Publicada (Banco=S| SLA=N)',
@@ -2668,16 +2668,15 @@ class BooksDataCollectorService {
           .lt('data_atividade', proximoMesInicio.toISOString());
 
         if (apontamentosHoras) {
-          // Filtrar registros onde data_atividade e data_sistema estão em meses diferentes
-          // (mesma lógica do bancoHorasIntegracaoService.buscarConsumo)
+          // Descartar apontamentos onde data_sistema é POSTERIOR à data_atividade
+          // (mesma lógica corrigida do bancoHorasIntegracaoService.buscarConsumo)
           const apontamentosFiltrados = apontamentosHoras.filter(a => {
             if (a.data_atividade && a.data_sistema) {
               const dataAtividade = new Date(a.data_atividade);
-              const dataSistema = new Date(a.data_sistema);
-              if (
-                dataAtividade.getMonth() !== dataSistema.getMonth() ||
-                dataAtividade.getFullYear() !== dataSistema.getFullYear()
-              ) {
+              const dataSistema   = new Date(a.data_sistema);
+              const mesAtividade  = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
+              const mesSistema    = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
+              if (mesSistema > mesAtividade) {
                 return false;
               }
             }

@@ -189,7 +189,7 @@ async function buscarApontamentosDetalhados(
     'Levantamento de Versão / Orçamento (Banco=S |SLA=N)',
     'Levantamento de Versão /Orçamento (Banco=S |SLA=N)',
     'Monitoramento DBA',
-    'Monitoramento DBA (Banco=S |SLA=S)',
+    'Monitoramento DBA (Banco=S |SLA=N)',
     'Nota Publicada',
     'Nota Publicada (Banco=S |SLA=N)',
     'Nota Publicada (Banco=S| SLA=N)',
@@ -211,7 +211,7 @@ async function buscarApontamentosDetalhados(
     .eq('ativi_interna', 'Não')
     .neq('item_configuracao', '000000 - PROJETOS APL')
     .in('tipo_chamado', ['IM', 'RF', 'PM'])
-    .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
+    .or('caso_grupo.ilike.%AMS APL%,caso_grupo.ilike.%AMS - APL%,caso_grupo.ilike.%AMS - ATENDIMENTO%,caso_grupo.ilike.%AMS T&M%') // Filtrar por grupo do caso
     .gte('data_atividade', dataInicio.toISOString())
     .lte('data_atividade', dataFim.toISOString())
     .ilike('org_us_final', `%${nomeCompleto}%`)
@@ -229,15 +229,15 @@ async function buscarApontamentosDetalhados(
     return codigosResolucaoValidos.includes(apt.cod_resolucao);
   });
 
-  // Filtrar: data_atividade e data_sistema devem estar no mesmo mês
+  // Filtrar: descartar apenas quando data_sistema é POSTERIOR ao mês da data_atividade
+  // (apontamento lançado retroativamente — mesma regra do bancoHorasIntegracaoService)
   const apontamentosFiltrados = apontamentosComCodigo.filter((apt: any) => {
     if (apt.data_atividade && apt.data_sistema) {
       const dataAtividade = new Date(apt.data_atividade);
-      const dataSistema = new Date(apt.data_sistema);
-      return (
-        dataAtividade.getMonth() === dataSistema.getMonth() &&
-        dataAtividade.getFullYear() === dataSistema.getFullYear()
-      );
+      const dataSistema   = new Date(apt.data_sistema);
+      const mesAtiv = dataAtividade.getFullYear() * 12 + dataAtividade.getMonth();
+      const mesSist = dataSistema.getFullYear()   * 12 + dataSistema.getMonth();
+      return mesSist <= mesAtiv; // descarta somente se sistema é posterior à atividade
     }
     return true;
   });
