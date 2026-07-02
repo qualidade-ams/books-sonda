@@ -121,8 +121,8 @@ export default function AjustesRetroativos() {
     const executarDeteccaoAutomatica = async () => {
       try {
         setIsDetectando(true);
-        console.log('🔍 Executando detecção automática (último mês)...');
-        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(1);
+        console.log('🔍 Executando detecção automática (últimos 2 meses)...');
+        const ajustes = await bancoHorasQuarentenaService.executarDeteccaoRecente(2);
         console.log('✅ Detecção automática concluída:', ajustes.length, 'ajustes');
         if (ajustes.length > 0) {
           // Forçar refetch dos dados da tela
