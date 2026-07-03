@@ -163,8 +163,12 @@ export class ElogiosTemplateService {
         }
       });
 
+      // Filtrar apenas consultores com mais de 1 elogio
+      const contagemFiltrada = Object.entries(contagemPorPrestador)
+        .filter(([, qtd]) => qtd > 1);
+
       // Ordenar por quantidade (desc) e agrupar por posição (empates)
-      const ranking = Object.entries(contagemPorPrestador)
+      const ranking = contagemFiltrada
         .sort((a, b) => b[1] - a[1]);
 
       if (ranking.length === 0) return resultado;
@@ -210,38 +214,98 @@ export class ElogiosTemplateService {
 
   /**
    * Formata nomes do ranking com HTML estruturado para empates.
-   * Quando há apenas 1 consultor, retorna o nome simples.
-   * Quando há empates, gera blocos separados com divisória e fonte adaptativa.
+   * Layout: "Nº de Elogios: XX" aparece uma vez (Roboto Black, 13px)
+   * e os nomes dos consultores ficam abaixo (Roboto Medium, 14.4px).
+   * Consultores separados por divisória.
    */
   private formatarNomesRanking(nomes: string[], qtd: number): string {
     const nomesOrdenados = nomes.sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const qtdFormatada = String(qtd).padStart(2, '0');
-    const total = nomesOrdenados.length;
 
-    // Apenas 1 consultor: retorna nome + qtd formatados
-    if (total === 1) {
-      return `<div style="font-size:19px;font-weight:900;text-align:center;">${nomesOrdenados[0]}</div><div style="font-size:13.4px;margin-top:5px;text-align:center;">Nº de Elogios: ${qtdFormatada}</div>`;
-    }
+    // "Nº de Elogios" aparece uma vez no topo
+    let html = `<div style="font-size:13px;font-weight:900;font-family:'Roboto',Arial,sans-serif;text-align:center;margin-bottom:6px;">Nº de Elogios: ${qtdFormatada}</div>`;
 
-    // Fonte adaptativa: diminui conforme aumenta o número de consultores
-    let fontSize = '16px';
-    if (total === 2) fontSize = '15px';
-    else if (total === 3) fontSize = '14px';
-    else if (total >= 4) fontSize = '12px';
-
-    // Gerar HTML com blocos separados por divisória
-    const blocos = nomesOrdenados.map((nome, index) => {
-      let html = '';
+    // Nomes dos consultores abaixo
+    const nomesHtml = nomesOrdenados.map((nome, index) => {
+      let bloco = '';
       // Divisória antes de cada nome (exceto o primeiro)
       if (index > 0) {
-        html += `<div style="width:60%;margin:8px auto;border-top:1px solid #999;"></div>`;
+        bloco += `<div style="width:60%;margin:6px auto;border-top:1px solid #999;"></div>`;
       }
-      html += `<div style="font-size:${fontSize};font-weight:900;text-align:center;">${nome}</div>`;
-      html += `<div style="font-size:11px;margin-top:2px;text-align:center;">Nº de Elogios: ${qtdFormatada}</div>`;
-      return html;
+      bloco += `<div style="font-size:14.4px;font-weight:500;font-family:'Roboto',Arial,sans-serif;text-align:center;">${nome}</div>`;
+      return bloco;
     });
 
-    return blocos.join('');
+    html += nomesHtml.join('');
+
+    return html;
+  }
+
+  /**
+   * Gera o HTML completo da seção de ranking com medalhas.
+   * Exibe apenas as posições que possuem dados (oculta medalhas sem informação).
+   * Centraliza as medalhas restantes quando menos de 3 posições existem.
+   */
+  private gerarRankingHtml(ranking: { primeiro: string; qtd1: number; segundo: string; qtd2: number; terceiro: string; qtd3: number }): string {
+    // Montar array de posições que têm dados
+    const posicoes: Array<{ medalhaImg: string; conteudo: string }> = [];
+
+    if (ranking.qtd1 > 0) {
+      posicoes.push({
+        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/1.png',
+        conteudo: ranking.primeiro
+      });
+    }
+    if (ranking.qtd2 > 0) {
+      posicoes.push({
+        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/2.png',
+        conteudo: ranking.segundo
+      });
+    }
+    if (ranking.qtd3 > 0) {
+      posicoes.push({
+        medalhaImg: 'https://books-sonda.vercel.app/images/elogios/3.png',
+        conteudo: ranking.terceiro
+      });
+    }
+
+    if (posicoes.length === 0) {
+      return '';
+    }
+
+    // Calcular largura de cada coluna para centralizar
+    const colWidth = Math.floor(100 / posicoes.length);
+
+    // Gerar colunas das medalhas com divisórias entre elas
+    const medalhasCols = posicoes.map((p, index) => {
+      let cols = '';
+      if (index > 0) {
+        // Divisória vertical entre medalhas
+        cols += `<td width="2" rowspan="2" align="center" valign="middle" style="padding:0;">
+          <div style="width:2px;height:120px;background-color:#999;margin:0 auto;"></div>
+        </td>\n`;
+      }
+      cols += `<td width="${colWidth}%" align="center" valign="bottom" style="padding:100px 15px 5px 15px;text-align:center;font-family:'Roboto', Arial, sans-serif;">
+        <img src="${p.medalhaImg}" width="110" style="display:block;margin:0 auto;">
+      </td>`;
+      return cols;
+    }).join('\n');
+
+    // Gerar colunas dos nomes (sem divisórias pois rowspan=2 já cobre)
+    const nomesCols = posicoes.map(p => 
+      `<td width="${colWidth}%" align="center" valign="top" style="padding:50px 20px 100px 20px;text-align:center;font-family:'Roboto', Arial, sans-serif;">
+        <div>${p.conteudo}</div>
+      </td>`
+    ).join('\n');
+
+    return `<table width="90%" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;border-radius:20px;max-width:1100px;margin:0 auto;box-shadow:0 12px 20px -4px rgba(0,0,0,0.18);">
+      <tr>
+        ${medalhasCols}
+      </tr>
+      <tr>
+        ${nomesCols}
+      </tr>
+    </table>`;
   }
 
   /**
@@ -470,6 +534,9 @@ export class ElogiosTemplateService {
     // Calcular ranking mensal (top 3 colaboradores)
     const ranking = await this.calcularRankingMensal(mesSelecionado, anoSelecionado);
 
+    // Gerar HTML dinâmico do ranking (só exibe medalhas com dados)
+    const rankingHtml = this.gerarRankingHtml(ranking);
+
     const variables: Partial<ElogiosTemplateVariables> = {
       'sistema.mesNomeAtual': nomesMeses[mesSelecionado - 1],
       'sistema.anoAtual': anoSelecionado.toString(),
@@ -503,6 +570,9 @@ export class ElogiosTemplateService {
 
     // Substituir loop de elogios
     htmlProcessado = htmlProcessado.replace('{{elogio.loop}}', elogiosHtml);
+
+    // Substituir ranking dinâmico (só exibe medalhas com dados)
+    htmlProcessado = htmlProcessado.replace('{{elogio.ranking}}', rankingHtml);
 
     return {
       html: htmlProcessado,
@@ -560,7 +630,7 @@ export class ElogiosTemplateService {
         let html = '';
 
         // Largura fixa do card em pixels
-        const cardWidth = 310;
+        const cardWidth = 290;
         const cardGap = 16; // padding entre cards (8px cada lado)
 
         for (let blocoIndex = 0; blocoIndex < blocos.length; blocoIndex++) {
@@ -594,7 +664,7 @@ export class ElogiosTemplateService {
     <v:fill type="tile" src="${bgImage}" />
     <v:textbox style="mso-fit-shape-to-text:true" inset="0,0,0,0">
     <![endif]-->
-    <div style="width:1500px;max-width:1500px;margin:0;">
+    <div style="width:1500px;max-width:1500px;margin:0;overflow:hidden;">
     <table width="1500" cellpadding="0" cellspacing="0" border="0"
       style="border-collapse:collapse;width:1500px;max-width:1500px;height:1080px;margin:0;background-image:url('${bgImage}');background-repeat:no-repeat;background-position:center center;background-size:cover;">
       <!-- HEADER DO BLOCO -->
@@ -633,11 +703,11 @@ export class ElogiosTemplateService {
 
               html += `
               <td width="${cardWidth}" valign="top" style="padding:8px;">
-                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;border-radius:20px;width:${cardWidth}px;height:270px;">
+                <table width="${cardWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="#efefef" style="border-collapse:collapse;background-color:#efefef;border-radius:20px;width:${cardWidth}px;max-width:${cardWidth}px;height:270px;overflow:hidden;">
                   <tr>
-                    <td valign="top" style="padding:18px 18px 0 18px;height:190px;">
-                      <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;">${nome}</div>
-                      <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;">${mensagem}</div>
+                    <td valign="top" style="padding:18px 18px 0 18px;height:190px;overflow:hidden;word-break:break-word;">
+                      <div style="color:#1f5df5;font-weight:700;font-size:16px;font-family:'Roboto',Arial,sans-serif;text-align:left;margin:0 0 6px 0;word-break:break-word;overflow:hidden;">${nome}</div>
+                      <div style="color:#000;font-weight:400;font-size:13px;font-family:'Roboto',Arial,sans-serif;text-align:justify;margin:0;line-height:1.4;word-break:break-word;overflow:hidden;">${mensagem}</div>
                     </td>
                   </tr>
                   <tr>
@@ -706,6 +776,9 @@ export class ElogiosTemplateService {
 
     // Calcular ranking mensal (top 3 colaboradores)
     const ranking = await this.calcularRankingMensal(mesSelecionado, anoSelecionado);
+
+    // Gerar HTML dinâmico do ranking (só exibe medalhas com dados)
+    const rankingHtml = this.gerarRankingHtml(ranking);
 
     const variables: Partial<ElogiosTemplateVariables> = {
       'sistema.mesNomeAtual': nomesMeses[mesSelecionado - 1],

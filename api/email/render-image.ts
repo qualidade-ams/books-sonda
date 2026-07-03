@@ -76,7 +76,7 @@ export default async function handler(
       return;
     }
 
-    const viewportWidth = body.width || 1500;
+    const viewportWidth = body.width || 1600;
 
     console.log('🖼️ Iniciando renderização de HTML para imagem...');
 
