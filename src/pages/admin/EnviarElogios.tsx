@@ -112,7 +112,7 @@ export default function EnviarElogios() {
         const response = await fetch('/api/email/render-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ html: htmlTemplate, width: 1300 })
+          body: JSON.stringify({ html: htmlTemplate, width: 1600 })
         });
         
         if (response.ok) {
@@ -1922,7 +1922,6 @@ img { -ms-interpolation-mode: bicubic; }
                     className="flex-1 overflow-auto p-4 email-preview-container"
                     style={{ 
                       isolation: 'isolate',
-                      contain: 'style layout',
                       position: 'relative'
                     }}
                   >
@@ -1930,10 +1929,18 @@ img { -ms-interpolation-mode: bicubic; }
                       <img 
                         src={corpoEmailImagemUrl || `data:image/png;base64,${corpoEmailImagem}`} 
                         alt="Preview do email de elogios"
-                        style={{ width: '100%', maxWidth: '1300px', display: 'block' }}
+                        style={{ width: '100%', maxWidth: '1550px', display: 'block' }}
                       />
                     ) : (
-                      <div dangerouslySetInnerHTML={{ __html: corpoEmail }} />
+                      <div 
+                        dangerouslySetInnerHTML={{ __html: corpoEmail }}
+                        style={{ 
+                          transformOrigin: 'top left',
+                          transform: 'scale(0.42)',
+                          width: '1550px',
+                          maxWidth: '1550px'
+                        }}
+                      />
                     )}
                   </div>
                 </div>
