@@ -241,9 +241,13 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           );
           break;
         case 'colaborador':
-          resultado = elogiosFiltrados.filter(e => 
-            e.pesquisa?.prestador === itemSelecionado.dados
-          );
+          resultado = elogiosFiltrados.filter(e => {
+            const especialistas = e.especialistas;
+            if (especialistas && especialistas.length > 0) {
+              return especialistas.some(esp => esp.especialistas?.nome === itemSelecionado.dados);
+            }
+            return e.pesquisa?.prestador === itemSelecionado.dados;
+          });
           break;
         case 'elogio':
           resultado = [itemSelecionado.dados];
@@ -387,11 +391,21 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                       return e.status === 'compartilhado' || e.status === 'enviado';
                     }) || [];
 
-                    // Contar elogios por prestador
+                    // Contar elogios por prestador (considerando múltiplos especialistas)
                     const contagemPorPrestador: Record<string, number> = {};
                     elogiosFiltrados.forEach(elogio => {
-                      const prestador = elogio.pesquisa?.prestador || 'Sem nome';
-                      contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                      const especialistas = elogio.especialistas;
+                      if (especialistas && especialistas.length > 0) {
+                        // Contar para cada especialista vinculado ao elogio
+                        especialistas.forEach(esp => {
+                          const nome = esp.especialistas?.nome || 'Sem nome';
+                          contagemPorPrestador[nome] = (contagemPorPrestador[nome] || 0) + 1;
+                        });
+                      } else {
+                        // Fallback para campo prestador da pesquisa
+                        const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                        contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                      }
                     });
 
                     // Encontrar o top colaborador
@@ -1009,8 +1023,16 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
                 }) || [];
                 const contagemPorPrestador: Record<string, number> = {};
                 elogiosAno.forEach(elogio => {
-                  const prestador = elogio.pesquisa?.prestador || 'Sem nome';
-                  contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                  const especialistas = elogio.especialistas;
+                  if (especialistas && especialistas.length > 0) {
+                    especialistas.forEach(esp => {
+                      const nome = esp.especialistas?.nome || 'Sem nome';
+                      contagemPorPrestador[nome] = (contagemPorPrestador[nome] || 0) + 1;
+                    });
+                  } else {
+                    const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                    contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                  }
                 });
                 const totalColaboradores = Object.keys(contagemPorPrestador).length;
                 
@@ -1042,19 +1064,36 @@ const VisaoGeralElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
               const gruposPorPrestador: Record<string, Record<string, number>> = {};
               
               elogiosAno.forEach(elogio => {
-                const prestador = elogio.pesquisa?.prestador || 'Sem nome';
                 const categoria = elogio.pesquisa?.categoria || '';
                 const grupoMapeado = obterGrupoPorCategoria(categoria);
+                const especialistas = elogio.especialistas;
                 
-                // Contar elogios
-                contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
-                
-                // Mapear grupos por prestador
-                if (!gruposPorPrestador[prestador]) {
-                  gruposPorPrestador[prestador] = {};
-                }
-                if (grupoMapeado) {
-                  gruposPorPrestador[prestador][grupoMapeado] = (gruposPorPrestador[prestador][grupoMapeado] || 0) + 1;
+                if (especialistas && especialistas.length > 0) {
+                  // Contar para cada especialista vinculado ao elogio
+                  especialistas.forEach(esp => {
+                    const nome = esp.especialistas?.nome || 'Sem nome';
+                    contagemPorPrestador[nome] = (contagemPorPrestador[nome] || 0) + 1;
+                    
+                    // Mapear grupos por prestador
+                    if (!gruposPorPrestador[nome]) {
+                      gruposPorPrestador[nome] = {};
+                    }
+                    if (grupoMapeado) {
+                      gruposPorPrestador[nome][grupoMapeado] = (gruposPorPrestador[nome][grupoMapeado] || 0) + 1;
+                    }
+                  });
+                } else {
+                  // Fallback para campo prestador da pesquisa
+                  const prestador = elogio.pesquisa?.prestador || 'Sem nome';
+                  contagemPorPrestador[prestador] = (contagemPorPrestador[prestador] || 0) + 1;
+                  
+                  // Mapear grupos por prestador
+                  if (!gruposPorPrestador[prestador]) {
+                    gruposPorPrestador[prestador] = {};
+                  }
+                  if (grupoMapeado) {
+                    gruposPorPrestador[prestador][grupoMapeado] = (gruposPorPrestador[prestador][grupoMapeado] || 0) + 1;
+                  }
                 }
               });
               
@@ -1685,9 +1724,13 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
           obterNomeAbreviadoEmpresa(e.pesquisa?.empresa || '') === itemSelecionado.dados
         );
       case 'colaborador':
-        return elogiosFiltrados.filter(e => 
-          e.pesquisa?.prestador === itemSelecionado.dados
-        );
+        return elogiosFiltrados.filter(e => {
+          const especialistas = e.especialistas;
+          if (especialistas && especialistas.length > 0) {
+            return especialistas.some(esp => esp.especialistas?.nome === itemSelecionado.dados);
+          }
+          return e.pesquisa?.prestador === itemSelecionado.dados;
+        });
       case 'grupo':
         return elogiosFiltrados.filter(e => {
           const categoria = e.pesquisa?.categoria || '';
@@ -1841,8 +1884,23 @@ const MapeamentoElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogi
   });
   const topAno = Object.entries(contagemAno).sort((a, b) => b[1] - a[1])[0];
 
-  // Total de colaboradores únicos
-  const colaboradoresUnicos = new Set(elogiosFiltrados.map(e => e.pesquisa?.prestador).filter(Boolean)).size;
+  // Total de colaboradores únicos (considerando múltiplos especialistas por elogio)
+  const colaboradoresUnicos = (() => {
+    const nomes = new Set<string>();
+    elogiosFiltrados.forEach(e => {
+      const especialistas = e.especialistas;
+      if (especialistas && especialistas.length > 0) {
+        especialistas.forEach(esp => {
+          const nome = esp.especialistas?.nome;
+          if (nome) nomes.add(nome);
+        });
+      } else {
+        const prestador = e.pesquisa?.prestador;
+        if (prestador) nomes.add(prestador);
+      }
+    });
+    return nomes.size;
+  })();
 
   // Setor em alta baseado no período selecionado
   const setorDestaque = topPeriodo;
@@ -2757,8 +2815,17 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
   // Aplicar filtros múltiplos
   const elogiosFiltradosComFiltro = elogiosFiltrados.filter(elogio => {
     if (tipoFiltro === 'colaborador' && colaboradoresSelecionados.length > 0) {
-      const prestador = elogio.pesquisa?.prestador || '';
-      return colaboradoresSelecionados.includes(prestador);
+      const especialistas = elogio.especialistas;
+      if (especialistas && especialistas.length > 0) {
+        // Verificar se algum especialista do elogio está nos selecionados
+        return especialistas.some(esp => {
+          const nome = esp.especialistas?.nome || '';
+          return colaboradoresSelecionados.includes(nome);
+        });
+      } else {
+        const prestador = elogio.pesquisa?.prestador || '';
+        return colaboradoresSelecionados.includes(prestador);
+      }
     }
     
     if (tipoFiltro === 'empresa' && empresasSelecionadas.length > 0) {
@@ -2770,8 +2837,23 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
     return true;
   });
 
-  // Obter listas únicas para os filtros
-  const colaboradoresUnicos = [...new Set(elogiosFiltrados.map(e => e.pesquisa?.prestador).filter(Boolean))].sort();
+  // Obter listas únicas para os filtros (considerando múltiplos especialistas)
+  const colaboradoresUnicos = (() => {
+    const nomes = new Set<string>();
+    elogiosFiltrados.forEach(e => {
+      const especialistas = e.especialistas;
+      if (especialistas && especialistas.length > 0) {
+        especialistas.forEach(esp => {
+          const nome = esp.especialistas?.nome;
+          if (nome) nomes.add(nome);
+        });
+      } else {
+        const prestador = e.pesquisa?.prestador;
+        if (prestador) nomes.add(prestador);
+      }
+    });
+    return [...nomes].sort();
+  })();
   const empresasUnicas = [...new Set(elogiosFiltrados.map(e => {
     const empresa = e.pesquisa?.empresa;
     return empresa ? obterNomeAbreviadoEmpresa(empresa) : null;
@@ -2791,11 +2873,22 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
       });
       
       elogiosFiltrados.forEach(elogio => {
-        const prestador = elogio.pesquisa?.prestador || '';
-        if (colaboradoresSelecionados.includes(prestador)) {
-          const dataResposta = new Date(elogio.data_resposta! + 'T00:00:00');
-          const mes = dataResposta.getMonth() + 1;
-          dadosPorColaborador[prestador][mes] = (dadosPorColaborador[prestador][mes] || 0) + 1;
+        const especialistas = elogio.especialistas;
+        const dataResposta = new Date(elogio.data_resposta! + 'T00:00:00');
+        const mes = dataResposta.getMonth() + 1;
+        
+        if (especialistas && especialistas.length > 0) {
+          especialistas.forEach(esp => {
+            const nome = esp.especialistas?.nome || '';
+            if (colaboradoresSelecionados.includes(nome)) {
+              dadosPorColaborador[nome][mes] = (dadosPorColaborador[nome][mes] || 0) + 1;
+            }
+          });
+        } else {
+          const prestador = elogio.pesquisa?.prestador || '';
+          if (colaboradoresSelecionados.includes(prestador)) {
+            dadosPorColaborador[prestador][mes] = (dadosPorColaborador[prestador][mes] || 0) + 1;
+          }
         }
       });
       
@@ -2932,7 +3025,22 @@ const VolumeElogios = ({ statsElogios, anoSelecionado, mesSelecionado, elogios }
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dashboard.complimentsTab.praisedPeople')}</p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{new Set(elogiosFiltradosComFiltro.map(e => e.pesquisa?.prestador).filter(Boolean)).size}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold">{(() => {
+                const nomes = new Set<string>();
+                elogiosFiltradosComFiltro.forEach(e => {
+                  const especialistas = e.especialistas;
+                  if (especialistas && especialistas.length > 0) {
+                    especialistas.forEach(esp => {
+                      const nome = esp.especialistas?.nome;
+                      if (nome) nomes.add(nome);
+                    });
+                  } else {
+                    const prestador = e.pesquisa?.prestador;
+                    if (prestador) nomes.add(prestador);
+                  }
+                });
+                return nomes.size;
+              })()}</p>
             </div>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
               <Users className="h-4 w-4 text-orange-600" />
