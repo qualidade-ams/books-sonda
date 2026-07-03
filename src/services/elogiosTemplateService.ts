@@ -590,7 +590,7 @@ export class ElogiosTemplateService {
      * Capitaliza a primeira letra de cada palavra
      */
     private capitalizarPalavras(texto: string): string {
-      return texto.replace(/\b\w/g, (char) => char.toUpperCase());
+      return texto.toLowerCase().replace(/(^|\s)\S/g, (char) => char.toUpperCase());
     }
 
     /**
