@@ -66,10 +66,9 @@ export function MonthYearPicker({
     }
   }, [value]);
 
-  // Ao abrir o popover, setar mês/ano corrente se não houver valor selecionado
+  // Ao abrir o popover, setar apenas o ano corrente se não houver valor selecionado
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && !selectedMonth && !selectedYear) {
-      setSelectedMonth(currentMonth);
       setSelectedYear(currentYear);
     }
     setOpen(isOpen);
